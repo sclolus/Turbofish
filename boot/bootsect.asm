@@ -17,7 +17,7 @@ start:
     mov sp, 0xf000
 
 ; recuparation de l'unite de boot
-    mov [bootdrv], dl    
+    mov [bootdrv], dl
 
 ; affiche un msg
     mov si, msgDebut
@@ -70,7 +70,7 @@ next:
     mov gs, ax
     mov es, ax
     mov ss, ax
-    mov esp, 0x9F000    
+    mov esp, 0x9F000
 
     jmp dword 0x8:0x1000    ; reinitialise le segment de code
 

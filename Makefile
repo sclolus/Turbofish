@@ -1,21 +1,26 @@
-OBJ=floppyA
+NAME = data.img
 
-all: $(OBJ) 
+all: $(NAME)
 
-floppyA: bootsect kernel
-	cat bootsect kernel /dev/zero | dd of=floppyA bs=512 count=2880
+$(NAME): boot_sector.img kernel.img
+	cat boot/bootSector.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=144
 
-kernel: kernel.o screen.o
-	ld --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_  -melf_i386 --oformat binary -Ttext 1000 kernel.o screen.o -o kernel
+boot_sector.img:
+	make -C boot
 
-#kernel.o: kernel.asm 
-#nasm -f elf -o $@ $^
-
-bootsect: bootsect.asm
-	nasm -f bin -o $@ $^
-
-%.o: %.c 
-	gcc -m32 -c $^
+kernel.img:
+	make -C kernel
 
 clean:
-	rm -f $(OBJ) *.o bootsect kernel
+	make -C boot clean
+	make -C kernel clean
+
+fclean:
+	make -C boot fclean
+	make -C kernel fclean
+	rm -f $(NAME)
+
+re: fclean all
+
+exec:
+	qemu-system-x86_64 -fda $(NAME)

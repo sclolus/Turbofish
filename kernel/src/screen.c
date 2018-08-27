@@ -9,7 +9,7 @@ char kY = 17;
 char kattr = 0x0E;		/* attributs video des caracteres a afficher */
 
 
-/* 
+/*
  * 'scrollup' scrolle l'ecran (la console mappee en ram) vers le haut
  * de n lignes (de 0 a 25).
  */
