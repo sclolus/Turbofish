@@ -51,10 +51,10 @@ $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 clean:
-	rm -f $(OBJ)
+	rm -f $(OBJ_KERNEL)
 
 fclean:
-	rm -f $(OBJ)
+	rm -f $(OBJ_KERNEL)
 	rm -f $(NAME)
 
 re: fclean all
