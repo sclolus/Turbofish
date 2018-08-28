@@ -30,6 +30,9 @@ LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat 
 SRC_KERNEL = kernel screen
 _HEADERS = types
 
+SRC_ASM = src/asm_file.asm
+OBJ_ASM = objs/asm_file.o
+
 VPATH = src include
 OBJ_DIR = objs
 
@@ -43,18 +46,23 @@ HEADERS = $(addsuffix .h, $(__H__))
 
 all: $(NAME)
 
-$(NAME): $(OBJ_KERNEL)
+$(NAME): $(OBJ_KERNEL) $(OBJ_ASM)
 	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
+$(OBJ_ASM): $(SRC_ASM)
+	$(ASM) -f elf $(SRC_ASM) -o $(OBJ_ASM)
+
 clean:
 	rm -f $(OBJ_KERNEL)
+	rm -f $(OBJ_ASM)
 
 fclean:
 	rm -f $(OBJ_KERNEL)
+	rm -f $(OBJ_ASM)
 	rm -f $(NAME)
 
 re: fclean all
