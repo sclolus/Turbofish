@@ -6,8 +6,9 @@ all: $(OBJ)
 
 MAIN=kernel.o
 GRAPH=char.o draw.o
-SYSTEM=gdt.o idt.o irq.o irq_keyboard.o pic.o vesa.o energie.o
-CMD=lspci.o io.o
+SYSTEM=energie.o
+#SYSTEM=gdt.o idt.o irq.o irq_keyboard.o pic.o vesa.o energie.o
+#CMD=lspci.o io.o
 
 OBJDIR=./
 SYSDIR=./system/

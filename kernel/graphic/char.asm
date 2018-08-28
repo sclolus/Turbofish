@@ -35,7 +35,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 
-gogogo: db "azerty", 10, 0
+gogogo: db "azerty", 13, 10, 0
 
 test_meuh: dd 0xAABBCCDD
 
@@ -433,6 +433,8 @@ _putchar_init:
 
 ;	mov [test_meuh], dword 0xAABBCCDD
 	mov eax, [test_meuh]
+;	mov eax, [eax]
+
 	cmp eax, 0xAABBCCDD
 ;	cmp eax, 0xDDCCBBAA
 	je end_t
@@ -684,7 +686,3 @@ _hide_cursor_cycle_width:
     sub edi, 16384
     mov [edy], edi
 ret
-
-;segment .data
-
-

@@ -1,9 +1,14 @@
 
-#include "stdarg.h"
-#include "../../kernel/cmd/cmd.h"
+//#include "stdarg.h"
+//#include "../../kernel/cmd/cmd.h"
+//#include "../../kernel/graphic/graphic.h"
+//#include "../../kernel/system/system.h"
+//#include "../../kernel/system/vesa.h"
+
+#include "../../kernel/lib/types.h"
 #include "../../kernel/graphic/graphic.h"
-#include "../../kernel/system/system.h"
-#include "../../kernel/system/vesa.h"
+
+void iddle_mode();
 
 #define vesa_Info_Location  0x00032000
 #define old_Cursor_Location 0x00032200
@@ -12,39 +17,29 @@
 int main();
 
 void _start(void)
-{    
-/*
-	u8 *i = (u8 *)0xFD000000;
-
-	for (int a = 0; a < 100000; a++)
-		*i++ = a % 256;
-
-*/
-
-	//copy_Vesa_Info(vesa_Info_Location,&screen);
-	//init_GDT(screen.FlatMemory);
-
-	//asm("   movw $0x20, %ax     \n \
-	//		  movw %ax, %ss       \n \
-	//		  movl $0x20000, %esp  ");                    // La pile ne doit pas pouvoir corrompre le code, il faut faire attention là ou on la place.
-
-
-	// while (1);
+{
+	draw(0, 0, 1023, 767);
+	draw(1023, 0, 0, 767);
 
 	query_old_cursor_position(old_Cursor_Location);
 
     setTextColor(3);
     setCursorPosition(20, 20);
 
+
+
+
     putchar('C');
 
     setTextColor(7);
 
     putchar('F');
-    while (1);
+    while (1)
+    {
 
-	draw(0, 0, 1023, 767);
-	draw(1023, 0, 0, 767);
+    }
+
+
 
 
 	u8 *i = (u8 *)0xFD000000;
@@ -64,29 +59,32 @@ void _start(void)
     setTextColor(2);    print("SUCCESS\n");
 
 	setTextColor(3);    print("Query VESA informations: ");
-	copy_Vesa_Info(vesa_Info_Location,&screen);
-	setTextColor(2);    print("width %i heigth %i bits/pixels %i granularity %i Linear Frame Buffer at %x\n",screen.XResolution,screen.YResolution,screen.BitsPerPixel,screen.WinGranularity,screen.FlatMemory);
+	//copy_Vesa_Info(vesa_Info_Location,&screen);
+	setTextColor(2);    //print("width %i heigth %i bits/pixels %i granularity %i Linear Frame Buffer at %x\n",screen.XResolution,screen.YResolution,screen.BitsPerPixel,screen.WinGranularity,screen.FlatMemory);
 
 	setTextColor(3);    print("Creating new GDT for main Kernel: ");
 
 	while (1);
 
-	init_GDT(screen.FlatMemory);
+	//init_GDT(screen.FlatMemory);
     
     
     
 	/* Initialisation du pointeur de pile %esp */
 
+	/*
 	asm("   movw $0x20, %ax     \n \
 		  movw %ax, %ss       \n \
 		  movl $0x20000, %esp  ");                    // La pile ne doit pas pouvoir corrompre le code, il faut faire attention là ou on la place.
+	*/
+
 
 	setTextColor(2); 	print("SUCCESS\n");
 	setTextColor(3);	print("Initialize PIC (master and slave): ");
-	init_PIC();
+	//init_PIC();
 	setTextColor(2);    print("SUCCESS\n");
 	setTextColor(3); 	print("Initialize IDT table: ");
-	init_IDT();
+	//init_IDT();
 	setTextColor(2);    print("SUCCESS\n");
     main();
 }
@@ -114,9 +112,9 @@ struct PCI_SUMMARY* pci_ptr;
 
 int main()
 {
-    va_list ap;
+   // va_list ap;
     
-    (void)ap;
+   // (void)ap;
     
 	setTextColor(15);   print("MAIN SYSTEM INITIALISED - INTERRUPT ENABLED\n");
 	setTextColor(20);
@@ -136,6 +134,7 @@ int main()
 	setCursorPosition(cursor.X,cursor.Y);
 	setTextColor(62);
 
+/*
     	u16 bus;
 	u8  slot;	
 	u8  function;
@@ -182,7 +181,7 @@ int main()
 				i++; 
 				pci_ptr = &pci[i];
 	}}}
-    
+*/
 /*
 ;val32 =
 ;      0x80000000
