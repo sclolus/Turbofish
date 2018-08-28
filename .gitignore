@@ -1,0 +1,4 @@
+.*
+*.o
+*.img
+!.gitignore
