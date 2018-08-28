@@ -1,12 +1,13 @@
 OBJ=kernel.img
-CC= gcc -Wall -Wextra -m32 -fno-builtin -c
+#CC= gcc -Wall -Wextra -m32 -fno-builtin -c
+CC= gcc -m32 -std=c99 -Wextra -Wall -O0 -c
 ASM=nasm -f elf
 
 all: $(OBJ) 
 
 MAIN=kernel.o
-GRAPH=char.o draw.o
-SYSTEM=energie.o
+GRAPH=char.o
+SYSTEM=
 #SYSTEM=gdt.o idt.o irq.o irq_keyboard.o pic.o vesa.o energie.o
 #CMD=lspci.o io.o
 

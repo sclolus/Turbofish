@@ -1,4 +1,4 @@
-NAME = data.img
+NAME = data.raw
 
 all: $(NAME)
 
