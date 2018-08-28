@@ -13,14 +13,55 @@ int main();
 
 void _start(void)
 {    
+/*
+	u8 *i = (u8 *)0xFD000000;
 
+	for (int a = 0; a < 100000; a++)
+		*i++ = a % 256;
+
+*/
+
+	//copy_Vesa_Info(vesa_Info_Location,&screen);
+	//init_GDT(screen.FlatMemory);
+
+	//asm("   movw $0x20, %ax     \n \
+	//		  movw %ax, %ss       \n \
+	//		  movl $0x20000, %esp  ");                    // La pile ne doit pas pouvoir corrompre le code, il faut faire attention là ou on la place.
+
+
+	// while (1);
 
 	query_old_cursor_position(old_Cursor_Location);
-    setTextColor(3);    print("Execution of 32bits Kernel: ");
-	
-    setTextColor(2);    print("SUCCESS\n");
-    
 
+    setTextColor(3);
+    setCursorPosition(20, 20);
+
+    putchar('C');
+
+    setTextColor(7);
+
+    putchar('F');
+    while (1);
+
+	draw(0, 0, 1023, 767);
+	draw(1023, 0, 0, 767);
+
+
+	u8 *i = (u8 *)0xFD000000;
+
+	for (int a = 0; a < 100000; a++)
+		*i++ = a % 256;
+
+    setTextColor(3);
+    setCursorPosition(20, 20);
+
+    putchar('C');
+    putchar('F');
+   // print("Execution of 32bits Kernel: ");
+	
+    while (1);
+
+    setTextColor(2);    print("SUCCESS\n");
 
 	setTextColor(3);    print("Query VESA informations: ");
 	copy_Vesa_Info(vesa_Info_Location,&screen);

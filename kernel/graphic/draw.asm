@@ -10,9 +10,9 @@ pix_color db 9
 draw:
     push ebp
     mov ebp, esp
-
-    ;pushad                  ; SAUVEGARDE des 8 registres 32 bits dans la pile, EAX, EBX, ECX & EDX ... 18 CYCLES D'HORLOGES
-                             ; ... ESP (avant empilement), EBP, ESI & EDI.
+    push ebx
+    push esi
+    push edi
 
     mov ecx, [ebp + 8]       ; Lit la valeur X1
     mov ebx, [ebp + 12]      ; Lit la valeur Y1
@@ -24,7 +24,6 @@ draw:
     shl ebx, 16
     add edx, ebx
 
-    push es
     mov ax, 0x18
     mov es, ax
 
@@ -215,8 +214,9 @@ jb end_of_line
 ;}
 ; -----------------------------------------------------------------------------------------------------------------
 end_of_line:
-    pop es
-
+    pop esi
+    pop edi
+	pop ebx
     mov esp, ebp
     pop ebp
 ret

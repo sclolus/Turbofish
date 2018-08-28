@@ -28,4 +28,4 @@ fclean:
 re: fclean all
 
 exec:
-	qemu-system-x86_64 -fda $(NAME)
+	qemu-system-x86_64 --vga std -fda $(NAME)

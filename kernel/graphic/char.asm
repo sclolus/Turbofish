@@ -1,19 +1,7 @@
 
 [BITS 32]
 
-GLOBAL print                ; ->  Ecrit sur l'écran une chaine de caractère passée en argument.
-GLOBAL setTextColor         ; ->  Modifie la couleur du texte.
-GLOBAL setCursorPosition    ; ->  Modifie la position du curseur de texte.
-GLOBAL query_old_cursor_position    ; -> Initialise la position du curseur de texte en fonction des anciennes valeurs dans le 16b_screen.asm du Kernel 16 bits, on lui donne en argmuent l'addresse de ces valeurs.
-GLOBAL getCursorPosition
-GLOBAL putchar
-GLOBAL jump_line
-GLOBAL backspace
-GLOBAL show_cursor
-GLOBAL hide_cursor
-
-%include "../polices/alpha.asm"
-
+segment .data
 hexvalue32: times 4 db "0"
           db ":"
           times 4 db "0"
@@ -28,6 +16,43 @@ cursor_color: db 10
 edy: dd 0
 
 decim_output: times 12 db 0
+
+_graphical_char_test_O:	;47
+times 100 db 0b10001001
+db 0b00000000
+db 0b00000000
+db 0b00000000
+db 0b00000010
+db 0b00000110
+db 0b00001100
+db 0b00011000
+db 0b00110000
+db 0b01100000
+db 0b11000000
+db 0b10000000
+db 0b00000000
+db 0b00000000
+db 0b00000000
+db 0b00000000
+
+gogogo: db "azerty", 10, 0
+
+test_meuh: dd 0xAABBCCDD
+
+segment .text
+GLOBAL print                ; ->  Ecrit sur l'écran une chaine de caractère passée en argument.
+GLOBAL setTextColor         ; ->  Modifie la couleur du texte.
+GLOBAL setCursorPosition    ; ->  Modifie la position du curseur de texte.
+GLOBAL query_old_cursor_position    ; -> Initialise la position du curseur de texte en fonction des anciennes valeurs dans le 16b_screen.asm du Kernel 16 bits, on lui donne en argmuent l'addresse de ces valeurs.
+GLOBAL getCursorPosition
+GLOBAL putchar
+GLOBAL putchar_f
+GLOBAL jump_line
+GLOBAL backspace
+GLOBAL show_cursor
+GLOBAL hide_cursor
+
+;%include "../polices/alpha.asm"
 
 ; Récupère la position en lignes/colones du curseur.
 getCursorPosition:
@@ -57,8 +82,8 @@ setCursorPosition:
     push ebp
     mov ebp, esp
 
-    mov eax, [ebp+8]
-    mov edx, [ebp+12]
+    mov eax, [ebp + 8]
+    mov edx, [ebp + 12]
 
     shl eax,  3
     shl edx, 14
@@ -114,7 +139,7 @@ print:
     mov ax, 0x18                        ; Modification de ES
     mov es, ax
 
-    mov esi, [ebp+8]                    ; Récupération de la chaine de caractère dans la pile.
+    mov esi, [ebp + 8]                    ; Récupération de la chaine de caractère dans la pile.
 
     mov edi, [edy]
 
@@ -346,7 +371,7 @@ manage_screen:                          ; -> Défilement de l'écran en fonction
 ; **************************************************** AFFICHAGE D'UN SEUL CARACTERE ***********************************************************
 get_alpha_value:
         mov ebx, esi                    ; Sauvegarde du registre ESI dans EBX
-        mov esi, _print_graphical_char_begin
+ ;       mov esi, _print_graphical_char_begin
         shl eax, 4
         add esi, eax
         mov ch, 16                      ; Compteur HEIGHT à 0, il ira jusqu'à 16
@@ -377,10 +402,13 @@ return_sequence:
 ; --- backspace doit passer ici pour supprimer un caractère (astuce on peut se servir du curseur)       OK
 ; --- slide screen  (astuce utilisant le curseur aussi)                                                 OK
 
-
+putchar_f:
 putchar:                                ; Utilisable seulement dans le contexte d'une interruption car les registres ne sont pas restaurés dans cette fonction.
     push ebp
     mov ebp, esp
+    push ebx
+    push esi
+    push edi
 
     mov edi, [edy]
 
@@ -392,24 +420,92 @@ je _putchar_init
     add edi, 15360
 
 _putchar_init:
-    mov eax, [ebp+8]
+    mov eax, [ebp + 8]
 
-    shl eax, 4
-    lea esi, [_print_graphical_char_begin + eax]
+;    shl eax, 4
+;    lea esi, [_print_graphical_char_begin + eax]
+
+	mov ax, 0x10
+	mov ds, ax
+
+	lea esi, [_graphical_char_test_O]
+	lodsb
+
+;	mov [test_meuh], dword 0xAABBCCDD
+	mov eax, [test_meuh]
+	cmp eax, 0xAABBCCDD
+;	cmp eax, 0xDDCCBBAA
+	je end_t
+
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+	lodsb
+	cmp al, 0b10001001
+	je end_t
+
+
+	lea esi, [_graphical_char_test_O]
 
     mov dl, [cursor_color]                       ; color
 
     mov ch, 16                      ; Compteur HEIGHT à 0, il ira jusqu'à 16
+
 _putchar_cycle_heigth:
-        lodsb                       ; La première ligne du caractère est chargée
+	;	push eax
+
+		;mov al, 0b10001001
+
+      	lodsb                       ; La première ligne du caractère est chargée
+
+		cmp al, 0b10001001
+		je end_t
+
+      	;mov al, 0b11011011
+
         mov cl, 8                   ; Compteur WIDTH à 0, il ira jusqu'à 8
 _putchar_cycle_width:                             ; Dispo EAX, EDX et ECX (16 bits forts) (ESI est armé sur le caractère en cours)
             test al, 0x80
-        je _putchar_return_sequence
-_putcher_draw_pixel:
-            mov [es:edi],dl         ; Remplace avantageusement un stosb lorsque l'on a pas interet à incrémenter forcément à ce point la valeur EDI
-_putchar_return_sequence:
-            inc edi
+        je tmp
+;_putcher_draw_pixel:
+            ;mov [es:edi],dl         ; Remplace avantageusement un stosb lorsque l'on a pas interet à incrémenter forcément à ce point la valeur EDI
+
+			push eax
+			mov al, 5
+            stosb
+            pop eax
+            jmp _putchar_return_sequence
+ tmp:
+			push eax
+			mov al, 3
+            stosb
+            pop eax
+ _putchar_return_sequence:
+
             shl al, 1
             dec cl
             test cl, cl
@@ -421,13 +517,17 @@ _putchar_return_sequence:
 
     sub edi, 16376
 
-    mov ax, 0x10
-    mov es, ax
     mov [edy], edi
 
+	pop edi
+	pop esi
+	pop ebx
     mov esp, ebp
     pop ebp
 ret
+
+end_t:
+	jmp $
 
 jump_line:
     mov edi, [edy]
@@ -584,3 +684,7 @@ _hide_cursor_cycle_width:
     sub edi, 16384
     mov [edy], edi
 ret
+
+;segment .data
+
+

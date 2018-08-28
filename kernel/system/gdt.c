@@ -7,7 +7,6 @@
 #define GDT_DESCRIPTOR_SIZE		8
 #define GDT_MAX_SIZE 			GDT_MAX_DESCRIPTORS*GDT_DESCRIPTOR_SIZE
 
-/*
 struct  gdt_seg {
     u16     limit_15_0;
     u16     base_15_0;
@@ -17,13 +16,10 @@ struct  gdt_seg {
     u8      other       : 4;
     u8      base_31_24;
 } __attribute__ ((packed));
-*/
 
-/*
 struct __attribute__ ((packed)) global_Descriptor_Table {
-    struct gdt_seg  segment[5];
+    struct gdt_seg  segment[4];
 } GDT;
-*/
 
 void setGdtSegment(u8 segment, u32 base, u32 limit, u8 access, u8 other)
 {
@@ -40,6 +36,21 @@ void setGdtSegment(u8 segment, u32 base, u32 limit, u8 access, u8 other)
 return;
 }
 
+void _setGdtSegment(u8 nb_segment, u32 base, u32 limit, u8 access, u8 other)
+{
+	struct gdt_seg *segment = &GDT.segment[nb_segment];
+
+	segment->limit_15_0 = limit & 0x0000FFFF;
+	segment->limit_19_16 = (limit & 0x000F0000) >> 16;
+	segment->base_15_0 = base & 0x0000FFFF;
+	segment->base_23_16 = (base & 0x00FF0000) >> 16;
+	segment->base_31_24 = (base & 0xFF000000) >> 24;
+	segment->access = access;
+	segment->other = other & 0xF;
+
+	return;
+}
+
 struct __attribute__ ((packed)) {
     u16     limit;
     u32     base;
@@ -47,15 +58,18 @@ struct __attribute__ ((packed)) {
 
 void init_GDT(int LFB)                /*** Cette fonction publique recoit la valeur du LFB en argument afin de na pas perdre la main sur l'interface graphique. ***/
 {
-	setGdtSegment(0,0,0,0,0);                                         // NULL segment
-	setGdtSegment(1,0x00000000,0xFFFFFF,0b10011011,0b1101);           // CS segment
-	setGdtSegment(2,0x00000000,0xFFFFFF,0b10010011,0b1101);           // DATA segment
-	setGdtSegment(3,LFB,0xFFFFFF,0b10010011,0b1101);                  // LFB segment
-	setGdtSegment(4,0x00000000,0x000000,0b10010111,0b1101);           /* STACK segment le segment de pile a une base et une limite qui sont à 0 ! Dans un segment de pile (expand down)
-	                                                                    ,la base n'est pas interprétée, elle est donc ici mise à 0. */
+	_setGdtSegment(0,0,0,0,0);                                         // NULL segment
+	_setGdtSegment(1,0x00000000,0xFFFFFF,0b10011011,0b1101);           // CS segment
+	_setGdtSegment(2,0x00000000,0xFFFFFF,0b10010011,0b1101);           // DATA segment
+	_setGdtSegment(3,LFB,0xFFFFFF,0b10010011,0b1101);                  // LFB segment
+//	_setGdtSegment(4,0x00000000,0x000000,0b10010111,0b1101);           /* STACK segment le segment de pile a une base et une limite qui sont à 0 ! Dans un segment de pile (expand down)
+//	                                                                    ,la base n'est pas interprétée, elle est donc ici mise à 0. */
 
-	global_descriptor_table_ptr.base = GDTBASE;				//global_descriptor_table_ptr.base = (int)&GDT;
-	global_descriptor_table_ptr.limit = 40;			        //global_descriptor_table_ptr.limit = sizeof(GDT);
+	//global_descriptor_table_ptr.base = GDTBASE;				//global_descriptor_table_ptr.base = (int)&GDT;
+	//global_descriptor_table_ptr.limit = 40;			        //global_descriptor_table_ptr.limit = sizeof(GDT);
+
+	global_descriptor_table_ptr.base = (int)&GDT;
+	global_descriptor_table_ptr.limit = sizeof(GDT);
 
 	asm("lgdtl (global_descriptor_table_ptr)    \n \
 		movw $0x10, %ax                        \n \
@@ -65,6 +79,9 @@ void init_GDT(int LFB)                /*** Cette fonction publique recoit la val
 		movw %ax, %gs                          \n \
 		ljmp $0x08, $next                      \n \
 		next:                                  \n");
+
+	while (1);
+
 return;
 }
 

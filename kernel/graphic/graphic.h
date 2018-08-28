@@ -15,3 +15,5 @@ void setCursorPosition(u8,u8);
 void draw(u32, u32, u32, u32);
 void query_old_cursor_position(int);
 void getCursorPosition(u8*,u8*);
+void putchar(u8);
+void putchar_f(u8);
