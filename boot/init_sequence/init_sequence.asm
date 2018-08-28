@@ -30,6 +30,28 @@ sti
 
     call set_vesa_graphic
 
+    push ds
+    push es
+    push si
+    push di
+    push ax
+    push cx
+
+    lea si, [_print_graphical_char_begin]
+
+    mov ax, 0x2000
+	mov es, ax
+	mov di, 0
+	mov cx, 4096
+	rep movsb
+
+	pop cx
+	pop ax
+    pop di
+    pop si
+    pop es
+    pop ds
+
     push 0x09
     call set_text_color
 	add sp, 2

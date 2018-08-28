@@ -1,4 +1,4 @@
-_print_graphical_char_begin: times 512 db 144 ; (16*32)
+_print_graphical_char_begin: times 512 db 0 ; (16*32)
 
 _graphical_char_space:	;32
 db 0b00000000

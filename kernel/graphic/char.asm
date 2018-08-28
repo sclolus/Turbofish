@@ -341,6 +341,13 @@ _putchar_init:
 
 	lea esi, [_graphical_char_paragraph]
 
+	mov eax, [ebp + 8]
+
+    shl eax, 4
+    lea esi, [0x00020000 + eax]
+
+
+
     mov dl, 3
     mov ch, 16                      ; Compteur HEIGHT à 0, il ira jusqu'à 16
 
@@ -386,3 +393,24 @@ ret
 
 end_t:
 	jmp $
+
+GLOBAL print
+
+print:
+    push ebp
+    mov ebp, esp
+    push esi
+    mov esi, [ebp + 8]
+__print_loop__:
+	xor eax, eax
+   	lodsb
+   	cmp al, 0x0
+   	je __end_print__
+	push eax
+	call putchar_f
+	add esp, 4
+	jmp __print_loop__
+__end_print__:
+	pop esi
+    pop ebp
+ret

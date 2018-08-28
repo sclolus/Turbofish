@@ -6,6 +6,8 @@ void setCursorPosition(u8,u8);
 void draw(u32, u32, u32, u32);
 void putchar_f(u8);
 
+extern void print(const char *s);
+
 struct cursor_position {
     u8      X;
     u8      Y;
@@ -24,6 +26,8 @@ void _start(void)
     setCursorPosition(20, 20);
     putchar_f('C');
     putchar_f('F');
+
+    print("Les roses de l'europe sont le parfum de satan\n\n");
     while (1)
     {
 
