@@ -1,4 +1,4 @@
-#include "types.h"
+#include "../../_kernel/include/types.h"
 
 #define RAMSCREEN 0xB8000	/* debut de la memoire video */
 #define SIZESCREEN 0xFA0	/* 4000, nombres d'octets d'une page texte */

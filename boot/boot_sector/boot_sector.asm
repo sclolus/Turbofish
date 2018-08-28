@@ -43,7 +43,7 @@ cli                         ; (GRUB2-CMP) CONFORME                  ; Cette inst
 sti                         ; (GRUB2-CMP) CONFORME                  ; STI rend les interruptions BIOS disponibles à nouveau !
 
 ; Lecture disque du programme noyau. ES;BX          : 4 secteurs de 512o chargés à partir de 0x0000:7E00 finiront à 0x0000:8600, nous restons insi dans les 64 premiers Ko de mémoire.
-    mov ax, 0x1000          ; Passage sur le segment (16b) 0x1000:0000 (32b) 0x0001:0000
+    mov ax, 0x3000          ; Passage sur le segment (16b) 0x1000:0000 (32b) 0x0001:0000
     mov es, ax
 
     xor bx, bx              ; Segment exacte du noyau ES:BX Soit 0000:0000 ici !
@@ -55,7 +55,7 @@ sti                         ; (GRUB2-CMP) CONFORME                  ; STI rend l
     int 0x13                ; ORDDRE DE LECTURE DISK & D'ECRITURE MEMOIRE
 jc fatal_disk_error         ; gestion erreur -> JC :Saut si drapeau de retenue vaut 1 (CF = 1).
 
-JMP 0x1000:0000 ; Et on donne la main au programme que nous venons de charger
+JMP 0x3000:0000 ; Et on donne la main au programme que nous venons de charger
 
 disk_load_error db "BOOTSECT WARNING: Unable to load anything ! Inhibit CPU.", 13, 10, 0
 

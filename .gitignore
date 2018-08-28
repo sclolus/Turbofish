@@ -1,0 +1,9 @@
+.*
+*.o
+data.img
+boot_sector.img
+init_sequence.img
+kernel.img
+# Except this file
+!.gitignore
+
