@@ -1,5 +1,5 @@
 
-segment .data
+;segment .data
 
 %define vesa_Global_Info            8192                        ; Général VESA capability, la structure sera écrite juste à la fin du code ! placées en 0x0A00:0000 (16b) ou 0x0000:A000
 %define vesa_Signature              (vesa_Global_Info)          ; Général VESA capability, la structure sera écrite juste à la fin du code ! placées en 0x1200:0000 (16b) ou 0x0001:2000
@@ -30,7 +30,7 @@ _print_granulosity_coeff: db 0                       ; généré après l'obtent
 
 _view_hex_one_char: db 0, 0                          ; utilisé par view_hex_register
 
-%include "../../polices/alpha.asm"               ; inclusion des belles polices LATINO
+%include "../../polices/alpha.asm"                   ; inclusion des belles polices LATINO
 
 ; YES   check_vesa_capability        ; Renseigne sur les possibilités du mode VESA
 ; YES   copy_graphic_modes_buffer    ; Copie le buffer des différents modes vidéos disponibles dans un espace protégé. IMPORTANT car la méthode 4F01 peut écraser le buffer naturel !
@@ -42,7 +42,7 @@ _view_hex_one_char: db 0, 0                          ; utilisé par view_hex_reg
 ; YES   print_Text_Mode              ; Permet d'écrire du texte dans le cas ou le mode SVGA n'a pas été initialisé...
 ; YES   write_cursor_position_for_32b_kernel    ; Met la ligne et la colonne courante de print à un endroit connu pour permettre au noyau 32 bits de les consulter.
 
-segment .text
+;segment .text
 
 write_cursor_position_for_32b_kernel:
     mov al, [_print_graphic_text_line]
@@ -56,7 +56,7 @@ ret
 
 
 check_vesa_capability:
-    mov ax, vesa_Global_Info       ; Demande de renseignements sur les capacités graphiques. 0x4F00
+    mov ax, vesa_Global_Info                     ; Demande de renseignements sur les capacités graphiques. 0x4F00
     mov di, ax
     mov ax, 0x4F00
     int 0x10
@@ -65,29 +65,29 @@ ret
 copy_graphic_modes_buffer:
     mov dx, ds
 
-    mov si, vesa_Graph_Mode_Pointer            ; ATTENTION ! VideoModePtr est une liste de pointeurs exprimés en OFFSET:SEGMENT
+    mov si, vesa_Graph_Mode_Pointer              ; ATTENTION ! VideoModePtr est une liste de pointeurs exprimés en OFFSET:SEGMENT
 
-    lodsw                                      ; charge le "mot" pointé par SI dans AX et incrémente SI de 2 si le drapeau de direction DF est à 0 : "LOaD Si Word"
+    lodsw                                        ; charge le "mot" pointé par SI dans AX et incrémente SI de 2 si le drapeau de direction DF est à 0 : "LOaD Si Word"
     mov bx, ax
 
-    lodsw                                      ; Le premier "lodsw" a chargé l'offset à appliquer à SI, le second charge le segment !
+    lodsw                                        ; Le premier "lodsw" a chargé l'offset à appliquer à SI, le second charge le segment !
     mov ds, ax
-    mov si, bx                                 ; Association de pointeur de données DS:SI sur l'endroit ou se trouve les différents modes graphiques.
+    mov si, bx                                   ; Association de pointeur de données DS:SI sur l'endroit ou se trouve les différents modes graphiques.
 
     mov ax, cs
     mov es, ax
 
-    mov di, _graphic_modes_list                 ; copie de tous les différents modes trouvés dans la variable de 256 octets _graphic_modes_list
-    mov cx, 126                                 ; Bloque le processus si 127 modes ont été trouvé. Celà évite un dépassement de _graphic_modes_list. (la dernière valeur doit rester 0xFFFF)
+    mov di, _graphic_modes_list                  ; copie de tous les différents modes trouvés dans la variable de 256 octets _graphic_modes_list
+    mov cx, 126                                  ; Bloque le processus si 127 modes ont été trouvé. Celà évite un dépassement de _graphic_modes_list. (la dernière valeur doit rester 0xFFFF)
 
 _cp_one_graph_mode:
     cmp cx, 0
-je break_research_modes                         ; TROP DE MODES, on sort ;)
+je break_research_modes                          ; TROP DE MODES, on sort ;)
     lodsw
     stosw
 
     dec cx
-    cmp ax, 0xFFFF                              ; Le dernier mot dans la liste des modes doit être FFFF -> (end of list)
+    cmp ax, 0xFFFF                               ; Le dernier mot dans la liste des modes doit être FFFF -> (end of list)
 jne _cp_one_graph_mode
 
 break_research_modes:
@@ -118,7 +118,7 @@ granulosity_founded:
 
 ;SWITCH TO VGA MODE NOW
     mov ax, 0x4F02
-    mov bx, 0x105           ; 105H     1024x768     256  packed pixel
+    mov bx, 0x105                ; 105H     1024x768     256  packed pixel
     int 0x10
 ret
 
@@ -223,7 +223,7 @@ jmp _print_begin
 
 _print_jump_line:
     push es
-    push dx                                 ; registre DX sauvegardé, car DL contient le numéro de la couleur.
+    push dx                             ; registre DX sauvegardé, car DL contient le numéro de la couleur.
 
     mov bx, cs
     mov es, bx                          ; L'accès au segment graphique modifie ES, ici, puisque nous écrivons sur le code, il faut le réaligner avec CS.
@@ -254,10 +254,10 @@ jmp _print_begin
 
 
 _print_endprint:
-mov ax, cs                                              ; La fonction PRINT modifie ES puisque ce dernier y pointe sur la mémoire graphique, A la fin, ES est remis sur CS
+mov ax, cs                              ; La fonction PRINT modifie ES puisque ce dernier y pointe sur la mémoire graphique, A la fin, ES est remis sur CS
 mov es, ax
 
-mov [_print_graphic_text_colomn], bx                    ; Ecriture finale des nouvelles données de BX, position sur Width du curseur !
+mov [_print_graphic_text_colomn], bx    ; Ecriture finale des nouvelles données de BX, position sur Width du curseur !
 
 mov sp, bp
 pop bp
@@ -283,7 +283,7 @@ view_hex_register:
 
     mov ax, [bp+4]
     push ax
-    call print          ; Envoie des données à afficher à la fonction PRINT
+    call print  ; Envoie des données à afficher à la fonction PRINT
     add sp, 2
 
     pop ax
@@ -336,8 +336,8 @@ print_Text_Mode:
     mov si, ax
 
 _beginprint:
-    lodsb         ; ds:si -> al
-    cmp al, 0     ; fin chaine ? (une chaine normale doit finir par 0)
+    lodsb               ; ds:si -> al
+    cmp al, 0           ; fin chaine ? (une chaine normale doit finir par 0)
 je _end_print
 
 CALL _print_char
@@ -349,7 +349,7 @@ _end_print:
     ret
 
 _print_char:            ; AFFICHE LE CARACTERE PRESENT DANS LE REGISTRE AL              ; AH=0x0E       AL = Character, BH = Page Number, BL = Color (only in graphic mode)
-    mov ah, 0x0E		; Teletype Mode :appel au service 0x0e
-    mov bx, 0x0109		; Black /  bx -> attribut, al -> caractere ascii
-    INT 0x10    		; Print Character
+    mov ah, 0x0E        ; Teletype Mode :appel au service 0x0e
+    mov bx, 0x0109      ; Black /  bx -> attribut, al -> caractere ascii
+    INT 0x10            ; Print Character
 RET

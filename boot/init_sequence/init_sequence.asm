@@ -1,14 +1,15 @@
-%define BASE    0x1000 ; Si ES vaut 1000 alors en 32 bits, ca donnerait: 0x00010000
-%define KSIZE   128    ; nombre de secteurs a charger
 
 [BITS 16]
 [ORG 0x0]
 
+%define BASE    0x1000 ; Si ES vaut 1000 alors en 32 bits, ca donnerait: 0x00010000
+%define KSIZE   128    ; nombre de secteurs a charger
+
 segment .text ; SEGMENT DE CODE
 
 jmp start                    ; Saut nécessaire pour l'inclusion de fichier tière en début de fichier. L'execution du code commencera ainsi à Start et le programme ne plantera pas du coup !
-%include "../tools/16b_system.asm"
-%include "../tools/16b_screen.asm"
+%include "16b_system.asm"
+%include "16b_screen.asm"
 start:
 
 cli
@@ -17,17 +18,19 @@ cli
     mov es, ax              ; La pile précédente déclarée entre 8000:0000 et 8000:2000 convient encore très bien, innutile de la redéfinir ici.
 sti
 
-; recuperation de l'unite de boot
+; *** recuperation de l'unite de boot ***
     mov [bootdrv], dl
 
-	call check_vesa_capability
+; *** Configuration de l'affichage SVGA ***
+    call check_vesa_capability
     cmp al, 0x4F
-	jne no_vesa_card
+    jne no_vesa_card
 
     call copy_graphic_modes_buffer
 
     call set_vesa_graphic
 
+; *** Copie de la police de caractère à l'emplacement mémoire 0x00020000, sera utilisée ensuite par le Kernel ***
     push ds
     push es
     push si
@@ -38,61 +41,62 @@ sti
     lea si, [_print_graphical_char_begin]
 
     mov ax, 0x2000
-	mov es, ax
-	mov di, 0
-	mov cx, 4096
-	rep movsb
+    mov es, ax
+    mov di, 0
+    mov cx, 4096
+    rep movsb
 
-	pop cx
-	pop ax
+    pop cx
+    pop ax
     pop di
     pop si
     pop es
     pop ds
 
+; *** Affichage divers ***
     push 0x09
     call set_text_color
-	add sp, 2
+    add sp, 2
 
     push welcome_msg
     call print
-	add sp, 2
+    add sp, 2
 
     push 0x03
     call set_text_color
- 	add sp, 2
+     add sp, 2
 
     push vesa_mode_status
     call print
-	add sp, 2
+    add sp, 2
 
     push 0x02
     call set_text_color
-	add sp, 2
+    add sp, 2
 
     push YES_symbol
     call print
-	add sp, 2
+    add sp, 2
 
     push 0x03
     call set_text_color
-	add sp, 2
+    add sp, 2
 
     push checking_mode_msg
     call print
-	add sp, 2
+    add sp, 2
 
     push 0x02
     call set_text_color
-	add sp, 2
+    add sp, 2
 
     push YES_symbol
     call print
-	add sp, 2
+    add sp, 2
 
     push long_regular_line
     call print
-	add sp, 2
+    add sp, 2
 
     mov ax, cs
     mov ds, ax
@@ -109,7 +113,7 @@ je End_of_research_mode
 
     push no_text
     call view_hex_register
- 	add sp, 2
+     add sp, 2
 
     push many_spaces
     call print
@@ -123,23 +127,23 @@ jmp VIEW_COMPATIBLE_MODES
 End_of_research_mode:
     push jump_line
     call print
- 	add sp, 2
+     add sp, 2
 
     push long_regular_line
     call print
- 	add sp, 2
+     add sp, 2
 
     push 0x03
     call set_text_color
- 	add sp, 2
+     add sp, 2
 
     push linear_frame_buffer_issue
     call print
- 	add sp, 2
+     add sp, 2
 
     push 0x02
     call set_text_color
- 	add sp, 2
+     add sp, 2
 
     mov ax, [flat_Memory]       ; bits de poids faible ?
     mov bx, [flat_Memory +2]    ; bits de poids fort   ?
@@ -154,7 +158,7 @@ End_of_research_mode:
 
     push deux_petits_points
     CALL view_hex_register
-	add sp, 2
+    add sp, 2
 
     push jump_line
     call print
@@ -203,11 +207,11 @@ End_of_research_mode:
 
 ; CONFIGURATION VESA pour la gdt: Nous utiliserons le LFB. Il est donc necessaire de renseigner le descripteur de segment LFB de la gdt.
     mov ax, [flat_Memory]
-	mov [gdt_lfb + 2], ax           ; Extraction des 16 bits de poid faible de la LFB et inscription dans BASE 0-->15 de la gtd_lfb
+    mov [gdt_lfb + 2], ax           ; Extraction des 16 bits de poid faible de la LFB et inscription dans BASE 0-->15 de la gtd_lfb
 
-	mov ax, [flat_Memory + 2]       ; Extraction des 16 bits de poid fort de la LFB:
-	mov [gdt_lfb + 4], al           ;   - Mise des 8 bits faibles dans BASE 16 ---> 23 de la gtd_lfb
-	mov [gdt_lfb + 7], ah           ;   - Mise des 8 bits forts dans BASE 24 ----> 31 de la gtd_lfb
+    mov ax, [flat_Memory + 2]       ; Extraction des 16 bits de poid fort de la LFB:
+    mov [gdt_lfb + 4], al           ;   - Mise des 8 bits faibles dans BASE 16 ---> 23 de la gtd_lfb
+    mov [gdt_lfb + 7], ah           ;   - Mise des 8 bits forts dans BASE 24 ----> 31 de la gtd_lfb
 
 
     push 0x02
@@ -216,14 +220,14 @@ End_of_research_mode:
 
     push YES_symbol
     call print
-	add sp, 2
+    add sp, 2
 
     call write_cursor_position_for_32b_kernel
 
 
 ; passage en modep
     cli
-    lgdt [gdtptr]    ; charge la gdt
+    lgdt [gdtptr]        ; charge la gdt
     mov eax, cr0
     or  ax, 1
     mov cr0, eax        ; PE mis a 1 (CR0)
@@ -243,7 +247,7 @@ next:
 disk_fatal_error:
     push 0x04
     call set_text_color
-	add sp, 2
+    add sp, 2
 
     push error_disk_msg
     call print

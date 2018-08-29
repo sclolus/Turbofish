@@ -1,9 +1,9 @@
-NAME = data.raw
+NAME = data.img
 
 all: $(NAME)
 
 $(NAME): boot_sector.img init_sequence.img kernel.img
-	cat boot/boot_sector/boot_sector.img boot/init_sequence/init_sequence.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=2000
+	cat boot/boot_sector/boot_sector.img boot/init_sequence/init_sequence.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=2880
 
 boot_sector.img:
 	make -C boot/boot_sector
