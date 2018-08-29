@@ -8,17 +8,17 @@ ASM = nasm -f elf
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Werror -g -O0 -fsanitize=address
+	CFLAGS = -fno-builtin -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Werror -O0
+	CFLAGS = -fno-builtin -m32 -std=c99 -Wextra -Wall
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Werror -g -O0 -fsanitize=address
+	CFLAGS = -fno-builtin -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Werror -O0
+	CFLAGS = -fno-builtin -m32 -std=c99 -Wextra -Wall
 endif
 endif
 
@@ -33,7 +33,7 @@ LD_FLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat
 ### SOURCES ###
 
 C_MAIN = kernel
-ASM_MAIN = char
+ASM_MAIN = putchar
 
 C_SRC_LIST = $(C_MAIN)
 ASM_SRC_LIST = $(ASM_MAIN)
