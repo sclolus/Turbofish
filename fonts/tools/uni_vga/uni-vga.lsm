@@ -1,0 +1,18 @@
+Begin4
+Title:		uni-vga
+Version:	25112000
+Entered-date:	25NOV2000
+Description:	Unicode VGA font
+		UNI-VGA is a Unicode 8x16 VGA font for X11 and console.
+		It is primarily intended to be the single source of fonts
+		for console and for XDosEmu.
+Keywords:	unicode, vga, font, x11, x-window
+Author:		bolkhov@inp.nsk.su (Dmitry Bolkhovityanov)
+Maintained-by:	bolkhov@inp.nsk.su (Dmitry Bolkhovityanov)
+Primary-site:	http://www.inp.nsk.su/~bolkhov/files/fonts/univga/
+		36K uni-vga.tgz
+Alternate-site:	ftp://metalab.unc.edu/pub/Linux/X11/fonts/
+		36K uni-vga.tgz
+Platforms:	X11, console
+Copying-policy:	Freely Distributable
+End

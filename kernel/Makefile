@@ -25,7 +25,7 @@ endif
 
 IFLAGS = -Iinclude
 
-LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 1000
+LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
 SRC_KERNEL = kernel screen
 _HEADERS = types

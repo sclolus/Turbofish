@@ -2,8 +2,8 @@ NAME = boot_sector.img
 
 all: $(NAME)
 
-$(NAME): bootsect.asm
-	nasm -f bin bootsect.asm -o $(NAME)
+$(NAME): boot_sector.asm
+	nasm -f bin boot_sector.asm -o $(NAME)
 
 clean:
 	rm -f $(NAME)
