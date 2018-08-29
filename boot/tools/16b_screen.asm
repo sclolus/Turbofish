@@ -1,5 +1,5 @@
 
-[BITS 16]
+segment .data
 
 %define vesa_Global_Info            8192                        ; Général VESA capability, la structure sera écrite juste à la fin du code ! placées en 0x0A00:0000 (16b) ou 0x0000:A000
 %define vesa_Signature              (vesa_Global_Info)          ; Général VESA capability, la structure sera écrite juste à la fin du code ! placées en 0x1200:0000 (16b) ou 0x0001:2000
@@ -30,7 +30,7 @@ _print_granulosity_coeff: db 0                       ; généré après l'obtent
 
 _view_hex_one_char: db 0, 0                          ; utilisé par view_hex_register
 
-    %include "../../polices/alpha.asm"               ; inclusion des belles polices LATINO
+%include "../../polices/alpha.asm"               ; inclusion des belles polices LATINO
 
 ; YES   check_vesa_capability        ; Renseigne sur les possibilités du mode VESA
 ; YES   copy_graphic_modes_buffer    ; Copie le buffer des différents modes vidéos disponibles dans un espace protégé. IMPORTANT car la méthode 4F01 peut écraser le buffer naturel !
@@ -41,6 +41,8 @@ _view_hex_one_char: db 0, 0                          ; utilisé par view_hex_reg
 ; YES   view_hex_register            ; Permet de consulter la valeur du registre AX (elle rend AX dans le même état)
 ; YES   print_Text_Mode              ; Permet d'écrire du texte dans le cas ou le mode SVGA n'a pas été initialisé...
 ; YES   write_cursor_position_for_32b_kernel    ; Met la ligne et la colonne courante de print à un endroit connu pour permettre au noyau 32 bits de les consulter.
+
+segment .text
 
 write_cursor_position_for_32b_kernel:
     mov al, [_print_graphic_text_line]

@@ -1,14 +1,12 @@
-%define BASE    0x100  ; 0x0100:0x0 = 0x1000
-%define KSIZE   50     ; nombre de secteurs a charger
+%define BASE    0x1000 ; Si ES vaut 1000 alors en 32 bits, ca donnerait: 0x00010000
+%define KSIZE   128    ; nombre de secteurs a charger
 
 [BITS 16]
 [ORG 0x0]
 
-segment .bss  ; données non initialisées.
-
 segment .text ; SEGMENT DE CODE
 
-jmp start                    ;Saut nécessaire pour l'inclusion de fichier tière en début de fichier. L'execution du code commencera ainsi à Start et le programme ne plantera pas du coup !
+jmp start                    ; Saut nécessaire pour l'inclusion de fichier tière en début de fichier. L'execution du code commencera ainsi à Start et le programme ne plantera pas du coup !
 %include "../tools/16b_system.asm"
 %include "../tools/16b_screen.asm"
 start:
@@ -19,7 +17,7 @@ cli
     mov es, ax              ; La pile précédente déclarée entre 8000:0000 et 8000:2000 convient encore très bien, innutile de la redéfinir ici.
 sti
 
-; recuparation de l'unite de boot
+; recuperation de l'unite de boot
     mov [bootdrv], dl
 
 	call check_vesa_capability
@@ -240,7 +238,7 @@ next:
     mov ss, ax
     mov esp, 0x9F000
 
-    jmp dword 0x8:0x1000    ; reinitialise le segment de code
+    jmp dword 0x8:0x1000 << 4    ; reinitialise le segment de code. Jump sur 32bits 0x00010000, go to segment 2 64ko->128ko
 
 disk_fatal_error:
     push 0x04
