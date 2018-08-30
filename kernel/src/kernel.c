@@ -86,7 +86,9 @@ void _start(void)
 
 	ft_printf("Les carotes sont cuites, sort %i %i %i = %#x\n", 3, 2, 1, 0xFFAA);
 
-	ft_printf("Les carotes sont cuites, sort %i %i %i = %s\n", 1, 2, 3, " une gre des zegouts");
+	ft_printf("{eoc}Les {red}carotes {green}sont {yellow}cuites, {blue}sort {magenta}%i {cyan}%i {white}%i {black}= {orange}%s\n", 1, 2, 3, " une gre des zegouts");
+
+	ft_printf("{red}test {blue}2");
 
 	while (1);
 }

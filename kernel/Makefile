@@ -54,11 +54,10 @@ HEADERS = $(addsuffix .h, $(__H__))
 
 .PHONY: all clean fclean re help
 
-all: $(NAME)
+all: build_libft $(NAME)
 
-$(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL)
-	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
-	ld $(LDFLAGS) $^ libft/libft.a -o $@
+$(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) libft/libft.a
+	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
@@ -66,6 +65,10 @@ $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 
 $(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
 	$(ASM) -f elf -o $@ $<
+
+build_libft:
+	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
+
 
 clean:
 	make -C $(LIBFT)/ clean
