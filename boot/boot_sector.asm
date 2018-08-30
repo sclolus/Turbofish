@@ -265,11 +265,11 @@ gdtptr:
     dd 0  ; base
 ;--------------------------------------------------------------------
 bootdrv:  db 0
-msgDebut: db "Loadig kernel...", 13, 10, 0
-no_vesa_issue: db "No SVGA mode", 13, 10, 0
-cannot_load_from_disk: db "Cannot load disk", 13, 10, 0
+msgDebut: db "Loading Kernel", 13, 10, 0
+no_vesa_issue: db "No SVGA", 13, 10, 0
+cannot_load_from_disk: db "Disk error", 13, 10, 0
 ;--------------------------------------------------------------------
 
 ;; NOP jusqu'a 510
-times 510-($-$$) db 144
+times 510-($-$$) db 0x90
 dw 0xAA55
