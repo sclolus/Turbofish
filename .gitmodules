@@ -1,0 +1,3 @@
+[submodule "kernel/libft"]
+	path = kernel/libft
+	url = https://gitlab.com/mordaklavache/libft_ng.git
