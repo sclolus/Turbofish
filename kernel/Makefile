@@ -35,12 +35,12 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
 LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
-SRC_C_KERNEL = kernel putnbr_base
-SRC_ASM_KERNEL = putchar.asm draw_line.asm
+SRC_C_KERNEL = kernel
+SRC_ASM_KERNEL = putchar draw_line
 
 _HEADERS = i386_type vesa_graphic
 
-VPATH = src include
+VPATH = src src/graphic include
 OBJ_DIR = objs
 
 __OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
@@ -68,7 +68,6 @@ $(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
 
 build_libft:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
-
 
 clean:
 	make -C $(LIBFT)/ clean

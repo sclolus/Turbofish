@@ -2,8 +2,6 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
-void putnbr_base(int n, int base);
-
 # include <stdarg.h>
 
 typedef struct					s_status
@@ -32,13 +30,13 @@ void _start(void)
 	char *ptr = (char *)0x00008000;
 	asm_printk(ptr);
 
-	putnbr_base(-0x1267ABEF, 16);
+	ft_putnbr_base(-0x1267ABEF, 16);
 	asm_printk("\nSeparator\n");
-	putnbr_base(-0x1267ABEF, 16);
+	ft_putnbr_base(-0x1267ABEF, 16);
 	asm_printk("\nSeparator\n");
-	putnbr_base(-0x1267ABEF, 16);
+	ft_putnbr_base(-0x1267ABEF, 16);
 	asm_printk("\nSeparator\n");
-	putnbr_base(-0x1267ABEF, 16);
+	ft_putnbr_base(-0x1267ABEF, 16);
 	asm_printk("\nSeparator\n");
 
 	u16 *n = (u16 *)0x00008200;
@@ -46,7 +44,7 @@ void _start(void)
 	int z = 0;
 	while (*n != 0xFFFF)
 	{
-		putnbr_base(*n++, 16);
+		ft_putnbr_base(*n++, 16);
 		z++;
 		if (z % 4 == 0)
 			asm_printk("\n");
@@ -56,10 +54,10 @@ void _start(void)
 	asm_printk("\n");
 
 	n = (u16 *)0x00008128;
-	putnbr_base(*n, 16);
+	ft_putnbr_base(*n, 16);
 	n++;
 	asm_printk("\n");
-	putnbr_base(*n, 16);
+	ft_putnbr_base(*n, 16);
 	asm_printk("\n");
 	asm_printk("un message\n");
 	asm_printk("un autre message\n");
@@ -69,18 +67,18 @@ void _start(void)
 	u32 j = 0x77020304;
 
 	asm_printk("\n");
-	putnbr_base(i, 16);
+	ft_putnbr_base(i, 16);
 	ft_memcpy(&i, &j, 4);
 	asm_printk("\n");
-	putnbr_base(i, 16);
+	ft_putnbr_base(i, 16);
 	ft_memset(&i, 0x22, 4);
 	asm_printk("\n");
-	putnbr_base(i, 16);
+	ft_putnbr_base(i, 16);
 	ft_bzero(&i, 4);
 	asm_printk("\n");
-	putnbr_base(i, 16);
+	ft_putnbr_base(i, 16);
 	asm_printk(" sizeof ");
-	putnbr_base(sizeof(t_status), 10);
+	ft_putnbr_base(sizeof(t_status), 10);
 
 	ft_memset((void *)0x0000F000, 0, 200);
 
