@@ -3,7 +3,7 @@ NAME = data.img
 all: $(NAME)
 
 $(NAME): boot_sector.img alpha.img kernel.img
-	cat boot/boot_sector.img fonts/alpha.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=144
+	cat boot/boot_sector.img fonts/alpha.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=2880
 
 boot_sector.img:
 	make -C boot

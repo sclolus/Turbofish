@@ -2,19 +2,24 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
-# include <stdarg.h>
+extern void init_GDT(int LFB);
 
-typedef struct					s_status
+void	_main(void);
+
+void	_start(void)
 {
-	va_list						ap;
-	const char 					*s;
-	int							fd;
-	int							buff_len;
-	int							total_size;
-	char						*str;
-}								t_status;
+	init_GDT(0xFD000000);
 
-void _start(void)
+	// Reconfiguration of stack pointer SS:ESP assembly syntax AT&T
+	asm("                           \
+		movw $0x20, %ax\n           \
+		movw %ax, %ss\n             \
+		movl $0x20000, %esp         \
+	");
+	_main();
+}
+
+void	_main(void)
 {
 	char *b = (char *)0xFD000000;
 	int h = 0;
@@ -78,7 +83,6 @@ void _start(void)
 	asm_printk("\n");
 	ft_putnbr_base(i, 16);
 	asm_printk(" sizeof ");
-	ft_putnbr_base(sizeof(t_status), 10);
 
 	ft_memset((void *)0x0000F000, 0, 200);
 

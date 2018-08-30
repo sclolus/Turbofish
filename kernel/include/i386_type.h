@@ -14,4 +14,6 @@ typedef unsigned int size_t;
 #define true 1
 typedef unsigned char bool;
 
+#define NULL 0
+
 #endif

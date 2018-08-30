@@ -9,17 +9,17 @@ LD = ld
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -O2 -fno-builtin
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -O2 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin
+	CFLAGS = -m32 -std=gnu99  -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast -fno-builtin
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
@@ -36,11 +36,11 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
 SRC_C_KERNEL = kernel
-SRC_ASM_KERNEL = putchar draw_line
+SRC_ASM_KERNEL = putchar draw_line gdt
 
 _HEADERS = i386_type vesa_graphic
 
-VPATH = src src/graphic include
+VPATH = src src/graphic src/base_system include
 OBJ_DIR = objs
 
 __OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
