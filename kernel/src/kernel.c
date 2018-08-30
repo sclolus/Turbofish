@@ -1,14 +1,15 @@
 
 #include "vesa_graphic.h"
+#include "libft.h"
 
 void putnbr_base(int n, int base);
 
 void _start(void)
 {
-	char *j = (char *)0xFD000000;
+	char *b = (char *)0xFD000000;
 	int h = 0;
 	while (h++ < 100000)
-		*j++ = h % 256;
+		*b++ = h % 256;
 
 	draw_line(0, 0, 1023, 768);
 	draw_line(1023, 0, 0, 768);
@@ -51,5 +52,21 @@ void _start(void)
 	asm_printk("un message\n");
 	asm_printk("un autre message\n");
 	asm_printk("et un dernier...\n");
+
+	u32 i = 0x11BBCCDD;
+	u32 j = 0x77020304;
+
+	asm_printk("\n");
+	putnbr_base(i, 16);
+	ft_memcpy(&i, &j, 4);
+	asm_printk("\n");
+	putnbr_base(i, 16);
+	ft_memset(&i, 0x22, 4);
+	asm_printk("\n");
+	putnbr_base(i, 16);
+	ft_bzero(&i, 4);
+	asm_printk("\n");
+	putnbr_base(i, 16);
+
 	while (1);
 }

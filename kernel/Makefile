@@ -23,7 +23,15 @@ else
 endif
 endif
 
-IFLAGS = -Iinclude
+### LIBRAIRIES ###
+
+LIB_DIR = .
+_LIBFT = libft
+LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
+
+### SOURCES ###
+
+IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
 LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
@@ -49,7 +57,8 @@ HEADERS = $(addsuffix .h, $(__H__))
 all: $(NAME)
 
 $(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL)
-	ld $(LDFLAGS) $^ -o $@
+	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
+	ld $(LDFLAGS) $^ libft/libft.a -o $@
 	chmod -x $(NAME)
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
@@ -59,10 +68,12 @@ $(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
 	$(ASM) -f elf -o $@ $<
 
 clean:
+	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 
 fclean:
+	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(NAME)
