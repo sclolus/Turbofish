@@ -15,15 +15,13 @@
 
 # include "btree.h"
 
-# include <stdlib.h>
-# include <errno.h>
-# include <stdint.h>
-
 enum	e_color {
 	RED = 0,
 	BLACK,
 	DOUBLE_BLACK
 };
+
+# define EINVAL				1
 
 # define IS_RED(node)		(node && node->color == RED)
 # define IS_BLACK(node)		(node == NULL || node->color == BLACK)

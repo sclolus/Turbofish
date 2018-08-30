@@ -14,11 +14,6 @@
 # define INTERNAL_PRINTF_H
 
 # include <stdarg.h>
-# include <stdlib.h>
-# include <inttypes.h>
-# include <wchar.h>
-# include <unistd.h>
-# include <stdbool.h>
 
 # define MAX_BUF_LEN			4096
 
@@ -30,13 +25,14 @@ typedef unsigned long long int	t_llu_int;
 typedef short int				t_s_int;
 typedef long int				t_l_int;
 typedef long long int			t_ll_int;
+typedef unsigned int			size_t;
+typedef int						bool;
+typedef unsigned int			uintmax_t;
+typedef signed int				intmax_t;
 
-# define MASK7                                  0x0000007f
-# define MASK11                                 0x000007ff
-# define MASK16                                 0x0000ffff
-# define MASK21                                 0x001fffff
-# define MASK26                                 0x03ffffff
-# define MASK31                                 0x7fffffff
+# define NULL 0
+# define false 0
+# define true 1
 
 # define HEXTABLE_MAJ(x) 		"0123456789ABCDEF"[x]
 # define HEXTABLE_MIN(x) 		"0123456789abcdef"[x]
@@ -46,12 +42,11 @@ typedef long long int			t_ll_int;
 # define FLAGS_QUANTITY 		5
 # define LENGTH_TYPE_QUANTITY	4
 # define SPECIFIERS_QUANTITY 	16
-# define UTF8_MAX_SIZE			4
 
 typedef struct					s_status
 {
 	va_list						ap;
-	const char *restrict		s;
+	const char 					*s;
 	int							fd;
 	int							buff_len;
 	int							total_size;
@@ -122,8 +117,6 @@ int								s_numeric_i (t_args *args, t_status *op);
 int								s_string (t_args *args, t_status *op);
 int								s_char (t_args *args, t_status *op);
 
-int								get_size_for_string(wchar_t c);
-
 void							*ft_memset (void *b, int c, size_t len);
 void							*ft_memcpy (void *dest, const void *src,
 																size_t n);
@@ -135,12 +128,5 @@ void							string_to_buffer(const char *s, int len,
 												t_status *op);
 void							char_to_buffer(char c, int len, t_status *op);
 void							fflush_buffer(t_status *op);
-
-/*
-** norme.c: Not logica, just for the trash norm.
-*/
-
-void							s_char_wchar(t_args *args, t_status *op,
-												wchar_t c);
 
 #endif

@@ -14,11 +14,14 @@
 
 static char g_buf[MAX_BUF_LEN];
 
+extern void putchar(char c);
+
 void	fflush_buffer(t_status *op)
 {
 	if (!op->str)
 	{
-		write(op->fd, g_buf, op->buff_len);
+		for (int i = 0; i < op->buff_len; i++)
+			putchar(g_buf[i]);
 	}
 	else
 	{

@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast -fno-builtin
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -O2 -fno-builtin
 endif
 endif
 

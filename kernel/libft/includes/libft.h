@@ -75,11 +75,11 @@ void				*ft_aligned_memcpy(void *restrict dst,
 		const void *restrict src, size_t n);
 void				ft_aligned_bzero(void *s, size_t n);
 
-int					ft_printf(const char *restrict format, ...);
-int					ft_eprintf(const char *restrict format, ...);
-int					ft_fprintf(int const fd, const char *restrict format,
+int					ft_printf(const char *format, ...);
+int					ft_eprintf(const char *format, ...);
+int					ft_fprintf(int const fd, const char *format,
 																		...);
-int					ft_dprintf(bool display, const char *restrict format, ...);
-int					ft_sprintf(char *str, const char *restrict format, ...);
+int					ft_dprintf(bool display, const char *format, ...);
+int					ft_sprintf(char *str, const char *format, ...);
 
 #endif

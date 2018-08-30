@@ -8,12 +8,12 @@ OBJDIR	= objs
 HEADER	= libft.h btree.h
 
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -I./$(INCDIR)
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -I./$(INCDIR) -fno-stack-protector
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast -fno-builtin -I./$(INCDIR)
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -O2 -fno-builtin -I./$(INCDIR) -fno-stack-protector
 endif
 
-SRC_USUALS = ft_memcpy ft_memset ft_bzero
+SRC_USUALS = ft_memcpy ft_memset ft_bzero ft_strlen
 
 #SRC_USUALS	= ft_memset ft_bzero ft_memcpy ft_memccpy ft_memmove ft_memchr ft_memcmp \
 	ft_strlen ft_strcpy ft_strncpy ft_strcat ft_strncat ft_strlcat \
@@ -25,12 +25,12 @@ SRC_USUALS = ft_memcpy ft_memset ft_bzero
 	ft_putendl_fd ft_putnbr_fd ft_secure_atoi \
 	ft_aligned_memcpy ft_aligned_bzero
 
-#SRC_PRINTF	= beacon op_main modifiers extract_args \
+SRC_PRINTF	= beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
-	cast buffer norme
+	cast buffer
 
-#SRC_BTREE	= btree_apply_infix btree_apply_prefix btree_apply_suffix \
+SRC_BTREE	= btree_apply_infix btree_apply_prefix btree_apply_suffix \
 	btree_apply_by_level btree_get_node btree_level_count \
 	btree_check_binary_tree btree_memory_move \
 	btree_delete_node btree_delete_rnb_node btree_insert_node btree_insert_rnb_node \
@@ -40,10 +40,10 @@ SRC_USUALS = ft_memcpy ft_memset ft_bzero
 	btree_smash_checker \
 	btree_get_last_valid btree_get_neighbours btree_conditional_insert
 
-#SRC_CHAINED	= lst_new lst_del_one lst_del lst_add lst_iter lst_map lst_invert_rec \
+SRC_CHAINED	= lst_new lst_del_one lst_del lst_add lst_iter lst_map lst_invert_rec \
 	lst_push_front lst_push_back lst_pre_alloc lst_merge lst_create_elem lst_invert_it
 
-#SRC_SORT    = fusion_merge_tab fusion_merge_chain_list
+SRC_SORT    = fusion_merge_tab fusion_merge_chain_list
 
 #SRC_GNL     = gnl
 
