@@ -1,32 +1,55 @@
 
-extern void scrollup(unsigned int);
-extern void print(char *);
+#include "vesa_graphic.h"
 
-extern void asm_print(void);
-extern void asm_print_2(char *);
-
-extern kY;
-extern kattr;
+void putnbr_base(int n, int base);
 
 void _start(void)
 {
-	kY = 18;
-	kattr = 0x5E;
+	char *j = (char *)0xFD000000;
+	int h = 0;
+	while (h++ < 100000)
+		*j++ = h % 256;
 
-	asm_print_2("Les sangliers sont partis\n");
+	draw_line(0, 0, 1023, 768);
+	draw_line(1023, 0, 0, 768);
 
-	asm_print();
+	set_cursor_position(20, 20);
+	asm_printk("test X");
 
-	print("un message\n");
+	char *ptr = (char *)0x00008000;
+	asm_printk(ptr);
 
-	kattr = 0x4E;
-	print("un autre message\n");
+	putnbr_base(-0x1267ABEF, 16);
+	asm_printk("\nSeparator\n");
+	putnbr_base(-0x1267ABEF, 16);
+	asm_printk("\nSeparator\n");
+	putnbr_base(-0x1267ABEF, 16);
+	asm_printk("\nSeparator\n");
+	putnbr_base(-0x1267ABEF, 16);
+	asm_printk("\nSeparator\n");
 
+	u16 *n = (u16 *)0x00008200;
 
-	kattr = 0x4E;
-	print("et un dernier...\n");
+	int z = 0;
+	while (*n != 0xFFFF)
+	{
+		putnbr_base(*n++, 16);
+		z++;
+		if (z % 4 == 0)
+			asm_printk("\n");
+		else
+			asm_printk(" ");
+	}
+	asm_printk("\n");
 
-	scrollup(2);
-
+	n = (u16 *)0x00008128;
+	putnbr_base(*n, 16);
+	n++;
+	asm_printk("\n");
+	putnbr_base(*n, 16);
+	asm_printk("\n");
+	asm_printk("un message\n");
+	asm_printk("un autre message\n");
+	asm_printk("et un dernier...\n");
 	while (1);
 }

@@ -9,17 +9,17 @@ LD = ld
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast -fno-builtin
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -Ofast -fno-builtin
 endif
 endif
 
@@ -27,17 +27,19 @@ IFLAGS = -Iinclude
 
 LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
-SRC_KERNEL = kernel screen
-_HEADERS = types
+SRC_C_KERNEL = kernel putnbr_base
+SRC_ASM_KERNEL = putchar.asm draw_line.asm
 
-SRC_ASM = src/asm_file.asm
-OBJ_ASM = objs/asm_file.o
+_HEADERS = i386_type vesa_graphic
 
 VPATH = src include
 OBJ_DIR = objs
 
-__OBJ_KERNEL__ = $(basename $(notdir $(SRC_KERNEL)))
-OBJ_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_KERNEL__)))
+__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
+OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
+
+__OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
+OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
 
 __H__ = $(basename $(notdir $(_HEADERS)))
 HEADERS = $(addsuffix .h, $(__H__))
@@ -46,23 +48,23 @@ HEADERS = $(addsuffix .h, $(__H__))
 
 all: $(NAME)
 
-$(NAME): $(OBJ_KERNEL) $(OBJ_ASM)
+$(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL)
 	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_ASM): $(SRC_ASM)
-	$(ASM) -f elf $(SRC_ASM) -o $(OBJ_ASM)
+$(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
+	$(ASM) -f elf -o $@ $<
 
 clean:
-	rm -f $(OBJ_KERNEL)
-	rm -f $(OBJ_ASM)
+	rm -f $(OBJ_C_KERNEL)
+	rm -f $(OBJ_ASM_KERNEL)
 
 fclean:
-	rm -f $(OBJ_KERNEL)
-	rm -f $(OBJ_ASM)
+	rm -f $(OBJ_C_KERNEL)
+	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(NAME)
 
 re: fclean all

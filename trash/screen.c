@@ -1,4 +1,4 @@
-#include "types.h"
+#include "i386_type.h"
 
 #define RAMSCREEN 0xB8000	/* debut de la memoire video */
 #define SIZESCREEN 0xFA0	/* 4000, nombres d'octets d'une page texte */
@@ -35,10 +35,9 @@ void scrollup(unsigned int n)
 		kY = 0;
 }
 
-void putcar(uchar c)
+void putchar_int(char c)
 {
 	unsigned char *video;
-	int i;
 
 	if (c == 10) {		/* CR-NL */
 		kX = 0;
@@ -70,7 +69,7 @@ void putcar(uchar c)
 void print(char *string)
 {
 	while (*string != 0) {	/* tant que le caractere est different de 0x0 */
-		putcar(*string);
+		putchar_int(*string);
 		string++;
 	}
 }
