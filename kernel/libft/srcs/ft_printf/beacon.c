@@ -16,7 +16,7 @@
 **	'man 3 stdarg' to understand variadics macro.
 */
 
-int		ft_printf(const char *format, ...)
+int		ft_printf(const char *restrict format, ...)
 {
 	t_status	op;
 	int			ret;
@@ -33,7 +33,7 @@ int		ft_printf(const char *format, ...)
 	return (op.total_size);
 }
 
-int		ft_dprintf(bool display, const char *format, ...)
+int		ft_dprintf(bool display, const char *restrict format, ...)
 {
 	t_status	op;
 	int			ret;
@@ -52,7 +52,7 @@ int		ft_dprintf(bool display, const char *format, ...)
 	return (op.total_size);
 }
 
-int		ft_eprintf(const char *format, ...)
+int		ft_eprintf(const char *restrict format, ...)
 {
 	t_status	op;
 	int			ret;
@@ -69,7 +69,7 @@ int		ft_eprintf(const char *format, ...)
 	return (op.total_size);
 }
 
-int		ft_fprintf(int const fd, const char *format, ...)
+int		ft_fprintf(int const fd, const char *restrict format, ...)
 {
 	t_status	op;
 	int			ret;
@@ -86,7 +86,7 @@ int		ft_fprintf(int const fd, const char *format, ...)
 	return (op.total_size);
 }
 
-int		ft_sprintf(char *str, const char *format, ...)
+int		ft_sprintf(char *str, const char *restrict format, ...)
 {
 	t_status	op;
 	int			ret;

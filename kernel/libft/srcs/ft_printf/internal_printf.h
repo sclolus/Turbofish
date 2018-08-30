@@ -46,7 +46,7 @@ typedef signed int				intmax_t;
 typedef struct					s_status
 {
 	va_list						ap;
-	const char 					*s;
+	const char *restrict		s;
 	int							fd;
 	int							buff_len;
 	int							total_size;
