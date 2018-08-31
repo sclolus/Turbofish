@@ -35,7 +35,7 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
 LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
-SRC_C_KERNEL = kernel
+SRC_C_KERNEL = start_kernel main
 SRC_ASM_KERNEL = putchar draw_line gdt
 
 _HEADERS = i386_type vesa_graphic

@@ -2,26 +2,11 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
-extern void init_GDT(int LFB);
-
-void	_main(void);
-
-void	_start(void)
+void	_main(struct graphic_ctx *graphic_ctx)
 {
-	init_GDT(0xFD000000);
+	ft_printf("value: %x\n", graphic_ctx->vesa_mode_info->framebuffer);
 
-	// Reconfiguration of stack pointer SS:ESP assembly syntax AT&T
-	asm("                           \
-		movw $0x20, %ax\n           \
-		movw %ax, %ss\n             \
-		movl $0x20000, %esp         \
-	");
-	_main();
-}
-
-void	_main(void)
-{
-	char *b = (char *)0xFD000000;
+	char *b = (char *)graphic_ctx->vesa_mode_info->framebuffer;
 	int h = 0;
 	while (h++ < 100000)
 		*b++ = h % 256;
@@ -30,19 +15,19 @@ void	_main(void)
 	draw_line(1023, 0, 0, 768);
 
 	set_cursor_position(20, 20);
-	asm_printk("test X");
+	ft_printf("test X");
 
 	char *ptr = (char *)0x00008000;
-	asm_printk(ptr);
+	ft_printf(ptr);
 
 	ft_putnbr_base(-0x1267ABEF, 16);
-	asm_printk("\nSeparator\n");
+	ft_printf("\nSeparator\n");
 	ft_putnbr_base(-0x1267ABEF, 16);
-	asm_printk("\nSeparator\n");
+	ft_printf("\nSeparator\n");
 	ft_putnbr_base(-0x1267ABEF, 16);
-	asm_printk("\nSeparator\n");
+	ft_printf("\nSeparator\n");
 	ft_putnbr_base(-0x1267ABEF, 16);
-	asm_printk("\nSeparator\n");
+	ft_printf("\nSeparator\n");
 
 	u16 *n = (u16 *)0x00008200;
 
@@ -52,37 +37,37 @@ void	_main(void)
 		ft_putnbr_base(*n++, 16);
 		z++;
 		if (z % 4 == 0)
-			asm_printk("\n");
+			ft_printf("\n");
 		else
-			asm_printk(" ");
+			ft_printf(" ");
 	}
-	asm_printk("\n");
+	ft_printf("\n");
 
 	n = (u16 *)0x00008128;
 	ft_putnbr_base(*n, 16);
 	n++;
-	asm_printk("\n");
+	ft_printf("\n");
 	ft_putnbr_base(*n, 16);
-	asm_printk("\n");
-	asm_printk("un message\n");
-	asm_printk("un autre message\n");
-	asm_printk("et un dernier...\n");
+	ft_printf("\n");
+	ft_printf("un message\n");
+	ft_printf("un autre message\n");
+	ft_printf("et un dernier...\n");
 
 	u32 i = 0x11BBCCDD;
 	u32 j = 0x77020304;
 
-	asm_printk("\n");
+	ft_printf("\n");
 	ft_putnbr_base(i, 16);
 	ft_memcpy(&i, &j, 4);
-	asm_printk("\n");
+	ft_printf("\n");
 	ft_putnbr_base(i, 16);
 	ft_memset(&i, 0x22, 4);
-	asm_printk("\n");
+	ft_printf("\n");
 	ft_putnbr_base(i, 16);
 	ft_bzero(&i, 4);
-	asm_printk("\n");
+	ft_printf("\n");
 	ft_putnbr_base(i, 16);
-	asm_printk(" sizeof ");
+	ft_printf(" sizeof ");
 
 	ft_memset((void *)0x0000F000, 0, 200);
 

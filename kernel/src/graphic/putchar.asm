@@ -11,7 +11,6 @@ segment .text
 GLOBAL set_cursor_position
 GLOBAL set_text_color
 GLOBAL putchar
-GLOBAL asm_printk
 
 ; Indique une nouvelle position en ligne et en colone pour le curseur.
 set_cursor_position:
@@ -27,7 +26,6 @@ set_cursor_position:
     add eax, edx
     mov [cursor_location], eax
 
-    mov esp, ebp
     pop ebp
 ret
 
@@ -99,25 +97,6 @@ putchar:
     pop edi
     pop esi
     pop ebx
-    mov esp, ebp
     pop ebp
 ret
 
-asm_printk:
-    push ebp
-    mov ebp, esp
-    push esi
-    mov esi, [ebp + 8]
-.print_loop:
-    xor eax, eax
-    lodsb
-    cmp al, 0x0
-    je .end_print
-    push eax
-    call putchar
-    add esp, 4
-    jmp .print_loop
-.end_print:
-    pop esi
-    pop ebp
-ret
