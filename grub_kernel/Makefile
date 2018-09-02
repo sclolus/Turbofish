@@ -1,79 +1,36 @@
-NAME = kernel
+IMG_DISK = image_disk.img
 
-CC = gcc
-ASM = nasm
-LD = ld
+all: $(IMG_DISK) kernel/kernel.img
+	sudo losetup -fP $(IMG_DISK)
+	sudo mount /dev/loop0p1 /mnt
+	sudo cp -vf kernel/kernel.img /mnt
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
-### MAIN FLAGS ###
+kernel/kernel.img:
+	make -C kernel
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-ifeq ($(DEBUG),yes)
-	CFLAGS = -m32
-else
-	CFLAGS = -m32
-endif
-endif
-
-ifeq ($(UNAME_S),Linux)
-ifeq ($(DEBUG),yes)
-	CFLAGS = -m32
-else
-	CFLAGS = -m32
-endif
-endif
-
-LDFLAGS = -m elf_i386 -T link.ld
-
-SRC_C_KERNEL = c_kernel
-SRC_ASM_KERNEL = asm_kernel gdt
-
-OBJ_DIR = objs
-
-__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
-OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
-
-__OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
-OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
-
-.PHONY: all clean fclean re help
-
-all: $(NAME)
-
-$(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL)
-	ld $(LDFLAGS) $^ -o $@
-	chmod -x $(NAME)
-
-$(OBJ_DIR)/%.o: %.c Makefile
-	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
-
-$(OBJ_DIR)/%.o: %.asm Makefile
-	$(ASM) -f elf -o $@ $<
+$(IMG_DISK):
+	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=1048576
+	( echo -e "o\nn\np\n1\n\n\nw\n") | sudo fdisk $(IMG_DISK)
+	sudo losetup -fP $(IMG_DISK)
+	sudo mkfs.ext4 /dev/loop0p1
+	sudo mount /dev/loop0p1 /mnt
+	echo "(hd0) /dev/loop0" > loop0device.map
+	sudo grub-install --no-floppy --grub-mkdevicemap=loop0device.map --modules="part_msdos" --boot-directory=/mnt /dev/loop0 -v
+	sudo cp -vf grub/grub.cfg /mnt/grub 
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
 clean:
-	rm -f $(OBJ_C_KERNEL)
-	rm -f $(OBJ_ASM_KERNEL)
+	make -C kernel clean
 
 fclean:
-	rm -f $(OBJ_C_KERNEL)
-	rm -f $(OBJ_ASM_KERNEL)
-	rm -f $(NAME)
+	make -C kernel fclean
+	rm -vf loop0device.map
+	rm -vf $(IMG_DISK)
 
-re: fclean all
-
-help:
-	@echo
-	@echo "Kernel $(NAME)"
-	@echo
-	@echo "--------------------------------------------------------------------------"
-	@echo " Disp rules."
-	@echo
-	@echo " all     : Compile the kernel $(NAME)."
-	@echo " re      : Recompile all objets of the programs."
-	@echo " clean   : Remove objects."
-	@echo " fclean  : Remove objects and programs."
-	@echo " help    : Display this."
-	@echo "--------------------------------------------------------------------------"
+re: clean all
 
 exec:
-	qemu-system-x86_64 -kernel $(NAME)
+	qemu-system-x86_64 -m 512 -vga std -hda $(IMG_DISK) -enable-kvm
