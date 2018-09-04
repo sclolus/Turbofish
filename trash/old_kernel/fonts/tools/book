@@ -1,0 +1,1 @@
+sed -e '/ENDCHAR/d' -e '/DWIDTH/d' -e '/SWIDTH/d' -e '/BITMAP/d' -e '/BBX/d' -e 's/STARTCHAR /./g' -e 's/ENCODING /_/g' alpha_part1.txt | tr -d "\n"

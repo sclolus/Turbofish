@@ -1,5 +1,6 @@
-#ifndef _I386_TYPE_
-#define _I386_TYPE_
+
+#ifndef __I386_TYPE_H__
+# define __I386_TYPE_H__
 
 typedef signed char s8;
 typedef unsigned char u8;
@@ -12,6 +13,7 @@ typedef unsigned int size_t;
 
 #define false 0
 #define true 1
+
 typedef unsigned char bool;
 
 #define NULL 0

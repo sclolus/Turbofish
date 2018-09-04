@@ -3,10 +3,8 @@
 
 segment .data
 
-text_color: db 10              ; default to green
 cursor_location: dd 0
-
-%include "fonts/alpha.asm"
+text_color: db 2              ; default to green
 
 segment .text
 
@@ -59,7 +57,7 @@ putchar:
     mov eax, [ebp + 8]
 
     shl eax, 4
-    lea esi, [_print_graphical_char_begin + eax]
+    lea esi, [0x00009000 + eax]
 
     mov ax, 0x10
     mov ds, ax

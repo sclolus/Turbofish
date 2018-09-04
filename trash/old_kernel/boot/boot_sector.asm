@@ -194,7 +194,7 @@ start:
     pop es
 
 ; bascule en SVGA
-    call set_vesa_graphic
+    ;call set_vesa_graphic
 
 ; initialisation du pointeur sur la GDT
     mov ax, gdtend    ; calcule la limite de GDT
@@ -238,6 +238,51 @@ start:
 
     jmp next
 next:
+[BITS 32]
+    mov ax, 0x10     ; segment de donne
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+    mov es, ax
+    mov ss, ax
+    mov esp, 0x9F000
+[BITS 16]
+    lidt [rmidt]
+
+[BITS 16]
+    jmp 0x20: .virtual_mode
+.virtual_mode:
+[BITS 16]
+
+    mov eax, cr0
+    and ax, 0xfffe
+    mov cr0, eax
+
+    jmp 0: .real_16
+.real_16:
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    nop
+
+    sti
+
+[BITS 16]
+    mov ax, 0x4F02
+[BITS 16]
+    mov bx, 0x105                ; 105H     1024x768     256  packed pixel
+    ;int 0x10
+
+    cli
+
+    lgdt [gdtptr]    ; charge la gdt
+    mov eax, cr0
+    or  ax, 1
+    mov cr0, eax     ; PE mis a 1 (CR0)
+
+    jmp next_2
+next_2:
     mov ax, 0x10     ; segment de donne
     mov ds, ax
     mov fs, ax
@@ -258,15 +303,24 @@ gdt_ds:
 gdt_lfb:
     dw 0xFFFF, 0x0000
     db 0x00, 10010011b, 11011111b, 0xFC
+gdt_16b_cs:
+    dw 0xFFFF, 0x0000
+    db 0x00, 0x9A, 0x0, 0x0
+gdt_16b_ds:
+    dw 0xFFFF, 0x0000
+    db 0x00, 0x92, 0x0, 0x0
 gdtend:
 ;--------------------------------------------------------------------
 gdtptr:
     dw 0  ; limite
     dd 0  ; base
+rmidt:
+    dw 0x3ff
+    dd 0
 ;--------------------------------------------------------------------
 bootdrv:  db 0
-msgDebut: db "Loading Kernel", 13, 10, 0
-no_vesa_issue: db "No SVGA", 13, 10, 0
+msgDebut: db "", 13, 10, 0
+no_vesa_issue: db "", 13, 10, 0
 cannot_load_from_disk: db "Disk error", 13, 10, 0
 ;--------------------------------------------------------------------
 

@@ -1,33 +1,34 @@
-NAME = data.img
+IMG_DISK = image_disk.img
 
-all: $(NAME)
-
-$(NAME): boot_sector.img alpha.img kernel.img
-	cat boot/boot_sector.img fonts/alpha.img kernel/kernel.img /dev/zero | dd of=$(NAME) bs=512 count=2880
-
-boot_sector.img:
-	make -C boot
-
-kernel.img:
+all: $(IMG_DISK)
 	make -C kernel
+	sudo losetup -fP $(IMG_DISK)
+	sudo mount /dev/loop0p1 /mnt
+	sudo cp -vf kernel/kernel.elf /mnt
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
-alpha.img:
-	make -C fonts
+$(IMG_DISK):
+	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=1048576
+	( echo -e "o\nn\np\n1\n\n\nw\n") | sudo fdisk $(IMG_DISK)
+	sudo losetup -fP $(IMG_DISK)
+	sudo mkfs.ext4 /dev/loop0p1
+	sudo mount /dev/loop0p1 /mnt
+	echo "(hd0) /dev/loop0" > loop0device.map
+	sudo grub-install --no-floppy --grub-mkdevicemap=loop0device.map --modules="part_msdos" --boot-directory=/mnt /dev/loop0 -v
+	sudo cp -vf grub/grub.cfg /mnt/grub 
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
 clean:
-	rm -f polices/alpha.img
-	make -C boot clean
 	make -C kernel clean
-	make -C fonts clean
 
 fclean:
-	rm -f polices/alpha.img
-	make -C boot fclean
 	make -C kernel fclean
-	make -C fonts fclean
-	rm -f $(NAME)
+	rm -vf loop0device.map
+	rm -vf $(IMG_DISK)
 
-re: fclean all
+re: clean all
 
 exec:
-	qemu-system-x86_64 -fda $(NAME)
+	qemu-system-x86_64 -m 512 -vga std -hda $(IMG_DISK) -enable-kvm

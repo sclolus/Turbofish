@@ -1,5 +1,6 @@
-#ifndef _BASE_SYSTEM_
-# define _BASE_SYSTEM_
+
+#ifndef __BASE_SYSTEM_H__
+# define __BASE_SYSTEM_H__
 
 extern void		init_GDT(int LFB);
 

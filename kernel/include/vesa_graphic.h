@@ -1,5 +1,5 @@
-#ifndef _VESA_GRAPHIC_
-# define _VESA_GRAPHIC_
+#ifndef __VESA_GRAPHIC_H__
+# define __VESA_GRAPHIC_H__
 
 #include "i386_type.h"
 

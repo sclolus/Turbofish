@@ -9,17 +9,17 @@ LD = ld
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=c99 -Wextra -Wall -O2 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99  -Wextra -Wall -g -O0 -fsanitize=address -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
@@ -33,13 +33,14 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = src src/system src/graphic
+LDFLAGS = --ignore-unresolved-symbol _GLOBAL_OFFSET_TABLE_ -melf_i386 --oformat binary -Ttext 10000
 
-LDFLAGS = -m elf_i386 -T link.ld
+SRC_C_KERNEL = start_kernel main
+SRC_ASM_KERNEL = putchar draw_line gdt
 
-SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = _start gdt int8086 putchar draw_line
+_HEADERS = i386_type vesa_graphic
 
+VPATH = src src/graphic src/base_system include
 OBJ_DIR = objs
 
 __OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
@@ -48,21 +49,24 @@ OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
 OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
 
+__H__ = $(basename $(notdir $(_HEADERS)))
+HEADERS = $(addsuffix .h, $(__H__))
+
 .PHONY: all clean fclean re help
 
-all: $(NAME)
+all: build_libft $(NAME)
 
 $(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) libft/libft.a
 	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
-$(OBJ_DIR)/%.o: %.c Makefile
+$(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_DIR)/%.o: %.asm Makefile
+$(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
 	$(ASM) -f elf -o $@ $<
 
-libft/libft.a:
+build_libft:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
 
 clean:
@@ -91,6 +95,3 @@ help:
 	@echo " fclean  : Remove objects and programs."
 	@echo " help    : Display this."
 	@echo "--------------------------------------------------------------------------"
-
-exec:
-	qemu-system-x86_64 -kernel $(NAME)

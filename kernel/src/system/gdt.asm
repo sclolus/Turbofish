@@ -1,4 +1,3 @@
-
 [BITS 32]
 
 segment .data
@@ -77,7 +76,6 @@ init_GDT:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    mov ss, ax
 
     pop ebp
 ret
