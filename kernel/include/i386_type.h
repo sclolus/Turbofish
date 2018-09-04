@@ -11,6 +11,8 @@ typedef unsigned int u32;
 typedef signed int ssize_t;
 typedef unsigned int size_t;
 
+typedef unsigned int ptr_32;
+
 #define false 0
 #define true 1
 

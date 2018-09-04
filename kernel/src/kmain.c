@@ -1,108 +1,72 @@
 
 #include "i386_type.h"
-#include "int8086.h"
 #include "vesa_graphic.h"
 #include "base_system.h"
 #include "libft.h"
 
-#define VESA_GLOBAL_INFO_PTR 0xA000
-#define VESA_MODE_INFO_PTR 0xB000
-
-# define HEX_T(x)	"0123456789ABCDEF"[x]
-
-void		clear_screen(void)
+// this loops clears the screen
+// there are 25 lines each of 80 columns; each element takes 2 bytes
+void		reset_text_screen(void)
 {
-/* this loops clears the screen
-	* there are 25 lines each of 80 columns; each element takes 2 bytes */
+	struct registers	reg;
+	char			*vidptr;
+	u32			j;
+	u32			screensize;
 
-	u32 j = 0;
-	u32 screensize = 80 * 25 * 2;
-	/* video memory begins at address 0xb8000 */
-	char *vidptr = (char*)0xb8000;
-	while (j < screensize) {
-		/* blank character */
-		vidptr[j] = ' ';
-		/* attribute-byte */
-		vidptr[j+1] = 0x07;
+	// video memory begins at address 0xb8000
+	vidptr = (char*)0xb8000;
+
+	// set cursor 	AH=02h 	BH = page number, DH = Line, DL = Colomn
+	reg.edx = 0;
+	reg.ebx = 0;
+	reg.eax = 0x02;
+	int8086(0x10, reg);
+
+	j = 0;
+	screensize =  80 * 25 * 2;
+	while (j < screensize)
+	{
+		vidptr[j] = ' ';	// black character
+		vidptr[j + 1] = 0x07;	// attribute-byte
 		j = j + 2;
 	}
 }
 
-void		term_putchar(char c)
+void		text_putstr(char *str)
 {
+	// video memory begins at address 0xb8000
+	char *vidptr = (char*)0xb8000;
 	static int i = 0;
 
-	/* video memory begins at address 0xb8000 */
-	char *vidptr = (char*)0xb8000;
-
-	/* the character's ascii */
-	vidptr[i++] = c;
-	/* attribute-byte: give character black bg and light grey fg */
-	vidptr[i++] = 0x07;
-}
-
-void		term_putstr(char *str)
-{
 	while (*str != '\0')
 	{
-		term_putchar(*str);
-		str++;
+		vidptr[i++] = *str++;	// the character's ascii
+		vidptr[i++] = 0x07;	// give char black bg and light grey fg
 	}
 }
 
 void 		kmain(void)
 {
-	struct registers reg;
+	if (set_vbe(0x105) < 0)
+	{
+		reset_text_screen();
+		text_putstr("KERNEL_FATAL_ERROR: Cannot set VBE mode");
+		return ;
+	}
 
-	reg.eax = 0x4F00;
-	reg.edi = VESA_GLOBAL_INFO_PTR;
-	int8086(0x10, reg);
 
-	struct vesa_global_info *vgi = (struct vesa_global_info *)VESA_GLOBAL_INFO_PTR;
 
-	reg.eax = 0x4F01;
-	reg.ecx = 0x4105;				// Ajoute au bit 14 de CX, la valeur 1 pour "être sur de tenir compte de "Linéar Frame Buffer"
-	reg.edi = VESA_MODE_INFO_PTR;
-	int8086(0x10, reg);
 
-	struct vesa_mode_info *vmi = (struct vesa_mode_info *)VESA_MODE_INFO_PTR;
+	struct vesa_graphic_mode_list *vgml =
+		&g_graphic_ctx.vesa_graphic_mode_list;
 
-/*
-// sequence d'extinction du PC
-	reg.eax = 0x530E;
-	reg.ebx = 0x102;
-	int8086(0x15, reg);
+	for (u32 i = 0; i < vgml->nb_mode; i++)
+		ft_printf("%#hx ", vgml->mode[i]);
+	ft_printf("NB MODES = %u  ", vgml->nb_mode);
 
-	reg.eax = 0x5300;
-	reg.ebx = 0x0;
-	int8086(0x15, reg);
+	ft_putstr(g_graphic_ctx.vesa_global_info.vesa_Signature);
 
-	reg.eax = 0x5301;
-	reg.ebx = 0x0;
-	int8086(0x15, reg);
-
-	reg.eax = 0x530E;
-	reg.ebx = 0x102;
-	int8086(0x15, reg);
-
-	reg.eax = 0x5307;
-	reg.ebx = 0x1;
-	reg.ecx = 0x3;
-	int8086(0x15, reg);
-*/
-
-	clear_screen();
-
-	term_putstr(" 0x");
-
-	init_GDT(vmi->framebuffer);
-
-	reg.eax = 0x4F02;
-	reg.ebx = 0x105;
-	int8086(0x10, reg);
-
-	ft_putstr(vgi->vesa_Signature);
-	ft_printf("%#x", vmi->framebuffer);
+	ft_printf("%#x", g_graphic_ctx.vesa_mode_info.framebuffer);
 
 	putchar('-');
 	putchar('-');

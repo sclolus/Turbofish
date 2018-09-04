@@ -33,12 +33,14 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = src src/system src/graphic
+VPATH = include src src/system src/graphic
 
 LDFLAGS = -m elf_i386 -T link.ld
 
-SRC_C_KERNEL = kmain
+SRC_C_KERNEL = kmain shutdown_computer set_vbe
 SRC_ASM_KERNEL = _start gdt int8086 putchar draw_line
+
+_HEADERS = i386_type vesa_graphic base_system
 
 OBJ_DIR = objs
 
@@ -48,18 +50,21 @@ OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
 OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
 
+__H__ = $(basename $(notdir $(_HEADERS)))
+HEADERS = $(addsuffix .h, $(__H__))
+
 .PHONY: all clean fclean re help
 
 all: $(NAME)
 
-$(NAME): $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) libft/libft.a
+$(NAME): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
 	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
-$(OBJ_DIR)/%.o: %.c Makefile
+$(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_DIR)/%.o: %.asm Makefile
+$(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
 	$(ASM) -f elf -o $@ $<
 
 libft/libft.a:
