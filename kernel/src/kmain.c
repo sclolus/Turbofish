@@ -45,36 +45,50 @@ void		text_putstr(char *str)
 	}
 }
 
+// for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
+#define VBE_MODE 0x103
+
 void 		kmain(void)
 {
-	if (set_vbe(0x105) < 0)
+	if (set_vbe(VBE_MODE) < 0)
 	{
 		reset_text_screen();
 		text_putstr("KERNEL_FATAL_ERROR: Cannot set VBE mode");
+		bios_wait(5);
+		bios_shutdown_computer();
 		return ;
 	}
 
-	set_cursor_location(1, 1);
-
-	ft_printf("width: %hu, height: %hu, bpp: %hhu ",
-			g_graphic_ctx.vesa_mode_info.width,
-			g_graphic_ctx.vesa_mode_info.height,
-			g_graphic_ctx.vesa_mode_info.bpp);
+	ft_printf("{white}Kernel loaded: {green}OK\n{eoc}");
+	ft_printf("{white}VBE initialized: {green}OK\n{eoc}");
+	ft_printf("{white}GDT loaded: {green}OK\n{eoc}");
+	ft_printf("{white}Available graphic mode:\n{eoc}");
 
 	struct vesa_graphic_mode_list *vgml =
 		&g_graphic_ctx.vesa_graphic_mode_list;
 
-	for (u32 i = 0; i < vgml->nb_mode; i++)
-		ft_printf("%#hx ", vgml->mode[i]);
-	ft_printf("NB MODES = %u  ", vgml->nb_mode);
 
-	ft_putstr(g_graphic_ctx.vesa_global_info.vesa_Signature);
+	ft_printf("{orange}");
+	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 8;
+	u32 i = 0;
+	while (i < vgml->nb_mode)
+	{
+		ft_printf("0x%.4hx ", vgml->mode[i]);
+		i++;
+		ft_printf((i % max_cap == 0) ? "\n" : " ");
+	}
+	if (i % max_cap != 0)
+		ft_printf("\n");
+	ft_printf("{eoc}");
 
-	ft_printf("%#x", g_graphic_ctx.vesa_mode_info.framebuffer);
-
-	putchar('-');
-	putchar('-');
-	putchar('-');
+	ft_printf("{white}Selected mode: {green}%#x\n{eoc}", VBE_MODE);
+	ft_printf("-> width: {green}%hu{eoc}, height:"
+			" {green}%hu{eoc}, bpp: {green}%hhu{eoc}\n",
+			g_graphic_ctx.vesa_mode_info.width,
+			g_graphic_ctx.vesa_mode_info.height,
+			g_graphic_ctx.vesa_mode_info.bpp);
+	ft_printf("-> linear frame buffer location: {green}%#x{eoc}\n",
+			g_graphic_ctx.vesa_mode_info.framebuffer);
 	set_text_color(1);
 	putchar('H');
 	set_text_color(2);
@@ -96,25 +110,6 @@ void 		kmain(void)
 	putchar('L');
 	set_text_color(10);
 	putchar('D');
-
-	draw_line(0, 0, 1023, 768);
-	draw_line(1023, 0, 0, 768);
-
-	ft_putnbr_base(-0x1267ABEF, 16);
-	ft_printf("\nSeparator\n");
-	ft_putnbr_base(-0x1267ABEF, 16);
-	ft_printf("\nSeparator\n");
-	ft_putnbr_base(-0x1267ABEF, 16);
-	ft_printf("\nSeparator\n");
-	ft_putnbr_base(-0x1267ABEF, 16);
-	ft_printf("\nSeparator\n");
-
-	ft_printf("Les carotes sont cuites");
-	ft_printf("Les carotes sont cuites, sort %i %i %i = %#x\n", 3, 2, 1, 0xFFAA);
-
-	ft_printf("{eoc}Les {red}carotes {green}sont {yellow}cuites, {blue}sort {magenta}%i {cyan}%i {white}%i {black}= {orange}%s\n", 1, 2, 3, " une gre des zegouts");
-	ft_printf("{red}test {blue}2");
-
 	return;
 }
 

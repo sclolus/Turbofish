@@ -5,6 +5,7 @@
 
 ; Limitations: seul le numero de l'interuption ainsi que les registres AX, BX, CX, DX, Si et DI seront passés.
 ; La GDT de l'appelant doit avoir son secteur de code en 0x8 et doit etre bien entendu sur un descripteur 32 bits.
+; La pagination ne doit pas etre activée !
 
 [BITS 32]
 %define BASE_LOCATION 0x7C00

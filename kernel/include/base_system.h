@@ -5,7 +5,8 @@
 # include "i386_type.h"
 
 extern void		init_GDT(ptr_32 *LFB);
-extern void		shutdown_computer(void);
+void			bios_shutdown_computer(void);
+void			bios_wait(u32 sec);
 
 struct registers {
 	u32 edi, esi, ebp, esp;

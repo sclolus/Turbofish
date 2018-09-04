@@ -1,7 +1,7 @@
 
 #include "base_system.h"
 
-void	shutdown_computer(void)
+void	bios_shutdown_computer(void)
 {
 	struct registers reg;
 
@@ -24,5 +24,15 @@ void	shutdown_computer(void)
 	reg.eax = 0x5307;
 	reg.ebx = 0x1;
 	reg.ecx = 0x3;
+	int8086(0x15, reg);
+}
+
+void	bios_wait(u32 sec)
+{
+	struct registers reg;
+
+	reg.eax = 0x8600;
+	reg.ecx = sec * 10;
+	reg.edx = 0;
 	int8086(0x15, reg);
 }
