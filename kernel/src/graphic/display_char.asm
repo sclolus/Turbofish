@@ -3,33 +3,16 @@
 
 segment .data
 
+extern g_edi_offset
+
 text_color: db 10              ; default to green
-cursor_location: dd 0
 
 %include "fonts/alpha.asm"
 
 segment .text
 
-GLOBAL set_cursor_position
 GLOBAL set_text_color
-GLOBAL putchar
-
-; Indique une nouvelle position en ligne et en colone pour le curseur.
-set_cursor_position:
-    push ebp
-    mov ebp, esp
-
-    mov eax, [ebp + 8]
-    mov edx, [ebp + 12]
-
-    shl eax,  3
-    shl edx, 14
-
-    add eax, edx
-    mov [cursor_location], eax
-
-    pop ebp
-ret
+GLOBAL display_char
 
 set_text_color:
     push ebp
@@ -39,30 +22,22 @@ set_text_color:
     pop ebp
 ret
 
-putchar:
+display_char:
     push ebp
     mov ebp, esp
-    push ebx
+
     push esi
     push edi
-
-    mov edi, [cursor_location]
 
     mov ax, 0x18
     mov es, ax
 
-    test edi, 0x0400
-    je .putchar_init
-    add edi, 15360
-
 .putchar_init:
     mov eax, [ebp + 8]
+    mov edi, [ebp + 12]
 
     shl eax, 4
     lea esi, [_print_graphical_char_begin + eax]
-
-    mov ax, 0x10
-    mov ds, ax
 
     mov dl, 3
     mov ch, 16                  ; Compteur HEIGHT à 0, il ira jusqu'à 16
@@ -88,17 +63,16 @@ putchar:
     dec cl
     test cl, cl
     jne .putchar_cycle_width
-    add edi, 1016               ; Préparation de EDI pour la prochaine ligne.
+    add edi, dword [g_edi_offset]               ; Préparation de EDI pour la prochaine ligne.
     dec ch
     test ch, ch
     jne .putchar_cycle_heigth
 
-    sub edi, 16376
-    mov [cursor_location], edi
+    mov ax, 0x10
+    mov es, ax
 
     pop edi
     pop esi
-    pop ebx
+
     pop ebp
 ret
-

@@ -4,9 +4,10 @@
 #include "i386_type.h"
 
 s32		set_vbe(u16 selected_mode);
-extern void	set_cursor_position(u32 x, u32 y);
+int		set_cursor_location(u32 x, u32 y);
+void		putchar(char c);
+
 extern void	set_text_color(u8 color);
-extern void	putchar(char c);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);
 
 struct __attribute__ ((packed)) vesa_global_info {

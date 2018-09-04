@@ -9,17 +9,17 @@ LD = ld
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 else
-	CFLAGS = -m32 -std=c99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 endif
 endif
 
@@ -37,8 +37,8 @@ VPATH = include src src/system src/graphic
 
 LDFLAGS = -m elf_i386 -T link.ld
 
-SRC_C_KERNEL = kmain shutdown_computer set_vbe
-SRC_ASM_KERNEL = _start gdt int8086 putchar draw_line
+SRC_C_KERNEL = kmain shutdown_computer set_vbe putchar
+SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char
 
 _HEADERS = i386_type vesa_graphic base_system
 

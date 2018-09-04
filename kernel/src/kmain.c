@@ -54,8 +54,12 @@ void 		kmain(void)
 		return ;
 	}
 
+	set_cursor_location(1, 1);
 
-
+	ft_printf("width: %hu, height: %hu, bpp: %hhu ",
+			g_graphic_ctx.vesa_mode_info.width,
+			g_graphic_ctx.vesa_mode_info.height,
+			g_graphic_ctx.vesa_mode_info.bpp);
 
 	struct vesa_graphic_mode_list *vgml =
 		&g_graphic_ctx.vesa_graphic_mode_list;
@@ -107,8 +111,10 @@ void 		kmain(void)
 
 	ft_printf("Les carotes sont cuites");
 	ft_printf("Les carotes sont cuites, sort %i %i %i = %#x\n", 3, 2, 1, 0xFFAA);
+
 	ft_printf("{eoc}Les {red}carotes {green}sont {yellow}cuites, {blue}sort {magenta}%i {cyan}%i {white}%i {black}= {orange}%s\n", 1, 2, 3, " une gre des zegouts");
 	ft_printf("{red}test {blue}2");
+
 	return;
 }
 
