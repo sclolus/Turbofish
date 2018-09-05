@@ -159,10 +159,10 @@ _ss: dw 0
 
 gdt_16:
     db 0, 0, 0, 0, 0, 0, 0, 0
-gdt_16b_cs:
+;gdt_16b_cs:
     dw 0xFFFF, 0x0000
     db 0x00, 0x9A, 0x0, 0x0
-gdt_16b_ds:
+;gdt_16b_ds:
     dw 0xFFFF, 0x0000
     db 0x00, 0x92, 0x0, 0x0
 gdt_16_end:

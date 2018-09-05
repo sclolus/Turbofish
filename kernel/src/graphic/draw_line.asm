@@ -126,7 +126,7 @@ draw_line:
 ; Dans ce cas, Y2 est occulté et X1, X2 prennent des registres directes.
 .begin_line_octant_1_5:
     cmp cx, dx
-    ja end_of_line
+    ja .end_of_line
     call pixel
     ; Incrémentation logique de X1
     inc cx
@@ -150,7 +150,7 @@ draw_line:
     mov eax, ecx
     shr eax, 16
     cmp ax, dx
-    ja end_of_line
+    ja .end_of_line
     call pixel
     ; Incrémentation logique de Y1
     add ecx, 0x00010000
@@ -170,7 +170,7 @@ draw_line:
 ; -----------------------------------------------------------------------------------------------------------------
 .begin_line_octant_4_8:
     cmp cx, dx
-    ja end_of_line
+    ja .end_of_line
     call pixel
     ; Incrémentation logique de X1
     inc cx
@@ -193,7 +193,7 @@ draw_line:
     mov eax, ecx
     shr eax, 16
     cmp ax, dx
-    jb end_of_line
+    jb .end_of_line
     ;{
     call pixel
     ; Décrémentation logique de Y1
@@ -214,7 +214,7 @@ draw_line:
     ;}
 ;}
 ; -----------------------------------------------------------------------------------------------------------------
-end_of_line:
+.end_of_line:
     mov ax, 0x10
     mov es, ax
 

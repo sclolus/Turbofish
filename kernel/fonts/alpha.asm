@@ -1,6 +1,6 @@
 _print_graphical_char_begin: times 512 db 0 ; (16*32)
 
-_graphical_char_space:	;32
+; .graphical_char_space: 32
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -17,7 +17,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_exclam:	;33
+; .graphical_char_exclam: 33
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -34,7 +34,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_quotedbl:	;34
+; .graphical_char_quotedbl: 34
 db 0b00000000
 db 0b01100110
 db 0b01100110
@@ -51,7 +51,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_numbersign:	;35
+; .graphical_char_numbersign: 35
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -68,7 +68,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_dollar:	;36
+; .graphical_char_dollar: 36
 db 0b00011000
 db 0b00011000
 db 0b01111100
@@ -85,7 +85,7 @@ db 0b00011000
 db 0b00011000
 db 0b00000000
 db 0b00000000
-_graphical_char_percent:	;37
+; .graphical_char_percent: 37
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -102,7 +102,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ampersand:	;38
+; .graphical_char_ampersand: 38
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -119,7 +119,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_quotesingle:	;39
+; .graphical_char_quotesingle: 39
 db 0b00000000
 db 0b00110000
 db 0b00110000
@@ -136,7 +136,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_parenleft:	;40
+; .graphical_char_parenleft: 40
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -153,7 +153,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_parenright:	;41
+; .graphical_char_parenright: 41
 db 0b00000000
 db 0b00000000
 db 0b00110000
@@ -170,7 +170,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_asterisk:	;42
+; .graphical_char_asterisk: 42
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -187,7 +187,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_plus:	;43
+; .graphical_char_plus: 43
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -204,7 +204,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_comma:	;44
+; .graphical_char_comma: 44
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -221,7 +221,7 @@ db 0b00110000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_hyphen:	;45
+; .graphical_char_hyphen: 45
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -238,7 +238,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_period:	;46
+; .graphical_char_period: 46
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -255,7 +255,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_slash:	;47
+; .graphical_char_slash: 47
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -272,7 +272,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_zero:	;48
+; .graphical_char_zero: 48
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -289,7 +289,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_one:	;49
+; .graphical_char_one: 49
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -306,7 +306,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_two:	;50
+; .graphical_char_two: 50
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -323,7 +323,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_three:	;51
+; .graphical_char_three: 51
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -340,7 +340,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_four:	;52
+; .graphical_char_four: 52
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -357,7 +357,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_five:	;53
+; .graphical_char_five: 53
 db 0b00000000
 db 0b00000000
 db 0b11111110
@@ -374,7 +374,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_six:	;54
+; .graphical_char_six: 54
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -391,7 +391,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_seven:	;55
+; .graphical_char_seven: 55
 db 0b00000000
 db 0b00000000
 db 0b11111110
@@ -408,7 +408,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_eight:	;56
+; .graphical_char_eight: 56
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -425,7 +425,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_nine:	;57
+; .graphical_char_nine: 57
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -442,7 +442,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_colon:	;58
+; .graphical_char_colon: 58
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -459,7 +459,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_semicolon:	;59
+; .graphical_char_semicolon: 59
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -476,7 +476,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_less:	;60
+; .graphical_char_less: 60
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -493,7 +493,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_equal:	;61
+; .graphical_char_equal: 61
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -510,7 +510,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_greater:	;62
+; .graphical_char_greater: 62
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -527,7 +527,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_question:	;63
+; .graphical_char_question: 63
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -544,7 +544,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_at:	;64
+; .graphical_char_at: 64
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -561,7 +561,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_A:	;65
+; .graphical_char_A: 65
 db 0b00000000
 db 0b00000000
 db 0b00010000
@@ -578,7 +578,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_B:	;66
+; .graphical_char_B: 66
 db 0b00000000
 db 0b00000000
 db 0b11111100
@@ -595,7 +595,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_C:	;67
+; .graphical_char_C: 67
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -612,7 +612,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_D:	;68
+; .graphical_char_D: 68
 db 0b00000000
 db 0b00000000
 db 0b11111000
@@ -629,7 +629,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_E:	;69
+; .graphical_char_E: 69
 db 0b00000000
 db 0b00000000
 db 0b11111110
@@ -646,7 +646,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_F:	;70
+; .graphical_char_F: 70
 db 0b00000000
 db 0b00000000
 db 0b11111110
@@ -663,7 +663,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_G:	;71
+; .graphical_char_G: 71
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -680,7 +680,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_H:	;72
+; .graphical_char_H: 72
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -697,7 +697,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_I:	;73
+; .graphical_char_I: 73
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -714,7 +714,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_J:	;74
+; .graphical_char_J: 74
 db 0b00000000
 db 0b00000000
 db 0b00011110
@@ -731,7 +731,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_K:	;75
+; .graphical_char_K: 75
 db 0b00000000
 db 0b00000000
 db 0b11100110
@@ -748,7 +748,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_L:	;76
+; .graphical_char_L: 76
 db 0b00000000
 db 0b00000000
 db 0b11110000
@@ -765,7 +765,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_M:	;77
+; .graphical_char_M: 77
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -782,7 +782,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_N:	;78
+; .graphical_char_N: 78
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -799,7 +799,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_O:	;79
+; .graphical_char_O: 79
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -816,7 +816,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_P:	;80
+; .graphical_char_P: 80
 db 0b00000000
 db 0b00000000
 db 0b11111100
@@ -833,7 +833,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Q:	;81
+; .graphical_char_Q: 81
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -850,7 +850,7 @@ db 0b00001100
 db 0b00001110
 db 0b00000000
 db 0b00000000
-_graphical_char_R:	;82
+; .graphical_char_R: 82
 db 0b00000000
 db 0b00000000
 db 0b11111100
@@ -867,7 +867,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_S:	;83
+; .graphical_char_S: 83
 db 0b00000000
 db 0b00000000
 db 0b01111100
@@ -884,7 +884,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_T:	;84
+; .graphical_char_T: 84
 db 0b00000000
 db 0b00000000
 db 0b01111110
@@ -901,7 +901,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_U:	;85
+; .graphical_char_U: 85
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -918,7 +918,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_V:	;86
+; .graphical_char_V: 86
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -935,7 +935,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_W:	;87
+; .graphical_char_W: 87
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -952,7 +952,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_X:	;88
+; .graphical_char_X: 88
 db 0b00000000
 db 0b00000000
 db 0b11000110
@@ -969,7 +969,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Y:	;89
+; .graphical_char_Y: 89
 db 0b00000000
 db 0b00000000
 db 0b01100110
@@ -986,7 +986,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Z:	;90
+; .graphical_char_Z: 90
 db 0b00000000
 db 0b00000000
 db 0b11111110
@@ -1003,7 +1003,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_bracketleft:	;91
+; .graphical_char_bracketleft: 91
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -1020,7 +1020,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_backslash:	;92
+; .graphical_char_backslash: 92
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1037,7 +1037,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_bracketright:	;93
+; .graphical_char_bracketright: 93
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -1054,7 +1054,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_asciicircum:	;94
+; .graphical_char_asciicircum: 94
 db 0b00010000
 db 0b00111000
 db 0b01101100
@@ -1071,7 +1071,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_underscore:	;95
+; .graphical_char_underscore: 95
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1088,7 +1088,7 @@ db 0b00000000
 db 0b11111111
 db 0b00000000
 db 0b00000000
-_graphical_char_grave:	;96
+; .graphical_char_grave: 96
 db 0b00110000
 db 0b00110000
 db 0b00011000
@@ -1105,7 +1105,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_a:	;97
+; .graphical_char_a: 97
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1122,7 +1122,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_b:	;98
+; .graphical_char_b: 98
 db 0b00000000
 db 0b00000000
 db 0b11100000
@@ -1139,7 +1139,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_c:	;99
+; .graphical_char_c: 99
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1156,7 +1156,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_d:	;100
+; .graphical_char_d: 100
 db 0b00000000
 db 0b00000000
 db 0b00011100
@@ -1173,7 +1173,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_e:	;101
+; .graphical_char_e: 101
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1190,7 +1190,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_f:	;102
+; .graphical_char_f: 102
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -1207,7 +1207,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_g:	;103
+; .graphical_char_g: 103
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1224,7 +1224,7 @@ db 0b00001100
 db 0b11001100
 db 0b01111000
 db 0b00000000
-_graphical_char_h:	;104
+; .graphical_char_h: 104
 db 0b00000000
 db 0b00000000
 db 0b11100000
@@ -1241,7 +1241,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_i:	;105
+; .graphical_char_i: 105
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -1258,7 +1258,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_j:	;106
+; .graphical_char_j: 106
 db 0b00000000
 db 0b00000000
 db 0b00000110
@@ -1275,7 +1275,7 @@ db 0b01100110
 db 0b01100110
 db 0b00111100
 db 0b00000000
-_graphical_char_k:	;107
+; .graphical_char_k: 107
 db 0b00000000
 db 0b00000000
 db 0b11100000
@@ -1292,7 +1292,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_l:	;108
+; .graphical_char_l: 108
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -1309,7 +1309,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_m:	;109
+; .graphical_char_m: 109
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1326,7 +1326,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_n:	;110
+; .graphical_char_n: 110
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1343,7 +1343,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_o:	;111
+; .graphical_char_o: 111
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1360,7 +1360,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_p:	;112
+; .graphical_char_p: 112
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1377,7 +1377,7 @@ db 0b01100000
 db 0b01100000
 db 0b11110000
 db 0b00000000
-_graphical_char_q:	;113
+; .graphical_char_q: 113
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1394,7 +1394,7 @@ db 0b00001100
 db 0b00001100
 db 0b00011110
 db 0b00000000
-_graphical_char_r:	;114
+; .graphical_char_r: 114
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1411,7 +1411,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_s:	;115
+; .graphical_char_s: 115
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1428,7 +1428,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_t:	;116
+; .graphical_char_t: 116
 db 0b00000000
 db 0b00000000
 db 0b00010000
@@ -1445,7 +1445,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_u:	;117
+; .graphical_char_u: 117
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1462,7 +1462,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_v:	;118
+; .graphical_char_v: 118
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1479,7 +1479,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_w:	;119
+; .graphical_char_w: 119
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1496,7 +1496,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_x:	;120
+; .graphical_char_x: 120
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1513,7 +1513,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_y:	;121
+; .graphical_char_y: 121
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1530,7 +1530,7 @@ db 0b00000110
 db 0b00001100
 db 0b11111000
 db 0b00000000
-_graphical_char_z:	;122
+; .graphical_char_z: 122
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1547,7 +1547,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_braceleft:	;123
+; .graphical_char_braceleft: 123
 db 0b00000000
 db 0b00000000
 db 0b00001110
@@ -1564,7 +1564,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_bar:	;124
+; .graphical_char_bar: 124
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -1581,7 +1581,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_braceright:	;125
+; .graphical_char_braceright: 125
 db 0b00000000
 db 0b00000000
 db 0b01110000
@@ -1598,7 +1598,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_asciitilde:	;126
+; .graphical_char_asciitilde: 126
 db 0b00000000
 db 0b00000000
 db 0b01110110
@@ -1615,7 +1615,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_char127:	;127
+; .graphical_char_char127: 127
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1633,9 +1633,9 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 
-_graphical_char_skip_others: times 512 db 144 ; (160-128)*16
+times 512 db 0 ; (160-128)*16
 
-_graphical_char_space_2:	;160
+; .graphical_char_space_2: 160
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1652,7 +1652,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_exclamdown:	;161
+; .graphical_char_exclamdown: 161
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -1669,7 +1669,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_cent:	;162
+; .graphical_char_cent: 162
 db 0b00000000
 db 0b00011000
 db 0b00011000
@@ -1686,7 +1686,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_sterling:	;163
+; .graphical_char_sterling: 163
 db 0b00000000
 db 0b00111000
 db 0b01101100
@@ -1703,7 +1703,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_currency:	;164
+; .graphical_char_currency: 164
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1720,7 +1720,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_yen:	;165
+; .graphical_char_yen: 165
 db 0b00000000
 db 0b00000000
 db 0b01100110
@@ -1737,7 +1737,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_brokenbar:	;166
+; .graphical_char_brokenbar: 166
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -1754,7 +1754,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_section:	;167
+; .graphical_char_section: 167
 db 0b00000000
 db 0b01111100
 db 0b11000110
@@ -1771,7 +1771,7 @@ db 0b01111100
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_dieresis:	;168
+; .graphical_char_dieresis: 168
 db 0b00000000
 db 0b00000000
 db 0b01101100
@@ -1788,7 +1788,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_copyright:	;169
+; .graphical_char_copyright: 169
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -1805,7 +1805,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ordfeminine:	;170
+; .graphical_char_ordfeminine: 170
 db 0b00000000
 db 0b00111100
 db 0b01101100
@@ -1822,7 +1822,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_guillemotleft:	;171
+; .graphical_char_guillemotleft: 171
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1839,7 +1839,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_logicalnot:	;172
+; .graphical_char_logicalnot: 172
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1856,7 +1856,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_hyphen_2:	;173
+; .graphical_char_hyphen_2: 173
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1873,7 +1873,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_registered:	;174
+; .graphical_char_registered: 174
 db 0b00000000
 db 0b00000000
 db 0b00111000
@@ -1890,7 +1890,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_macron:	;175
+; .graphical_char_macron: 175
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1907,7 +1907,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_degree:	;176
+; .graphical_char_degree: 176
 db 0b00000000
 db 0b00111000
 db 0b01101100
@@ -1924,7 +1924,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_plusminus:	;177
+; .graphical_char_plusminus: 177
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -1941,7 +1941,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_twosuperior:	;178
+; .graphical_char_twosuperior: 178
 db 0b00000000
 db 0b01110000
 db 0b11011000
@@ -1958,7 +1958,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_threesuperior:	;179
+; .graphical_char_threesuperior: 179
 db 0b00000000
 db 0b01110000
 db 0b11011000
@@ -1975,7 +1975,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_acute:	;180
+; .graphical_char_acute: 180
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -1992,7 +1992,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_mu:	;181
+; .graphical_char_mu: 181
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2009,7 +2009,7 @@ db 0b11000000
 db 0b11000000
 db 0b11000000
 db 0b00000000
-_graphical_char_paragraph:	;182
+; .graphical_char_paragraph: 182
 db 0b00000000
 db 0b00000000
 db 0b01111111
@@ -2026,7 +2026,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_periodcentered:	;183
+; .graphical_char_periodcentered: 183
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2043,7 +2043,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_cedilla:	;184
+; .graphical_char_cedilla: 184
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2060,7 +2060,7 @@ db 0b00011000
 db 0b00001100
 db 0b00111000
 db 0b00000000
-_graphical_char_onesuperior:	;185
+; .graphical_char_onesuperior: 185
 db 0b00000000
 db 0b00110000
 db 0b01110000
@@ -2077,7 +2077,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ordmasculine:	;186
+; .graphical_char_ordmasculine: 186
 db 0b00000000
 db 0b00111000
 db 0b01101100
@@ -2094,7 +2094,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_guillemotright:	;187
+; .graphical_char_guillemotright: 187
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2111,7 +2111,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_onequarter:	;188
+; .graphical_char_onequarter: 188
 db 0b00000000
 db 0b11000000
 db 0b11000000
@@ -2128,7 +2128,7 @@ db 0b00000110
 db 0b00000110
 db 0b00000000
 db 0b00000000
-_graphical_char_onehalf:	;189
+; .graphical_char_onehalf: 189
 db 0b00000000
 db 0b11000000
 db 0b11000000
@@ -2145,7 +2145,7 @@ db 0b00011000
 db 0b00111110
 db 0b00000000
 db 0b00000000
-_graphical_char_threequarters:	;190
+; .graphical_char_threequarters: 190
 db 0b00000000
 db 0b11100000
 db 0b00110000
@@ -2162,7 +2162,7 @@ db 0b00000110
 db 0b00000110
 db 0b00000000
 db 0b00000000
-_graphical_char_questiondown:	;191
+; .graphical_char_questiondown: 191
 db 0b00000000
 db 0b00000000
 db 0b00110000
@@ -2179,7 +2179,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Agrave:	;192
+; .graphical_char_Agrave: 192
 db 0b01100000
 db 0b00110000
 db 0b00000000
@@ -2196,7 +2196,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Aacute:	;193
+; .graphical_char_Aacute: 193
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2213,7 +2213,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Acircumflex:	;194
+; .graphical_char_Acircumflex: 194
 db 0b00010000
 db 0b00111000
 db 0b01101100
@@ -2230,7 +2230,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Atilde:	;195
+; .graphical_char_Atilde: 195
 db 0b01110110
 db 0b11011100
 db 0b00000000
@@ -2247,7 +2247,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Adieresis:	;196
+; .graphical_char_Adieresis: 196
 db 0b01101100
 db 0b01101100
 db 0b00000000
@@ -2264,7 +2264,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Aring:	;197
+; .graphical_char_Aring: 197
 db 0b00111000
 db 0b01101100
 db 0b00111000
@@ -2281,7 +2281,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_AE:	;198
+; .graphical_char_AE: 198
 db 0b00000000
 db 0b00000000
 db 0b00111110
@@ -2298,7 +2298,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ccedilla:	;199
+; .graphical_char_Ccedilla: 199
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -2315,7 +2315,7 @@ db 0b00011000
 db 0b00001100
 db 0b00111000
 db 0b00000000
-_graphical_char_Egrave:	;200
+; .graphical_char_Egrave: 200
 db 0b00110000
 db 0b00011000
 db 0b00000000
@@ -2332,7 +2332,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Eacute:	;201
+; .graphical_char_Eacute: 201
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2349,7 +2349,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ecircumflex:	;202
+; .graphical_char_Ecircumflex: 202
 db 0b00010000
 db 0b00111000
 db 0b01000100
@@ -2366,7 +2366,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Edieresis:	;203
+; .graphical_char_Edieresis: 203
 db 0b01101100
 db 0b01101100
 db 0b00000000
@@ -2383,7 +2383,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Igrave:	;204
+; .graphical_char_Igrave: 204
 db 0b00110000
 db 0b00011000
 db 0b00000000
@@ -2400,7 +2400,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Iacute:	;205
+; .graphical_char_Iacute: 205
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2417,7 +2417,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Icircumflex:	;206
+; .graphical_char_Icircumflex: 206
 db 0b00011000
 db 0b00111100
 db 0b01000010
@@ -2434,7 +2434,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Idieresis:	;207
+; .graphical_char_Idieresis: 207
 db 0b01100110
 db 0b01100110
 db 0b00000000
@@ -2451,7 +2451,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Eth:	;208
+; .graphical_char_Eth: 208
 db 0b00000000
 db 0b00000000
 db 0b11111000
@@ -2468,7 +2468,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ntilde:	;209
+; .graphical_char_Ntilde: 209
 db 0b01110110
 db 0b11011100
 db 0b00000000
@@ -2485,7 +2485,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ograve:	;210
+; .graphical_char_Ograve: 210
 db 0b01100000
 db 0b00110000
 db 0b00000000
@@ -2502,7 +2502,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Oacute:	;211
+; .graphical_char_Oacute: 211
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2519,7 +2519,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ocircumflex:	;212
+; .graphical_char_Ocircumflex: 212
 db 0b00010000
 db 0b00111000
 db 0b01000100
@@ -2536,7 +2536,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Otilde:	;213
+; .graphical_char_Otilde: 213
 db 0b01110110
 db 0b11011100
 db 0b00000000
@@ -2553,7 +2553,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Odieresis:	;214
+; .graphical_char_Odieresis: 214
 db 0b01101100
 db 0b01101100
 db 0b00000000
@@ -2570,7 +2570,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_multiply:	;215
+; .graphical_char_multiply: 215
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2587,7 +2587,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Oslash:	;216
+; .graphical_char_Oslash: 216
 db 0b00000000
 db 0b00000000
 db 0b01111010
@@ -2604,7 +2604,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ugrave:	;217
+; .graphical_char_Ugrave: 217
 db 0b01100000
 db 0b00110000
 db 0b00000000
@@ -2621,7 +2621,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Uacute:	;218
+; .graphical_char_Uacute: 218
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2638,7 +2638,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Ucircumflex:	;219
+; .graphical_char_Ucircumflex: 219
 db 0b00010000
 db 0b00111000
 db 0b01000100
@@ -2655,7 +2655,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Udieresis:	;220
+; .graphical_char_Udieresis: 220
 db 0b01101100
 db 0b01101100
 db 0b00000000
@@ -2672,7 +2672,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Yacute:	;221
+; .graphical_char_Yacute: 221
 db 0b00001100
 db 0b00011000
 db 0b00000000
@@ -2689,7 +2689,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_Thorn:	;222
+; .graphical_char_Thorn: 222
 db 0b00000000
 db 0b00000000
 db 0b11110000
@@ -2706,7 +2706,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_germandbls:	;223
+; .graphical_char_germandbls: 223
 db 0b00000000
 db 0b00000000
 db 0b00111100
@@ -2723,7 +2723,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_agrave:	;224
+; .graphical_char_agrave: 224
 db 0b00000000
 db 0b00000000
 db 0b01100000
@@ -2740,7 +2740,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_aacute:	;225
+; .graphical_char_aacute: 225
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -2757,7 +2757,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_acircumflex:	;226
+; .graphical_char_acircumflex: 226
 db 0b00000000
 db 0b00010000
 db 0b00111000
@@ -2774,7 +2774,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_atilde:	;227
+; .graphical_char_atilde: 227
 db 0b00000000
 db 0b00000000
 db 0b01110110
@@ -2791,7 +2791,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_adieresis:	;228
+; .graphical_char_adieresis: 228
 db 0b00000000
 db 0b00000000
 db 0b01101100
@@ -2808,7 +2808,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_aring:	;229
+; .graphical_char_aring: 229
 db 0b00000000
 db 0b00111000
 db 0b01101100
@@ -2825,7 +2825,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ae:	;230
+; .graphical_char_ae: 230
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2842,7 +2842,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ccedilla:	;231
+; .graphical_char_ccedilla: 231
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -2859,7 +2859,7 @@ db 0b00011000
 db 0b00001100
 db 0b00111000
 db 0b00000000
-_graphical_char_egrave:	;232
+; .graphical_char_egrave: 232
 db 0b00000000
 db 0b00000000
 db 0b01100000
@@ -2876,7 +2876,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_eacute:	;233
+; .graphical_char_eacute: 233
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -2893,7 +2893,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ecircumflex:	;234
+; .graphical_char_ecircumflex: 234
 db 0b00000000
 db 0b00010000
 db 0b00111000
@@ -2910,7 +2910,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_edieresis:	;235
+; .graphical_char_edieresis: 235
 db 0b00000000
 db 0b00000000
 db 0b01101100
@@ -2927,7 +2927,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_igrave:	;236
+; .graphical_char_igrave: 236
 db 0b00000000
 db 0b00000000
 db 0b00110000
@@ -2944,7 +2944,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_iacute:	;237
+; .graphical_char_iacute: 237
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -2961,7 +2961,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_icircumflex:	;238
+; .graphical_char_icircumflex: 238
 db 0b00000000
 db 0b00010000
 db 0b00111000
@@ -2978,7 +2978,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_idieresis:	;239
+; .graphical_char_idieresis: 239
 db 0b00000000
 db 0b00000000
 db 0b01100110
@@ -2995,7 +2995,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_eth:	;240
+; .graphical_char_eth: 240
 db 0b00000000
 db 0b00000000
 db 0b01110110
@@ -3012,7 +3012,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ntilde:	;241
+; .graphical_char_ntilde: 241
 db 0b00000000
 db 0b00000000
 db 0b01110110
@@ -3029,7 +3029,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ograve:	;242
+; .graphical_char_ograve: 242
 db 0b00000000
 db 0b00000000
 db 0b01100000
@@ -3046,7 +3046,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_oacute:	;243
+; .graphical_char_oacute: 243
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -3063,7 +3063,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ocircumflex:	;244
+; .graphical_char_ocircumflex: 244
 db 0b00000000
 db 0b00010000
 db 0b00111000
@@ -3080,7 +3080,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_otilde:	;245
+; .graphical_char_otilde: 245
 db 0b00000000
 db 0b00000000
 db 0b01110110
@@ -3097,7 +3097,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_odieresis:	;246
+; .graphical_char_odieresis: 246
 db 0b00000000
 db 0b00000000
 db 0b01101100
@@ -3114,7 +3114,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_divide:	;247
+; .graphical_char_divide: 247
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -3131,7 +3131,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_oslash:	;248
+; .graphical_char_oslash: 248
 db 0b00000000
 db 0b00000000
 db 0b00000000
@@ -3148,7 +3148,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_:	;249
+; .graphical_char_: 249
 db 0b00000000
 db 0b00000000
 db 0b01100000
@@ -3165,7 +3165,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_uacute:	;250
+; .graphical_char_uacute: 250
 db 0b00000000
 db 0b00000000
 db 0b00011000
@@ -3182,7 +3182,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_ucircumflex:	;251
+; .graphical_char_ucircumflex: 251
 db 0b00000000
 db 0b00010000
 db 0b00111000
@@ -3199,7 +3199,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_udieresis:	;252
+; .graphical_char_udieresis: 252
 db 0b00000000
 db 0b00000000
 db 0b11001100
@@ -3216,7 +3216,7 @@ db 0b00000000
 db 0b00000000
 db 0b00000000
 db 0b00000000
-_graphical_char_yacute:	;253
+; .graphical_char_yacute: 253
 db 0b00000000
 db 0b00000000
 db 0b00001100
@@ -3233,7 +3233,7 @@ db 0b00000110
 db 0b00001100
 db 0b11111000
 db 0b00000000
-_graphical_char_thorn:	;254
+; .graphical_char_thorn: 254
 db 0b00000000
 db 0b00000000
 db 0b11100000
@@ -3250,7 +3250,7 @@ db 0b01100000
 db 0b01100000
 db 0b11110000
 db 0b00000000
-_graphical_char_ydieresis:	;255
+; .graphical_char_ydieresis: 255
 db 0b00000000
 db 0b00000000
 db 0b01101100

@@ -123,8 +123,6 @@ void 		kmain(void)
 	set_text_color(10);
 	putchar('D');
 	putchar('\n');
-
-	draw_line(0, 0, 1023, 767);
 	return;
 }
 
