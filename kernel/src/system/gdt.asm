@@ -3,7 +3,7 @@
 segment .data
 
 %if 0
-; description d'un segment de la gdt
+; synospys of gdt segment
 struct  gdt_seg {
     u16     limit_15_0;
     u16     base_15_0;
@@ -33,7 +33,7 @@ gdt_sp:
 gdtend:
 ;--------------------------------------------------------------------
 gdtptr:
-    dw 0  ; limite
+    dw 0  ; limit
     dd 0  ; base
 ;--------------------------------------------------------------------
 
@@ -41,37 +41,45 @@ segment .text
 
 GLOBAL init_GDT
 
+%define BASE_LOCATION 0x800
+%define REBASE(x) BASE_LOCATION + x - gdt
+
+; *** This GDT is rebased at 0x800 ***
 init_GDT:
     push ebp
     mov ebp, esp
 
-; initialisation du pointeur sur la GDT
-; -------------------------------------
-    mov eax, gdtend    ; calcule la limite de GDT gdtptr->limite, sizeof(GDT)
+; copying of GDT at BASE_LOCATION, here 0x800
+    mov edi, BASE_LOCATION
+    mov eax, gdtend
+    sub eax, gdt
+    mov ecx, eax
+    mov esi, gdt
+	rep movsb
+
+; initialization of GDT limit: eq gdtptr.limit = sizeof(GDT)
+    mov eax, gdtend
     mov edx, gdt
     sub eax, edx
     mov word [gdtptr], ax
 
-; recuperation de l'addresse linaire de la variable GDT pour gdtptr->base (c'est bien plus simple en 32 bits)
-    mov eax, gdt
+; initialization of GDT base: eq gdtptr.base = &GDT
+    mov eax, REBASE(gdt)
     mov dword [gdtptr + 2], eax
-; -------------------------------------
 
-; inscription du lfb dans le segment correspondant, l'addresse linéaire du LFB est passé en argument:
-; une simple succession de décalages de la valeurs stockée dans eax permet de remplir les champs du segment
+; writing of Lineat Frame Buffer address into LFB segment
     mov eax, [ebp + 8]
-    mov [gdt_lfb + 2], ax
+    mov [REBASE(gdt_lfb + 2)], ax
     shr eax, 16
-    mov [gdt_lfb + 4], al
+    mov [REBASE(gdt_lfb + 4)], al
     shr eax, 8
-    mov [gdt_lfb + 7], al
+    mov [REBASE(gdt_lfb + 7)], al
 
-; passage en modep
-    lgdt [gdtptr]    ; charge la gdt
+    lgdt [gdtptr]    ; Load GDT
 
-    jmp .next        ; reinitialisation du segment de code CS
+    jmp .next        ; reinit CS segment
 .next:
-    mov ax, 0x10     ; reinitialisation des segments de donnees DS, ES, FS et GS
+    mov ax, 0x10     ; reinit DATA segments, DS, ES, FS et GS
     mov ds, ax
     mov es, ax
     mov fs, ax
