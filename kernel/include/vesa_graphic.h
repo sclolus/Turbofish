@@ -5,7 +5,7 @@
 
 s32		set_vbe(u16 selected_mode);
 int		set_cursor_location(u32 x, u32 y);
-void		putchar(char c);
+void		putchar(u8 c);
 
 extern void	set_text_color(u8 color);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);

@@ -124,6 +124,7 @@ void 		kmain(void)
 	putchar('D');
 	putchar('\n');
 
+	draw_line(0, 0, 1023, 767);
 	return;
 }
 

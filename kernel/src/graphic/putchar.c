@@ -2,13 +2,11 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
-extern void display_char(char c, u32 edi);
+extern void display_char(u8 c, u32 edi);
 
 static u32 g_cur_loc = 0;
 
-// assume font is a 8 * 16 pixel bitmap
-// screen resolution must be sub multiple of 8 for width and 16 for height
-void	putchar(char c)
+static void	test_scroll(void)
 {
 	if (g_cur_loc == (g_graphic_ctx.vesa_mode_info.width
 			* g_graphic_ctx.vesa_mode_info.height))
@@ -30,9 +28,15 @@ void	putchar(char c)
 
 		g_cur_loc -= g_graphic_ctx.vesa_mode_info.width * 16;
 	}
+}
 
+// assume font is a 8 * 16 pixel bitmap
+// screen resolution must be sub multiple of 8 for width and 16 for height
+void		putchar(u8 c)
+{
 	if (c >= 32)
 	{
+		test_scroll();
 		display_char(c, g_cur_loc);
 		g_cur_loc += 8;
 		if (g_cur_loc % g_graphic_ctx.vesa_mode_info.width == 0)
@@ -42,10 +46,11 @@ void	putchar(char c)
 	{
 		g_cur_loc -= g_cur_loc % g_graphic_ctx.vesa_mode_info.width;
 		g_cur_loc += 16 * g_graphic_ctx.vesa_mode_info.width;
+		test_scroll();
 	}
 }
 
-int	set_cursor_location(u32 x, u32 y)
+int		set_cursor_location(u32 x, u32 y)
 {
 	if (x >= g_graphic_ctx.vesa_mode_info.width >> 3)
 		return -1;
