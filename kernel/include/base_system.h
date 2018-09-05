@@ -5,6 +5,14 @@
 # include "i386_type.h"
 
 extern void		init_GDT(ptr_32 *LFB);
+void			init_IDT(void);
+int			initialize_idt_seg(
+			u32 nb,
+			u32 fn_addr,
+			u16 select,
+			u16 type);
+void			init_PIC(void);
+
 void			bios_shutdown_computer(void);
 void			bios_wait(u32 sec);
 

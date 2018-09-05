@@ -46,7 +46,7 @@ void		text_putstr(char *str)
 }
 
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
-#define VBE_MODE 0x103
+#define VBE_MODE 0x105
 
 void 		kmain(void)
 {
@@ -89,6 +89,18 @@ void 		kmain(void)
 			g_graphic_ctx.vesa_mode_info.bpp);
 	ft_printf("-> linear frame buffer location: {green}%#x{eoc}\n",
 			g_graphic_ctx.vesa_mode_info.framebuffer);
+
+	ft_printf("{white}Initialize IDT: ");
+	init_IDT();
+	ft_printf("{green}OK\n{eoc}");
+
+	ft_printf("{white}Initialize PIC: ");
+	init_PIC();
+	ft_printf("{green}OK\n{eoc}");
+
+	asm("sti");
+	ft_printf("{white}Interupt enabled: {green}OK{eoc}\n");
+
 	set_text_color(1);
 	putchar('H');
 	set_text_color(2);
@@ -110,6 +122,8 @@ void 		kmain(void)
 	putchar('L');
 	set_text_color(10);
 	putchar('D');
+	putchar('\n');
+
 	return;
 }
 
