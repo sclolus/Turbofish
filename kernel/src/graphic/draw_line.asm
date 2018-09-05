@@ -3,7 +3,7 @@
 
 segment .data
 
-pix_color: db 9
+pix_color: db 11
 
 segment .text
 
@@ -215,6 +215,9 @@ draw_line:
 ;}
 ; -----------------------------------------------------------------------------------------------------------------
 end_of_line:
+    mov ax, 0x10
+    mov es, ax
+
     pop esi
     pop edi
     pop ebx
