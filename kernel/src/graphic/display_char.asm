@@ -28,6 +28,7 @@ display_char:
 
     push esi
     push edi
+    push es
 
     mov ax, 0x18
     mov es, ax
@@ -68,9 +69,7 @@ display_char:
     test ch, ch
     jne .putchar_cycle_heigth
 
-    mov ax, 0x10
-    mov es, ax
-
+    pop es
     pop edi
     pop esi
 

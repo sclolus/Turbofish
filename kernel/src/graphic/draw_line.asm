@@ -11,9 +11,11 @@ GLOBAL draw_line
 draw_line:
     push ebp
     mov ebp, esp
+
     push ebx
     push esi
     push edi
+    push es
 
     mov ecx, [ebp + 8]       ; Lit la valeur X1
     mov ebx, [ebp + 12]      ; Lit la valeur Y1
@@ -215,13 +217,11 @@ draw_line:
 ;}
 ; -----------------------------------------------------------------------------------------------------------------
 .end_of_line:
-    mov ax, 0x10
-    mov es, ax
-
+    pop es
     pop esi
     pop edi
     pop ebx
-    mov esp, ebp
+
     pop ebp
 ret
 
