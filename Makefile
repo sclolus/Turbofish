@@ -9,7 +9,7 @@ all: $(IMG_DISK)
 	sudo losetup -d /dev/loop0
 
 $(IMG_DISK):
-	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=1048576
+	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=32768
 	( echo -e "o\nn\np\n1\n\n\nw\n") | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mkfs.ext4 /dev/loop0p1
