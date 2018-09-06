@@ -98,6 +98,10 @@ void 		kmain(void)
 	init_PIC();
 	ft_printf("{green}OK\n{eoc}");
 
+	ft_printf("{white}Initialize Paging: ");
+	init_paging();
+	ft_printf("{green}OK\n{eoc}");
+
 	asm("sti");
 	ft_printf("{white}Interupt enabled: {green}OK{eoc}\n");
 

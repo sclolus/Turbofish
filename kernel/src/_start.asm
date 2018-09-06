@@ -20,7 +20,7 @@ _start:
 
     mov ax, 0x20
     mov ss, ax
-    mov esp, 0x300000
+    mov esp, 0x400000
 
     call kmain
 .halt:
