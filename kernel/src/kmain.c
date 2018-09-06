@@ -3,6 +3,7 @@
 #include "vesa_graphic.h"
 #include "base_system.h"
 #include "libft.h"
+#include "grub.h"
 
 // this loops clears the screen
 // there are 25 lines each of 80 columns; each element takes 2 bytes
@@ -48,7 +49,7 @@ void		text_putstr(char *str)
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
 #define VBE_MODE 0x105
 
-void 		kmain(void)
+void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
 	if (set_vbe(VBE_MODE) < 0)
 	{
@@ -66,7 +67,6 @@ void 		kmain(void)
 
 	struct vesa_graphic_mode_list *vgml =
 		&g_graphic_ctx.vesa_graphic_mode_list;
-
 
 	ft_printf("{orange}");
 	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 8;
@@ -101,6 +101,10 @@ void 		kmain(void)
 	ft_printf("{white}Initialize Paging: ");
 	init_paging();
 	ft_printf("{green}OK\n{eoc}");
+
+	ft_printf("flag: %p\n", multiboot_info_addr->flags);
+	ft_printf("mem_lower: %u, mem_upper: %u\n", multiboot_info_addr->mem_lower, multiboot_info_addr->mem_upper);
+	ft_printf("Addr = %p length = %u map_addr = %p\n", multiboot_info_addr, multiboot_info_addr->mmap_length, multiboot_info_addr->mmap_addr);
 
 	asm("sti");
 	ft_printf("{white}Interupt enabled: {green}OK{eoc}\n");
