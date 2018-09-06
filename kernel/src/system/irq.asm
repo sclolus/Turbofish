@@ -1,12 +1,27 @@
 [BITS 32]
+segment .data
+page_fault_msg db "page fault at %p", 10, 0
+
 segment .text
 GLOBAL asm_default_interrupt
+GLOBAL asm_page_fault
 GLOBAL asm_default_pic_master_interrupt
 GLOBAL asm_default_pic_slave_interrupt
 GLOBAL asm_clock_handler
 GLOBAL asm_keyboard_handler
 
 asm_default_interrupt:
+    iret
+
+extern ft_printf
+asm_page_fault:
+    push 2
+    mov eax, cr2
+    push eax
+    push page_fault_msg
+    call ft_printf
+    add esp, 12
+    jmp $
     iret
 
 asm_default_pic_master_interrupt:
