@@ -4,6 +4,7 @@
 #include "base_system.h"
 #include "libft.h"
 #include "grub.h"
+#include "paging.h"
 
 // this loops clears the screen
 // there are 25 lines each of 80 columns; each element takes 2 bytes
@@ -131,6 +132,49 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	set_text_color(10);
 	putchar('D');
 	putchar('\n');
+
+	init_frames();
+	void *a = alloc_frames(1);
+	ft_printf("a_addr = %p\n", a);
+	void *b = alloc_frames(1);
+	ft_printf("b_addr = %p\n", b);
+	void *c = alloc_frames(1);
+	ft_printf("c_addr = %p\n", c);
+	void *d = alloc_frames(2);
+	ft_printf("d_addr = %p\n", d);
+	void *e = alloc_frames(1);
+	ft_printf("e_addr = %p\n", e);
+	void *f = alloc_frames(2);
+	ft_printf("f_addr = %p\n", f);
+
+	ft_printf("free a: %i\n", free_frames(a));
+	ft_printf("free f: %i\n", free_frames(f));
+	ft_printf("free d: %i\n", free_frames(d));
+	ft_printf("free c: %i\n", free_frames(c));
+	ft_printf("free b: %i\n", free_frames(b));
+	ft_printf("free e: %i\n", free_frames(e));
+
+	a = alloc_frames(1);
+	ft_printf("a_addr = %p\n", a);
+	b = alloc_frames(1);
+	ft_printf("b_addr = %p\n", b);
+	c = alloc_frames(1);
+	ft_printf("c_addr = %p\n", c);
+	d = alloc_frames(2);
+	ft_printf("d_addr = %p\n", d);
+	e = alloc_frames(1);
+	ft_printf("e_addr = %p\n", e);
+	f = alloc_frames(2);
+	ft_printf("f_addr = %p\n", f);
+
+	ft_printf("free a: %i\n", free_frames(a));
+	ft_printf("free f: %i\n", free_frames(f));
+	ft_printf("free d: %i\n", free_frames(d));
+	ft_printf("free c: %i\n", free_frames(c));
+	ft_printf("free b: %i\n", free_frames(b));
+	ft_printf("free e: %i\n", free_frames(e));
+
+	ft_printf("frame count = %u\n", count_frames());
 	return;
 }
 
