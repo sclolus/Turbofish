@@ -44,9 +44,7 @@ struct __attribute__ ((packed)) page_directory {
 #define PAGE_DIRECTORY_0_ADDR 0x1000
 #define PAGE_TABLE_0_ADDR 0x400000
 
-static u32 g_pd_nb = 0;
-
-u32	map_address(u32 address)
+u32	map_address(u32 directory, u32 range, u32 address)
 {
 	struct page_directory	*pd;
 	struct page_table	*pt;
@@ -54,15 +52,15 @@ u32	map_address(u32 address)
 
 	pd = (struct page_directory *)PAGE_DIRECTORY_0_ADDR;
 	pt = (struct page_table *)(PAGE_TABLE_0_ADDR
-			+ (g_pd_nb * sizeof(struct page_table)));
+			+ (directory * sizeof(struct page_table)));
 
-	pd->seg[g_pd_nb].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
-	pd->seg[g_pd_nb].size = 0;
-	pd->seg[g_pd_nb].available = 0;
-	pd->seg[g_pd_nb].physical_address0_3 = ((u32)pt >> 12) & 0xF;
-	pd->seg[g_pd_nb].physical_address4_20 = ((u32)pt >> 12) >> 4;
+	pd->seg[directory].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
+	pd->seg[directory].size = 0;
+	pd->seg[directory].available = 0;
+	pd->seg[directory].physical_address0_3 = ((u32)pt >> 12) & 0xF;
+	pd->seg[directory].physical_address4_20 = ((u32)pt >> 12) >> 4;
 
-	for (int i = 0; i < MAX_PAGE_TABLE_SEG; i++) {
+	for (u32 i = 0; i < range; i++) {
 		pt->seg[i].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
 		pt->seg[i].cache = 0;
 		pt->seg[i].available = 0;
@@ -70,9 +68,7 @@ u32	map_address(u32 address)
 		pt->seg[i].physical_address4_20 = (address >> 12) >> 4;
 		address += OFFSET;
 	}
-	linear_address = (g_pd_nb & 0x3FF) << 22;
-	g_pd_nb++;
-
+	linear_address = (directory & 0x3FF) << 22;
 	return (linear_address);
 }
 
@@ -81,12 +77,18 @@ void init_paging(void)
 	ft_bzero((void *)PAGE_DIRECTORY_0_ADDR, sizeof(struct page_directory));
 	ft_bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
 
-	map_address(0x0);
-	map_address(0x400000);
+	map_address(0, MAX_PAGE_TABLE_SEG, 0x0);
+	map_address(1, MAX_PAGE_TABLE_SEG, 0x400000);
 
 // TODO Management of LFB with pagination is very dirty.
 // We have not to change vesa_mode_info.framebuffer !!!
-	u32 new_lfb = map_address((u32)g_graphic_ctx.vesa_mode_info.framebuffer);
+	u32 new_lfb = map_address(
+			1023,
+			g_graphic_ctx.vesa_mode_info.width
+			* g_graphic_ctx.vesa_mode_info.height
+			* g_graphic_ctx.vesa_mode_info.bpp >> 3
+			>> 12,
+			(u32)g_graphic_ctx.vesa_mode_info.framebuffer);
 	init_GDT((void *)new_lfb);
 	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)new_lfb;
 
