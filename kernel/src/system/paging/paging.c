@@ -44,6 +44,59 @@ struct __attribute__ ((packed)) page_directory {
 #define PAGE_DIRECTORY_0_ADDR 0x1000
 #define PAGE_TABLE_0_ADDR 0x400000
 
+int	paginate(u32 directory, u32 segment, u32 page_request, u32 address)
+{
+	struct page_table	*pt;
+
+	pt = (struct page_table *)(PAGE_TABLE_0_ADDR
+			+ (directory * sizeof(struct page_table)));
+
+	for (u32 i = segment; i < (segment + page_request); i++) {
+		pt->seg[i].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
+		pt->seg[i].cache = 0;
+		pt->seg[i].available = 0;
+		pt->seg[i].physical_address0_3 = (address >> 12) & 0xF;
+		pt->seg[i].physical_address4_20 = (address >> 12) >> 4;
+		address += OFFSET;
+	}
+	return 0;
+}
+
+int	unpaginate(u32 directory, u32 segment, u32 page_request)
+{
+	struct page_table	*pt;
+
+	pt = (struct page_table *)(PAGE_TABLE_0_ADDR
+			+ (directory * sizeof(struct page_table)));
+
+	for (u32 i = segment; i < (segment + page_request); i++) {
+		pt->seg[i].type = 0;
+		pt->seg[i].cache = 0;
+		pt->seg[i].available = 0;
+		pt->seg[i].physical_address0_3 = 0;
+		pt->seg[i].physical_address4_20 = 0;
+	}
+	return 0;
+}
+
+int	create_directory(u32 directory)
+{
+	struct page_directory	*pd;
+	struct page_table	*pt;
+
+	pd = (struct page_directory *)PAGE_DIRECTORY_0_ADDR;
+	pt = (struct page_table *)(PAGE_TABLE_0_ADDR
+			+ (directory * sizeof(struct page_table)));
+
+	pd->seg[directory].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
+	pd->seg[directory].size = 0;
+	pd->seg[directory].available = 0;
+	pd->seg[directory].physical_address0_3 = ((u32)pt >> 12) & 0xF;
+	pd->seg[directory].physical_address4_20 = ((u32)pt >> 12) >> 4;
+
+	return 0;
+}
+
 u32	map_address(u32 directory, u32 range, u32 address)
 {
 	struct page_directory	*pd;
