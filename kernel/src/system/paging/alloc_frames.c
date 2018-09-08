@@ -5,7 +5,11 @@
 
 #define MAX_DEEP	11
 
-#define BASE_ADDR	0x800000
+#define BASE_PHYSICAL_ADDR	0x1000000
+#define BASE_LINEAR_ADDRESS	0x800000
+#define BMALLOC_DIRECTORY	2
+
+
 #define PAGE_SIZE	(1 << 12)
 
 #define NO_ALLOC	0xFFFFFFFF
@@ -33,17 +37,15 @@ static u32	rec_alloc_frames(u32 page_request, u32 index, u32 deep)
 		{
 			frame_map[index] = ALLOCATED;
 
-			// ---------------------------------------------------------
+			u32 segment = (index & g_page_mask[deep])
+					* (1 << (MAX_DEEP - deep));
 			u32 address = (index & g_page_mask[deep]) *
 					(PAGE_SIZE << (MAX_DEEP - deep));
-			u32 segment = address >> 12;
-
-			address += BASE_ADDR,
-			paginate(2, segment, 1 << (MAX_DEEP - deep), address);
-			// ---------------------------------------------------------
-
-			return (index & g_page_mask[deep]) *
-					(PAGE_SIZE << (MAX_DEEP - deep));
+			return (paginate(
+					BMALLOC_DIRECTORY,
+					segment,
+					1 << (MAX_DEEP - deep),
+					address + BASE_PHYSICAL_ADDR));
 		}
 	}
 
@@ -95,14 +97,15 @@ void		*alloc_frames(u32 page_request)
 
 	ret = rec_alloc_frames(page_request, 1, 0);
 	if (ret != NO_ALLOC)
-		return (void *)(ret + BASE_ADDR);
+		return (void *)(ret);
 	return 0x0;
 }
 
 static int	rec_free_frames(u32 addr, u32 index, u32 deep)
 {
 	int ret;
-	u32 ref_addr = BASE_ADDR + ((index & g_page_mask[deep])
+
+	u32 ref_addr = BASE_LINEAR_ADDRESS + ((index & g_page_mask[deep])
 			* (PAGE_SIZE << (MAX_DEEP - deep)));
 	u32 sup_addr = ref_addr + ((PAGE_SIZE << MAX_DEEP) >> (1 + deep));
 
@@ -113,13 +116,9 @@ static int	rec_free_frames(u32 addr, u32 index, u32 deep)
 	{
 		frame_map[index] = UNUSED;
 
-		// ---------------------------------------------------------
-		u32 segment;
-
-		addr -= BASE_ADDR;
-		segment = addr >> 12;
-		unpaginate(2, segment, 1 << (MAX_DEEP - deep));
-		// ---------------------------------------------------------
+		u32 segment = (index & g_page_mask[deep])
+				* (1 << (MAX_DEEP - deep));
+		unpaginate(BMALLOC_DIRECTORY, segment, 1 << (MAX_DEEP - deep));
 
 		return 0;
 	}
@@ -158,7 +157,17 @@ void		init_frames(void)
 {
 	ft_memset(&frame_map, 1 << (MAX_DEEP + 1), UNUSED);
 
-	create_directory(2);
-	create_directory(3);
+	create_directory(BMALLOC_DIRECTORY);
+	create_directory(BMALLOC_DIRECTORY + 1);
+}
 
+void		*bmalloc(size_t size)
+{
+	u32 frame_request = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
+	return alloc_frames(frame_request);
+}
+
+int		bfree(void *addr)
+{
+	return free_frames(addr);
 }

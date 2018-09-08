@@ -44,7 +44,7 @@ struct __attribute__ ((packed)) page_directory {
 #define PAGE_DIRECTORY_0_ADDR 0x1000
 #define PAGE_TABLE_0_ADDR 0x400000
 
-int	paginate(u32 directory, u32 segment, u32 page_request, u32 address)
+u32	paginate(u32 directory, u32 segment, u32 page_request, u32 address)
 {
 	struct page_table	*pt;
 
@@ -59,7 +59,7 @@ int	paginate(u32 directory, u32 segment, u32 page_request, u32 address)
 		pt->seg[i].physical_address4_20 = (address >> 12) >> 4;
 		address += OFFSET;
 	}
-	return 0;
+	return ((directory & 0x3FF) << 22) + ((segment & 0x3FF) << 12);
 }
 
 int	unpaginate(u32 directory, u32 segment, u32 page_request)

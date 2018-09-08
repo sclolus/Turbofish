@@ -37,7 +37,7 @@ VPATH = include src src/system src/graphic src/keyboard src/system/paging
 
 LDFLAGS = -m elf_i386 -T link.ld
 
-SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging grub alloc_frames
+SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging alloc_frames
 SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging
 
 _HEADERS = i386_type vesa_graphic base_system
