@@ -1,6 +1,5 @@
 
-#include "paging.h"
-
+#include "memory.h"
 #include "libft.h"
 
 #define MAX_DEEP	11

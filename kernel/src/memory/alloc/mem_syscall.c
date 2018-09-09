@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "paging.h"
+#include "memory.h"
 
 /*
 ** Claim pages from Kernel, size may be calibrated to page_size.

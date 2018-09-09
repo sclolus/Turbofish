@@ -1,10 +1,10 @@
 
+#include "memory.h"
 #include "i386_type.h"
 #include "vesa_graphic.h"
 #include "base_system.h"
 #include "libft.h"
 #include "grub.h"
-#include "paging.h"
 
 // this loops clears the screen
 // there are 25 lines each of 80 columns; each element takes 2 bytes

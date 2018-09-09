@@ -17,7 +17,7 @@ void			init_paging(void);
 extern void		asm_paging_enable(void);
 extern void		asm_paging_disable(void);
 extern void		asm_paging_set_page_directory_address(
-					ptr_32 *page_directory_address);
+			ptr_32 *page_directory_address);
 
 void			bios_shutdown_computer(void);
 void			bios_wait(u32 sec);

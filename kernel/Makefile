@@ -9,17 +9,25 @@ LD = ld
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
+	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS += -nostdinc
 else
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
+	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS += -nostdinc
 endif
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
+	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS += -nostdinc
 else
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
+	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+	CFLAGS += -nostdinc
 endif
 endif
 
@@ -62,7 +70,7 @@ BTREE = alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btre
 SRC_C_KERNEL += $(KALLOC)
 SRC_C_KERNEL += $(BTREE)
 
-_HEADERS = i386_type vesa_graphic base_system
+_HEADERS = i386_type vesa_graphic base_system memory grub
 
 OBJ_DIR = objs
 
