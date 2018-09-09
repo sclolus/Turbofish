@@ -33,12 +33,34 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = include src src/system src/graphic src/keyboard src/system/paging
+VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree
 
 LDFLAGS = -m elf_i386 -T link.ld
 
 SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging alloc_frames
+
 SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging
+
+KALLOC = ctor mem_syscall \
+		size_fn \
+		index \
+		debug_show_alloc debug_display_nodes \
+		node_custom_allocator node_custom_deallocator \
+		cmp_range cmp_fixe \
+		free_record \
+		allocator \
+		reallocator \
+		deallocator \
+		main_prototypes \
+		trace \
+
+BTREE = alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
+		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node alloc_btree_try_to_insert \
+		alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node alloc_btree_insert_node alloc_btree_swap_content \
+		alloc_btree_limit_items alloc_btree_delete_strategy alloc_btree_get_neighbours
+
+SRC_C_KERNEL += $(KALLOC)
+SRC_C_KERNEL += $(BTREE)
 
 _HEADERS = i386_type vesa_graphic base_system
 

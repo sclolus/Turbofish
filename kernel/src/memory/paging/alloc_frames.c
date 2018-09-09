@@ -12,7 +12,7 @@
 
 #define PAGE_SIZE	(1 << 12)
 
-#define NO_ALLOC	0xFFFFFFFF
+#define MAP_FAILED	0xFFFFFFFF
 
 static u32 g_page_mask[MAX_DEEP + 1] =
 	{0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF};
@@ -32,17 +32,16 @@ static u32	rec_alloc_frames(u32 page_request, u32 index, u32 deep)
 			|| page_request > (u32)(1 << (MAX_DEEP - deep - 1)))
 	{
 		if (frame_map[index] == DIRTY)
-			return NO_ALLOC;
+			return MAP_FAILED;
 		else
 		{
 			frame_map[index] = ALLOCATED;
-
 			u32 segment = (index & g_page_mask[deep])
 					* (1 << (MAX_DEEP - deep));
 			u32 address = (index & g_page_mask[deep]) *
 					(PAGE_SIZE << (MAX_DEEP - deep));
 			return (paginate(
-					BMALLOC_DIRECTORY,
+					BMALLOC_DIRECTORY + (segment >> 10),
 					segment,
 					1 << (MAX_DEEP - deep),
 					address + BASE_PHYSICAL_ADDR));
@@ -60,7 +59,7 @@ static u32	rec_alloc_frames(u32 page_request, u32 index, u32 deep)
 			return ret;
 		}
 
-		if (ret != NO_ALLOC) {
+		if (ret != MAP_FAILED) {
 			frame_map[index] = DIRTY;
 			return ret;
 		}
@@ -77,13 +76,13 @@ static u32	rec_alloc_frames(u32 page_request, u32 index, u32 deep)
 			return ret;
 		}
 
-		if (ret != NO_ALLOC) {
+		if (ret != MAP_FAILED) {
 			frame_map[index] = DIRTY;
 			return ret;
 		}
 	}
 
-	return NO_ALLOC;
+	return MAP_FAILED;
 }
 
 void		*alloc_frames(u32 page_request)
@@ -96,7 +95,7 @@ void		*alloc_frames(u32 page_request)
 		return 0x0;
 
 	ret = rec_alloc_frames(page_request, 1, 0);
-	if (ret != NO_ALLOC)
+	if (ret != MAP_FAILED)
 		return (void *)(ret);
 	return 0x0;
 }
@@ -118,7 +117,10 @@ static int	rec_free_frames(u32 addr, u32 index, u32 deep)
 
 		u32 segment = (index & g_page_mask[deep])
 				* (1 << (MAX_DEEP - deep));
-		unpaginate(BMALLOC_DIRECTORY, segment, 1 << (MAX_DEEP - deep));
+		unpaginate(
+				BMALLOC_DIRECTORY + (segment >> 10),
+				segment,
+				1 << (MAX_DEEP - deep));
 
 		return 0;
 	}

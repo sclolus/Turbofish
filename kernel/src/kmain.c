@@ -134,6 +134,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	putchar('\n');
 
 	init_frames();
+
+/*
 	void *a = bmalloc(4096);
 	ft_printf("a_addr = %p\n", a);
 	void *b = bmalloc(4096);
@@ -214,6 +216,26 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	ft_printf("free c: %i\n", bfree(c));
 	ft_printf("free b: %i\n", bfree(b));
 	ft_printf("free e: %i\n", bfree(e));
+
+	ft_printf("frame count = %u\n", count_frames());
+*/
+
+
+	/*
+	char *x = bmalloc(532 * 4096);
+	ft_printf("ptr = %p\n", x);
+	char *y = bmalloc(65521);
+	ft_printf("ptr = %p\n", y);
+
+	while (1);
+	*/
+
+	char *u = kmalloc(16);
+	ft_printf("ptr = %p\n", u);
+	ft_strcpy(u, "Sanglier");
+	ft_printf("Le mot est %s\n", u);
+	kfree(u);
+	ft_printf("Le mot est %s\n", u);
 
 	ft_printf("frame count = %u\n", count_frames());
 	return;
