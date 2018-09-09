@@ -41,13 +41,13 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree src/tests
+VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree src/tests src/math
 
 LDFLAGS = -m elf_i386 -T link.ld
 
-SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging alloc_frames
+SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging alloc_frames rand
 
-SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging
+SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging 8087
 
 KALLOC = ctor mem_syscall \
 		size_fn \
