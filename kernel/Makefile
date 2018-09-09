@@ -33,12 +33,12 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = include src src/system src/graphic src/keyboard src/system/paging
+VPATH = include src src/system src/graphic src/keyboard src/system/paging src/math
 
 LDFLAGS = -m elf_i386 -T link.ld
 
-SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging grub
-SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging
+SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging rand
+SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging 8087
 
 _HEADERS = i386_type vesa_graphic base_system
 

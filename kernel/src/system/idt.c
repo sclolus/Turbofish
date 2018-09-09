@@ -38,6 +38,7 @@ extern void	asm_default_pic_master_interrupt(void);
 extern void	asm_default_pic_slave_interrupt(void);
 extern void	asm_clock_handler(void);
 extern void	asm_keyboard_handler(void);
+extern void	asm_real_time_clock_handler(void);
 
 void	init_IDT(void)
 {
@@ -65,6 +66,9 @@ void	init_IDT(void)
 	initialize_idt_seg(14, (u32)&asm_page_fault, 0x8, INTGATE);
 	initialize_idt_seg(32, (u32)&asm_clock_handler, 0x8, INTGATE);
 	initialize_idt_seg(33, (u32)&asm_keyboard_handler, 0x8, INTGATE);
+
+	// XXX The real time clock handler has trouble here !
+	initialize_idt_seg(112,(u32)&asm_real_time_clock_handler, 0x8, INTGATE);
 
 	g_idt_ptr.limit = IDT_SIZE << 3;
 	g_idt_ptr.base = IDT_ADDRESS;

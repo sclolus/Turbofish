@@ -29,6 +29,16 @@ init_PIC:
     push ebp
     mov ebp, esp
 
+
+    mov al,00110100b                  ;channel 0, lobyte/hibyte, rate generator
+    out 0x43, al
+
+    mov ax, 65535
+    out 0x40,al                       ;Set low byte of PIT reload value
+    mov al,ah                         ;ax = high 8 bits of reload value
+    out 0x40,al                       ;Set high byte of PIT reload value
+
+
     jmp .icw_1
 
 ; |0|0|0|1|x|0|x|x|
@@ -79,14 +89,17 @@ init_PIC:
 ; |x|x|x|x|x|x|x|x|
 ;  | | | | | | | |
 ;  +-+-+-+-+-+-+-+---- for each IRQ : interrupt mask actif (1) or not (0)
+
 .ocw_1:           ; Interrupt mask
-    in al, 0x21   ; get Interrupt Mask Register (IMR)
-    and al, 0xF8  ; 0xF8 => 11111000b. unlock IRQ0, IRQ1 and IRQ2(slave connexion)
+;   in al, 0x21   ; get Interrupt Mask Register (IMR)
+    mov al, 0xF8  ; 0xF9 => 11111000b. IRQ0(PIT channel 0 (clock)) IRQ1(keyboard) and IRQ2(slave connexion)
     out 0x21, al  ; store IMR
 
-    in al, 0xA1   ; get Interrupt Mask Register (IMR)
-    and al, 0xEF  ; 0xEF => 11101111b. unlock IRQ12 (master connexion)
+
+;   in al, 0xA1   ; get Interrupt Mask Register (IMR)
+    mov al, 0xEE  ; 0xEE => 11101110b. unlock IRQ12 (master connexion) and IRQ8 real time clock
     out 0xA1, al  ; store IMR
+
     jmp .end_init_pic
 .end_init_pic:
 

@@ -5,6 +5,8 @@
 #include "libft.h"
 #include "grub.h"
 
+#include "math.h"
+
 // this loops clears the screen
 // there are 25 lines each of 80 columns; each element takes 2 bytes
 void		reset_text_screen(void)
@@ -131,6 +133,36 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	set_text_color(10);
 	putchar('D');
 	putchar('\n');
+
+	srand(0xACE2);
+
+	u32 max_cap_2 = g_graphic_ctx.vesa_mode_info.width / 8 / 30;
+	u32 i_2 = 0;
+
+	for (u16 u = 1; u < 65535; u += 1)
+	{
+		u16 res;
+		u32 q = 0;
+		u32 j = 0;
+
+		do {
+			res = rand(u);
+			if (res > u)
+			{
+				ft_printf("ERROR SUP: %hu > %hu\n", res, u);
+				while (1);
+			}
+			q += res;
+			j++;
+		} while (j < ((1 << 10) - 1));
+		ft_printf("middle: %.6u for u = %.6hu ", q / j, u);
+		i_2++;
+		ft_printf((i_2 % max_cap_2 == 0) ? "\n" : " ");
+	}
+	if (i % max_cap != 0)
+		ft_printf("\n");
+	ft_printf("{eoc}");
+	ft_printf("TEST DONE\n");
 	return;
 }
 
