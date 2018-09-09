@@ -41,7 +41,7 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree
+VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree src/tests
 
 LDFLAGS = -m elf_i386 -T link.ld
 
@@ -67,10 +67,13 @@ BTREE = alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btre
 		alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node alloc_btree_insert_node alloc_btree_swap_content \
 		alloc_btree_limit_items alloc_btree_delete_strategy alloc_btree_get_neighbours
 
+TESTS = sodo
+
 SRC_C_KERNEL += $(KALLOC)
 SRC_C_KERNEL += $(BTREE)
+SRC_C_KERNEL += $(TESTS)
 
-_HEADERS = i386_type vesa_graphic base_system memory grub
+_HEADERS = i386_type vesa_graphic base_system memory grub tests
 
 OBJ_DIR = objs
 
