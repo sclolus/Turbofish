@@ -1,13 +1,6 @@
 
+# include "math.h"
 # include "libft.h"
-
-void			srand(u32 seed) {
-	(void)seed;
-}
-
-int			rand(void) {
-	return 0;
-}
 
 void			*kmalloc(size_t size);
 void			kfree(void *ptr);
@@ -45,11 +38,11 @@ static void		loop_sodo_test(
 	int		op;
 	int		i;
 
-	srand(0xAABBCCDD);
+	srand(0xA8B0);
 	i = 0;
 	while (i < NB_TESTS)
 	{
-		op = rand();
+		op = rand((1 << 16) - 1);
 		if (*nb_elmt == 0 || ((op & 0x1) == 0 && *nb_elmt < TEST_LENGTH))
 		{
 			add_sodo(tab_ptr, *nb_elmt);
@@ -72,7 +65,7 @@ void			sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
 	int		global_count[2];
 	int		i;
 
-	srand(0x1A2B3C4D);
+	srand(0x07FF);
 	nb_elmt = 0;
 	ft_memset(global_count, 0, 2 * sizeof(int));
 	loop_sodo_test(tab_ptr, global_count, &nb_elmt);
@@ -99,7 +92,7 @@ static void		loop_sodo_realloc(
 	i = -1;
 	while (++i < NB_TESTS)
 	{
-		op = rand() % 3;
+		op = rand(2);
 		if (*nb_elmt == 0 || (op == 0 && *nb_elmt < TEST_LENGTH))
 		{
 			add_sodo(tab_ptr, *nb_elmt);
@@ -126,7 +119,7 @@ void			sodo_realloc(struct s_test tab_ptr[TEST_LENGTH])
 	int		global_count[3];
 	int		i;
 
-	srand(0x12345678);
+	srand(0x15CF);
 	nb_elmt = 0;
 	ft_memset(global_count, 0, 3 * sizeof(int));
 	loop_sodo_realloc(tab_ptr, global_count, &nb_elmt);
@@ -151,7 +144,7 @@ void			add_sodo(
 {
 	int		i;
 
-	i = rand() % (MAX_ALLOC);
+	i = rand(MAX_ALLOC - 1);
 	tab_ptr[nb_elmt].c = i % 256;
 	tab_ptr[nb_elmt].ptr = kmalloc(i);
 	tab_ptr[nb_elmt].size = (size_t)i;
@@ -167,7 +160,7 @@ void			del_sodo(
 	uint8_t		*ptr;
 
 	n = 0;
-	i = rand() % nb_elmt;
+	i = rand(nb_elmt - 1);
 	ptr = (uint8_t *)tab_ptr[i].ptr;
 	while (n < tab_ptr[i].size)
 	{
@@ -228,7 +221,7 @@ void			real_sodo(
 	int		i;
 
 	n = 0;
-	i = rand() % *nb_elmt;
+	i = rand(*nb_elmt - 1);
 	ptr = (uint8_t *)tab_ptr[i].ptr;
 	while (n < tab_ptr[i].size)
 	{
@@ -241,7 +234,7 @@ void			real_sodo(
 		ptr++;
 		n++;
 	}
-	x = rand() % (MAX_ALLOC);
+	x = rand(MAX_ALLOC - 1);
 	if (ptr == NULL || x == 0)
 		return ;
 	real_sodo_next(tab_ptr, x, ptr, i);
