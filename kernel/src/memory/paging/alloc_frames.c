@@ -1,5 +1,5 @@
 
-#include "memory.h"
+#include "memory_manager.h"
 #include "libft.h"
 
 // 2^12 = 4096 * 4ko = 16mo
@@ -156,7 +156,7 @@ u32		count_frames(void)
 	return count;
 }
 
-void		init_frames(void)
+void		init_kernel_alloc_frames(void)
 {
 	ft_memset(&frame_map, 1 << (MAX_DEEP + 1), UNUSED);
 
@@ -165,15 +165,4 @@ void		init_frames(void)
 	create_directory(KMALLOC_BASE_DIRECTORY + 1);
 	create_directory(KMALLOC_BASE_DIRECTORY + 2);
 	create_directory(KMALLOC_BASE_DIRECTORY + 3);
-}
-
-void		*bmalloc(size_t size)
-{
-	u32 frame_request = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
-	return alloc_frames(frame_request);
-}
-
-int		bfree(void *addr)
-{
-	return free_frames(addr);
 }

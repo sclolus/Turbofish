@@ -1,5 +1,5 @@
 
-#include "memory.h"
+#include "memory_manager.h"
 #include "i386_type.h"
 #include "vesa_graphic.h"
 #include "base_system.h"
@@ -134,10 +134,9 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	putchar('D');
 	putchar('\n');
 
-	init_frames();
+	init_kernel_alloc_frames();
 
 	sodo();
-	rand_test();
 	return;
 }
 

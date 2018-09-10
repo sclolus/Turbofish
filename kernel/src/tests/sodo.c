@@ -1,7 +1,7 @@
 
 # include "math.h"
 # include "libft.h"
-# include "memory.h"
+# include "memory_manager.h"
 
 # define TEST_LENGTH	10000
 # define MAX_ALLOC	4096

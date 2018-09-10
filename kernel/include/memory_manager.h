@@ -1,12 +1,12 @@
 
-#ifndef __MEMORY_H__
-# define __MEMORY_H__
+#ifndef __MEMORY_MANAGER_H__
+# define __MEMORY_MANAGER_H__
 
 #include "i386_type.h"
 
 #define MAP_FAILED	0xFFFFFFFF
 
-void			init_frames(void);
+void			init_kernel_alloc_frames(void);
 void			*alloc_frames(u32 page_request);
 int			free_frames(void *addr);
 u32			count_frames(void);
@@ -23,9 +23,6 @@ int			unpaginate(
 			u32 page_request);
 
 int			create_directory(u32 directory);
-
-void			*bmalloc(size_t size);
-int			bfree(void *addr);
 
 void			kfree(void *ptr);
 void			*kmalloc(size_t size);

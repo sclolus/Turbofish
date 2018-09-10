@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "memory.h"
+#include "memory_manager.h"
 
 /*
 ** Claim pages from Kernel, size may be calibrated to page_size.

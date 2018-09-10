@@ -73,7 +73,7 @@ SRC_C_KERNEL += $(KALLOC)
 SRC_C_KERNEL += $(BTREE)
 SRC_C_KERNEL += $(TESTS)
 
-_HEADERS = i386_type vesa_graphic base_system memory grub tests
+_HEADERS = i386_type vesa_graphic base_system memory_manager grub tests
 
 OBJ_DIR = objs
 
