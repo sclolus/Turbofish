@@ -40,7 +40,7 @@ void	process_keyboard(u8 scancode)
 		}
 		case 224:
 		{
-			ft_printf("(special_char)");
+			printk("(special_char)");
 			break;
 		}
 		default:

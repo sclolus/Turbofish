@@ -23,7 +23,7 @@ static int		add_sodo(
 	tab_ptr[nb_elmt].c = i % 256;
 	tab_ptr[nb_elmt].ptr = kmalloc(i);
 	if (tab_ptr[nb_elmt].ptr == NULL) {
-		ft_printf("%s: OUT OF MEMORY\n", __func__);
+		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
 	}
 	tab_ptr[nb_elmt].size = (size_t)i;
@@ -46,7 +46,7 @@ static int		del_sodo(
 	{
 		if (*ptr != tab_ptr[i].c)
 		{
-			ft_printf("%s: BAD VALUE: Got %hhx instead of %hhx\n",
+			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, tab_ptr[i].c);
 			return -1;
 		}
@@ -107,7 +107,7 @@ static int		real_sodo_next(
 
 	if ((tab_ptr[i].ptr = krealloc(tab_ptr[i].ptr, x)) == NULL)
 	{
-		ft_printf("%s: OUT OF MEMORY\n", __func__);
+		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
 	}
 	n = 0;
@@ -117,7 +117,7 @@ static int		real_sodo_next(
 	{
 		if (*ptr != tab_ptr[i].c)
 		{
-			ft_printf("%s: BAD VALUE: Got %hhx instead of %hhx\n",
+			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, tab_ptr[i].c);
 			return -1;
 		}
@@ -146,7 +146,7 @@ static int		real_sodo(
 	{
 		if (*ptr != tab_ptr[i].c)
 		{
-			ft_printf("%s: BAD VALUE: Got %hhx instead of %hhx\n",
+			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, tab_ptr[i].c);
 			return -1;
 		}
@@ -222,8 +222,8 @@ static int		sodo_realloc(struct s_test tab_ptr[TEST_LENGTH])
 		}
 	}
 	kshow_alloc_mem();
-	ft_printf("Max allocated blocks: %i\n", max_alloc);
-	ft_printf("%i krealloc made, %i kmalloc and %i kfree made\n",
+	printk("Max allocated blocks: %i\n", max_alloc);
+	printk("%i krealloc made, %i kmalloc and %i kfree made\n",
 			global_count[2], global_count[0], global_count[1]);
 	return 0;
 }
@@ -241,7 +241,7 @@ static int		sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
 			(tab_ptr, global_count, &nb_elmt)) == -1)
 		return -1;
 	kshow_alloc_mem();
-	ft_printf("nb elmt = %i\n", nb_elmt);
+	printk("nb elmt = %i\n", nb_elmt);
 	i = 0;
 	while (i < nb_elmt)
 	{
@@ -249,8 +249,8 @@ static int		sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
 		i++;
 	}
 	kshow_alloc_mem();
-	ft_printf("Max allocated blocks: %i\n", max_alloc);
-	ft_printf("%i kmalloc made, %i kfree made\n",
+	printk("Max allocated blocks: %i\n", max_alloc);
+	printk("%i kmalloc made, %i kfree made\n",
 			global_count[0], global_count[1]);
 	return 0;
 }

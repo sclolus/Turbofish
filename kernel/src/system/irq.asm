@@ -14,13 +14,13 @@ GLOBAL asm_real_time_clock_handler
 asm_default_interrupt:
     iret
 
-extern ft_printf
+extern printk
 asm_page_fault:
     push 2
     mov eax, cr2
     push eax
     push page_fault_msg
-    call ft_printf
+    call printk
     add esp, 12
     jmp $
     iret

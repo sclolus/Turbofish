@@ -22,7 +22,7 @@ static struct s_node	**find_index_node(void *addr)
 			&cmp_addr_to_node_m_addr_range);
 	if (index == NULL)
 	{
-		ft_eprintf("%s: (index = NULL) It leads us to undefined\n",
+		eprintk("%s: (index = NULL) It leads us to undefined\n",
 				__func__);
 		return (NULL);
 	}
@@ -43,7 +43,7 @@ static struct s_node	**find_free_node(
 			&cmp_size_to_node_size);
 	if (sub_node == NULL)
 	{
-		ft_eprintf("%s: (subnode = NULL) It leads us to undefined\n",
+		eprintk("%s: (subnode = NULL) It leads us to undefined\n",
 				__func__);
 		return (NULL);
 	}
@@ -72,7 +72,7 @@ static struct s_node	**find_root(struct s_node *node)
 	else if (node->mask.s.node_type == RECORD_FREE_MEDIUM)
 		ptr = find_free_node(node, RECORD_FREE_MEDIUM);
 	if (ptr == NULL)
-		ft_eprintf("%s: (ptr = NULL) It leads us to undefined\n",
+		eprintk("%s: (ptr = NULL) It leads us to undefined\n",
 				__func__);
 	return (ptr);
 }

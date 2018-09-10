@@ -47,7 +47,7 @@ int	constructor_runtime(void)
 //	if (getrlimit(RLIMIT_DATA, &ctx.mem_limit) < 0)
 	if (0)
 	{
-		ft_eprintf("dyn_allocator cannot get RLIMIT_DATA\n");
+		eprintk("dyn_allocator cannot get RLIMIT_DATA\n");
 		return (-1);
 	}
 	preallocated_size = NODE_REQ_PAGES * ctx.page_size;
@@ -55,7 +55,7 @@ int	constructor_runtime(void)
 	preallocated_size += MEDIUM_RANGE;
 	if ((base_addr = get_new_pages(preallocated_size)) == NULL)
 	{
-		ft_eprintf("failed to allocate base preallocated memory\n");
+		eprintk("failed to allocate base preallocated memory\n");
 		return (-1);
 	}
 	open_malloc_tracer();

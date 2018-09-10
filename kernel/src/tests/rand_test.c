@@ -20,20 +20,20 @@ int	rand_test(void)
 			res = rand(u);
 			if (res > u)
 			{
-				ft_printf("{red}ERROR SUP: %hu > %hu{eoc}\n",
+				printk("{red}ERROR SUP: %hu > %hu{eoc}\n",
 						res, u);
 				return -1;
 			}
 			q += res;
 			j++;
 		} while (j < ((1 << 10) - 1));
-		ft_printf("middle: %.5u for u = %.5hu ", q / j, u);
+		printk("middle: %.5u for u = %.5hu ", q / j, u);
 		i++;
-		ft_printf((i % max_cap == 0) ? "\n" : " ");
+		printk((i % max_cap == 0) ? "\n" : " ");
 	}
 	if (i % max_cap != 0)
-		ft_printf("\n");
-	ft_printf("{eoc}");
-	ft_printf("RAND TEST DONE\n");
+		printk("\n");
+	printk("{eoc}");
+	printk("RAND TEST DONE\n");
 	return 0;
 }

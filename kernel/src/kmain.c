@@ -62,54 +62,54 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		return ;
 	}
 
-	ft_printf("{white}Kernel loaded: {green}OK\n{eoc}");
-	ft_printf("{white}VBE initialized: {green}OK\n{eoc}");
-	ft_printf("{white}GDT loaded: {green}OK\n{eoc}");
-	ft_printf("{white}Available graphic mode:\n{eoc}");
+	printk("{white}Kernel loaded: {green}OK\n{eoc}");
+	printk("{white}VBE initialized: {green}OK\n{eoc}");
+	printk("{white}GDT loaded: {green}OK\n{eoc}");
+	printk("{white}Available graphic mode:\n{eoc}");
 
 	struct vesa_graphic_mode_list *vgml =
 		&g_graphic_ctx.vesa_graphic_mode_list;
 
-	ft_printf("{orange}");
+	printk("{orange}");
 	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 8;
 	u32 i = 0;
 	while (i < vgml->nb_mode)
 	{
-		ft_printf("0x%.4hx ", vgml->mode[i]);
+		printk("0x%.4hx ", vgml->mode[i]);
 		i++;
-		ft_printf((i % max_cap == 0) ? "\n" : " ");
+		printk((i % max_cap == 0) ? "\n" : " ");
 	}
 	if (i % max_cap != 0)
-		ft_printf("\n");
-	ft_printf("{eoc}");
+		printk("\n");
+	printk("{eoc}");
 
-	ft_printf("{white}Selected mode: {green}%#x\n{eoc}", VBE_MODE);
-	ft_printf("-> width: {green}%hu{eoc}, height:"
+	printk("{white}Selected mode: {green}%#x\n{eoc}", VBE_MODE);
+	printk("-> width: {green}%hu{eoc}, height:"
 			" {green}%hu{eoc}, bpp: {green}%hhu{eoc}\n",
 			g_graphic_ctx.vesa_mode_info.width,
 			g_graphic_ctx.vesa_mode_info.height,
 			g_graphic_ctx.vesa_mode_info.bpp);
-	ft_printf("-> linear frame buffer location: {green}%#x{eoc}\n",
+	printk("-> linear frame buffer location: {green}%#x{eoc}\n",
 			g_graphic_ctx.vesa_mode_info.framebuffer);
 
-	ft_printf("{white}Initialize IDT: ");
+	printk("{white}Initialize IDT: ");
 	init_IDT();
-	ft_printf("{green}OK\n{eoc}");
+	printk("{green}OK\n{eoc}");
 
-	ft_printf("{white}Initialize PIC: ");
+	printk("{white}Initialize PIC: ");
 	init_PIC();
-	ft_printf("{green}OK\n{eoc}");
+	printk("{green}OK\n{eoc}");
 
-	ft_printf("{white}Initialize Paging: ");
+	printk("{white}Initialize Paging: ");
 	init_paging();
-	ft_printf("{green}OK\n{eoc}");
+	printk("{green}OK\n{eoc}");
 
-	ft_printf("flag: %p\n", multiboot_info_addr->flags);
-	ft_printf("mem_lower: %u, mem_upper: %u\n", multiboot_info_addr->mem_lower, multiboot_info_addr->mem_upper);
-	ft_printf("Addr = %p length = %u map_addr = %p\n", multiboot_info_addr, multiboot_info_addr->mmap_length, multiboot_info_addr->mmap_addr);
+	printk("flag: %p\n", multiboot_info_addr->flags);
+	printk("mem_lower: %u, mem_upper: %u\n", multiboot_info_addr->mem_lower, multiboot_info_addr->mem_upper);
+	printk("Addr = %p length = %u map_addr = %p\n", multiboot_info_addr, multiboot_info_addr->mmap_length, multiboot_info_addr->mmap_addr);
 
 	asm("sti");
-	ft_printf("{white}Interupt enabled: {green}OK{eoc}\n");
+	printk("{white}Interupt enabled: {green}OK{eoc}\n");
 
 	set_text_color(1);
 	putchar('H');

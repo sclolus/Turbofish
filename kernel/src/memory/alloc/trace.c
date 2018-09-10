@@ -49,26 +49,26 @@ static void	write_body(
 
 /*
 	if (op == MALLOC)
-		ft_fprintf(ctx.tracer_file_descriptor, "{magenta}Malloc{eoc} (%lu) ",
+		fprintk(ctx.tracer_file_descriptor, "{magenta}Malloc{eoc} (%lu) ",
 				size_a);
 	else if (op == FREE)
-		ft_fprintf(ctx.tracer_file_descriptor, "{cyan}Free{eoc} (%p) ", ptr);
+		fprintk(ctx.tracer_file_descriptor, "{cyan}Free{eoc} (%p) ", ptr);
 	else if (op == CALLOC)
-		ft_fprintf(ctx.tracer_file_descriptor,
+		fprintk(ctx.tracer_file_descriptor,
 				"{green}Calloc{eoc} (%lu, %lu) ",
 				size_a, size_b);
 	else if (op == REALLOC)
-		ft_fprintf(ctx.tracer_file_descriptor,
+		fprintk(ctx.tracer_file_descriptor,
 				"{yellow}Realloc{eoc} (%p, %lu) ", ptr, size_a);
 	else if (op == REALLOCF)
-		ft_fprintf(ctx.tracer_file_descriptor,
+		fprintk(ctx.tracer_file_descriptor,
 				"{green}ReallocF{eoc} (%p, %lu) ", ptr, size_a);
 	else if (op == REALLOCARRAY)
-		ft_fprintf(ctx.tracer_file_descriptor,
+		fprintk(ctx.tracer_file_descriptor,
 				"{green}ReallocArray{eoc} (%p, %lu, %lu) ", ptr,
 				size_a, size_b);
 	else if (op == VALLOC)
-		ft_fprintf(ctx.tracer_file_descriptor,
+		fprintk(ctx.tracer_file_descriptor,
 				"{magenta}Valloc{eoc} (%lu) ", size_a);
 */
 }
@@ -98,7 +98,7 @@ void		begin_trace(
 			now.tv_sec -= 1;
 		}
 		now.tv_sec = now.tv_sec - ctx.begin_time.tv_sec;
-//		ft_fprintf(ctx.tracer_file_descriptor,
+//		fprintk(ctx.tracer_file_descriptor,
 //				"%.4lu.%.6lu ", now.tv_sec, now.tv_nsec);
 	}
 	write_body(op, ptr, size_a, size_b);
@@ -113,13 +113,13 @@ void		bend_trace(enum e_trace_result result, void *addr)
 	if (result == SUCCESS)
 	{
 		if (addr)
-			ft_fprintf(ctx.tracer_file_descriptor, "ret = %p ", addr);
-		ft_fprintf(ctx.tracer_file_descriptor, "{green}Success{eoc}\n");
+			fprintk(ctx.tracer_file_descriptor, "ret = %p ", addr);
+		fprintk(ctx.tracer_file_descriptor, "{green}Success{eoc}\n");
 	}
 	else if (result == FAIL)
-		ft_fprintf(ctx.tracer_file_descriptor, "{red}Fail{eoc}\n");
+		fprintk(ctx.tracer_file_descriptor, "{red}Fail{eoc}\n");
 	else
-		ft_fprintf(ctx.tracer_file_descriptor, "{magenta}No action{eoc}\n");
+		fprintk(ctx.tracer_file_descriptor, "{magenta}No action{eoc}\n");
 */
 }
 
