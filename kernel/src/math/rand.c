@@ -17,6 +17,9 @@ int	srand(u16 seed)
 	u16 bit;	// Must be 16bit to allow bit<<15 later in the code
 	u32 period = 0;
 
+	for (int i = 0; i < SEQ_SIZE; i++)
+		g_rand_sequence[i] = 0;
+
 	do
 	{
 // taps: 16 14 13 11; feedback polynomial: x^16 + x^14 + x^13 + x^11 + 1

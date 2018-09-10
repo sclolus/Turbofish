@@ -67,7 +67,7 @@ BTREE = alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btre
 		alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node alloc_btree_insert_node alloc_btree_swap_content \
 		alloc_btree_limit_items alloc_btree_delete_strategy alloc_btree_get_neighbours
 
-TESTS = sodo
+TESTS = sodo rand_test
 
 SRC_C_KERNEL += $(KALLOC)
 SRC_C_KERNEL += $(BTREE)

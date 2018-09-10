@@ -137,6 +137,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_frames();
 
 	sodo();
+	rand_test();
 	return;
 }
 
