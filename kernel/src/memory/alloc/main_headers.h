@@ -21,7 +21,7 @@
 */
 
 # define NODE_ALLIGN		64
-# define NODE_REQ_PAGES		4
+# define NODE_REQ_PAGES		8
 
 # define TINY_SHR		4
 # define TINY_MAX_BLOCK		128
@@ -32,7 +32,7 @@
 # define TINY_RANGE		(TINY_BLOCK_SIZE * 32 * TINY_MAX_BLOCK)
 
 # define MEDIUM_SHR		9
-# define MEDIUM_MAX_BLOCK	128
+# define MEDIUM_MAX_BLOCK	122
 
 # define MEDIUM_BLOCK_SIZE	(1 << MEDIUM_SHR)
 # define MEDIUM_MASK		(MEDIUM_BLOCK_SIZE - 1)

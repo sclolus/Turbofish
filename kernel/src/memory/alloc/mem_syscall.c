@@ -20,7 +20,7 @@ void		*get_new_pages(size_t size)
 {
 	void *new_page;
 
-	size_t _size = (size / 4096) + ((size % 4096)  ? 1 : 0);
+	size_t _size = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
 
 /*
 	new_page = mmap(
