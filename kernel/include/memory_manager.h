@@ -6,23 +6,19 @@
 
 #define MAP_FAILED	0xFFFFFFFF
 
-void			init_kernel_alloc_frames(void);
-void			*alloc_frames(u32 page_request);
-int			free_frames(void *addr);
-u32			count_frames(void);
+enum mem_space {
+	kernel_space,
+	user_space
+};
 
-u32			paginate(
-			u32 directory,
-			u32 segment,
-			u32 page_request,
-			u32 address);
+// virtual map internal functions
+void			init_virtual_map(void);
+void			*get_pages(u32 page_request, enum mem_space space);
+u32			free_pages(void *addr, enum mem_space space);
 
-int			unpaginate(
-			u32 directory,
-			u32 segment,
-			u32 page_request);
-
-int			create_directory(u32 directory);
+// kernel public function
+void			*kmmap(u32 page_req);
+int			kmunmap(void *addr);
 
 void			kfree(void *ptr);
 void			*kmalloc(size_t size);

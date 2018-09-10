@@ -20,7 +20,7 @@ void		*get_new_pages(size_t size)
 {
 	void *new_page;
 
-	size_t _size = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
+//	size_t _size = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
 
 /*
 	new_page = mmap(
@@ -31,7 +31,7 @@ void		*get_new_pages(size_t size)
 		-1,
 		0);
 */
-	new_page = alloc_frames(_size);
+	new_page = kmmap(size);
 	return (u32)new_page == MAP_FAILED ? NULL : new_page;
 }
 
@@ -47,5 +47,5 @@ int		destroy_pages(void *addr, size_t size)
 		size));
 */
 	(void)size;
-	return (free_frames(addr));
+	return (kmunmap(addr));
 }

@@ -134,8 +134,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	putchar('D');
 	putchar('\n');
 
-	init_kernel_alloc_frames();
-
 	sodo();
 	return;
 }

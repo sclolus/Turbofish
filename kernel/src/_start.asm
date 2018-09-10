@@ -22,7 +22,7 @@ _start:
 
     mov ax, 0x20
     mov ss, ax
-    mov esp, 0x400000
+    mov esp, 0x300000
 
     push ebx                        ; EBX contain pointer to GRUB multiboot information (preserved register)
     call kmain                      ; kmain is called with this param
