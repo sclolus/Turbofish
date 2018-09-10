@@ -31,6 +31,10 @@ else
 endif
 endif
 
+ASMFLAGS = -f elf
+
+LDFLAGS = -m elf_i386 -T link.ld
+
 ### LIBRAIRIES ###
 
 LIB_DIR = .
@@ -41,15 +45,35 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
-VPATH = include src src/system src/graphic src/keyboard src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree src/tests src/math
 
-LDFLAGS = -m elf_i386 -T link.ld
+# main
+SRC_C_KERNEL = kmain
+SRC_ASM_KERNEL = _start
+VPATH = include src
+HEADERS = grub i386_type
 
-SRC_C_KERNEL = kmain bios_services set_vbe putchar idt process_keyboard paging alloc_frames rand
+# system
+SRC_C_KERNEL += bios_services idt
+SRC_ASM_KERNEL += gdt int8086 pic irq
+VPATH += src/system
+HEADERS += base_system
 
-SRC_ASM_KERNEL = _start gdt int8086 draw_line display_char pic irq keymap set_paging 8087
+# keyboard
+SRC_C_KERNEL += process_keyboard
+SRC_ASM_KERNEL += keymap
+VPATH += src/keyboard
 
-KALLOC = ctor mem_syscall \
+# graphic
+SRC_C_KERNEL += set_vbe putchar
+SRC_ASM_KERNEL += draw_line display_char
+VPATH += src/graphic
+HEADERS += vesa_graphic
+
+# memory
+MEM_PAGING_C = paging alloc_frames
+MEM_PAGING_ASM = set_paging
+
+MEM_KALLOC = ctor mem_syscall \
 		size_fn \
 		index \
 		debug_show_alloc debug_display_nodes \
@@ -61,30 +85,39 @@ KALLOC = ctor mem_syscall \
 		deallocator \
 		main_prototypes \
 		trace \
+		alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
+		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
+		alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
+		alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
+		alloc_btree_get_neighbours
 
-BTREE = alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
-		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node alloc_btree_try_to_insert \
-		alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node alloc_btree_insert_node alloc_btree_swap_content \
-		alloc_btree_limit_items alloc_btree_delete_strategy alloc_btree_get_neighbours
+SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC)
+SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
+VPATH += src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree
+HEADERS += memory_manager main_headers alloc_btree
 
-TESTS = sodo rand_test
+# tests
+SRC_C_KERNEL += sodo rand_test
+VPATH += src/tests
+HEADER += tests
 
-SRC_C_KERNEL += $(KALLOC)
-SRC_C_KERNEL += $(BTREE)
-SRC_C_KERNEL += $(TESTS)
+# math
+SRC_C_KERNEL += rand
+SRC_ASM_KERNEL += 8087
+VPATH += src/math
+HEADERS += math
 
-_HEADERS = i386_type vesa_graphic base_system memory_manager grub tests
 
 OBJ_DIR = objs
-
-__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
-OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
 
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
 OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
 
-__H__ = $(basename $(notdir $(_HEADERS)))
-HEADERS = $(addsuffix .h, $(__H__))
+__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
+OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
+
+__H__ = $(basename $(notdir $(HEADERS)))
+_HEADERS = $(addsuffix .h, $(__H__))
 
 .PHONY: all clean fclean re help
 
@@ -94,11 +127,11 @@ $(NAME): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
 	ld $(LDFLAGS) $^ -o $@
 	chmod -x $(NAME)
 
-$(OBJ_DIR)/%.o: %.c $(HEADERS) Makefile
+$(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_DIR)/%.o: %.asm $(HEADERS) Makefile
-	$(ASM) -f elf -o $@ $<
+$(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
+	$(ASM) $(ASMFLAGS) -o $@ $<
 
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
