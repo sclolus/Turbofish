@@ -5,6 +5,7 @@
 #include "base_system.h"
 #include "libft.h"
 #include "grub.h"
+#include "tests.h"
 
 // this loops clears the screen
 // there are 25 lines each of 80 columns; each element takes 2 bytes
@@ -135,109 +136,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	init_frames();
 
-/*
-	void *a = bmalloc(4096);
-	ft_printf("a_addr = %p\n", a);
-	void *b = bmalloc(4096);
-	ft_printf("b_addr = %p\n", b);
-	void *c = bmalloc(4096);
-	ft_printf("c_addr = %p\n", c);
-	void *d = bmalloc(8192);
-	ft_printf("d_addr = %p\n", d);
-	void *e = bmalloc(4096);
-	ft_printf("e_addr = %p\n", e);
-	void *f = bmalloc(8192);
-	ft_printf("f_addr = %p\n", f);
-	void *g = bmalloc(1 << 21);
-	ft_printf("g_addr = %p\n", g);
-	void *h = bmalloc(1 << 16);
-	ft_printf("h_addr = %p\n", h);
-	void *j = bmalloc(65536);
-	ft_printf("j_addr = %p\n", j);
-
-	ft_memset(a, 233, 4096);
-	ft_printf("memset A done\n");
-	ft_memset(b, 124, 4096);
-	ft_printf("memset B done\n");
-	ft_memset(c, 14, 4096);
-	ft_printf("memset C done\n");
-	ft_memset(d, 7, 8192);
-	ft_printf("memset D done\n");
-	ft_memset(e, 89, 4096);
-	ft_printf("memset E done\n");
-	ft_memset(f, 34, 8192);
-	ft_printf("memset F done\n");
-	ft_memset(g, 66, 1 << 21);
-	ft_printf("memset G done\n");
-	ft_memset(h, 22, 1 << 16);
-	ft_printf("memset H done\n");
-	ft_memset(j, 11, 65536);
-	ft_printf("memset J done\n");
-
-	int	test(u8 *addr, u8 c, size_t length)
-	{
-		for (size_t i = 0; i < length; i++)
-		{
-			if (addr[i] != c)
-				return -1;
-		}
-		return 0;
-	}
-
-	test(a, 233, 4096);
-	ft_printf("test A done\n");
-	test(b, 124, 4096);
-	ft_printf("test B done\n");
-	test(c, 14, 4096);
-	ft_printf("test C done\n");
-	test(d, 7, 8192);
-	ft_printf("test D done\n");
-	test(e, 89, 4096);
-	ft_printf("test E done\n");
-	test(f, 34, 8192);
-	ft_printf("test F done\n");
-	test(g, 66, 1 << 21);
-	ft_printf("test G done\n");
-	test(h, 22, 1 << 16);
-	ft_printf("test H done\n");
-	test(j, 11, 65536);
-	ft_printf("test J done\n");
-
-
-	ft_memcpy(a, "bananes", 8);
-	ft_printf("les %s sont cuites\n", a);
-
-	ft_printf("free a: %i\n", bfree(a));
-	ft_printf("free f: %i\n", bfree(f));
-	ft_printf("free i: %i\n", bfree(j));
-	ft_printf("free g: %i\n", bfree(g));
-	ft_printf("free h: %i\n", bfree(h));
-	ft_printf("free d: %i\n", bfree(d));
-	ft_printf("free c: %i\n", bfree(c));
-	ft_printf("free b: %i\n", bfree(b));
-	ft_printf("free e: %i\n", bfree(e));
-
-	ft_printf("frame count = %u\n", count_frames());
-*/
-
-
-	/*
-	char *x = bmalloc(532 * 4096);
-	ft_printf("ptr = %p\n", x);
-	char *y = bmalloc(65521);
-	ft_printf("ptr = %p\n", y);
-
-	while (1);
-	*/
-
-	char *u = kmalloc(16);
-	ft_printf("ptr = %p\n", u);
-	ft_strcpy(u, "Sanglier");
-	ft_printf("Le mot est %s\n", u);
-	kfree(u);
-	ft_printf("Le mot est %s\n", u);
-
-	ft_printf("frame count = %u\n", count_frames());
+	sodo();
 	return;
 }
 

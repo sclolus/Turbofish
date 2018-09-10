@@ -21,7 +21,7 @@ $(IMG_DISK):
 	sudo losetup -d /dev/loop0
 
 clean:
-	make -C kernel clean
+	make -C kernel fclean
 
 fclean:
 	make -C kernel fclean

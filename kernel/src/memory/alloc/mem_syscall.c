@@ -32,7 +32,6 @@ void		*get_new_pages(size_t size)
 		0);
 */
 	new_page = alloc_frames(_size);
-
 	return (u32)new_page == MAP_FAILED ? NULL : new_page;
 }
 

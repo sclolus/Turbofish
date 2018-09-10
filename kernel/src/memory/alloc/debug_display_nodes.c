@@ -14,14 +14,10 @@
 
 static inline void	show_part(struct s_node_page *e, int i, int fd)
 {
-	(void)i;
-	(void)e;
-	(void)fd;
-//	ft_fprintf(fd, "%.3i: ", i);
-//	ft_fprintf(fd, "{red}%s{eoc}", e->node[i].parent == NULL ?
-//			"ROOT " : "     ");
+	ft_fprintf(fd, "%.3i: ", i);
+	ft_fprintf(fd, "{red}%s{eoc}", e->node[i].parent == NULL ?
+			"ROOT " : "     ");
 
-/*
 	if (e->node[i].mask.s.node_type == INDEX)
 		ft_fprintf(fd, "UNIQUE: index_pages_tree, %p", &e->node[i]);
 	else if (e->node[i].mask.s.node_type == RECORD_ALLOCATED_LARGE)
@@ -41,7 +37,6 @@ static inline void	show_part(struct s_node_page *e, int i, int fd)
 	else
 		ft_fprintf(fd, "{red}unknown node{eoc}");
 	ft_fprintf(fd, "\n");
-*/
 }
 
 void			debug_nodes(int fd)
@@ -49,8 +44,7 @@ void			debug_nodes(int fd)
 	struct s_node_page	*e;
 	int			i;
 
-	(void)fd;
-//	ft_fprintf(fd, "{red}__ALLOCATED_NODES__:{eoc}\n");
+	ft_fprintf(fd, "{red}__ALLOCATED_NODES__:{eoc}\n");
 	e = ctx.node_pages_entry;
 	while (e)
 	{
@@ -61,6 +55,6 @@ void			debug_nodes(int fd)
 			i++;
 		}
 		e = e->primary_block.next;
-//		ft_fprintf(fd, "\n");
+		ft_fprintf(fd, "\n");
 	}
 }

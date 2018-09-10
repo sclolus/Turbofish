@@ -2,11 +2,12 @@
 #include "memory.h"
 #include "libft.h"
 
-#define MAX_DEEP	11
+// 2^12 = 4096 * 4ko = 16mo
+#define MAX_DEEP	12
 
 #define BASE_PHYSICAL_ADDR	0x1000000
 #define BASE_LINEAR_ADDRESS	0x800000
-#define BMALLOC_DIRECTORY	2
+#define KMALLOC_BASE_DIRECTORY	2
 
 
 #define PAGE_SIZE	(1 << 12)
@@ -14,10 +15,10 @@
 #define MAP_FAILED	0xFFFFFFFF
 
 static u32 g_page_mask[MAX_DEEP + 1] =
-	{0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF};
+	{0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF};
 
 #define	UNUSED		0x0	// block is free
-#define DIRTY		0x1	// block is not totally free, some sub blocks are allocated
+#define DIRTY		0x1	// block isn't totally free, some sub blocks are allocated
 #define ALLOCATED	0x2	// block is allocated
 #define UNAIVALABLE	0x3	// block has all sub blocks allocated
 
@@ -40,8 +41,9 @@ static u32	rec_alloc_frames(u32 page_request, u32 index, u32 deep)
 			u32 address = (index & g_page_mask[deep]) *
 					(PAGE_SIZE << (MAX_DEEP - deep));
 			return (paginate(
-					BMALLOC_DIRECTORY + (segment >> 10),
-					segment,
+					KMALLOC_BASE_DIRECTORY
+					+ (segment >> 10),
+					segment & 0X3FF,
 					1 << (MAX_DEEP - deep),
 					address + BASE_PHYSICAL_ADDR));
 		}
@@ -117,8 +119,8 @@ static int	rec_free_frames(u32 addr, u32 index, u32 deep)
 		u32 segment = (index & g_page_mask[deep])
 				* (1 << (MAX_DEEP - deep));
 		unpaginate(
-				BMALLOC_DIRECTORY + (segment >> 10),
-				segment,
+				KMALLOC_BASE_DIRECTORY + (segment >> 10),
+				segment & 0X3FF,
 				1 << (MAX_DEEP - deep));
 
 		return 0;
@@ -158,8 +160,11 @@ void		init_frames(void)
 {
 	ft_memset(&frame_map, 1 << (MAX_DEEP + 1), UNUSED);
 
-	create_directory(BMALLOC_DIRECTORY);
-	create_directory(BMALLOC_DIRECTORY + 1);
+	// create four directory of 4mo each
+	create_directory(KMALLOC_BASE_DIRECTORY);
+	create_directory(KMALLOC_BASE_DIRECTORY + 1);
+	create_directory(KMALLOC_BASE_DIRECTORY + 2);
+	create_directory(KMALLOC_BASE_DIRECTORY + 3);
 }
 
 void		*bmalloc(size_t size)
