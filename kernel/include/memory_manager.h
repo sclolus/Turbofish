@@ -16,6 +16,12 @@ void			init_virtual_map(void);
 void			*get_pages(u32 page_request, enum mem_space space);
 u32			free_pages(void *addr, enum mem_space space);
 
+// physical map internal functions
+void			init_physical_map(void);
+int			mark_physical_area(void *addr, u32 page_request);
+void			*get_physical_addr(u32 page_request);
+int			drop_physical_addr(void *addr);
+
 // kernel public function
 void			*kmmap(u32 page_req);
 int			kmunmap(void *addr);

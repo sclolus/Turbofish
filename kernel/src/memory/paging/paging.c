@@ -45,6 +45,26 @@ struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
 
+static void	*virt_to_physical_addr(u32 virt_addr)
+{
+	struct page_table_seg	*pt;
+	u32			phy_addr;
+
+	if (virt_addr & 0xFFF) {
+		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		return (void *)MAP_FAILED;
+	}
+	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	phy_addr = pt->physical_address0_3 & 0xF;
+	phy_addr <<= 4;
+	phy_addr |= pt->physical_address4_20 & 0xFFFF;
+	phy_addr <<= 12;
+
+	return (void *)phy_addr;
+}
+
 static int	create_directory(u32 directory, enum mem_space space)
 {
 	struct page_directory	*pd;
@@ -112,16 +132,24 @@ static int	unmap_address(u32 virt_addr, u32 page_req)
 void		*kmmap(u32 size)
 {
 	void	*virt_addr;
+	void	*phy_addr;
 	u32	page_req;
 
 	page_req = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
 	virt_addr = get_pages(page_req, kernel_space);
-	if ((u32)virt_addr != MAP_FAILED) {
-		/// XXX need to consult phy_map here
+	if ((u32)virt_addr != MAP_FAILED)
+	{
+		phy_addr = get_physical_addr(page_req);
+		if ((u32)phy_addr == MAP_FAILED)
+		{
+			eprintk("out of memory\n");
+			return (void *)MAP_FAILED;
+		}
+
 		map_address(
 			(u32)virt_addr,
 			page_req,
-			(u32)virt_addr + 0x400000,
+			(u32)phy_addr,
 			kernel_space);
 	}
 	return virt_addr;
@@ -129,12 +157,16 @@ void		*kmmap(u32 size)
 
 int		kmunmap(void *virt_addr)
 {
-	u32 page_req;
+	u32	page_req;
+	void	*phy_addr;
 
-	// XXX need to free phy_map
 	page_req = free_pages(virt_addr, kernel_space);
 	if (page_req == 0)
 		return -1;
+
+	phy_addr = virt_to_physical_addr((u32)virt_addr);
+
+	drop_physical_addr(phy_addr);
 
 	return unmap_address((u32)virt_addr, page_req);
 }
@@ -159,13 +191,18 @@ void		init_paging(void)
 	// initialize virtual memory map
 	init_virtual_map();
 
+	// initialize physical memory map
+	init_physical_map();
+
 	// mapping of first 4mo, GDT, IDT, page directory, kernel, stack
 	virt_addr = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
 	map_address((u32)virt_addr, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
+	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
 	// mapping of next 4mo, pages list
 	virt_addr = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
 	map_address((u32)virt_addr, MAX_PAGE_TABLE_SEG, 0x400000, kernel_space);
+	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
 
 	// mapping of LFB VBE
 	virt_addr = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
@@ -174,6 +211,9 @@ void		init_paging(void)
 			MAX_PAGE_TABLE_SEG,
 			(u32)g_graphic_ctx.vesa_mode_info.framebuffer,
 			kernel_space);
+	mark_physical_area(
+			g_graphic_ctx.vesa_mode_info.framebuffer,
+			MAX_PAGE_TABLE_SEG);
 	init_GDT((void *)virt_addr);
 	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)virt_addr;
 
