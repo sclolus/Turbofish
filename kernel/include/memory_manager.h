@@ -73,9 +73,9 @@ int			mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl,
 void			*kmmap(u32 page_req);
 int			kmunmap(void *addr);
 
-// Kernel memory helpers
-void			kfree(void *ptr);
+// Kernel K-Family memory helpers
 void			*kmalloc(size_t size);
+void			kfree(void *ptr);
 void			*kcalloc(size_t count, size_t size);
 void			*krealloc(void *ptr, size_t size);
 void			*kreallocf(void *ptr, size_t size);
@@ -83,5 +83,10 @@ void			*kreallocarray(void *ptr, size_t nmemb, size_t size);
 void			*kvalloc(size_t size);
 void			kshow_alloc_mem(void);
 void			kshow_alloc_mem_ex(void);
+
+// Kernel V-Family memory helpers
+void			*valloc(size_t size);
+void			vfree(void *ptr);
+size_t			vsize(void *ptr);
 
 #endif

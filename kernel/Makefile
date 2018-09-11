@@ -83,7 +83,7 @@ MEM_KALLOC = ctor mem_syscall \
 		allocator \
 		reallocator \
 		deallocator \
-		main_prototypes \
+		k_main_prototypes \
 		trace \
 		alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
 		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
@@ -91,9 +91,11 @@ MEM_KALLOC = ctor mem_syscall \
 		alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
 		alloc_btree_get_neighbours
 
-SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC)
+MEM_VALLOC = v_main_prototypes
+
+SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC) $(MEM_VALLOC)
 SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
-VPATH += src/memory/paging src/memory/alloc src/memory/alloc/alloc_btree
+VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
 HEADERS += memory_manager main_headers alloc_btree
 
 # tests
