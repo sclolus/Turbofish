@@ -55,7 +55,9 @@ int		mark_physical_area(void *addr, u32 page_request)
 	{
 		page_request -= 1;
 		bitlen = count_bits(page_request);
-		deep = MAX_LVL - bitlen + 1;
+		// XXX when change granularity, must add a value after 'BITLEN'
+		// if granularity = 2, add 1, if granularity = 4, add 2
+		deep = MAX_LVL - bitlen + 0;
 	}
 	return mark_mem_area(phy_map, (u32)addr, 1, 0, deep);
 }

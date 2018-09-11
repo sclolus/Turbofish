@@ -77,8 +77,8 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 		return 0;
 
 	u32 ref_addr = (idx & page_mask[lvl])
-			* (PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
-	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_LVL - 1)) >>  lvl)
+			* (u32)(PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
+	u32 sup_addr = ref_addr + ((u32)(PAGE_SIZE << (MAX_LVL - 1)) >>  lvl)
 			* GRANULARITY;
 
 	if (addr == ref_addr && IS_ALLOCATED(map, idx))
@@ -107,9 +107,12 @@ int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 	if (lvl > MAX_LVL)
 		return -1;
 
+	if (!IS_USABLE(map, idx))
+		return -1;
+
 	u32 ref_addr = (idx & page_mask[lvl])
-			* (PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
-	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_LVL - 1)) >> lvl)
+			* (u32)(PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
+	u32 sup_addr = ref_addr + ((u32)(PAGE_SIZE << (MAX_LVL - 1)) >> lvl)
 			* GRANULARITY;
 
 	if (lvl == cap)

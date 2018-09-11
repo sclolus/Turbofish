@@ -53,11 +53,16 @@ int			drop_physical_addr(void *addr);
 	map[(i) >> 2] = ((map[(i) >> 2] & ~(0b11 << (2 * ((i) & 0x3)))) \
 	| (value << (2 * ((i) & 0x3))))
 
-#define MAX_LVL		19
+#define MAX_LVL		20
 #define MAP_LENGTH	(1 << 19)
 
-#define GRANULARITY	2
-#define GRANULARITY_NEG	2
+/*
+ * granularity is the number of 4ko pages for the more tiny area
+ * his NEG value is the opposite. (g4 n1, g2 n2, g1, n4)
+ */
+
+#define GRANULARITY	1
+#define GRANULARITY_NEG	4
 
 u32			get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
 u32			free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl);
