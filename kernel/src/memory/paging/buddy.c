@@ -2,7 +2,7 @@
 #include "memory_manager.h"
 #include "libft.h"
 
-static u32 g_page_mask[21] = {
+static u32 page_mask[21] = {
 	0,
 	0x1, 0x3, 0x7, 0xF,
 	0x1F, 0x3F, 0x7F, 0xFF,
@@ -10,58 +10,58 @@ static u32 g_page_mask[21] = {
 	0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
 	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF};
 
-u32	get_mem_area(u32 page_request, u32 index, u32 deep, u8 *map)
+u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 {
 	u32	ret;
 
-	if (deep == MAX_DEEP || page_request
-			> (u32)(GRANULARITY << (MAX_DEEP - deep - 1)))
+	if (lvl == MAX_LVL || pages_req
+			> (u32)(GRANULARITY << (MAX_LVL - lvl - 1)))
 	{
-		if (IS_DIRTY(map, index))
+		if (IS_DIRTY(map, idx))
 			return MAP_FAILED;
 		else
 		{
-			if (index > (MAP_LENGTH * GRANULARITY_NEG))
-				eprintk("%s: ERROR index, got %u\n",
-						__func__, index);
-			SET(map, index, ALLOCATED);
-			u32 segment = (index & g_page_mask[deep])
-					* (GRANULARITY << (MAX_DEEP - deep));
+			if (idx > (MAP_LENGTH * GRANULARITY_NEG))
+				eprintk("%s: ERROR idx, got %u\n",
+						__func__, idx);
+			SET(map, idx, ALLOCATED);
+			u32 segment = (idx & page_mask[lvl])
+					* (GRANULARITY << (MAX_LVL - lvl));
 			return (((segment >> 10) & 0x3FF) << 22)
 					| ((segment & 0x3FF) << 12);
 		}
 	}
 
-	if (IS_USABLE(map, 2 * index))
+	if (IS_USABLE(map, 2 * idx))
 	{
-		ret = get_mem_area(page_request, 2 * index, deep + 1, map);
+		ret = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
 
-		if ((!IS_USABLE(map, 2 * index))
-				&& (!IS_USABLE(map, 2 * index + 1)))
+		if ((!IS_USABLE(map, 2 * idx))
+				&& (!IS_USABLE(map, 2 * idx + 1)))
 		{
-			SET(map, index, UNAIVALABLE);
+			SET(map, idx, UNAIVALABLE);
 			return ret;
 		}
 
 		if (ret != MAP_FAILED) {
-			SET(map, index, DIRTY);
+			SET(map, idx, DIRTY);
 			return ret;
 		}
 	}
 
-	if (IS_USABLE(map, 2 * index + 1))
+	if (IS_USABLE(map, 2 * idx + 1))
 	{
-		ret = get_mem_area(page_request, 2 * index + 1, deep + 1, map);
+		ret = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
 
-		if ((!IS_USABLE(map, 2 * index))
-				&& (!IS_USABLE(map, 2 * index + 1)))
+		if ((!IS_USABLE(map, 2 * idx))
+				&& (!IS_USABLE(map, 2 * idx + 1)))
 		{
-			SET(map, index, UNAIVALABLE);
+			SET(map, idx, UNAIVALABLE);
 			return ret;
 		}
 
 		if (ret != MAP_FAILED) {
-			SET(map, index, DIRTY);
+			SET(map, idx, DIRTY);
 			return ret;
 		}
 	}
@@ -69,74 +69,74 @@ u32	get_mem_area(u32 page_request, u32 index, u32 deep, u8 *map)
 	return MAP_FAILED;
 }
 
-u32	free_mem_area(u32 addr, u32 index, u32 deep, u8 *map)
+u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 {
 	int ret;
 
-	if (deep > MAX_DEEP)
+	if (lvl > MAX_LVL)
 		return 0;
 
-	u32 ref_addr = (index & g_page_mask[deep])
-			* (PAGE_SIZE << (MAX_DEEP - deep)) * GRANULARITY;
-	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_DEEP - 1)) >>  deep)
+	u32 ref_addr = (idx & page_mask[lvl])
+			* (PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
+	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_LVL - 1)) >>  lvl)
 			* GRANULARITY;
 
-	if (addr == ref_addr && IS_ALLOCATED(map, index))
+	if (addr == ref_addr && IS_ALLOCATED(map, idx))
 	{
-		SET(map, index, UNUSED);
-		return GRANULARITY << (MAX_DEEP - deep);
+		SET(map, idx, UNUSED);
+		return GRANULARITY << (MAX_LVL - lvl);
 	}
 	else if (addr < sup_addr)
-		ret = free_mem_area(addr, index * 2, deep + 1, map);
+		ret = free_mem_area(map, addr, idx * 2, lvl + 1);
 	else
-		ret = free_mem_area(addr, index * 2 + 1, deep + 1, map);
+		ret = free_mem_area(map, addr, idx * 2 + 1, lvl + 1);
 
 	if (ret != 0)
 	{
-		if (IS_UNUSED(map, index * 2) &&
-				IS_UNUSED(map, index * 2 + 1))
-			SET(map, index, UNUSED);
+		if (IS_UNUSED(map, idx * 2) &&
+				IS_UNUSED(map, idx * 2 + 1))
+			SET(map, idx, UNUSED);
 	}
 	return ret;
 }
 
-int	mark_mem_area(u32 addr, u32 index, u32 deep, u32 cap, u8 *map)
+int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 {
 	int ret;
 
-	if (deep > MAX_DEEP)
+	if (lvl > MAX_LVL)
 		return -1;
 
-	u32 ref_addr = (index & g_page_mask[deep])
-			* (PAGE_SIZE << (MAX_DEEP - deep)) * GRANULARITY;
-	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_DEEP - 1)) >>  deep)
+	u32 ref_addr = (idx & page_mask[lvl])
+			* (PAGE_SIZE << (MAX_LVL - lvl)) * GRANULARITY;
+	u32 sup_addr = ref_addr + ((PAGE_SIZE << (MAX_LVL - 1)) >> lvl)
 			* GRANULARITY;
 
-	if (deep == cap)
+	if (lvl == cap)
 	{
-		if (addr == ref_addr && IS_UNUSED(map, index))
+		if (addr == ref_addr && IS_UNUSED(map, idx))
 		{
-			SET(map, index, ALLOCATED);
-			return 0;
+			SET(map, idx, ALLOCATED);
+			return lvl;
 		}
 		return -1;
 	}
 
 	if (addr < sup_addr)
-		ret = mark_mem_area(addr, index * 2, deep + 1, cap, map);
+		ret = mark_mem_area(map, addr, idx * 2, lvl + 1, cap);
 	else
-		ret = mark_mem_area(addr, index * 2 + 1, deep + 1, cap, map);
+		ret = mark_mem_area(map, addr, idx * 2 + 1, lvl + 1, cap);
 
 	if (ret != -1)
 	{
-		if ((!IS_USABLE(map, 2 * index))
-				&& (!IS_USABLE(map, 2 * index + 1)))
+		if ((!IS_USABLE(map, 2 * idx))
+				&& (!IS_USABLE(map, 2 * idx + 1)))
 		{
-			SET(map, index, UNAIVALABLE);
+			SET(map, idx, UNAIVALABLE);
 			return ret;
 		}
 
-		SET(map, index, DIRTY);
+		SET(map, idx, DIRTY);
 		return ret;
 	}
 	return ret;

@@ -53,16 +53,16 @@ int			drop_physical_addr(void *addr);
 	map[(i) >> 2] = ((map[(i) >> 2] & ~(0b11 << (2 * ((i) & 0x3)))) \
 	| (value << (2 * ((i) & 0x3))))
 
-#define MAX_DEEP	19
+#define MAX_LVL		19
 #define MAP_LENGTH	(1 << 19)
 
 #define GRANULARITY	2
 #define GRANULARITY_NEG	2
 
-u32			get_mem_area(u32 pages_req, u32 idx, u32 lvl, u8 *map);
-u32			free_mem_area(u32 addr, u32 idx, u32 lvl, u8 *map);
-int			mark_mem_area(u32 addr, u32 idx, u32 lvl, u32 cap,
-				      u8 *map);
+u32			get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
+u32			free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl);
+int			mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl,
+				      u32 cap);
 
 // kernel public function
 void			*kmmap(u32 page_req);

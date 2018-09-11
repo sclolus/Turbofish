@@ -41,7 +41,7 @@ void		*get_pages(u32 page_request, enum mem_space space)
 				return (void *)MAP_FAILED;
 			if (!IS_USABLE(virt_map, 4))
 				return (void *)MAP_FAILED;
-			virt_addr = get_mem_area(page_request, 4, 2, virt_map);
+			virt_addr = get_mem_area(virt_map, page_request, 4, 2);
 			break;
 		case user_space:
 			if (page_request > (1 << SHL_LIMIT_1GO_BLOCK))
@@ -50,10 +50,10 @@ void		*get_pages(u32 page_request, enum mem_space space)
 				virt_addr = MAP_FAILED;
 			else
 				virt_addr = get_mem_area(
+						virt_map,
 						page_request,
 						5,
-						2,
-						virt_map);
+						2);
 			if (virt_addr == MAP_FAILED)
 			{
 				if (page_request > (1 << SHL_LIMIT_2GO_BLOCK))
@@ -61,7 +61,7 @@ void		*get_pages(u32 page_request, enum mem_space space)
 				if (!IS_USABLE(virt_map, 3))
 					return (void *)MAP_FAILED;
 				virt_addr
-				= get_mem_area(page_request, 3, 1, virt_map);
+				= get_mem_area(virt_map, page_request, 3, 1);
 			}
 			break;
 		default:
@@ -78,12 +78,12 @@ u32		free_pages(void *addr, enum mem_space space)
 	switch (space)
 	{
 		case kernel_space:
-			ret = free_mem_area((u32)addr, 4, 2, virt_map);
+			ret = free_mem_area(virt_map, (u32)addr, 4, 2);
 			break;
 		case user_space:
-			ret = free_mem_area((u32)addr, 5, 2, virt_map);
+			ret = free_mem_area(virt_map, (u32)addr, 5, 2);
 			if (ret == 0)
-				ret = free_mem_area((u32)addr, 3, 1, virt_map);
+				ret = free_mem_area(virt_map, (u32)addr, 3, 1);
 			break;
 		default:
 			eprintk("%s: Unexpected default status\n");

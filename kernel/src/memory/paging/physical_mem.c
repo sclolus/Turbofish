@@ -19,14 +19,14 @@ void		*get_physical_addr(u32 page_request)
 	if (!IS_USABLE(phy_map, 1))
 		return (void *)MAP_FAILED;
 
-	phy_addr = get_mem_area(page_request, 1, 0, phy_map);
+	phy_addr = get_mem_area(phy_map, page_request, 1, 0);
 
 	return (void *)(phy_addr);
 }
 
 int		drop_physical_addr(void *addr)
 {
-	return free_mem_area((u32)addr, 1, 0, phy_map);
+	return free_mem_area(phy_map, (u32)addr, 1, 0);
 }
 
 static size_t	count_bits(u32 ref)
@@ -50,14 +50,14 @@ int		mark_physical_area(void *addr, u32 page_request)
 		return -1;
 
 	if (page_request <= GRANULARITY)
-		deep = MAX_DEEP;
+		deep = MAX_LVL;
 	else
 	{
 		page_request -= 1;
 		bitlen = count_bits(page_request);
-		deep = MAX_DEEP - bitlen + 1;
+		deep = MAX_LVL - bitlen + 1;
 	}
-	return mark_mem_area((u32)addr, 1, 0, deep, phy_map);
+	return mark_mem_area(phy_map, (u32)addr, 1, 0, deep);
 }
 
 void		init_physical_map(void)
