@@ -62,6 +62,19 @@ int		mark_physical_area(void *addr, u32 page_request)
 	return mark_mem_area(phy_map, (u32)addr, 1, 0, deep);
 }
 
+int		write_multiple_physical_addr(
+		u32 page_request,
+		void *virt_addr,
+		int (*map_fn)(u32 virt_addr, u32 page_req, u32 phy_addr,
+				enum mem_space space))
+{
+	u32 ptr;
+
+	ptr = (u32)virt_addr;
+	return mem_multiple_area(
+			phy_map, &page_request, 1, 0, &ptr, map_fn);
+}
+
 void		init_physical_map(void)
 {
 	phy_map = (u8 *)PHY_MAP_LOCATION;

@@ -69,6 +69,9 @@ u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 	return MAP_FAILED;
 }
 
+/*
+ * This function return the container size like 1, 2, 4, 8 or 16 ...
+ */
 u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 {
 	int ret;
@@ -96,6 +99,8 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 		if (IS_UNUSED(map, idx * 2) &&
 				IS_UNUSED(map, idx * 2 + 1))
 			SET(map, idx, UNUSED);
+		else
+			SET(map, idx, DIRTY);
 	}
 	return ret;
 }
@@ -141,6 +146,79 @@ int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 
 		SET(map, idx, DIRTY);
 		return ret;
+	}
+	return ret;
+}
+
+int		mem_multiple_area(
+		u8 *map,
+		u32 *pages_req,
+		u32 idx,
+		u32 lvl,
+		u32 *virt_addr,
+		int (*map_fn)(u32 virt_addr, u32 page_req, u32 phy_addr,
+						enum mem_space space))
+{
+	u32	block_size;
+	int	ret = 0;
+
+	block_size = GRANULARITY << (MAX_LVL - lvl);
+	if (*pages_req >= block_size && IS_UNUSED(map, idx))
+	{
+		u32 ref_addr = (idx & page_mask[lvl])
+				* (u32)(PAGE_SIZE << (MAX_LVL - lvl))
+				* GRANULARITY;
+
+		ret = map_fn(*virt_addr, block_size, ref_addr, kernel_space);
+		if (ret == -1)
+			return -1;
+
+		SET(map, idx, ALLOCATED);
+		*pages_req -= block_size;
+		*virt_addr += PAGE_SIZE * block_size;
+		return ret;
+	}
+	if (IS_USABLE(map, 2 * idx))
+	{
+		ret = mem_multiple_area(
+				map,
+				pages_req,
+				2 * idx,
+				lvl + 1,
+				virt_addr,
+				map_fn);
+		if (ret == -1)
+			return -1;
+
+		if ((!IS_USABLE(map, 2 * idx))
+				&& (!IS_USABLE(map, 2 * idx + 1)))
+			SET(map, idx, UNAIVALABLE);
+		else
+			SET(map, idx, DIRTY);
+
+		if (*pages_req == 0)
+			return ret;
+	}
+	if (IS_USABLE(map, 2 * idx + 1))
+	{
+		ret = mem_multiple_area(
+				map,
+				pages_req,
+				2 * idx + 1,
+				lvl + 1,
+				virt_addr,
+				map_fn);
+		if (ret == -1)
+			return -1;
+
+		if ((!IS_USABLE(map, 2 * idx))
+				&& (!IS_USABLE(map, 2 * idx + 1)))
+			SET(map, idx, UNAIVALABLE);
+		else
+			SET(map, idx, DIRTY);
+
+		if (*pages_req == 0)
+			return ret;
 	}
 	return ret;
 }

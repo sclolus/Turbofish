@@ -263,6 +263,8 @@ int			sodo(void)
 	if (sodo_test(tab_ptr) == -1)
 		return -1;
 
+	return 0;
+
 	srand(0x15CF);
 	if (sodo_realloc(tab_ptr) == -1)
 		return -1;

@@ -3,13 +3,16 @@
 
 void			*valloc(size_t size)
 {
-	(void)size;
-	return NULL;
+	void *ptr;
+
+	if ((ptr = vmmap(size)) == (void *)MAP_FAILED)
+		return NULL;
+	return ptr;
 }
 
-void			vfree(void *ptr)
+int			vfree(void *ptr)
 {
-	(void)ptr;
+	return vmunmap(ptr);
 }
 
 size_t			vsize(void *ptr)

@@ -31,7 +31,7 @@ void		*get_new_pages(size_t size)
 		-1,
 		0);
 */
-	new_page = kmmap(size);
+	new_page = valloc(size);
 	return (u32)new_page == MAP_FAILED ? NULL : new_page;
 }
 
@@ -47,5 +47,5 @@ int		destroy_pages(void *addr, size_t size)
 		size));
 */
 	(void)size;
-	return (kmunmap(addr));
+	return (vfree(addr));
 }

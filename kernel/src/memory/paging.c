@@ -57,9 +57,9 @@ static void	*virt_to_physical_addr(u32 virt_addr)
 	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
-	phy_addr = pt->physical_address0_3 & 0xF;
+	phy_addr = pt->physical_address4_20 & 0xFFFF;
 	phy_addr <<= 4;
-	phy_addr |= pt->physical_address4_20 & 0xFFFF;
+	phy_addr |= pt->physical_address0_3 & 0xF;
 	phy_addr <<= 12;
 
 	return (void *)phy_addr;
@@ -129,7 +129,7 @@ static int	unmap_address(u32 virt_addr, u32 page_req)
 	return 0;
 }
 
-void		*kmmap(u32 size)
+void		*kmmap(size_t size)
 {
 	void	*virt_addr;
 	void	*phy_addr;
@@ -142,7 +142,10 @@ void		*kmmap(u32 size)
 		phy_addr = get_physical_addr(page_req);
 		if ((u32)phy_addr == MAP_FAILED)
 		{
-			eprintk("out of memory\n");
+			eprintk("%s: out of physical memory\n", __func__);
+			page_req = free_pages(virt_addr, kernel_space);
+			if (page_req == 0)
+				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
 		}
 
@@ -152,13 +155,43 @@ void		*kmmap(u32 size)
 			(u32)phy_addr,
 			kernel_space);
 	}
+	else
+		eprintk("%s: out of virtual memory\n", __func__);
+	return virt_addr;
+}
+
+void		*vmmap(size_t size)
+{
+	void	*virt_addr;
+	u32	page_req;
+
+	page_req = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
+	virt_addr = get_pages(page_req, kernel_space);
+	printk("virt_addr = %p\n", virt_addr);
+	if ((u32)virt_addr != MAP_FAILED)
+	{
+		int ret = write_multiple_physical_addr(
+				page_req,
+				virt_addr,
+				&map_address);
+		if (ret == -1)
+		{
+			eprintk("%s: out of physical memory\n", __func__);
+			page_req = free_pages(virt_addr, kernel_space);
+			if (page_req == 0)
+				eprintk("%s: Unexpected error\n", __func__);
+			return (void *)MAP_FAILED;
+		}
+	}
+	else
+		eprintk("%s: out of virtual memory\n", __func__);
 	return virt_addr;
 }
 
 int		kmunmap(void *virt_addr)
 {
-	u32	page_req;
-	void	*phy_addr;
+	u32			page_req;
+	void			*phy_addr;
 
 	page_req = free_pages(virt_addr, kernel_space);
 	if (page_req == 0)
@@ -166,9 +199,52 @@ int		kmunmap(void *virt_addr)
 
 	phy_addr = virt_to_physical_addr((u32)virt_addr);
 
-	drop_physical_addr(phy_addr);
+	if (drop_physical_addr(phy_addr) == 0)
+		eprintk("%s: Unexpected error\n", __func__);
 
 	return unmap_address((u32)virt_addr, page_req);
+}
+
+int		vmunmap(void *virt_addr)
+{
+	u32			page_req;
+	u32			phy_addr;
+	struct page_table_seg	*pt;
+
+	if ((u32)virt_addr & 0xFFF) {
+		eprintk("%s: Unexpected offset, virt_addr = %p\n"
+				,__func__, virt_addr);
+		return -1;
+	}
+
+	page_req = free_pages(virt_addr, kernel_space);
+	if (page_req == 0)
+		return -1;
+
+	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	pt = (struct page_table_seg *)
+			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	u32 i = 0;
+	while (i < page_req)
+	{
+		phy_addr = pt->physical_address4_20 & 0xFFFF;
+		phy_addr <<= 4;
+		phy_addr |= pt->physical_address0_3 & 0xF;
+		phy_addr <<= 12;
+
+		u32 j = drop_physical_addr((void *)phy_addr);
+		if (j == 0) {
+			eprintk("%s: Unexpected error %p not founded ! V %p\n",
+					__func__, phy_addr, virt_addr);
+			return -1;
+		}
+		pt += j;
+		i += j;
+	}
+
+	ft_bzero(virt_addr, page_req * 4);
+	return 0;
 }
 
 void		init_paging(void)
@@ -201,7 +277,11 @@ void		init_paging(void)
 
 	// mapping of next 4mo, pages list
 	virt_addr = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
-	map_address((u32)virt_addr, MAX_PAGE_TABLE_SEG, 0x400000, kernel_space);
+	map_address((
+			u32)virt_addr,
+			MAX_PAGE_TABLE_SEG,
+			0x400000,
+			kernel_space);
 	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
 
 	// mapping of LFB VBE
