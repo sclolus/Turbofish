@@ -11,7 +11,7 @@ static u8 *phy_map;
  */
 void		*get_physical_addr(u32 page_request)
 {
-	u32 phy_addr;
+	struct mem_result mem;
 
 	if (page_request == 0)
 		return (void *)MAP_FAILED;
@@ -19,9 +19,9 @@ void		*get_physical_addr(u32 page_request)
 	if (!IS_USABLE(phy_map, 1))
 		return (void *)MAP_FAILED;
 
-	phy_addr = get_mem_area(phy_map, page_request, 1, 0);
+	mem = get_mem_area(phy_map, page_request, 1, 0);
 
-	return (void *)(phy_addr);
+	return (void *)(mem.addr);
 }
 
 int		drop_physical_addr(void *addr)

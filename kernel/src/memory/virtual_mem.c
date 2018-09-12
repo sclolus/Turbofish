@@ -27,40 +27,40 @@ static u8 *virt_map;
  * Index number
  */
 
-void		*get_pages(u32 page_request, enum mem_space space)
+struct mem_result	get_pages(u32 page_request, enum mem_space space)
 {
-	u32 virt_addr;
+	struct mem_result mem;
 
 	if (page_request == 0)
-		return (void *)MAP_FAILED;
+		return (struct mem_result){MAP_FAILED, 0};
 
 	switch (space)
 	{
 		case kernel_space:
 			if (page_request > (1 << SHL_LIMIT_1GO_BLOCK))
-				return (void *)MAP_FAILED;
+				return (struct mem_result){MAP_FAILED, 0};
 			if (!IS_USABLE(virt_map, 4))
-				return (void *)MAP_FAILED;
-			virt_addr = get_mem_area(virt_map, page_request, 4, 2);
+				return (struct mem_result){MAP_FAILED, 0};
+			mem = get_mem_area(virt_map, page_request, 4, 2);
 			break;
 		case user_space:
 			if (page_request > (1 << SHL_LIMIT_1GO_BLOCK))
-				return (void *)MAP_FAILED;
+				return (struct mem_result){MAP_FAILED, 0};
 			if (!IS_USABLE(virt_map, 5))
-				virt_addr = MAP_FAILED;
+				mem.addr = MAP_FAILED;
 			else
-				virt_addr = get_mem_area(
+				mem = get_mem_area(
 						virt_map,
 						page_request,
 						5,
 						2);
-			if (virt_addr == MAP_FAILED)
+			if (mem.addr == MAP_FAILED)
 			{
 				if (page_request > (1 << SHL_LIMIT_2GO_BLOCK))
-					return (void *)MAP_FAILED;
+					return (struct mem_result){MAP_FAILED, 0};
 				if (!IS_USABLE(virt_map, 3))
-					return (void *)MAP_FAILED;
-				virt_addr
+					return (struct mem_result){MAP_FAILED, 0};
+				mem
 				= get_mem_area(virt_map, page_request, 3, 1);
 			}
 			break;
@@ -68,7 +68,7 @@ void		*get_pages(u32 page_request, enum mem_space space)
 			eprintk("%s: Unexpected default status\n");
 			break;
 	}
-	return (void *)(virt_addr);
+	return mem;
 }
 
 u32		free_pages(void *addr, enum mem_space space)

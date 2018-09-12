@@ -10,15 +10,15 @@ static u32 page_mask[21] = {
 	0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
 	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF};
 
-u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
+struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 {
-	u32	ret;
+	struct mem_result mem;
 
 	if (lvl == MAX_LVL || pages_req
 			> (u32)(GRANULARITY << (MAX_LVL - lvl - 1)))
 	{
 		if (IS_DIRTY(map, idx))
-			return MAP_FAILED;
+			return (struct mem_result){MAP_FAILED, 0};
 		else
 		{
 			if (idx > (MAP_LENGTH * GRANULARITY_NEG))
@@ -27,46 +27,48 @@ u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 			SET(map, idx, ALLOCATED);
 			u32 segment = (idx & page_mask[lvl])
 					* (GRANULARITY << (MAX_LVL - lvl));
-			return (((segment >> 10) & 0x3FF) << 22)
-					| ((segment & 0x3FF) << 12);
+			mem.addr = (((segment >> 10) & 0x3FF) << 22)
+				| ((segment & 0x3FF) << 12);
+			mem.pages = GRANULARITY << (MAX_LVL - lvl);
+			return mem;
 		}
 	}
 
 	if (IS_USABLE(map, 2 * idx))
 	{
-		ret = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
+		mem = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
 				&& (!IS_USABLE(map, 2 * idx + 1)))
 		{
 			SET(map, idx, UNAIVALABLE);
-			return ret;
+			return mem;
 		}
 
-		if (ret != MAP_FAILED) {
+		if (mem.addr != MAP_FAILED) {
 			SET(map, idx, DIRTY);
-			return ret;
+			return mem;
 		}
 	}
 
 	if (IS_USABLE(map, 2 * idx + 1))
 	{
-		ret = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
+		mem = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
 				&& (!IS_USABLE(map, 2 * idx + 1)))
 		{
 			SET(map, idx, UNAIVALABLE);
-			return ret;
+			return mem;
 		}
 
-		if (ret != MAP_FAILED) {
+		if (mem.addr != MAP_FAILED) {
 			SET(map, idx, DIRTY);
-			return ret;
+			return mem;
 		}
 	}
 
-	return MAP_FAILED;
+	return (struct mem_result){MAP_FAILED, 0};
 }
 
 /*

@@ -14,7 +14,13 @@ enum mem_space {
 
 // virtual map internal functions
 void			init_virtual_map(void);
-void			*get_pages(u32 page_request, enum mem_space space);
+
+struct mem_result {
+	u32	addr;
+	size_t	pages;
+};
+
+struct mem_result	get_pages(u32 page_request, enum mem_space space);
 u32			free_pages(void *addr, enum mem_space space);
 
 // physical map internal functions
@@ -70,7 +76,7 @@ int			write_multiple_physical_addr(
 #define GRANULARITY	1
 #define GRANULARITY_NEG	4
 
-u32			get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
+struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
 u32			free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl);
 int			mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl,
 				      u32 cap);
