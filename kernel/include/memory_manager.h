@@ -24,7 +24,7 @@ struct mem_result	get_pages(u32 page_request, enum mem_space space);
 u32			free_pages(void *addr, enum mem_space space);
 
 // physical map internal functions
-void			init_physical_map(void);
+void			init_physical_map(void *limit_phy_addr);
 int			mark_physical_area(void *addr, u32 page_request);
 void			*get_physical_addr(u32 page_request);
 int			drop_physical_addr(void *addr);
@@ -88,6 +88,7 @@ int			mem_multiple_area(
 			u32 *virt_addr,
 			int (*map_fn)(u32 virt_addr, u32 page_req,
 					u32 phy_addr, enum mem_space space));
+int			mark_limit(u8 *map, u32 limit_addr, u32 idx, u32 lvl);
 
 // kernel public function
 void			*kmmap(size_t size);

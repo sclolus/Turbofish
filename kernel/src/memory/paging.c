@@ -249,7 +249,7 @@ int		vmunmap(void *virt_addr)
 	return 0;
 }
 
-void		init_paging(void)
+void		init_paging(u32 available_memory)
 {
 	struct mem_result	res;
 	int			i;
@@ -270,7 +270,7 @@ void		init_paging(void)
 	init_virtual_map();
 
 	// initialize physical memory map
-	init_physical_map();
+	init_physical_map((void *)available_memory);
 
 	// mapping of first 4mo, GDT, IDT, page directory, kernel, stack
 	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);

@@ -107,6 +107,77 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 	return ret;
 }
 
+/*
+ * This function make a border between addressable area and not
+ * physical memory is not unlimited
+ * @parameters
+ * 	map: memory map to utilize
+ * 	limit_addr: area to make the border
+ * 	index: current index on map in recursive scheme
+ * 	level: current level on map in recursive scheme
+ * @return
+ *	integer: 0 on normal, -1 when error occurred
+ *
+ *	o---o-o			D---o-o    base become dirty
+ *	 \   \			 \   \
+ *	  \   o                   \   o      free zone
+ *	   \         =>            \
+ *	    o-o            ------   U-U -- unavailable limit
+ *	     \                       \
+ *	      o                       o      not allowed zone
+ */
+int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
+{
+	u32 ref_addr;
+	u32 sup_addr;
+	int ret;
+
+	/*
+	 * error handling
+	 */
+	if (limit_addr == 0 || (limit_addr & 0xFFF))
+		return -1;
+
+	/*
+	 * stop condition
+	 */
+	if (level == MAX_LVL)
+	{
+		SET(map, index, UNAIVALABLE);
+		return 0;
+	}
+
+	/*
+	 * recursive descent
+	 * ref_addr is the current address location
+	 * sup_addr is the upper address of right buddy
+	 */
+	ref_addr = (index & page_mask[level])
+			* (u32)(PAGE_SIZE << (MAX_LVL - level)) * GRANULARITY;
+	sup_addr = ref_addr + ((u32)(PAGE_SIZE << (MAX_LVL - 1)) >>  level)
+			* GRANULARITY;
+
+	if (limit_addr < sup_addr)
+		ret = mark_limit(map, limit_addr, index * 2, level + 1);
+	else
+		ret = mark_limit(map, limit_addr, index * 2 + 1, level + 1);
+
+	/*
+	 * conclusion, while ascent
+	 * mark all address equal or greater as unavailable
+	 * mark all above address on the way as dirty
+	 */
+	if (ref_addr == limit_addr)
+		SET(map, index, UNAIVALABLE);
+	else
+		SET(map, index, DIRTY);
+
+	if (sup_addr > limit_addr)
+		SET(map, 2 * index + 1, UNAIVALABLE);
+
+	return ret;
+}
+
 int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 {
 	int ret;

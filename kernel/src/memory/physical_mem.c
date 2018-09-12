@@ -75,8 +75,13 @@ int		write_multiple_physical_addr(
 			phy_map, &page_request, 1, 0, &ptr, map_fn);
 }
 
-void		init_physical_map(void)
+void		init_physical_map(void *limit_phy_addr)
 {
 	phy_map = (u8 *)PHY_MAP_LOCATION;
 	ft_memset(phy_map, 0, MAP_LENGTH);
+
+	int ret = mark_limit(phy_map, (u32)limit_phy_addr, 1, 0);
+	if (ret < 0)
+		eprintk("%s: unexpected error, limit_phy_addr %p\n",
+				__func__, limit_phy_addr);
 }

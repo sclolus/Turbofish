@@ -100,8 +100,9 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_PIC();
 	printk("{green}OK\n{eoc}");
 
-	printk("{white}Initialize Paging: ");
-	init_paging();
+	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
+	printk("{white}Initialize Paging with %u ko of available memory: ", avalaible_mem >> 10);
+	init_paging(avalaible_mem);
 	printk("{green}OK\n{eoc}");
 
 	printk("flag: %p\n", multiboot_info_addr->flags);
