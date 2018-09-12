@@ -3,9 +3,15 @@
 # include "libft.h"
 # include "memory_manager.h"
 
+/*
 # define TEST_LENGTH	10000
 # define MAX_ALLOC	4096
 # define NB_TESTS	10000
+*/
+
+# define TEST_LENGTH	10
+# define MAX_ALLOC	16
+# define NB_TESTS	1000
 
 struct			s_test {
 	void		*ptr;
@@ -21,7 +27,10 @@ static int		add_sodo(
 
 	i = rand(MAX_ALLOC - 1);
 	tab_ptr[nb_elmt].c = i % 256;
-	tab_ptr[nb_elmt].ptr = kmalloc(i);
+	if (i == 0)
+		i = 1;
+	i *= 4096;
+	tab_ptr[nb_elmt].ptr = valloc(i);
 	if (tab_ptr[nb_elmt].ptr == NULL) {
 		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
@@ -53,7 +62,7 @@ static int		del_sodo(
 		ptr++;
 		n++;
 	}
-	kfree(tab_ptr[i].ptr);
+	vfree(tab_ptr[i].ptr);
 	if (i != (nb_elmt - 1))
 		tab_ptr[i] = tab_ptr[nb_elmt - 1];
 	return 0;
@@ -240,15 +249,15 @@ static int		sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
 	if ((max_alloc = loop_sodo_test
 			(tab_ptr, global_count, &nb_elmt)) == -1)
 		return -1;
-	kshow_alloc_mem();
+//	kshow_alloc_mem();
 	printk("nb elmt = %i\n", nb_elmt);
 	i = 0;
 	while (i < nb_elmt)
 	{
-		kfree(tab_ptr[i].ptr);
+		vfree(tab_ptr[i].ptr);
 		i++;
 	}
-	kshow_alloc_mem();
+//	kshow_alloc_mem();
 	printk("Max allocated blocks: %i\n", max_alloc);
 	printk("%i kmalloc made, %i kfree made\n",
 			global_count[0], global_count[1]);
@@ -262,6 +271,8 @@ int			sodo(void)
 	srand(0xA8B0);
 	if (sodo_test(tab_ptr) == -1)
 		return -1;
+
+	return 0;
 
 	srand(0x15CF);
 	if (sodo_realloc(tab_ptr) == -1)
