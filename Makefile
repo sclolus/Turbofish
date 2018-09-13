@@ -9,13 +9,13 @@ all: $(IMG_DISK)
 	sudo losetup -d /dev/loop0
 
 $(IMG_DISK):
-	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=32768
-	( echo -e "o\nn\np\n1\n\n\nw\n") | sudo fdisk $(IMG_DISK)
+	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=8192
+	( echo -e "o\nn\np\n1\n2048\n\nw\n") | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
-	sudo mkfs.ext4 /dev/loop0p1
+	sudo mkfs.ext2 /dev/loop0p1
 	sudo mount /dev/loop0p1 /mnt
 	echo "(hd0) /dev/loop0" > loop0device.map
-	sudo grub-install --no-floppy --grub-mkdevicemap=loop0device.map --modules="part_msdos" --boot-directory=/mnt /dev/loop0 -v
+	sudo grub-install --no-floppy --grub-mkdevicemap=loop0device.map --locales="fr" --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt /dev/loop0 -v
 	sudo cp -vf grub/grub.cfg /mnt/grub 
 	sudo umount /mnt
 	sudo losetup -d /dev/loop0
