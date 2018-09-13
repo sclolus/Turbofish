@@ -58,8 +58,6 @@ start:
     mov si, msgDebut
     call afficher
 
-    jmp $
-
 ; reset drive
     xor ax, ax
     int 0x13
@@ -111,7 +109,22 @@ next:
     mov ss, ax
     mov esp, 0x9F000
 
-    jmp dword 0x8:0x1000 << 4    ; reinitialise le segment de code
+    jmp dword 0x8:end    ; reinitialise le segment de code
+end:
+;   mov ax, 0xB000
+;   mov es, ax
+;   mov ax, 0x8000
+;   mov di, ax
+
+[BITS 32]
+    mov edi, 0xB8000
+
+    mov al, 'X'
+    stosb
+    mov al, 0x07
+    stosb
+    jmp $
+[BITS 16]
 
 ;--------------------------------------------------------------------
 gdt:
