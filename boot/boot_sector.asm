@@ -34,11 +34,6 @@ disk_fatal_error:
     jmp $
 
 start:
-	cli
-
-	lidt [bios_idt]
-
-	sti
     mov si, msgDebut
     call afficher
 
@@ -48,15 +43,6 @@ start:
 
 ; recuparation de l'unite de boot
     mov [bootdrv], dl
-
-	mov ax, 0x8600
-	mov ecx, 10
-	mov edx, 0
-	int 15h
-
-; affiche un msg
-    mov si, msgDebut
-    call afficher
 
 ; reset drive
     xor ax, ax
@@ -111,20 +97,51 @@ next:
 
     jmp dword 0x8:end    ; reinitialise le segment de code
 end:
-;   mov ax, 0xB000
-;   mov es, ax
-;   mov ax, 0x8000
-;   mov di, ax
 
 [BITS 32]
-    mov edi, 0xB8000
+; initialise temporary GDT
+    mov eax, gdt_16_end
+    sub eax, gdt_16
+    mov word [gdt_16_ptr], ax
 
-    mov al, 'X'
-    stosb
-    mov al, 0x07
-    stosb
-    jmp $
+; store linear address of GDT
+    mov eax, gdt_16
+    mov dword [gdt_16_ptr + 2], eax
+
+; revover bios_idt location; XXX It's useless here !
+    lidt [bios_idt]
+
+; load new 16 bits protected GDT
+    lgdt [gdt_16_ptr]
+
+; jump to CS of 16 bits selector
+    jmp 0x8:.protected_16
+.protected_16:
+
+; code is now in 16bits, because we are in 16 bits mode
+
 [BITS 16]
+; disable protected bit
+    mov eax, cr0
+    and ax, 0xfffe
+    mov cr0, eax
+
+; configure CS in real mode
+    jmp 0x0:.real_16
+.real_16:
+
+; configure DS, ES and SS in real mode
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+
+; enable interupts
+    sti
+
+    mov si, return_16bits_real_msg
+    call afficher
+    jmp $
 
 ;--------------------------------------------------------------------
 gdt:
@@ -143,9 +160,26 @@ bios_idt:
     dw 0x3ff ; limit
     dd 0     ; base
 
+
+gdt_16:
+    db 0, 0, 0, 0, 0, 0, 0, 0
+gdt_16b_cs:
+    dw 0xFFFF, 0x0000
+    db 0x00, 0x9A, 0x0, 0x0
+gdt_16b_ds:
+    dw 0xFFFF, 0x0000
+    db 0x00, 0x92, 0x0, 0x0
+gdt_16_end:
+
+gdt_16_ptr:
+    dw 0  ; limite
+    dd 0  ; base
+
+
 bootdrv:  db 0
-msgDebut: db "Loadig kernel...", 13, 10, 0
-cannot_load_from_disk: db "Cannot load disk", 13, 10, 0
+msgDebut: db "Loading", 13, 10, 0
+cannot_load_from_disk: db "ERR DISK", 13, 10, 0
+return_16bits_real_msg: db "16b real recovered", 13, 10, 0
 ;--------------------------------------------------------------------
 
 ;; NOP jusqu'a 510
