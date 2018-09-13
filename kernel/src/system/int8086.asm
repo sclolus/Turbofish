@@ -63,14 +63,6 @@ begin_sub_sequence:
     mov [REBASE(_gs)], gs
     mov [REBASE(_ss)], ss
 
-; store caller idt and load BIOS idt
-    sidt [REBASE(saved_idtptr)]
-    lidt [REBASE(bios_idt)]
-
-; store caller gdt and load custom 16 bits gdt
-    sgdt [REBASE(saved_gdtptr)]
-    lgdt [REBASE(gdt_16_ptr)]
-
 ; take parameters registers values
     mov edi, [ebp + 12]
     mov esi, [ebp + 16]
@@ -80,12 +72,30 @@ begin_sub_sequence:
     mov eax, [ebp + 40]
     mov [REBASE(_eax)], eax
 
+; store caller idt and load BIOS idt
+    sidt [REBASE(saved_idtptr)]
+    lidt [REBASE(bios_idt)]
+
+; XXX it could be necessary to reset PIC in some cases...
+
+; store caller gdt and load custom 16 bits gdt
+    sgdt [REBASE(saved_gdtptr)]
+    lgdt [REBASE(gdt_16_ptr)]
+
 ; jump to CS of 16 bits selector
     jmp 0x8:REBASE(.protected_16)
 .protected_16:
-
 ; code is now in 16bits, because we are in 16 bits mode
 [BITS 16]
+
+; set 16 bits protected mode data selector
+    mov  ax, 0x10
+    mov  ds, ax
+    mov  es, ax
+    mov  fs, ax
+    mov  gs, ax
+    mov  ss, ax
+
 ; disable protected bit
     mov eax, cr0
     and ax, 0xfffe
@@ -159,10 +169,10 @@ _ss: dw 0
 
 gdt_16:
     db 0, 0, 0, 0, 0, 0, 0, 0
-;gdt_16b_cs:
+.gdt_16b_cs:
     dw 0xFFFF, 0x0000
     db 0x00, 0x9A, 0x0, 0x0
-;gdt_16b_ds:
+.gdt_16b_ds:
     dw 0xFFFF, 0x0000
     db 0x00, 0x92, 0x0, 0x0
 gdt_16_end:
