@@ -90,6 +90,14 @@ end:
 ; code is now in 16bits, because we are in 16 bits mode
 
 [BITS 16]
+; set 16 bits protected mode data selector
+    mov  ax, 0x10
+    mov  ds, ax
+    mov  es, ax
+    mov  fs, ax
+    mov  gs, ax
+    mov  ss, ax
+
 ; disable protected bit
     mov eax, cr0
     and ax, 0xfffe
