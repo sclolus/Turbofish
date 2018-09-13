@@ -53,13 +53,13 @@ void			*kcalloc(size_t count, size_t size)
 	return (addr);
 }
 
-void			kfree(void *ptr)
+int			kfree(void *ptr)
 {
 	int ret;
 
 //	pthread_mutex_lock(&g_mut);
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return ;
+		return -1;
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(FREE, ptr, 0, 0);
 	if (ptr == NULL)
@@ -67,12 +67,13 @@ void			kfree(void *ptr)
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
 //		pthread_mutex_unlock(&g_mut);
-		return ;
+		return -1;
 	}
 	ret = core_deallocator(ptr);
 	if (ctx.tracer_file_descriptor != -1)
 		bend_trace(ret < 0 ? FAIL : SUCCESS, NULL);
 //	pthread_mutex_unlock(&g_mut);
+	return 0;
 }
 
 void			*krealloc(void *ptr, size_t size)

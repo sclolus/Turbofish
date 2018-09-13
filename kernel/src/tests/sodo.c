@@ -3,15 +3,7 @@
 # include "libft.h"
 # include "memory_manager.h"
 
-/*
-# define TEST_LENGTH	10000
-# define MAX_ALLOC	4096
-# define NB_TESTS	10000
-*/
-
-# define TEST_LENGTH	10
-# define MAX_ALLOC	16
-# define NB_TESTS	1000
+# define TEST_LENGTH	100
 
 struct			s_test {
 	void		*ptr;
@@ -19,30 +11,37 @@ struct			s_test {
 	size_t		size;
 };
 
-static int		add_sodo(
-			struct s_test tab_ptr[TEST_LENGTH],
-			int nb_elmt)
-{
-	int		i;
+struct			sodo_ctx {
+	struct s_test	tab_ptr[TEST_LENGTH];
+	u32		nb_tests;
+	u32		max_alloc;
+};
 
-	i = rand(MAX_ALLOC - 1);
-	tab_ptr[nb_elmt].c = i % 256;
-	if (i == 0)
-		i = 1;
-	i *= 4096;
-	tab_ptr[nb_elmt].ptr = valloc(i);
-	if (tab_ptr[nb_elmt].ptr == NULL) {
+static int		add_sodo(
+			struct sodo_ctx *ctx,
+			int nb_elmt,
+			void *(*allocator)(size_t))
+{
+	u32 size = (u32)rand(ctx->max_alloc - 1);
+	ctx->tab_ptr[nb_elmt].c = size % 256;
+
+	if (size == 0)
+		size = 1;
+
+	ctx->tab_ptr[nb_elmt].ptr = allocator(size);
+	if (ctx->tab_ptr[nb_elmt].ptr == NULL) {
 		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
 	}
-	tab_ptr[nb_elmt].size = (size_t)i;
-	ft_memset(tab_ptr[nb_elmt].ptr, tab_ptr[nb_elmt].c, i);
+	ctx->tab_ptr[nb_elmt].size = size;
+	ft_memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
 	return 0;
 }
 
 static int		del_sodo(
-			struct s_test tab_ptr[TEST_LENGTH],
-			int nb_elmt)
+			struct sodo_ctx *ctx,
+			int nb_elmt,
+			int (*deallocator)(void *))
 {
 	int		i;
 	size_t		n;
@@ -50,35 +49,37 @@ static int		del_sodo(
 
 	n = 0;
 	i = rand(nb_elmt - 1);
-	ptr = (uint8_t *)tab_ptr[i].ptr;
-	while (n < tab_ptr[i].size)
+	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
+	while (n < ctx->tab_ptr[i].size)
 	{
-		if (*ptr != tab_ptr[i].c)
+		if (*ptr != ctx->tab_ptr[i].c)
 		{
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, tab_ptr[i].c);
+					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
 		}
 		ptr++;
 		n++;
 	}
-	vfree(tab_ptr[i].ptr);
+	deallocator(ctx->tab_ptr[i].ptr);
 	if (i != (nb_elmt - 1))
-		tab_ptr[i] = tab_ptr[nb_elmt - 1];
+		ctx->tab_ptr[i] = ctx->tab_ptr[nb_elmt - 1];
 	return 0;
 }
 
 static int		loop_sodo_test(
-			struct s_test tab_ptr[TEST_LENGTH],
+			struct sodo_ctx *ctx,
 			int global_count[2],
-			int *nb_elmt)
+			int *nb_elmt,
+			void *(*allocator)(size_t),
+			int (*deallocator)(void *))
 {
+	u32		i;
 	int		op;
-	int		i;
 	int		max_alloc = 0;
 
 	i = 0;
-	while (i < NB_TESTS)
+	while (i < ctx->nb_tests)
 	{
 		op = rand(2);
 // XXX More allocation then free: 0, 1 => allocation, 2 => free
@@ -86,7 +87,7 @@ static int		loop_sodo_test(
 				|| (op < 2
 				&& *nb_elmt < TEST_LENGTH))
 		{
-			if (add_sodo(tab_ptr, *nb_elmt) == -1)
+			if (add_sodo(ctx, *nb_elmt, allocator) == -1)
 				return -1;
 			*nb_elmt += 1;
 			if (*nb_elmt > max_alloc)
@@ -95,7 +96,7 @@ static int		loop_sodo_test(
 		}
 		else
 		{
-			if (del_sodo(tab_ptr, *nb_elmt) == -1)
+			if (del_sodo(ctx, *nb_elmt, deallocator) == -1)
 				return -1;
 			*nb_elmt -= 1;
 			global_count[1] += 1;
@@ -106,7 +107,7 @@ static int		loop_sodo_test(
 }
 
 static int		real_sodo_next(
-			struct s_test tab_ptr[TEST_LENGTH],
+			struct sodo_ctx *ctx,
 			size_t x,
 			uint8_t *ptr,
 			int i)
@@ -114,76 +115,76 @@ static int		real_sodo_next(
 	size_t		n;
 	size_t		n_size;
 
-	if ((tab_ptr[i].ptr = krealloc(tab_ptr[i].ptr, x)) == NULL)
+	if ((ctx->tab_ptr[i].ptr = krealloc(ctx->tab_ptr[i].ptr, x)) == NULL)
 	{
 		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
 	}
 	n = 0;
-	ptr = (uint8_t *)tab_ptr[i].ptr;
-	n_size = (tab_ptr[i].size < x) ? tab_ptr[i].size : x;
+	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
+	n_size = (ctx->tab_ptr[i].size < x) ? ctx->tab_ptr[i].size : x;
 	while (n < n_size)
 	{
-		if (*ptr != tab_ptr[i].c)
+		if (*ptr != ctx->tab_ptr[i].c)
 		{
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, tab_ptr[i].c);
+					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
 		}
 		ptr++;
 		n++;
 	}
-	tab_ptr[i].size = (size_t)x;
-	tab_ptr[i].c = x % 256;
-	ft_memset(tab_ptr[i].ptr, tab_ptr[i].c, x);
+	ctx->tab_ptr[i].size = (size_t)x;
+	ctx->tab_ptr[i].c = x % 256;
+	ft_memset(ctx->tab_ptr[i].ptr, ctx->tab_ptr[i].c, x);
 	return 0;
 }
 
 static int		real_sodo(
-			struct s_test tab_ptr[TEST_LENGTH],
+			struct sodo_ctx *ctx,
 			int *nb_elmt)
 {
 	uint8_t		*ptr;
 	size_t		n;
-	size_t		x;
+	size_t		size;
 	int		i;
 
 	n = 0;
 	i = rand(*nb_elmt - 1);
-	ptr = (uint8_t *)tab_ptr[i].ptr;
-	while (n < tab_ptr[i].size)
+	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
+	while (n < ctx->tab_ptr[i].size)
 	{
-		if (*ptr != tab_ptr[i].c)
+		if (*ptr != ctx->tab_ptr[i].c)
 		{
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, tab_ptr[i].c);
+					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
 		}
 		ptr++;
 		n++;
 	}
-	x = rand(MAX_ALLOC - 1);
-	if (ptr == NULL || x == 0)
+	size = (u32)rand(ctx->max_alloc - 1);
+	if (ptr == NULL || size == 0)
 		return 0;
-	return real_sodo_next(tab_ptr, x, ptr, i);
+	return real_sodo_next(ctx, size, ptr, i);
 }
 
 static int		loop_sodo_realloc(
-			struct s_test tab_ptr[TEST_LENGTH],
+			struct sodo_ctx *ctx,
 			int global_count[2],
 			int *nb_elmt)
 {
+	u32		i;
 	int		op;
-	int		i;
 	int		max_alloc;
 
-	i = -1;
-	while (++i < NB_TESTS)
+	i = 0;
+	while (i < ctx->nb_tests)
 	{
 		op = rand(2);
 		if (*nb_elmt == 0 || (op == 0 && *nb_elmt < TEST_LENGTH))
 		{
-			if (add_sodo(tab_ptr, *nb_elmt) == -1)
+			if (add_sodo(ctx, *nb_elmt, &kmalloc) == -1)
 				return -1;
 			*nb_elmt += 1;
 			if (*nb_elmt > max_alloc)
@@ -192,23 +193,24 @@ static int		loop_sodo_realloc(
 		}
 		else if (op == 1)
 		{
-			if (del_sodo(tab_ptr, *nb_elmt) == -1)
+			if (del_sodo(ctx, *nb_elmt, &kfree) == -1)
 				return -1;
 			*nb_elmt -= 1;
 			global_count[1] += 1;
 		}
 		else
 		{
-			if (real_sodo(tab_ptr, nb_elmt) == -1)
+			if (real_sodo(ctx, nb_elmt) == -1)
 				return -1;
 			global_count[2] += 1;
 		}
+		i++;
 	}
 	return max_alloc;
 }
 
 
-static int		sodo_realloc(struct s_test tab_ptr[TEST_LENGTH])
+static int		sodo_realloc(struct sodo_ctx *ctx)
 {
 	int		nb_elmt;
 	int		global_count[3];
@@ -218,26 +220,27 @@ static int		sodo_realloc(struct s_test tab_ptr[TEST_LENGTH])
 	nb_elmt = 0;
 	ft_memset(global_count, 0, 3 * sizeof(int));
 	if ((max_alloc = loop_sodo_realloc(
-			tab_ptr, global_count, &nb_elmt)) == -1)
+			ctx, global_count, &nb_elmt)) == -1)
 		return -1;
-	kshow_alloc_mem();
 	i = 0;
 	if (nb_elmt != 0)
 	{
 		while (i < nb_elmt - 1)
 		{
-			kfree(tab_ptr[i].ptr);
+			kfree(ctx->tab_ptr[i].ptr);
 			i++;
 		}
 	}
-	kshow_alloc_mem();
 	printk("Max allocated blocks: %i\n", max_alloc);
 	printk("%i krealloc made, %i kmalloc and %i kfree made\n",
 			global_count[2], global_count[0], global_count[1]);
 	return 0;
 }
 
-static int		sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
+static int		sodo_test(
+			struct sodo_ctx *ctx,
+			void *(*allocator)(size_t),
+			int (*deallocator)(void *))
 {
 	int		nb_elmt;
 	int		global_count[2];
@@ -246,36 +249,58 @@ static int		sodo_test(struct s_test	tab_ptr[TEST_LENGTH])
 
 	nb_elmt = 0;
 	ft_memset(global_count, 0, 2 * sizeof(int));
-	if ((max_alloc = loop_sodo_test
-			(tab_ptr, global_count, &nb_elmt)) == -1)
+	if ((max_alloc = loop_sodo_test(
+			ctx,
+			global_count,
+			&nb_elmt,
+			allocator,
+			deallocator)) == -1)
 		return -1;
-//	kshow_alloc_mem();
 	printk("nb elmt = %i\n", nb_elmt);
 	i = 0;
 	while (i < nb_elmt)
 	{
-		vfree(tab_ptr[i].ptr);
+		deallocator(ctx->tab_ptr[i].ptr);
 		i++;
 	}
-//	kshow_alloc_mem();
 	printk("Max allocated blocks: %i\n", max_alloc);
-	printk("%i kmalloc made, %i kfree made\n",
+	printk("%i allocations made, %i deallocations made\n",
 			global_count[0], global_count[1]);
 	return 0;
 }
 
 int			sodo(void)
 {
-	struct s_test	tab_ptr[TEST_LENGTH];
+	struct sodo_ctx ctx;
 
+	printk("\n");
+	printk("{orange}K map memory group check:{eoc}\n");
+	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
+	ctx.nb_tests = 10000;
+	ctx.max_alloc = 4096 * 4;
+	srand(0xCDE1);
+	if (sodo_test(&ctx, &kmmap, &kmunmap) == -1) {
+	//	return -1;
+	}
+
+	printk("\n");
+	printk("{orange}V map memory group check:{eoc}\n");
+	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
+	ctx.nb_tests = 10000;
+	ctx.max_alloc = 4096 * 4;
 	srand(0xA8B0);
-	if (sodo_test(tab_ptr) == -1)
-		return -1;
+	if (sodo_test(&ctx, &valloc, &vfree) == -1) {
+	//	return -1;
+	}
 
-	return 0;
-
+	printk("\n");
+	printk("{orange}K sub family check:{eoc}\n");
+	ctx.nb_tests = 10000;
+	ctx.max_alloc = 4096;
+	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	srand(0x15CF);
-	if (sodo_realloc(tab_ptr) == -1)
-		return -1;
+	if (sodo_realloc(&ctx) == -1) {
+	//	return -1;
+	}
 	return 0;
 }
