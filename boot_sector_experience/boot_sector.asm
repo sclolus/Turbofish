@@ -1,10 +1,6 @@
 [BITS 16]
 [ORG 0x7C00]
 
-%define KERNEL_OFFSET_ON_DISK       10
-%define KERNEL_BASE_MEMORY          0x1000              ; on 16bits 0x1000:0x0 = 0x1000:0000. on 32bits 0x0001:0000
-%define KERNEL_NB_SECTORS           128                 ; number of sectors for kernel to load, one sector is 512o size
-
 jmp start
 
 ;---------------------------------------------------------
@@ -28,11 +24,6 @@ afficher:
     pop ax
     ret
 
-disk_fatal_error:
-    mov si, cannot_load_from_disk
-    call afficher
-    jmp $
-
 start:
     mov si, msgDebut
     call afficher
@@ -40,28 +31,6 @@ start:
     mov ax, 0x8000  ; stack en 0xFFFF
     mov ss, ax
     mov sp, 0xf000
-
-; recuparation de l'unite de boot
-    mov [bootdrv], dl
-
-; reset drive
-    xor ax, ax
-    int 0x13
-
-; loading of kernel
-    push es
-    mov ax, KERNEL_BASE_MEMORY
-    mov es, ax
-    xor bx, bx
-    mov ah, 2
-    mov al, KERNEL_NB_SECTORS
-    xor ch, ch
-    mov cl, KERNEL_OFFSET_ON_DISK
-    xor dh, dh
-    mov dl, [bootdrv]
-    int 0x13
-    jc disk_fatal_error
-    pop es
 
 ; initialisation du pointeur sur la GDT
     mov ax, gdtend    ; calcule la limite de GDT
@@ -176,9 +145,7 @@ gdt_16_ptr:
     dd 0  ; base
 
 
-bootdrv:  db 0
 msgDebut: db "Loading", 13, 10, 0
-cannot_load_from_disk: db "ERR DISK", 13, 10, 0
 return_16bits_real_msg: db "16b real recovered", 13, 10, 0
 ;--------------------------------------------------------------------
 
