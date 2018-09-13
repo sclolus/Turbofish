@@ -12,14 +12,25 @@
 #define MAX_PAGE_TABLE_SEG		1024
 #define OFFSET				4096
 
-// type field
-#define P_IS_PHYSIC_MEMORY		(1 << 0) // P indicate if is a physical memory area
-#define RW_IS_READ_AND_WRITE		(1 << 1) // RW indicate if page is readable and writable
-#define US_IS_USER_USABLE		(1 << 2) // US indicate if simple user can use that page
-#define PWT_CACHE_MANAGE_1		(1 << 3) // PWT cache management (no founded)
-#define PCB_CACHE_MANAGE_2		(1 << 4) // PCB cache management (no founded)
-#define D_IS_WRITED_TABLE		(1 << 6) // D indicate if the page has been written. page only
-#define PS_IS_4MO_SIZE_DIRECTORY	(1 << 7) // PS indicate if pages contained are 4mo size instead of 4ko. page directory only
+/*
+ * Field type:
+ * - P indicate if is a physical memory area
+ * - RW indicate if page is readable and writable
+ * - US indicate if simple user can use that page
+ * - PWT cache management (no founded)
+ * - PCB cache management (no founded)
+ * - D indicate if the page has been written. page only
+ * - PS indicate if pages contained are 4mo size instead of 4ko.
+ * page directory only
+ */
+
+#define P_IS_PHYSIC_MEMORY		(1 << 0)
+#define RW_IS_READ_AND_WRITE		(1 << 1)
+#define US_IS_USER_USABLE		(1 << 2)
+#define PWT_CACHE_MANAGE_1		(1 << 3)
+#define PCB_CACHE_MANAGE_2		(1 << 4)
+#define D_IS_WRITED_TABLE		(1 << 6)
+#define PS_IS_4MO_SIZE_DIRECTORY	(1 << 7)
 
 struct __attribute__ ((packed)) page_directory_seg {
 	u8 type;

@@ -49,10 +49,15 @@ static void	write_body(
 
 /*
 	if (op == MALLOC)
-		fprintk(ctx.tracer_file_descriptor, "{magenta}Malloc{eoc} (%lu) ",
+		fprintk(
+				ctx.tracer_file_descriptor,
+				"{magenta}Malloc{eoc} (%lu) ",
 				size_a);
 	else if (op == FREE)
-		fprintk(ctx.tracer_file_descriptor, "{cyan}Free{eoc} (%p) ", ptr);
+		fprintk(
+				ctx.tracer_file_descriptor,
+				"{cyan}Free{eoc} (%p) ",
+				ptr);
 	else if (op == CALLOC)
 		fprintk(ctx.tracer_file_descriptor,
 				"{green}Calloc{eoc} (%lu, %lu) ",
@@ -119,7 +124,9 @@ void		bend_trace(enum e_trace_result result, void *addr)
 	else if (result == FAIL)
 		fprintk(ctx.tracer_file_descriptor, "{red}Fail{eoc}\n");
 	else
-		fprintk(ctx.tracer_file_descriptor, "{magenta}No action{eoc}\n");
+		fprintk(
+				ctx.tracer_file_descriptor,
+				"{magenta}No action{eoc}\n");
 */
 }
 

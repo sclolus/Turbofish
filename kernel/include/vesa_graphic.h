@@ -21,16 +21,22 @@ struct __attribute__ ((packed)) vesa_global_info {
 	u8	vbe_2_field[236];
 };
 
-// *field name copied from OSDEV https://forum.osdev.org/viewtopic.php?f=2&t=30186
+/*
+ * definition took from OSDEV https://forum.osdev.org/viewtopic.php?f=2&t=30186
+ */
 struct __attribute__ ((packed)) vesa_mode_info {
-	u16 attributes;		// deprecated, only bit 7 should be of interest to you, and it indicates the mode supports a linear frame buffer.
+	u16 attributes;		// deprecated, only bit 7 should be of interest
+				// to you, and it indicates the mode supports a
+				// linear frame buffer.
 	u8 window_a;		// deprecated
 	u8 window_b;		// deprecated
-	u16 granularity;	// deprecated; used while calculating bank numbers
+	u16 granularity;	// deprecated
+				// used while calculating bank numbers
 	u16 window_size;
 	u16 segment_a;
 	u16 segment_b;
-	u32 win_func_ptr;	// deprecated; used to switch banks from protected mode without returning to real mode
+	u32 win_func_ptr;	// deprecated; used to switch banks from
+				// protected mode without returning to real mode
 	u16 pitch;		// number of bytes per horizontal line
 	u16 width;		// width in pixels
 	u16 height;		// height in pixels
@@ -38,9 +44,10 @@ struct __attribute__ ((packed)) vesa_mode_info {
 	u8 y_char;		// ...
 	u8 planes;
 	u8 bpp;			// bits per pixel in this mode
-	u8 banks;		// deprecated; total number of banks in this mode
+	u8 banks;		// deprecated total number of banks in this mode
 	u8 memory_model;
-	u8 bank_size;		// deprecated; size of a bank, almost always 64 KB but may be 16 KB...
+	u8 bank_size;		// deprecated; size of a bank, almost always
+				// 64 KB but may be 16 KB...
 	u8 image_pages;
 	u8 reserved0;
 
@@ -54,9 +61,11 @@ struct __attribute__ ((packed)) vesa_mode_info {
 	u8 reserved_position;
 	u8 direct_color_attributes;
 
-	ptr_32 *framebuffer;	// physical address of the linear frame buffer; write here to draw to the screen
+	ptr_32 *framebuffer;	// physical address of the linear frame buffer
+				// write here to draw to the screen
 	u32 off_screen_mem_off;
-	u16 off_screen_mem_size;// size of memory in the frame buffer but not being displayed on the screen
+	u16 off_screen_mem_size;// size of memory in the frame buffer but not
+				// being displayed on the screen
 	u8 reserved1[206];
 };
 

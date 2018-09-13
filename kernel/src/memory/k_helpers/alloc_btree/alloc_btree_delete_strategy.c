@@ -120,8 +120,10 @@ static void	loop(
 				else if (trash != *root)
 				{
 					SET_DB_BLACK(trash);
-					sibling = (trash->parent->left != trash) ?
-							trash->parent->left : trash->parent->right;
+					if (trash->parent->left != trash)
+						sibling = trash->parent->left;
+					else
+						sibling = trash->parent->right;
 				}
 			}
 		}

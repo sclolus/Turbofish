@@ -101,7 +101,11 @@ static void	*fill_possible(
 	if (next_free_record)
 		delete_free_record(next_free_record, free_record_parent, type);
 	if (n_free_record.len != 0)
-		insert_free_record(n_free_record.addr, n_free_record.len, type, NULL);
+		insert_free_record(
+				n_free_record.addr,
+				n_free_record.len,
+				type,
+				NULL);
 	return (addr);
 }
 
@@ -152,7 +156,9 @@ void		*core_realloc(
 	if ((record = alloc_btree_get_node_by_content(ctx.big_page_record_tree,
 			ptr, &cmp_addr_to_node_addr)) == NULL)
 		index = (struct s_node *)alloc_btree_get_node_by_content(
-			ctx.index_pages_tree, ptr, cmp_addr_to_node_m_addr_range);
+			ctx.index_pages_tree,
+			ptr,
+			cmp_addr_to_node_m_addr_range);
 	if (record == NULL && index != NULL)
 	{
 		record = alloc_btree_get_node_by_content(index->ptr_a, ptr,

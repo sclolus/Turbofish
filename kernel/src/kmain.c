@@ -101,13 +101,19 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{green}OK\n{eoc}");
 
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
-	printk("{white}Initialize Paging with %u ko of available memory: ", avalaible_mem >> 10);
+	printk("{white}Initialize Paging with %u ko of available memory: ",
+			avalaible_mem >> 10);
 	init_paging(avalaible_mem);
 	printk("{green}OK\n{eoc}");
 
 	printk("flag: %p\n", multiboot_info_addr->flags);
-	printk("mem_lower: %u, mem_upper: %u\n", multiboot_info_addr->mem_lower, multiboot_info_addr->mem_upper);
-	printk("Addr = %p length = %u map_addr = %p\n", multiboot_info_addr, multiboot_info_addr->mmap_length, multiboot_info_addr->mmap_addr);
+	printk("mem_lower: %u, mem_upper: %u\n",
+			multiboot_info_addr->mem_lower,
+			multiboot_info_addr->mem_upper);
+	printk("Addr = %p length = %u map_addr = %p\n",
+			multiboot_info_addr,
+			multiboot_info_addr->mmap_length,
+			multiboot_info_addr->mmap_addr);
 
 	asm("sti");
 	printk("{white}Interupt enabled: {green}OK{eoc}\n");
