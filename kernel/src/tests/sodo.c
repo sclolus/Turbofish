@@ -132,9 +132,16 @@ static int		del_sodo(
 			deallocated);
 	while (n < ctx->tab_ptr[i].size) {
 		if (*ptr != ctx->tab_ptr[i].c) {
-			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, ctx->tab_ptr[i].c);
+			printk("%s: BAD VAL: Got %hhx instead of %hhx at %p\n",
+					__func__, *ptr, ctx->tab_ptr[i].c, ptr);
 			lst_iter(ctx->log, &dump_log);
+			get_anotomie_of(
+					ctx->tab_ptr[i].ptr,
+					ctx->tab_ptr[i].size);
+			printk("confirmed false value: %.2hhx\n", *ptr);
+			printk("page directory check: %s\n",
+					(check_page_directory() == 0) ?
+							"OK" : "FAIL");
 			return -1;
 		}
 		ptr++;

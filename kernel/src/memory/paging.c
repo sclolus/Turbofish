@@ -95,6 +95,27 @@ static int	create_directory(u32 directory, enum mem_space space)
 	return 0;
 }
 
+#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
+
+static void	clone_page_directory(void)
+{
+	memcpy(
+			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
+			(void *)PAGE_DIRECTORY_0_ADDR,
+			4096);
+}
+
+int		check_page_directory(void)
+{
+	int ret;
+
+	ret = memcmp(
+			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
+			(void *)PAGE_DIRECTORY_0_ADDR,
+			4096);
+	return (ret != 0) ? 0 : -1;
+}
+
 static int	map_address(
 		u32 virt_addr,
 		u32 page_req,
@@ -138,6 +159,31 @@ static int	unmap_address(u32 virt_addr, u32 page_req)
 	for (u32 i = 0; i < page_req; i++)
 		*pt++ = 0;
 	return 0;
+}
+
+/*
+ * Debug function
+ * Describe physical segments pointed by a virtual address while size
+ */
+void		get_anotomie_of(void *virt_addr, size_t size)
+{
+	struct page_table_seg *pt;
+	u32 _virt_addr ;
+
+	_virt_addr = (u32)virt_addr;
+
+	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	pt = (struct page_table_seg *)((_virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	size = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
+	for (u32 i = 0; i < size; i++) {
+		u32 phy_addr = pt->physical_address4_20 & 0xFFFF;
+		phy_addr <<= 4;
+		phy_addr |= pt->physical_address0_3 & 0xF;
+		phy_addr <<= 12;
+		printk("phy_addr = %p\n", phy_addr);
+		pt++;
+	}
 }
 
 void		*kmmap(size_t size)
@@ -267,6 +313,8 @@ void		init_paging(u32 available_memory)
 	// creation of user page directory
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, user_space);
+
+	clone_page_directory();
 
 	// clean all pages tables
 	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
