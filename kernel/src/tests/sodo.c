@@ -1,6 +1,7 @@
 
 # include "math.h"
 # include "libft.h"
+# include "chained_tools.h"
 # include "memory_manager.h"
 
 # define TEST_LENGTH	100
@@ -15,7 +16,74 @@ struct			sodo_ctx {
 	struct s_test	tab_ptr[TEST_LENGTH];
 	u32		nb_tests;
 	u32		max_alloc;
+	struct s_list	*log;
 };
+
+/*
+ * Log functions
+ */
+enum			mem_status {
+	allocated = 0,
+	deallocated
+};
+
+struct			sodo_log_entry {
+	void		*virt_addr;
+	char		c;
+	size_t		size;
+	enum mem_status status;
+};
+
+static void		del_log(void *content, size_t size, int (*free)(void *))
+{
+	int ret;
+
+	(void)size;
+	ret = free(content);
+	if (ret < 0) {
+		eprintk("internal log error\n");
+		return ;
+	}
+}
+
+static void		add_log_entry(
+			struct sodo_ctx *ctx,
+			void *virt_addr,
+			char c,
+			size_t size,
+			enum mem_status status)
+{
+	struct sodo_log_entry *log_entry;
+
+	log_entry = (struct sodo_log_entry *)
+			kmalloc(sizeof(struct sodo_log_entry));
+	if (log_entry == NULL) {
+		eprintk("internal log error\n");
+		return ;
+	}
+	log_entry->c = c;
+	log_entry->size = size;
+	log_entry->virt_addr = virt_addr;
+	log_entry->status = status;
+	lst_push_back(&ctx->log, log_entry, sizeof(*log_entry), &kmalloc);
+}
+
+static void		dump_log(struct s_list *lst)
+{
+	struct sodo_log_entry *log_entry;
+
+	log_entry = (struct sodo_log_entry *)lst->content;
+	if (log_entry == NULL) {
+		eprintk("internal log error\n");
+		return ;
+	}
+
+	printk("%s -> %p %.2hhx size: %u\n",
+			((log_entry->status == allocated) ? "PUSH" : "POP "),
+			log_entry->virt_addr,
+			log_entry->c,
+			log_entry->size);
+}
 
 static int		add_sodo(
 			struct sodo_ctx *ctx,
@@ -34,6 +102,12 @@ static int		add_sodo(
 		return -1;
 	}
 	ctx->tab_ptr[nb_elmt].size = size;
+	add_log_entry(
+			ctx,
+			ctx->tab_ptr[nb_elmt].ptr,
+			ctx->tab_ptr[nb_elmt].c,
+			size,
+			allocated);
 	memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
 	return 0;
 }
@@ -50,10 +124,17 @@ static int		del_sodo(
 	n = 0;
 	i = rand(nb_elmt - 1);
 	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
+	add_log_entry(
+			ctx,
+			ctx->tab_ptr[i].ptr,
+			ctx->tab_ptr[i].c,
+			ctx->tab_ptr[i].size,
+			deallocated);
 	while (n < ctx->tab_ptr[i].size) {
 		if (*ptr != ctx->tab_ptr[i].c) {
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, ctx->tab_ptr[i].c);
+			lst_iter(ctx->log, &dump_log);
 			return -1;
 		}
 		ptr++;
@@ -259,20 +340,24 @@ int			sodo(void)
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = 4096 * 4;
+	ctx.log = NULL;
 	srand(0xCDE1);
 	if (sodo_test(&ctx, &kmmap, &kmunmap) == -1) {
 	//	return -1;
 	}
+	lst_del(&ctx.log, &del_log, &kfree);
 
 	printk("\n");
 	printk("{orange}V map memory group check:{eoc}\n");
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = 4096 * 4;
+	ctx.log = NULL;
 	srand(0xA8B0);
 	if (sodo_test(&ctx, &valloc, &vfree) == -1) {
 	//	return -1;
 	}
+	lst_del(&ctx.log, &del_log, &kfree);
 
 	printk("\n");
 	printk("{orange}K sub family check:{eoc}\n");
