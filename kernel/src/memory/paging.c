@@ -248,7 +248,7 @@ int		vmunmap(void *virt_addr)
 		i += j;
 	}
 
-	ft_bzero(
+	bzero(
 			((void *)((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR),
 			page_req * 4);
 	return 0;
@@ -269,7 +269,7 @@ void		init_paging(u32 available_memory)
 		create_directory(i, user_space);
 
 	// clean all pages tables
-	ft_bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
+	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
 
 	// initialize virtual memory map
 	init_virtual_map();

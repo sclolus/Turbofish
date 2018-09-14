@@ -34,7 +34,7 @@ static int		add_sodo(
 		return -1;
 	}
 	ctx->tab_ptr[nb_elmt].size = size;
-	ft_memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
+	memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
 	return 0;
 }
 
@@ -128,7 +128,7 @@ static int		real_sodo_next(
 	}
 	ctx->tab_ptr[i].size = (size_t)x;
 	ctx->tab_ptr[i].c = x % 256;
-	ft_memset(ctx->tab_ptr[i].ptr, ctx->tab_ptr[i].c, x);
+	memset(ctx->tab_ptr[i].ptr, ctx->tab_ptr[i].c, x);
 	return 0;
 }
 
@@ -202,7 +202,7 @@ static int		sodo_realloc(struct sodo_ctx *ctx)
 	int		max_alloc;
 
 	nb_elmt = 0;
-	ft_memset(global_count, 0, 3 * sizeof(int));
+	memset(global_count, 0, 3 * sizeof(int));
 	if ((max_alloc = loop_sodo_realloc(
 			ctx, global_count, &nb_elmt)) == -1)
 		return -1;
@@ -230,7 +230,7 @@ static int		sodo_test(
 	int		max_alloc;
 
 	nb_elmt = 0;
-	ft_memset(global_count, 0, 2 * sizeof(int));
+	memset(global_count, 0, 2 * sizeof(int));
 	if ((max_alloc = loop_sodo_test(
 			ctx,
 			global_count,
@@ -256,7 +256,7 @@ int			sodo(void)
 
 	printk("\n");
 	printk("{orange}K map memory group check:{eoc}\n");
-	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
+	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = 4096 * 4;
 	srand(0xCDE1);
@@ -266,7 +266,7 @@ int			sodo(void)
 
 	printk("\n");
 	printk("{orange}V map memory group check:{eoc}\n");
-	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
+	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = 4096 * 4;
 	srand(0xA8B0);
@@ -278,7 +278,7 @@ int			sodo(void)
 	printk("{orange}K sub family check:{eoc}\n");
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = 4096;
-	ft_bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
+	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	srand(0x15CF);
 	if (sodo_realloc(&ctx) == -1) {
 	//	return -1;

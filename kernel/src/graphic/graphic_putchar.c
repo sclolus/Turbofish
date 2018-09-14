@@ -13,7 +13,7 @@ static void	test_scroll(void)
 		u32 p = (u32)g_graphic_ctx.vesa_mode_info.framebuffer +
 				g_graphic_ctx.vesa_mode_info.width * 16;
 
-		ft_memcpy(
+		memcpy(
 			(ptr_32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
 			(ptr_32 *)p,
 			g_graphic_ctx.vesa_mode_info.width *
@@ -23,7 +23,7 @@ static void	test_scroll(void)
 				g_graphic_ctx.vesa_mode_info.width *
 				(g_graphic_ctx.vesa_mode_info.height - 16);
 
-		ft_bzero((ptr_32 *)p, g_graphic_ctx.vesa_mode_info.width * 16);
+		bzero((ptr_32 *)p, g_graphic_ctx.vesa_mode_info.width * 16);
 
 		g_cur_loc -= g_graphic_ctx.vesa_mode_info.width * 16;
 	}
@@ -31,7 +31,7 @@ static void	test_scroll(void)
 
 // assume font is a 8 * 16 pixel bitmap
 // screen resolution must be sub multiple of 8 for width and 16 for height
-void		putchar(u8 c)
+void		graphic_putchar(u8 c)
 {
 	if (c >= 32) {
 		test_scroll();

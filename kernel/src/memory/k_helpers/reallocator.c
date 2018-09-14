@@ -14,7 +14,7 @@ static void	*copy_another_place(
 	dst_addr = core_allocator(size);
 	if (dst_addr == NULL)
 		return (NULL);
-	ft_aligned_memcpy(
+	aligned_memcpy(
 			dst_addr,
 			src_addr,
 			src_size < *size ? src_size : *size);

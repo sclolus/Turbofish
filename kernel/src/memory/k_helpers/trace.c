@@ -20,7 +20,7 @@ void		open_malloc_tracer(void)
 	ret = 0;
 	(void)ret;
 	if (ret == -1)
-		ft_bzero(&ctx.begin_time, sizeof(struct timespec));
+		bzero(&ctx.begin_time, sizeof(struct timespec));
 //	ctx.begin_time.tv_nsec /= 1000;
 }
 

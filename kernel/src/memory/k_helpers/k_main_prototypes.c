@@ -35,7 +35,7 @@ void			*kcalloc(size_t count, size_t size)
 	global_size = count * size;
 	addr = core_allocator(&global_size);
 	if (addr != NULL)
-		ft_aligned_bzero(addr, global_size);
+		aligned_bzero(addr, global_size);
 	if (ctx.tracer_file_descriptor != -1)
 		bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
 //	pthread_mutex_unlock(&g_mut);

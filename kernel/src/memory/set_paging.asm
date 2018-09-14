@@ -1,7 +1,7 @@
 
 %define PAGING_BIT (1 << 31)
 
-extern ft_putnbr_base
+extern putnbr_base
 
 [BITS 32]
 segment .text

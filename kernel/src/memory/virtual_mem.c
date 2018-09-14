@@ -93,5 +93,5 @@ u32		free_pages(void *addr, enum mem_space space)
 void		init_virtual_map(void)
 {
 	virt_map = (u8 *)VIRT_MAP_LOCATION;
-	ft_memset(virt_map, 0, MAP_LENGTH);
+	memset(virt_map, 0, MAP_LENGTH);
 }

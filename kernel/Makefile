@@ -64,7 +64,7 @@ SRC_ASM_KERNEL += keymap
 VPATH += src/keyboard
 
 # graphic
-SRC_C_KERNEL += set_vbe putchar
+SRC_C_KERNEL += set_vbe graphic_putchar
 SRC_ASM_KERNEL += draw_line display_char
 VPATH += src/graphic
 HEADERS += vesa_graphic

@@ -38,7 +38,7 @@ asm_default_pic_slave_interrupt:
     out 0xA0, al
     iret
 
-extern ft_putstr
+extern putstr
 asm_clock_handler:
 	push eax
     mov al, 0x20
