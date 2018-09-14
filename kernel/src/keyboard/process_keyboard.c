@@ -36,11 +36,11 @@ void	process_keyboard(u8 scancode)
 		if (scancode & 0x80)
 			break;
 		if (keyboard_register & MAJ)
-			putchar(get_keymap((scancode << 2) + 1));
+			graphic_putchar(get_keymap((scancode << 2) + 1));
 		else if (keyboard_register & ALT)
-			putchar(get_keymap((scancode << 2) + 2));
+			graphic_putchar(get_keymap((scancode << 2) + 2));
 		else
-			putchar(get_keymap(scancode << 2));
+			graphic_putchar(get_keymap(scancode << 2));
 		break;
 	}
 }
