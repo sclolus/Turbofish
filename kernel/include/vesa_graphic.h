@@ -1,3 +1,4 @@
+
 #ifndef __VESA_GRAPHIC_H__
 # define __VESA_GRAPHIC_H__
 
