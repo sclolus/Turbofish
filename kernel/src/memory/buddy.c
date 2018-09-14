@@ -228,7 +228,12 @@ int		mem_multiple_area(
 				* (u32)(PAGE_SIZE << (MAX_LVL - lvl))
 				* GRANULARITY;
 
-		printk("virt %p phy %p for %u,", *virt_addr, ref_addr, block_size * 4096);
+#ifdef DEBUG_VALLOC
+		printk("virt %p phy %p for %u,",
+				*virt_addr,
+				ref_addr,
+				block_size * 4096);
+#endif
 		ret = map_fn(*virt_addr, block_size, ref_addr, kernel_space);
 		if (ret == -1)
 			return -1;

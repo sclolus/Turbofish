@@ -56,7 +56,7 @@ struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
 
-static void	*virt_to_physical_addr(u32 virt_addr)
+static void		*virt_to_physical_addr(u32 virt_addr)
 {
 	struct page_table_seg	*pt;
 	u32			phy_addr;
@@ -76,7 +76,7 @@ static void	*virt_to_physical_addr(u32 virt_addr)
 	return (void *)phy_addr;
 }
 
-static int	create_directory(u32 directory, enum mem_space space)
+static int		create_directory(u32 directory, enum mem_space space)
 {
 	struct page_directory	*pd;
 	struct page_table	*pt;
@@ -95,32 +95,14 @@ static int	create_directory(u32 directory, enum mem_space space)
 	return 0;
 }
 
-#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
-
-static void	clone_page_directory(void)
 {
-	memcpy(
-			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
-			(void *)PAGE_DIRECTORY_0_ADDR,
-			4096);
 }
 
-int		check_page_directory(void)
-{
-	int ret;
-
-	ret = memcmp(
-			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
-			(void *)PAGE_DIRECTORY_0_ADDR,
-			4096);
-	return (ret != 0) ? 0 : -1;
-}
-
-static int	map_address(
-		u32 virt_addr,
-		u32 page_req,
-		u32 phy_addr,
-		enum mem_space space)
+static int		map_address(
+			u32 virt_addr,
+			u32 page_req,
+			u32 phy_addr,
+			enum mem_space space)
 {
 	struct page_table_seg *pt;
 
@@ -146,7 +128,7 @@ static int	map_address(
 	return 0;
 }
 
-static int	unmap_address(u32 virt_addr, u32 page_req)
+static int		unmap_address(u32 virt_addr, u32 page_req)
 {
 	u32 *pt;
 
@@ -161,32 +143,7 @@ static int	unmap_address(u32 virt_addr, u32 page_req)
 	return 0;
 }
 
-/*
- * Debug function
- * Describe physical segments pointed by a virtual address while size
- */
-void		get_anotomie_of(void *virt_addr, size_t size)
-{
-	struct page_table_seg *pt;
-	u32 _virt_addr ;
-
-	_virt_addr = (u32)virt_addr;
-
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
-	pt = (struct page_table_seg *)((_virt_addr >> 10) + PAGE_TABLE_0_ADDR);
-
-	size = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
-	for (u32 i = 0; i < size; i++) {
-		u32 phy_addr = pt->physical_address4_20 & 0xFFFF;
-		phy_addr <<= 4;
-		phy_addr |= pt->physical_address0_3 & 0xF;
-		phy_addr <<= 12;
-		printk("phy_addr = %p\n", phy_addr);
-		pt++;
-	}
-}
-
-void		*kmmap(size_t size)
+void			*kmmap(size_t size)
 {
 	struct mem_result	res;
 	void			*phy_addr;
@@ -215,7 +172,7 @@ void		*kmmap(size_t size)
 	return (void *)res.addr;
 }
 
-void		*vmmap(size_t size)
+void			*vmmap(size_t size)
 {
 	struct mem_result	res;
 
@@ -241,7 +198,7 @@ void		*vmmap(size_t size)
 	return (void *)res.addr;
 }
 
-int		kmunmap(void *virt_addr)
+int			kmunmap(void *virt_addr)
 {
 	u32			page_req;
 	void			*phy_addr;
@@ -258,7 +215,7 @@ int		kmunmap(void *virt_addr)
 	return unmap_address((u32)virt_addr, page_req);
 }
 
-int		vmunmap(void *virt_addr)
+int			vmunmap(void *virt_addr)
 {
 	u32			page_req;
 	u32			phy_addr;
@@ -293,14 +250,12 @@ int		vmunmap(void *virt_addr)
 		pt += j;
 		i += j;
 	}
-
-	bzero(
-			((void *)((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR),
-			page_req * 4);
 	return 0;
 }
 
-void		init_paging(u32 available_memory)
+static void		clone_page_directory(void);
+
+void			init_paging(u32 available_memory)
 {
 	struct mem_result	res;
 	int			i;
@@ -314,6 +269,7 @@ void		init_paging(u32 available_memory)
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, user_space);
 
+	// clone page directory for debugging
 	clone_page_directory();
 
 	// clean all pages tables
@@ -358,4 +314,52 @@ void		init_paging(u32 available_memory)
 
 	// launch paging
 	asm_paging_enable();
+}
+
+/*
+ * Debug functions
+ */
+#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
+
+static void		clone_page_directory(void)
+{
+	memcpy(
+			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
+			(void *)PAGE_DIRECTORY_0_ADDR,
+			4096);
+}
+
+int			check_page_directory(void)
+{
+	int ret;
+
+	ret = memcmp(
+			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
+			(void *)PAGE_DIRECTORY_0_ADDR,
+			4096);
+	return (ret != 0) ? 0 : -1;
+}
+
+/*
+ * Describe physical segments pointed by a virtual address while size
+ */
+void			get_anotomie_of(void *virt_addr, size_t size)
+{
+	struct page_table_seg *pt;
+	u32 _virt_addr ;
+
+	_virt_addr = (u32)virt_addr;
+
+	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	pt = (struct page_table_seg *)((_virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	size = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
+	for (u32 i = 0; i < size; i++) {
+		u32 phy_addr = pt->physical_address4_20 & 0xFFFF;
+		phy_addr <<= 4;
+		phy_addr |= pt->physical_address0_3 & 0xF;
+		phy_addr <<= 12;
+		printk("phy_addr = %p\n", phy_addr);
+		pt++;
+	}
 }

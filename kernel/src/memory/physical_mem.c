@@ -69,7 +69,9 @@ int		write_multiple_physical_addr(
 	u32 ptr;
 
 	ptr = (u32)virt_addr;
+#ifdef DEBUG_VALLOC
 	printk("{red}VIRT: %p for %u pages -> {eoc}", virt_addr, page_request);
+#endif
 	return mem_multiple_area(phy_map, &page_request, 1, 0, &ptr, map_fn);
 }
 

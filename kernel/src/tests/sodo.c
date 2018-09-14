@@ -85,6 +85,10 @@ static void		dump_log(struct s_list *lst)
 			log_entry->size);
 }
 
+/*
+ * SODO main functions
+ */
+
 static int		add_sodo(
 			struct sodo_ctx *ctx,
 			int nb_elmt,

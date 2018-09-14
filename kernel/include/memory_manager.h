@@ -23,9 +23,6 @@ struct mem_result {
 struct mem_result	get_pages(u32 page_request, enum mem_space space);
 u32			free_pages(void *addr, enum mem_space space);
 
-void			get_anotomie_of(void *virt_addr, size_t size);
-int			check_page_directory(void);
-
 // physical map internal functions
 void			init_physical_map(void *limit_phy_addr);
 int			mark_physical_area(void *addr, u32 page_request);
@@ -37,6 +34,10 @@ int			write_multiple_physical_addr(
 			void *virt_addr,
 			int (*map)(u32 virt_addr, u32 page_req, u32 phy_addr,
 					enum mem_space space));
+
+// debug functions
+void			get_anotomie_of(void *virt_addr, size_t size);
+int			check_page_directory(void);
 
 // buddy algorithms
 
