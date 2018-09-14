@@ -95,7 +95,13 @@ static int		create_directory(u32 directory, enum mem_space space)
 	return 0;
 }
 
+static inline void	invlpg(void *m)
 {
+/*
+* Clobber memory to avoid optimizer re-ordering access before invlpg,
+* which may cause nasty bugs.
+*/
+	asm volatile("invlpg (%0)" : : "b"(m) : "memory");
 }
 
 static int		map_address(
@@ -122,6 +128,10 @@ static int		map_address(
 		pt->available = 0;
 		pt->physical_address0_3 = (phy_addr >> 12) & 0xF;
 		pt->physical_address4_20 = (phy_addr >> 12) >> 4;
+
+		invlpg((void *)virt_addr);
+		virt_addr += PAGE_SIZE;
+
 		pt++;
 		phy_addr += OFFSET;
 	}
@@ -139,7 +149,11 @@ static int		unmap_address(u32 virt_addr, u32 page_req)
 	pt = (u32 *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	for (u32 i = 0; i < page_req; i++)
+	{
 		*pt++ = 0;
+		invlpg((void *)virt_addr);
+		virt_addr += PAGE_SIZE;
+	}
 	return 0;
 }
 
@@ -247,6 +261,13 @@ int			vmunmap(void *virt_addr)
 					__func__, phy_addr, virt_addr);
 			return -1;
 		}
+
+		u32 *page = (u32 *)pt;
+		*page = 0;
+
+		invlpg(virt_addr);
+		virt_addr += PAGE_SIZE;
+
 		pt += j;
 		i += j;
 	}
