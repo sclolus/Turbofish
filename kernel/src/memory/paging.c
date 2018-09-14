@@ -7,6 +7,7 @@
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000
+#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
 #define PAGE_TABLE_0_ADDR		0x400000
 
 #define MAX_PAGE_TABLE_SEG		1024
@@ -23,7 +24,6 @@
  * - PS indicate if pages contained are 4mo size instead of 4ko.
  * page directory only
  */
-
 #define P_IS_PHYSIC_MEMORY		(1 << 0)
 #define RW_IS_READ_AND_WRITE		(1 << 1)
 #define US_IS_USER_USABLE		(1 << 2)
@@ -61,7 +61,7 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	struct page_table_seg	*pt;
 	u32			phy_addr;
 
-	if (virt_addr & 0xFFF) {
+	if (virt_addr & PAGE_MASK) {
 		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
 		return (void *)MAP_FAILED;
 	}
@@ -74,6 +74,11 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	phy_addr <<= 12;
 
 	return (void *)phy_addr;
+}
+
+static inline size_t	size_to_page_requested(size_t size)
+{
+	return (size >> 12) + ((size & PAGE_MASK) ? 1 : 0);
 }
 
 static int		create_directory(u32 directory, enum mem_space space)
@@ -112,7 +117,7 @@ static int		map_address(
 {
 	struct page_table_seg *pt;
 
-	if (virt_addr & 0xFFF) {
+	if (virt_addr & PAGE_MASK) {
 		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
 		return -1;
 	}
@@ -142,7 +147,7 @@ static int		unmap_address(u32 virt_addr, u32 page_req)
 {
 	u32 *pt;
 
-	if (virt_addr & 0xFFF) {
+	if (virt_addr & PAGE_MASK) {
 		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
 		return -1;
 	}
@@ -163,7 +168,7 @@ void			*kmmap(size_t size)
 	void			*phy_addr;
 	u32			page_req;
 
-	page_req = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
+	page_req = size_to_page_requested(size);
 	res = get_pages(page_req, kernel_space);
 	if (res.addr != MAP_FAILED) {
 		phy_addr = get_physical_addr(page_req);
@@ -190,8 +195,7 @@ void			*vmmap(size_t size)
 {
 	struct mem_result	res;
 
-	res = get_pages((size >> 12) + ((size & 0xFFF)  ? 1 : 0),
-			kernel_space);
+	res = get_pages(size_to_page_requested(size), kernel_space);
 
 	if (res.addr != MAP_FAILED) {
 		int ret = write_multiple_physical_addr(
@@ -214,8 +218,8 @@ void			*vmmap(size_t size)
 
 int			kmunmap(void *virt_addr)
 {
-	u32			page_req;
-	void			*phy_addr;
+	u32		page_req;
+	void		*phy_addr;
 
 	page_req = free_pages(virt_addr, kernel_space);
 	if (page_req == 0)
@@ -231,11 +235,13 @@ int			kmunmap(void *virt_addr)
 
 int			vmunmap(void *virt_addr)
 {
-	u32			page_req;
-	u32			phy_addr;
-	struct page_table_seg	*pt;
+	u32		tmp_virt_addr;
+	u32		page_req;
+	u32		phy_addr;
+	u32		i;
+	u32		pages_droped;
 
-	if ((u32)virt_addr & 0xFFF) {
+	if ((u32)virt_addr & PAGE_MASK) {
 		eprintk("%s: Unexpected offset, virt_addr = %p\n"
 				,__func__, virt_addr);
 		return -1;
@@ -245,33 +251,20 @@ int			vmunmap(void *virt_addr)
 	if (page_req == 0)
 		return -1;
 
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
-	pt = (struct page_table_seg *)
-			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
-
-	u32 i = 0;
+	tmp_virt_addr = (u32)virt_addr;
+	i = 0;
 	while (i < page_req) {
-		phy_addr = pt->physical_address4_20 & 0xFFFF;
-		phy_addr <<= 4;
-		phy_addr |= pt->physical_address0_3 & 0xF;
-		phy_addr <<= 12;
-		u32 j = drop_physical_addr((void *)phy_addr);
-		if (j == 0) {
+		phy_addr = (u32)virt_to_physical_addr(tmp_virt_addr);
+		pages_droped = drop_physical_addr((void *)phy_addr);
+		if (pages_droped == 0) {
 			eprintk("%s: Unexpected error %p not founded ! V %p\n",
 					__func__, phy_addr, virt_addr);
 			return -1;
 		}
-
-		u32 *page = (u32 *)pt;
-		*page = 0;
-
-		invlpg(virt_addr);
-		virt_addr += PAGE_SIZE;
-
-		pt += j;
-		i += j;
+		tmp_virt_addr += pages_droped * PAGE_SIZE;
+		i += pages_droped;
 	}
-	return 0;
+	return unmap_address((u32)virt_addr, page_req);
 }
 
 static void		clone_page_directory(void);
@@ -340,14 +333,12 @@ void			init_paging(u32 available_memory)
 /*
  * Debug functions
  */
-#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
-
 static void		clone_page_directory(void)
 {
 	memcpy(
 			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
 			(void *)PAGE_DIRECTORY_0_ADDR,
-			4096);
+			MAX_DIRECTORY_SEG * sizeof(struct page_directory_seg));
 }
 
 int			check_page_directory(void)
@@ -357,7 +348,7 @@ int			check_page_directory(void)
 	ret = memcmp(
 			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
 			(void *)PAGE_DIRECTORY_0_ADDR,
-			4096);
+			MAX_DIRECTORY_SEG * sizeof(struct page_directory_seg));
 	return (ret != 0) ? 0 : -1;
 }
 
@@ -366,21 +357,14 @@ int			check_page_directory(void)
  */
 void			get_anotomie_of(void *virt_addr, size_t size)
 {
-	struct page_table_seg *pt;
-	u32 _virt_addr ;
+	u32 _virt_addr;
+	u32 _virt_addr_end;
 
 	_virt_addr = (u32)virt_addr;
+	_virt_addr_end = _virt_addr + size_to_page_requested(size) * PAGE_SIZE;
 
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
-	pt = (struct page_table_seg *)((_virt_addr >> 10) + PAGE_TABLE_0_ADDR);
-
-	size = (size >> 12) + ((size & 0xFFF) ? 1 : 0);
-	for (u32 i = 0; i < size; i++) {
-		u32 phy_addr = pt->physical_address4_20 & 0xFFFF;
-		phy_addr <<= 4;
-		phy_addr |= pt->physical_address0_3 & 0xF;
-		phy_addr <<= 12;
-		printk("phy_addr = %p\n", phy_addr);
-		pt++;
+	while (_virt_addr < _virt_addr_end) {
+		printk("phy_addr = %p\n", virt_to_physical_addr(_virt_addr));
+		_virt_addr += PAGE_SIZE;
 	}
 }

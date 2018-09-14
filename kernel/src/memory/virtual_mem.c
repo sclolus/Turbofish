@@ -26,7 +26,6 @@ static u8 *virt_map;
  * 1-----2--4 ----------- v ---------------------
  * Index number
  */
-
 struct mem_result	get_pages(u32 page_request, enum mem_space space)
 {
 	struct mem_result mem;
@@ -69,7 +68,7 @@ struct mem_result	get_pages(u32 page_request, enum mem_space space)
 	return mem;
 }
 
-u32		free_pages(void *addr, enum mem_space space)
+u32			free_pages(void *addr, enum mem_space space)
 {
 	int ret;
 
@@ -90,7 +89,7 @@ u32		free_pages(void *addr, enum mem_space space)
 	return ret;
 }
 
-void		init_virtual_map(void)
+void			init_virtual_map(void)
 {
 	virt_map = (u8 *)VIRT_MAP_LOCATION;
 	memset(virt_map, 0, MAP_LENGTH);

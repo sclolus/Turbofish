@@ -10,6 +10,15 @@ static u32 page_mask[21] = {
 	0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
 	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF};
 
+/*
+ * According to Buddy algorithm; this function return a free chunk witch
+ * can contain the desired number of pages.
+ * @initialization: for a search in all the map
+ * get_mem_area(map, pages_req, 1, 0);
+ * caution, never set 0 as index.
+ * @return: Address and max number of pages in the chunk
+ * on error: MAP_FAILLED
+ */
 struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 {
 	struct mem_result mem;
@@ -67,6 +76,7 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 
 /*
  * This function return the container size like 1, 2, 4, 8 or 16 ...
+ * The pointed chunk become free
  */
 u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 {
@@ -118,7 +128,7 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
  *	     \                       \
  *	      o                       o      not allowed zone
  */
-int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
+int	mark_area_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
 {
 	u32 ref_addr;
 	u32 sup_addr;
@@ -127,7 +137,7 @@ int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
 	/*
 	 * error handling
 	 */
-	if (limit_addr == 0 || (limit_addr & 0xFFF))
+	if (limit_addr == 0 || (limit_addr & PAGE_MASK))
 		return -1;
 
 	/*
@@ -149,9 +159,10 @@ int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
 			* GRANULARITY;
 
 	if (limit_addr < sup_addr)
-		ret = mark_limit(map, limit_addr, index * 2, level + 1);
+		ret = mark_area_limit(map, limit_addr, index * 2, level + 1);
 	else
-		ret = mark_limit(map, limit_addr, index * 2 + 1, level + 1);
+		ret = mark_area_limit(
+				map, limit_addr, index * 2 + 1, level + 1);
 
 	/*
 	 * conclusion, while ascent
@@ -169,6 +180,12 @@ int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
 	return ret;
 }
 
+/*
+ * This function directly mark a chunk as ALLOCATED in the desired address
+ * on the desired deep (cap). It's necessary to understand exactly how the
+ * buddy system work before using this this function.
+ * @return: -1 on error, the cap on success
+ */
 int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 {
 	int ret;
@@ -210,14 +227,20 @@ int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 	return ret;
 }
 
-int		mem_multiple_area(
-		u8 *map,
-		u32 *pages_req,
-		u32 idx,
-		u32 lvl,
-		u32 *virt_addr,
-		int (*map_fn)(u32 virt_addr, u32 page_req, u32 phy_addr,
-						enum mem_space space))
+/*
+ * Very difficult to understand, this function mark multiples deeper chunks
+ * and associate mapping for conversion from virt_addr to phy_addr. For
+ * example, a VMALLOC call may associate multiple and different physical area.
+ * @return: -1 on error, 0 on success
+ */
+int	mem_multiple_area(
+	u8 *map,
+	u32 *pages_req,
+	u32 idx,
+	u32 lvl,
+	u32 *virt_addr,
+	int (*map_fn)(u32 virt_addr, u32 page_req, u32 phy_addr,
+			enum mem_space space))
 {
 	u32	block_size;
 	int	ret = 0;
@@ -232,7 +255,7 @@ int		mem_multiple_area(
 		printk("virt %p phy %p for %u,",
 				*virt_addr,
 				ref_addr,
-				block_size * 4096);
+				block_size * PAGE_SIZE);
 #endif
 		ret = map_fn(*virt_addr, block_size, ref_addr, kernel_space);
 		if (ret == -1)

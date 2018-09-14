@@ -350,7 +350,7 @@ int			sodo(void)
 	printk("{orange}K map memory group check:{eoc}\n");
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
-	ctx.max_alloc = 4096 * 4;
+	ctx.max_alloc = PAGE_SIZE * 4;
 	ctx.log = NULL;
 	srand(0xCDE1);
 	if (sodo_test(&ctx, &kmmap, &kmunmap) == -1) {
@@ -362,7 +362,7 @@ int			sodo(void)
 	printk("{orange}V map memory group check:{eoc}\n");
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
-	ctx.max_alloc = 4096 * 4;
+	ctx.max_alloc = PAGE_SIZE * 4;
 	ctx.log = NULL;
 	srand(0xA8B0);
 	if (sodo_test(&ctx, &valloc, &vfree) == -1) {
@@ -373,7 +373,7 @@ int			sodo(void)
 	printk("\n");
 	printk("{orange}K sub family check:{eoc}\n");
 	ctx.nb_tests = 10000;
-	ctx.max_alloc = 4096;
+	ctx.max_alloc = PAGE_SIZE;
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	srand(0x15CF);
 	if (sodo_realloc(&ctx) == -1) {
