@@ -54,8 +54,7 @@ struct s_node	*alloc_btree_get_uncle(struct s_node *n)
 	struct s_node *grandparent;
 
 	grandparent = alloc_btree_get_grandparent(n);
-	if (grandparent)
-	{
+	if (grandparent) {
 		return ((n->parent != grandparent->right) ?
 				grandparent->right : grandparent->left);
 	}

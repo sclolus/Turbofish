@@ -19,8 +19,7 @@ void		open_malloc_tracer(void)
 
 //	value = getenv("MALLOC_TRACER");
 	value = NULL;
-	if (value == NULL)
-	{
+	if (value == NULL) {
 		ctx.tracer_file_descriptor = -1;
 		return ;
 	}
@@ -91,13 +90,11 @@ void		begin_trace(
 	now.tv_sec = 0;
 	now.tv_nsec = 0;
 	ret = 0;
-	if (ret == 0)
-	{
+	if (ret == 0) {
 		now.tv_nsec /= 1000;
-		if (now.tv_nsec > ctx.begin_time.tv_nsec)
+		if (now.tv_nsec > ctx.begin_time.tv_nsec) {
 			now.tv_nsec = now.tv_nsec - ctx.begin_time.tv_nsec;
-		else
-		{
+		} else {
 			now.tv_nsec = (now.tv_nsec + 1000000)
 					- ctx.begin_time.tv_nsec;
 			now.tv_sec -= 1;

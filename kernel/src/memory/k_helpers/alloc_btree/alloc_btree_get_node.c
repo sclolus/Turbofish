@@ -17,7 +17,7 @@ struct s_node	*alloc_btree_get_node_by_content(
 		void *data_ref,
 		int (*cmpf)(void *, struct s_node *))
 {
-	int				diff;
+	int	diff;
 
 	if (root == NULL || cmpf == NULL)
 		return (NULL);

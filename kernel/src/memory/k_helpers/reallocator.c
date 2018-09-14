@@ -42,16 +42,13 @@ void		view_next_record(
 	struct s_node *next_allocated_record;
 
 	next_allocated_record = alloc_btree_get_next_neighbours_node(record);
-	if (next_allocated_record != NULL)
-	{
+	if (next_allocated_record != NULL) {
 		n_free_record->addr = (void *)((uint32_t)record->ptr_a
 				+ (uint32_t)record->m.size);
 		n_free_record->len = (uint32_t)next_allocated_record->ptr_a
 				- (uint32_t)record->ptr_a - record->m.size;
-	}
-	else if ((uint32_t)record->ptr_a + record->m.size != index->m.size
-			+ ((type == TINY) ? TINY_RANGE : MEDIUM_RANGE))
-	{
+	} else if ((uint32_t)record->ptr_a + record->m.size != index->m.size
+			+ ((type == TINY) ? TINY_RANGE : MEDIUM_RANGE)) {
 		n_free_record->len =
 				(uint32_t)index->m.size + ((type == TINY) ?
 				TINY_RANGE : MEDIUM_RANGE)
@@ -125,8 +122,7 @@ static void	*reallocator(
 		return (copy_another_place(record, size));
 	if (record->m.size == *size)
 		return (record->ptr_a);
-	if (old_type == LARGE)
-	{
+	if (old_type == LARGE) {
 		if (*size > record->m.size)
 			return (copy_another_place(record, size));
 		else
@@ -159,13 +155,11 @@ void		*core_realloc(
 			ctx.index_pages_tree,
 			ptr,
 			cmp_addr_to_node_m_addr_range);
-	if (record == NULL && index != NULL)
-	{
+	if (record == NULL && index != NULL) {
 		record = alloc_btree_get_node_by_content(index->ptr_a, ptr,
 			&cmp_addr_to_node_addr);
 	}
-	if (record == NULL)
-	{
+	if (record == NULL) {
 		if (record == NULL || core_deallocator(ptr) < 0)
 			*memfail = true;
 		return (NULL);

@@ -40,7 +40,7 @@ extern void	asm_clock_handler(void);
 extern void	asm_keyboard_handler(void);
 extern void	asm_real_time_clock_handler(void);
 
-void	init_IDT(void)
+void	init_idt(void)
 {
 	for (int i = 0; i < IDT_SIZE; i++)
 		initialize_idt_seg(

@@ -15,12 +15,10 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 	struct mem_result mem;
 
 	if (lvl == MAX_LVL || pages_req
-			> (u32)(GRANULARITY << (MAX_LVL - lvl - 1)))
-	{
-		if (IS_DIRTY(map, idx))
+			> (u32)(GRANULARITY << (MAX_LVL - lvl - 1))) {
+		if (IS_DIRTY(map, idx)) {
 			return (struct mem_result){MAP_FAILED, 0};
-		else
-		{
+		} else {
 			if (idx > (MAP_LENGTH * GRANULARITY_NEG))
 				eprintk("%s: ERROR idx, got %u\n",
 						__func__, idx);
@@ -34,13 +32,11 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 		}
 	}
 
-	if (IS_USABLE(map, 2 * idx))
-	{
+	if (IS_USABLE(map, 2 * idx)) {
 		mem = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
-				&& (!IS_USABLE(map, 2 * idx + 1)))
-		{
+				&& (!IS_USABLE(map, 2 * idx + 1))) {
 			SET(map, idx, UNAIVALABLE);
 			return mem;
 		}
@@ -51,13 +47,11 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 		}
 	}
 
-	if (IS_USABLE(map, 2 * idx + 1))
-	{
+	if (IS_USABLE(map, 2 * idx + 1)) {
 		mem = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
-				&& (!IS_USABLE(map, 2 * idx + 1)))
-		{
+				&& (!IS_USABLE(map, 2 * idx + 1))) {
 			SET(map, idx, UNAIVALABLE);
 			return mem;
 		}
@@ -86,18 +80,16 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
 	u32 sup_addr = ref_addr + ((u32)(PAGE_SIZE << (MAX_LVL - 1)) >>  lvl)
 			* GRANULARITY;
 
-	if (addr == ref_addr && IS_ALLOCATED(map, idx))
-	{
+	if (addr == ref_addr && IS_ALLOCATED(map, idx)) {
 		SET(map, idx, UNUSED);
 		return GRANULARITY << (MAX_LVL - lvl);
-	}
-	else if (addr < sup_addr)
+	} else if (addr < sup_addr) {
 		ret = free_mem_area(map, addr, idx * 2, lvl + 1);
-	else
+	} else {
 		ret = free_mem_area(map, addr, idx * 2 + 1, lvl + 1);
+	}
 
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		if (IS_UNUSED(map, idx * 2) &&
 				IS_UNUSED(map, idx * 2 + 1))
 			SET(map, idx, UNUSED);
@@ -141,8 +133,7 @@ int	mark_limit(u8 *map, u32 limit_addr, u32 index, u32 level)
 	/*
 	 * stop condition
 	 */
-	if (level == MAX_LVL)
-	{
+	if (level == MAX_LVL) {
 		SET(map, index, UNAIVALABLE);
 		return 0;
 	}
@@ -193,10 +184,8 @@ int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 	u32 sup_addr = ref_addr + ((u32)(PAGE_SIZE << (MAX_LVL - 1)) >> lvl)
 			* GRANULARITY;
 
-	if (lvl == cap)
-	{
-		if (addr == ref_addr && IS_UNUSED(map, idx))
-		{
+	if (lvl == cap) {
+		if (addr == ref_addr && IS_UNUSED(map, idx)) {
 			SET(map, idx, ALLOCATED);
 			return lvl;
 		}
@@ -208,11 +197,9 @@ int	mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl, u32 cap)
 	else
 		ret = mark_mem_area(map, addr, idx * 2 + 1, lvl + 1, cap);
 
-	if (ret != -1)
-	{
+	if (ret != -1) {
 		if ((!IS_USABLE(map, 2 * idx))
-				&& (!IS_USABLE(map, 2 * idx + 1)))
-		{
+				&& (!IS_USABLE(map, 2 * idx + 1))) {
 			SET(map, idx, UNAIVALABLE);
 			return ret;
 		}
@@ -236,8 +223,7 @@ int		mem_multiple_area(
 	int	ret = 0;
 
 	block_size = GRANULARITY << (MAX_LVL - lvl);
-	if (*pages_req >= block_size && IS_UNUSED(map, idx))
-	{
+	if (*pages_req >= block_size && IS_UNUSED(map, idx)) {
 		u32 ref_addr = (idx & page_mask[lvl])
 				* (u32)(PAGE_SIZE << (MAX_LVL - lvl))
 				* GRANULARITY;
@@ -251,8 +237,8 @@ int		mem_multiple_area(
 		*virt_addr += PAGE_SIZE * block_size;
 		return ret;
 	}
-	if (IS_USABLE(map, 2 * idx))
-	{
+
+	if (IS_USABLE(map, 2 * idx)) {
 		ret = mem_multiple_area(
 				map,
 				pages_req,
@@ -272,8 +258,8 @@ int		mem_multiple_area(
 		if (*pages_req == 0)
 			return ret;
 	}
-	if (IS_USABLE(map, 2 * idx + 1))
-	{
+
+	if (IS_USABLE(map, 2 * idx + 1)) {
 		ret = mem_multiple_area(
 				map,
 				pages_req,

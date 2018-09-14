@@ -13,10 +13,10 @@
 #include "alloc_btree_internal_header.h"
 
 static struct s_node	*node_recursive_candidate(
-		struct s_node *node,
-		struct s_node *last_candidate,
-		void *data_ref,
-		int (*cmpf)(void *, struct s_node *))
+			struct s_node *node,
+			struct s_node *last_candidate,
+			void *data_ref,
+			int (*cmpf)(void *, struct s_node *))
 {
 	int diff;
 
@@ -33,9 +33,9 @@ static struct s_node	*node_recursive_candidate(
 }
 
 struct s_node		*alloc_btree_get_last_valid_node(
-		struct s_node *root,
-		void *data_ref,
-		int (*cmpf)(void *, struct s_node *))
+			struct s_node *root,
+			void *data_ref,
+			int (*cmpf)(void *, struct s_node *))
 {
 	if (root == NULL || cmpf == NULL)
 		return (NULL);

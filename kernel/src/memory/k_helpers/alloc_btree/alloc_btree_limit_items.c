@@ -42,9 +42,7 @@ int		alloc_btree_is_last_node(struct s_node *node)
 {
 	if (node == NULL)
 		return (-EINVAL);
-	if (node->parent == NULL
-			&& node->left == NULL
-			&& node->right == NULL)
+	if (node->parent == NULL && node->left == NULL && node->right == NULL)
 		return (1);
 	return (0);
 }

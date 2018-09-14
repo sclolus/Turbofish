@@ -52,8 +52,8 @@ int		insert_free_record(
 		return (-1);
 	if (parent_ref)
 		*parent_ref = parent;
-	if ((record = alloc_btree_create_node(&node_custom_allocator)) == NULL)
-	{
+	if ((record = alloc_btree_create_node(&node_custom_allocator))
+			== NULL) {
 		if (parent->ptr_a == NULL)
 			alloc_btree_delete_rnb_node_by_content((type == TINY) ?
 					&ctx.global_tiny_space_tree :
@@ -108,8 +108,7 @@ int		delete_free_record(
 	size = record->m.size;
 	ret = alloc_btree_delete_rnb_node(((struct s_node **)&parent->ptr_a),
 			record, &node_custom_deallocator);
-	if (ret == 0)
-	{
+	if (ret == 0) {
 		alloc_btree_delete_rnb_node_by_content(
 				(type == TINY) ?
 						&ctx.global_tiny_space_tree :
@@ -139,13 +138,11 @@ struct s_node	*get_best_free_record_tree(
 	if ((addr = get_new_pages(range)) == NULL)
 		return (NULL);
 	index = create_index(addr, range);
-	if (index == NULL)
-	{
+	if (index == NULL) {
 		destroy_pages(addr, range);
 		return (NULL);
 	}
-	if (insert_free_record(addr, range, type, &parent) < 0)
-	{
+	if (insert_free_record(addr, range, type, &parent) < 0) {
 		destroy_index(index);
 		destroy_pages(addr, range);
 		return (NULL);
@@ -205,8 +202,7 @@ int		check_index_destroy(
 		parent = alloc_btree_get_node_by_content(
 				ctx.global_medium_space_tree,
 				&size, &cmp_size_to_node_size);
-	if (parent)
-	{
+	if (parent) {
 		index = alloc_btree_get_node_by_content(
 				ctx.index_pages_tree,
 				addr,

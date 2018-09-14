@@ -39,10 +39,10 @@ int		alloc_btree_memory_move(void *dest, struct s_node *src_node)
 	if (src_node == NULL || dest == NULL)
 		return (-EINVAL);
 	if (src_node->parent)
-		parent_position =
-				(src_node->parent->left == src_node) ? -1 : 1;
+		parent_position = (src_node->parent->left == src_node) ? -1 : 1;
 	else
 		parent_position = 0;
+
 	node_size = sizeof(struct s_node);
 	alloc_btree_aligned_memcpy_four(dest, src_node, node_size);
 	dest_node = (struct s_node *)dest;

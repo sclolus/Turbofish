@@ -69,8 +69,7 @@ static void		display_pages_free(struct s_node *index)
 
 void			show_alloc(bool verbose, int fd)
 {
-	if (verbose)
-	{
+	if (verbose) {
 		debug_nodes(fd);
 		fprintk(fd, "\n{green}__TINY_FREE_BLOCK__{eoc}\n");
 		alloc_btree_apply_infix(

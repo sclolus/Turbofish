@@ -19,16 +19,13 @@ static struct s_node	*simulate_insert_child(
 {
 	int diff;
 
-	if ((diff = use_ctx->comp(content, node)) < 0)
-	{
+	if ((diff = use_ctx->comp(content, node)) < 0) {
 		if (node->left == NULL)
 			return (node);
 		else
 			return (simulate_insert_child(
 					node->left, content, use_ctx));
-	}
-	else if (diff > 0)
-	{
+	} else if (diff > 0) {
 		if (node->right == NULL)
 			return (node);
 		else
@@ -47,8 +44,7 @@ static struct s_node	*create_node(
 
 	if (use_ctx->associator == NULL || use_ctx->allocator == NULL)
 		return (NULL);
-	if (!(new = (struct s_node *)
-			use_ctx->allocator(sizeof(struct s_node))))
+	if (!(new = (struct s_node *)use_ctx->allocator(sizeof(struct s_node))))
 		return (NULL);
 	use_ctx->reg = NODE_ALLOCATED;
 	new->left = NULL;
@@ -65,14 +61,14 @@ static struct s_node	*alloc_btree_try_insert_node(
 	struct s_node	*candidate;
 	struct s_node	*new;
 
-	if (*root == NULL)
-	{
+	if (*root == NULL) {
 		if ((new = create_node(content, use_ctx)) == NULL)
 			return (NULL);
 		*root = new;
 		new->parent = NULL;
 		return (new);
 	}
+
 	candidate = simulate_insert_child(*root, content, use_ctx);
 	if (use_ctx->reg == NODE_ALREADY_PRESENT)
 		return (candidate);

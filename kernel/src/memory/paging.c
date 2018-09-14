@@ -111,8 +111,7 @@ static int	map_address(
 	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
-	for (u32 i = 0; i < page_req; i++)
-	{
+	for (u32 i = 0; i < page_req; i++) {
 		pt->type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
 		if (space == user_space)
 			pt->type |= US_IS_USER_USABLE;
@@ -149,11 +148,9 @@ void		*kmmap(size_t size)
 
 	page_req = (size >> 12) + ((size & 0xFFF)  ? 1 : 0);
 	res = get_pages(page_req, kernel_space);
-	if (res.addr != MAP_FAILED)
-	{
+	if (res.addr != MAP_FAILED) {
 		phy_addr = get_physical_addr(page_req);
-		if ((u32)phy_addr == MAP_FAILED)
-		{
+		if ((u32)phy_addr == MAP_FAILED) {
 			eprintk("%s: out of physical memory\n", __func__);
 			page_req = free_pages((void *)res.addr, kernel_space);
 			if (page_req == 0)
@@ -179,23 +176,21 @@ void		*vmmap(size_t size)
 	res = get_pages((size >> 12) + ((size & 0xFFF)  ? 1 : 0),
 			kernel_space);
 
-	if (res.addr != MAP_FAILED)
-	{
+	if (res.addr != MAP_FAILED) {
 		int ret = write_multiple_physical_addr(
 				res.pages,
 				(void *)res.addr,
 				&map_address);
-		if (ret == -1)
-		{
+		if (ret == -1) {
 			eprintk("%s: out of physical memory\n", __func__);
 			res.pages = free_pages((void *)res.addr, kernel_space);
 			if (res.pages == 0)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
 		}
-	}
-	else
+	} else {
 		eprintk("%s: out of virtual memory\n", __func__);
+	}
 
 	return (void *)res.addr;
 }
@@ -238,8 +233,7 @@ int		vmunmap(void *virt_addr)
 			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	u32 i = 0;
-	while (i < page_req)
-	{
+	while (i < page_req) {
 		phy_addr = pt->physical_address4_20 & 0xFFFF;
 		phy_addr <<= 4;
 		phy_addr |= pt->physical_address0_3 & 0xF;
@@ -307,7 +301,7 @@ void		init_paging(u32 available_memory)
 	mark_physical_area(
 			g_graphic_ctx.vesa_mode_info.framebuffer,
 			MAX_PAGE_TABLE_SEG);
-	init_GDT((void *)res.addr);
+	init_gdt((void *)res.addr);
 	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res.addr;
 
 	// store page directory address in CR3 register

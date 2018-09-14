@@ -62,8 +62,7 @@ int			kfree(void *ptr)
 		return -1;
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(FREE, ptr, 0, 0);
-	if (ptr == NULL)
-	{
+	if (ptr == NULL) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
 //		pthread_mutex_unlock(&g_mut);
@@ -86,14 +85,11 @@ void			*krealloc(void *ptr, size_t size)
 		return (NULL);
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(REALLOC, ptr, size, 0);
-	if (ptr == NULL)
-	{
+	if (ptr == NULL) {
 		addr = core_allocator(&size);
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
-	}
-	else
-	{
+	} else {
 		addr = core_realloc(ptr, &size, &memfail);
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(memfail == false ?
@@ -114,14 +110,13 @@ void			*kreallocf(void *ptr, size_t size)
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(REALLOCF, ptr, size, 0);
 	memfail = false;
-	if (ptr == NULL)
-	{
+	if (ptr == NULL) {
 		addr = core_allocator(&size);
 		if (addr == NULL)
 			memfail = true;
-	}
-	else
+	} else {
 		addr = core_realloc(ptr, &size, &memfail);
+	}
 	if (memfail == true)
 		core_deallocator(ptr);
 	if (ctx.tracer_file_descriptor != -1)
@@ -140,14 +135,11 @@ static void		*kreallocarray_next(
 	bool		memfail;
 
 	global_size = nmemb * size;
-	if (ptr == NULL)
-	{
+	if (ptr == NULL) {
 		addr = core_allocator(&global_size);
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
-	}
-	else
-	{
+	} else {
 		addr = core_realloc(ptr, &global_size, &memfail);
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(memfail == false ? SUCCESS : FAIL, addr);
@@ -167,8 +159,7 @@ void			*kreallocarray(void *ptr, size_t nmemb, size_t size)
 
 
 //	if (nmemb > 0 && (SIZE_MAX / nmemb) < size)
-	if (0)
-	{
+	if (0) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(FAIL, NULL);
 //		errno = ENOMEM;
@@ -189,22 +180,20 @@ void			*kvalloc(size_t size)
 		return (NULL);
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(VALLOC, NULL, size, 0);
-	if (size == 0)
-	{
+	if (size == 0) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
 //		pthread_mutex_unlock(&g_mut);
 		return (NULL);
 	}
 	size = allign_size(size, LARGE);
-	if ((addr = core_allocator_large(&size)) == NULL)
-	{
+	if ((addr = core_allocator_large(&size)) == NULL) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(FAIL, NULL);
 //		errno = ENOMEM;
-	}
-	else if (ctx.tracer_file_descriptor != -1)
+	} else if (ctx.tracer_file_descriptor != -1) {
 		bend_trace(SUCCESS, addr);
+	}
 //	pthread_mutex_unlock(&g_mut);
 	return (addr);
 }

@@ -7,7 +7,7 @@ section .text
         dd - (0x1BADB002 + 0x0)      ; checksum. m+f+c should be zero
 
 extern kmain
-extern init_GDT
+extern init_gdt
 extern g_multiboot_info
 %define MULTIBOOT_INFO_LENGTH 116
 
@@ -18,7 +18,7 @@ _start:
     mov esp, stack_space            ; set stack pointer
 
 	push 0x0
-    call init_GDT
+    call init_gdt
 
     mov ax, 0x20
     mov ss, ax

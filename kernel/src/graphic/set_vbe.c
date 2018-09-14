@@ -53,8 +53,7 @@ s32		set_vbe(u16 selected_mode)
 		vgml->mode[(vgml->nb_mode)++] = *ptr++;
 
 	// test if selected mode exist in VBE capability
-	for (i = 0; i < vgml->nb_mode; i++)
-	{
+	for (i = 0; i < vgml->nb_mode; i++) {
 		if (selected_mode == vgml->mode[i])
 			break ;
 	}
@@ -76,7 +75,7 @@ s32		set_vbe(u16 selected_mode)
 	g_edi_offset = g_graphic_ctx.vesa_mode_info.width - 8;
 
 	// re initialize GDT with Linear Frame Buffer address
-	init_GDT(g_graphic_ctx.vesa_mode_info.framebuffer);
+	init_gdt(g_graphic_ctx.vesa_mode_info.framebuffer);
 
 	// switch to selected graphic mode
 	reg.eax = 0x4F02;

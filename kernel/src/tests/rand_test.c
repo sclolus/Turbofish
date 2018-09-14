@@ -10,16 +10,14 @@ int	rand_test(void)
 	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 28;
 	u32 i = 0;
 
-	for (u16 u = 1; u < 65535; u += 1)
-	{
+	for (u16 u = 1; u < 65535; u += 1) {
 		u16 res;
 		u32 q = 0;
 		u32 j = 0;
 
 		do {
 			res = rand(u);
-			if (res > u)
-			{
+			if (res > u) {
 				printk("{red}ERROR SUP: %hu > %hu{eoc}\n",
 						res, u);
 				return -1;

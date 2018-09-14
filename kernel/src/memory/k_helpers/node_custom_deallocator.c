@@ -20,8 +20,7 @@ static struct s_node	**find_index_node(void *addr)
 			ctx.index_pages_tree,
 			addr,
 			&cmp_addr_to_node_m_addr_range);
-	if (index == NULL)
-	{
+	if (index == NULL) {
 		eprintk("%s: (index = NULL) It leads us to undefined\n",
 				__func__);
 		return (NULL);
@@ -41,8 +40,7 @@ static struct s_node	**find_free_node(
 			ctx.global_medium_space_tree,
 			&node->m.size,
 			&cmp_size_to_node_size);
-	if (sub_node == NULL)
-	{
+	if (sub_node == NULL) {
 		eprintk("%s: (subnode = NULL) It leads us to undefined\n",
 				__func__);
 		return (NULL);
@@ -79,18 +77,14 @@ static struct s_node	**find_root(struct s_node *node)
 
 static void		destroy_node_page(struct s_node_page *end_node_page)
 {
-	if (end_node_page->primary_block.next == NULL)
-	{
-		if (ctx.node_cache)
-		{
+	if (end_node_page->primary_block.next == NULL) {
+		if (ctx.node_cache) {
 			destroy_pages(
 					ctx.node_cache,
 					NODE_REQ_PAGES * ctx.page_size);
 			ctx.node_cache = NULL;
 		}
-	}
-	else
-	{
+	} else {
 		if (ctx.node_cache)
 			destroy_pages(ctx.node_cache,
 					NODE_REQ_PAGES * ctx.page_size);
@@ -108,10 +102,8 @@ void			node_custom_deallocator(void *node)
 	end_node_page = ctx.node_pages_entry;
 	src_node = &end_node_page->node
 			[end_node_page->primary_block.nb_node - 1];
-	if (node != (void *)src_node)
-	{
-		if (((struct s_node *)src_node)->parent == NULL)
-		{
+	if (node != (void *)src_node) {
+		if (((struct s_node *)src_node)->parent == NULL) {
 			ptr = (uint32_t *)find_root(src_node);
 			if (ptr != NULL)
 				*ptr = (uint32_t)node;

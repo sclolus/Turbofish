@@ -38,17 +38,14 @@ int		inherit_neighbour(
 
 	s[0].len = 0;
 	s[1].len = 0;
-	if ((next = alloc_btree_get_next_neighbours_node(record)) != NULL)
-	{
+	if ((next = alloc_btree_get_next_neighbours_node(record)) != NULL) {
 		out->len = (uint32_t)next->ptr_a - (uint32_t)record->ptr_a;
 		s[0].addr = (void *)((uint32_t)record->ptr_a +
 				(uint32_t)record->m.size);
 		s[0].len = out->len - record->m.size;
-	}
-	else if ((uint32_t)record->ptr_a +
+	} else if ((uint32_t)record->ptr_a +
 			record->m.size != index->m.size + ((type == TINY) ?
-			TINY_RANGE : MEDIUM_RANGE))
-	{
+			TINY_RANGE : MEDIUM_RANGE)) {
 		s[0].len = (uint32_t)index->m.size + ((type == TINY) ?
 				TINY_RANGE : MEDIUM_RANGE)
 				- ((uint32_t)record->ptr_a
@@ -98,8 +95,7 @@ int		core_deallocator(void *ptr)
 		index = (struct s_node *)alloc_btree_get_node_by_content(
 			ctx.index_pages_tree, ptr,
 			cmp_addr_to_node_m_addr_range);
-	if (record == NULL)
-	{
+	if (record == NULL) {
 		if (index == NULL)
 			return (-1);
 		record = alloc_btree_get_node_by_content(index->ptr_a, ptr,
@@ -144,8 +140,7 @@ void		do_prev_job(
 	struct s_node *prev;
 
 	prev = alloc_btree_get_prev_neighbours_node(record);
-	if (prev != NULL)
-	{
+	if (prev != NULL) {
 		out->len += (uint32_t)record->ptr_a - (uint32_t)prev->ptr_a
 				- (uint32_t)prev->m.size;
 		out->addr = (void *)((uint32_t)prev->ptr_a
@@ -154,9 +149,7 @@ void		do_prev_job(
 				+ (uint32_t)prev->m.size);
 		s->len = (size_t)record->ptr_a
 				- (size_t)prev->ptr_a - prev->m.size;
-	}
-	else if (record->ptr_a != (void *)index->m.size)
-	{
+	} else if (record->ptr_a != (void *)index->m.size) {
 		out->len += (uint32_t)record->ptr_a - (uint32_t)index->m.size;
 		out->addr = (void *)index->m.size;
 		s->addr = (void *)((uint32_t)index->m.size);

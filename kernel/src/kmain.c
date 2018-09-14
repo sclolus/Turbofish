@@ -27,8 +27,7 @@ void		reset_text_screen(void)
 
 	j = 0;
 	screensize =  80 * 25 * 2;
-	while (j < screensize)
-	{
+	while (j < screensize) {
 		vidptr[j] = ' ';	// black character
 		vidptr[j + 1] = 0x07;	// attribute-byte
 		j = j + 2;
@@ -41,8 +40,7 @@ void		text_putstr(char *str)
 	char *vidptr = (char*)0xb8000;
 	static int i = 0;
 
-	while (*str != '\0')
-	{
+	while (*str != '\0') {
 		vidptr[i++] = *str++;	// the character's ascii
 		vidptr[i++] = 0x07;	// give char black bg and light grey fg
 	}
@@ -53,8 +51,7 @@ void		text_putstr(char *str)
 
 void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
-	if (set_vbe(VBE_MODE) < 0)
-	{
+	if (set_vbe(VBE_MODE) < 0) {
 		reset_text_screen();
 		text_putstr("KERNEL_FATAL_ERROR: Cannot set VBE mode");
 		bios_wait(5);
@@ -73,8 +70,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{orange}");
 	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 8;
 	u32 i = 0;
-	while (i < vgml->nb_mode)
-	{
+	while (i < vgml->nb_mode) {
 		printk("0x%.4hx ", vgml->mode[i]);
 		i++;
 		printk((i % max_cap == 0) ? "\n" : " ");
@@ -93,11 +89,11 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			g_graphic_ctx.vesa_mode_info.framebuffer);
 
 	printk("{white}Initialize IDT: ");
-	init_IDT();
+	init_idt();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize PIC: ");
-	init_PIC();
+	init_pic();
 	printk("{green}OK\n{eoc}");
 
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;

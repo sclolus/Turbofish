@@ -46,11 +46,9 @@ void			debug_nodes(int fd)
 
 	fprintk(fd, "{red}__ALLOCATED_NODES__:{eoc}\n");
 	e = ctx.node_pages_entry;
-	while (e)
-	{
+	while (e) {
 		i = 0;
-		while (i < e->primary_block.nb_node)
-		{
+		while (i < e->primary_block.nb_node) {
 			show_part(e, i, fd);
 			i++;
 		}

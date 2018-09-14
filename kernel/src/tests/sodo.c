@@ -50,10 +50,8 @@ static int		del_sodo(
 	n = 0;
 	i = rand(nb_elmt - 1);
 	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
-	while (n < ctx->tab_ptr[i].size)
-	{
-		if (*ptr != ctx->tab_ptr[i].c)
-		{
+	while (n < ctx->tab_ptr[i].size) {
+		if (*ptr != ctx->tab_ptr[i].c) {
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
@@ -79,14 +77,12 @@ static int		loop_sodo_test(
 	int		max_alloc = 0;
 
 	i = 0;
-	while (i < ctx->nb_tests)
-	{
+	while (i < ctx->nb_tests) {
 		op = rand(2);
 // XXX More allocation then free: 0, 1 => allocation, 2 => free
 		if (*nb_elmt == 0
 				|| (op < 2
-				&& *nb_elmt < TEST_LENGTH))
-		{
+				&& *nb_elmt < TEST_LENGTH)) {
 			if (add_sodo(ctx, *nb_elmt, allocator) == -1)
 				return -1;
 			*nb_elmt += 1;
@@ -94,8 +90,7 @@ static int		loop_sodo_test(
 				max_alloc = *nb_elmt;
 			global_count[0] += 1;
 		}
-		else
-		{
+		else {
 			if (del_sodo(ctx, *nb_elmt, deallocator) == -1)
 				return -1;
 			*nb_elmt -= 1;
@@ -115,18 +110,15 @@ static int		real_sodo_next(
 	size_t		n;
 	size_t		n_size;
 
-	if ((ctx->tab_ptr[i].ptr = krealloc(ctx->tab_ptr[i].ptr, x)) == NULL)
-	{
+	if ((ctx->tab_ptr[i].ptr = krealloc(ctx->tab_ptr[i].ptr, x)) == NULL) {
 		printk("%s: OUT OF MEMORY\n", __func__);
 		return -1;
 	}
 	n = 0;
 	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
 	n_size = (ctx->tab_ptr[i].size < x) ? ctx->tab_ptr[i].size : x;
-	while (n < n_size)
-	{
-		if (*ptr != ctx->tab_ptr[i].c)
-		{
+	while (n < n_size) {
+		if (*ptr != ctx->tab_ptr[i].c) {
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
@@ -152,10 +144,8 @@ static int		real_sodo(
 	n = 0;
 	i = rand(*nb_elmt - 1);
 	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
-	while (n < ctx->tab_ptr[i].size)
-	{
-		if (*ptr != ctx->tab_ptr[i].c)
-		{
+	while (n < ctx->tab_ptr[i].size) {
+		if (*ptr != ctx->tab_ptr[i].c) {
 			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
 					__func__, *ptr, ctx->tab_ptr[i].c);
 			return -1;
@@ -179,27 +169,21 @@ static int		loop_sodo_realloc(
 	int		max_alloc;
 
 	i = 0;
-	while (i < ctx->nb_tests)
-	{
+	while (i < ctx->nb_tests) {
 		op = rand(2);
-		if (*nb_elmt == 0 || (op == 0 && *nb_elmt < TEST_LENGTH))
-		{
+		if (*nb_elmt == 0 || (op == 0 && *nb_elmt < TEST_LENGTH)) {
 			if (add_sodo(ctx, *nb_elmt, &kmalloc) == -1)
 				return -1;
 			*nb_elmt += 1;
 			if (*nb_elmt > max_alloc)
 				max_alloc = *nb_elmt;
 			global_count[0] += 1;
-		}
-		else if (op == 1)
-		{
+		} else if (op == 1) {
 			if (del_sodo(ctx, *nb_elmt, &kfree) == -1)
 				return -1;
 			*nb_elmt -= 1;
 			global_count[1] += 1;
-		}
-		else
-		{
+		} else {
 			if (real_sodo(ctx, nb_elmt) == -1)
 				return -1;
 			global_count[2] += 1;
@@ -223,10 +207,8 @@ static int		sodo_realloc(struct sodo_ctx *ctx)
 			ctx, global_count, &nb_elmt)) == -1)
 		return -1;
 	i = 0;
-	if (nb_elmt != 0)
-	{
-		while (i < nb_elmt - 1)
-		{
+	if (nb_elmt != 0) {
+		while (i < nb_elmt - 1) {
 			kfree(ctx->tab_ptr[i].ptr);
 			i++;
 		}
@@ -258,8 +240,7 @@ static int		sodo_test(
 		return -1;
 	printk("nb elmt = %i\n", nb_elmt);
 	i = 0;
-	while (i < nb_elmt)
-	{
+	while (i < nb_elmt) {
 		deallocator(ctx->tab_ptr[i].ptr);
 		i++;
 	}

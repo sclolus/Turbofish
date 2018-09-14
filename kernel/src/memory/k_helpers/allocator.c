@@ -22,8 +22,7 @@ void		*core_allocator_large(
 	if (addr == NULL)
 		return (NULL);
 	record = alloc_btree_create_node(&node_custom_allocator);
-	if (record == NULL)
-	{
+	if (record == NULL) {
 		destroy_pages(addr, *size);
 		return (NULL);
 	}
@@ -32,8 +31,7 @@ void		*core_allocator_large(
 	record->mask.s.node_type = RECORD_ALLOCATED_LARGE;
 	record = alloc_btree_insert_rnb_node(&ctx.big_page_record_tree,
 			record, &cmp_node_addr_to_node_addr);
-	if (record == NULL)
-	{
+	if (record == NULL) {
 		destroy_pages(addr, *size);
 		alloc_btree_destroy_node(record, &node_custom_deallocator);
 		return (NULL);
@@ -52,15 +50,13 @@ static void	*core_allocator_tiny_medium(
 	size_t		free_size;
 	uint32_t	addr;
 
-	if ((free_parent_tree =
-			get_best_free_record_tree(*size, type)) == NULL)
+	if ((free_parent_tree = get_best_free_record_tree(*size, type)) == NULL)
 		return (NULL);
 	free_record = free_parent_tree->ptr_a;
 	free_size = free_record->m.size;
 	addr = (uint32_t)free_record->ptr_a;
 	delete_free_record(free_record, free_parent_tree, type);
-	if (free_size > *size)
-	{
+	if (free_size > *size) {
 		insert_free_record((void *)(addr + (uint32_t)*size),
 				free_size - *size, type, NULL);
 	}

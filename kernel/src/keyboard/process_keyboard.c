@@ -16,42 +16,31 @@ void	process_keyboard(u8 scancode)
 {
 	static u32 keyboard_register = 0;
 
-	switch (scancode)
-	{
-		case MAJ_SCANCODE:
-		{
-			keyboard_register |= MAJ;
+	switch (scancode) {
+	case MAJ_SCANCODE:
+		keyboard_register |= MAJ;
+		break;
+	case MAJ_SCANCODE | RELEASE_BIT:
+		keyboard_register &= ~MAJ;
+		break;
+	case ALT_SCANCODE:
+		keyboard_register |= ALT;
+		break;
+	case ALT_SCANCODE | RELEASE_BIT:
+		keyboard_register &= ~ALT;
+		break;
+	case 224:
+		printk("(special_char)");
+		break;
+	default:
+		if (scancode & 0x80)
 			break;
-		}
-		case MAJ_SCANCODE | RELEASE_BIT:
-		{
-			keyboard_register &= ~MAJ;
-			break;
-		}
-		case ALT_SCANCODE:
-		{
-			keyboard_register |= ALT;
-			break;
-		}
-		case ALT_SCANCODE | RELEASE_BIT:
-		{
-			keyboard_register &= ~ALT;
-			break;
-		}
-		case 224:
-		{
-			printk("(special_char)");
-			break;
-		}
-		default:
-			if (scancode & 0x80)
-				break;
-			if (keyboard_register & MAJ)
-				putchar(get_keymap((scancode << 2) + 1));
-			else if (keyboard_register & ALT)
-				putchar(get_keymap((scancode << 2) + 2));
-			else
-				putchar(get_keymap(scancode << 2));
-			break;
+		if (keyboard_register & MAJ)
+			putchar(get_keymap((scancode << 2) + 1));
+		else if (keyboard_register & ALT)
+			putchar(get_keymap((scancode << 2) + 2));
+		else
+			putchar(get_keymap(scancode << 2));
+		break;
 	}
 }

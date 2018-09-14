@@ -87,13 +87,13 @@ gdtptr:
 
 segment .text
 
-GLOBAL init_GDT
+GLOBAL init_gdt
 
 %define BASE_LOCATION 0x800
 %define REBASE(x) BASE_LOCATION + x - gdt
 
 ; *** This GDT is rebased at 0x800 ***
-init_GDT:
+init_gdt:
     push ebp
     mov ebp, esp
 

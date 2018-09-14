@@ -18,8 +18,7 @@ int		alloc_btree_apply_infix(
 {
 	if (applyf == NULL)
 		return (-EINVAL);
-	if (root)
-	{
+	if (root) {
 		if (root->left)
 			alloc_btree_apply_infix(root->left, applyf);
 		applyf(root);

@@ -24,8 +24,8 @@
 
 [BITS 32]
 segment .text
-GLOBAL init_PIC
-init_PIC:
+GLOBAL init_pic
+init_pic:
     push ebp
     mov ebp, esp
 

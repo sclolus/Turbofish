@@ -16,11 +16,10 @@ static struct s_node_page	*assign_new_node_page(void)
 {
 	struct s_node_page *new_node_page;
 
-	if (ctx.node_cache == NULL)
+	if (ctx.node_cache == NULL) {
 		new_node_page = (struct s_node_page *)
 				get_new_pages(NODE_REQ_PAGES * ctx.page_size);
-	else
-	{
+	} else {
 		new_node_page = ctx.node_cache;
 		ctx.node_cache = NULL;
 	}
@@ -34,8 +33,7 @@ void				*node_custom_allocator(size_t size)
 	void			*addr;
 
 	node_page = ctx.node_pages_entry;
-	if (node_page->primary_block.nb_node == ctx.node_density)
-	{
+	if (node_page->primary_block.nb_node == ctx.node_density) {
 		if ((new_node_page = assign_new_node_page()) == NULL)
 			return (NULL);
 		new_node_page->primary_block.nb_node = 0;

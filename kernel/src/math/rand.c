@@ -20,8 +20,7 @@ int	srand(u16 seed)
 	for (int i = 0; i < SEQ_SIZE; i++)
 		g_rand_sequence[i] = 0;
 
-	do
-	{
+	do {
 // taps: 16 14 13 11; feedback polynomial: x^16 + x^14 + x^13 + x^11 + 1
 		bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5))
 				& 1;
@@ -42,16 +41,14 @@ u16	rand(u16 cap)
 
 	u16 bits_size = 0;
 	u16 tmp = cap;
-	while (tmp)
-	{
+	while (tmp) {
 		bits_size++;
 		tmp >>= 1;
 	}
 	u16 max_seq_value = (1 << bits_size) - 1;
 
 	u16 seq_value = 0;
-	while (bits_size)
-	{
+	while (bits_size) {
 		u16 offset = ptr & 0x7;
 		u16 mask = (bits_size < 8) ? (1 << bits_size) - 1 : 0xFF;
 		u16 shift_quantity = (bits_size < (8 - offset)) ?

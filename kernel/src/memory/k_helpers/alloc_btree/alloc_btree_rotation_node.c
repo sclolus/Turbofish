@@ -24,8 +24,7 @@ void	alloc_btree_rotate_left(struct s_node *node)
 
 	right_child = node->right;
 	right_child->parent = node->parent;
-	if (node->parent)
-	{
+	if (node->parent) {
 		if (node->parent->left == node)
 			node->parent->left = right_child;
 		else
@@ -44,8 +43,7 @@ void	alloc_btree_rotate_right(struct s_node *node)
 
 	left_child = node->left;
 	left_child->parent = node->parent;
-	if (node->parent)
-	{
+	if (node->parent) {
 		if (node->parent->left == node)
 			node->parent->left = left_child;
 		else

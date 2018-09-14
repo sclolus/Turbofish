@@ -33,8 +33,7 @@ static size_t	count_bits(u32 ref)
 {
 	size_t count = 0;
 
-	while (ref)
-	{
+	while (ref) {
 		count++;
 		ref >>= 1;
 	}
@@ -49,10 +48,9 @@ int		mark_physical_area(void *addr, u32 page_request)
 	if (page_request == 0)
 		return -1;
 
-	if (page_request <= GRANULARITY)
+	if (page_request <= GRANULARITY) {
 		deep = MAX_LVL;
-	else
-	{
+	} else {
 		page_request -= 1;
 		bitlen = count_bits(page_request);
 		// XXX when change granularity, must add a value after 'BITLEN'
@@ -71,8 +69,7 @@ int		write_multiple_physical_addr(
 	u32 ptr;
 
 	ptr = (u32)virt_addr;
-	return mem_multiple_area(
-			phy_map, &page_request, 1, 0, &ptr, map_fn);
+	return mem_multiple_area(phy_map, &page_request, 1, 0, &ptr, map_fn);
 }
 
 void		init_physical_map(void *limit_phy_addr)

@@ -45,16 +45,14 @@ int	constructor_runtime(void)
 
 	ctx.page_size = GETPAGESIZE();
 //	if (getrlimit(RLIMIT_DATA, &ctx.mem_limit) < 0)
-	if (0)
-	{
+	if (0) {
 		eprintk("dyn_allocator cannot get RLIMIT_DATA\n");
 		return (-1);
 	}
 	preallocated_size = NODE_REQ_PAGES * ctx.page_size;
 	preallocated_size += TINY_RANGE;
 	preallocated_size += MEDIUM_RANGE;
-	if ((base_addr = get_new_pages(preallocated_size)) == NULL)
-	{
+	if ((base_addr = get_new_pages(preallocated_size)) == NULL) {
 		eprintk("failed to allocate base preallocated memory\n");
 		return (-1);
 	}
