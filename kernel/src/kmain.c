@@ -102,6 +102,19 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_paging(avalaible_mem);
 	printk("{green}OK\n{eoc}");
 
+	mem_test(k_family, 0);
+	mem_test(v_family, 0);
+	mem_test(k_sub_family, 0);
+
+	asm("sti");
+	printk("{white}Interupt enabled: {green}OK{eoc}\n");
+
+	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
+	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
+	return;
+}
+
+/*
 	printk("flag: %p\n", multiboot_info_addr->flags);
 	printk("mem_lower: %u, mem_upper: %u\n",
 			multiboot_info_addr->mem_lower,
@@ -110,34 +123,5 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			multiboot_info_addr,
 			multiboot_info_addr->mmap_length,
 			multiboot_info_addr->mmap_addr);
-
-	asm("sti");
-	printk("{white}Interupt enabled: {green}OK{eoc}\n");
-
-	set_text_color(1);
-	graphic_putchar('H');
-	set_text_color(2);
-	graphic_putchar('E');
-	set_text_color(3);
-	graphic_putchar('L');
-	set_text_color(4);
-	graphic_putchar('L');
-	set_text_color(5);
-	graphic_putchar('O');
-	graphic_putchar(' ');
-	set_text_color(6);
-	graphic_putchar('W');
-	set_text_color(7);
-	graphic_putchar('O');
-	set_text_color(8);
-	graphic_putchar('R');
-	set_text_color(9);
-	graphic_putchar('L');
-	set_text_color(10);
-	graphic_putchar('D');
-	graphic_putchar('\n');
-
-	sodo();
-	return;
-}
+*/
 

@@ -3,6 +3,7 @@
 # include "libft.h"
 # include "chained_tools.h"
 # include "memory_manager.h"
+# include "tests.h"
 
 # define TEST_LENGTH	100
 
@@ -16,7 +17,9 @@ struct			sodo_ctx {
 	struct s_test	tab_ptr[TEST_LENGTH];
 	u32		nb_tests;
 	u32		max_alloc;
+
 	struct s_list	*log;
+	char		*err_ptr;
 };
 
 /*
@@ -24,7 +27,8 @@ struct			sodo_ctx {
  */
 enum			mem_status {
 	allocated = 0,
-	deallocated
+	deallocated,
+	reallocated
 };
 
 struct			sodo_log_entry {
@@ -65,7 +69,7 @@ static void		add_log_entry(
 	log_entry->size = size;
 	log_entry->virt_addr = virt_addr;
 	log_entry->status = status;
-	lst_push_back(&ctx->log, log_entry, sizeof(*log_entry), &kmalloc);
+	lst_push_front(&ctx->log, log_entry, sizeof(*log_entry), &kmalloc);
 }
 
 static void		dump_log(struct s_list *lst)
@@ -136,16 +140,7 @@ static int		del_sodo(
 			deallocated);
 	while (n < ctx->tab_ptr[i].size) {
 		if (*ptr != ctx->tab_ptr[i].c) {
-			printk("%s: BAD VAL: Got %hhx instead of %hhx at %p\n",
-					__func__, *ptr, ctx->tab_ptr[i].c, ptr);
-			lst_iter(ctx->log, &dump_log);
-			get_anotomie_of(
-					ctx->tab_ptr[i].ptr,
-					ctx->tab_ptr[i].size);
-			printk("confirmed false value: %.2hhx\n", *ptr);
-			printk("page directory check: %s\n",
-					(check_page_directory() == 0) ?
-							"OK" : "FAIL");
+			ctx->err_ptr = (char *)ptr;
 			return -1;
 		}
 		ptr++;
@@ -211,8 +206,7 @@ static int		real_sodo_next(
 	n_size = (ctx->tab_ptr[i].size < x) ? ctx->tab_ptr[i].size : x;
 	while (n < n_size) {
 		if (*ptr != ctx->tab_ptr[i].c) {
-			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, ctx->tab_ptr[i].c);
+			ctx->err_ptr = (char *)ptr;
 			return -1;
 		}
 		ptr++;
@@ -236,10 +230,17 @@ static int		real_sodo(
 	n = 0;
 	i = rand(*nb_elmt - 1);
 	ptr = (uint8_t *)ctx->tab_ptr[i].ptr;
+
+	add_log_entry(
+			ctx,
+			ctx->tab_ptr[i].ptr,
+			ctx->tab_ptr[i].c,
+			ctx->tab_ptr[i].size,
+			reallocated);
+
 	while (n < ctx->tab_ptr[i].size) {
 		if (*ptr != ctx->tab_ptr[i].c) {
-			printk("%s: BAD VALUE: Got %hhx instead of %hhx\n",
-					__func__, *ptr, ctx->tab_ptr[i].c);
+			ctx->err_ptr = (char *)ptr;
 			return -1;
 		}
 		ptr++;
@@ -286,7 +287,7 @@ static int		loop_sodo_realloc(
 }
 
 
-static int		sodo_realloc(struct sodo_ctx *ctx)
+static int		sodo_realloc(struct sodo_ctx *ctx, int verbosity)
 {
 	int		nb_elmt;
 	int		global_count[3];
@@ -305,16 +306,21 @@ static int		sodo_realloc(struct sodo_ctx *ctx)
 			i++;
 		}
 	}
-	printk("Max allocated blocks: %i\n", max_alloc);
-	printk("%i krealloc made, %i kmalloc and %i kfree made\n",
-			global_count[2], global_count[0], global_count[1]);
+	if (verbosity) {
+		printk("Max allocated blocks: %i\n", max_alloc);
+		printk("%i krealloc made, %i kmalloc and %i kfree made\n",
+				global_count[2],
+				global_count[0],
+				global_count[1]);
+	}
 	return 0;
 }
 
 static int		sodo_test(
 			struct sodo_ctx *ctx,
 			void *(*allocator)(size_t),
-			int (*deallocator)(void *))
+			int (*deallocator)(void *),
+			int verbosity)
 {
 	int		nb_elmt;
 	int		global_count[2];
@@ -330,54 +336,70 @@ static int		sodo_test(
 			allocator,
 			deallocator)) == -1)
 		return -1;
-	printk("nb elmt = %i\n", nb_elmt);
+	if (verbosity)
+		printk("nb elmt = %i\n", nb_elmt);
 	i = 0;
 	while (i < nb_elmt) {
 		deallocator(ctx->tab_ptr[i].ptr);
 		i++;
 	}
-	printk("Max allocated blocks: %i\n", max_alloc);
-	printk("%i allocations made, %i deallocations made\n",
-			global_count[0], global_count[1]);
+	if (verbosity) {
+		printk("Max allocated blocks: %i\n", max_alloc);
+		printk("%i allocations made, %i deallocations made\n",
+				global_count[0], global_count[1]);
+	}
 	return 0;
 }
 
-int			sodo(void)
+int			mem_test(enum mem_test_type type, int verbosity)
 {
-	struct sodo_ctx ctx;
+	struct sodo_ctx	ctx;
+	int		ret;
 
-	printk("\n");
-	printk("{orange}K map memory group check:{eoc}\n");
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
 	ctx.max_alloc = PAGE_SIZE * 4;
 	ctx.log = NULL;
 	srand(0xCDE1);
-	if (sodo_test(&ctx, &kmmap, &kmunmap) == -1) {
-	//	return -1;
+
+	switch (type) {
+	case k_family:
+		printk("{white}K map memory group check: {eoc}");
+		ret = sodo_test(&ctx, &kmmap, &kmunmap, verbosity);
+		break;
+	case v_family:
+		printk("{white}V map memory group check: {eoc}");
+		ret = sodo_test(&ctx, &valloc, &vfree, verbosity);
+		break;
+	case k_sub_family:
+		printk("{white}K sub family check: {eoc}");
+		ctx.max_alloc = PAGE_SIZE;
+		ret = sodo_realloc(&ctx, verbosity);
+		break;
+	}
+
+	if (ret < 0) {
+		printk("{red}FAIL\n{eoc}");
+
+		if (verbosity) {
+			struct sodo_log_entry *last_entry =
+					(struct sodo_log_entry *)
+					ctx.log->content;
+			printk("BAD VALUE: Got %hhx instead of %hhx at %p\n",
+					*(ctx.err_ptr),
+					last_entry->c,
+					ctx.err_ptr);
+			lst_iter(ctx.log, &dump_log);
+			get_anotomie_of(
+					last_entry->virt_addr,
+					last_entry->size);
+			printk("page directory check: %s\n",
+					(check_page_directory() == 0) ?
+							"OK" : "FAIL");
+		}
+	} else {
+		printk("{green}OK\n{eoc}");
 	}
 	lst_del(&ctx.log, &del_log, &kfree);
-
-	printk("\n");
-	printk("{orange}V map memory group check:{eoc}\n");
-	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
-	ctx.nb_tests = 10000;
-	ctx.max_alloc = PAGE_SIZE * 4;
-	ctx.log = NULL;
-	srand(0xA8B0);
-	if (sodo_test(&ctx, &valloc, &vfree) == -1) {
-	//	return -1;
-	}
-	lst_del(&ctx.log, &del_log, &kfree);
-
-	printk("\n");
-	printk("{orange}K sub family check:{eoc}\n");
-	ctx.nb_tests = 10000;
-	ctx.max_alloc = PAGE_SIZE;
-	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
-	srand(0x15CF);
-	if (sodo_realloc(&ctx) == -1) {
-	//	return -1;
-	}
-	return 0;
+	return ret;
 }
