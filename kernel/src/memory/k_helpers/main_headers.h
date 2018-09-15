@@ -44,8 +44,8 @@ enum				e_op_type {
 	REALLOC,
 	REALLOCF,
 	REALLOCARRAY,
-	VALLOC,
-	FREE
+	FREE,
+	SIZE
 };
 
 enum				e_trace_result {
@@ -123,6 +123,9 @@ int				destroy_pages(void *addr, size_t size);
 
 void				*core_allocator(size_t *size);
 int				core_deallocator(void *ptr);
+
+size_t				get_sizeof_object(void *addr);
+
 void				*core_realloc(
 				void *ptr,
 				size_t *size,

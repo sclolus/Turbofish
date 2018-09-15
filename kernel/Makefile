@@ -85,6 +85,7 @@ MEM_KALLOC = ctor mem_syscall \
 		deallocator \
 		k_main_prototypes \
 		trace \
+		sizeof_object \
 		alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
 		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
 		alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \

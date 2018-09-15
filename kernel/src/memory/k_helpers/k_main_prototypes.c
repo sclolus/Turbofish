@@ -22,26 +22,6 @@ void			*kmalloc(size_t size)
 	return (addr);
 }
 
-void			*kcalloc(size_t count, size_t size)
-{
-	void		*addr;
-	size_t		global_size;
-
-//	pthread_mutex_lock(&g_mut);
-	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return (NULL);
-	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(CALLOC, NULL, count, size);
-	global_size = count * size;
-	addr = core_allocator(&global_size);
-	if (addr != NULL)
-		aligned_bzero(addr, global_size);
-	if (ctx.tracer_file_descriptor != -1)
-		bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
-//	pthread_mutex_unlock(&g_mut);
-	return (addr);
-}
-
 int			kfree(void *ptr)
 {
 	int ret;
@@ -62,6 +42,47 @@ int			kfree(void *ptr)
 		bend_trace(ret < 0 ? FAIL : SUCCESS, NULL);
 //	pthread_mutex_unlock(&g_mut);
 	return 0;
+}
+
+size_t			ksize(void *ptr)
+{
+	size_t size;
+//	pthread_mutex_lock(&g_mut);
+	if (ctx.is_initialized == false && constructor_runtime() == -1)
+		return 0;
+	if (ctx.tracer_file_descriptor != -1)
+		begin_trace(SIZE, ptr, 0, 0);
+	if (ptr == NULL) {
+		if (ctx.tracer_file_descriptor != -1)
+			bend_trace(NO_OP, NULL);
+//		pthread_mutex_unlock(&g_mut);
+		return 0;
+	}
+	size = get_sizeof_object(ptr);
+	if (ctx.tracer_file_descriptor != -1)
+		bend_trace(size == 0 ? FAIL : SUCCESS, NULL);
+//	pthread_mutex_unlock(&g_mut);
+	return size;
+}
+
+void			*kcalloc(size_t count, size_t size)
+{
+	void		*addr;
+	size_t		global_size;
+
+//	pthread_mutex_lock(&g_mut);
+	if (ctx.is_initialized == false && constructor_runtime() == -1)
+		return (NULL);
+	if (ctx.tracer_file_descriptor != -1)
+		begin_trace(CALLOC, NULL, count, size);
+	global_size = count * size;
+	addr = core_allocator(&global_size);
+	if (addr != NULL)
+		aligned_bzero(addr, global_size);
+	if (ctx.tracer_file_descriptor != -1)
+		bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
+//	pthread_mutex_unlock(&g_mut);
+	return (addr);
 }
 
 void			*krealloc(void *ptr, size_t size)
@@ -156,33 +177,6 @@ void			*kreallocarray(void *ptr, size_t nmemb, size_t size)
 		return (NULL);
 	}
 	addr = kreallocarray_next(ptr, nmemb, size);
-//	pthread_mutex_unlock(&g_mut);
-	return (addr);
-}
-
-void			*kvalloc(size_t size)
-{
-	void		*addr;
-
-//	pthread_mutex_lock(&g_mut);
-	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return (NULL);
-	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(VALLOC, NULL, size, 0);
-	if (size == 0) {
-		if (ctx.tracer_file_descriptor != -1)
-			bend_trace(NO_OP, NULL);
-//		pthread_mutex_unlock(&g_mut);
-		return (NULL);
-	}
-	size = allign_size(size, LARGE);
-	if ((addr = core_allocator_large(&size)) == NULL) {
-		if (ctx.tracer_file_descriptor != -1)
-			bend_trace(FAIL, NULL);
-//		errno = ENOMEM;
-	} else if (ctx.tracer_file_descriptor != -1) {
-		bend_trace(SUCCESS, addr);
-	}
 //	pthread_mutex_unlock(&g_mut);
 	return (addr);
 }

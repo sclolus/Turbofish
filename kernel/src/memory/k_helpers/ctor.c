@@ -55,7 +55,7 @@ int	constructor_runtime(void)
 	int ret;
 
 	ctx.page_size = GETPAGESIZE();
-//	open_malloc_tracer();
+	open_malloc_tracer();
 	ctx.size_owned_by_data = 0;
 	ctx.size_owned_by_nodes = 0;
 	ret = fill_preallocated_chunk();

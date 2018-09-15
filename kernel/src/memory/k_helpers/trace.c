@@ -60,9 +60,9 @@ static void	write_body(
 		fprintk(ctx.tracer_file_descriptor,
 				"{green}ReallocArray{eoc} (%p, %lu, %lu) ", ptr,
 				size_a, size_b);
-	else if (op == VALLOC)
+	else if (op == SIZE)
 		fprintk(ctx.tracer_file_descriptor,
-				"{magenta}Valloc{eoc} (%lu) ", size_a);
+				"{blue}Ksize{eoc} (%lu) ", size_a);
 */
 }
 

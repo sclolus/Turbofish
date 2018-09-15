@@ -109,11 +109,13 @@ int			vmunmap(void *virt_addr);
 // Kernel K-Family memory helpers
 void			*kmalloc(size_t size);
 int			kfree(void *ptr);
+size_t			ksize(void *ptr);
+
 void			*kcalloc(size_t count, size_t size);
 void			*krealloc(void *ptr, size_t size);
 void			*kreallocf(void *ptr, size_t size);
 void			*kreallocarray(void *ptr, size_t nmemb, size_t size);
-void			*kvalloc(size_t size);
+
 void			kshow_alloc_mem(void);
 void			kshow_alloc_mem_ex(void);
 
