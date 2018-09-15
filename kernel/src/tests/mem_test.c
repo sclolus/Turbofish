@@ -13,7 +13,7 @@ struct			s_test {
 	size_t		size;
 };
 
-struct			sodo_ctx {
+struct			mem_test_ctx {
 	struct s_test	tab_ptr[TEST_LENGTH];
 	u32		nb_tests;
 	u32		max_alloc;
@@ -31,7 +31,7 @@ enum			mem_status {
 	reallocated
 };
 
-struct			sodo_log_entry {
+struct			mem_log_entry {
 	void		*virt_addr;
 	char		c;
 	size_t		size;
@@ -51,16 +51,16 @@ static void		del_log(void *content, size_t size, int (*free)(void *))
 }
 
 static void		add_log_entry(
-			struct sodo_ctx *ctx,
+			struct mem_test_ctx *ctx,
 			void *virt_addr,
 			char c,
 			size_t size,
 			enum mem_status status)
 {
-	struct sodo_log_entry *log_entry;
+	struct mem_log_entry *log_entry;
 
-	log_entry = (struct sodo_log_entry *)
-			kmalloc(sizeof(struct sodo_log_entry));
+	log_entry = (struct mem_log_entry *)
+			kmalloc(sizeof(struct mem_log_entry));
 	if (log_entry == NULL) {
 		eprintk("internal log error\n");
 		return ;
@@ -74,9 +74,9 @@ static void		add_log_entry(
 
 static void		dump_log(struct s_list *lst)
 {
-	struct sodo_log_entry *log_entry;
+	struct mem_log_entry *log_entry;
 
-	log_entry = (struct sodo_log_entry *)lst->content;
+	log_entry = (struct mem_log_entry *)lst->content;
 	if (log_entry == NULL) {
 		eprintk("internal log error\n");
 		return ;
@@ -90,11 +90,11 @@ static void		dump_log(struct s_list *lst)
 }
 
 /*
- * SODO main functions
+ * MEM TEST main functions
  */
 
-static int		add_sodo(
-			struct sodo_ctx *ctx,
+static int		add_object(
+			struct mem_test_ctx *ctx,
 			int nb_elmt,
 			void *(*allocator)(size_t))
 {
@@ -120,8 +120,8 @@ static int		add_sodo(
 	return 0;
 }
 
-static int		del_sodo(
-			struct sodo_ctx *ctx,
+static int		del_object(
+			struct mem_test_ctx *ctx,
 			int nb_elmt,
 			int (*deallocator)(void *))
 {
@@ -152,8 +152,8 @@ static int		del_sodo(
 	return 0;
 }
 
-static int		loop_sodo_test(
-			struct sodo_ctx *ctx,
+static int		loop_test(
+			struct mem_test_ctx *ctx,
 			int global_count[2],
 			int *nb_elmt,
 			void *(*allocator)(size_t),
@@ -170,7 +170,7 @@ static int		loop_sodo_test(
 		if (*nb_elmt == 0
 				|| (op < 2
 				&& *nb_elmt < TEST_LENGTH)) {
-			if (add_sodo(ctx, *nb_elmt, allocator) == -1)
+			if (add_object(ctx, *nb_elmt, allocator) == -1)
 				return -1;
 			*nb_elmt += 1;
 			if (*nb_elmt > max_alloc)
@@ -178,7 +178,7 @@ static int		loop_sodo_test(
 			global_count[0] += 1;
 		}
 		else {
-			if (del_sodo(ctx, *nb_elmt, deallocator) == -1)
+			if (del_object(ctx, *nb_elmt, deallocator) == -1)
 				return -1;
 			*nb_elmt -= 1;
 			global_count[1] += 1;
@@ -188,8 +188,8 @@ static int		loop_sodo_test(
 	return max_alloc;
 }
 
-static int		real_sodo_next(
-			struct sodo_ctx *ctx,
+static int		realloc_test_next(
+			struct mem_test_ctx *ctx,
 			size_t x,
 			uint8_t *ptr,
 			int i)
@@ -218,8 +218,8 @@ static int		real_sodo_next(
 	return 0;
 }
 
-static int		real_sodo(
-			struct sodo_ctx *ctx,
+static int		realloc_test(
+			struct mem_test_ctx *ctx,
 			int *nb_elmt)
 {
 	uint8_t		*ptr;
@@ -249,11 +249,11 @@ static int		real_sodo(
 	size = (u32)rand(ctx->max_alloc - 1);
 	if (ptr == NULL || size == 0)
 		return 0;
-	return real_sodo_next(ctx, size, ptr, i);
+	return realloc_test_next(ctx, size, ptr, i);
 }
 
-static int		loop_sodo_realloc(
-			struct sodo_ctx *ctx,
+static int		loop_realloc(
+			struct mem_test_ctx *ctx,
 			int global_count[2],
 			int *nb_elmt)
 {
@@ -265,19 +265,19 @@ static int		loop_sodo_realloc(
 	while (i < ctx->nb_tests) {
 		op = rand(2);
 		if (*nb_elmt == 0 || (op == 0 && *nb_elmt < TEST_LENGTH)) {
-			if (add_sodo(ctx, *nb_elmt, &kmalloc) == -1)
+			if (add_object(ctx, *nb_elmt, &kmalloc) == -1)
 				return -1;
 			*nb_elmt += 1;
 			if (*nb_elmt > max_alloc)
 				max_alloc = *nb_elmt;
 			global_count[0] += 1;
 		} else if (op == 1) {
-			if (del_sodo(ctx, *nb_elmt, &kfree) == -1)
+			if (del_object(ctx, *nb_elmt, &kfree) == -1)
 				return -1;
 			*nb_elmt -= 1;
 			global_count[1] += 1;
 		} else {
-			if (real_sodo(ctx, nb_elmt) == -1)
+			if (realloc_test(ctx, nb_elmt) == -1)
 				return -1;
 			global_count[2] += 1;
 		}
@@ -287,7 +287,7 @@ static int		loop_sodo_realloc(
 }
 
 
-static int		sodo_realloc(struct sodo_ctx *ctx, int verbosity)
+static int		base_realloc(struct mem_test_ctx *ctx, int verbosity)
 {
 	int		nb_elmt;
 	int		global_count[3];
@@ -296,7 +296,7 @@ static int		sodo_realloc(struct sodo_ctx *ctx, int verbosity)
 
 	nb_elmt = 0;
 	memset(global_count, 0, 3 * sizeof(int));
-	if ((max_alloc = loop_sodo_realloc(
+	if ((max_alloc = loop_realloc(
 			ctx, global_count, &nb_elmt)) == -1)
 		return -1;
 	i = 0;
@@ -316,8 +316,8 @@ static int		sodo_realloc(struct sodo_ctx *ctx, int verbosity)
 	return 0;
 }
 
-static int		sodo_test(
-			struct sodo_ctx *ctx,
+static int		base_test(
+			struct mem_test_ctx *ctx,
 			void *(*allocator)(size_t),
 			int (*deallocator)(void *),
 			int verbosity)
@@ -329,7 +329,7 @@ static int		sodo_test(
 
 	nb_elmt = 0;
 	memset(global_count, 0, 2 * sizeof(int));
-	if ((max_alloc = loop_sodo_test(
+	if ((max_alloc = loop_test(
 			ctx,
 			global_count,
 			&nb_elmt,
@@ -353,8 +353,8 @@ static int		sodo_test(
 
 int			mem_test(enum mem_test_type type, int verbosity)
 {
-	struct sodo_ctx	ctx;
-	int		ret;
+	struct mem_test_ctx	ctx;
+	int			ret;
 
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
@@ -365,16 +365,16 @@ int			mem_test(enum mem_test_type type, int verbosity)
 	switch (type) {
 	case k_family:
 		printk("{white}K map memory group check: {eoc}");
-		ret = sodo_test(&ctx, &kmmap, &kmunmap, verbosity);
+		ret = base_test(&ctx, &kmmap, &kmunmap, verbosity);
 		break;
 	case v_family:
 		printk("{white}V map memory group check: {eoc}");
-		ret = sodo_test(&ctx, &valloc, &vfree, verbosity);
+		ret = base_test(&ctx, &valloc, &vfree, verbosity);
 		break;
 	case k_sub_family:
 		printk("{white}K sub family check: {eoc}");
 		ctx.max_alloc = PAGE_SIZE;
-		ret = sodo_realloc(&ctx, verbosity);
+		ret = base_realloc(&ctx, verbosity);
 		break;
 	}
 
@@ -382,8 +382,8 @@ int			mem_test(enum mem_test_type type, int verbosity)
 		printk("{red}FAIL\n{eoc}");
 
 		if (verbosity) {
-			struct sodo_log_entry *last_entry =
-					(struct sodo_log_entry *)
+			struct mem_log_entry *last_entry =
+					(struct mem_log_entry *)
 					ctx.log->content;
 			printk("BAD VALUE: Got %hhx instead of %hhx at %p\n",
 					*(ctx.err_ptr),

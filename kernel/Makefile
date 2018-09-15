@@ -99,7 +99,7 @@ VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/me
 HEADERS += memory_manager main_headers alloc_btree
 
 # tests
-SRC_C_KERNEL += sodo rand_test
+SRC_C_KERNEL += mem_test rand_test
 VPATH += src/tests
 HEADER += tests
 
