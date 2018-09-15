@@ -8,8 +8,15 @@
 #define PAGE_MASK	0xFFF
 #define MAP_FAILED	0xFFFFFFFF
 
+enum mem_type {
+	reserved = 0,
+	kheap,
+	vheap,
+	usermem
+};
+
 enum mem_space {
-	kernel_space,
+	kernel_space = 0,
 	user_space
 };
 
@@ -21,8 +28,8 @@ struct mem_result {
 	size_t	pages;
 };
 
-struct mem_result	get_pages(u32 page_request, enum mem_space space);
-u32			free_pages(void *addr, enum mem_space space);
+struct mem_result	get_pages(u32 page_request, enum mem_type type);
+u32			free_pages(void *addr, enum mem_type type);
 
 // physical map internal functions
 void			init_physical_map(void *limit_phy_addr);

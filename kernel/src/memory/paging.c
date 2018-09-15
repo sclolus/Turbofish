@@ -170,12 +170,12 @@ void			*kmmap(size_t size)
 	u32			page_req;
 
 	page_req = size_to_page_requested(size);
-	res = get_pages(page_req, kernel_space);
+	res = get_pages(page_req, kheap);
 	if (res.addr != MAP_FAILED) {
 		phy_addr = get_physical_addr(page_req);
 		if ((u32)phy_addr == MAP_FAILED) {
 			eprintk("%s: out of physical memory\n", __func__);
-			page_req = free_pages((void *)res.addr, kernel_space);
+			page_req = free_pages((void *)res.addr, kheap);
 			if (page_req == 0)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
@@ -196,7 +196,7 @@ void			*vmmap(size_t size)
 {
 	struct mem_result	res;
 
-	res = get_pages(size_to_page_requested(size), kernel_space);
+	res = get_pages(size_to_page_requested(size), vheap);
 
 	if (res.addr != MAP_FAILED) {
 		int ret = write_multiple_physical_addr(
@@ -205,7 +205,7 @@ void			*vmmap(size_t size)
 				&map_address);
 		if (ret == -1) {
 			eprintk("%s: out of physical memory\n", __func__);
-			res.pages = free_pages((void *)res.addr, kernel_space);
+			res.pages = free_pages((void *)res.addr, vheap);
 			if (res.pages == 0)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
@@ -222,7 +222,7 @@ int			kmunmap(void *virt_addr)
 	u32		page_req;
 	void		*phy_addr;
 
-	page_req = free_pages(virt_addr, kernel_space);
+	page_req = free_pages(virt_addr, kheap);
 	if (page_req == 0)
 		return -1;
 
@@ -248,7 +248,7 @@ int			vmunmap(void *virt_addr)
 		return -1;
 	}
 
-	page_req = free_pages(virt_addr, kernel_space);
+	page_req = free_pages(virt_addr, vheap);
 	if (page_req == 0)
 		return -1;
 
@@ -297,12 +297,12 @@ void			init_paging(u32 available_memory)
 	init_physical_map((void *)available_memory);
 
 	// mapping of first 4mo, GDT, IDT, page directory, kernel, stack
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address((u32)res.addr, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
 	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
 	// mapping of next 4mo, pages list
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
 			MAX_PAGE_TABLE_SEG,
@@ -311,7 +311,7 @@ void			init_paging(u32 available_memory)
 	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
 
 	// mapping of LFB VBE
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
 			MAX_PAGE_TABLE_SEG,
