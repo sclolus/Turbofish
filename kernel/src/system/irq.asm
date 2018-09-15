@@ -1,6 +1,5 @@
 [BITS 32]
 segment .data
-page_fault_msg db "page fault at %p", 10, 0
 
 segment .text
 GLOBAL asm_default_interrupt
@@ -14,15 +13,23 @@ GLOBAL asm_real_time_clock_handler
 asm_default_interrupt:
     iret
 
-extern printk
+extern page_fault_handler
 asm_page_fault:
-    push 2
+    push ebp
+    mov ebp, esp
+    push ds
+    push es
+    pushad
+
     mov eax, cr2
     push eax
-    push page_fault_msg
-    call printk
-    add esp, 12
-    jmp $
+    call page_fault_handler
+    add esp, 4
+
+    popad
+    pop es
+    pop ds
+    pop ebp
     iret
 
 asm_default_pic_master_interrupt:

@@ -63,7 +63,8 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	u32			phy_addr;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return (void *)MAP_FAILED;
 	}
 	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
@@ -119,7 +120,8 @@ static int		map_address(
 	struct page_table_seg *pt;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
 	}
 
@@ -149,7 +151,8 @@ static int		unmap_address(u32 virt_addr, u32 page_req)
 	u32 *pt;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
 	}
 	pt = (u32 *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
@@ -194,25 +197,9 @@ void			*kmmap(size_t size)
 
 void			*vmmap(size_t size)
 {
-	struct mem_result	res;
+	struct mem_result res;
 
 	res = get_pages(size_to_page_requested(size), vheap);
-
-	if (res.addr != MAP_FAILED) {
-		int ret = write_multiple_physical_addr(
-				res.pages,
-				(void *)res.addr,
-				&map_address);
-		if (ret == -1) {
-			eprintk("%s: out of physical memory\n", __func__);
-			res.pages = free_pages((void *)res.addr, vheap);
-			if (res.pages == 0)
-				eprintk("%s: Unexpected error\n", __func__);
-			return (void *)MAP_FAILED;
-		}
-	} else {
-		eprintk("%s: out of virtual memory\n", __func__);
-	}
 
 	return (void *)res.addr;
 }
@@ -233,39 +220,49 @@ int			kmunmap(void *virt_addr)
 
 	return unmap_address((u32)virt_addr, page_req);
 }
-
-int			vmunmap(void *virt_addr)
+/*
+ * Assuming size if a multiple and virt_addr are multiple of PAGE_SIZE
+ */
+int			vmunmap(void *virt_addr, size_t size)
 {
-	u32		tmp_virt_addr;
-	u32		page_req;
-	u32		phy_addr;
-	u32		i;
-	u32		pages_droped;
+	struct page_table_seg	*pt;
+	u32			page_req;
+	u32			phy_addr;
 
 	if ((u32)virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n"
-				,__func__, virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
+		return -1;
+	}
+
+	if (size & PAGE_MASK) {
+		eprintk("%s: Unexpected size, size = %u\n",
+				__func__, size);
 		return -1;
 	}
 
 	page_req = free_pages(virt_addr, vheap);
-	if (page_req == 0)
+	if (page_req == 0) {
+		eprintk("%s: Unable to found virt_addr record\n", __func__);
 		return -1;
-
-	tmp_virt_addr = (u32)virt_addr;
-	i = 0;
-	while (i < page_req) {
-		phy_addr = (u32)virt_to_physical_addr(tmp_virt_addr);
-		pages_droped = drop_physical_addr((void *)phy_addr);
-		if (pages_droped == 0) {
-			eprintk("%s: Unexpected error %p not founded ! V %p\n",
-					__func__, phy_addr, virt_addr);
-			return -1;
-		}
-		tmp_virt_addr += pages_droped * PAGE_SIZE;
-		i += pages_droped;
 	}
-	return unmap_address((u32)virt_addr, page_req);
+
+	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	pt = (struct page_table_seg *)
+			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	size >>= 12;
+	for (size_t i = 0; i < size; i++) {
+		phy_addr = pt->physical_address4_20 & 0xFFFF;
+		phy_addr <<= 4;
+		phy_addr |= pt->physical_address0_3 & 0xF;
+		phy_addr <<= 12;
+
+		if (drop_physical_addr((void *)phy_addr) == 0)
+			eprintk("%s: Unexpected error\n", __func__);
+		pt++;
+	}
+	return unmap_address((u32)virt_addr, size);
 }
 
 static void		clone_page_directory(void);

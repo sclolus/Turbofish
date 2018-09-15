@@ -105,6 +105,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_paging(avalaible_mem);
 	printk("{green}OK\n{eoc}");
 
+	init_valloc();
+
 	mem_test(k_family, 0);
 	mem_test(v_family, 0);
 	mem_test(k_sub_family, 0);

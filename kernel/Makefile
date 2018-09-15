@@ -70,7 +70,7 @@ VPATH += src/graphic
 HEADERS += vesa_graphic
 
 # memory
-MEM_PAGING_C = paging virtual_mem physical_mem buddy
+MEM_PAGING_C = paging virtual_mem physical_mem buddy page_fault
 MEM_PAGING_ASM = set_paging
 
 MEM_KALLOC = ctor mem_syscall \
