@@ -39,13 +39,11 @@
 # define MEDIUM_RANGE		(MEDIUM_BLOCK_SIZE * 32 * MEDIUM_MAX_BLOCK)
 
 enum				e_op_type {
-	MALLOC = 0,
-	CALLOC,
-	REALLOC,
-	REALLOCF,
-	REALLOCARRAY,
-	FREE,
-	SIZE
+	KMALLOC = 0,
+	KCALLOC,
+	KREALLOC,
+	KFREE,
+	KSIZE
 };
 
 enum				e_trace_result {

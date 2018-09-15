@@ -113,8 +113,6 @@ size_t			ksize(void *ptr);
 
 void			*kcalloc(size_t count, size_t size);
 void			*krealloc(void *ptr, size_t size);
-void			*kreallocf(void *ptr, size_t size);
-void			*kreallocarray(void *ptr, size_t nmemb, size_t size);
 
 void			kshow_alloc_mem(void);
 void			kshow_alloc_mem_ex(void);

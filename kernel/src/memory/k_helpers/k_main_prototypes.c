@@ -14,7 +14,7 @@ void			*kmalloc(size_t size)
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
 		return (NULL);
 	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(MALLOC, NULL, size, 0);
+		begin_trace(KMALLOC, NULL, size, 0);
 	addr = core_allocator(&size);
 	if (ctx.tracer_file_descriptor != -1)
 		bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
@@ -30,7 +30,7 @@ int			kfree(void *ptr)
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
 		return -1;
 	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(FREE, ptr, 0, 0);
+		begin_trace(KFREE, ptr, 0, 0);
 	if (ptr == NULL) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
@@ -51,7 +51,7 @@ size_t			ksize(void *ptr)
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
 		return 0;
 	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(SIZE, ptr, 0, 0);
+		begin_trace(KSIZE, ptr, 0, 0);
 	if (ptr == NULL) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
@@ -74,7 +74,7 @@ void			*kcalloc(size_t count, size_t size)
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
 		return (NULL);
 	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(CALLOC, NULL, count, size);
+		begin_trace(KCALLOC, NULL, count, size);
 	global_size = count * size;
 	addr = core_allocator(&global_size);
 	if (addr != NULL)
@@ -94,7 +94,7 @@ void			*krealloc(void *ptr, size_t size)
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
 		return (NULL);
 	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(REALLOC, ptr, size, 0);
+		begin_trace(KREALLOC, ptr, size, 0);
 	if (ptr == NULL) {
 		addr = core_allocator(&size);
 		if (ctx.tracer_file_descriptor != -1)
@@ -105,78 +105,6 @@ void			*krealloc(void *ptr, size_t size)
 			bend_trace(memfail == false ?
 					SUCCESS : FAIL, addr);
 	}
-//	pthread_mutex_unlock(&g_mut);
-	return (addr);
-}
-
-void			*kreallocf(void *ptr, size_t size)
-{
-	void *addr;
-	bool memfail;
-
-//	pthread_mutex_lock(&g_mut);
-	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return (NULL);
-	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(REALLOCF, ptr, size, 0);
-	memfail = false;
-	if (ptr == NULL) {
-		addr = core_allocator(&size);
-		if (addr == NULL)
-			memfail = true;
-	} else {
-		addr = core_realloc(ptr, &size, &memfail);
-	}
-	if (memfail == true)
-		core_deallocator(ptr);
-	if (ctx.tracer_file_descriptor != -1)
-		bend_trace(memfail == false ? SUCCESS : FAIL, addr);
-//	pthread_mutex_unlock(&g_mut);
-	return (addr);
-}
-
-static void		*kreallocarray_next(
-			void *ptr,
-			size_t nmemb,
-			size_t size)
-{
-	size_t		global_size;
-	void		*addr;
-	bool		memfail;
-
-	global_size = nmemb * size;
-	if (ptr == NULL) {
-		addr = core_allocator(&global_size);
-		if (ctx.tracer_file_descriptor != -1)
-			bend_trace(addr != NULL ? SUCCESS : FAIL, addr);
-	} else {
-		addr = core_realloc(ptr, &global_size, &memfail);
-		if (ctx.tracer_file_descriptor != -1)
-			bend_trace(memfail == false ? SUCCESS : FAIL, addr);
-	}
-	return (addr);
-}
-
-void			*kreallocarray(void *ptr, size_t nmemb, size_t size)
-{
-	void				*addr;
-
-//	pthread_mutex_lock(&g_mut);
-	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return (NULL);
-	if (ctx.tracer_file_descriptor != -1)
-		begin_trace(REALLOCARRAY, ptr, nmemb, size);
-
-
-//	if (nmemb > 0 && (SIZE_MAX / nmemb) < size)
-	if (0) {
-		if (ctx.tracer_file_descriptor != -1)
-			bend_trace(FAIL, NULL);
-//		errno = ENOMEM;
-//		pthread_mutex_unlock(&g_mut);
-		return (NULL);
-	}
-	addr = kreallocarray_next(ptr, nmemb, size);
 //	pthread_mutex_unlock(&g_mut);
 	return (addr);
 }
