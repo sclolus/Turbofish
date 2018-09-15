@@ -1,9 +1,10 @@
 
+#include "memory_manager.h"
+
 #include "i386_type.h"
 #include "base_system.h"
 #include "libft.h"
 #include "vesa_graphic.h"
-#include "memory_manager.h"
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000

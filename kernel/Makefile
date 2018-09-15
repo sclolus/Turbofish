@@ -97,7 +97,7 @@ MEM_VALLOC = v_main_prototypes
 SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC) $(MEM_VALLOC)
 SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
 VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
-HEADERS += memory_manager main_headers alloc_btree
+HEADERS += memory_manager main_headers alloc_btree dynamic_allocator
 
 # tests
 SRC_C_KERNEL += mem_test rand_test

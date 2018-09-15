@@ -1,5 +1,6 @@
 
-#include "memory_manager.h"
+#include "dynamic_allocator.h"
+
 #include "kernel_io.h"
 #include "i386_type.h"
 #include "vesa_graphic.h"

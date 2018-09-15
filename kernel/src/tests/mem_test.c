@@ -1,8 +1,10 @@
 
+# include "dynamic_allocator.h"
+# include "../memory/memory_manager.h"
+
 # include "math.h"
 # include "libft.h"
 # include "chained_tools.h"
-# include "memory_manager.h"
 # include "tests.h"
 
 # define TEST_LENGTH	100
