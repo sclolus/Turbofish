@@ -1,5 +1,6 @@
 
 #include "memory_manager.h"
+#include "kernel_io.h"
 #include "i386_type.h"
 #include "vesa_graphic.h"
 #include "base_system.h"
@@ -58,6 +59,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
+	g_kernel_io_ctx.term_mode = boot;
 
 	printk("{white}Kernel loaded: {green}OK\n{eoc}");
 	printk("{white}VBE initialized: {green}OK\n{eoc}");
@@ -106,11 +108,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	mem_test(v_family, 0);
 	mem_test(k_sub_family, 0);
 
-	asm("sti");
-	printk("{white}Interupt enabled: {green}OK{eoc}\n");
+	printk("{white}Enable interupt: {green}OK{eoc}\n");
 
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
+
+	g_kernel_io_ctx.term_mode = kernel;
+	asm("sti");
+
 	return;
 }
 
