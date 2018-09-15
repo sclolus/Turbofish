@@ -10,25 +10,21 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
-	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-	CFLAGS += -nostdinc
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
-	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-	CFLAGS += -nostdinc
 endif
+CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+CFLAGS += -nostdinc
 endif
 
 ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
-	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-	CFLAGS += -nostdinc
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
-	CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-	CFLAGS += -nostdinc
 endif
+CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
+CFLAGS += -nostdinc
 endif
 
 ASMFLAGS = -f elf
