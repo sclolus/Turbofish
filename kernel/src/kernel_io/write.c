@@ -26,7 +26,7 @@ static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[42m", 10}	// light green
 };
 
-u32	extract_modifier(const u8 *buf)
+static u32	extract_modifier(const u8 *buf)
 {
 	int l;
 
@@ -42,21 +42,56 @@ u32	extract_modifier(const u8 *buf)
 	return 0;
 }
 
-s32	write(s32 fd, const void *buf, u32 count)
+void		fflush_boot_storage(void)
+{
+	u32	count;
+	u8	*buf;
+
+	buf = (u8 *)BOOT_STORE_BASE_ADDR;
+	count = (u32)g_kernel_io_ctx.boot_char_ptr - BOOT_STORE_BASE_ADDR;
+
+	for (u32 i = 0; i < count; i++) {
+		if (buf[i] == '\x1B')
+			i += extract_modifier(buf + i);
+		else
+			graphic_putchar(buf[i]);
+	}
+}
+
+void		init_kernel_io_ctx(void)
+{
+	g_kernel_io_ctx.term_mode = boot;
+	g_kernel_io_ctx.boot_char_ptr = (u8 *)BOOT_STORE_BASE_ADDR;
+}
+
+void		set_kernel_io_mode(void)
+{
+	g_kernel_io_ctx.term_mode = kernel;
+	fflush_boot_storage();
+}
+
+s32		write(s32 fd, const void *buf, u32 count)
 {
 	u8 *_buf;
 
 	(void)fd;
 	_buf = (u8 *)buf;
 	switch (g_kernel_io_ctx.term_mode) {
-	case boot:
+	case boot: {
+		u32 modifier_len = 0;
 		for (u32 i = 0; i < count; i++) {
-			if (_buf[i] == '\x1B')
-				i += extract_modifier(_buf + i);
-			else
+			(*g_kernel_io_ctx.boot_char_ptr) = _buf[i];
+			g_kernel_io_ctx.boot_char_ptr += 1;
+			if (modifier_len > 0) {
+				modifier_len--;
+			} else if (_buf[i] == '\x1B') {
+				modifier_len = extract_modifier(_buf + i);
+			} else {
 				graphic_putchar(_buf[i]);
+			}
 		}
 		break;
+	}
 	case kernel:
 		break;
 	case user:

@@ -59,7 +59,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
-	g_kernel_io_ctx.term_mode = boot;
+	init_kernel_io_ctx();
 
 	printk("{white}Kernel loaded: {green}OK\n{eoc}");
 	printk("{white}VBE initialized: {green}OK\n{eoc}");
@@ -113,7 +113,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
-	g_kernel_io_ctx.term_mode = kernel;
+	set_kernel_io_mode();
 	asm("sti");
 
 	return;

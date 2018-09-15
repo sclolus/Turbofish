@@ -3,6 +3,8 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
+#include "kernel_io.h"
+
 extern u8	get_keymap(u32 offset);
 
 #define MAJ_SCANCODE	0x36
@@ -31,6 +33,9 @@ void	process_keyboard(u8 scancode)
 		break;
 	case 224:
 		printk("(special_char)");
+		break;
+	case 59:
+		set_kernel_io_mode();
 		break;
 	default:
 		if (scancode & 0x80)
