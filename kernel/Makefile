@@ -44,12 +44,12 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
 # main
 SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = _start
+SRC_ASM_KERNEL = _start test
 VPATH = include src
 HEADERS = grub i386_type
 
 # system
-SRC_C_KERNEL += bios_services idt
+SRC_C_KERNEL += bios_services idt panic
 SRC_ASM_KERNEL += gdt int8086 pic irq
 VPATH += src/system
 HEADERS += base_system

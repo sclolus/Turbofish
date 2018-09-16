@@ -19,13 +19,23 @@ extern void		asm_paging_disable(void);
 extern void		asm_paging_set_page_directory_address(
 			ptr_32 *page_directory_address);
 
-void			bios_shutdown_computer(void);
-void			bios_wait(u32 sec);
-
 struct registers {
 	u32 edi, esi, ebp, esp;
 	u32 ebx, edx, ecx, eax;
 } __attribute__ ((packed));
+
+void			panic(
+			const char *s,
+			struct registers reg,
+			u16 ds,
+			u16 es,
+			u16 ss,
+			u32 eflags,
+			u16 cs,
+			u32 eip);
+
+void			bios_shutdown_computer(void);
+void			bios_wait(u32 sec);
 
 extern void		int8086(u8 interupt, struct registers reg);
 
