@@ -17,13 +17,22 @@ struct valloc_ctx {
 
 static struct valloc_ctx *valloc_ctx = NULL;
 
+static int		init_valloc(void)
+{
+	valloc_ctx = (struct valloc_ctx *)kmalloc(sizeof(struct valloc_ctx));
+	if (valloc_ctx == NULL)
+		return -1;
+	valloc_ctx->record = NULL;
+	return 0;
+}
+
 void			*valloc(size_t size)
 {
 	struct v_record *record;
 	struct v_record *current;
 	struct v_record *prev;
 
-	if (valloc_ctx == NULL)
+	if (valloc_ctx == NULL && init_valloc() == -1)
 		return NULL;
 
 	record = (struct v_record *)kmalloc(sizeof(struct v_record));
@@ -64,8 +73,8 @@ int			vfree(void *addr)
 	struct v_record	*prev;
 	int		ret;
 
-	if (valloc_ctx == NULL)
-		return -1;
+	if (valloc_ctx == NULL && init_valloc() == -1)
+		return NULL;
 
 	record = valloc_ctx->record;
 	prev = NULL;
@@ -92,8 +101,8 @@ size_t			vsize(void *addr)
 {
 	struct v_record *record;
 
-	if (valloc_ctx == NULL)
-		return 0;
+	if (valloc_ctx == NULL && init_valloc() == -1)
+		return NULL;
 
 	record = valloc_ctx->record;
 	while (record) {
@@ -104,23 +113,14 @@ size_t			vsize(void *addr)
 	return 0;
 }
 
-int			init_valloc(void)
-{
-	valloc_ctx = (struct valloc_ctx *)kmalloc(sizeof(struct valloc_ctx));
-	if (valloc_ctx == NULL)
-		return -1;
-	valloc_ctx->record = NULL;
-	return 0;
-}
-
 int			v_assign_phy_area(u32 fault_addr)
 {
 	struct v_record	*record;
 	void		*phy_addr;
 	size_t		tmp_size;
 
-	if (valloc_ctx == NULL)
-		return -1;
+	if (valloc_ctx == NULL && init_valloc() == -1)
+		return NULL;
 
 	record = valloc_ctx->record;
 	while (record) {

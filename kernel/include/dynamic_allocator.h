@@ -20,7 +20,6 @@ void	kshow_alloc_mem_ex(void);
 /*
  * Kernel V-Family memory helpers
  */
-int	init_valloc(void);
 void	*valloc(size_t size);
 int	vfree(void *addr);
 size_t	vsize(void *addr);
