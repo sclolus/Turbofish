@@ -360,7 +360,7 @@ int			mem_test(enum mem_test_type type, int verbosity)
 
 	bzero(&ctx.tab_ptr, TEST_LENGTH * sizeof(struct s_test));
 	ctx.nb_tests = 10000;
-	ctx.max_alloc = PAGE_SIZE * 4;
+	ctx.max_alloc = PAGE_SIZE * 16;
 	ctx.log = NULL;
 	srand(0xCDE1);
 

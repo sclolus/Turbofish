@@ -23,7 +23,16 @@ enum mem_space {
 #define VALLOC_SPACE	 0x8000000
 #define VALLOC_MASK	0xF8000000
 
-void			page_fault_handler(u32 fault_addr);
+int			page_fault_handler(u32 err_reg, u32 fault_addr);
+u32			get_nb_page_fault(void);
+
+int			map_address(
+			u32 virt_addr,
+			u32 page_req,
+			u32 phy_addr,
+			enum mem_space space);
+
+int			unmap_address(u32 virt_addr, u32 page_req);
 
 /*
  * virtual map internal functions

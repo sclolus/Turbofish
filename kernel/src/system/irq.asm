@@ -13,23 +13,31 @@ GLOBAL asm_real_time_clock_handler
 asm_default_interrupt:
     iret
 
+; Normaly, CS, EFLAG, EIP and other think like that are pushed/poped by the cpu
+; page fault POP on the stack the error code [ebp + 4], to execute IRET corectly
+; we must add esp by 4 or pop something.
 extern page_fault_handler
 asm_page_fault:
     push ebp
     mov ebp, esp
+    pushad
     push ds
     push es
-    pushad
 
-    mov eax, cr2
+    mov ebx, cr2
+    push ebx
+    mov eax, [ebp + 4]
     push eax
     call page_fault_handler
-    add esp, 4
+    add esp, 8
 
-    popad
     pop es
     pop ds
+    popad
     pop ebp
+
+    ; bypass the error code
+    add esp, 4
     iret
 
 asm_default_pic_master_interrupt:

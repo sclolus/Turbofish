@@ -2,6 +2,8 @@
 #include "../memory_manager.h"
 #include "dynamic_allocator.h"
 
+#include "libft.h"
+
 struct v_record {
 	void *next;
 	void *addr;
@@ -113,6 +115,43 @@ int			init_valloc(void)
 
 int			v_assign_phy_area(u32 fault_addr)
 {
-	(void)fault_addr;
+	struct v_record	*record;
+	void		*phy_addr;
+	size_t		tmp_size;
+
+	if (valloc_ctx == NULL)
+		return -1;
+
+	record = valloc_ctx->record;
+	while (record) {
+		if (fault_addr >= (u32)record->addr
+				&& fault_addr < (u32)record->addr +
+				record->size_max) {
+			/*
+			 * Set the size of the allocated chunk, be careful,
+			 * a write operation can be done after the first 4096o
+			 */
+			tmp_size = fault_addr - (u32)record->addr;
+			tmp_size = PAGE_SIZE * ((tmp_size >> 12) + 1);
+			if (tmp_size > record->current_size)
+				record->current_size = tmp_size;
+
+			/*
+			 * Now, find a physical chunk, assign it and refresh TLB
+			 */
+			phy_addr = get_physical_addr(1);
+			if ((u32)phy_addr == MAP_FAILED) {
+				eprintk("%s: out of physical memory\n",
+						__func__);
+				return -1;
+			}
+			return map_address(
+				fault_addr & ~PAGE_MASK,
+				1,
+				(u32)phy_addr,
+				kernel_space);
+		}
+		record = record->next;
+	}
 	return -1;
 }

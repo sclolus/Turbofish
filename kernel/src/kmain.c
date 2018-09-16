@@ -1,5 +1,6 @@
 
 #include "dynamic_allocator.h"
+#include "memory/memory_manager.h"
 
 #include "kernel_io.h"
 #include "i386_type.h"
@@ -110,6 +111,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	mem_test(k_family, 0);
 	mem_test(v_family, 0);
 	mem_test(k_sub_family, 0);
+
+	printk("%u page fault has triggered\n", get_nb_page_fault());
 
 	printk("{white}Enable interupt: {green}OK{eoc}\n");
 

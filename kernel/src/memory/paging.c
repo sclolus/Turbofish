@@ -53,6 +53,10 @@ struct __attribute__ ((packed)) page_table {
 	struct page_table_seg seg[MAX_PAGE_TABLE_SEG];
 };
 
+struct __attribute__ ((packed)) page_table_area {
+	struct page_table page_table[MAX_DIRECTORY_SEG];
+};
+
 struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
@@ -67,7 +71,9 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 				__func__, virt_addr);
 		return (void *)MAP_FAILED;
 	}
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	phy_addr = pt->physical_address4_20 & 0xFFFF;
@@ -111,7 +117,7 @@ static inline void	invlpg(void *m)
 	asm volatile("invlpg (%0)" : : "b"(m) : "memory");
 }
 
-static int		map_address(
+int			map_address(
 			u32 virt_addr,
 			u32 page_req,
 			u32 phy_addr,
@@ -125,7 +131,9 @@ static int		map_address(
 		return -1;
 	}
 
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	for (u32 i = 0; i < page_req; i++) {
@@ -146,7 +154,7 @@ static int		map_address(
 	return 0;
 }
 
-static int		unmap_address(u32 virt_addr, u32 page_req)
+int			unmap_address(u32 virt_addr, u32 page_req)
 {
 	u32 *pt;
 
@@ -247,7 +255,9 @@ int			vmunmap(void *virt_addr, size_t size)
 		return -1;
 	}
 
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
 	pt = (struct page_table_seg *)
 			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
@@ -258,8 +268,15 @@ int			vmunmap(void *virt_addr, size_t size)
 		phy_addr |= pt->physical_address0_3 & 0xF;
 		phy_addr <<= 12;
 
-		if (drop_physical_addr((void *)phy_addr) == 0)
-			eprintk("%s: Unexpected error\n", __func__);
+		/*
+		 * XXX For VMALLOC, it's important to consult if phy_addr != 0
+		 * Allocations may be done after the first page, so the physic
+		 * address of the first page is 0 according to a constant set 0
+		 * of unallocated pages
+		 */
+		if (phy_addr != 0 && drop_physical_addr((void *)phy_addr) == 0)
+			eprintk("%s: Unexpected error at physic %p virtual %p"
+					"\n", __func__, phy_addr, virt_addr);
 		pt++;
 	}
 	return unmap_address((u32)virt_addr, size);
@@ -272,33 +289,49 @@ void			init_paging(u32 available_memory)
 	struct mem_result	res;
 	int			i;
 
-	// creation of kernel page directory
+	/*
+	 * creation of kernel page directory
+	 */
 	i = 0;
 	for (; i < MAX_DIRECTORY_SEG / 4; i++)
 		create_directory(i, kernel_space);
 
-	// creation of user page directory
+	/*
+	 * creation of user page directory
+	 */
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, user_space);
 
-	// clone page directory for debugging
+	/*
+	 * clone page directory for debugging
+	 */
 	clone_page_directory();
 
-	// clean all pages tables
-	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
+	/*
+	 * clean all pages tables
+	 */
+	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
 
-	// initialize virtual memory map
+	/*
+	 * initialize virtual memory map
+	 */
 	init_virtual_map();
 
-	// initialize physical memory map
+	/*
+	 * initialize physical memory map
+	 */
 	init_physical_map((void *)available_memory);
 
-	// mapping of first 4mo, GDT, IDT, page directory, kernel, stack
+	/*
+	 * mapping of first 4mo, GDT, IDT, page directory, kernel, stack
+	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address((u32)res.addr, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
 	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
-	// mapping of next 4mo, pages list
+	/*
+	 * mapping of next 4mo, pages list
+	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
@@ -306,8 +339,9 @@ void			init_paging(u32 available_memory)
 			0x400000,
 			kernel_space);
 	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
-
-	// mapping of LFB VBE
+	/*
+	 * mapping of LFB VBE
+	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
@@ -320,11 +354,15 @@ void			init_paging(u32 available_memory)
 	init_gdt((void *)res.addr);
 	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res.addr;
 
-	// store page directory address in CR3 register
+	/*
+	 * store page directory address in CR3 register
+	 */
 	asm_paging_set_page_directory_address(
 			(ptr_32 *)PAGE_DIRECTORY_0_ADDR);
 
-	// launch paging
+	/*
+	 * launch paging
+	 */
 	asm_paging_enable();
 }
 
