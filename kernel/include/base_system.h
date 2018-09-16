@@ -13,7 +13,7 @@ int			initialize_idt_seg(
 			u16 type);
 void			init_pic(void);
 
-void			init_paging(u32 available_memory);
+int			init_paging(u32 available_memory);
 extern void		asm_paging_enable(void);
 extern void		asm_paging_disable(void);
 extern void		asm_paging_set_page_directory_address(

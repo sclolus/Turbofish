@@ -13,6 +13,8 @@
 #define MAX_PAGE_TABLE_SEG		1024
 #define OFFSET				4096
 
+#define MINIMUM_MEMORY			(1 << 24)
+
 /*
  * Field type:
  * - P indicate if is a physical memory area
@@ -337,10 +339,19 @@ int			vmunmap(void *virt_addr, size_t size)
 /*
  * initialize all the paging system
  */
-void			init_paging(u32 available_memory)
+int			init_paging(u32 available_memory)
 {
 	u32 res;
 	int i;
+
+	/*
+	 * check minimum vital memory
+	 */
+	if (available_memory <= MINIMUM_MEMORY) {
+		eprintk("%s: Not enough memory: got %uo, minimum %uo\n",
+				__func__, available_memory, MINIMUM_MEMORY);
+		return -1;
+	}
 
 	/*
 	 * creation of kernel page directory
@@ -412,6 +423,8 @@ void			init_paging(u32 available_memory)
 	 * launch paging
 	 */
 	asm_paging_enable();
+
+	return 0;
 }
 
 /*
