@@ -6,7 +6,7 @@ void		open_malloc_tracer(void)
 	char	*value;
 	int		ret;
 
-//	value = getenv("MALLOC_TRACER");
+//	value = getenv("KMALLOC_TRACER");
 	value = NULL;
 	if (value == NULL) {
 		ctx.tracer_file_descriptor = -1;
@@ -36,33 +36,26 @@ static void	write_body(
 	(void)size_b;
 
 /*
-	if (op == MALLOC)
+	if (op == KMALLOC)
 		fprintk(
 				ctx.tracer_file_descriptor,
-				"{magenta}Malloc{eoc} (%lu) ",
+				"{magenta}Kmalloc{eoc} (%lu) ",
 				size_a);
-	else if (op == FREE)
+	else if (op == KFREE)
 		fprintk(
 				ctx.tracer_file_descriptor,
-				"{cyan}Free{eoc} (%p) ",
+				"{cyan}Kfree{eoc} (%p) ",
 				ptr);
-	else if (op == CALLOC)
+	else if (op == KCALLOC)
 		fprintk(ctx.tracer_file_descriptor,
-				"{green}Calloc{eoc} (%lu, %lu) ",
+				"{green}Kcalloc{eoc} (%lu, %lu) ",
 				size_a, size_b);
-	else if (op == REALLOC)
+	else if (op == KREALLOC)
 		fprintk(ctx.tracer_file_descriptor,
-				"{yellow}Realloc{eoc} (%p, %lu) ", ptr, size_a);
-	else if (op == REALLOCF)
+				"{yellow}Krealloc{eoc} (%p, %lu) ", ptr, size_a);
+	else if (op == KSIZE)
 		fprintk(ctx.tracer_file_descriptor,
-				"{green}ReallocF{eoc} (%p, %lu) ", ptr, size_a);
-	else if (op == REALLOCARRAY)
-		fprintk(ctx.tracer_file_descriptor,
-				"{green}ReallocArray{eoc} (%p, %lu, %lu) ", ptr,
-				size_a, size_b);
-	else if (op == VALLOC)
-		fprintk(ctx.tracer_file_descriptor,
-				"{magenta}Valloc{eoc} (%lu) ", size_a);
+				"{blue}Ksize{eoc} (%p) ", ptr);
 */
 }
 

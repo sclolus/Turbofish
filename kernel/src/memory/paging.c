@@ -1,9 +1,10 @@
 
+#include "memory_manager.h"
+
 #include "i386_type.h"
 #include "base_system.h"
 #include "libft.h"
 #include "vesa_graphic.h"
-#include "memory_manager.h"
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000
@@ -52,6 +53,10 @@ struct __attribute__ ((packed)) page_table {
 	struct page_table_seg seg[MAX_PAGE_TABLE_SEG];
 };
 
+struct __attribute__ ((packed)) page_table_area {
+	struct page_table page_table[MAX_DIRECTORY_SEG];
+};
+
 struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
@@ -62,10 +67,13 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	u32			phy_addr;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return (void *)MAP_FAILED;
 	}
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	phy_addr = pt->physical_address4_20 & 0xFFFF;
@@ -109,7 +117,7 @@ static inline void	invlpg(void *m)
 	asm volatile("invlpg (%0)" : : "b"(m) : "memory");
 }
 
-static int		map_address(
+int			map_address(
 			u32 virt_addr,
 			u32 page_req,
 			u32 phy_addr,
@@ -118,11 +126,14 @@ static int		map_address(
 	struct page_table_seg *pt;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
 	}
 
-	// conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
 	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	for (u32 i = 0; i < page_req; i++) {
@@ -143,12 +154,13 @@ static int		map_address(
 	return 0;
 }
 
-static int		unmap_address(u32 virt_addr, u32 page_req)
+int			unmap_address(u32 virt_addr, u32 page_req)
 {
 	u32 *pt;
 
 	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n", virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
 	}
 	pt = (u32 *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
@@ -169,12 +181,12 @@ void			*kmmap(size_t size)
 	u32			page_req;
 
 	page_req = size_to_page_requested(size);
-	res = get_pages(page_req, kernel_space);
+	res = get_pages(page_req, kheap);
 	if (res.addr != MAP_FAILED) {
 		phy_addr = get_physical_addr(page_req);
 		if ((u32)phy_addr == MAP_FAILED) {
 			eprintk("%s: out of physical memory\n", __func__);
-			page_req = free_pages((void *)res.addr, kernel_space);
+			page_req = free_pages((void *)res.addr, kheap);
 			if (page_req == 0)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
@@ -193,25 +205,9 @@ void			*kmmap(size_t size)
 
 void			*vmmap(size_t size)
 {
-	struct mem_result	res;
+	struct mem_result res;
 
-	res = get_pages(size_to_page_requested(size), kernel_space);
-
-	if (res.addr != MAP_FAILED) {
-		int ret = write_multiple_physical_addr(
-				res.pages,
-				(void *)res.addr,
-				&map_address);
-		if (ret == -1) {
-			eprintk("%s: out of physical memory\n", __func__);
-			res.pages = free_pages((void *)res.addr, kernel_space);
-			if (res.pages == 0)
-				eprintk("%s: Unexpected error\n", __func__);
-			return (void *)MAP_FAILED;
-		}
-	} else {
-		eprintk("%s: out of virtual memory\n", __func__);
-	}
+	res = get_pages(size_to_page_requested(size), vheap);
 
 	return (void *)res.addr;
 }
@@ -221,7 +217,7 @@ int			kmunmap(void *virt_addr)
 	u32		page_req;
 	void		*phy_addr;
 
-	page_req = free_pages(virt_addr, kernel_space);
+	page_req = free_pages(virt_addr, kheap);
 	if (page_req == 0)
 		return -1;
 
@@ -232,39 +228,58 @@ int			kmunmap(void *virt_addr)
 
 	return unmap_address((u32)virt_addr, page_req);
 }
-
-int			vmunmap(void *virt_addr)
+/*
+ * Assuming size if a multiple and virt_addr are multiple of PAGE_SIZE
+ */
+int			vmunmap(void *virt_addr, size_t size)
 {
-	u32		tmp_virt_addr;
-	u32		page_req;
-	u32		phy_addr;
-	u32		i;
-	u32		pages_droped;
+	struct page_table_seg	*pt;
+	u32			page_req;
+	u32			phy_addr;
 
 	if ((u32)virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n"
-				,__func__, virt_addr);
+		eprintk("%s: Unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
 	}
 
-	page_req = free_pages(virt_addr, kernel_space);
-	if (page_req == 0)
+	if (size & PAGE_MASK) {
+		eprintk("%s: Unexpected size, size = %u\n",
+				__func__, size);
 		return -1;
-
-	tmp_virt_addr = (u32)virt_addr;
-	i = 0;
-	while (i < page_req) {
-		phy_addr = (u32)virt_to_physical_addr(tmp_virt_addr);
-		pages_droped = drop_physical_addr((void *)phy_addr);
-		if (pages_droped == 0) {
-			eprintk("%s: Unexpected error %p not founded ! V %p\n",
-					__func__, phy_addr, virt_addr);
-			return -1;
-		}
-		tmp_virt_addr += pages_droped * PAGE_SIZE;
-		i += pages_droped;
 	}
-	return unmap_address((u32)virt_addr, page_req);
+
+	page_req = free_pages(virt_addr, vheap);
+	if (page_req == 0) {
+		eprintk("%s: Unable to found virt_addr record\n", __func__);
+		return -1;
+	}
+
+	/*
+	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
+	 */
+	pt = (struct page_table_seg *)
+			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	size >>= 12;
+	for (size_t i = 0; i < size; i++) {
+		phy_addr = pt->physical_address4_20 & 0xFFFF;
+		phy_addr <<= 4;
+		phy_addr |= pt->physical_address0_3 & 0xF;
+		phy_addr <<= 12;
+
+		/*
+		 * XXX For VMALLOC, it's important to consult if phy_addr != 0
+		 * Allocations may be done after the first page, so the physic
+		 * address of the first page is 0 according to a constant set 0
+		 * of unallocated pages
+		 */
+		if (phy_addr != 0 && drop_physical_addr((void *)phy_addr) == 0)
+			eprintk("%s: Unexpected error at physic %p virtual %p"
+					"\n", __func__, phy_addr, virt_addr);
+		pt++;
+	}
+	return unmap_address((u32)virt_addr, size);
 }
 
 static void		clone_page_directory(void);
@@ -274,43 +289,60 @@ void			init_paging(u32 available_memory)
 	struct mem_result	res;
 	int			i;
 
-	// creation of kernel page directory
+	/*
+	 * creation of kernel page directory
+	 */
 	i = 0;
 	for (; i < MAX_DIRECTORY_SEG / 4; i++)
 		create_directory(i, kernel_space);
 
-	// creation of user page directory
+	/*
+	 * creation of user page directory
+	 */
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, user_space);
 
-	// clone page directory for debugging
+	/*
+	 * clone page directory for debugging
+	 */
 	clone_page_directory();
 
-	// clean all pages tables
-	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table));
+	/*
+	 * clean all pages tables
+	 */
+	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
 
-	// initialize virtual memory map
+	/*
+	 * initialize virtual memory map
+	 */
 	init_virtual_map();
 
-	// initialize physical memory map
+	/*
+	 * initialize physical memory map
+	 */
 	init_physical_map((void *)available_memory);
 
-	// mapping of first 4mo, GDT, IDT, page directory, kernel, stack
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	/*
+	 * mapping of first 4mo, GDT, IDT, page directory, kernel, stack
+	 */
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address((u32)res.addr, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
 	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
-	// mapping of next 4mo, pages list
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	/*
+	 * mapping of next 4mo, pages list
+	 */
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
 			MAX_PAGE_TABLE_SEG,
 			0x400000,
 			kernel_space);
 	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
-
-	// mapping of LFB VBE
-	res = get_pages(MAX_PAGE_TABLE_SEG, kernel_space);
+	/*
+	 * mapping of LFB VBE
+	 */
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
 			(u32)res.addr,
 			MAX_PAGE_TABLE_SEG,
@@ -322,11 +354,15 @@ void			init_paging(u32 available_memory)
 	init_gdt((void *)res.addr);
 	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res.addr;
 
-	// store page directory address in CR3 register
+	/*
+	 * store page directory address in CR3 register
+	 */
 	asm_paging_set_page_directory_address(
 			(ptr_32 *)PAGE_DIRECTORY_0_ADDR);
 
-	// launch paging
+	/*
+	 * launch paging
+	 */
 	asm_paging_enable();
 }
 

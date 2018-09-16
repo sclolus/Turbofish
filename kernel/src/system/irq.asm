@@ -1,6 +1,5 @@
 [BITS 32]
 segment .data
-page_fault_msg db "page fault at %p", 10, 0
 
 segment .text
 GLOBAL asm_default_interrupt
@@ -14,15 +13,31 @@ GLOBAL asm_real_time_clock_handler
 asm_default_interrupt:
     iret
 
-extern printk
+; Normaly, CS, EFLAG, EIP and other think like that are pushed/poped by the cpu
+; page fault POP on the stack the error code [ebp + 4], to execute IRET corectly
+; we must add esp by 4 or pop something.
+extern page_fault_handler
 asm_page_fault:
-    push 2
-    mov eax, cr2
+    push ebp
+    mov ebp, esp
+    pushad
+    push ds
+    push es
+
+    mov ebx, cr2
+    push ebx
+    mov eax, [ebp + 4]
     push eax
-    push page_fault_msg
-    call printk
-    add esp, 12
-    jmp $
+    call page_fault_handler
+    add esp, 8
+
+    pop es
+    pop ds
+    popad
+    pop ebp
+
+    ; bypass the error code
+    add esp, 4
     iret
 
 asm_default_pic_master_interrupt:

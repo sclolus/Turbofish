@@ -8,12 +8,35 @@
 #define PAGE_MASK	0xFFF
 #define MAP_FAILED	0xFFFFFFFF
 
+enum mem_type {
+	reserved = 0,
+	kheap,
+	vheap,
+	usermem
+};
+
 enum mem_space {
-	kernel_space,
+	kernel_space = 0,
 	user_space
 };
 
-// virtual map internal functions
+#define VALLOC_SPACE	 0x8000000
+#define VALLOC_MASK	0xF8000000
+
+int			page_fault_handler(u32 err_reg, u32 fault_addr);
+u32			get_nb_page_fault(void);
+
+int			map_address(
+			u32 virt_addr,
+			u32 page_req,
+			u32 phy_addr,
+			enum mem_space space);
+
+int			unmap_address(u32 virt_addr, u32 page_req);
+
+/*
+ * virtual map internal functions
+ */
 void			init_virtual_map(void);
 
 struct mem_result {
@@ -21,26 +44,26 @@ struct mem_result {
 	size_t	pages;
 };
 
-struct mem_result	get_pages(u32 page_request, enum mem_space space);
-u32			free_pages(void *addr, enum mem_space space);
+struct mem_result	get_pages(u32 page_request, enum mem_type type);
+u32			free_pages(void *addr, enum mem_type type);
 
-// physical map internal functions
+/*
+ * physical map internal functions
+ */
 void			init_physical_map(void *limit_phy_addr);
 int			mark_physical_area(void *addr, u32 page_request);
 void			*get_physical_addr(u32 page_request);
 int			drop_physical_addr(void *addr);
 
-int			write_multiple_physical_addr(
-			u32 page_request,
-			void *virt_addr,
-			int (*map)(u32 virt_addr, u32 page_req, u32 phy_addr,
-					enum mem_space space));
-
-// debug functions
+/*
+ * debug functions
+ */
 void			get_anotomie_of(void *virt_addr, size_t size);
 int			check_page_directory(void);
 
-// buddy algorithms
+/*
+ * buddy algorithms macros
+ */
 
 // block is free
 #define	UNUSED		0b00
@@ -85,41 +108,21 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
 u32			free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl);
 int			mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl,
 				      u32 cap);
-int			mem_multiple_area(
-			u8 *map,
-			u32 *pages_req,
-			u32 idx,
-			u32 lvl,
-			u32 *virt_addr,
-			int (*map_fn)(u32 virt_addr, u32 page_req,
-					u32 phy_addr, enum mem_space space));
 int			mark_area_limit(
 			u8 *map,
 			u32 limit_addr,
 			u32 idx,
 			u32 lvl);
 
-// kernel public function
+/*
+ * kernel public functions
+ */
 void			*kmmap(size_t size);
 void			*vmmap(size_t size);
 
 int			kmunmap(void *virt_addr);
-int			vmunmap(void *virt_addr);
+int			vmunmap(void *virt_addr, size_t size);
 
-// Kernel K-Family memory helpers
-void			*kmalloc(size_t size);
-int			kfree(void *ptr);
-void			*kcalloc(size_t count, size_t size);
-void			*krealloc(void *ptr, size_t size);
-void			*kreallocf(void *ptr, size_t size);
-void			*kreallocarray(void *ptr, size_t nmemb, size_t size);
-void			*kvalloc(size_t size);
-void			kshow_alloc_mem(void);
-void			kshow_alloc_mem_ex(void);
-
-// Kernel V-Family memory helpers
-void			*valloc(size_t size);
-int			vfree(void *ptr);
-size_t			vsize(void *ptr);
+int			v_assign_phy_area(u32 fault_addr);
 
 #endif

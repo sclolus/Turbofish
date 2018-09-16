@@ -1,5 +1,6 @@
 
 #include "memory_manager.h"
+
 #include "libft.h"
 
 #define PHY_MAP_LOCATION	0x380000
@@ -58,21 +59,6 @@ int		mark_physical_area(void *addr, u32 page_request)
 		deep = MAX_LVL - bitlen + 0;
 	}
 	return mark_mem_area(phy_map, (u32)addr, 1, 0, deep);
-}
-
-int		write_multiple_physical_addr(
-		u32 page_request,
-		void *virt_addr,
-		int (*map_fn)(u32 virt_addr, u32 page_req, u32 phy_addr,
-				enum mem_space space))
-{
-	u32 ptr;
-
-	ptr = (u32)virt_addr;
-#ifdef DEBUG_VALLOC
-	printk("{red}VIRT: %p for %u pages -> {eoc}", virt_addr, page_request);
-#endif
-	return mem_multiple_area(phy_map, &page_request, 1, 0, &ptr, map_fn);
 }
 
 void		init_physical_map(void *limit_phy_addr)

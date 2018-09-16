@@ -66,7 +66,7 @@ VPATH += src/graphic
 HEADERS += vesa_graphic
 
 # memory
-MEM_PAGING_C = paging virtual_mem physical_mem buddy
+MEM_PAGING_C = paging virtual_mem physical_mem buddy page_fault
 MEM_PAGING_ASM = set_paging
 
 MEM_KALLOC = ctor mem_syscall \
@@ -81,6 +81,7 @@ MEM_KALLOC = ctor mem_syscall \
 		deallocator \
 		k_main_prototypes \
 		trace \
+		sizeof_object \
 		alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
 		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
 		alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
@@ -92,7 +93,7 @@ MEM_VALLOC = v_main_prototypes
 SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC) $(MEM_VALLOC)
 SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
 VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
-HEADERS += memory_manager main_headers alloc_btree
+HEADERS += memory_manager main_headers alloc_btree dynamic_allocator
 
 # tests
 SRC_C_KERNEL += mem_test rand_test

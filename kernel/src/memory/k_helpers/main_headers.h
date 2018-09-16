@@ -6,12 +6,19 @@
 # include "libft.h"
 
 /*
-** Data page
-*/
+ * Data page
+ */
 
-# define NODE_ALLIGN		64
-# define NODE_REQ_PAGES		8
+/*
+ * A meta node chunk is actually on 16 pages, may be contain (2048 - 1) nodes
+ * In a 32bits arch, each node take 32 bytes
+ */
+# define NODE_ALLIGN		32
+# define NODE_REQ_PAGES		16
 
+/*
+ * A tiny chunk is 16 pages long
+ */
 # define TINY_SHR		4
 # define TINY_MAX_BLOCK		128
 
@@ -20,8 +27,11 @@
 # define TINY_LIMIT		(TINY_BLOCK_SIZE * 32 - TINY_BLOCK_SIZE)
 # define TINY_RANGE		(TINY_BLOCK_SIZE * 32 * TINY_MAX_BLOCK)
 
+/*
+ * A medium chunk is 512 pages long
+ */
 # define MEDIUM_SHR		9
-# define MEDIUM_MAX_BLOCK	122
+# define MEDIUM_MAX_BLOCK	128
 
 # define MEDIUM_BLOCK_SIZE	(1 << MEDIUM_SHR)
 # define MEDIUM_MASK		(MEDIUM_BLOCK_SIZE - 1)
@@ -29,13 +39,11 @@
 # define MEDIUM_RANGE		(MEDIUM_BLOCK_SIZE * 32 * MEDIUM_MAX_BLOCK)
 
 enum				e_op_type {
-	MALLOC = 0,
-	CALLOC,
-	REALLOC,
-	REALLOCF,
-	REALLOCARRAY,
-	VALLOC,
-	FREE
+	KMALLOC = 0,
+	KCALLOC,
+	KREALLOC,
+	KFREE,
+	KSIZE
 };
 
 enum				e_trace_result {
@@ -45,19 +53,18 @@ enum				e_trace_result {
 };
 
 /*
-** Global description
-*/
+ * Global description
+ */
 
 struct s_node_page;
 
 struct timespec {
 	uint32_t tv_sec;
-	uint32_t tv_nsec; /// TODO nszc ne peut contenir sur 32 bits
+	uint32_t tv_nsec; /// TODO invalid in 32bits mode
 };
 
 struct				s_ctx {
 	size_t			page_size;
-//	struct rlimit		mem_limit;
 
 	struct s_node_page	*node_pages_entry;
 	struct s_node		*index_pages_tree;
@@ -77,8 +84,8 @@ struct				s_ctx {
 }				ctx;
 
 /*
-** Node Pages Structure
-*/
+ * Node Pages Structure
+ */
 
 struct				s_primary_node {
 	struct s_node_page	*next;
@@ -96,45 +103,45 @@ struct				s_couple {
 };
 
 /*
-** Fail safe main constructor
-*/
+ * Fail safe main constructor
+ */
 
 int				constructor_runtime(void);
 
 /*
-** Mem_syscall functions
-*/
+ * Mem_syscall functions
+ */
 
 void				*get_new_pages(size_t size);
 int				destroy_pages(void *addr, size_t size);
 
 /*
-** Main Functions
-*/
+ * Main Functions
+ */
 
 void				*core_allocator(size_t *size);
 int				core_deallocator(void *ptr);
+
+size_t				get_sizeof_object(void *addr);
+
 void				*core_realloc(
 				void *ptr,
 				size_t *size,
 				bool *memfail);
 
-/*
-** Needed for valloc relink
-*/
 
 void				*core_allocator_large(size_t *size);
 
 /*
-** Special allocator
-*/
+ * Special allocator
+ */
 
 void				*node_custom_allocator(size_t size);
 void				node_custom_deallocator(void *node);
 
 /*
-** Free pages management
-*/
+ * Free pages management
+ */
 
 int				insert_free_record(
 				void *addr,
@@ -158,8 +165,8 @@ struct s_node			*get_best_free_record_tree(
 				enum e_page_type type);
 
 /*
-** Index management
-*/
+ * Index management
+ */
 
 void				*insert_allocated_record(
 				struct s_node *record);
@@ -171,8 +178,8 @@ void				*create_index(
 void				destroy_index(struct s_node *index);
 
 /*
-** Finders.
-*/
+ * Finders.
+ */
 
 int				cmp_addr_to_node_addr(
 				void *addr,
@@ -199,8 +206,8 @@ int				cmp_m_addr_to_node_m_addr(
 				struct s_node *node_b);
 
 /*
-** Size tools.
-*/
+ * Size tools.
+ */
 
 size_t				allign_size(
 				size_t size,
@@ -209,16 +216,16 @@ size_t				allign_size(
 enum e_page_type		get_page_type(size_t size);
 
 /*
-** Debug tools
-*/
+ * Debug tools
+ */
 
 void				show_alloc(bool verbose, int fd);
 
 void				debug_nodes(int fd);
 
 /*
-** Tracer
-*/
+ * Tracer
+ */
 
 void				open_malloc_tracer(void);
 
@@ -235,8 +242,8 @@ void				bend_trace(
 				void *addr);
 
 /*
-** deallocator.next.c
-*/
+ * deallocator.next.c
+ */
 
 void				fflush_neighbours(
 				size_t len,
@@ -250,8 +257,8 @@ void				do_prev_job(
 				struct s_node *index);
 
 /*
-** free_record.next.c
-*/
+ * free_record.next.c
+ */
 
 void				assign_parent_free_tiny(
 				void *content,
@@ -267,8 +274,8 @@ int				check_index_destroy(
 				enum e_page_type type);
 
 /*
-** reallocator.next.c
-*/
+ * reallocator.next.c
+ */
 
 void				*substract_large_page(
 				struct s_node *record,

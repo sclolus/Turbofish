@@ -5,52 +5,62 @@
 
 # define GETPAGESIZE() 4096
 
-int	fill_preallocated_chunk(char *base_addr)
+int	fill_preallocated_chunk(void)
 {
-	ctx.node_pages_entry = (struct s_node_page *)base_addr;
+	void *medium_base_addr;
+	void *tiny_base_addr;
+	void *metanode_base_addr;
+
+	medium_base_addr = get_new_pages(MEDIUM_RANGE);
+	if (medium_base_addr == NULL) {
+		eprintk("failed to allocate base medium page memory\n");
+		return -1;
+	}
+
+	tiny_base_addr = get_new_pages(TINY_RANGE);
+	if (tiny_base_addr == NULL) {
+		eprintk("failed to allocate base tiny page memory\n");
+		return -1;
+	}
+
+	metanode_base_addr = get_new_pages(NODE_REQ_PAGES * ctx.page_size);
+	if (metanode_base_addr == NULL) {
+		eprintk("failed to allocate base meta node memory\n");
+		return -1;
+	}
+
+	ctx.node_pages_entry = (struct s_node_page *)metanode_base_addr;
+
 	ctx.node_pages_entry->primary_block.nb_node = 0;
 	ctx.node_pages_entry->primary_block.next = NULL;
 	ctx.node_cache = NULL;
-	base_addr += NODE_REQ_PAGES * ctx.page_size;
 	ctx.big_page_record_tree = alloc_btree_new();
 	ctx.index_pages_tree = alloc_btree_new();
 	ctx.node_density = (NODE_REQ_PAGES * ctx.page_size -
 			sizeof(struct s_primary_node)) /
 					alloc_btree_get_node_size();
+
 	ctx.global_tiny_space_tree = alloc_btree_new();
-	create_index(base_addr, TINY_RANGE);
-	insert_free_record(base_addr, TINY_RANGE, TINY, NULL);
-	base_addr += TINY_RANGE;
+	create_index(tiny_base_addr, TINY_RANGE);
+	insert_free_record(tiny_base_addr, TINY_RANGE, TINY, NULL);
+
 	ctx.global_medium_space_tree = alloc_btree_new();
-	create_index(base_addr, MEDIUM_RANGE);
-	insert_free_record(base_addr, MEDIUM_RANGE, MEDIUM, NULL);
+	create_index(medium_base_addr, MEDIUM_RANGE);
+	insert_free_record(medium_base_addr, MEDIUM_RANGE, MEDIUM, NULL);
 	return (0);
 }
 
 int	constructor_runtime(void)
 {
-	size_t	preallocated_size;
-	void	*base_addr;
+	int ret;
 
 	ctx.page_size = GETPAGESIZE();
-//	if (getrlimit(RLIMIT_DATA, &ctx.mem_limit) < 0)
-	if (0) {
-		eprintk("dyn_allocator cannot get RLIMIT_DATA\n");
-		return (-1);
-	}
-	preallocated_size = NODE_REQ_PAGES * ctx.page_size;
-	preallocated_size += TINY_RANGE;
-	preallocated_size += MEDIUM_RANGE;
-	if ((base_addr = get_new_pages(preallocated_size)) == NULL) {
-		eprintk("failed to allocate base preallocated memory\n");
-		return (-1);
-	}
 	open_malloc_tracer();
 	ctx.size_owned_by_data = 0;
 	ctx.size_owned_by_nodes = 0;
-	fill_preallocated_chunk(base_addr);
-	ctx.is_initialized = true;
-	return (0);
+	ret = fill_preallocated_chunk();
+	ctx.is_initialized = (ret == 0) ? true : false;
+	return ret;
 }
 
 void __attribute__((constructor))
