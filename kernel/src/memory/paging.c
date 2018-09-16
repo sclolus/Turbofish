@@ -8,7 +8,6 @@
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000
-#define PAGE_DIRECTORY_BACKUP_0_ADDR	0x2000
 #define PAGE_TABLE_0_ADDR		0x400000
 
 #define MAX_PAGE_TABLE_SEG		1024
@@ -185,9 +184,9 @@ int			map_address(
  */
 void			*kmmap(size_t size)
 {
-	u32			res;
-	void			*phy_addr;
-	u32			page_req;
+	u32	res;
+	void	*phy_addr;
+	u32	page_req;
 
 	page_req = size_to_page_requested(size);
 	res = get_pages(page_req, kheap);
@@ -231,9 +230,9 @@ void			*vmmap(size_t size)
  */
 int			kmunmap(void *virt_addr)
 {
-	u32		*pt;
-	u32		page_req;
-	void		*phy_addr;
+	u32	*pt;
+	u32	page_req;
+	void	*phy_addr;
 
 	if ((u32)virt_addr & PAGE_MASK) {
 		eprintk("%s: unexpected offset, virt_addr = %p\n",
@@ -276,9 +275,9 @@ int			kmunmap(void *virt_addr)
  */
 int			vmunmap(void *virt_addr, size_t size)
 {
-	u32			*pt;
-	u32			page_req;
-	u32			phy_addr;
+	u32 *pt;
+	u32 page_req;
+	u32 phy_addr;
 
 	if ((u32)virt_addr & PAGE_MASK) {
 		eprintk("%s: Unexpected offset, virt_addr = %p\n",
@@ -340,8 +339,8 @@ int			vmunmap(void *virt_addr, size_t size)
  */
 void			init_paging(u32 available_memory)
 {
-	u32			res;
-	int			i;
+	u32 res;
+	int i;
 
 	/*
 	 * creation of kernel page directory
