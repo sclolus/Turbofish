@@ -32,19 +32,12 @@ int			map_address(
 			u32 phy_addr,
 			enum mem_space space);
 
-int			unmap_address(u32 virt_addr, u32 page_req);
-
 /*
  * virtual map internal functions
  */
 void			init_virtual_map(void);
 
-struct mem_result {
-	u32	addr;
-	size_t	pages;
-};
-
-struct mem_result	get_pages(u32 page_request, enum mem_type type);
+u32			get_pages(u32 page_request, enum mem_type type);
 u32			free_pages(void *addr, enum mem_type type);
 
 /*
@@ -59,7 +52,6 @@ int			drop_physical_addr(void *addr);
  * debug functions
  */
 void			get_anotomie_of(void *virt_addr, size_t size);
-int			check_page_directory(void);
 
 /*
  * buddy algorithms macros
@@ -104,7 +96,7 @@ int			check_page_directory(void);
 #define GRANULARITY	1
 #define GRANULARITY_NEG	4
 
-struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
+u32			get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl);
 u32			free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl);
 int			mark_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl,
 				      u32 cap);

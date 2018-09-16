@@ -61,6 +61,12 @@ struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
 
+/*
+ * get the physical page address associated with a virtual address
+ * @return: VOID PTR
+ * 	a valid physical address on success
+ * 	MAP_FAILED on error
+ */
 static void		*virt_to_physical_addr(u32 virt_addr)
 {
 	struct page_table_seg	*pt;
@@ -84,11 +90,21 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	return (void *)phy_addr;
 }
 
+/*
+ * convert a size to the number of page frame associated
+ * @return: SIZE_T
+ * 	the number of pages
+ */
 static inline size_t	size_to_page_requested(size_t size)
 {
 	return (size >> 12) + ((size & PAGE_MASK) ? 1 : 0);
 }
 
+/*
+ * create a page table directory at index 'directory'
+ * @return: INTEGER
+ * 	0 on success
+ */
 static int		create_directory(u32 directory, enum mem_space space)
 {
 	struct page_directory	*pd;
@@ -108,15 +124,22 @@ static int		create_directory(u32 directory, enum mem_space space)
 	return 0;
 }
 
-static inline void	invlpg(void *m)
-{
 /*
-* Clobber memory to avoid optimizer re-ordering access before invlpg,
+* clobber memory to avoid optimizer re-ordering access before INVLPG,
 * which may cause nasty bugs.
 */
+static inline void	invlpg(void *m)
+{
 	asm volatile("invlpg (%0)" : : "b"(m) : "memory");
 }
 
+/*
+ * write on the page table the physical address associated to virtual address,
+ * on the size length.
+ * @return: INTEGER
+ * 	 0 on success
+ * 	 -1 on error
+ */
 int			map_address(
 			u32 virt_addr,
 			u32 page_req,
@@ -154,86 +177,106 @@ int			map_address(
 	return 0;
 }
 
-int			unmap_address(u32 virt_addr, u32 page_req)
-{
-	u32 *pt;
-
-	if (virt_addr & PAGE_MASK) {
-		eprintk("%s: Unexpected offset, virt_addr = %p\n",
-				__func__, virt_addr);
-		return -1;
-	}
-	pt = (u32 *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
-
-	for (u32 i = 0; i < page_req; i++)
-	{
-		*pt++ = 0;
-		invlpg((void *)virt_addr);
-		virt_addr += PAGE_SIZE;
-	}
-	return 0;
-}
-
+/*
+ * allocate continuous memory on the heap associated with physical address
+ * @return: VOID PTR
+ *	a valid physical address on success
+ * 	MAP_FAILED on error
+ */
 void			*kmmap(size_t size)
 {
-	struct mem_result	res;
+	u32			res;
 	void			*phy_addr;
 	u32			page_req;
 
 	page_req = size_to_page_requested(size);
 	res = get_pages(page_req, kheap);
-	if (res.addr != MAP_FAILED) {
+	if (res != MAP_FAILED) {
 		phy_addr = get_physical_addr(page_req);
 		if ((u32)phy_addr == MAP_FAILED) {
 			eprintk("%s: out of physical memory\n", __func__);
-			page_req = free_pages((void *)res.addr, kheap);
+			page_req = free_pages((void *)res, kheap);
 			if (page_req == 0)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
 		}
 
 		map_address(
-			res.addr,
+			res,
 			page_req,
 			(u32)phy_addr,
 			kernel_space);
 	}
 	else
 		eprintk("%s: out of virtual memory\n", __func__);
-	return (void *)res.addr;
+	return (void *)res;
 }
 
+/*
+ * allocate a virtual address chunk without physical address associated
+ * @return: VOID PTR
+ *	a valid physical address on success
+ * 	MAP_FAILED on error
+ */
 void			*vmmap(size_t size)
 {
-	struct mem_result res;
-
-	res = get_pages(size_to_page_requested(size), vheap);
-
-	return (void *)res.addr;
+	return (void *)get_pages(size_to_page_requested(size), vheap);
 }
 
+/*
+ * deallocate a virtual address and his continuous physical content
+ * @return: INTEGER
+ * 	0 on success
+ * 	-1 on error
+ */
 int			kmunmap(void *virt_addr)
 {
+	u32		*pt;
 	u32		page_req;
 	void		*phy_addr;
 
-	page_req = free_pages(virt_addr, kheap);
-	if (page_req == 0)
+	if ((u32)virt_addr & PAGE_MASK) {
+		eprintk("%s: unexpected offset, virt_addr = %p\n",
+				__func__, virt_addr);
 		return -1;
+	}
+
+	page_req = free_pages(virt_addr, kheap);
+	if (page_req == 0) {
+		eprintk("%s: Unexpected size, virt_addr = %p\n",
+				__func__, virt_addr);
+		return -1;
+	}
 
 	phy_addr = virt_to_physical_addr((u32)virt_addr);
 
 	if (drop_physical_addr(phy_addr) == 0)
 		eprintk("%s: Unexpected error\n", __func__);
 
-	return unmap_address((u32)virt_addr, page_req);
+	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+
+	/*
+	 * UNMAP page table
+	 */
+	for (u32 i = 0; i < page_req; i++)
+	{
+		*pt++ = 0;
+		invlpg(virt_addr);
+		virt_addr += PAGE_SIZE;
+	}
+	return 0;
 }
+
 /*
- * Assuming size if a multiple and virt_addr are multiple of PAGE_SIZE
+ * deallocate a virtual address and all the physical address associated
+ * @return: INTEGER
+ * 	0 on success
+ * 	-1 on error
+ * NB: assuming size and virt_addr are multiple of PAGE_SIZE
  */
 int			vmunmap(void *virt_addr, size_t size)
 {
-	struct page_table_seg	*pt;
+	u32			*pt;
 	u32			page_req;
 	u32			phy_addr;
 
@@ -258,35 +301,46 @@ int			vmunmap(void *virt_addr, size_t size)
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (struct page_table_seg *)
-			(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
 
 	size >>= 12;
 	for (size_t i = 0; i < size; i++) {
-		phy_addr = pt->physical_address4_20 & 0xFFFF;
-		phy_addr <<= 4;
-		phy_addr |= pt->physical_address0_3 & 0xF;
-		phy_addr <<= 12;
 
 		/*
-		 * XXX For VMALLOC, it's important to consult if phy_addr != 0
+		 * assuming that address is the higher 20bits of page_table
+		 */
+		phy_addr = *pt & 0xFFFFF000;
+
+		/*
+		 * For VMALLOC, it's important to consult if phy_addr != 0
 		 * Allocations may be done after the first page, so the physic
 		 * address of the first page is 0 according to a constant set 0
 		 * of unallocated pages
 		 */
-		if (phy_addr != 0 && drop_physical_addr((void *)phy_addr) == 0)
-			eprintk("%s: Unexpected error at physic %p virtual %p"
-					"\n", __func__, phy_addr, virt_addr);
+		if (phy_addr != 0) {
+			if (drop_physical_addr((void *)phy_addr) == 0)
+				eprintk("%s: Unexpected error at physic %p "
+					"virtual %p\n",
+					__func__, phy_addr, virt_addr);
+
+			/*
+			 * UNMAP page table
+			 */
+			*pt = 0;
+			invlpg((void *)virt_addr);
+		}
+		virt_addr += PAGE_SIZE;
 		pt++;
 	}
-	return unmap_address((u32)virt_addr, size);
+	return 0;
 }
 
-static void		clone_page_directory(void);
-
+/*
+ * initialize all the paging system
+ */
 void			init_paging(u32 available_memory)
 {
-	struct mem_result	res;
+	u32			res;
 	int			i;
 
 	/*
@@ -301,11 +355,6 @@ void			init_paging(u32 available_memory)
 	 */
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, user_space);
-
-	/*
-	 * clone page directory for debugging
-	 */
-	clone_page_directory();
 
 	/*
 	 * clean all pages tables
@@ -326,7 +375,7 @@ void			init_paging(u32 available_memory)
 	 * mapping of first 4mo, GDT, IDT, page directory, kernel, stack
 	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
-	map_address((u32)res.addr, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
+	map_address(res, MAX_PAGE_TABLE_SEG, 0x0, kernel_space);
 	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
 	/*
@@ -334,7 +383,7 @@ void			init_paging(u32 available_memory)
 	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
-			(u32)res.addr,
+			res,
 			MAX_PAGE_TABLE_SEG,
 			0x400000,
 			kernel_space);
@@ -344,15 +393,15 @@ void			init_paging(u32 available_memory)
 	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
-			(u32)res.addr,
+			res,
 			MAX_PAGE_TABLE_SEG,
 			(u32)g_graphic_ctx.vesa_mode_info.framebuffer,
 			kernel_space);
 	mark_physical_area(
 			g_graphic_ctx.vesa_mode_info.framebuffer,
 			MAX_PAGE_TABLE_SEG);
-	init_gdt((void *)res.addr);
-	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res.addr;
+	init_gdt((void *)res);
+	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res;
 
 	/*
 	 * store page directory address in CR3 register
@@ -367,29 +416,8 @@ void			init_paging(u32 available_memory)
 }
 
 /*
- * Debug functions
- */
-static void		clone_page_directory(void)
-{
-	memcpy(
-			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
-			(void *)PAGE_DIRECTORY_0_ADDR,
-			MAX_DIRECTORY_SEG * sizeof(struct page_directory_seg));
-}
-
-int			check_page_directory(void)
-{
-	int ret;
-
-	ret = memcmp(
-			(void *)PAGE_DIRECTORY_BACKUP_0_ADDR,
-			(void *)PAGE_DIRECTORY_0_ADDR,
-			MAX_DIRECTORY_SEG * sizeof(struct page_directory_seg));
-	return (ret != 0) ? 0 : -1;
-}
-
-/*
- * Describe physical segments pointed by a virtual address while size
+ * debug function, describe physical segments pointed by a virtual address
+ * while size
  */
 void			get_anotomie_of(void *virt_addr, size_t size)
 {

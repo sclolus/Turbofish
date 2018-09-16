@@ -73,81 +73,81 @@ static u8 *virt_map;
  * 1-----2--4 ----------- v ---------------------
  * Index number
  */
-struct mem_result	get_pages(u32 page_request, enum mem_type type)
+u32	get_pages(u32 page_request, enum mem_type type)
 {
-	struct mem_result mem;
+	u32 addr;
 
 	if (page_request == 0)
-		return (struct mem_result){MAP_FAILED, 0};
+		return MAP_FAILED;
 
-	mem.addr = MAP_FAILED;
+	addr = MAP_FAILED;
 
 	switch (type) {
 	case reserved:
 		if (page_request <= (1 << SHL_LIMIT_128M_BLOCK) &&
 				IS_USABLE(virt_map, RESERVED_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					RESERVED_IDX,
 					RESERVED_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 		break;
 
 	case kheap:
 		if (page_request <= (1 << SHL_LIMIT_256M_BLOCK) &&
 				IS_USABLE(virt_map, KHEAP_FIRST_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					KHEAP_FIRST_IDX,
 					KHEAP_FIRST_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 
 		if (page_request <= (1 << SHL_LIMIT_512M_BLOCK) &&
 				IS_USABLE(virt_map, KHEAP_SECOND_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					KHEAP_SECOND_IDX,
 					KHEAP_SECOND_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 		break;
 
 	case vheap:
 		if (page_request <= (1 << SHL_LIMIT_128M_BLOCK) &&
 				IS_USABLE(virt_map, VHEAP_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					VHEAP_IDX,
 					VHEAP_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 		break;
 
 	case usermem:
 		if (page_request <= (1 << SHL_LIMIT_1G_BLOCK) &&
 				IS_USABLE(virt_map, USER_FIRST_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					USER_FIRST_IDX,
 					USER_FIRST_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 
 		if (page_request <= (1 << SHL_LIMIT_2G_BLOCK) &&
 				IS_USABLE(virt_map, USER_SECOND_IDX))
-			mem = get_mem_area(
+			addr = get_mem_area(
 					virt_map,
 					page_request,
 					USER_SECOND_IDX,
 					USER_SECOND_DEEP);
-		if (mem.addr != MAP_FAILED)
+		if (addr != MAP_FAILED)
 			break;
 		break;
 
@@ -155,10 +155,10 @@ struct mem_result	get_pages(u32 page_request, enum mem_type type)
 		eprintk("%s: Unexpected default status\n");
 		break;
 	}
-	return mem;
+	return addr;
 }
 
-u32			free_pages(void *addr, enum mem_type type)
+u32	free_pages(void *addr, enum mem_type type)
 {
 	int ret;
 
@@ -212,7 +212,7 @@ u32			free_pages(void *addr, enum mem_type type)
 	return ret;
 }
 
-void			init_virtual_map(void)
+void	init_virtual_map(void)
 {
 	virt_map = (u8 *)VIRT_MAP_LOCATION;
 	memset(virt_map, 0, MAP_LENGTH);

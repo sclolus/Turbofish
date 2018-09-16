@@ -17,17 +17,17 @@ static u32 page_mask[21] = {
  * @initialization: for a search in all the map
  * get_mem_area(map, pages_req, 1, 0);
  * caution, never set 0 as index.
- * @return: Address and max number of pages in the chunk
+ * @return: Address of pages in the chunk
  * on error: MAP_FAILLED
  */
-struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
+u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 {
-	struct mem_result mem;
+	u32 addr;
 
 	if (lvl == MAX_LVL || pages_req
 			> (u32)(GRANULARITY << (MAX_LVL - lvl - 1))) {
 		if (IS_DIRTY(map, idx)) {
-			return (struct mem_result){MAP_FAILED, 0};
+			return MAP_FAILED;
 		} else {
 			if (idx > (MAP_LENGTH * GRANULARITY_NEG))
 				eprintk("%s: ERROR idx, got %u\n",
@@ -35,44 +35,43 @@ struct mem_result	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 			SET(map, idx, ALLOCATED);
 			u32 segment = (idx & page_mask[lvl])
 					* (GRANULARITY << (MAX_LVL - lvl));
-			mem.addr = (((segment >> 10) & 0x3FF) << 22)
+			addr = (((segment >> 10) & 0x3FF) << 22)
 				| ((segment & 0x3FF) << 12);
-			mem.pages = GRANULARITY << (MAX_LVL - lvl);
-			return mem;
+			return addr;
 		}
 	}
 
 	if (IS_USABLE(map, 2 * idx)) {
-		mem = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
+		addr = get_mem_area(map, pages_req, 2 * idx, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
 				&& (!IS_USABLE(map, 2 * idx + 1))) {
 			SET(map, idx, UNAIVALABLE);
-			return mem;
+			return addr;
 		}
 
-		if (mem.addr != MAP_FAILED) {
+		if (addr != MAP_FAILED) {
 			SET(map, idx, DIRTY);
-			return mem;
+			return addr;
 		}
 	}
 
 	if (IS_USABLE(map, 2 * idx + 1)) {
-		mem = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
+		addr = get_mem_area(map, pages_req, 2 * idx + 1, lvl + 1);
 
 		if ((!IS_USABLE(map, 2 * idx))
 				&& (!IS_USABLE(map, 2 * idx + 1))) {
 			SET(map, idx, UNAIVALABLE);
-			return mem;
+			return addr;
 		}
 
-		if (mem.addr != MAP_FAILED) {
+		if (addr != MAP_FAILED) {
 			SET(map, idx, DIRTY);
-			return mem;
+			return addr;
 		}
 	}
 
-	return (struct mem_result){MAP_FAILED, 0};
+	return MAP_FAILED;
 }
 
 /*

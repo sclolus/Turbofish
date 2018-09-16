@@ -395,9 +395,6 @@ int			mem_test(enum mem_test_type type, int verbosity)
 			get_anotomie_of(
 					last_entry->virt_addr,
 					last_entry->size);
-			printk("page directory check: %s\n",
-					(check_page_directory() == 0) ?
-							"OK" : "FAIL");
 		}
 	} else {
 		printk("{green}OK\n{eoc}");
