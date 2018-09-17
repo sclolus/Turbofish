@@ -12,6 +12,23 @@ extern u8	get_keymap(u32 offset);
 
 #define RELEASE_BIT	0x80
 
+void	wrapper_1(void)
+{
+	int i = 3;
+	(void)i;
+
+	wrapper_2();
+}
+
+void	wrapper_2(void)
+{
+	int i = 3;
+	(void)i;
+
+	char *ptr = (char *)0x42424242;
+	*ptr = 42;
+}
+
 void	process_keyboard(u8 scancode)
 {
 	static u32 keyboard_register = 0;
@@ -33,8 +50,7 @@ void	process_keyboard(u8 scancode)
 		printk("(special_char)");
 		break;
 	case 59: {
-		char *ptr = (char *)0x42424242;
-		*ptr = 42;
+		wrapper_1();
 		break;
 	}
 	case 60: {

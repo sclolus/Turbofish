@@ -5,6 +5,75 @@
 #include "libft.h"
 #include "vesa_graphic.h"
 
+struct function_entry {
+	u32 eip;
+	const char *function_name;
+};
+
+#define FN_DIR_LEN	1
+
+static struct function_entry function_directory[FN_DIR_LEN] = {
+		{0x42424242, "function_lambda"},
+};
+
+/*
+ * Assuming that address of index entry are sorted
+ */
+static const char	*get_function_name(u32 eip)
+{
+	for (int i = 0; i < FN_DIR_LEN; i++) {
+		if (eip > function_directory[i].eip)
+			return function_directory[i].function_name;
+	}
+	return "???";
+}
+
+
+/*
+ * each function store the EBP of the previous function into stack
+ * push EBP		push EBP of the previous function
+ * mov ebp, esp		set his own EBP, it's in the top of the stack (esp)
+ * And just before EBP, we can found the EIP of the caller
+ *
+ * EBP_2 EIP_2 param param param EBP_1 EIP_1 param param EBO_0 EIP_0
+ *
+ * The stack contain
+ * Second function argument (eip_array pointer)
+ * First function argument (max_frame)
+ * Return address in calling function
+ * EBP of calling function (pointed to by current EBP)
+ */
+static u32		trace(u32 ebp_value, u32 max_frame, u32 *eip_array)
+{
+	u32 *ebp;
+	u32 eip;
+	u32 frame;
+
+	ebp = (u32 *)ebp_value;
+
+	frame = 0;
+	for (frame = 0; frame < max_frame; frame++) {
+		/*
+		 * Access to EBP + 1 => EIP
+		 */
+		eip = ebp[1];
+		if (eip == 0)
+			break;
+		/*
+		 * Unwind to previous stack frame
+		 */
+		ebp = (u32 *)ebp[0];
+
+		/*
+		 * store the EIP address found
+		 */
+		*eip_array++ = eip;
+	}
+	return frame;
+}
+
+#define TRACE_MAX	10
+
 void	panic(const char *s, struct extended_registers reg)
 {
 	memset4((u32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
@@ -14,9 +83,11 @@ void	panic(const char *s, struct extended_registers reg)
 
 	u32 colomn;
 	u32 line;
+	u32 eip_array[TRACE_MAX];
+	u32 trace_size;
 
 	colomn = 40;
-	line = 15;
+	line = 10;
 
 	set_text_color(7);
 
@@ -48,7 +119,23 @@ void	panic(const char *s, struct extended_registers reg)
 	set_cursor_location(colomn + 17, line + 10);
 	eprintk("EIP: 0x%.8x  CS: 0x%.4hx", reg.eip, reg.cs);
 
-	set_cursor_location(colomn + 7, line + 12);
+	/*
+	 * stack trace
+	 */
+	set_cursor_location(colomn, line + 12);
+	printk("dumping core:");
+
+	set_cursor_location(colomn, line + 14);
+	printk("%p %s", reg.eip, get_function_name(reg.eip));
+
+	trace_size = trace(reg.old_ebp, TRACE_MAX, eip_array);
+
+	for (u32 i = 0; i < trace_size; i++) {
+		set_cursor_location(colomn, line + 15 + i);
+		printk("%p %s", eip_array[i], get_function_name(eip_array[i]));
+	}
+
+	set_cursor_location(colomn + 7, line + 27);
 	eprintk("You can reboot your computer");
 
 	asm("cli\n"

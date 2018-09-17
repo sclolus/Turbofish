@@ -15,22 +15,30 @@ global _start
 _start:
     cli                             ; block interrupts
 
-    mov esp, stack_space            ; set stack pointer
+    push ebp
+    mov ebp, esp
 
-	push 0x0
+    ; set EIP of caller GRUB on stack at 0, prevent infinite loop for backtrace
+    mov [ebp + 4], dword 0
+
+    mov esp, stack_space            ; set stack pointer for a temporary stack
+
+    push 0x0
     call init_gdt
 
-    mov ax, 0x20
+    mov ax, 0x20                    ; create the main kernel stack
     mov ss, ax
     mov esp, 0x300000
 
-    push ebx                        ; EBX contain pointer to GRUB multiboot information (preserved register)
+    ; EBX contain pointer to GRUB multiboot information (preserved register)
+    push ebx
     call kmain                      ; kmain is called with this param
     add esp, 4
+
 .halt:
     hlt                             ; halt the CPU until next interrupt
     jmp .halt
 
 section .bss
-resb 8192                           ; 8KB for stack
+resb 8192                           ; 8KB for temporary stack
 stack_space:
