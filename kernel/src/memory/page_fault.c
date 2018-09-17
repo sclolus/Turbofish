@@ -27,6 +27,7 @@ int	page_fault_handler(u32 err_reg, u32 fault_addr)
 {
 	int ret;
 
+	(void)err_reg;
 	g_page_fault_count++;
 	/*
 	 * test if fault address is in the VALLOC area field
@@ -36,17 +37,8 @@ int	page_fault_handler(u32 err_reg, u32 fault_addr)
 	else
 		ret = -1;
 
-	if (ret < 0) {
-		eprintk("{red}PaGe FaUlT at %p ! Cannot do anything\n",
-				(void *)fault_addr);
-		eprintk("P:%hhu W:%hhu U:%hhu R:%hhu I:%hhu{eoc}\n",
-				((err_reg & BIT_PRESENT) ? 1 : 0),
-				((err_reg & BIT_WRITE) ? 1 : 0),
-				((err_reg & BIT_USER) ? 1 : 0),
-				((err_reg & BIT_RES_WRITE) ? 1 : 0),
-				((err_reg & BIT_I_FETCH) ? 1 : 0));
-		while (1);
-	}
+	if (ret < 0)
+		return -1;
 	return 0;
 }
 

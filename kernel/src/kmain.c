@@ -49,6 +49,8 @@ void		text_putstr(char *str)
 	}
 }
 
+extern void test_fn(void);
+
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
 #define VBE_MODE 0x105
 
@@ -121,7 +123,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
-	g_kernel_io_ctx.term_mode = kernel;
+	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 to shake the kernel\n");
 	asm("sti");
 
 	return;

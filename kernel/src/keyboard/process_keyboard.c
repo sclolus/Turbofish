@@ -32,6 +32,11 @@ void	process_keyboard(u8 scancode)
 	case 224:
 		printk("(special_char)");
 		break;
+	case 59: {
+		char *ptr = (char *)0x42424242;
+		*ptr = 42;
+		break;
+	}
 	default:
 		if (scancode & 0x80)
 			break;
