@@ -17,6 +17,23 @@ GLOBAL asm_clock_handler
 GLOBAL asm_keyboard_handler
 GLOBAL asm_real_time_clock_handler
 
+%macro PUSH_ALL_REGISTERS 0
+    pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
+    push dword [ebp + 16] ; eflags
+    push dword [ebp + 12] ; cs
+    push dword [ebp + 8]  ; eip
+    push ss
+    push es
+    push ds
+%endmacro
+
+%macro POP_ALL_REGISTERS 0
+    pop ds
+    pop es
+    add esp, 16
+    popad
+%endmacro
+
 asm_default_interrupt:
     iret
 
@@ -31,14 +48,7 @@ asm_page_fault:
     push ebp
     mov ebp, esp
 
-; push all register values
-    pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
-    push dword [ebp + 16] ; eflags
-    push dword [ebp + 12] ; cs
-    push dword [ebp + 8]  ; eip
-    push ss
-    push es
-    push ds
+    PUSH_ALL_REGISTERS
 
 ; C manager execution, test if this page fault is not fatal
     mov eax, cr2
@@ -66,10 +76,8 @@ asm_page_fault:
 
 ; end segment, return to programm
 .end:
-    pop ds
-    pop es
-    add esp, 16
-    popad
+    POP_ALL_REGISTERS
+
     pop ebp
     ; bypass the error code
     add esp, 4
