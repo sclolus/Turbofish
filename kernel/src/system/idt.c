@@ -18,7 +18,7 @@ static struct __attribute__ ((packed)) idt_ptr {
 } g_idt_ptr;
 
 
-int	initialize_idt_seg(u32 nb, u32 fn_addr, u16 select, u16 type)
+static int	initialize_idt_seg(u32 nb, u32 fn_addr, u16 select, u16 type)
 {
 	struct idt_seg *ptr;
 
@@ -41,7 +41,7 @@ extern void	asm_clock_handler(void);
 extern void	asm_keyboard_handler(void);
 extern void	asm_real_time_clock_handler(void);
 
-void	init_idt(void)
+void		init_idt(void)
 {
 	for (int i = 0; i < IDT_SIZE; i++)
 		initialize_idt_seg(
