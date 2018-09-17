@@ -38,7 +38,11 @@ void	process_keyboard(u8 scancode)
 		break;
 	}
 	case 60: {
-		int z = 4 / 0;
+		int z;
+
+
+		z = 42;
+		z = z / 0;
 		printk("value of z: %i\n", z);
 		break;
 	}

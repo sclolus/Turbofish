@@ -49,8 +49,6 @@ void		text_putstr(char *str)
 	}
 }
 
-extern void test_fn(void);
-
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
 #define VBE_MODE 0x105
 

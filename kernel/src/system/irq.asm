@@ -1,13 +1,33 @@
 [BITS 32]
+
+; Some documentation are in
+; https://wiki.osdev.org/Exceptions#General_Protection_Fault
 segment .data
 
 panic_buf: times 512 db 0
 
-default_cpu_without_err_code_msg: db "Exception without err_code", 0
-default_cpu_with_err_code_msg: db "Exception with err_code", 0
-
+cpu_default_interrupt_msg: db "Not defined", 0
 divide_by_zero_msg: db "Divide by zero", 0
+debug_msg: db "Debug", 0
+non_maskable_interrupt_msg: db "Non maskable interrupt", 0
+breakpoint_msg: db "Breakpoint", 0
+overflow_msg: db "Overflow", 0
+bound_range_exceeded_msg: db "bound range exceeded", 0
+invalid_opcode_msg: db "Invalid opcode", 0
+no_device_msg: db "No device founded", 0
+double_fault_msg: db "Double Fault !", 0
+fpu_seg_overrun_msg: db "FPU segment Overrun", 0
+invalid_tss_msg: db "Invalid TSS", 0
+seg_no_present_msg: db "Segment no present", 0
+stack_seg_fault_msg: db "Stack segment fault", 0
+general_protect_fault_msg: db "GENERAL PROTECTION FAULT", 0
 page_fault_msg: db "Page fault at address %p err_reg: 0x%.8x", 0
+fpu_floating_point_exep_msg: db "FPU floating point exception", 0
+alignment_check_msg: db "Alignment check", 0
+machine_check_msg: db "Machine check", 0
+simd_fpu_fp_exception_msg: db "SIMD FPU floating point exception", 0
+virtualize_exception_msg: db "Virtualize exception", 0
+security_exception_msg: db "Security exception", 0
 
 segment .text
 extern panic
@@ -73,60 +93,149 @@ GLOBAL asm_keyboard_handler
 
 ; CPU interrupt without err_code
 asm_cpu_default_interrupt:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push cpu_default_interrupt_msg
+    call panic
 
 asm_debug:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push debug_msg
+    call panic
 asm_non_maskable_interrupt:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push non_maskable_interrupt_msg
+    call panic
 asm_breakpoint:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push breakpoint_msg
+    call panic
 asm_overflow:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push overflow_msg
+    call panic
 asm_bound_range_exceeded:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push bound_range_exceeded_msg
+    call panic
 asm_invalid_opcode:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push invalid_opcode_msg
+    call panic
 asm_no_device:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push no_device_msg
+    call panic
 asm_fpu_seg_overrun:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push fpu_seg_overrun_msg
+    call panic
 asm_fpu_floating_point_exep:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push fpu_floating_point_exep_msg
+    call panic
 asm_machine_check:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push machine_check_msg
+    call panic
 asm_simd_fpu_fp_exception:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push simd_fpu_fp_exception_msg
+    call panic
 asm_virtualize_exception:
     push ebp
     mov ebp, esp
-
     PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
-
-    push default_cpu_without_err_code_msg
+    push virtualize_exception_msg
     call panic
 
 ; CPU interrupt with err_code
 asm_double_fault:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push double_fault_msg
+    call panic
 asm_invalid_tss:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push invalid_tss_msg
+    call panic
 asm_seg_no_present:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push seg_no_present_msg
+    call panic
 asm_stack_seg_fault:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push stack_seg_fault_msg
+    call panic
 asm_general_protect_fault:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push general_protect_fault_msg
+    call panic
 asm_alignment_check:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    push alignment_check_msg
+    call panic
 asm_security_exception:
     push ebp
     mov ebp, esp
-
     PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
-
-    push default_cpu_with_err_code_msg
+    push security_exception_msg
     call panic
+
 
 extern divide_by_zero_handler
 asm_divide_by_zero:
     push ebp
     mov ebp, esp
 
-    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    ;PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
 
-    call divide_by_zero_handler
-    cmp eax, 0
-    je .end
+    ;call divide_by_zero_handler
+    ;cmp eax, 0
+    ;je .end
 
 ; panic execution block, fill the error string and launch the BSOD
-    push divide_by_zero_msg
-    call panic
+    ;push divide_by_zero_msg
+    ;call panic
 
-.end
-    POP_ALL_REGISTERS
+;.end
+;    POP_ALL_REGISTERS
+
+ ;   add esp, 4
 
     pop ebp
     iret
