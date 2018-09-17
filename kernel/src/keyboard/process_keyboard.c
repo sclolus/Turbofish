@@ -37,6 +37,11 @@ void	process_keyboard(u8 scancode)
 		*ptr = 42;
 		break;
 	}
+	case 60: {
+		int z = 4 / 0;
+		printk("value of z: %i\n", z);
+		break;
+	}
 	default:
 		if (scancode & 0x80)
 			break;

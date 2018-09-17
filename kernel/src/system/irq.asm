@@ -3,6 +3,7 @@ segment .data
 
 panic_buf: times 512 db 0
 
+divide_by_zero_msg: db "Divide by zero", 0
 page_fault_msg: db "Page fault at address %p err_reg: 0x%.8x", 0
 
 segment .text
@@ -10,17 +11,28 @@ extern panic
 extern sprintk
 
 GLOBAL asm_default_interrupt
+GLOBAL asm_divide_by_zero
 GLOBAL asm_page_fault
 GLOBAL asm_default_pic_master_interrupt
 GLOBAL asm_default_pic_slave_interrupt
 GLOBAL asm_clock_handler
 GLOBAL asm_keyboard_handler
 
-%macro PUSH_ALL_REGISTERS 0
+%macro PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET 0
     pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
     push dword [ebp + 16] ; eflags
     push dword [ebp + 12] ; cs
     push dword [ebp + 8]  ; eip
+    push ss
+    push es
+    push ds
+%endmacro
+
+%macro PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET 0
+    pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
+    push dword [ebp + 12] ; eflags
+    push dword [ebp + 8]  ; cs
+    push dword [ebp + 4]  ; eip
     push ss
     push es
     push ds
@@ -47,7 +59,7 @@ asm_page_fault:
     push ebp
     mov ebp, esp
 
-    PUSH_ALL_REGISTERS
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 
 ; C manager execution, test if this page fault is not fatal
     mov eax, cr2
@@ -80,6 +92,27 @@ asm_page_fault:
     pop ebp
     ; bypass the error code
     add esp, 4
+    iret
+
+extern divide_by_zero_handler
+asm_divide_by_zero:
+    push ebp
+    mov ebp, esp
+
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+
+    call divide_by_zero_handler
+    cmp eax, 0
+    je .end
+
+; panic execution block, fill the error string and launch the BSOD
+    push divide_by_zero_msg
+    call panic
+
+.end
+    POP_ALL_REGISTERS
+
+    pop ebp
     iret
 
 asm_default_pic_master_interrupt:

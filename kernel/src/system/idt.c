@@ -34,6 +34,7 @@ static int	initialize_idt_seg(u32 nb, u32 fn_addr, u16 select, u16 type)
 }
 
 extern void	asm_default_interrupt(void);
+extern void	asm_divide_by_zero(void);
 extern void	asm_page_fault(void);
 extern void	asm_default_pic_master_interrupt(void);
 extern void	asm_default_pic_slave_interrupt(void);
@@ -63,7 +64,9 @@ void		init_idt(void)
 				0x8,
 				INTGATE);
 
+	initialize_idt_seg(0, (u32)&asm_divide_by_zero, 0x8, INTGATE);
 	initialize_idt_seg(14, (u32)&asm_page_fault, 0x8, INTGATE);
+
 	initialize_idt_seg(32, (u32)&asm_clock_handler, 0x8, INTGATE);
 	initialize_idt_seg(33, (u32)&asm_keyboard_handler, 0x8, INTGATE);
 

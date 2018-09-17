@@ -20,7 +20,7 @@ struct base_registers {
  *
  * push ebp
  * mov ebp, esp
- * definition of %macro PUSH_ALL_REGISTERS 0
+ * definition of %macro PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET 0
  * pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
  * push dword [ebp + 16] ; eflags
  * push dword [ebp + 12] ; cs
@@ -29,6 +29,8 @@ struct base_registers {
  * push es
  * push ds
  * %endmacro
+ *
+ * There is the same macro for no_err_code IRQ without offset + 4
  */
 
 struct extended_registers {
