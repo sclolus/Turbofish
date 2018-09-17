@@ -99,6 +99,12 @@ asm_cpu_default_interrupt:
     push cpu_default_interrupt_msg
     call panic
 
+asm_divide_by_zero:
+    push ebp
+    mov ebp, esp
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+    push divide_by_zero_msg
+    call panic
 asm_debug:
     push ebp
     mov ebp, esp
@@ -215,30 +221,6 @@ asm_security_exception:
     PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
     push security_exception_msg
     call panic
-
-
-extern divide_by_zero_handler
-asm_divide_by_zero:
-    push ebp
-    mov ebp, esp
-
-    ;PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
-
-    ;call divide_by_zero_handler
-    ;cmp eax, 0
-    ;je .end
-
-; panic execution block, fill the error string and launch the BSOD
-    ;push divide_by_zero_msg
-    ;call panic
-
-;.end
-;    POP_ALL_REGISTERS
-
- ;   add esp, 4
-
-    pop ebp
-    iret
 
 ; when a normal CPU interruption is launched, EFLAGS, CS and EIP are pushed.
 ; in the case of page_fault, an other value (err_code) is pushed after.

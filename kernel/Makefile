@@ -101,7 +101,7 @@ VPATH += src/tests
 HEADER += tests
 
 # math
-SRC_C_KERNEL += rand divide_by_zero
+SRC_C_KERNEL += rand
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
 HEADERS += math
