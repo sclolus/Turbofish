@@ -7,25 +7,38 @@
 
 struct function_entry {
 	u32 eip;
+	char symbol;
 	const char *function_name;
 };
 
-#define FN_DIR_LEN	1
+#include "nm.map"
 
-static struct function_entry function_directory[FN_DIR_LEN] = {
-		{0x42424242, "function_lambda"},
+
+struct function_result {
+	const char *s;
+	u32 offset;
 };
-
 /*
  * Assuming that address of index entry are sorted
  */
-static const char	*get_function_name(u32 eip)
+static struct function_result	get_function_name(u32 eip)
 {
+	struct function_result	res;
+
 	for (int i = 0; i < FN_DIR_LEN; i++) {
-		if (eip > function_directory[i].eip)
-			return function_directory[i].function_name;
+		if (eip < function_directory[i].eip) {
+			if (i == 0) {
+				res.s = "trace error";
+				res.offset = 0;
+			}
+			res.s =  function_directory[i - 1].function_name;
+			res.offset = eip - function_directory[i - 1].eip;
+			return res;
+		}
 	}
-	return "???";
+	res.s = "???";
+	res.offset = 0;
+	return res;
 }
 
 
@@ -81,10 +94,11 @@ void	panic(const char *s, struct extended_registers reg)
 		(g_graphic_ctx.vesa_mode_info.width *
 		g_graphic_ctx.vesa_mode_info.height) >> 2);
 
-	u32 colomn;
-	u32 line;
-	u32 eip_array[TRACE_MAX];
-	u32 trace_size;
+	struct function_result	res;
+	u32			colomn;
+	u32			line;
+	u32			eip_array[TRACE_MAX];
+	u32			trace_size;
 
 	colomn = 40;
 	line = 10;
@@ -126,13 +140,16 @@ void	panic(const char *s, struct extended_registers reg)
 	printk("dumping core:");
 
 	set_cursor_location(colomn, line + 14);
-	printk("%p %s", reg.eip, get_function_name(reg.eip));
+	res = get_function_name(reg.eip);
+	printk("%p  [EIP + %#.4x]  %s", reg.eip, res.offset, res.s);
 
 	trace_size = trace(reg.old_ebp, TRACE_MAX, eip_array);
 
 	for (u32 i = 0; i < trace_size; i++) {
 		set_cursor_location(colomn, line + 15 + i);
-		printk("%p %s", eip_array[i], get_function_name(eip_array[i]));
+		res = get_function_name(eip_array[i]);
+		printk("%p  [EIP + %#.4x]  %s",
+				eip_array[i], res.offset, res.s);
 	}
 
 	set_cursor_location(colomn + 7, line + 27);

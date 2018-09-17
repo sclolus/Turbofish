@@ -125,11 +125,32 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 .PHONY: all clean fclean re help
 
-all: $(NAME)
+all: pre-build target
 
-$(NAME): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	ld $(LDFLAGS) $^ -o $@
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+	@echo PREBUILD
+	ld $(LDFLAGS) $^ -o $(NAME)
+
+	nm -n $(NAME) > nm.res
+	./nm_map_gen src/system/nm.map nm.res
+	sync
+	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+	@echo MAINBUILD
+	ld $(LDFLAGS) $^ -o $(NAME)
+
+	nm -n $(NAME) > nm.res
+	./nm_map_gen src/system/nm.map nm.res
+	sync
+	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+	@echo POSTBUILD
+	ld $(LDFLAGS) $^ -o $(NAME)
+
 	chmod -x $(NAME)
+
+pre-build:
+	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
+	./nm_map_gen src/system/nm.map
+	sync
 
 $(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
@@ -144,11 +165,13 @@ clean:
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm_map_gen nm.res src/system/nm.map
 
 fclean:
 	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm_map_gen nm.res src/system/nm.map
 	rm -f $(NAME)
 
 re: fclean all

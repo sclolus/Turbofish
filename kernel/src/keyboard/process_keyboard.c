@@ -12,14 +12,6 @@ extern u8	get_keymap(u32 offset);
 
 #define RELEASE_BIT	0x80
 
-void	wrapper_1(void)
-{
-	int i = 3;
-	(void)i;
-
-	wrapper_2();
-}
-
 void	wrapper_2(void)
 {
 	int i = 3;
@@ -27,6 +19,14 @@ void	wrapper_2(void)
 
 	char *ptr = (char *)0x42424242;
 	*ptr = 42;
+}
+
+void	wrapper_1(void)
+{
+	int i = 3;
+	(void)i;
+
+	wrapper_2();
 }
 
 void	process_keyboard(u8 scancode)
