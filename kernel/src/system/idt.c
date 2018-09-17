@@ -33,9 +33,31 @@ static int	initialize_idt_seg(u32 nb, u32 fn_addr, u16 select, u16 type)
 	return 0;
 }
 
-extern void	asm_default_interrupt(void);
+extern void	asm_cpu_default_interrupt(void);
+
 extern void	asm_divide_by_zero(void);
+extern void	asm_debug(void);
+extern void	asm_non_maskable_interrupt(void);
+extern void	asm_breakpoint(void);
+extern void	asm_overflow(void);
+extern void	asm_bound_range_exceeded(void);
+extern void	asm_invalid_opcode(void);
+extern void	asm_no_device(void);
+extern void	asm_double_fault(void);
+extern void	asm_fpu_seg_overrun(void);
+extern void	asm_invalid_tss(void);
+extern void	asm_seg_no_present(void);
+extern void	asm_stack_seg_fault(void);
+extern void	asm_general_protect_fault(void);
 extern void	asm_page_fault(void);
+extern void	asm_fpu_floating_point_exep(void);
+extern void	asm_alignment_check(void);
+extern void	asm_machine_check(void);
+extern void	asm_simd_fpu_fp_exception(void);
+extern void	asm_virtualize_exception(void);
+extern void	asm_security_exception(void);
+
+extern void	asm_default_interrupt(void);
 extern void	asm_default_pic_master_interrupt(void);
 extern void	asm_default_pic_slave_interrupt(void);
 extern void	asm_clock_handler(void);
@@ -43,7 +65,14 @@ extern void	asm_keyboard_handler(void);
 
 void		init_idt(void)
 {
-	for (int i = 0; i < IDT_SIZE; i++)
+	for (int i = 0; i < 32; i++)
+		initialize_idt_seg(
+				i,
+				(u32)&asm_cpu_default_interrupt,
+				0x8,
+				INTGATE);
+
+	for (int i = 32; i < IDT_SIZE; i++)
 		initialize_idt_seg(
 				i,
 				(u32)&asm_default_interrupt,
@@ -64,8 +93,34 @@ void		init_idt(void)
 				0x8,
 				INTGATE);
 
+
 	initialize_idt_seg(0, (u32)&asm_divide_by_zero, 0x8, INTGATE);
+	initialize_idt_seg(1, (u32)&asm_debug, 0x8, INTGATE);
+	initialize_idt_seg(2, (u32)&asm_non_maskable_interrupt, 0x8, INTGATE);
+	initialize_idt_seg(3, (u32)&asm_breakpoint, 0x8, INTGATE);
+	initialize_idt_seg(4, (u32)&asm_overflow, 0x8, INTGATE);
+	initialize_idt_seg(5, (u32)&asm_bound_range_exceeded, 0x8, INTGATE);
+	initialize_idt_seg(6, (u32)&asm_invalid_opcode, 0x8, INTGATE);
+	initialize_idt_seg(7, (u32)&asm_no_device, 0x8, INTGATE);
+
+	initialize_idt_seg(8, (u32)&asm_double_fault, 0x8, INTGATE);
+
+	initialize_idt_seg(9, (u32)&asm_fpu_seg_overrun, 0x8, INTGATE);
+
+	initialize_idt_seg(10, (u32)&asm_invalid_tss, 0x8, INTGATE);
+	initialize_idt_seg(11, (u32)&asm_seg_no_present, 0x8, INTGATE);
+	initialize_idt_seg(12, (u32)&asm_stack_seg_fault, 0x8, INTGATE);
+	initialize_idt_seg(13, (u32)&asm_general_protect_fault, 0x8, INTGATE);
 	initialize_idt_seg(14, (u32)&asm_page_fault, 0x8, INTGATE);
+
+	initialize_idt_seg(16, (u32)&asm_fpu_floating_point_exep, 0x8, INTGATE);
+	initialize_idt_seg(17, (u32)&asm_alignment_check, 0x8, INTGATE);
+	initialize_idt_seg(18, (u32)&asm_machine_check, 0x8, INTGATE);
+
+	initialize_idt_seg(19, (u32)&asm_simd_fpu_fp_exception, 0x8, INTGATE);
+	initialize_idt_seg(20, (u32)&asm_virtualize_exception, 0x8, INTGATE);
+	initialize_idt_seg(30, (u32)&asm_security_exception, 0x8, INTGATE);
+
 
 	initialize_idt_seg(32, (u32)&asm_clock_handler, 0x8, INTGATE);
 	initialize_idt_seg(33, (u32)&asm_keyboard_handler, 0x8, INTGATE);

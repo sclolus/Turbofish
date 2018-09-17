@@ -3,6 +3,9 @@ segment .data
 
 panic_buf: times 512 db 0
 
+default_cpu_without_err_code_msg: db "Exception without err_code", 0
+default_cpu_with_err_code_msg: db "Exception with err_code", 0
+
 divide_by_zero_msg: db "Divide by zero", 0
 page_fault_msg: db "Page fault at address %p err_reg: 0x%.8x", 0
 
@@ -10,9 +13,32 @@ segment .text
 extern panic
 extern sprintk
 
-GLOBAL asm_default_interrupt
+GLOBAL asm_cpu_default_interrupt
+
 GLOBAL asm_divide_by_zero
+GLOBAL asm_debug
+GLOBAL asm_non_maskable_interrupt
+GLOBAL asm_breakpoint
+GLOBAL asm_overflow
+GLOBAL asm_bound_range_exceeded
+GLOBAL asm_invalid_opcode
+GLOBAL asm_no_device
+GLOBAL asm_double_fault
+GLOBAL asm_fpu_seg_overrun
+GLOBAL asm_invalid_tss
+GLOBAL asm_seg_no_present
+GLOBAL asm_stack_seg_fault
+GLOBAL asm_general_protect_fault
 GLOBAL asm_page_fault
+GLOBAL asm_fpu_floating_point_exep
+GLOBAL asm_alignment_check
+GLOBAL asm_machine_check
+GLOBAL asm_simd_fpu_fp_exception
+GLOBAL asm_virtualize_exception
+GLOBAL asm_security_exception
+
+
+GLOBAL asm_default_interrupt
 GLOBAL asm_default_pic_master_interrupt
 GLOBAL asm_default_pic_slave_interrupt
 GLOBAL asm_clock_handler
@@ -45,7 +71,64 @@ GLOBAL asm_keyboard_handler
     popad
 %endmacro
 
-asm_default_interrupt:
+; CPU interrupt without err_code
+asm_cpu_default_interrupt:
+
+asm_debug:
+asm_non_maskable_interrupt:
+asm_breakpoint:
+asm_overflow:
+asm_bound_range_exceeded:
+asm_invalid_opcode:
+asm_no_device:
+asm_fpu_seg_overrun:
+asm_fpu_floating_point_exep:
+asm_machine_check:
+asm_simd_fpu_fp_exception:
+asm_virtualize_exception:
+    push ebp
+    mov ebp, esp
+
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+
+    push default_cpu_without_err_code_msg
+    call panic
+
+; CPU interrupt with err_code
+asm_double_fault:
+asm_invalid_tss:
+asm_seg_no_present:
+asm_stack_seg_fault:
+asm_general_protect_fault:
+asm_alignment_check:
+asm_security_exception:
+    push ebp
+    mov ebp, esp
+
+    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+
+    push default_cpu_with_err_code_msg
+    call panic
+
+extern divide_by_zero_handler
+asm_divide_by_zero:
+    push ebp
+    mov ebp, esp
+
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
+
+    call divide_by_zero_handler
+    cmp eax, 0
+    je .end
+
+; panic execution block, fill the error string and launch the BSOD
+    push divide_by_zero_msg
+    call panic
+
+.end
+    POP_ALL_REGISTERS
+
+    pop ebp
     iret
 
 ; when a normal CPU interruption is launched, EFLAGS, CS and EIP are pushed.
@@ -94,25 +177,7 @@ asm_page_fault:
     add esp, 4
     iret
 
-extern divide_by_zero_handler
-asm_divide_by_zero:
-    push ebp
-    mov ebp, esp
-
-    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
-
-    call divide_by_zero_handler
-    cmp eax, 0
-    je .end
-
-; panic execution block, fill the error string and launch the BSOD
-    push divide_by_zero_msg
-    call panic
-
-.end
-    POP_ALL_REGISTERS
-
-    pop ebp
+asm_default_interrupt:
     iret
 
 asm_default_pic_master_interrupt:
