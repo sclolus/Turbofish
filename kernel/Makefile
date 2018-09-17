@@ -44,7 +44,7 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
 
 # main
 SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = _start test
+SRC_ASM_KERNEL = _start
 VPATH = include src
 HEADERS = grub i386_type
 

@@ -123,11 +123,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
-
-
-	test_fn();
-
-	g_kernel_io_ctx.term_mode = kernel;
+	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 to shake the kernel\n");
 	asm("sti");
 
 	return;
