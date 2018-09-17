@@ -97,7 +97,7 @@ init_pic:
 
 
 ;   in al, 0xA1   ; get Interrupt Mask Register (IMR)
-    mov al, 0xEE  ; 0xEE => 11101110b. unlock IRQ12 (master connexion) and IRQ8 real time clock
+    mov al, 0xFF  ; 0xFF => 11111111b. All slave interrupt are masked
     out 0xA1, al  ; store IMR
 
     jmp .end_init_pic

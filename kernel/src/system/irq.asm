@@ -15,7 +15,6 @@ GLOBAL asm_default_pic_master_interrupt
 GLOBAL asm_default_pic_slave_interrupt
 GLOBAL asm_clock_handler
 GLOBAL asm_keyboard_handler
-GLOBAL asm_real_time_clock_handler
 
 %macro PUSH_ALL_REGISTERS 0
     pushad                ; EAX, ECX, EDX, EBX, and ESP, EBP, ESI, EDI
@@ -102,19 +101,6 @@ asm_clock_handler:
     mov al, 0x20
     out 0x20, al
 	pop eax
-    iret
-
-asm_real_time_clock_handler:
-    mov al, 0x0C
-    out 0x70, al ; select register C
-
-    in al, 0x71 ; read register c
-; IRQ8 is managed by master and slave, so we must inform the two PICS
-
-    mov al, 0x20
-    out 0x20, al
-    mov al, 0xA0
-    out 0xA0, al
     iret
 
 extern process_keyboard
