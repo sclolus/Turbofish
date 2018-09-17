@@ -21,32 +21,32 @@ void	panic(const char *s, struct extended_registers reg)
 	set_text_color(7);
 
 	set_cursor_location(colomn + 20, line);
-	eprintk("KFS\n\n");
+	eprintk("KFS");
 
 	set_cursor_location(colomn, line + 2);
-	eprintk("An error has occurred: KERNEL PANIC\n\n");
+	eprintk("An error has occurred: KERNEL PANIC");
 
 	set_cursor_location(colomn, line + 4);
-	eprintk("%s\n\n", s);
+	eprintk("%s", s);
 
 	set_cursor_location(colomn, line + 6);
-	eprintk("EAX: 0x%.8x  EBP: 0x%.8x  eflags: 0x%.8x\n",
+	eprintk("EAX: 0x%.8x  EBP: 0x%.8x  eflags: 0x%.8x",
 			reg.eax, reg.old_ebp, reg.eflags);
 
 	set_cursor_location(colomn, line + 7);
-	eprintk("EBX: 0x%.8x  ESP: 0x%.8x  SS: 0x%.4hx\n",
+	eprintk("EBX: 0x%.8x  ESP: 0x%.8x  SS: 0x%.4hx",
 			reg.ebx, reg.esp, reg.ss);
 
 	set_cursor_location(colomn, line + 8);
-	eprintk("ECX: 0x%.8x  ESI: 0x%.8x  DS: 0x%.4hx\n",
+	eprintk("ECX: 0x%.8x  ESI: 0x%.8x  DS: 0x%.4hx",
 			reg.ecx, reg.esi, reg.ds);
 
 	set_cursor_location(colomn, line + 9);
-	eprintk("EDX: 0x%.8x  EDI: 0x%.8x  ES: 0x%.4hx\n",
+	eprintk("EDX: 0x%.8x  EDI: 0x%.8x  ES: 0x%.4hx",
 			reg.edx, reg.edi, reg.es);
 
 	set_cursor_location(colomn + 17, line + 10);
-	eprintk("EIP: 0x%.8x  CS: 0x%.4hx\n", reg.eip, reg.cs);
+	eprintk("EIP: 0x%.8x  CS: 0x%.4hx", reg.eip, reg.cs);
 
 	set_cursor_location(colomn + 7, line + 12);
 	eprintk("You can reboot your computer");
