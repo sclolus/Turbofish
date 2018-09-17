@@ -26,7 +26,7 @@ static ptr_32	*convert_to_linear_address(u16 segment, u16 offset)
 
 s32		set_vbe(u16 selected_mode)
 {
-	struct registers		reg;
+	struct base_registers		reg;
 	struct vesa_graphic_mode_list	*vgml;
 	u16				*ptr;
 	u32				i;

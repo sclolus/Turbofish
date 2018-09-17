@@ -14,7 +14,7 @@
 // there are 25 lines each of 80 columns; each element takes 2 bytes
 void		reset_text_screen(void)
 {
-	struct registers	reg;
+	struct base_registers	reg;
 	char			*vidptr;
 	u32			j;
 	u32			screensize;

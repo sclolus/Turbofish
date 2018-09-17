@@ -3,7 +3,7 @@
 
 void	bios_shutdown_computer(void)
 {
-	struct registers reg;
+	struct base_registers reg;
 
 	reg.eax = 0x530E;
 	reg.ebx = 0x102;
@@ -29,7 +29,7 @@ void	bios_shutdown_computer(void)
 
 void	bios_wait(u32 sec)
 {
-	struct registers reg;
+	struct base_registers reg;
 
 	reg.eax = 0x8600;
 	reg.ecx = sec * 10;
