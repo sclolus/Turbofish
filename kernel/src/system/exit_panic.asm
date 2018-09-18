@@ -155,26 +155,22 @@ exit_panic_begin_sub_sequence:
     int 15h
 
 ; shutdown sequence
-    mov ax, 0x530E
-    mov bx, 0x102
-    int 15h
-
-    mov ax, 0x5300
-    mov bx, 0x0
-    int 15h
-
     mov ax, 0x5301
-    mov bx, 0x0
+    xor bx, bx
     int 15h
 
     mov ax, 0x530E
-    mov bx, 0x102
+    xor bx, bx
+    mov cx, 0x102
     int 15h
 
     mov ax, 0x5307
     mov bx, 0x1
     mov cx, 0x3
     int 15h
+
+; if bios have not APM, it's shameless
+    jmp $
 
 exit_panic_bios_idt:
     dw 0x3ff ; limit
