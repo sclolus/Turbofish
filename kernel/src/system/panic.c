@@ -13,7 +13,6 @@ struct function_entry {
 
 #include "nm.map"
 
-
 struct function_result {
 	const char *s;
 	u32 offset;
@@ -141,14 +140,14 @@ void	panic(const char *s, struct extended_registers reg)
 
 	set_cursor_location(colomn, line + 14);
 	res = get_function_name(reg.eip);
-	printk("%p  [EIP + %#.4x]  %s", reg.eip, res.offset, res.s);
+	printk("%p  [EIP - %#.4x]  %s", reg.eip, res.offset, res.s);
 
 	trace_size = trace(reg.old_ebp, TRACE_MAX, eip_array);
 
 	for (u32 i = 0; i < trace_size; i++) {
 		set_cursor_location(colomn, line + 15 + i);
 		res = get_function_name(eip_array[i]);
-		printk("%p  [EIP + %#.4x]  %s",
+		printk("%p  [EIP - %#.4x]  %s",
 				eip_array[i], res.offset, res.s);
 	}
 
