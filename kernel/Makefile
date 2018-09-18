@@ -191,4 +191,4 @@ help:
 	@echo "--------------------------------------------------------------------------"
 
 exec:
-	qemu-system-x86_64 -kernel $(NAME)
+	qemu-system-x86_64 -kernel $(NAME) --enable-kvm
