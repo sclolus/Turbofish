@@ -91,6 +91,8 @@ extern void exit_panic(void);
 
 void	panic(const char *s, struct extended_registers reg)
 {
+	asm("cli");
+
 	memset4((u32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
 		0x01010101,
 		(g_graphic_ctx.vesa_mode_info.width *
@@ -102,12 +104,12 @@ void	panic(const char *s, struct extended_registers reg)
 	u32			eip_array[TRACE_MAX];
 	u32			trace_size;
 
-	colomn = 40;
+	colomn = 38;
 	line = 10;
 
 	set_text_color(7);
 
-	set_cursor_location(colomn + 20, line);
+	set_cursor_location(colomn + 23, line - 1);
 	eprintk("KFS");
 
 	set_cursor_location(colomn, line + 2);
@@ -154,8 +156,11 @@ void	panic(const char *s, struct extended_registers reg)
 				eip_array[i], res.offset, res.s);
 	}
 
-	set_cursor_location(colomn + 7, line + 27);
-	eprintk("You can stop your computer with F1 key");
+	set_cursor_location(colomn, line + 27);
+	eprintk("Press CTRL+ALT+DEL to restart your computer. If you do this,");
+	set_cursor_location(colomn, line + 28);
+	eprintk("you will loose any unsaved information in all open "
+		"applications.");
 
 	asm_paging_disable();
 

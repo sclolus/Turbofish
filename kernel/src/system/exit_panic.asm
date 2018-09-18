@@ -2,8 +2,6 @@
 %define BASE_LOCATION 0x7C00
 %define REBASE(x) BASE_LOCATION + x - exit_panic_begin_sub_sequence
 
-%define F1_SCANCODE 59
-
 segment .text
 GLOBAL exit_panic
 exit_panic:
@@ -141,12 +139,17 @@ exit_panic_begin_sub_sequence:
 ; reenable all interrupts
     sti
 
-; wait F1 key
-.exit_panic_key_loop
-    mov ah, 0
+; wait CTRL + ALT + DEL keychain
+; @DOC: http://www.ctyme.com/intr/int-16.htm
+.exit_panic_key_loop_ctrl_alt_del
+    mov ah, 0x22
+    mov al, 1
+    mov ebx, 0x0708
+    mov ecx, 0x0910
+    mov edx, 0x1122
     int 16h
-    cmp ah, F1_SCANCODE
-    jne .exit_panic_key_loop
+    cmp al, 0
+    jne .exit_panic_key_loop_ctrl_alt_del
 
 ; sleep for 0.5 sec
     mov ax, 0x8600
@@ -154,23 +157,20 @@ exit_panic_begin_sub_sequence:
     mov dx, 0
     int 15h
 
-; shutdown sequence
-    mov ax, 0x5301
-    xor bx, bx
-    int 15h
+; process a 8082 (keyboard controler) reset
+.exit_panic_reset_computer_loop:
+    in al, 0x64
+    and al, 0x2
+    cmp al, 0x2
+    je .exit_panic_reset_computer_loop
+    mov al, 0xFE
+    out 0x64, al
 
-    mov ax, 0x530E
-    xor bx, bx
-    mov cx, 0x102
-    int 15h
-
-    mov ax, 0x5307
-    mov bx, 0x1
-    mov cx, 0x3
-    int 15h
-
-; if bios have not APM, it's shameless
-    jmp $
+; if reboot fail, dont do anything
+    cli
+.exit_panic_end_loop
+    hlt
+    jmp .exit_panic_end_loop
 
 exit_panic_bios_idt:
     dw 0x3ff ; limit
