@@ -29,16 +29,6 @@ init_pic:
     push ebp
     mov ebp, esp
 
-
-    mov al,00110100b                  ;channel 0, lobyte/hibyte, rate generator
-    out 0x43, al
-
-    mov ax, 65535
-    out 0x40,al                       ;Set low byte of PIT reload value
-    mov al,ah                         ;ax = high 8 bits of reload value
-    out 0x40,al                       ;Set high byte of PIT reload value
-
-
     jmp .icw_1
 
 ; |0|0|0|1|x|0|x|x|
