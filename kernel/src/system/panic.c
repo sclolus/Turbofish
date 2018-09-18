@@ -4,6 +4,7 @@
 #include "i386_type.h"
 #include "libft.h"
 #include "vesa_graphic.h"
+#include "../memory/memory_manager.h"
 
 struct function_entry {
 	u32 eip;
@@ -86,6 +87,8 @@ static u32		trace(u32 ebp_value, u32 max_frame, u32 *eip_array)
 
 #define TRACE_MAX	10
 
+extern void exit_panic(void);
+
 void	panic(const char *s, struct extended_registers reg)
 {
 	memset4((u32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
@@ -152,10 +155,9 @@ void	panic(const char *s, struct extended_registers reg)
 	}
 
 	set_cursor_location(colomn + 7, line + 27);
-	eprintk("You can reboot your computer");
+	eprintk("You can stop your computer with F1 key");
 
-	asm("cli\n"
-	    "loop:\n"
-	    "hlt\n"
-	    "jmp loop");
+	asm_paging_disable();
+
+	exit_panic();
 }
