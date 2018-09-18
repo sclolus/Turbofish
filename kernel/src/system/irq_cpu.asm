@@ -175,7 +175,7 @@ asm_virtualize_exception:
 asm_double_fault:
     push ebp
     mov ebp, esp
-    PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+    PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
     push double_fault_msg
     call panic
 asm_invalid_tss:
