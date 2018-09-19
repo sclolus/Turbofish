@@ -52,7 +52,7 @@ HEADERS = grub i386_type
 SRC_C_KERNEL += bios_services idt panic
 SRC_ASM_KERNEL += gdt int8086 pic irq_cpu irq_pic exit_panic
 VPATH += src/system
-HEADERS += base_system
+HEADERS += system
 
 # keyboard
 SRC_C_KERNEL += process_keyboard
@@ -61,7 +61,7 @@ VPATH += src/keyboard
 
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar
-SRC_ASM_KERNEL += draw_line display_char
+SRC_ASM_KERNEL += draw_line display_char sse2_memcpy
 VPATH += src/graphic
 HEADERS += vesa_graphic
 

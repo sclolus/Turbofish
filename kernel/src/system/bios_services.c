@@ -1,5 +1,5 @@
 
-#include "base_system.h"
+#include "system.h"
 
 /*
  * XXX This shutdown method is only valid for BIOS with APM

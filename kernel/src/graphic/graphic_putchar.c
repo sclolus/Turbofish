@@ -6,6 +6,8 @@ extern void display_char(u8 c, u32 edi);
 
 static u32 g_cur_loc = 0;
 
+void sse2_memcpy(void *dst, void *src, size_t size);
+
 static void	test_scroll(void)
 {
 	if (g_cur_loc == (g_graphic_ctx.vesa_mode_info.width
@@ -13,11 +15,20 @@ static void	test_scroll(void)
 		u32 p = (u32)g_graphic_ctx.vesa_mode_info.framebuffer +
 				g_graphic_ctx.vesa_mode_info.width * 16;
 
+		/*
 		memcpy(
 			(ptr_32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
 			(ptr_32 *)p,
 			g_graphic_ctx.vesa_mode_info.width *
 			(g_graphic_ctx.vesa_mode_info.height - 16));
+		*/
+
+		sse2_memcpy(
+			(void *)g_graphic_ctx.vesa_mode_info.framebuffer,
+			(void *)p,
+			g_graphic_ctx.vesa_mode_info.width *
+			(g_graphic_ctx.vesa_mode_info.height - 16));
+
 
 		p = (u32)g_graphic_ctx.vesa_mode_info.framebuffer +
 				g_graphic_ctx.vesa_mode_info.width *

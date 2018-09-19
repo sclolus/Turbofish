@@ -2,7 +2,7 @@
 #include "memory_manager.h"
 
 #include "i386_type.h"
-#include "base_system.h"
+#include "system.h"
 #include "libft.h"
 #include "vesa_graphic.h"
 

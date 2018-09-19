@@ -5,7 +5,7 @@
 #include "kernel_io.h"
 #include "i386_type.h"
 #include "vesa_graphic.h"
-#include "base_system.h"
+#include "system.h"
 #include "libft.h"
 #include "grub.h"
 #include "tests.h"

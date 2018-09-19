@@ -30,6 +30,8 @@ _start:
     mov ss, ax
     mov esp, 0x300000
 
+    call set_sse2
+
     ; EBX contain pointer to GRUB multiboot information (preserved register)
     push ebx
     call kmain                      ; kmain is called with this param
@@ -38,6 +40,29 @@ _start:
 .halt:
     hlt                             ; halt the CPU until next interrupt
     jmp .halt
+
+set_sse2:
+    push ebp
+    mov ebp, esp
+    pushad
+
+    mov eax, 0x1
+    cpuid
+    test edx, 1 << 26   ; test if SSE2 feature exist
+    jz .end_set_sse2
+
+    mov eax, cr0
+    and ax, 0xFFFB		; clear coprocessor emulation CR0.EM
+    or ax, 0x2			; set coprocessor monitoring  CR0.MP
+    mov cr0, eax
+    mov eax, cr4
+    or ax, 3 << 9		; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+    mov cr4, eax
+
+.end_set_sse2:
+    popad
+    pop ebp
+    ret
 
 section .bss
 resb 8192                           ; 8KB for temporary stack

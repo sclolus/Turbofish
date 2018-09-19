@@ -1,6 +1,6 @@
 
-#ifndef __BASE_SYSTEM_H__
-# define __BASE_SYSTEM_H__
+#ifndef __SYSTEM_H__
+# define __SYSTEM_H__
 
 # include "i386_type.h"
 
