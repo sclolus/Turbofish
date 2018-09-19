@@ -1,4 +1,5 @@
 IMG_DISK = image_disk.img
+IMAGE_SIZE = 8192
 
 all: $(IMG_DISK)
 	make -C kernel
@@ -9,7 +10,7 @@ all: $(IMG_DISK)
 	sudo losetup -d /dev/loop0
 
 $(IMG_DISK):
-	dd if=/dev/zero of=$(IMG_DISK) bs=512 count=8192
+	dd if=/dev/zero of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)
 	( echo -e "o\nn\np\n1\n2048\n\nw\n") | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mkfs.ext2 /dev/loop0p1
@@ -29,6 +30,10 @@ fclean:
 	rm -vf $(IMG_DISK)
 
 re: clean all
+
+copy: $(IMG_DISK)
+	sudo dd if=$(IMG_DISK) of=/dev/sdb bs=1024 count=$(IMAGE_SIZE)
+	sync
 
 exec:
 	qemu-system-x86_64 -m 32 -vga std -hda $(IMG_DISK) -enable-kvm

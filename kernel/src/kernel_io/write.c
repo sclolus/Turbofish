@@ -11,19 +11,19 @@ struct modifier_list {
 };
 
 static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
-	{ "\x1B[0m", 7 },	// end of color
-	{ "\x1B[31m", 4 },	// red
-	{ "\x1B[32m", 2 },	// green
-	{ "\x1B[33m", 14 },	// yellow
-	{ "\x1B[34m", 1 },	// blue
-	{ "\x1B[35m", 5 },	// magenta
-	{ "\x1B[36m", 3 },	// cyan
-	{ "\x1B[37m", 7 },	// white
-	{ "\x1B[38m", 0},	// black
-	{ "\x1B[39m", 6},	// orange
-	{ "\x1B[40m", 8},	// grey
-	{ "\x1B[41m", 9},	// deep blue
-	{ "\x1B[42m", 10}	// light green
+	{ "\x1B[38m", 0x0},		// black
+	{ "\x1B[0m",  0xFFFFFF },	// end of color
+	{ "\x1B[31m", 0xFF0000 },	// red
+	{ "\x1B[32m", 0x00FF00 },	// green
+	{ "\x1B[33m", 0xFFFF00 },	// yellow
+	{ "\x1B[34m", 0x0000FF },	// blue
+	{ "\x1B[35m", 0xFF00FF },	// magenta
+	{ "\x1B[36m", 0x00FFFF },	// cyan
+	{ "\x1B[37m", 0xFFFFFF },	// white
+	{ "\x1B[39m", 0xFFA500},	// orange
+	{ "\x1B[40m", 0x808080},	// grey
+	{ "\x1B[41m", 0x00BFFF},	// deep blue
+	{ "\x1B[42m", 0x7FFF00}		// light green
 };
 
 u32	extract_modifier(const u8 *buf)

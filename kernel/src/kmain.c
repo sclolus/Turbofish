@@ -50,7 +50,7 @@ void		text_putstr(char *str)
 }
 
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
-#define VBE_MODE 0x105
+#define VBE_MODE 0x118
 
 void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
@@ -69,10 +69,10 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{white}Available graphic mode:\n{eoc}");
 
 	struct vesa_graphic_mode_list *vgml =
-		&g_graphic_ctx.vesa_graphic_mode_list;
+		&vesa_ctx.mode_list;
 
 	printk("{orange}");
-	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 8;
+	u32 max_cap = vesa_ctx.mode.width / 8 / 8;
 	u32 i = 0;
 	while (i < vgml->nb_mode) {
 		printk("0x%.4hx ", vgml->mode[i]);
@@ -85,12 +85,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	printk("{white}Selected mode: {green}%#x\n{eoc}", VBE_MODE);
 	printk("-> width: {green}%hu{eoc}, height:"
-			" {green}%hu{eoc}, bpp: {green}%hhu{eoc}\n",
-			g_graphic_ctx.vesa_mode_info.width,
-			g_graphic_ctx.vesa_mode_info.height,
-			g_graphic_ctx.vesa_mode_info.bpp);
+			" {green}%hu{eoc}, bpp: {green}%hhu{eoc}"
+			" pitch: {green}%hu{eoc}\n",
+			vesa_ctx.mode.width,
+			vesa_ctx.mode.height,
+			vesa_ctx.mode.bpp,
+			vesa_ctx.mode.pitch);
 	printk("-> linear frame buffer location: {green}%#x{eoc}\n",
-			g_graphic_ctx.vesa_mode_info.framebuffer);
+			vesa_ctx.mode.framebuffer);
 
 	printk("{white}Initialize IDT: ");
 	init_idt();

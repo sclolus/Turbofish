@@ -1,28 +1,31 @@
-
 [BITS 32]
-
 segment .data
 
 extern g_edi_offset
 
-text_color: db 10              ; default to green
+text_color: dd 0x00FFFFFF              ; default to blank
 
 %include "fonts/alpha.asm"
 
 segment .text
 
 GLOBAL set_text_color
-GLOBAL display_char
-
 set_text_color:
     push ebp
     mov ebp, esp
+
     mov eax, [ebp + 8]
-    mov [text_color], al
+    mov [text_color], eax
+
     pop ebp
 ret
 
-display_char:
+%define CHAR_HEIGHT 16
+%define CHAR_WIDTH 8
+%define CHAR_SHL 4
+
+GLOBAL display_char_24
+display_char_24:
     push ebp
     mov ebp, esp
 
@@ -37,34 +40,89 @@ display_char:
     mov eax, [ebp + 8]
     mov edi, [ebp + 12]
 
-    shl eax, 4
+    shl eax, CHAR_SHL
     lea esi, [_print_graphical_char_begin + eax]
 
-    mov dl, 3
-    mov ch, 16                  ; Compteur HEIGHT à 0, il ira jusqu'à 16
+    mov ch, CHAR_HEIGHT         ; loop whith height
 
 .putchar_cycle_heigth:
-    lodsb                       ; La première ligne du caractère est chargée
-    mov cl, 8                   ; Compteur WIDTH à 0, il ira jusqu'à 8
+    lodsb                       ; 8 bits line of char is loaded
+    mov dl, al
+    mov cl, CHAR_WIDTH          ; loop with width
 
-.putchar_cycle_width:           ; Dispo EAX, EDX et ECX (16 bits forts) (ESI est armé sur le caractère en cours)
-    test al, 0x80
-    je .tmp
-    push eax
-    mov al, byte [text_color]
+.putchar_cycle_width:
+    test dl, 0x80
+    je .putchar_blank
+
+    mov eax, [text_color]
+    stosw
+    shr eax, 16
     stosb
-    pop eax
     jmp .putchar_return_sequence
 
- .tmp:
-    inc edi
+ .putchar_blank:
+    add edi, 3
 
  .putchar_return_sequence:
-    shl al, 1
+    shl dl, 1
     dec cl
     test cl, cl
     jne .putchar_cycle_width
-    add edi, dword [g_edi_offset]               ; Préparation de EDI pour la prochaine ligne.
+    add edi, dword [g_edi_offset] ; Prepare EDI for the next line
+    dec ch
+    test ch, ch
+    jne .putchar_cycle_heigth
+
+    pop es
+    pop edi
+    pop esi
+
+    pop ebp
+ret
+
+GLOBAL display_char_32
+display_char_32:
+    push ebp
+    mov ebp, esp
+
+    push esi
+    push edi
+    push es
+
+    mov ax, 0x18
+    mov es, ax
+
+.putchar_init:
+    mov eax, [ebp + 8]
+    mov edi, [ebp + 12]
+
+    shl eax, CHAR_SHL
+    lea esi, [_print_graphical_char_begin + eax]
+
+    mov ch, CHAR_HEIGHT         ; loop whith height
+
+.putchar_cycle_heigth:
+    lodsb                       ; 8 bits line of char is loaded
+    mov dl, al
+    mov cl, CHAR_WIDTH          ; loop with width
+
+.putchar_cycle_width:
+    test dl, 0x80
+    je .putchar_blank
+
+    mov eax, [text_color]
+    stosd
+    jmp .putchar_return_sequence
+
+ .putchar_blank:
+    add edi, 4
+
+ .putchar_return_sequence:
+    shl dl, 1
+    dec cl
+    test cl, cl
+    jne .putchar_cycle_width
+    add edi, dword [g_edi_offset] ; Prepare EDI for the next line
     dec ch
     test ch, ch
     jne .putchar_cycle_heigth

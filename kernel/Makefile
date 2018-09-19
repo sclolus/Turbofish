@@ -60,7 +60,7 @@ SRC_ASM_KERNEL += keymap
 VPATH += src/keyboard
 
 # graphic
-SRC_C_KERNEL += set_vbe graphic_putchar
+SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools
 SRC_ASM_KERNEL += draw_line display_char sse2_memcpy
 VPATH += src/graphic
 HEADERS += vesa_graphic

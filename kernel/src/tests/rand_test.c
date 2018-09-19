@@ -7,7 +7,7 @@ int	rand_test(void)
 {
 	srand(0xACE2);
 
-	u32 max_cap = g_graphic_ctx.vesa_mode_info.width / 8 / 28;
+	u32 max_cap = vesa_ctx.mode.width / 8 / 28;
 	u32 i = 0;
 
 	for (u16 u = 1; u < 65535; u += 1) {

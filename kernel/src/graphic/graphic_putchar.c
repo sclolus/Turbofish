@@ -2,41 +2,41 @@
 #include "vesa_graphic.h"
 #include "libft.h"
 
-extern void display_char(u8 c, u32 edi);
+extern void display_char_24(u8 c, u32 edi);
+extern void display_char_32(u8 c, u32 edi);
 
 static u32 g_cur_loc = 0;
 
 void sse2_memcpy(void *dst, void *src, size_t size);
 
+#define CHAR_HEIGHT	16
+
 static void	test_scroll(void)
 {
-	if (g_cur_loc == (g_graphic_ctx.vesa_mode_info.width
-			* g_graphic_ctx.vesa_mode_info.height)) {
-		u32 p = (u32)g_graphic_ctx.vesa_mode_info.framebuffer +
-				g_graphic_ctx.vesa_mode_info.width * 16;
+	if (g_cur_loc == (vesa_ctx.mode.pitch * vesa_ctx.mode.height)) {
+		u32 p = (u32)vesa_ctx.mode.framebuffer +
+				vesa_ctx.mode.pitch * CHAR_HEIGHT;
 
 		/*
 		memcpy(
-			(ptr_32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
+			(ptr_32 *)vesa_ctx.mode.framebuffer,
 			(ptr_32 *)p,
-			g_graphic_ctx.vesa_mode_info.width *
-			(g_graphic_ctx.vesa_mode_info.height - 16));
+			vesa_ctx.mode.pitch *
+			(vesa_ctx.mode.height - CHAR_HEIGHT);
 		*/
 
 		sse2_memcpy(
-			(void *)g_graphic_ctx.vesa_mode_info.framebuffer,
+			(void *)vesa_ctx.mode.framebuffer,
 			(void *)p,
-			g_graphic_ctx.vesa_mode_info.width *
-			(g_graphic_ctx.vesa_mode_info.height - 16));
+			vesa_ctx.mode.pitch *
+			(vesa_ctx.mode.height - CHAR_HEIGHT));
 
+		p = (u32)vesa_ctx.mode.framebuffer + vesa_ctx.mode.pitch *
+				(vesa_ctx.mode.height - CHAR_HEIGHT);
 
-		p = (u32)g_graphic_ctx.vesa_mode_info.framebuffer +
-				g_graphic_ctx.vesa_mode_info.width *
-				(g_graphic_ctx.vesa_mode_info.height - 16);
+		bzero((ptr_32 *)p, vesa_ctx.mode.pitch * CHAR_HEIGHT);
 
-		bzero((ptr_32 *)p, g_graphic_ctx.vesa_mode_info.width * 16);
-
-		g_cur_loc -= g_graphic_ctx.vesa_mode_info.width * 16;
+		g_cur_loc -= vesa_ctx.mode.pitch * CHAR_HEIGHT;
 	}
 }
 
@@ -46,23 +46,27 @@ void		graphic_putchar(u8 c)
 {
 	if (c >= 32) {
 		test_scroll();
-		display_char(c, g_cur_loc);
-		g_cur_loc += 8;
-		if (g_cur_loc % g_graphic_ctx.vesa_mode_info.width == 0)
-			g_cur_loc += 15 * g_graphic_ctx.vesa_mode_info.width;
+		if (vesa_ctx.mode.bpp == 24)
+			display_char_24(c, g_cur_loc);
+		else
+			display_char_32(c, g_cur_loc);
+		g_cur_loc += vesa_ctx.mode.bpp;
+		if (g_cur_loc % vesa_ctx.mode.pitch == 0)
+			g_cur_loc += (CHAR_HEIGHT - 1) * vesa_ctx.mode.pitch;
 	} else if (c == '\n') {
-		g_cur_loc -= g_cur_loc % g_graphic_ctx.vesa_mode_info.width;
-		g_cur_loc += 16 * g_graphic_ctx.vesa_mode_info.width;
+		g_cur_loc -= g_cur_loc % (vesa_ctx.mode.pitch);
+		g_cur_loc += CHAR_HEIGHT * vesa_ctx.mode.pitch;
 		test_scroll();
 	}
 }
 
 int		set_cursor_location(u32 x, u32 y)
 {
-	if (x >= g_graphic_ctx.vesa_mode_info.width >> 3)
+	if (x >= vesa_ctx.mode.width >> 3)
 		return -1;
-	if (y >= g_graphic_ctx.vesa_mode_info.height >> 4)
+	if (y >= vesa_ctx.mode.height >> 4)
 		return -1;
-	g_cur_loc = (x * 8) + (y * g_graphic_ctx.vesa_mode_info.width * 16);
+	g_cur_loc = (x * vesa_ctx.mode.bpp)
+			+ (y * vesa_ctx.mode.pitch * CHAR_HEIGHT);
 	return 0;
 }

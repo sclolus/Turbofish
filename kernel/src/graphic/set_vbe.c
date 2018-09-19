@@ -37,16 +37,16 @@ s32		set_vbe(u16 selected_mode)
 	int8086(0x10, reg);
 
 	memcpy(
-		&g_graphic_ctx.vesa_global_info,
+		&vesa_ctx.global_info,
 		(void *)VESA_GLOBAL_INFO_PTR,
 		sizeof(struct vesa_global_info));
 
 	// compute all VBE mode
 	ptr = (u16 *)convert_to_linear_address(
-		g_graphic_ctx.vesa_global_info.list_supported_mode_segment,
-		g_graphic_ctx.vesa_global_info.list_supported_mode_offset);
+		vesa_ctx.global_info.list_supported_mode_segment,
+		vesa_ctx.global_info.list_supported_mode_offset);
 
-	vgml = &g_graphic_ctx.vesa_graphic_mode_list;
+	vgml = &vesa_ctx.mode_list;
 
 	vgml->nb_mode = 0;
 	while (*ptr != 0xFFFF && vgml->nb_mode != MAX_NB_VESA_MODE)
@@ -67,15 +67,15 @@ s32		set_vbe(u16 selected_mode)
 	int8086(0x10, reg);
 
 	memcpy(
-		&g_graphic_ctx.vesa_mode_info,
+		&vesa_ctx.mode,
 		(void *)VESA_MODE_INFO_PTR,
 		sizeof(struct vesa_mode_info));
 
 	// needed by ASM PUTCHAR
-	g_edi_offset = g_graphic_ctx.vesa_mode_info.width - 8;
+	g_edi_offset = vesa_ctx.mode.pitch - vesa_ctx.mode.bpp;
 
 	// re initialize GDT with Linear Frame Buffer address
-	init_gdt(g_graphic_ctx.vesa_mode_info.framebuffer);
+	init_gdt(vesa_ctx.mode.framebuffer);
 
 	// switch to selected graphic mode
 	reg.eax = 0x4F02;

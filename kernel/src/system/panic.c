@@ -93,10 +93,7 @@ void	panic(const char *s, struct extended_registers reg)
 {
 	asm("cli");
 
-	memset4((u32 *)g_graphic_ctx.vesa_mode_info.framebuffer,
-		0x01010101,
-		(g_graphic_ctx.vesa_mode_info.width *
-		g_graphic_ctx.vesa_mode_info.height) >> 2);
+	fill_window(0x0, 0x0, 0xFF);
 
 	struct function_result	res;
 	u32			colomn;
@@ -107,10 +104,8 @@ void	panic(const char *s, struct extended_registers reg)
 	colomn = 38;
 	line = 10;
 
-	set_text_color(7);
-
 	set_cursor_location(colomn + 23, line - 1);
-	eprintk("KFS");
+	eprintk("{white}KFS");
 
 	set_cursor_location(colomn, line + 2);
 	eprintk("An error has occurred: KERNEL PANIC");

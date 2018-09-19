@@ -405,13 +405,13 @@ int			init_paging(u32 available_memory)
 	map_address(
 			res,
 			MAX_PAGE_TABLE_SEG,
-			(u32)g_graphic_ctx.vesa_mode_info.framebuffer,
+			(u32)vesa_ctx.mode.framebuffer,
 			kernel_space);
 	mark_physical_area(
-			g_graphic_ctx.vesa_mode_info.framebuffer,
+			vesa_ctx.mode.framebuffer,
 			MAX_PAGE_TABLE_SEG);
 	init_gdt((void *)res);
-	g_graphic_ctx.vesa_mode_info.framebuffer = (void *)res;
+	vesa_ctx.mode.framebuffer = (void *)res;
 
 	/*
 	 * store page directory address in CR3 register

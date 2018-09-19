@@ -15,7 +15,7 @@ sse2_memcpy:
     mov ebx, [ebp + 16]     ; count
     shr ebx, 7              ; divide by 128 (8 * 128bit registers)
 
-loop_copy:
+.memcpy_loop_copy:
     prefetchnta [ESI + 128] ; SSE2 prefetch
     prefetchnta [ESI + 160]
     prefetchnta [ESI + 192]
@@ -43,8 +43,7 @@ loop_copy:
     add edi, 128
     dec ebx
 
-    jnz loop_copy            ; loop please
-loop_copy_end:
+    jnz .memcpy_loop_copy            ; loop please
 
     pop ebx
     pop edi

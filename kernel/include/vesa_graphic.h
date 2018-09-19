@@ -8,7 +8,9 @@ s32		set_vbe(u16 selected_mode);
 int		set_cursor_location(u32 x, u32 y);
 void		graphic_putchar(u8 c);
 
-extern void	set_text_color(u8 color);
+void		fill_window(u8 red, u8 green, u8 blue);
+
+extern void	set_text_color(u32 pix_color);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);
 
 struct __attribute__ ((packed)) vesa_global_info {
@@ -78,9 +80,9 @@ struct vesa_graphic_mode_list {
 };
 
 struct graphic_ctx {
-	struct vesa_global_info		vesa_global_info;
-	struct vesa_mode_info		vesa_mode_info;
-	struct vesa_graphic_mode_list	vesa_graphic_mode_list;
-} g_graphic_ctx;
+	struct vesa_global_info		global_info;
+	struct vesa_mode_info		mode;
+	struct vesa_graphic_mode_list	mode_list;
+} vesa_ctx;
 
 #endif
