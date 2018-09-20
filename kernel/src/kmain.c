@@ -52,7 +52,7 @@ void		text_putstr(char *str)
 // for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
 #define VBE_MODE 0x118
 
-extern char _binary_medias_asterix_bmp_start;
+extern char _binary_medias_univers_bmp_start;
 
 void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
@@ -64,6 +64,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		return ;
 	}
 	g_kernel_io_ctx.term_mode = boot;
+
+	int width;
+	int height;
+	bmp_load(
+			(u8 *)&_binary_medias_univers_bmp_start,
+			&width,
+			&height,
+			NULL);
 
 	printk("{white}Kernel loaded: {green}OK\n{eoc}");
 	printk("{white}VBE initialized: {green}OK\n{eoc}");
@@ -127,15 +135,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
 		"\n");
-
-	int width;
-	int height;
-	printk("pointer = %p\n", &_binary_medias_asterix_bmp_start);
-	bmp_load(
-			(u8 *)&_binary_medias_asterix_bmp_start,
-			&width,
-			&height,
-			NULL);
 	asm("sti");
 
 	return;

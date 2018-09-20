@@ -12,8 +12,11 @@
 
 #include "internal_bmp.h"
 
+#include "vesa_graphic.h"
+
 #include "libft.h"
 
+#ifdef DEBUG_IMAGE
 static void	paste_fileheader(struct bitmap *s)
 {
 	printk("%s %c%c\n", "signature",
@@ -33,8 +36,35 @@ static void	paste_fileheader(struct bitmap *s)
 	printk("%s: %i\n", "numcolorpal",
 			s->bitmapinfoheader.numcolorspallette);
 }
+#endif
 
-static void	fill_image(
+static void	fill_image_24(
+		u8 *data,
+		u8 *pixelbuffer,
+		int width,
+		int height)
+{
+	size_t	i;
+	int	p;
+	int	c;
+	u8	*ptr;
+
+	p = height - 1;
+	ptr = pixelbuffer + (p * width * 3);
+	c = 0;
+	i = 0;
+	while (p >= 0) {
+		data[i] = ptr[c++];
+		if (c == (width * 3)) {
+			p--;
+			ptr = pixelbuffer + (p * width * 3);
+			c = 0;
+		}
+		i++;
+	}
+}
+
+static void	fill_image_32(
 		u8 *data,
 		u8 *pixelbuffer,
 		int width,
@@ -62,22 +92,33 @@ static void	fill_image(
 	}
 }
 
-int		bmp_load(u8 *img, int *width, int *height, int **data)
+int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 {
+	struct bitmap	*img;
+	u8		*start;
+
+	img = (struct bitmap *)file_offset;
+
+#ifdef DEBUG_IMAGE
 	paste_fileheader((struct bitmap *)img);
+#endif
 
-	/*
-	*width = s->bitmapinfoheader.width;
-	*height = s->bitmapinfoheader.height;
-	if (!(*data = (int *)ft_memalloc(sizeof(int) * (*width) * (*height))))
-		return -1;
-	fill_image((u8 *)*data, (u8 *)
-			((char*)s + s->fileheader.fileoffset_to_pixelarray),
-				*width, *height);
-	*/
+	*width = img->bitmapinfoheader.width;
+	*height = img->bitmapinfoheader.height;
 
-	(void)width;
-	(void)height;
+	start = (u8 *)img + img->fileheader.fileoffset_to_pixelarray;
+	if (vesa_ctx.mode.bpp == 24)
+		fill_image_24(
+				(u8 *)vesa_ctx.mode.framebuffer,
+				start,
+				*width,
+				*height);
+	else
+		fill_image_32(
+				(u8 *)vesa_ctx.mode.framebuffer,
+				start,
+				*width,
+				*height);
 	(void)data;
 	return 0;
 }

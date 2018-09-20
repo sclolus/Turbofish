@@ -10,7 +10,7 @@ void		graphic_putchar(u8 c);
 
 void		fill_window(u8 red, u8 green, u8 blue);
 
-int		bmp_load(u8 *img, int *width, int *height, int **data);
+int		bmp_load(u8 *file_offset, int *width, int *height, int **data);
 
 extern void	set_text_color(u32 pix_color);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);

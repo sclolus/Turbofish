@@ -127,7 +127,7 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 all: pre-build target
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) asterix.o libft/libft.a
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 
@@ -161,19 +161,21 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
 
-asterix.o: medias/asterix.bmp
+$(OBJ_DIR)/univers.o: medias/univers.bmp
 	ld $(LDFLAGS) -r -b binary $< -o $@
 
 clean:
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f $(OBJ_DIR)/univers.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 
 fclean:
 	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f $(OBJ_DIR)/univers.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 	rm -f $(NAME)
 
