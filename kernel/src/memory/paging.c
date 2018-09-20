@@ -8,7 +8,7 @@
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000
-#define PAGE_TABLE_0_ADDR		0x400000
+#define PAGE_TABLE_0_ADDR		0x800000
 
 #define MAX_PAGE_TABLE_SEG		1024
 #define OFFSET				4096
@@ -389,7 +389,7 @@ int			init_paging(u32 available_memory)
 	mark_physical_area((void *)0x0, MAX_PAGE_TABLE_SEG);
 
 	/*
-	 * mapping of next 4mo, pages list
+	 * mapping of next 4mo, stack and memory map
 	 */
 	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
 	map_address(
@@ -398,6 +398,18 @@ int			init_paging(u32 available_memory)
 			0x400000,
 			kernel_space);
 	mark_physical_area((void *)0x400000, MAX_PAGE_TABLE_SEG);
+
+	/*
+	 * mapping of next 4mo, pages list
+	 */
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
+	map_address(
+			res,
+			MAX_PAGE_TABLE_SEG,
+			0x800000,
+			kernel_space);
+	mark_physical_area((void *)0x800000, MAX_PAGE_TABLE_SEG);
+
 	/*
 	 * mapping of LFB VBE
 	 */

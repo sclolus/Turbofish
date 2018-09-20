@@ -3,7 +3,7 @@
 
 #include "libft.h"
 
-#define VIRT_MAP_LOCATION	0x300000
+#define VIRT_MAP_LOCATION	0x700000
 
 static u8 *virt_map;
 

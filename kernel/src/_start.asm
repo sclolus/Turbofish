@@ -28,7 +28,7 @@ _start:
 
     mov ax, 0x20                    ; create the main kernel stack
     mov ss, ax
-    mov esp, 0x300000
+    mov esp, 0x700000
 
     call set_sse2
 

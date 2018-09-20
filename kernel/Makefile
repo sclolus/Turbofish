@@ -60,7 +60,7 @@ SRC_ASM_KERNEL += keymap
 VPATH += src/keyboard
 
 # graphic
-SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools
+SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
 SRC_ASM_KERNEL += draw_line display_char sse2_memcpy
 VPATH += src/graphic
 HEADERS += vesa_graphic
@@ -127,7 +127,7 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 all: pre-build target
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) asterix.o libft/libft.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 
@@ -160,6 +160,9 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
+
+asterix.o: medias/asterix.bmp
+	ld $(LDFLAGS) -r -b binary $< -o $@
 
 clean:
 	make -C $(LIBFT)/ clean

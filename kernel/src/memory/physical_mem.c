@@ -3,7 +3,7 @@
 
 #include "libft.h"
 
-#define PHY_MAP_LOCATION	0x380000
+#define PHY_MAP_LOCATION	0x780000
 
 static u8 *phy_map;
 
