@@ -96,6 +96,7 @@ int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 {
 	struct bitmap	*img;
 	u8		*start;
+	u8		*db_buffer;
 
 	img = (struct bitmap *)file_offset;
 
@@ -119,6 +120,31 @@ int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 				start,
 				*width,
 				*height);
+
+	db_buffer = (u8 *)kmalloc(vesa_ctx.mode.pitch * vesa_ctx.mode.height);
+	if (db_buffer == NULL)
+		return -1;
+
+	start = (u8 *)img + img->fileheader.fileoffset_to_pixelarray;
+	if (vesa_ctx.mode.bpp == 24)
+		fill_image_24(
+				db_buffer,
+				start,
+				*width,
+				*height);
+	else
+		fill_image_32(
+				db_buffer,
+				start,
+				*width,
+				*height);
+
+	sse2_memcpy(
+			(u32 *)vesa_ctx.mode.framebuffer,
+			(void *)db_buffer,
+			vesa_ctx.mode.pitch * vesa_ctx.mode.height);
+
+
 	(void)data;
 	return 0;
 }

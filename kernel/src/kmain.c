@@ -63,7 +63,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
-	g_kernel_io_ctx.term_mode = boot;
+
+	init_idt();
+	init_pic();
+
+	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
+
+	init_paging(avalaible_mem);
+
 
 	int width;
 	int height;
@@ -72,6 +79,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			&width,
 			&height,
 			NULL);
+
+	g_kernel_io_ctx.term_mode = boot;
 
 	printk("{white}Kernel loaded: {green}OK\n{eoc}");
 	printk("{white}VBE initialized: {green}OK\n{eoc}");
@@ -105,22 +114,24 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			vesa_ctx.mode.framebuffer);
 
 	printk("{white}Initialize IDT: ");
-	init_idt();
+//	init_idt();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize PIC: ");
-	init_pic();
+//	init_pic();
 	printk("{green}OK\n{eoc}");
 
-	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
 	printk("{white}Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);
 
+/*
 	if (init_paging(avalaible_mem) == -1) {
 		printk("{red}FAIL\n{eoc}");
 		return ;
 	}
+*/
 	printk("{green}OK\n{eoc}");
+
 
 	mem_test(k_family, 0);
 	mem_test(v_family, 0);
