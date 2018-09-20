@@ -1,14 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   bmp_load.c                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: stoupin <stoupin@student.42.fr>            +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2017/05/18 22:13:29 by bmickael          #+#    #+#             */
-/*   Updated: 2018/02/01 16:50:35 by stoupin          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
 
 #include "internal_bmp.h"
 
@@ -106,21 +95,6 @@ int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 
 	*width = img->bitmapinfoheader.width;
 	*height = img->bitmapinfoheader.height;
-
-	start = (u8 *)img + img->fileheader.fileoffset_to_pixelarray;
-	if (vesa_ctx.mode.bpp == 24)
-		fill_image_24(
-				(u8 *)vesa_ctx.mode.framebuffer,
-				start,
-				*width,
-				*height);
-	else
-		fill_image_32(
-				(u8 *)vesa_ctx.mode.framebuffer,
-				start,
-				*width,
-				*height);
-
 	db_buffer = (u8 *)kmalloc(vesa_ctx.mode.pitch * vesa_ctx.mode.height);
 	if (db_buffer == NULL)
 		return -1;

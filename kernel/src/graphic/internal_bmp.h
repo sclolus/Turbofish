@@ -4,12 +4,6 @@
 
 #include "i386_type.h"
 
-# define BPP			24
-# define PLANES			1
-# define COMPRESSION		0
-# define XPIXELPERMETER		0x130B
-# define YPIXELPERMETER		0x130B
-
 # pragma pack(push, 1)
 
 struct fileheader
