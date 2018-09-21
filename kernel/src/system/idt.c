@@ -60,7 +60,7 @@ extern void	asm_security_exception(void);
 extern void	asm_default_interrupt(void);
 extern void	asm_default_pic_master_interrupt(void);
 extern void	asm_default_pic_slave_interrupt(void);
-extern void	asm_clock_handler(void);
+extern void	asm_pit_isr(void);
 extern void	asm_keyboard_handler(void);
 
 void		init_idt(void)
@@ -122,7 +122,7 @@ void		init_idt(void)
 	initialize_idt_seg(30, (u32)&asm_security_exception, 0x8, INTGATE);
 
 
-	initialize_idt_seg(32, (u32)&asm_clock_handler, 0x8, INTGATE);
+	initialize_idt_seg(32, (u32)&asm_pit_isr, 0x8, INTGATE);
 	initialize_idt_seg(33, (u32)&asm_keyboard_handler, 0x8, INTGATE);
 
 	g_idt_ptr.limit = IDT_SIZE << 3;

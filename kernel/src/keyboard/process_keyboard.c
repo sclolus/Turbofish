@@ -29,6 +29,9 @@ void	wrapper_1(void)
 	wrapper_2();
 }
 
+extern u32 pit_time_sec;
+extern u32 pit_time_nsec;
+
 void	process_keyboard(u8 scancode)
 {
 	static u32 keyboard_register = 0;
@@ -60,6 +63,10 @@ void	process_keyboard(u8 scancode)
 		z = 42;
 		z = z / 0;
 		printk("value of z: %i\n", z);
+		break;
+	}
+	case 61: {
+		printk("time:%.4u.%.9u\n", pit_time_sec, pit_time_nsec);
 		break;
 	}
 	default:

@@ -50,4 +50,6 @@ void		bios_wait(u32 sec);
 
 extern void	int8086(u8 interupt, struct base_registers reg);
 
+void		asm_pit_init(u32 frequency);
+
 #endif

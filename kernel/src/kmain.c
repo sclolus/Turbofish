@@ -49,8 +49,10 @@ void		text_putstr(char *str)
 	}
 }
 
-// for the moment, only mode in 8bpp work. 0x100 0x101 0x103 0x105 0x107
-#define VBE_MODE 0x118
+// for the moment, only mode in 24bpp and 32bpp 1024x768 mode work
+#define VBE_MODE	0x118
+
+#define PIT_FREQUENCY	1433
 
 extern char _binary_medias_univers_bmp_start;
 
@@ -63,14 +65,13 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
-
 	init_idt();
-	init_pic();
 
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
-
 	init_paging(avalaible_mem);
 
+	asm_pit_init(PIT_FREQUENCY);
+	init_pic();
 
 	int width;
 	int height;
@@ -145,7 +146,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
 	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
-		"\n");
+		", F3 for clock\n");
+
 	asm("sti");
 
 	return;

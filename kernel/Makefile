@@ -50,7 +50,7 @@ HEADERS = grub i386_type
 
 # system
 SRC_C_KERNEL += bios_services idt panic
-SRC_ASM_KERNEL += gdt int8086 pic irq_cpu irq_pic exit_panic
+SRC_ASM_KERNEL += gdt int8086 pic irq_cpu irq_pic exit_panic 8254_pit
 VPATH += src/system
 HEADERS += system
 
