@@ -4,6 +4,10 @@
 
 #include "i386_type.h"
 
+#define DB_FRAMEBUFFER_ADDR	0xC00000
+
+void		refresh_screen(void);
+
 s32		set_vbe(u16 selected_mode);
 int		set_cursor_location(u32 x, u32 y);
 void		graphic_putchar(u8 c);

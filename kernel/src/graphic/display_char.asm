@@ -31,10 +31,6 @@ display_char_24:
 
     push esi
     push edi
-    push es
-
-    mov ax, 0x18
-    mov es, ax
 
 .putchar_init:
     mov eax, [ebp + 8]
@@ -73,7 +69,6 @@ display_char_24:
     test ch, ch
     jne .putchar_cycle_heigth
 
-    pop es
     pop edi
     pop esi
 
@@ -87,10 +82,6 @@ display_char_32:
 
     push esi
     push edi
-    push es
-
-    mov ax, 0x18
-    mov es, ax
 
 .putchar_init:
     mov eax, [ebp + 8]
@@ -127,7 +118,6 @@ display_char_32:
     test ch, ch
     jne .putchar_cycle_heigth
 
-    pop es
     pop edi
     pop esi
 

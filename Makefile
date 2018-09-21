@@ -36,4 +36,4 @@ copy: $(IMG_DISK)
 	sync
 
 exec:
-	qemu-system-x86_64 -m 32 -vga std -hda $(IMG_DISK) -enable-kvm
+	qemu-system-x86_64 -m 64 -vga std -hda $(IMG_DISK) -enable-kvm
