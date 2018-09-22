@@ -1,3 +1,6 @@
 [submodule "kernel/libft"]
 	path = kernel/libft
 	url = https://gitlab.com/mordaklavache/libft_ng.git
+[submodule "kernel/libasm_i386"]
+	path = kernel/libasm_i386
+	url = https://gitlab.com/mordaklavache/libasm_i386.git
