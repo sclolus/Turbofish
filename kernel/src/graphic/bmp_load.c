@@ -4,6 +4,7 @@
 #include "vesa_graphic.h"
 
 #include "libft.h"
+#include "libasm_i386.h"
 
 #ifdef DEBUG_IMAGE
 static void	paste_fileheader(struct bitmap *s)

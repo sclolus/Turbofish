@@ -1,13 +1,12 @@
 
 #include "vesa_graphic.h"
 #include "libft.h"
+#include "libasm_i386.h"
 
 extern void display_char_24(u8 c, u32 edi);
 extern void display_char_32(u8 c, u32 edi);
 
 static u32 g_cur_loc = 0;
-
-void sse2_memcpy(void *dst, void *src, size_t size);
 
 #define CHAR_HEIGHT	16
 

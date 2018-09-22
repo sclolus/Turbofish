@@ -74,8 +74,6 @@ u32		benchmark(void)
 	return res;
 }
 
-void sse2_memcpy(void *dst, void *src, size_t size);
-
 extern char _binary_medias_univers_bmp_start;
 
 // for the moment, only mode in 24bpp and 32bpp 1024x768 mode work

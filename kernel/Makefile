@@ -37,9 +37,13 @@ LIB_DIR = .
 _LIBFT = libft
 LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
+LIBASM_I386_DIR = .
+_LIBASM_I386 = libasm_i386
+LIBASM_I386 = $(addprefix $(LIBASM_I386_DIR)/, $(_LIBASM_I386))
+
 ### SOURCES ###
 
-IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs
+IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs -I$(LIBASM_I386)/includes
 
 
 # main
@@ -62,7 +66,7 @@ VPATH += src/keyboard
 
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
-SRC_ASM_KERNEL += draw_line display_char sse2_memcpy
+SRC_ASM_KERNEL += draw_line display_char
 VPATH += src/graphic
 HEADERS += vesa_graphic
 
@@ -128,7 +132,7 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 all: pre-build target
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 
@@ -162,11 +166,15 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
+libasm_i386/libasm_i386.a:
+	make -C $(LIBASM_I386)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+
 $(OBJ_DIR)/univers.o: medias/univers.bmp
 	ld $(LDFLAGS) -r -b binary $< -o $@
 
 clean:
 	make -C $(LIBFT)/ clean
+	make -C $(LIBASM_I386)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o
@@ -174,6 +182,7 @@ clean:
 
 fclean:
 	make -C $(LIBFT)/ fclean
+	make -C $(LIBASM_I386)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o

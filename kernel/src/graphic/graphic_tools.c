@@ -1,5 +1,6 @@
 
 #include "vesa_graphic.h"
+#include "libasm_i386.h"
 
 static void f_win32(u32 *dst, u32 size, u8 red, u8 green, u8 blue)
 {
@@ -34,8 +35,6 @@ void	fill_window(u8 red, u8 green, u8 blue)
 
 	refresh_screen();
 }
-
-void sse2_memcpy(void *dst, void *src, size_t size);
 
 void refresh_screen(void) {
 	sse2_memcpy(
