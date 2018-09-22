@@ -52,7 +52,6 @@ void		graphic_putchar(u8 c)
 			display_char_24(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
 		else
 			display_char_32(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
-		refresh_screen();
 		g_cur_loc += vesa_ctx.mode.bpp;
 		if (g_cur_loc % vesa_ctx.mode.pitch == 0)
 			g_cur_loc += (CHAR_HEIGHT - 1) * vesa_ctx.mode.pitch;

@@ -56,6 +56,7 @@ s32	write(s32 fd, const void *buf, u32 count)
 			else
 				graphic_putchar(_buf[i]);
 		}
+		//refresh_screen();
 		break;
 	case kernel:
 		break;
