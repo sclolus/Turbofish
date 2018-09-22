@@ -50,8 +50,9 @@ HEADERS = grub i386_type
 
 # system
 SRC_C_KERNEL += bios_services idt panic
-SRC_ASM_KERNEL += gdt int8086 pic irq_cpu irq_pic exit_panic 8254_pit
-VPATH += src/system
+SRC_ASM_KERNEL += gdt int8086 irq_cpu exit_panic
+SRC_ASM_KERNEL += init_pic 8254_pit 8042_keyboard default_pic_isr
+VPATH += src/system src/system/pic
 HEADERS += system
 
 # keyboard
