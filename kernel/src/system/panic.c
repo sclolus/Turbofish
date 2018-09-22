@@ -3,7 +3,7 @@
 
 #include "i386_type.h"
 #include "libft.h"
-#include "vesa_graphic.h"
+#include "vesa.h"
 #include "../memory/memory_manager.h"
 
 struct function_entry {

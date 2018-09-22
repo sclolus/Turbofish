@@ -24,4 +24,6 @@ void	*valloc(size_t size);
 int	vfree(void *addr);
 size_t	vsize(void *addr);
 
+u32	get_nb_page_fault(void);
+
 #endif

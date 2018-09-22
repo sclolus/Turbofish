@@ -1,5 +1,5 @@
 
-#include "vesa_graphic.h"
+#include "vesa.h"
 #include "libft.h"
 #include "libasm_i386.h"
 

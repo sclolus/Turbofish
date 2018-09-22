@@ -64,11 +64,16 @@ SRC_C_KERNEL += process_keyboard
 SRC_ASM_KERNEL += keymap
 VPATH += src/keyboard
 
+# text_user_interface
+SRC_C_KERNEL += text_core
+VPATH += src/text_user_interface
+HEADERS += text_user_interface
+
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
 SRC_ASM_KERNEL += draw_line display_char
-VPATH += src/graphic
-HEADERS += vesa_graphic
+VPATH += src/vesa
+HEADERS += vesa
 
 # memory
 MEM_PAGING_C = paging virtual_mem physical_mem buddy page_fault

@@ -4,10 +4,10 @@
 
 # include "i386_type.h"
 
-extern void	init_gdt(ptr_32 *LFB);
+extern void	init_gdt(u32 linear_frame_buffer);
 void		init_idt(void);
 void		init_pic(void);
-int		init_paging(u32 available_memory);
+int		init_paging(u32 available_memory, u32 *vesa_framebuffer);
 
 struct base_registers {
 	u32 edi, esi, ebp, esp;

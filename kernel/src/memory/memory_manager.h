@@ -24,7 +24,6 @@ enum mem_space {
 #define VALLOC_MASK	0xF8000000
 
 int			page_fault_handler(u32 err_reg, u32 fault_addr);
-u32			get_nb_page_fault(void);
 
 extern void		asm_paging_enable(void);
 extern void		asm_paging_disable(void);
