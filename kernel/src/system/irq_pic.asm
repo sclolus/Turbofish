@@ -27,6 +27,8 @@ extern process_keyboard
 ; 60h read or transmit data
 ; 64h compute status or emmit command
 asm_keyboard_handler:
+    pushad
+
     in al, 0x64
     mov edx, eax
     and edx, 0x1
@@ -42,4 +44,6 @@ asm_keyboard_handler:
 
     mov al, 0x20
     out 0x20, al
+
+    popad
     iret
