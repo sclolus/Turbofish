@@ -159,7 +159,7 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
 libft/libft.a:
-	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
+	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
 $(OBJ_DIR)/univers.o: medias/univers.bmp
 	ld $(LDFLAGS) -r -b binary $< -o $@

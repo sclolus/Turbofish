@@ -49,12 +49,39 @@ void		text_putstr(char *str)
 	}
 }
 
+u32		benchmark(void)
+{
+	static int count = 0;
+	static u32 res = 0;
+	static u32 sum;
+
+	struct timeval tv;
+
+	if (count == 0) {
+		clock_gettime(&tv);
+		sum = tv.sec * 1000000 + tv.usec;
+		count++;
+	} else {
+		clock_gettime(&tv);
+		u32 tmp = tv.sec * 1000000 + tv.usec;
+		if ((tmp - sum) <= 1000000) {
+			count++;
+		} else {
+			res = count;
+			count = 0;
+		}
+	}
+	return res;
+}
+
+void sse2_memcpy(void *dst, void *src, size_t size);
+
+extern char _binary_medias_univers_bmp_start;
+
 // for the moment, only mode in 24bpp and 32bpp 1024x768 mode work
 #define VBE_MODE	0x118
 
 #define PIT_FREQUENCY	100
-
-extern char _binary_medias_univers_bmp_start;
 
 void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
@@ -65,12 +92,16 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
+
+
 	init_idt();
 
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
 	init_paging(avalaible_mem);
 
+
 	asm_pit_init(PIT_FREQUENCY);
+
 	init_pic();
 
 	int width;
@@ -150,6 +181,21 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	asm("sti");
 
+
+	u32 size = 1024 * 768 * 4;
+
+	char *a = kmalloc(size);
+	char *b = kmalloc(size);
+
+	u32 old_res = 1;
+	while (true) {
+		sse2_memcpy(a, b, size);
+		//sprintk(a, "LEs %i sangliers sont %p %p %p\n", 12, (void *)0xFE004DAA, (void *)0x01, (void *)0x1000);
+		u32 res = benchmark();
+		if (res != old_res)
+			printk("FPS: %0.4u\n", res);
+		old_res = res;
+	}
 	return;
 }
 
