@@ -97,7 +97,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_idt();
 
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
-	init_paging(avalaible_mem);
+	if (init_paging(avalaible_mem) == -1)
+		return ;
 
 
 	asm_pit_init(PIT_FREQUENCY);
@@ -111,6 +112,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			&width,
 			&height,
 			NULL);
+
+
 
 	g_kernel_io_ctx.term_mode = boot;
 
@@ -179,6 +182,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
 		", F3 for clock\n");
 
+	refresh_screen();
 	asm("sti");
 
 

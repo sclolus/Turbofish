@@ -14,7 +14,7 @@ void sse2_memcpy(void *dst, void *src, size_t size);
 static void	test_scroll(void)
 {
 	if (g_cur_loc == (vesa_ctx.mode.pitch * vesa_ctx.mode.height)) {
-		u32 p = (u32)vesa_ctx.mode.framebuffer +
+		u32 p = (u32)DB_FRAMEBUFFER_ADDR +
 				vesa_ctx.mode.pitch * CHAR_HEIGHT;
 
 		/*
@@ -26,17 +26,19 @@ static void	test_scroll(void)
 		*/
 
 		sse2_memcpy(
-			(void *)vesa_ctx.mode.framebuffer,
+			(void *)DB_FRAMEBUFFER_ADDR,
 			(void *)p,
 			vesa_ctx.mode.pitch *
 			(vesa_ctx.mode.height - CHAR_HEIGHT));
 
-		p = (u32)vesa_ctx.mode.framebuffer + vesa_ctx.mode.pitch *
+		p = (u32)DB_FRAMEBUFFER_ADDR + vesa_ctx.mode.pitch *
 				(vesa_ctx.mode.height - CHAR_HEIGHT);
 
 		bzero((ptr_32 *)p, vesa_ctx.mode.pitch * CHAR_HEIGHT);
 
 		g_cur_loc -= vesa_ctx.mode.pitch * CHAR_HEIGHT;
+
+		refresh_screen();
 	}
 }
 
@@ -47,9 +49,10 @@ void		graphic_putchar(u8 c)
 	if (c >= 32) {
 		test_scroll();
 		if (vesa_ctx.mode.bpp == 24)
-			display_char_24(c, g_cur_loc);
+			display_char_24(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
 		else
-			display_char_32(c, g_cur_loc);
+			display_char_32(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
+		refresh_screen();
 		g_cur_loc += vesa_ctx.mode.bpp;
 		if (g_cur_loc % vesa_ctx.mode.pitch == 0)
 			g_cur_loc += (CHAR_HEIGHT - 1) * vesa_ctx.mode.pitch;

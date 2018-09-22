@@ -13,7 +13,7 @@
 #define MAX_PAGE_TABLE_SEG		1024
 #define OFFSET				4096
 
-#define MINIMUM_MEMORY			(1 << 24)
+#define MINIMUM_MEMORY			(1 << 25)
 
 /*
  * Field type:
@@ -406,9 +406,20 @@ int			init_paging(u32 available_memory)
 	map_address(
 			res,
 			MAX_PAGE_TABLE_SEG,
-			0x800000,
+			PAGE_TABLE_0_ADDR,
 			kernel_space);
-	mark_physical_area((void *)0x800000, MAX_PAGE_TABLE_SEG);
+	mark_physical_area((void *)PAGE_TABLE_0_ADDR, MAX_PAGE_TABLE_SEG);
+
+	/*
+	 * mapping of next 4mo, double frame buffer
+	 */
+	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
+	map_address(
+			res,
+			MAX_PAGE_TABLE_SEG,
+			DB_FRAMEBUFFER_ADDR,
+			kernel_space);
+	mark_physical_area((void *)DB_FRAMEBUFFER_ADDR, MAX_PAGE_TABLE_SEG);
 
 	/*
 	 * mapping of LFB VBE
