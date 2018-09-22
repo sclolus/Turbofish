@@ -1,11 +1,9 @@
 [BITS 32]
-segment .bss
+segment .data
 
-GLOBAL pit_time_sec
-GLOBAL pit_time_nsec
 pit_time_sec: dd 0
-pit_time_nsec: dd 0
-pit_period_nsec: dd 0
+pit_time_usec: dd 0
+pit_period_usec: dd 0
 pit_frequency: dd 0
 
 segment .text
@@ -51,7 +49,7 @@ segment .text
 %define MODE_3        (1 << 2)
 %define BINARY_MODE   (0)
 
-%define NS_IN_SEC     1000000000
+%define US_IN_SEC     1000000
 
 GLOBAL asm_pit_init ; void asm_pit_init(u32 frequency)
 asm_pit_init:
@@ -77,10 +75,10 @@ asm_pit_init:
 
     mov ecx, eax
     mov edx, 0
-    mov eax, NS_IN_SEC
+    mov eax, US_IN_SEC
 
     div ecx
-    mov dword [pit_period_nsec], eax
+    mov dword [pit_period_usec], eax
 
     pop eax
 
@@ -91,21 +89,37 @@ asm_pit_init:
     pop ebp
     ret
 
+GLOBAL clock_gettime ; void clock_gettime(struct timeval *tv)
+clock_gettime:
+    push ebp
+    mov ebp, esp
+
+    mov eax, [ebp + 8]
+    mov edx, [pit_time_sec]
+    mov [eax], edx
+    mov edx, [pit_time_usec]
+    mov [eax + 4], edx
+
+    xor eax, eax
+
+    pop ebp
+    ret
+
 GLOBAL asm_pit_isr
 asm_pit_isr:
     push eax
 
-    mov eax, dword [pit_time_nsec]
-    add eax, dword [pit_period_nsec]
+    mov eax, dword [pit_time_usec]
+    add eax, dword [pit_period_usec]
 
-    cmp eax, NS_IN_SEC
+    cmp eax, US_IN_SEC
     jb .next
 
-    sub eax, NS_IN_SEC
+    sub eax, US_IN_SEC
     add dword [pit_time_sec], 1
 
 .next
-    mov dword [pit_time_nsec], eax
+    mov dword [pit_time_usec], eax
 
     mov al, 0x20
     out 0x20, al

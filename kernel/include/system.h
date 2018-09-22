@@ -15,6 +15,18 @@ struct base_registers {
 } __attribute__ ((packed));
 
 /*
+ * 8254_pit.asm Time system
+ */
+struct timeval {
+	u32 sec;
+	u32 usec;
+};
+
+void		asm_pit_init(u32 frequency);
+
+int		clock_gettime(struct timeval *tv);
+
+/*
  * When a CPU IRQ interrupt occurred, registers are pushed in this order,
  * the following C structure match with that
  *
@@ -49,7 +61,5 @@ void		bios_shutdown_computer(void);
 void		bios_wait(u32 sec);
 
 extern void	int8086(u8 interupt, struct base_registers reg);
-
-void		asm_pit_init(u32 frequency);
 
 #endif

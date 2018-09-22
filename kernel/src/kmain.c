@@ -52,7 +52,7 @@ void		text_putstr(char *str)
 // for the moment, only mode in 24bpp and 32bpp 1024x768 mode work
 #define VBE_MODE	0x118
 
-#define PIT_FREQUENCY	1433
+#define PIT_FREQUENCY	100
 
 extern char _binary_medias_univers_bmp_start;
 

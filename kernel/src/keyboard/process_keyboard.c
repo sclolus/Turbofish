@@ -2,6 +2,7 @@
 #include "i386_type.h"
 #include "vesa_graphic.h"
 #include "libft.h"
+#include "system.h"
 
 extern u8	get_keymap(u32 offset);
 
@@ -28,9 +29,6 @@ void	wrapper_1(void)
 
 	wrapper_2();
 }
-
-extern u32 pit_time_sec;
-extern u32 pit_time_nsec;
 
 void	process_keyboard(u8 scancode)
 {
@@ -66,7 +64,9 @@ void	process_keyboard(u8 scancode)
 		break;
 	}
 	case 61: {
-		printk("time:%.4u.%.9u\n", pit_time_sec, pit_time_nsec);
+		struct timeval tv;
+		clock_gettime(&tv);
+		printk("time:%.4u.%.6u\n", tv.sec, tv.usec);
 		break;
 	}
 	default:
