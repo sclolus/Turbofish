@@ -12,7 +12,7 @@ struct __attribute__ ((packed)) idt_seg {
 	u16 offset16_31;
 };
 
-static struct __attribute__ ((packed)) idt_ptr {
+struct __attribute__ ((packed)) idt_ptr {
 	u16 limit;
 	u32 base;
 } g_idt_ptr;

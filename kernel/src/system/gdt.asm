@@ -97,6 +97,9 @@ init_gdt:
     push ebp
     mov ebp, esp
 
+    push esi
+    push edi
+
 ; copying of GDT at BASE_LOCATION, here 0x800
     mov edi, BASE_LOCATION
     mov eax, gdtend
@@ -132,6 +135,9 @@ init_gdt:
     mov es, ax
     mov fs, ax
     mov gs, ax
+
+    pop edi
+    pop esi
 
     pop ebp
 ret
