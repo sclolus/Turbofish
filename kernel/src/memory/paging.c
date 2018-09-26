@@ -4,7 +4,7 @@
 #include "i386_type.h"
 #include "system.h"
 #include "libft.h"
-#include "vesa_graphic.h"
+#include "vesa.h"
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x1000
@@ -339,7 +339,7 @@ int			vmunmap(void *virt_addr, size_t size)
 /*
  * initialize all the paging system
  */
-int			init_paging(u32 available_memory)
+int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 {
 	u32 res;
 	int i;
@@ -410,31 +410,35 @@ int			init_paging(u32 available_memory)
 			kernel_space);
 	mark_physical_area((void *)PAGE_TABLE_0_ADDR, MAX_PAGE_TABLE_SEG);
 
-	/*
-	 * mapping of next 4mo, double frame buffer
-	 */
-	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
-	map_address(
-			res,
-			MAX_PAGE_TABLE_SEG,
-			DB_FRAMEBUFFER_ADDR,
-			kernel_space);
-	mark_physical_area((void *)DB_FRAMEBUFFER_ADDR, MAX_PAGE_TABLE_SEG);
+	if (vesa_framebuffer != NULL) {
+		/*
+		 * mapping of next 4mo, double frame buffer
+		 */
+		res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
+		map_address(
+				res,
+				MAX_PAGE_TABLE_SEG,
+				DB_FRAMEBUFFER_ADDR,
+				kernel_space);
+		mark_physical_area(
+				(void *)DB_FRAMEBUFFER_ADDR,
+				MAX_PAGE_TABLE_SEG);
 
-	/*
-	 * mapping of LFB VBE
-	 */
-	res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
-	map_address(
-			res,
-			MAX_PAGE_TABLE_SEG,
-			(u32)vesa_ctx.mode.framebuffer,
-			kernel_space);
-	mark_physical_area(
-			vesa_ctx.mode.framebuffer,
-			MAX_PAGE_TABLE_SEG);
-	init_gdt((void *)res);
-	vesa_ctx.mode.framebuffer = (void *)res;
+		/*
+		 * mapping of LFB VBE
+		 */
+		res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
+		map_address(
+				res,
+				MAX_PAGE_TABLE_SEG,
+				*vesa_framebuffer,
+				kernel_space);
+		mark_physical_area(
+				(void *)*vesa_framebuffer,
+				MAX_PAGE_TABLE_SEG);
+		*vesa_framebuffer = res;
+		init_gdt(*vesa_framebuffer);
+	}
 
 	/*
 	 * store page directory address in CR3 register

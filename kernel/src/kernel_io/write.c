@@ -1,6 +1,6 @@
 
 # include "kernel_io.h"
-# include "vesa_graphic.h"
+# include "vesa.h"
 # include "libft.h"
 
 #define MODIFIER_QUANTITY	13

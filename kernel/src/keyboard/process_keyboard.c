@@ -1,6 +1,6 @@
 
 #include "i386_type.h"
-#include "vesa_graphic.h"
+#include "vesa.h"
 #include "libft.h"
 #include "system.h"
 
@@ -55,11 +55,9 @@ void	process_keyboard(u8 scancode)
 		break;
 	}
 	case 60: {
-		int z;
-
-
-		z = 42;
-		z = z / 0;
+		int z = 42;
+		z -= 42;
+		z = 3 / z;
 		printk("value of z: %i\n", z);
 		break;
 	}

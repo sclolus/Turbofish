@@ -1,5 +1,5 @@
 
-#include "vesa_graphic.h"
+#include "vesa.h"
 #include "system.h"
 #include "libft.h"
 

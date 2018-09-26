@@ -1,6 +1,6 @@
 
-#ifndef __VESA_GRAPHIC_H__
-# define __VESA_GRAPHIC_H__
+#ifndef __VESA_H__
+# define __VESA_H__
 
 #include "i386_type.h"
 
@@ -15,6 +15,7 @@ void		graphic_putchar(u8 c);
 void		fill_window(u8 red, u8 green, u8 blue);
 
 int		bmp_load(u8 *file_offset, int *width, int *height, int **data);
+void		bmp_to_framebuffer(void);
 
 extern void	set_text_color(u32 pix_color);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);
@@ -70,7 +71,7 @@ struct __attribute__ ((packed)) vesa_mode_info {
 	u8 reserved_position;
 	u8 direct_color_attributes;
 
-	ptr_32 *framebuffer;	// physical address of the linear frame buffer
+	u32 framebuffer;	// physical address of the linear frame buffer
 				// write here to draw to the screen
 	u32 off_screen_mem_off;
 	u16 off_screen_mem_size;// size of memory in the frame buffer but not

@@ -1,54 +1,17 @@
 
 #include "dynamic_allocator.h"
-#include "memory/memory_manager.h"
-
 #include "kernel_io.h"
 #include "i386_type.h"
-#include "vesa_graphic.h"
+#include "vesa.h"
+#include "text_user_interface.h"
 #include "system.h"
 #include "libft.h"
 #include "grub.h"
 #include "tests.h"
 
-// this loops clears the screen
-// there are 25 lines each of 80 columns; each element takes 2 bytes
-void		reset_text_screen(void)
-{
-	struct base_registers	reg;
-	char			*vidptr;
-	u32			j;
-	u32			screensize;
-
-	// video memory begins at address 0xb8000
-	vidptr = (char*)0xb8000;
-
-	// set cursor 	AH=02h 	BH = page number, DH = Line, DL = Colomn
-	reg.edx = 0;
-	reg.ebx = 0;
-	reg.eax = 0x02;
-	int8086(0x10, reg);
-
-	j = 0;
-	screensize =  80 * 25 * 2;
-	while (j < screensize) {
-		vidptr[j] = ' ';	// black character
-		vidptr[j + 1] = 0x07;	// attribute-byte
-		j = j + 2;
-	}
-}
-
-void		text_putstr(char *str)
-{
-	// video memory begins at address 0xb8000
-	char *vidptr = (char*)0xb8000;
-	static int i = 0;
-
-	while (*str != '\0') {
-		vidptr[i++] = *str++;	// the character's ascii
-		vidptr[i++] = 0x07;	// give char black bg and light grey fg
-	}
-}
-
+/*
+ * This benchmark use the PIT on IRQ0 to work
+ */
 u32		benchmark(void)
 {
 	static int count = 0;
@@ -74,15 +37,32 @@ u32		benchmark(void)
 	return res;
 }
 
+/*
+ * Background bitmap
+ */
 extern char _binary_medias_univers_bmp_start;
 
-// for the moment, only mode in 24bpp and 32bpp 1024x768 mode work
+/*
+ * For the moment, only mode in 24bpp and 32bpp 1024x768 mode work
+ */
 #define VBE_MODE	0x118
 
+/*
+ * Programmable Interrupt Timer frequency
+ */
 #define PIT_FREQUENCY	100
 
+/*
+ * Main Kernel
+ */
 void 		kmain(struct multiboot_info *multiboot_info_addr)
 {
+/*
+ * Initialization sequence
+ */
+	/*
+	 * Set VBE mode
+	 */
 	if (set_vbe(VBE_MODE) < 0) {
 		reset_text_screen();
 		text_putstr("KERNEL_FATAL_ERROR: Cannot set VBE mode");
@@ -91,18 +71,24 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		return ;
 	}
 
-
+	/*
+	 * Initialize Interrupt Descriptor Table
+	 */
 	init_idt();
 
+	/*
+	 * Initialize paging
+	 */
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
-	if (init_paging(avalaible_mem) == -1)
+	if (init_paging(avalaible_mem, &vesa_ctx.mode.framebuffer) == -1) {
+		eprintk("KERNEL_FATAL_ERROR: Cannot set PAGING\n");
+		refresh_screen();
 		return ;
+	}
 
-
-	asm_pit_init(PIT_FREQUENCY);
-
-	init_pic();
-
+	/*
+	 * Fill background image
+	 */
 	int width;
 	int height;
 	bmp_load(
@@ -111,6 +97,18 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			&height,
 			NULL);
 
+	bmp_to_framebuffer();
+	refresh_screen();
+
+	/*
+	 * Initialize 8254 PIT, clock on IRQ0
+	 */
+	asm_pit_init(PIT_FREQUENCY);
+
+	/*
+	 * Initialize PIC, Hardware interrupt chip
+	 */
+	init_pic();
 
 
 	g_kernel_io_ctx.term_mode = boot;
@@ -147,24 +145,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			vesa_ctx.mode.framebuffer);
 
 	printk("{white}Initialize IDT: ");
-//	init_idt();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize PIC: ");
-//	init_pic();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);
-
-/*
-	if (init_paging(avalaible_mem) == -1) {
-		printk("{red}FAIL\n{eoc}");
-		return ;
-	}
-*/
 	printk("{green}OK\n{eoc}");
-
 
 	mem_test(k_family, 0);
 	mem_test(v_family, 0);
@@ -188,6 +176,8 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	char *a = kmalloc(size);
 	char *b = kmalloc(size);
+	(void)a;
+	(void)b;
 
 	u32 old_res = 1;
 	while (true) {

@@ -1,7 +1,7 @@
 
 #include "libft.h"
 #include "math.h"
-#include "vesa_graphic.h"
+#include "vesa.h"
 
 int	rand_test(void)
 {
