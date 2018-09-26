@@ -263,6 +263,7 @@ static int		loop_realloc(
 	int		op;
 	int		max_alloc;
 
+	max_alloc = 0;
 	i = 0;
 	while (i < ctx->nb_tests) {
 		op = rand(2);
@@ -378,6 +379,9 @@ int			mem_test(enum mem_test_type type, int verbosity)
 		ctx.max_alloc = PAGE_SIZE;
 		ret = base_realloc(&ctx, verbosity);
 		break;
+	default:
+		eprintk("%s: default case\n", __func__);
+		return -1;
 	}
 
 	if (ret < 0) {
