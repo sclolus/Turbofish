@@ -6,6 +6,8 @@
 #include "vesa.h"
 #include "../memory/memory_manager.h"
 
+#ifndef NO_STACK_TRACE
+
 struct function_entry {
 	u32 eip;
 	char symbol;
@@ -87,19 +89,17 @@ static u32		trace(u32 ebp_value, u32 max_frame, u32 *eip_array)
 
 #define TRACE_MAX	10
 
+#endif
+
 extern void exit_panic(void);
 
 void	panic(const char *s, struct extended_registers reg)
 {
-	asm("cli");
-
-	fill_window(0x0, 0x0, 0xFF);
-
-	struct function_result	res;
 	u32			colomn;
 	u32			line;
-	u32			eip_array[TRACE_MAX];
-	u32			trace_size;
+
+	asm("cli");
+	fill_window(0x0, 0x0, 0xFF);
 
 	colomn = 38;
 	line = 10;
@@ -132,9 +132,14 @@ void	panic(const char *s, struct extended_registers reg)
 	set_cursor_location(colomn + 17, line + 10);
 	eprintk("EIP: 0x%.8x  CS: 0x%.4hx", reg.eip, reg.cs);
 
+#ifndef NO_STACK_TRACE
 	/*
 	 * stack trace
 	 */
+	struct function_result	res;
+	u32			eip_array[TRACE_MAX];
+	u32			trace_size;
+
 	set_cursor_location(colomn, line + 12);
 	printk("dumping core:");
 
@@ -150,12 +155,15 @@ void	panic(const char *s, struct extended_registers reg)
 		printk("%p  [EIP - %#.4x]  %s",
 				eip_array[i], res.offset, res.s);
 	}
+#endif
 
 	set_cursor_location(colomn, line + 27);
 	eprintk("Press CTRL+ALT+DEL to restart your computer. If you do this,");
 	set_cursor_location(colomn, line + 28);
 	eprintk("you will loose any unsaved information in all open "
 		"applications.");
+
+	refresh_screen();
 
 	asm_paging_disable();
 

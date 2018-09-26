@@ -23,7 +23,7 @@ ifeq ($(UNAME_S),Linux)
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2 -D NO_STACK_TRACE
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
