@@ -87,16 +87,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	}
 
 	/*
-	 * Initialize 8254 PIT, clock on IRQ0
-	 */
-	asm_pit_init(PIT_FREQUENCY);
-
-	/*
-	 * Initialize PIC, Hardware interrupt chip
-	 */
-	init_pic();
-
-	/*
 	 * Fill background image
 	 */
 	int width;
@@ -110,7 +100,15 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	bmp_to_framebuffer();
 	refresh_screen();
 
+	/*
+	 * Initialize 8254 PIT, clock on IRQ0
+	 */
+	asm_pit_init(PIT_FREQUENCY);
 
+	/*
+	 * Initialize PIC, Hardware interrupt chip
+	 */
+	init_pic();
 
 
 	g_kernel_io_ctx.term_mode = boot;
@@ -147,24 +145,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			vesa_ctx.mode.framebuffer);
 
 	printk("{white}Initialize IDT: ");
-//	init_idt();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize PIC: ");
-//	init_pic();
 	printk("{green}OK\n{eoc}");
 
 	printk("{white}Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);
-
-/*
-	if (init_paging(avalaible_mem) == -1) {
-		printk("{red}FAIL\n{eoc}");
-		return ;
-	}
-*/
 	printk("{green}OK\n{eoc}");
-
 
 	mem_test(k_family, 0);
 	mem_test(v_family, 0);
