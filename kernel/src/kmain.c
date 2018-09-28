@@ -110,13 +110,20 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	 */
 	init_pic();
 
-
 	g_kernel_io_ctx.term_mode = boot;
 
-	printk("{white}Kernel loaded: {green}OK\n{eoc}");
-	printk("{white}VBE initialized: {green}OK\n{eoc}");
-	printk("{white}GDT loaded: {green}OK\n{eoc}");
-	printk("{white}Available graphic mode:\n{eoc}");
+	printk("Kernel loaded: {green}OK\n{eoc}");
+	printk("VBE initialized: {green}OK\n{eoc}");
+	printk("GDT loaded: {green}OK\n{eoc}");
+
+	printk("vesa signature: {green}%c%c%c%c{eoc}"
+			" vbe version: {green}%hhx.%hhx{eoc}\n",
+			vesa_ctx.global_info.vesa_Signature[0],
+			vesa_ctx.global_info.vesa_Signature[1],
+			vesa_ctx.global_info.vesa_Signature[2],
+			vesa_ctx.global_info.vesa_Signature[3],
+			(vesa_ctx.global_info.vesa_version >> 8) & 0xFF,
+			vesa_ctx.global_info.vesa_version & 0xFF);
 
 	struct vesa_graphic_mode_list *vgml =
 		&vesa_ctx.mode_list;
@@ -132,25 +139,24 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	if (i % max_cap != 0)
 		printk("\n");
 	printk("{eoc}");
-
-	printk("{white}Selected mode: {green}%#x\n{eoc}", VBE_MODE);
-	printk("-> width: {green}%hu{eoc}, height:"
-			" {green}%hu{eoc}, bpp: {green}%hhu{eoc}"
+	printk("selected mode: {green}%#x\n{eoc}", VBE_MODE);
+	printk("width: {green}%hu{eoc} height:"
+			" {green}%hu{eoc} bpp: {green}%hhu{eoc}"
 			" pitch: {green}%hu{eoc}\n",
 			vesa_ctx.mode.width,
 			vesa_ctx.mode.height,
 			vesa_ctx.mode.bpp,
 			vesa_ctx.mode.pitch);
-	printk("-> linear frame buffer location: {green}%#x{eoc}\n",
+	printk("linear frame buffer location: {green}%#x{eoc}\n",
 			vesa_ctx.mode.framebuffer);
 
-	printk("{white}Initialize IDT: ");
+	printk("Initialize IDT: ");
 	printk("{green}OK\n{eoc}");
 
-	printk("{white}Initialize PIC: ");
+	printk("Initialize PIC: ");
 	printk("{green}OK\n{eoc}");
 
-	printk("{white}Initialize Paging with %u ko of available memory: ",
+	printk("Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);
 	printk("{green}OK\n{eoc}");
 
@@ -160,7 +166,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	printk("%u page fault has triggered\n", get_nb_page_fault());
 
-	printk("{white}Enable interupt: {green}OK{eoc}\n");
+	printk("Enable interupt: {green}OK{eoc}\n");
 
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
@@ -170,7 +176,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	refresh_screen();
 	asm("sti");
-
 
 	u32 size = 1024 * 768 * 4;
 
@@ -189,6 +194,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 			printk("FPS: %0.4u\n", res);
 		old_res = res;
 	}
+
 	return;
 }
 

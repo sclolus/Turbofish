@@ -141,7 +141,7 @@ exit_panic_begin_sub_sequence:
 
 ; wait CTRL + ALT + DEL keychain
 ; @DOC: http://www.ctyme.com/intr/int-16.htm
-.exit_panic_key_loop_ctrl_alt_del
+.exit_panic_key_loop_ctrl_alt_del:
     mov ah, 0x22
     mov al, 1
     mov ebx, 0x0708
@@ -168,7 +168,7 @@ exit_panic_begin_sub_sequence:
 
 ; if reboot fail, dont do anything
     cli
-.exit_panic_end_loop
+.exit_panic_end_loop:
     hlt
     jmp .exit_panic_end_loop
 

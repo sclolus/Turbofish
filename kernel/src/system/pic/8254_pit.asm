@@ -118,7 +118,7 @@ asm_pit_isr:
     sub eax, US_IN_SEC
     add dword [pit_time_sec], 1
 
-.next
+.next:
     mov dword [pit_time_usec], eax
 
     mov al, 0x20

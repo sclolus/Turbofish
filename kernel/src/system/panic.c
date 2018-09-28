@@ -43,7 +43,6 @@ static struct function_result	get_function_name(u32 eip)
 	return res;
 }
 
-
 /*
  * each function store the EBP of the previous function into stack
  * push EBP		push EBP of the previous function
