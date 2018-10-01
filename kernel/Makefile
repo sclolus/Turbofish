@@ -123,7 +123,7 @@ VPATH += src/math
 HEADERS += math
 
 # kernel_io
-SRC_C_KERNEL += write
+SRC_C_KERNEL += write k_tty
 SRC_ASM_KERNEL +=
 VPATH += src/kernel_io
 HEADERS += kernel_io

@@ -67,6 +67,10 @@ void	process_keyboard(u8 scancode)
 		printk("time:%.4u.%.6u\n", tv.sec, tv.usec);
 		break;
 	}
+	case 62: {
+		refresh_screen();
+		break;
+	}
 	default:
 		if (scancode & 0x80)
 			break;

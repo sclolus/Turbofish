@@ -2,8 +2,11 @@
 # include "kernel_io.h"
 # include "vesa.h"
 # include "libft.h"
+# include "libasm_i386.h"
 
 #define MODIFIER_QUANTITY	13
+
+extern u32 g_cur_loc;
 
 struct modifier_list {
 	char *string;
@@ -26,9 +29,6 @@ static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[42m", 0x7FFF00}		// light green
 };
 
-u8 mega_buf[4096];
-u32 idx = 0;
-
 u32	extract_modifier(const u8 *buf)
 {
 	int l;
@@ -45,6 +45,64 @@ u32	extract_modifier(const u8 *buf)
 	return 0;
 }
 
+static void	update_line(u32 location)
+{
+	sse2_memcpy(
+			(void *)location + vesa_ctx.mode.framebuffer,
+			(void *)location + DB_FRAMEBUFFER_ADDR,
+			vesa_ctx.mode.pitch * CHAR_HEIGHT);
+}
+
+static void	test_scroll(void)
+{
+	if (g_cur_loc < (vesa_ctx.mode.pitch * vesa_ctx.mode.height))
+		return ;
+
+	fill_tty_background(g_kernel_io_ctx.current_tty);
+	set_cursor_location(0, 0);
+	copy_tty_content(g_kernel_io_ctx.current_tty);
+	refresh_screen();
+
+
+
+	g_cur_loc -= vesa_ctx.mode.pitch - CHAR_HEIGHT;
+}
+
+void	write_char(u8 c, int direct)
+{
+	if (direct == 0)
+		add_tty_char(c);
+
+	if (c == '\n') {
+
+		g_cur_loc -= g_cur_loc % (vesa_ctx.mode.pitch);
+		if (direct == 0) {
+			update_line(g_cur_loc);
+			new_tty_line();
+		}
+
+		g_cur_loc += CHAR_HEIGHT * vesa_ctx.mode.pitch;
+		if (direct == 0)
+			test_scroll();
+		return ;
+	}
+	if (direct == 0)
+		test_scroll();
+
+	graphic_putchar(c);
+
+	g_cur_loc += vesa_ctx.mode.bpp;
+	if (g_cur_loc % vesa_ctx.mode.pitch == 0) {
+
+		g_cur_loc -= vesa_ctx.mode.pitch;
+		if (direct == 0) {
+			update_line(g_cur_loc);
+			new_tty_line();
+		}
+		g_cur_loc += CHAR_HEIGHT * vesa_ctx.mode.pitch;
+	}
+}
+
 s32	write(s32 fd, const void *buf, u32 count)
 {
 	u8 *_buf;
@@ -53,20 +111,21 @@ s32	write(s32 fd, const void *buf, u32 count)
 	_buf = (u8 *)buf;
 	switch (g_kernel_io_ctx.term_mode) {
 	case boot:
+		/*
+		 * wanted fall
+		 */
+	case kernel:
 		for (u32 i = 0; i < count; i++) {
 			if (_buf[i] == '\x1B') {
 
 				u8 o = extract_modifier(_buf + i);
 				for (int j = 0; j < (o + 1); j++)
-					mega_buf[idx++] = _buf[i + j];
+					add_tty_char(_buf[i + j]);
 				i += o;
 			} else {
-				mega_buf[idx++] = _buf[i];
-				graphic_putchar(_buf[i]);
+				write_char(_buf[i], 0);
 			}
 		}
-		break;
-	case kernel:
 		break;
 	case user:
 		break;
@@ -76,22 +135,14 @@ s32	write(s32 fd, const void *buf, u32 count)
 	return 0;
 }
 
-s32	write_mega(void)
+s32	write_direct(s32 fd, const u8 *buf, u32 count)
 {
-	u32 i;
-
-	i = 0;
-	while (i < idx) {
-		if (mega_buf[i] == '\x1B') {
-			i += extract_modifier(mega_buf + i) + 1;
-		} else {
-			graphic_putchar((const u8)mega_buf[i]);
-			i++;
-		}
+	for (u32 i = 0; i < count; i++) {
+		if (buf[i] == '\x1B') {
+			i += extract_modifier(buf + i);
+		} else
+			write_char(buf[i], 1);
 	}
+	(void)fd;
 	return 0;
-}
-
-void	clear_buf(void)
-{
 }

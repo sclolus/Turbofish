@@ -87,20 +87,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	}
 
 	/*
-	 * Fill background image
-	 */
-	int width;
-	int height;
-	bmp_load(
-			(u8 *)&_binary_medias_univers_bmp_start,
-			&width,
-			&height,
-			NULL);
-
-	bmp_to_framebuffer();
-	refresh_screen();
-
-	/*
 	 * Initialize 8254 PIT, clock on IRQ0
 	 */
 	asm_pit_init(PIT_FREQUENCY);
@@ -110,10 +96,24 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	 */
 	init_pic();
 
-	g_kernel_io_ctx.term_mode = boot;
+	/*
+	 * load background image
+	 */
+	int width;
+	int height;
+	u8 *img = bmp_load(
+			(u8 *)&_binary_medias_univers_bmp_start,
+			&width,
+			&height,
+			NULL);
 
-	printk("Kernel loaded: {green}OK\n{eoc}");
+	init_kernel_io();
+	struct k_tty *tty = create_tty(img, 0xFFFFFF);
+	select_tty(tty);
+
+	printk("Kernel loaded: {green}OK{eoc}\n");
 	printk("VBE initialized: {green}OK\n{eoc}");
+
 	printk("GDT loaded: {green}OK\n{eoc}");
 
 	printk("vesa signature: {green}%c%c%c%c{eoc}"
@@ -139,6 +139,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	if (i % max_cap != 0)
 		printk("\n");
 	printk("{eoc}");
+
 	printk("selected mode: {green}%#x\n{eoc}", VBE_MODE);
 	printk("width: {green}%hu{eoc} height:"
 			" {green}%hu{eoc} bpp: {green}%hhu{eoc}"
@@ -174,29 +175,11 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
 		", F3 for clock\n");
 
-	refresh_screen();
 	asm("sti");
+	//fill_window(0, 0, 0);
 
-	u32 size = 1024 * 768 * 4;
-
-	char *a = kmalloc(size);
-	char *b = kmalloc(size);
-	(void)a;
-	(void)b;
-
-	u32 old_res = 1;
-	while (true) {
-		//sse2_memcpy(a, b, size);
-		set_cursor_location(0, 0);
-		write_mega();
-		//sprintk(a, "LEs %i sangliers sont %p %p %p\n", 12, (void *)0xFE004DAA, (void *)0x01, (void *)0x1000);
-		u32 res = benchmark();
-		if (res != old_res) {
-			printk("FPS: %0.4u\n", res);
-			refresh_screen();
-		}
-		old_res = res;
-	}
+	//select_tty(tty);
+	while (1);
 
 	return;
 }
