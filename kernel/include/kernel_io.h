@@ -16,4 +16,7 @@ struct kernel_io_ctx {
 
 s32	write(s32 fd, const void *buf, u32 size);
 
+s32	write_mega(void);
+void	clear_buf(void);
+
 #endif

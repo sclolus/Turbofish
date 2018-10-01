@@ -26,6 +26,9 @@ static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[42m", 0x7FFF00}		// light green
 };
 
+u8 mega_buf[4096];
+u32 idx = 0;
+
 u32	extract_modifier(const u8 *buf)
 {
 	int l;
@@ -51,12 +54,17 @@ s32	write(s32 fd, const void *buf, u32 count)
 	switch (g_kernel_io_ctx.term_mode) {
 	case boot:
 		for (u32 i = 0; i < count; i++) {
-			if (_buf[i] == '\x1B')
-				i += extract_modifier(_buf + i);
-			else
+			if (_buf[i] == '\x1B') {
+
+				u8 o = extract_modifier(_buf + i);
+				for (int j = 0; j < (o + 1); j++)
+					mega_buf[idx++] = _buf[i + j];
+				i += o;
+			} else {
+				mega_buf[idx++] = _buf[i];
 				graphic_putchar(_buf[i]);
+			}
 		}
-		//refresh_screen();
 		break;
 	case kernel:
 		break;
@@ -66,4 +74,24 @@ s32	write(s32 fd, const void *buf, u32 count)
 		break;
 	}
 	return 0;
+}
+
+s32	write_mega(void)
+{
+	u32 i;
+
+	i = 0;
+	while (i < idx) {
+		if (mega_buf[i] == '\x1B') {
+			i += extract_modifier(mega_buf + i) + 1;
+		} else {
+			graphic_putchar((const u8)mega_buf[i]);
+			i++;
+		}
+	}
+	return 0;
+}
+
+void	clear_buf(void)
+{
 }

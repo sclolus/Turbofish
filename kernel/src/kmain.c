@@ -187,11 +187,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	u32 old_res = 1;
 	while (true) {
 		//sse2_memcpy(a, b, size);
-		refresh_screen();
+		set_cursor_location(0, 0);
+		write_mega();
 		//sprintk(a, "LEs %i sangliers sont %p %p %p\n", 12, (void *)0xFE004DAA, (void *)0x01, (void *)0x1000);
 		u32 res = benchmark();
-		if (res != old_res)
+		if (res != old_res) {
 			printk("FPS: %0.4u\n", res);
+			refresh_screen();
+		}
 		old_res = res;
 	}
 

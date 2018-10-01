@@ -3,11 +3,12 @@ segment .data
 
 extern g_edi_offset
 
+GLOBAL text_color
 text_color: dd 0x00FFFFFF              ; default to blank
 
-%include "fonts/alpha.asm"
-
 segment .text
+
+%include "fonts/alpha.asm"
 
 GLOBAL set_text_color
 set_text_color:

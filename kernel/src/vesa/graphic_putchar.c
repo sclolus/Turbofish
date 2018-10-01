@@ -41,6 +41,55 @@ static void	test_scroll(void)
 	}
 }
 
+#define CHAR_WIDTH 8
+#define CHAR_HEIGHT 16
+#define CHAR_SHL 4
+
+extern u32 g_edi_offset;
+extern u8 _print_graphical_char_begin;
+extern u32 text_color;
+
+void		_display_char_24(u8 c, u8 *location)
+{
+	u8 *bitmap;
+	u8 line;
+
+	bitmap = (u8 *)&_print_graphical_char_begin + (c << CHAR_SHL);
+	for (int i = 0; i < CHAR_HEIGHT; i++) {
+		line = *bitmap;
+		for (int j = 0; j < CHAR_WIDTH; j++) {
+			if (line & 0x80) {
+				location[0] = text_color & 0xFF;
+				location[1] = (text_color >> 8) & 0xFF;
+				location[2] = (text_color >> 16) & 0xFF;
+			}
+			line <<= 1;
+			location += 3;
+		}
+		location += g_edi_offset;
+		bitmap++;
+	}
+}
+
+void		_display_char_32(u8 c, u32 *location)
+{
+	u8 *bitmap;
+	u8 line;
+
+	bitmap = (u8 *)&_print_graphical_char_begin + (c << 4);
+	for (int i = 0; i < CHAR_HEIGHT; i++) {
+		line = *bitmap;
+		for (int j = 0; j < CHAR_WIDTH; j++) {
+			if (line & 0x80)
+				*location = text_color;
+			line <<= 1;
+			location++;
+		}
+		location += g_edi_offset;
+		bitmap++;
+	}
+}
+
 // assume font is a 8 * 16 pixel bitmap
 // screen resolution must be sub multiple of 8 for width and 16 for height
 void		graphic_putchar(u8 c)
@@ -48,7 +97,9 @@ void		graphic_putchar(u8 c)
 	if (c >= 32) {
 		test_scroll();
 		if (vesa_ctx.mode.bpp == 24)
-			display_char_24(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
+			_display_char_24(
+					c,
+					(u8 *)(DB_FRAMEBUFFER_ADDR + g_cur_loc));
 		else
 			display_char_32(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
 		g_cur_loc += vesa_ctx.mode.bpp;
