@@ -1,5 +1,7 @@
+[BITS 32]
+segment .data
 GLOBAL _print_graphical_char_begin
-_print_graphical_char_begin: times 512 db 0 ; (16*32)
+_print_graphical_char_begin: times 512 db 0 ; (16 * 32)
 
 ; .graphical_char_space: 32
 db 0b00000000

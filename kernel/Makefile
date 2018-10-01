@@ -77,7 +77,7 @@ HEADERS += text_user_interface
 
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
-SRC_ASM_KERNEL += draw_line display_char
+SRC_ASM_KERNEL += draw_line alpha
 VPATH += src/vesa
 HEADERS += vesa
 

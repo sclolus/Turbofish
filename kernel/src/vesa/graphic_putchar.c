@@ -3,12 +3,15 @@
 #include "libft.h"
 #include "libasm_i386.h"
 
-extern void display_char_24(u8 c, u32 edi);
-extern void display_char_32(u8 c, u32 edi);
-
 static u32 g_cur_loc = 0;
+static u32 text_color = 0x00FFFFFF; // default to blank
 
-#define CHAR_HEIGHT	16
+#define CHAR_WIDTH 8
+#define CHAR_HEIGHT 16
+#define CHAR_SHL 4
+
+extern u32 g_edi_offset;
+extern u8 _print_graphical_char_begin;
 
 static void	test_scroll(void)
 {
@@ -41,15 +44,7 @@ static void	test_scroll(void)
 	}
 }
 
-#define CHAR_WIDTH 8
-#define CHAR_HEIGHT 16
-#define CHAR_SHL 4
-
-extern u32 g_edi_offset;
-extern u8 _print_graphical_char_begin;
-extern u32 text_color;
-
-void		_display_char_24(u8 c, u8 *location)
+static void	display_char_24(u8 c, u8 *location)
 {
 	u8 *bitmap;
 	u8 line;
@@ -71,7 +66,7 @@ void		_display_char_24(u8 c, u8 *location)
 	}
 }
 
-void		_display_char_32(u8 c, u32 *location)
+static void	display_char_32(u8 c, u32 *location)
 {
 	u8 *bitmap;
 	u8 line;
@@ -85,23 +80,31 @@ void		_display_char_32(u8 c, u32 *location)
 			line <<= 1;
 			location++;
 		}
-		location += g_edi_offset;
+		location += (g_edi_offset >> 2);
 		bitmap++;
 	}
 }
 
-// assume font is a 8 * 16 pixel bitmap
-// screen resolution must be sub multiple of 8 for width and 16 for height
+void		set_text_color(u32 color)
+{
+	text_color = color;
+}
+
+/*
+ * assume font is a 8 * 16 pixel bitmap
+ * screen resolution must be sub multiple of 8 for width and 16 for height
+ */
 void		graphic_putchar(u8 c)
 {
+	u8 *addr;
+
 	if (c >= 32) {
 		test_scroll();
+		addr = (u8 *)DB_FRAMEBUFFER_ADDR + g_cur_loc;
 		if (vesa_ctx.mode.bpp == 24)
-			_display_char_24(
-					c,
-					(u8 *)(DB_FRAMEBUFFER_ADDR + g_cur_loc));
+			display_char_24(c, addr);
 		else
-			display_char_32(c, DB_FRAMEBUFFER_ADDR + g_cur_loc);
+			display_char_32(c, (u32 *)addr);
 		g_cur_loc += vesa_ctx.mode.bpp;
 		if (g_cur_loc % vesa_ctx.mode.pitch == 0)
 			g_cur_loc += (CHAR_HEIGHT - 1) * vesa_ctx.mode.pitch;
