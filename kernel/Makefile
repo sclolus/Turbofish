@@ -146,18 +146,18 @@ all: pre-build target
 target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
-
 	nm -n $(NAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+
 	@echo MAINBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
-
 	nm -n $(NAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+
 	@echo POSTBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 
