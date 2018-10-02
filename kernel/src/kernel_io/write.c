@@ -6,7 +6,7 @@
 
 static u32 g_cur_loc;
 
-const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
+const struct modifier_list modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[0m",  0xFFFFFF },	// end of color
 	{ "\x1B[31m", 0xFF0000 },	// red
 	{ "\x1B[32m", 0x00FF00 },	// green
@@ -28,12 +28,12 @@ static u32	extract_modifier(const u8 *buf)
 
 	l = 0;
 	while (l < MODIFIER_QUANTITY) {
-		size_t len = strlen(g_modifier_list[l].string);
-		if (memcmp(g_modifier_list[l].string, buf, len) == 0) {
+		size_t len = strlen(modifier_list[l].string);
+		if (memcmp(modifier_list[l].string, buf, len) == 0) {
 			if (l != 0)
-				set_text_color(g_modifier_list[l].color);
+				set_text_color(modifier_list[l].color);
 			else
-				set_text_color(g_kernel_io_ctx.current_tty->
+				set_text_color(kernel_io_ctx.current_tty->
 						default_color);
 			return len - 1;
 		}
@@ -55,9 +55,9 @@ static void	test_scroll(void)
 	if (g_cur_loc < (vesa_ctx.mode.pitch * vesa_ctx.mode.height))
 		return ;
 
-	fill_tty_background(g_kernel_io_ctx.current_tty);
+	fill_tty_background(kernel_io_ctx.current_tty);
 	set_cursor_location(0, 0);
-	copy_tty_content(g_kernel_io_ctx.current_tty);
+	copy_tty_content(kernel_io_ctx.current_tty);
 	refresh_screen();
 
 	g_cur_loc -= vesa_ctx.mode.pitch - CHAR_HEIGHT;
@@ -107,7 +107,7 @@ s32	write(s32 fd, const void *buf, u32 count)
 
 	(void)fd;
 	_buf = (u8 *)buf;
-	switch (g_kernel_io_ctx.term_mode) {
+	switch (kernel_io_ctx.term_mode) {
 	case kernel:
 		for (u32 i = 0; i < count; i++) {
 			if (_buf[i] == '\x1B') {

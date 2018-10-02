@@ -17,8 +17,6 @@ GRUB MEMORY OCCUPATION
 
 #define LFB_BIT (1 << 14)
 
-u32 g_edi_offset = 0;
-
 static ptr_32	*convert_to_linear_address(u16 segment, u16 offset)
 {
 	return (ptr_32 *)((segment << 4) + offset);
@@ -72,7 +70,7 @@ s32		set_vbe(u16 selected_mode)
 		sizeof(struct vesa_mode_info));
 
 	// needed by ASM PUTCHAR
-	g_edi_offset = vesa_ctx.mode.pitch - vesa_ctx.mode.bpp;
+	vesa_ctx.edi_offset = vesa_ctx.mode.pitch - vesa_ctx.mode.bpp;
 
 	// re initialize GDT with Linear Frame Buffer address
 	init_gdt(vesa_ctx.mode.framebuffer);

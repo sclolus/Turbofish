@@ -8,7 +8,6 @@
  */
 static u32 text_color = 0x00FFFFFF;
 
-extern u32 g_edi_offset;
 extern u8 _print_graphical_char_begin;
 
 static void	display_char_24(u8 c, u8 *location)
@@ -28,7 +27,7 @@ static void	display_char_24(u8 c, u8 *location)
 			line <<= 1;
 			location += 3;
 		}
-		location += g_edi_offset;
+		location += vesa_ctx.edi_offset;
 		bitmap++;
 	}
 }
@@ -47,7 +46,7 @@ static void	display_char_32(u8 c, u32 *location)
 			line <<= 1;
 			location++;
 		}
-		location += (g_edi_offset >> 2);
+		location += (vesa_ctx.edi_offset >> 2);
 		bitmap++;
 	}
 }

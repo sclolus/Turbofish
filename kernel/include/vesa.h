@@ -93,6 +93,7 @@ struct graphic_ctx {
 	struct vesa_global_info		global_info;
 	struct vesa_mode_info		mode;
 	struct vesa_graphic_mode_list	mode_list;
+	u32 edi_offset;
 } vesa_ctx;
 
 #endif

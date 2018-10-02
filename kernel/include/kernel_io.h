@@ -34,7 +34,7 @@ struct kernel_io_ctx {
 	struct k_tty *tty;
 	struct k_tty *current_tty;
 	size_t nb_tty;
-} g_kernel_io_ctx;
+} kernel_io_ctx;
 
 s32		write(s32 fd, const void *buf, u32 size);
 s32		write_direct(s32 fd, const u8 *buf, u32 size);

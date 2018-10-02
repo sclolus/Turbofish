@@ -1,5 +1,5 @@
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 8192
+IMAGE_SIZE = 9316
 
 all: $(IMG_DISK)
 	make -C kernel DEBUG=$(DEBUG) OPTIM=$(OPTIM)
