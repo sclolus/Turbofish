@@ -12,8 +12,8 @@ struct modifier_list {
 };
 
 enum term_mode {
-	boot = 0,
-	kernel,
+	kernel = 0,
+	panic_screen,
 	user
 };
 

@@ -136,6 +136,21 @@ panic:
 	return NULL;
 }
 
+static void	mark_color(struct k_tty *tty)
+{
+	for (size_t i = 0; i < MODIFIER_QUANTITY; i++) {
+		if (get_text_color() == g_modifier_list[i].color) {
+			size_t len = strlen(g_modifier_list[i].string);
+			memcpy(
+					tty->line[tty->nb_line].str,
+					 g_modifier_list[i].string,
+					 len
+			);
+			tty->line[tty->nb_line].nb_char += len;
+		}
+	}
+}
+
 void		*new_tty_line()
 {
 	struct k_tty *tty;
@@ -154,20 +169,8 @@ void		*new_tty_line()
 	tty->line[tty->nb_line].str = kmalloc(sizeof(u8) * 16);
 	if (tty->line[tty->nb_line].str == NULL)
 		goto panic;
-	if (get_text_color() != tty->default_color) {
-		for (size_t i = 0; i < MODIFIER_QUANTITY; i++) {
-			if (get_text_color() == g_modifier_list[i].color) {
-				size_t len = strlen(g_modifier_list[i].string);
-				memcpy(
-						tty->line[tty->nb_line].str,
-						 g_modifier_list[i].string,
-						 len
-				);
-				tty->line[tty->nb_line].nb_char += len;
-			}
-		}
-	}
-
+	if (get_text_color() != tty->default_color)
+		mark_color(tty);
 	return tty->line;
 panic:
 	return NULL;

@@ -99,6 +99,9 @@ void	panic(const char *s, struct extended_registers reg)
 	u32			line;
 
 	asm("cli");
+
+	g_kernel_io_ctx.term_mode = panic_screen;
+
 	fill_window(0x0, 0x0, 0xFF);
 
 	colomn = 38;

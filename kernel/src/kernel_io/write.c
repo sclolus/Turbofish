@@ -4,7 +4,7 @@
 # include "libft.h"
 # include "libasm_i386.h"
 
-u32 g_cur_loc;
+static u32 g_cur_loc;
 
 const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[0m",  0xFFFFFF },	// end of color
@@ -22,7 +22,7 @@ const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[42m", 0x7FFF00}		// light green
 };
 
-u32	extract_modifier(const u8 *buf)
+static u32	extract_modifier(const u8 *buf)
 {
 	int l;
 
@@ -60,12 +60,10 @@ static void	test_scroll(void)
 	copy_tty_content(g_kernel_io_ctx.current_tty);
 	refresh_screen();
 
-
-
 	g_cur_loc -= vesa_ctx.mode.pitch - CHAR_HEIGHT;
 }
 
-void	write_char(u8 c, int direct)
+static void	write_char(u8 c, int direct)
 {
 	if (direct == 0)
 		add_tty_char(c);
@@ -100,6 +98,9 @@ void	write_char(u8 c, int direct)
 	}
 }
 
+/*
+ * Common write method
+ */
 s32	write(s32 fd, const void *buf, u32 count)
 {
 	u8 *_buf;
@@ -107,10 +108,6 @@ s32	write(s32 fd, const void *buf, u32 count)
 	(void)fd;
 	_buf = (u8 *)buf;
 	switch (g_kernel_io_ctx.term_mode) {
-	case boot:
-		/*
-		 * wanted fall
-		 */
 	case kernel:
 		for (u32 i = 0; i < count; i++) {
 			if (_buf[i] == '\x1B') {
@@ -124,6 +121,9 @@ s32	write(s32 fd, const void *buf, u32 count)
 			}
 		}
 		break;
+	case panic_screen:
+		write_direct(fd, (u8 *)buf, count);
+		break;
 	case user:
 		break;
 	default:
@@ -132,6 +132,9 @@ s32	write(s32 fd, const void *buf, u32 count)
 	return 0;
 }
 
+/*
+ * Direct write into the double frame buffer
+ */
 s32	write_direct(s32 fd, const u8 *buf, u32 count)
 {
 	for (u32 i = 0; i < count; i++) {
@@ -144,6 +147,9 @@ s32	write_direct(s32 fd, const u8 *buf, u32 count)
 	return 0;
 }
 
+/*
+ * Manually set the cursor location
+ */
 int	set_cursor_location(u32 x, u32 y)
 {
 	if (x >= vesa_ctx.mode.width >> 3)
