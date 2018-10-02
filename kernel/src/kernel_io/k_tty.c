@@ -5,6 +5,8 @@
 #include "libft.h"
 #include "libasm_i386.h"
 
+extern const struct modifier_list g_modifier_list[MODIFIER_QUANTITY];
+
 void		init_kernel_io(void)
 {
 	g_kernel_io_ctx.term_mode = kernel;
@@ -23,6 +25,7 @@ struct k_tty	*create_tty(u8 *background_img, u32 default_color)
 			sizeof(struct k_tty) * g_kernel_io_ctx.nb_tty);
 	if (g_kernel_io_ctx.tty == NULL)
 		goto panic;
+
 	tty = &g_kernel_io_ctx.tty[g_kernel_io_ctx.nb_tty - 1];
 	tty->background_img = background_img;
 	tty->default_color = default_color;
@@ -30,16 +33,19 @@ struct k_tty	*create_tty(u8 *background_img, u32 default_color)
 	tty->line = kmalloc(sizeof(struct k_line) * 16);
 	if (tty->line == NULL)
 		goto panic;
+
 	tty->line[0].nb_char = 0;
 	tty->line[0].str = kmalloc(sizeof(u8) * 16);
 	if (tty->line[0].str == NULL)
 		goto panic;
+
 	return tty;
+
 panic:
 	return NULL;
 }
 
-static int	memmove_tty(size_t i)
+static int	memmove_tty(u32 i)
 {
 	g_kernel_io_ctx.nb_tty -= 1;
 	while (i < g_kernel_io_ctx.nb_tty) {
@@ -53,22 +59,20 @@ static int	memmove_tty(size_t i)
 	return 0;
 }
 
-int		remove_tty(struct k_tty *tty)
+int		remove_tty(u32 index)
 {
-	if (tty == g_kernel_io_ctx.current_tty)
+	struct k_tty *tty;
+
+	if (index >= g_kernel_io_ctx.nb_tty)
 		return -1;
 
-	for (size_t i = 0; i < g_kernel_io_ctx.nb_tty; i++) {
-		if (tty == &g_kernel_io_ctx.tty[i]) {
+	tty = &g_kernel_io_ctx.tty[index];
 
-			for (size_t line = 0; line < tty->nb_line; line++)
-				kfree(tty->line[line].str);
-			kfree(tty->line);
+	for (size_t line = 0; line < tty->nb_line; line++)
+		kfree(tty->line[line].str);
+	kfree(tty->line);
 
-			return memmove_tty(i);
-		}
-	}
-	return -1;
+	return memmove_tty(index);
 }
 
 void		copy_tty_content(struct k_tty *tty)
@@ -93,24 +97,20 @@ void		fill_tty_background(struct k_tty *tty)
 			* vesa_ctx.mode.height);
 }
 
-int		select_tty(struct k_tty *tty)
+int		select_tty(u32 index)
 {
-	if (tty == NULL)
+	if (index >= g_kernel_io_ctx.nb_tty)
 		return -1;
 
-	for (size_t i = 0; i < g_kernel_io_ctx.nb_tty; i++) {
-		if (tty == &g_kernel_io_ctx.tty[i]) {
-			g_kernel_io_ctx.current_tty = tty;
+	g_kernel_io_ctx.current_tty = &g_kernel_io_ctx.tty[index];
 
-			fill_tty_background(tty);
+	fill_tty_background(g_kernel_io_ctx.current_tty);
 
-			set_cursor_location(0, 0);
-			copy_tty_content(tty);
-			refresh_screen();
-			return 0;
-		}
-	}
-	return -1;
+	set_cursor_location(0, 0);
+	set_text_color(g_kernel_io_ctx.current_tty->default_color);
+	copy_tty_content(g_kernel_io_ctx.current_tty);
+	refresh_screen();
+	return 0;
 }
 
 void		*add_tty_char(u8 c)
@@ -135,29 +135,6 @@ void		*add_tty_char(u8 c)
 panic:
 	return NULL;
 }
-
-#define MODIFIER_QUANTITY	13
-
-struct modifier_list {
-	char *string;
-	u32 color;
-};
-
-static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
-	{ "\x1B[38m", 0x0},		// black
-	{ "\x1B[0m",  0xFFFFFF },	// end of color
-	{ "\x1B[31m", 0xFF0000 },	// red
-	{ "\x1B[32m", 0x00FF00 },	// green
-	{ "\x1B[33m", 0xFFFF00 },	// yellow
-	{ "\x1B[34m", 0x0000FF },	// blue
-	{ "\x1B[35m", 0xFF00FF },	// magenta
-	{ "\x1B[36m", 0x00FFFF },	// cyan
-	{ "\x1B[37m", 0xFFFFFF },	// white
-	{ "\x1B[39m", 0xFFA500},	// orange
-	{ "\x1B[40m", 0x808080},	// grey
-	{ "\x1B[41m", 0x00BFFF},	// deep blue
-	{ "\x1B[42m", 0x7FFF00}		// light green
-};
 
 void		*new_tty_line()
 {

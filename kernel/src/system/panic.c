@@ -4,6 +4,7 @@
 #include "i386_type.h"
 #include "libft.h"
 #include "vesa.h"
+#include "kernel_io.h"
 #include "../memory/memory_manager.h"
 
 #ifndef NO_STACK_TRACE

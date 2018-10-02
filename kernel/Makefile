@@ -143,7 +143,7 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 all: pre-build target
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a libasm_i386/libasm_i386.a
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o $(OBJ_DIR)/asterix.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 
@@ -183,12 +183,16 @@ libasm_i386/libasm_i386.a:
 $(OBJ_DIR)/univers.o: medias/univers.bmp
 	ld $(LDFLAGS) -r -b binary $< -o $@
 
+$(OBJ_DIR)/asterix.o: medias/asterix.bmp
+	ld $(LDFLAGS) -r -b binary $< -o $@
+
 clean:
 	make -C $(LIBFT)/ clean
 	make -C $(LIBASM_I386)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o
+	rm -f $(OBJ_DIR)/asterix.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 
 fclean:
@@ -197,6 +201,7 @@ fclean:
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o
+	rm -f $(OBJ_DIR)/asterix.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 	rm -f $(NAME)
 

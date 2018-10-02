@@ -3,8 +3,10 @@
 #include "libft.h"
 #include "libasm_i386.h"
 
-u32 g_cur_loc = 0;
-static u32 text_color = 0x00FFFFFF; // default to blank
+/*
+ * default color to blank
+ */
+static u32 text_color = 0x00FFFFFF;
 
 extern u32 g_edi_offset;
 extern u8 _print_graphical_char_begin;
@@ -65,27 +67,13 @@ u32		get_text_color(void)
  * screen resolution must be sub multiple of 8 for width and 16 for height
  */
 
-int		graphic_putchar(u8 c)
+int		graphic_putchar(u8 c, u8 *addr)
 {
-	u8 *addr;
-
 	if (c >= 32) {
-		addr = (u8 *)DB_FRAMEBUFFER_ADDR + g_cur_loc;
 		if (vesa_ctx.mode.bpp == 24)
 			display_char_24(c, addr);
 		else
 			display_char_32(c, (u32 *)addr);
 	}
-	return 0;
-}
-
-int		set_cursor_location(u32 x, u32 y)
-{
-	if (x >= vesa_ctx.mode.width >> 3)
-		return -1;
-	if (y >= vesa_ctx.mode.height >> 4)
-		return -1;
-	g_cur_loc = (x * vesa_ctx.mode.bpp)
-			+ (y * vesa_ctx.mode.pitch * CHAR_HEIGHT);
 	return 0;
 }

@@ -4,17 +4,9 @@
 # include "libft.h"
 # include "libasm_i386.h"
 
-#define MODIFIER_QUANTITY	13
+u32 g_cur_loc;
 
-extern u32 g_cur_loc;
-
-struct modifier_list {
-	char *string;
-	int color;
-};
-
-static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
-	{ "\x1B[38m", 0x0},		// black
+const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[0m",  0xFFFFFF },	// end of color
 	{ "\x1B[31m", 0xFF0000 },	// red
 	{ "\x1B[32m", 0x00FF00 },	// green
@@ -23,6 +15,7 @@ static const struct modifier_list g_modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[35m", 0xFF00FF },	// magenta
 	{ "\x1B[36m", 0x00FFFF },	// cyan
 	{ "\x1B[37m", 0xFFFFFF },	// white
+	{ "\x1B[38m", 0x0},		// black
 	{ "\x1B[39m", 0xFFA500},	// orange
 	{ "\x1B[40m", 0x808080},	// grey
 	{ "\x1B[41m", 0x00BFFF},	// deep blue
@@ -37,7 +30,11 @@ u32	extract_modifier(const u8 *buf)
 	while (l < MODIFIER_QUANTITY) {
 		size_t len = strlen(g_modifier_list[l].string);
 		if (memcmp(g_modifier_list[l].string, buf, len) == 0) {
-			set_text_color(g_modifier_list[l].color);
+			if (l != 0)
+				set_text_color(g_modifier_list[l].color);
+			else
+				set_text_color(g_kernel_io_ctx.current_tty->
+						default_color);
 			return len - 1;
 		}
 		l++;
@@ -89,7 +86,7 @@ void	write_char(u8 c, int direct)
 	if (direct == 0)
 		test_scroll();
 
-	graphic_putchar(c);
+	graphic_putchar(c, (u8 *)(DB_FRAMEBUFFER_ADDR + g_cur_loc));
 
 	g_cur_loc += vesa_ctx.mode.bpp;
 	if (g_cur_loc % vesa_ctx.mode.pitch == 0) {
@@ -144,5 +141,16 @@ s32	write_direct(s32 fd, const u8 *buf, u32 count)
 			write_char(buf[i], 1);
 	}
 	(void)fd;
+	return 0;
+}
+
+int	set_cursor_location(u32 x, u32 y)
+{
+	if (x >= vesa_ctx.mode.width >> 3)
+		return -1;
+	if (y >= vesa_ctx.mode.height >> 4)
+		return -1;
+	g_cur_loc = (x * vesa_ctx.mode.bpp)
+			+ (y * vesa_ctx.mode.pitch * CHAR_HEIGHT);
 	return 0;
 }

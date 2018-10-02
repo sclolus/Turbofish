@@ -41,6 +41,7 @@ u32		benchmark(void)
  * Background bitmap
  */
 extern char _binary_medias_univers_bmp_start;
+extern char _binary_medias_asterix_bmp_start;
 
 /*
  * For the moment, only mode in 24bpp and 32bpp 1024x768 mode work
@@ -97,19 +98,30 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	init_pic();
 
 	/*
-	 * load background image
+	 * load background images and create K_TTY
 	 */
+	init_kernel_io();
+
 	int width;
 	int height;
-	u8 *img = bmp_load(
+	u8 *img;
+	img = bmp_load(
 			(u8 *)&_binary_medias_univers_bmp_start,
 			&width,
 			&height,
 			NULL);
+	create_tty(img, 0xFFFFFF);
+	create_tty(img, 0xFFFFFF);
+	create_tty(img, 0xFFFFFF);
 
-	init_kernel_io();
-	struct k_tty *tty = create_tty(img, 0xFFFFFF);
-	select_tty(tty);
+	img = bmp_load(
+			(u8 *)&_binary_medias_asterix_bmp_start,
+			&width,
+			&height,
+			NULL);
+	create_tty(img, 0xFF00FF);
+
+	select_tty(0);
 
 	printk("Kernel loaded: {green}OK{eoc}\n");
 	printk("VBE initialized: {green}OK\n{eoc}");
@@ -172,15 +184,10 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
-	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
-		", F3 for clock\n");
+	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 to F4 to change k_tty,"
+		" F5 for the clock, and F6 and F7 to shake the kernel\n");
 
 	asm("sti");
-	//fill_window(0, 0, 0);
-
-	//select_tty(tty);
-	while (1);
-
 	return;
 }
 

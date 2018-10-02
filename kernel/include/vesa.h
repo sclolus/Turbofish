@@ -9,8 +9,7 @@
 void		refresh_screen(void);
 
 s32		set_vbe(u16 selected_mode);
-int		set_cursor_location(u32 x, u32 y);
-int		graphic_putchar(u8 c);
+int		graphic_putchar(u8 c, u8 *addr);
 
 void		fill_window(u8 red, u8 green, u8 blue);
 
