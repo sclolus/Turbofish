@@ -187,7 +187,14 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 to F4 to change k_tty,"
 		" F5 for the clock, and F6 and F7 to shake the kernel\n");
 
-	asm("sti");
+	/*
+	 * Wait until next interrupt
+	 */
+	asm("sti\n"
+	    "halt:\n"
+	    "hlt\n"
+	    "jmp halt");
+
 	return;
 }
 
