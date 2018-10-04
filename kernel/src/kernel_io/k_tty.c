@@ -7,6 +7,9 @@
 
 extern const struct modifier_list modifier_list[MODIFIER_QUANTITY];
 
+/*
+ * Kernel IO initialization
+ */
 void		init_kernel_io(void)
 {
 	kernel_io_ctx.term_mode = kernel;
@@ -15,6 +18,9 @@ void		init_kernel_io(void)
 	kernel_io_ctx.nb_tty = 0;
 }
 
+/*
+ * Create a new Kernel TTY instance
+ */
 struct k_tty	*create_tty(u8 *background_img, u32 default_color)
 {
 	struct k_tty *tty;
@@ -59,6 +65,9 @@ static int	memmove_tty(u32 i)
 	return 0;
 }
 
+/*
+ * Remove definitively a Kernel TTY instance
+ */
 int		remove_tty(u32 index)
 {
 	struct k_tty *tty;
@@ -75,6 +84,9 @@ int		remove_tty(u32 index)
 	return memmove_tty(index);
 }
 
+/*
+ * Fill the DB FRAMEBUFFER with the string content of a TTY
+ */
 void		copy_tty_content(struct k_tty *tty)
 {
 	size_t first_line;
@@ -88,6 +100,9 @@ void		copy_tty_content(struct k_tty *tty)
 		write_direct(1, tty->line[i].str, tty->line[i].nb_char);
 }
 
+/*
+ * Fill the DB FRAMEBUFFER with the background image of a TTY
+ */
 void		fill_tty_background(struct k_tty *tty)
 {
 	sse2_memcpy(
@@ -97,6 +112,9 @@ void		fill_tty_background(struct k_tty *tty)
 			* vesa_ctx.mode.height);
 }
 
+/*
+ * Select a TTY
+ */
 int		select_tty(u32 index)
 {
 	if (index >= kernel_io_ctx.nb_tty)
@@ -113,6 +131,10 @@ int		select_tty(u32 index)
 	return 0;
 }
 
+/*
+ * Add a single character in a TTY string buffer
+ * The selected TTY pointed by select_tty() is the aim
+ */
 void		*add_tty_char(u8 c)
 {
 	struct k_tty *tty;
@@ -151,6 +173,10 @@ static void	mark_color(struct k_tty *tty)
 	}
 }
 
+/*
+ * Create a new empty line in a TTY string buffer
+ * The selected TTY pointed by select_tty() is the aim
+ */
 void		*new_tty_line()
 {
 	struct k_tty *tty;

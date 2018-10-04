@@ -22,6 +22,9 @@ const struct modifier_list modifier_list[MODIFIER_QUANTITY] = {
 	{ "\x1B[42m", 0x7FFF00}		// light green
 };
 
+/*
+ * Common extract modifier from string
+ */
 static u32	extract_modifier(const u8 *buf)
 {
 	int l;
@@ -42,6 +45,9 @@ static u32	extract_modifier(const u8 *buf)
 	return 0;
 }
 
+/*
+ * Copy a line chunk from DOUBLE FRAMEBUFFER to LINEAR FRAMEBUFFER
+ */
 static void	update_line(u32 location)
 {
 	sse2_memcpy(
@@ -50,6 +56,9 @@ static void	update_line(u32 location)
 			vesa_ctx.mode.pitch * CHAR_HEIGHT);
 }
 
+/*
+ * Test if a scroll is necessary and process it if it must be done
+ */
 static void	test_scroll(void)
 {
 	if (g_cur_loc < (vesa_ctx.mode.pitch * vesa_ctx.mode.height))
@@ -63,6 +72,9 @@ static void	test_scroll(void)
 	g_cur_loc -= vesa_ctx.mode.pitch - CHAR_HEIGHT;
 }
 
+/*
+ * Indirect write fill the tty buffer, Direct not.
+ */
 static void	write_char(u8 c, int direct)
 {
 	if (direct == 0)
@@ -100,6 +112,9 @@ static void	write_char(u8 c, int direct)
 
 /*
  * Common write method
+ * May be utilized like the WRITE SYSCALL in UNIX system, the PRINTK method
+ * use this function.
+ * All operation are recorded into tty structure
  */
 s32	write(s32 fd, const void *buf, u32 count)
 {
@@ -134,6 +149,8 @@ s32	write(s32 fd, const void *buf, u32 count)
 
 /*
  * Direct write into the double frame buffer
+ * The tty structure is not filled, that function may be utilized to refresh
+ * a tty content, or for an end screen like panic()
  */
 s32	write_direct(s32 fd, const u8 *buf, u32 count)
 {
@@ -149,6 +166,8 @@ s32	write_direct(s32 fd, const u8 *buf, u32 count)
 
 /*
  * Manually set the cursor location
+ * This function is not compatible with tty writing, it's only used for one
+ * screen write like panic()
  */
 int	set_cursor_location(u32 x, u32 y)
 {
