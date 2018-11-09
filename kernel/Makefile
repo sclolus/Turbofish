@@ -25,7 +25,7 @@ ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
 	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2 -fno-omit-frame-pointer
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
@@ -77,7 +77,7 @@ HEADERS += text_user_interface
 
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
-SRC_ASM_KERNEL += draw_line display_char
+SRC_ASM_KERNEL += draw_line alpha
 VPATH += src/vesa
 HEADERS += vesa
 
@@ -123,7 +123,7 @@ VPATH += src/math
 HEADERS += math
 
 # kernel_io
-SRC_C_KERNEL += write
+SRC_C_KERNEL += write k_tty
 SRC_ASM_KERNEL +=
 VPATH += src/kernel_io
 HEADERS += kernel_io
@@ -143,7 +143,7 @@ _HEADERS = $(addsuffix .h, $(__H__))
 
 all: pre-build target
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o libft/libft.a libasm_i386/libasm_i386.a
+target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o $(OBJ_DIR)/asterix.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	ld $(LDFLAGS) $^ -o $(NAME)
 	nm -n $(NAME) > nm.res
@@ -183,12 +183,16 @@ libasm_i386/libasm_i386.a:
 $(OBJ_DIR)/univers.o: medias/univers.bmp
 	ld $(LDFLAGS) -r -b binary $< -o $@
 
+$(OBJ_DIR)/asterix.o: medias/asterix.bmp
+	ld $(LDFLAGS) -r -b binary $< -o $@
+
 clean:
 	make -C $(LIBFT)/ clean
 	make -C $(LIBASM_I386)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o
+	rm -f $(OBJ_DIR)/asterix.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 
 fclean:
@@ -197,6 +201,7 @@ fclean:
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f $(OBJ_DIR)/univers.o
+	rm -f $(OBJ_DIR)/asterix.o
 	rm -f nm_map_gen nm.res src/system/nm.map
 	rm -f $(NAME)
 

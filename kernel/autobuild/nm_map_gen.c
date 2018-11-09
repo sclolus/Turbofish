@@ -319,14 +319,13 @@ int main(int argc, char *argv[])
 		int i = 0;
 		while (tab[i])
 			i++;
-		if (i != 3) {
+		if (i == 3) {
+			sprintf(final_buf, "\t{0x%s, '%s', \"%s\"},\n",
+					tab[0], tab[1], tab[2]);
+			write_line(fd_file_map, final_buf);
+		} else {
 			printf("bad size array\n");
-			return -1;
 		}
-
-		sprintf(final_buf, "\t{0x%s, '%s', \"%s\"},\n",
-				tab[0], tab[1], tab[2]);
-		write_line(fd_file_map, final_buf);
 
 		while (i--)
 			free(tab[i]);

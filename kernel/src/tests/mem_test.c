@@ -367,15 +367,15 @@ int			mem_test(enum mem_test_type type, int verbosity)
 
 	switch (type) {
 	case k_family:
-		printk("{white}K map memory group check: {eoc}");
+		printk("K map memory group check: ");
 		ret = base_test(&ctx, &kmmap, &kmunmap, verbosity);
 		break;
 	case v_family:
-		printk("{white}V map memory group check: {eoc}");
+		printk("V map memory group check: ");
 		ret = base_test(&ctx, &valloc, &vfree, verbosity);
 		break;
 	case k_sub_family:
-		printk("{white}K sub family check: {eoc}");
+		printk("K sub family check: ");
 		ctx.max_alloc = PAGE_SIZE;
 		ret = base_realloc(&ctx, verbosity);
 		break;

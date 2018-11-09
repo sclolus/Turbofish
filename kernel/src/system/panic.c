@@ -4,6 +4,7 @@
 #include "i386_type.h"
 #include "libft.h"
 #include "vesa.h"
+#include "kernel_io.h"
 #include "../memory/memory_manager.h"
 
 #ifndef NO_STACK_TRACE
@@ -98,6 +99,9 @@ void	panic(const char *s, struct extended_registers reg)
 	u32			line;
 
 	asm("cli");
+
+	kernel_io_ctx.term_mode = panic_screen;
+
 	fill_window(0x0, 0x0, 0xFF);
 
 	colomn = 38;

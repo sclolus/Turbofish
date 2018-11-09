@@ -5,7 +5,6 @@
 #include "dynamic_allocator.h"
 
 #include "libft.h"
-#include "libasm_i386.h"
 
 #ifdef DEBUG_IMAGE
 static void	paste_fileheader(struct bitmap *s)
@@ -83,12 +82,11 @@ static void	fill_image_32(
 	}
 }
 
-static u8	*img_buf = NULL;
-
-int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
+u8		*bmp_load(u8 *file_offset, int *width, int *height, int **data)
 {
 	struct bitmap	*img;
 	u8		*start;
+	u8		*img_buf;
 
 	img = (struct bitmap *)file_offset;
 
@@ -100,7 +98,7 @@ int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 	*height = img->bitmapinfoheader.height;
 	img_buf = (u8 *)kmalloc(vesa_ctx.mode.pitch * vesa_ctx.mode.height);
 	if (img_buf == NULL)
-		return -1;
+		return NULL;
 
 	start = (u8 *)img + img->fileheader.fileoffset_to_pixelarray;
 	if (vesa_ctx.mode.bpp == 24)
@@ -115,15 +113,6 @@ int		bmp_load(u8 *file_offset, int *width, int *height, int **data)
 				start,
 				*width,
 				*height);
-	refresh_screen();
 	(void)data;
-	return 0;
-}
-
-void		bmp_to_framebuffer(void)
-{
-	sse2_memcpy(
-			(u32 *)DB_FRAMEBUFFER_ADDR,
-			(void *)img_buf,
-			vesa_ctx.mode.pitch * vesa_ctx.mode.height);
+	return img_buf;
 }

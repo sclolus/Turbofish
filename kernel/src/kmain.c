@@ -41,6 +41,7 @@ u32		benchmark(void)
  * Background bitmap
  */
 extern char _binary_medias_univers_bmp_start;
+extern char _binary_medias_asterix_bmp_start;
 
 /*
  * For the moment, only mode in 24bpp and 32bpp 1024x768 mode work
@@ -87,20 +88,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	}
 
 	/*
-	 * Fill background image
-	 */
-	int width;
-	int height;
-	bmp_load(
-			(u8 *)&_binary_medias_univers_bmp_start,
-			&width,
-			&height,
-			NULL);
-
-	bmp_to_framebuffer();
-	refresh_screen();
-
-	/*
 	 * Initialize 8254 PIT, clock on IRQ0
 	 */
 	asm_pit_init(PIT_FREQUENCY);
@@ -110,10 +97,35 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	 */
 	init_pic();
 
-	g_kernel_io_ctx.term_mode = boot;
+	/*
+	 * load background images and create K_TTY
+	 */
+	init_kernel_io();
 
-	printk("Kernel loaded: {green}OK\n{eoc}");
+	int width;
+	int height;
+	u8 *img;
+	img = bmp_load(
+			(u8 *)&_binary_medias_univers_bmp_start,
+			&width,
+			&height,
+			NULL);
+	create_tty(img, 0xFFFFFF);
+	create_tty(img, 0xFFFFFF);
+	create_tty(img, 0xFFFFFF);
+
+	img = bmp_load(
+			(u8 *)&_binary_medias_asterix_bmp_start,
+			&width,
+			&height,
+			NULL);
+	create_tty(img, 0xFF00FF);
+
+	select_tty(0);
+
+	printk("Kernel loaded: {green}OK{eoc}\n");
 	printk("VBE initialized: {green}OK\n{eoc}");
+
 	printk("GDT loaded: {green}OK\n{eoc}");
 
 	printk("vesa signature: {green}%c%c%c%c{eoc}"
@@ -139,6 +151,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	if (i % max_cap != 0)
 		printk("\n");
 	printk("{eoc}");
+
 	printk("selected mode: {green}%#x\n{eoc}", VBE_MODE);
 	printk("width: {green}%hu{eoc} height:"
 			" {green}%hu{eoc} bpp: {green}%hhu{eoc}"
@@ -171,29 +184,16 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");
 
-	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 or F2 to shake the kernel"
-		", F3 for clock\n");
+	printk("{yellow}TIP OF THE DAY:{eoc} Press F1 to F4 to change k_tty,"
+		" F5 for the clock, and F6 and F7 to shake the kernel\n");
 
-	refresh_screen();
-	asm("sti");
-
-	u32 size = 1024 * 768 * 4;
-
-	char *a = kmalloc(size);
-	char *b = kmalloc(size);
-	(void)a;
-	(void)b;
-
-	u32 old_res = 1;
-	while (true) {
-		//sse2_memcpy(a, b, size);
-		refresh_screen();
-		//sprintk(a, "LEs %i sangliers sont %p %p %p\n", 12, (void *)0xFE004DAA, (void *)0x01, (void *)0x1000);
-		u32 res = benchmark();
-		if (res != old_res)
-			printk("FPS: %0.4u\n", res);
-		old_res = res;
-	}
+	/*
+	 * Wait until next interrupt
+	 */
+	asm("sti\n"
+	    "halt:\n"
+	    "hlt\n"
+	    "jmp halt");
 
 	return;
 }

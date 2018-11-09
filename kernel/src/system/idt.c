@@ -15,7 +15,7 @@ struct __attribute__ ((packed)) idt_seg {
 struct __attribute__ ((packed)) idt_ptr {
 	u16 limit;
 	u32 base;
-} g_idt_ptr;
+} idt_ptr;
 
 
 static int	initialize_idt_seg(u32 nb, u32 fn_addr, u16 select, u16 type)
@@ -126,8 +126,8 @@ void		init_idt(void)
 	initialize_idt_seg(32, (u32)&asm_pit_isr, 0x8, INTGATE);
 	initialize_idt_seg(33, (u32)&asm_keyboard_isr, 0x8, INTGATE);
 
-	g_idt_ptr.limit = IDT_SIZE << 3;
-	g_idt_ptr.base = IDT_ADDRESS;
+	idt_ptr.limit = IDT_SIZE << 3;
+	idt_ptr.base = IDT_ADDRESS;
 
-	asm("lidt (g_idt_ptr)");
+	asm("lidt (idt_ptr)");
 }

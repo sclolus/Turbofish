@@ -37,9 +37,7 @@ _start:
     call kmain                      ; kmain is called with this param
     add esp, 4
 
-.halt:
-    hlt                             ; halt the CPU until next interrupt
-    jmp .halt
+    jmp $
 
 set_sse2:
     push ebp

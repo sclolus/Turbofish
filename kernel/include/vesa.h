@@ -9,15 +9,14 @@
 void		refresh_screen(void);
 
 s32		set_vbe(u16 selected_mode);
-int		set_cursor_location(u32 x, u32 y);
-void		graphic_putchar(u8 c);
+int		graphic_putchar(u8 c, u8 *addr);
 
 void		fill_window(u8 red, u8 green, u8 blue);
 
-int		bmp_load(u8 *file_offset, int *width, int *height, int **data);
-void		bmp_to_framebuffer(void);
+u8		*bmp_load(u8 *file_offset, int *width, int *height, int **data);
 
-extern void	set_text_color(u32 pix_color);
+void		set_text_color(u32 pix_color);
+u32		get_text_color(void);
 extern void	draw_line(u32 x1, u32 y1, u32 x2, u32 y2);
 
 struct __attribute__ ((packed)) vesa_global_info {
@@ -81,6 +80,10 @@ struct __attribute__ ((packed)) vesa_mode_info {
 
 #define MAX_NB_VESA_MODE	128
 
+#define CHAR_WIDTH 8
+#define CHAR_HEIGHT 16
+#define CHAR_SHL 4
+
 struct vesa_graphic_mode_list {
 	u16		mode[MAX_NB_VESA_MODE];
 	u32		nb_mode;
@@ -90,6 +93,7 @@ struct graphic_ctx {
 	struct vesa_global_info		global_info;
 	struct vesa_mode_info		mode;
 	struct vesa_graphic_mode_list	mode_list;
+	u32 edi_offset;
 } vesa_ctx;
 
 #endif

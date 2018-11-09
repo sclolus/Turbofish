@@ -3,8 +3,7 @@
 #include "vesa.h"
 #include "libft.h"
 #include "system.h"
-
-extern u8	get_keymap(u32 offset);
+#include "kernel_io.h"
 
 #define MAJ_SCANCODE	0x36
 #define MAJ		0x1
@@ -51,31 +50,49 @@ void	process_keyboard(u8 scancode)
 		printk("(special_char)");
 		break;
 	case 59: {
-		wrapper_1();
+		select_tty(0);
 		break;
 	}
 	case 60: {
+		select_tty(1);
+		break;
+	}
+	case 61: {
+		select_tty(2);
+		break;
+	}
+	case 62: {
+		select_tty(3);
+		break;
+	}
+	case 63: {
+		struct timeval tv;
+		clock_gettime(&tv);
+		printk("time:%.4u.%.6u\n", tv.sec, tv.usec);
+		break;
+	}
+	case 64: {
+		wrapper_1();
+		break;
+	}
+	case 65: {
 		int z = 42;
 		z -= 42;
 		z = 3 / z;
 		printk("value of z: %i\n", z);
 		break;
 	}
-	case 61: {
-		struct timeval tv;
-		clock_gettime(&tv);
-		printk("time:%.4u.%.6u\n", tv.sec, tv.usec);
-		break;
-	}
 	default:
 		if (scancode & 0x80)
 			break;
+/*
 		if (keyboard_register & MAJ)
 			graphic_putchar(get_keymap((scancode << 2) + 1));
 		else if (keyboard_register & ALT)
 			graphic_putchar(get_keymap((scancode << 2) + 2));
 		else
 			graphic_putchar(get_keymap(scancode << 2));
+*/
 		break;
 	}
 }
