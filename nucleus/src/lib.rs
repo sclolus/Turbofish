@@ -40,7 +40,7 @@ pub unsafe extern "C" fn memset(s: *mut u8, c: i16, n: usize) -> *mut u8 {
 pub extern "C" fn kmain() {
     vga::clear_console();
 
-    unsafe { enable_interrupts() };
+//    unsafe { enable_interrupts() };
 
     kprintln!("Hello from Rust world!");
     kprint!("Hello");
