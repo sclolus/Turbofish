@@ -1,32 +1,33 @@
 IMG_DISK = image_disk.img
 IMAGE_SIZE = 9316
+LOOP_DEVICE = $(shell sudo losetup -f)
 
 all: $(IMG_DISK)
 	make -C nucleus DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 	sudo losetup -fP $(IMG_DISK)
-	sudo mount /dev/loop25p1 /mnt
+	sudo mount $(LOOP_DEVICE)p1 /mnt
 	sudo cp -vf nucleus/build/kernel.elf /mnt
 	sudo umount /mnt
-	sudo losetup -d /dev/loop25
+	sudo losetup -d $(LOOP_DEVICE)
 
 $(IMG_DISK):
 	dd if=/dev/zero of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)
 	( echo -e "o\nn\np\n1\n2048\n\nw\n") | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
-	sudo mkfs.ext2 /dev/loop25p1
-	sudo mount /dev/loop25p1 /mnt
-	echo "(hd0) /dev/loop25" > loop25device.map
-	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loop25device.map --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt /dev/loop25 -v
+	sudo mkfs.ext2 $(LOOP_DEVICE)p1
+	sudo mount $(LOOP_DEVICE)p1 /mnt
+	echo "(hd0) " $(LOOP_DEVICE) > loopdevice.map
+	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loopdevice.map --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt $(LOOP_DEVICE) -v
 	sudo cp -vf grub/grub.cfg /mnt/grub 
 	sudo umount /mnt
-	sudo losetup -d /dev/loop25
+	sudo losetup -d $(LOOP_DEVICE)
 
 clean:
 	make -C nucleus fclean
 
 fclean:
 	make -C nucleus fclean
-	rm -vf loop25device.map
+	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
 
 re: clean all
