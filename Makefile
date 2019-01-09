@@ -1,5 +1,5 @@
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 9316
+IMAGE_SIZE = 16384
 LOOP_DEVICE = $(shell sudo losetup -f)
 
 all: $(IMG_DISK)
