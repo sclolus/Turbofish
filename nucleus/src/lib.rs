@@ -5,7 +5,9 @@
 #![feature(compiler_builtins_lib)]
 
 pub mod support; // For Rust lang items
-use core::fmt::Arguments;
+
+// use core::fmt::Arguments;
+
 use core::fmt::write;
 use core::fmt::Write;
 use core::fmt::Result;
@@ -25,22 +27,46 @@ pub extern "C" fn kmain() {
     pos = putchar_vga(pos, 'D', 22);
     pos = putchar_vga(pos, '!', 23);
     pos = putstring_vga(pos, "LALA", 8);
-    let mut vga = Vga {};
-    write(&mut vga, format_args!("hello {:?}", 12));
+
+    let mut vga = Vga {width: 80, height: 25, x: 1, y: 4, color: 3};
+    write(&mut vga, format_args!("hello Banane\nElephant {:?} PI {:?}", 12, 3.14));
+//    write(&mut vga, format_args!("hello {:?}", 12)).unwrap();
+
     loop { }
 }
 
 struct Vga {
+    width:isize,
+    height:isize,
+    x:isize,
+    y:isize,
+    color:u8,
 }
 
 impl Write for Vga {
     fn write_str(&mut self, s: &str) -> Result {
-        putstring_vga(140, s, 8);
+        for c in s.as_bytes() {
+            match *c as char {
+                '\n' => {
+                    self.x = 1;
+                    self.y = self.y + 1;
+                }
+                _ => {
+                    putchar_vga(self.x - 1 + (self.y - 1) * self.width, *c as char, self.color);
+                    self.x = self.x + 1;
+                    if self.x > self.width {
+                        self.y = self.y + 1;
+                        self.x = 1;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 }
 
 fn putstring_vga(mut pos: isize, s:&str, color: u8) -> isize {
+
     for c in s.as_bytes() {
         pos = putchar_vga(pos, *c as char, color);
     }
