@@ -29,10 +29,23 @@ pub extern "C" fn kmain() {
     pos = putstring_vga(pos, "LALA", 8);
 
     let mut vga = Vga {width: 80, height: 25, x: 1, y: 4, color: 3};
-    write(&mut vga, format_args!("hello Banane\nElephant {:?} PI {:?}", 12, 3.14));
-//    write(&mut vga, format_args!("hello {:?}", 12)).unwrap();
+    let a : Option<u32>= None;
+
+//  write(&mut vga, format_args!("hello Banane\nElephant {:?} PI {:?}", a.unwrap(), 3.14)).unwrap();
+
+    write(&mut vga, format_args!("hello Banane\nElephant {:?} PI {:?}", 12, 3.14)).unwrap();
+    write(&mut vga, format_args!("hello {:?}", 12)).unwrap();
 
     loop { }
+}
+
+use core::panic::PanicInfo;
+#[panic_handler]
+#[no_mangle]
+fn panic(_info: &PanicInfo) -> ! {
+    let mut vga = Vga {width: 80, height: 25, x: 1, y: 4, color: 3};
+    write(&mut vga, format_args!("panic"));
+    loop {}
 }
 
 struct Vga {

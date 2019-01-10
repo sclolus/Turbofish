@@ -9,6 +9,14 @@ section .text
 
 extern kmain
 
+; Hack of _Unwind_Resume for Rust linking
+global _Unwind_Resume
+_Unwind_Resume:
+    push ebp
+    mov ebp, esp
+
+    jmp $
+
 global _start
 _start:
     cli                             ; block interrupts

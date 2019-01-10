@@ -9,12 +9,6 @@ fn panic_fmt() -> ! {
 #[lang = "begin_unwind"]
 pub extern "C" fn begin_unwind() {
 }*/
-use core::panic::PanicInfo;
-#[panic_handler]
-#[no_mangle]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn memcpy(dest: *mut u8,
