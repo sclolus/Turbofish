@@ -32,3 +32,18 @@ pub unsafe extern "C" fn memset(s: *mut u8, c: i16, n: usize) -> *mut u8 {
     }
     s
 }
+
+use crate::Vga;
+pub static mut vga: Vga = Vga {width: 80, height: 25, x: 1, y: 1, color: 3};
+
+#[macro_export]
+//#[stable(feature = "rust1", since = "1.0.0")]
+//#[allow_internal_unstable]
+macro_rules! println {
+    () => (print!("\n"));
+($($arg:tt)*) => ({
+    unsafe {
+        write(&mut support::vga, format_args!($($arg)*)).unwrap();
+    }
+})
+}

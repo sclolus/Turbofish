@@ -36,6 +36,8 @@ pub extern "C" fn kmain() {
     write(&mut vga, format_args!("hello Banane\nElephant {:?} PI {:?}", 12, 3.14)).unwrap();
     write(&mut vga, format_args!("hello {:?}", 12)).unwrap();
 
+    println!("test Println");
+
     loop { }
 }
 
@@ -48,7 +50,7 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-struct Vga {
+pub struct Vga {
     width:isize,
     height:isize,
     x:isize,
