@@ -128,7 +128,7 @@ init_gdt:
 
     lgdt [gdtptr]    ; Load GDT
 
-    jmp .next        ; reinit CS segment
+    jmp 0x8:.next    ; reinit CS segment
 .next:
     mov ax, 0x10     ; reinit DATA segments, DS, ES, FS et GS
     mov ds, ax
