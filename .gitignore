@@ -2,7 +2,5 @@
 *.o
 *.img
 *.elf
-*.map
-*.res
-nm_map_gen
+loopdevice.map
 !.gitignore

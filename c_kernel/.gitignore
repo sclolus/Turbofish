@@ -1,0 +1,4 @@
+*.map
+*.res
+nm_map_gen
+!.gitignore

@@ -1,4 +1,5 @@
-NAME = kernel.elf
+KERNEL = kernel.elf
+KERNEL_PATHNAME = build/$(KERNEL) 
 
 CC = gcc
 ASM = nasm
@@ -145,23 +146,23 @@ all: pre-build target
 
 target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o $(OBJ_DIR)/asterix.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
-	ld $(LDFLAGS) $^ -o $(NAME)
-	nm -n $(NAME) > nm.res
+	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
+	nm -n $(KERNEL_PATHNAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo MAINBUILD
-	ld $(LDFLAGS) $^ -o $(NAME)
-	nm -n $(NAME) > nm.res
+	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
+	nm -n $(KERNEL_PATHNAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo POSTBUILD
-	ld $(LDFLAGS) $^ -o $(NAME)
+	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
 
-	chmod -x $(NAME)
+	chmod -x $(KERNEL_PATHNAME)
 
 pre-build:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
@@ -203,7 +204,7 @@ fclean:
 	rm -f $(OBJ_DIR)/univers.o
 	rm -f $(OBJ_DIR)/asterix.o
 	rm -f nm_map_gen nm.res src/system/nm.map
-	rm -f $(NAME)
+	rm -f $(KERNEL_PATHNAME)
 
 re: fclean all
 
@@ -222,4 +223,4 @@ help:
 	@echo "--------------------------------------------------------------------------"
 
 exec:
-	qemu-system-x86_64 -kernel $(NAME) --enable-kvm
+	qemu-system-x86_64 -kernel $(KERNEL_PATHNAME) --enable-kvm

@@ -1,12 +1,14 @@
+KERNEL = rust
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 9316
+IMAGE_SIZE = 16384
 LOOP_DEVICE = $(shell sudo losetup -f)
+KERNEL_DIRECTORY = $(KERNEL)_kernel
 
 all: $(IMG_DISK)
-	make -C nucleus DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mount $(LOOP_DEVICE)p1 /mnt
-	sudo cp -vf nucleus/build/kernel.elf /mnt
+	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf /mnt
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 
@@ -23,17 +25,17 @@ $(IMG_DISK):
 	sudo losetup -d $(LOOP_DEVICE)
 
 clean:
-	make -C nucleus fclean
+	make -C $(KERNEL_DIRECTORY) fclean
 
 fclean:
-	make -C nucleus fclean
+	make -C $(KERNEL_DIRECTORY) fclean
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
 
 re: clean all
 
 copy: $(IMG_DISK)
-	sudo dd if=$(IMG_DISK) of=/dev/sdb bs=1024 count=$(IMAGE_SIZE)
+	dd if=$(IMG_DISK) of=/dev/sdb bs=1024 count=$(IMAGE_SIZE)
 	sync
 
 exec:
