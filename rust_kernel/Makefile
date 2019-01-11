@@ -2,7 +2,8 @@ arch := i686
 kernel := build/kernel.elf
 name := undefined_behavior
 
-linker_script := src/linker.ld
+# https://linux.die.net/man/1/ld
+linker_params := -e "_start" --oformat=elf32-i386 -Ttext-segment=0x100000
 
 assembly_source_files := $(wildcard src/asm/*.asm)
 assembly_object_files := $(patsubst src/asm/%.asm, \
@@ -29,7 +30,7 @@ clean: fclean
 kernel: $(kernel)
 
 $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script)
-	ld -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
+	ld -m elf_i386 -n --gc-sections $(linker_params) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 build_rust:
 ifeq ($(DEBUG),yes)
