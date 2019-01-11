@@ -1,40 +1,4 @@
 [[package]]
-name = "keyboard"
-version = "0.1.0"
-
-[[package]]
-name = "libc"
-version = "0.2.46"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "nucleus"
 version = "0.1.0"
-dependencies = [
- "keyboard 0.1.0",
- "libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlibc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "vga 0.1.0",
-]
 
-[[package]]
-name = "rlibc"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "spin"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "vga"
-version = "0.1.0"
-dependencies = [
- "spin 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[metadata]
-"checksum libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)" = "023a4cd09b2ff695f9734c1934145a315594b7986398496841c7031a5a1bbdbd"
-"checksum rlibc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c22517d580b6e155b1b25e66e3445462870a26c5088a04e20a21d58d3bcba704"
-"checksum spin 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "f2ebe515528c1be66f2046f15392b57eab88f6a9158fc72a566ae1590e465277"
