@@ -1,8 +1,11 @@
 [package]
-name = "nucleus"
-version = "0.1.0"
-authors = ["Steve Klabnik <steve@steveklabnik.com>", "Amit Aryeh Levy <amit@amitlevy.com>"]
+name = "undefined_behavior"
+version = "0.0.2"
+authors = ["Vincent Combey <vcombey@student.42.fr>", "Mickael Billod <bmickael@student.42.fr>"]
 edition = "2018"
+
+[profile.release]
+opt-level = 3
 
 [lib]
 crate-type = ["staticlib"]
