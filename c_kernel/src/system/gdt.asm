@@ -39,7 +39,7 @@ gdt:
 gdt_cs:
     dw 0xFFFF, 0x0000
     db 0x0
-    db RW | EX | U0 | PR
+    db EX | U0 | PR
     db 0xF | SZ | GR
     db 0x0
 gdt_ds:
@@ -63,7 +63,7 @@ gdt_sp:
 gdt_user_cs:
     dw 0xFFFF, 0x0000
     db 0x80
-    db RW | EX | U0 | PR | PR_RING3
+    db EX | U0 | PR | PR_RING3
     db 0xF | SZ | GR
     db 0x0
 gdt_user_ds:
