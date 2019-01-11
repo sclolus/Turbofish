@@ -1,3 +1,4 @@
+[BITS 32]	
 %DEFINE ACCESSED 1; WAS IT ACCESSED
 %DEFINE READ_WRITE 1 << 1; FOR DATA SEGMENT IS WRITING ALLOWED ?
 %DEFINE GROWTH_DIRECTION 1 << 2; FOR DATA SEGMENT: TO LOWER OR TO HIGHER ADDRESS. FOR TEXT SEGMENT : CAN IT BE EXECTUDED WITH HIGHER PRIVILEDGE ?
@@ -11,7 +12,6 @@
 %DEFINE LONGMODE 1 << 5; IS IT A 64 BIT MODE SEGMENT ?
 %DEFINE SIZE 1 << 6; (0) 16 BIT (1) FOR 32 BIT PROTECTED
 %DEFINE GRANULARITY 1 << 7; LIMIT IS IN 0 = BYTES, 1 = PAGES OF LIMIT 4096 BYTES EACH
-[BITS 32]	
 ;struc gdt_entry_struct
 ;	limit_0_15:				resb 2
 ;	base_0_15:				resb 2
@@ -20,7 +20,7 @@
 ;	limit_flags:			resb 1
 ;	base_24_31:				resb 1
 ;endstruc
-section .data
+segment .data
 
 gdt_info:
 	dw gdt_end - gdt_start
@@ -38,9 +38,9 @@ gdt_start:
 ;	base_16_23:
 	db 0
 ;	access_bytes:
-	db PR | SYSTEM_HOLDER | EXECUTABLE | READ_WRITE
+	db PR | SYSTEM_HOLDER | EXECUTABLE
 ;	limit_flags:
-	db 0xff | SIZE | GRANULARITY
+	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
 	
@@ -54,7 +54,7 @@ gdt_start:
 ;	access_bytes:
 	db PR | SYSTEM_HOLDER | READ_WRITE
 ;	limit_flags:
-	db 0xff | SIZE | GRANULARITY
+	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
 	
@@ -68,32 +68,36 @@ gdt_start:
 ;	access_bytes:
 	db PR | SYSTEM_HOLDER | READ_WRITE | GROWTH_DIRECTION
 ;	limit_flags:
-	db 0xff | SIZE | GRANULARITY
+	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
 gdt_end: 
 
-section .text
+segment .text
+
 global init_gdt
 init_gdt:
 	lgdt [gdt_info]
 
 	; CS IS CODE SEGMENT REGISTER
-	mov ax, 0x8
-	mov cs, ax
+;	mov ax, 0x8
+;	mov cs, ax
 
-	jmp landing:0x8
+;   jmp landing:0x8
+	jmp landing
 landing:
+
 	; ES IS DATA SEGMENT REGISTER
 	; DS IS DATA SEGMENT REGISTER
 	; FS IS DATA SEGMENT REGISTER
 	; GS IS DATA SEGMENT REGISTER
 	mov ax, 0x10
-	mov es, ax
 	mov ds, ax
+	mov es, ax
 	mov fs, ax
 	mov gs, ax
 	; SS IS STACK SEGMENT REGISTER
-;	mov ax 0x18
-;	mov gs ax
+	; mov ax, 0x18
+	; mov ss, ax
+
 	ret

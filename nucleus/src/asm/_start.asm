@@ -8,6 +8,7 @@ section .text
         dd - (0x1BADB002 + 0x0)      ; checksum. m+f+c should be zero
 
 extern kmain
+extern init_gdt
 
 ; Hack of _Unwind_Resume for Rust linking
 global _Unwind_Resume
@@ -33,6 +34,12 @@ _start:
     push ebx
 
     mov al, 'A'
+    mov edi, 0xb8000
+    stosb
+
+	call init_gdt
+
+    mov al, 'B'
     mov edi, 0xb8000
     stosb
 
