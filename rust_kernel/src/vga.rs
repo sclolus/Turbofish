@@ -1,22 +1,29 @@
 use core::fmt::Result;
 use core::fmt::Write;
 
+const VGA_MEM_LOCATION: usize = 0xb8000;
+
 #[derive(Debug)]
 pub struct VgaTerminal {
-    width:isize,
-    height:isize,
-    x:isize,
-    y:isize,
+    width:usize,
+    height:usize,
+    x:usize,
+    y:usize,
     color:u8,
 }
 
+pub static mut VGA_TERM: VgaTerminal = VgaTerminal {width: 80, height: 25, x: 1, y: 1, color: 3};
+
 impl Write for VgaTerminal {
-    fn write_str(&mut self, s: &str) -> Result {
+fn write_str(&mut self, s: &str) -> Result<> {
         for c in s.as_bytes() {
             match *c as char {
                 '\n' => {
                     self.x = 1;
                     self.y = self.y + 1;
+                    if self.y > self.height {
+                        scroll_screen();
+                    }
                 }
                 _ => {
                     putchar(self.x - 1 + (self.y - 1) * self.width, *c as char, self.color);
@@ -24,6 +31,9 @@ impl Write for VgaTerminal {
                     if self.x > self.width {
                         self.y = self.y + 1;
                         self.x = 1;
+                        if self.y > self.height {
+                            scroll_screen();
+                        }
                     }
                 }
             }
@@ -32,25 +42,27 @@ impl Write for VgaTerminal {
     }
 }
 
-pub fn putstring(mut pos: isize, s:&str, color: u8) -> isize {
-
-    for c in s.as_bytes() {
-        pos = putchar(pos, *c as char, color);
-    }
-    pos
-}
-
-pub fn putchar(pos:isize, c:char, color:u8) -> isize {
-    let ptr = 0xB8000 as *mut u8;
+fn putchar(pos:usize, c:char, color:u8) -> usize {
+    let ptr = VGA_MEM_LOCATION as *mut u8;
 
     unsafe {
-        *ptr.offset(pos * 2) = c as u8;
-        *ptr.offset(pos * 2 + 1) = color;
+        *ptr.add(pos * 2) = c as u8;
+        *ptr.add(pos * 2 + 1) = color;
     }
     pos + 1
 }
 
-pub static mut VGA_TERM: VgaTerminal = VgaTerminal {width: 80, height: 25, x: 1, y: 1, color: 3};
+fn scroll_screen() -> (){
+    use crate::support::memmove;
+    use crate::support::memset;
+
+    let ptr = VGA_MEM_LOCATION as *mut u8;
+    unsafe {
+        memmove(ptr, ptr.add(VGA_TERM.width * 2), VGA_TERM.width * (VGA_TERM.height - 1) * 2);
+        memset(ptr.add(VGA_TERM.width * (VGA_TERM.height - 1) * 2), 0, VGA_TERM.width * 2);
+        VGA_TERM.y -= 1;
+    }
+}
 
 #[macro_export]
 macro_rules! println {
@@ -69,4 +81,14 @@ macro_rules! print {
             core::fmt::write(&mut $crate::vga::VGA_TERM, format_args!($($arg)*)).unwrap();
         }
     })
+}
+
+/* Keep in mind that Rust use SSE feature when it used with some optimization level */
+pub fn clear_screen() -> () {
+    use crate::support::memset;
+    unsafe {
+        memset(VGA_MEM_LOCATION as *mut u8, 0, VGA_TERM.width * VGA_TERM.height * 2);
+        VGA_TERM.x = 1;
+        VGA_TERM.y = 1;
+    }
 }
