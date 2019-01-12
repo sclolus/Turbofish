@@ -55,7 +55,7 @@ gdt_lfb:
     db 0xF | SZ | GR
     db 0x0
 gdt_sp:
-    dw 0x0000, 0x0000
+    dw 0xFFFF, 0x0000
     db 0x0
     db RW | U0 | PR
     db 0xF | SZ | GR
