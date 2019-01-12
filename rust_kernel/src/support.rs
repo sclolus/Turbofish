@@ -2,6 +2,8 @@
 extern "C" fn eh_personality() {
 }
 
+/* Keep in mind that Rust use SSE feature when it used with some optimization level */
+
 #[no_mangle]
 pub unsafe extern "C" fn memcpy(dest: *mut u8,
                                 src: *const u8,

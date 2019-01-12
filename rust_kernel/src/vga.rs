@@ -5,6 +5,18 @@ trait IoScreen {
     fn putchar(&mut self, c:char) -> Result;
     fn scroll_screen(&mut self) -> Result;
     fn clear_screen(&mut self) -> Result;
+    fn set_text_color(&mut self, color:TextColor) -> Result;
+}
+
+pub enum TextColor {
+    Red,
+    Green,
+    Yellow,
+    Cyan,
+    Brown,
+    Magenta,
+    Blue,
+    White,
 }
 
 #[derive(Debug)]
@@ -43,7 +55,6 @@ impl IoScreen for VgaTerminal {
         self.y -= 1;
         Ok(())
     }
-    /* Keep in mind that Rust use SSE feature when it used with some optimization level */
     fn clear_screen(&mut self) -> Result {
         use crate::support::memset;
         unsafe {
@@ -51,6 +62,19 @@ impl IoScreen for VgaTerminal {
         }
         self.x = 0;
         self.y = 0;
+        Ok(())
+    }
+    fn set_text_color(&mut self, color:TextColor) -> Result {
+        self.color = match color {
+            TextColor::Blue => 11,
+            TextColor::Green => 10,
+            TextColor::Yellow => 14,
+            TextColor::Cyan => 3,
+            TextColor::Red => 4,
+            TextColor::Magenta => 13,
+            TextColor::White => 7,
+            _ => self.color,
+        };
         Ok(())
     }
 }
@@ -105,5 +129,25 @@ macro_rules! print {
 pub fn clear_screen() -> () {
     unsafe {
         VGA_TERM.clear_screen().unwrap();
+    }
+}
+
+pub fn set_text_color(s: &'static str) -> Result {
+    let color: TextColor = match s {
+        "red" => TextColor::Red,
+        "green" => TextColor::Green,
+        "yellow" => TextColor::Yellow,
+        "cyan" => TextColor::Cyan,
+        "brown" => TextColor::Brown,
+        "magenta" => TextColor::Magenta,
+        "blue" => TextColor::Blue,
+        "white" => TextColor::White,
+        _ => TextColor::White,
+    };
+    unsafe {
+        match VGA_TERM.set_text_color(color) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
