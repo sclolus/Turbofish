@@ -1,10 +1,15 @@
 use core::fmt::Result;
 use core::fmt::Write;
 
-const VGA_MEM_LOCATION: usize = 0xb8000;
+trait IoScreen {
+    fn putchar(&mut self, c:char) -> Result;
+    fn scroll_screen(&mut self) -> Result;
+    fn clear_screen(&mut self) -> Result;
+}
 
 #[derive(Debug)]
 pub struct VgaTerminal {
+    memory_location: *mut u8,
     width:usize,
     height:usize,
     x:usize,
@@ -12,55 +17,69 @@ pub struct VgaTerminal {
     color:u8,
 }
 
-pub static mut VGA_TERM: VgaTerminal = VgaTerminal {width: 80, height: 25, x: 1, y: 1, color: 3};
+pub static mut VGA_TERM: VgaTerminal =
+    VgaTerminal {memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3};
+
+impl IoScreen for VgaTerminal {
+    fn putchar(&mut self, c:char) -> Result {
+        let ptr = self.memory_location;
+        let pos = self.x + self.y * self.width;
+
+        unsafe {
+            *ptr.add(pos * 2) = c as u8;
+            *ptr.add(pos * 2 + 1) = self.color;
+        }
+        Ok(())
+    }
+    fn scroll_screen(&mut self) -> Result {
+        use crate::support::memmove;
+        use crate::support::memset;
+
+        let ptr = self.memory_location;
+        unsafe {
+            memmove(ptr, ptr.add(self.width * 2), self.width * (self.height - 1) * 2);
+            memset(ptr.add(self.width * (self.height - 1) * 2), 0, self.width * 2);
+        }
+        self.y -= 1;
+        Ok(())
+    }
+    /* Keep in mind that Rust use SSE feature when it used with some optimization level */
+    fn clear_screen(&mut self) -> Result {
+        use crate::support::memset;
+        unsafe {
+            memset(self.memory_location, 0, self.width * self.height * 2);
+        }
+        self.x = 0;
+        self.y = 0;
+        Ok(())
+    }
+}
 
 impl Write for VgaTerminal {
-fn write_str(&mut self, s: &str) -> Result<> {
+    fn write_str(&mut self, s: &str) -> Result {
         for c in s.as_bytes() {
             match *c as char {
                 '\n' => {
-                    self.x = 1;
+                    self.x = 0;
                     self.y = self.y + 1;
-                    if self.y > self.height {
-                        scroll_screen();
+                    if self.y == self.height {
+                        self.scroll_screen().unwrap();
                     }
                 }
                 _ => {
-                    putchar(self.x - 1 + (self.y - 1) * self.width, *c as char, self.color);
+                    self.putchar(*c as char).unwrap();
                     self.x = self.x + 1;
-                    if self.x > self.width {
+                    if self.x == self.width {
+                        self.x = 0;
                         self.y = self.y + 1;
-                        self.x = 1;
-                        if self.y > self.height {
-                            scroll_screen();
+                        if self.y == self.height {
+                            self.scroll_screen().unwrap();;
                         }
                     }
                 }
             }
         }
         Ok(())
-    }
-}
-
-fn putchar(pos:usize, c:char, color:u8) -> usize {
-    let ptr = VGA_MEM_LOCATION as *mut u8;
-
-    unsafe {
-        *ptr.add(pos * 2) = c as u8;
-        *ptr.add(pos * 2 + 1) = color;
-    }
-    pos + 1
-}
-
-fn scroll_screen() -> (){
-    use crate::support::memmove;
-    use crate::support::memset;
-
-    let ptr = VGA_MEM_LOCATION as *mut u8;
-    unsafe {
-        memmove(ptr, ptr.add(VGA_TERM.width * 2), VGA_TERM.width * (VGA_TERM.height - 1) * 2);
-        memset(ptr.add(VGA_TERM.width * (VGA_TERM.height - 1) * 2), 0, VGA_TERM.width * 2);
-        VGA_TERM.y -= 1;
     }
 }
 
@@ -83,12 +102,8 @@ macro_rules! print {
     })
 }
 
-/* Keep in mind that Rust use SSE feature when it used with some optimization level */
 pub fn clear_screen() -> () {
-    use crate::support::memset;
     unsafe {
-        memset(VGA_MEM_LOCATION as *mut u8, 0, VGA_TERM.width * VGA_TERM.height * 2);
-        VGA_TERM.x = 1;
-        VGA_TERM.y = 1;
+        VGA_TERM.clear_screen().unwrap();
     }
 }
