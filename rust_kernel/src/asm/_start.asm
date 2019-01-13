@@ -42,6 +42,8 @@ _start:
 _start_after_init_gdt:	
     call set_sse2
 
+	; put the stack at 4MB
+	mov esp, 0x400000
     push ebx
     call kmain                    ; kmain is called with this param
     add esp, 4
