@@ -15,6 +15,7 @@
 %DEFINE SIZE 1 << 6; (0) 16 BIT (1) FOR 32 BIT PROTECTED
 %DEFINE GRANULARITY 1 << 7; LIMIT IS IN 0 = BYTES, 1 = PAGES OF LIMIT 4096 BYTES EACH
 
+%DEFINE GDT_DESTINATION 0x800
 ;struc gdt_entry_struct
 ;	limit_0_15:				resb 2
 ;	base_0_15:				resb 2
@@ -82,7 +83,14 @@ segment .text
 
 global init_gdt
 init_gdt:
-	lgdt [gdt_info]
+	; mov gdt and gdt info in 0x800
+	mov esi, gdt_info
+	mov edi, GDT_DESTINATION
+	mov ecx, gdt_end
+	sub ecx, gdt_info
+	cld
+	rep movsb
+	lgdt [GDT_DESTINATION]
 
 	; CS IS CODE SEGMENT REGISTER
 	jmp 0x8:landing
