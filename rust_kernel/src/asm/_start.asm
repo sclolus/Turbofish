@@ -4,8 +4,8 @@ section .text
         ; GRUB multiboot spec
         align 4
         dd 0x1BADB002                ; magic
-        dd 0x0                       ; flags
-        dd - (0x1BADB002 + 0x0)      ; checksum. m+f+c should be zero
+        dd 0b11                      ; flags
+        dd - (0x1BADB002 + 0b11)     ; checksum. m+f+c should be zero
 
 extern kmain
 extern init_gdt
