@@ -33,15 +33,11 @@ _start:
     ; EBX contain pointer to GRUB multiboot information (preserved register)
     push ebx
 
-    mov al, 'A'
-    mov edi, 0xb8000
-    stosb
+    ;mov al, 'A'
+    ;mov edi, 0xb8000
+    ;stosb
 
 	call init_gdt
-
-    mov al, 'B'
-    mov edi, 0xb8000
-    stosb
 
     call set_sse2
 
