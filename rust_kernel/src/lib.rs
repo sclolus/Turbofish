@@ -16,6 +16,6 @@ use core::panic::PanicInfo;
 #[panic_handler]
 #[no_mangle]
 fn panic(_info: &PanicInfo) -> ! {
-    println!("Panic !");
+    print!("Just a panic, not a SegFault");
     loop {}
 }
