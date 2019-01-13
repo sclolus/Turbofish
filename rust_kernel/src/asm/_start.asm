@@ -31,22 +31,13 @@ _start:
 
     mov esp, stack_space            ; set stack pointer for a temporary stack
 
-    ; EBX contain pointer to GRUB multiboot information (preserved register)
-
-    ;mov al, 'A'
-    ;mov edi, 0xb8000
-    ;stosb
-
-	call init_gdt
 	jmp init_gdt
 _start_after_init_gdt:	
     call set_sse2
 
-	; put the stack at 4MB
-	mov esp, 0x400000
+	; EBX contain pointer to GRUB multiboot information (preserved register)
     push ebx
     call kmain                    ; kmain is called with this param
-    add esp, 4
 
     jmp $
 

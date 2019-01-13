@@ -86,8 +86,7 @@ init_gdt:
 	; mov gdt and gdt info in 0x800
 	mov esi, gdt_start
 	mov edi, GDT_DESTINATION
-	mov ecx, gdt_end
-	sub ecx, gdt_start
+	mov ecx, gdt_end - gdt_start
 	cld
 	rep movsb
 	lgdt [gdt_info]
@@ -106,5 +105,8 @@ landing:
 	; SS IS STACK SEGMENT REGISTER
 	mov ax, 0x18
 	mov ss, ax
+
+	; put the stack at 4MB
+	mov esp, 0x400000
 
 	jmp _start_after_init_gdt
