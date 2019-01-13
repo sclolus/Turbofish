@@ -1,13 +1,10 @@
-use crate::vga::VGA_TERM;
-use crate::vga::clear_screen;
-use crate::vga::set_text_color;
-use crate::vga::set_cursor_position;
+use crate::vga::*;
 
 #[no_mangle]
 pub extern "C" fn kmain() {
     clear_screen();
+    set_text_color("yellow").unwrap();
     for _x in 0..2 {
-        set_text_color("yellow").unwrap();
         println!("test\nPrintln");
         println!("vga term {:#?}", VGA_TERM);
         println!();
@@ -32,6 +29,5 @@ pub extern "C" fn kmain() {
         Err(e) => println!("{:?}", e),
     }
     set_cursor_position(42, 42).unwrap();
-
     loop {}
 }

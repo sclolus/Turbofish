@@ -9,7 +9,7 @@ trait IoScreen {
     fn set_cursor_position(&mut self, x:usize, y:usize) -> Result<(), &'static str>;
 }
 
-pub enum TextColor {
+enum TextColor {
     Red,
     Green,
     Yellow,

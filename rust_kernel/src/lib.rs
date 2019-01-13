@@ -1,8 +1,6 @@
 #![feature(lang_items)]
 #![feature(asm)]
-#![feature(const_fn)]
 #![no_std]
-#![feature(compiler_builtins_lib)]
 #![feature(format_args_nl)]
 
 #[macro_use]
