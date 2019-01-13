@@ -19,6 +19,7 @@ _Unwind_Resume:
     jmp $
 
 global _start
+global _start_after_init_gdt
 _start:
     cli                             ; block interrupts
 
@@ -38,7 +39,8 @@ _start:
     ;stosb
 
 	call init_gdt
-
+	jmp init_gdt
+_start_after_init_gdt:	
     call set_sse2
 
     call kmain                    ; kmain is called with this param

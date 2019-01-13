@@ -26,6 +26,7 @@
 
 segment .data
 
+extern _start_after_init_gdt
 gdt_info:
 	dw gdt_end - gdt_start
 	dd gdt_start
@@ -70,7 +71,7 @@ gdt_start:
 ;	base_16_23:
 	db 0
 ;	access_bytes:
-	db PR | SYSTEM_HOLDER | READ_WRITE | GROWTH_DIRECTION
+	db PR | SYSTEM_HOLDER | READ_WRITE
 ;	limit_flags:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
@@ -95,7 +96,7 @@ landing:
 	mov gs, ax
 
 	; SS IS STACK SEGMENT REGISTER
-	; mov ax, 0x18
-	; mov ss, ax
+	mov ax, 0x18
+	mov ss, ax
 
-	ret
+	jmp _start_after_init_gdt
