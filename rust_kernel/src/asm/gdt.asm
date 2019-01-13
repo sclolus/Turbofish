@@ -30,7 +30,7 @@ segment .data
 extern _start_after_init_gdt
 gdt_info:
 	dw gdt_end - gdt_start
-	dd gdt_start
+	dd GDT_DESTINATION
 
 gdt_start:
 	; empty selector
@@ -84,13 +84,13 @@ segment .text
 global init_gdt
 init_gdt:
 	; mov gdt and gdt info in 0x800
-	mov esi, gdt_info
+	mov esi, gdt_start
 	mov edi, GDT_DESTINATION
 	mov ecx, gdt_end
-	sub ecx, gdt_info
+	sub ecx, gdt_start
 	cld
 	rep movsb
-	lgdt [GDT_DESTINATION]
+	lgdt [gdt_info]
 
 	; CS IS CODE SEGMENT REGISTER
 	jmp 0x8:landing
