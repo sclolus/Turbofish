@@ -15,6 +15,7 @@
 %DEFINE SIZE 1 << 6; (0) 16 BIT (1) FOR 32 BIT PROTECTED
 %DEFINE GRANULARITY 1 << 7; LIMIT IS IN 0 = BYTES, 1 = PAGES OF LIMIT 4096 BYTES EACH
 
+%DEFINE GDT_DESTINATION 0x800
 ;struc gdt_entry_struct
 ;	limit_0_15:				resb 2
 ;	base_0_15:				resb 2
@@ -26,9 +27,10 @@
 
 segment .data
 
+extern _start_after_init_gdt
 gdt_info:
 	dw gdt_end - gdt_start
-	dd gdt_start
+	dd GDT_DESTINATION
 
 gdt_start:
 	; empty selector
@@ -70,7 +72,7 @@ gdt_start:
 ;	base_16_23:
 	db 0
 ;	access_bytes:
-	db PR | SYSTEM_HOLDER | READ_WRITE | GROWTH_DIRECTION
+	db PR | SYSTEM_HOLDER | READ_WRITE
 ;	limit_flags:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
@@ -81,6 +83,12 @@ segment .text
 
 global init_gdt
 init_gdt:
+	; mov gdt and gdt info in 0x800
+	mov esi, gdt_start
+	mov edi, GDT_DESTINATION
+	mov ecx, gdt_end - gdt_start
+	cld
+	rep movsb
 	lgdt [gdt_info]
 
 	; CS IS CODE SEGMENT REGISTER
@@ -95,7 +103,10 @@ landing:
 	mov gs, ax
 
 	; SS IS STACK SEGMENT REGISTER
-	; mov ax, 0x18
-	; mov ss, ax
+	mov ax, 0x18
+	mov ss, ax
 
-	ret
+	; put the stack at 4MB
+	mov esp, 0x400000
+
+	jmp _start_after_init_gdt
