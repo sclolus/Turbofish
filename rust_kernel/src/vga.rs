@@ -1,12 +1,12 @@
-use core::result::Result;
 use core::fmt::Write;
+type Result = core::result::Result<(), &'static str>;
 
 trait IoScreen {
-    fn putchar(&mut self, c:char) -> Result<(), &'static str>;
-    fn scroll_screen(&mut self) -> Result<(), &'static str>;
-    fn clear_screen(&mut self) -> Result<(), &'static str>;
-    fn set_text_color(&mut self, color:TextColor) -> Result<(), &'static str>;
-    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result<(), &'static str>;
+    fn putchar(&mut self, c:char) -> Result;
+    fn scroll_screen(&mut self) -> Result;
+    fn clear_screen(&mut self) -> Result;
+    fn set_text_color(&mut self, color:TextColor) -> Result;
+    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result;
 }
 
 enum TextColor {
@@ -18,7 +18,6 @@ enum TextColor {
     Magenta,
     Blue,
     White,
-    Undefined,
 }
 
 #[derive(Debug)]
@@ -35,7 +34,7 @@ pub static mut VGA_TERM: VgaTerminal =
     VgaTerminal {memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3};
 
 impl IoScreen for VgaTerminal {
-    fn putchar(&mut self, c:char) -> Result<(), &'static str> {
+    fn putchar(&mut self, c:char) -> Result {
         let ptr = self.memory_location;
         let pos = self.x + self.y * self.width;
 
@@ -45,7 +44,7 @@ impl IoScreen for VgaTerminal {
         }
         Ok(())
     }
-    fn scroll_screen(&mut self) -> Result<(), &'static str> {
+    fn scroll_screen(&mut self) -> Result {
         use crate::support::memmove;
         use crate::support::memset;
 
@@ -57,7 +56,7 @@ impl IoScreen for VgaTerminal {
         self.y -= 1;
         Ok(())
     }
-    fn clear_screen(&mut self) -> Result<(), &'static str> {
+    fn clear_screen(&mut self) -> Result {
         use crate::support::memset;
         unsafe {
             memset(self.memory_location, 0, self.width * self.height * 2);
@@ -66,7 +65,7 @@ impl IoScreen for VgaTerminal {
         self.y = 0;
         Ok(())
     }
-    fn set_text_color(&mut self, color:TextColor) -> Result<(), &'static str> {
+    fn set_text_color(&mut self, color:TextColor) -> Result {
         let u8color:u8 = match color {
             TextColor::Blue => 11,
             TextColor::Green => 10,
@@ -75,17 +74,12 @@ impl IoScreen for VgaTerminal {
             TextColor::Red => 4,
             TextColor::Magenta => 13,
             TextColor::White => 7,
-            _ => 0,
+            _ => return Err("color not Implemented in that io mode"),
         };
-        match u8color {
-            0 => Err("color not Implemented in that io mode"),
-            _ => {
-                self.color = u8color;
-                Ok(())
-            },
-        }
+        self.color = u8color;
+        Ok(())
     }
-    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result<(), &'static str> {
+    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result {
         if x >= self.width || y >= self.height {
             Err("Unbound Paramater")
         } else {
@@ -149,7 +143,7 @@ pub fn clear_screen() -> () {
     }
 }
 
-pub fn set_text_color(s: &'static str) -> Result<(), &'static str> {
+pub fn set_text_color(s: &'static str) -> Result {
     let color: TextColor = match s {
         "red" => TextColor::Red,
         "green" => TextColor::Green,
@@ -159,22 +153,17 @@ pub fn set_text_color(s: &'static str) -> Result<(), &'static str> {
         "magenta" => TextColor::Magenta,
         "blue" => TextColor::Blue,
         "white" => TextColor::White,
-        _ => TextColor::Undefined,
+        _ => return Err("color not defined"),
     };
-    match color {
-        TextColor::Undefined => Err("color not defined"),
-        _ => {
-            unsafe {
-                match VGA_TERM.set_text_color(color) {
-                    Ok(()) => Ok(()),
-                    Err(e) => Err(e),
-                }
-            }
-        },
+    unsafe {
+        match VGA_TERM.set_text_color(color) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
 
-pub fn set_cursor_position(x:usize, y:usize) -> Result<(), &'static str> {
+pub fn set_cursor_position(x:usize, y:usize) -> Result {
     unsafe {
         match VGA_TERM.set_cursor_position(x, y) {
             Ok(()) => Ok(()),
