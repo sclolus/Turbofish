@@ -8,6 +8,7 @@ pub mod vga;
 
 pub mod support; // For Rust lang items
 pub mod rust_main;
+pub mod multiboot;
 
 use core::panic::PanicInfo;
 
