@@ -1,6 +1,6 @@
 use crate::vga::*;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
 pub struct MultibootInfos {
