@@ -1,5 +1,5 @@
 use crate::monitor::core_monitor::*;
-use crate::registers::{BaseRegisters, real_mode_call};
+use crate::registers::{BaseRegisters, real_mode_op};
 use core::fmt::Write;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
@@ -78,7 +78,7 @@ static mut VESA_MODE_INFO: Option<VesaModeInfo> = None;
 #[derive(Debug)]
 pub struct VbeMode {
     memory_location: *mut u8,
-    mode:u8,
+    mode:u16,
     width:usize,
     height:usize,
     bpp:u8,
@@ -95,7 +95,7 @@ pub static mut SVGA_VBE: VbeMode =
              x: 0, y: 0, char_width: 0, char_height: 0, nb_lines: 0, nb_colomns: 0};
 
 impl IoScreen for VbeMode {
-    fn set_graphic_mode(&mut self, mode:u8) -> Result {
+    fn set_graphic_mode(&mut self, mode:u16) -> Result {
         self.mode = mode;
         Ok(())
     }
@@ -148,11 +148,9 @@ impl Write for VbeMode {
     }
 }
 
-pub fn query_vbe_global_infos() -> BaseRegisters {
+pub fn query_vbe_global_infos() -> u32 {
     let reg:BaseRegisters = BaseRegisters {
         edi: TEMPORARY_PTR_LOCATION as u32, esi: 0, ebp: 0, esp: 0, ebx: 0, edx: 0, ecx: 0, eax: 0x4f00
     };
-    unsafe {
-        real_mode_call(reg, 0x10)
-    }
+    real_mode_op(reg, 0x10)
 }

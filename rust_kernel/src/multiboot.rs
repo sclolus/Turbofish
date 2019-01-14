@@ -16,7 +16,7 @@ pub struct MultibootInfo {
     /*24       |*/ pub mods_addr: u32,          //|    (present if flags[3] is set)
     /*         + */
     /* 28 - 40 | */pub syms: [u32; 3],          //|    (present if flags[4] or
-    /*         | */                   //|                flags[5] is set)
+    /*         | */                             //|                flags[5] is set)
     /* 44      | */pub mmap_length: u32,        //|    (present if flags[6] is set)
     /* 48      | */pub mmap_addr: u32,          //|    (present if flags[6] is set)
     /*         +-*/ 

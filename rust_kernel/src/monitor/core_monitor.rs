@@ -1,7 +1,7 @@
 pub type Result = core::result::Result<(), &'static str>;
 
 pub trait IoScreen {
-    fn set_graphic_mode(&mut self, _mode:u8) -> Result {
+    fn set_graphic_mode(&mut self, _mode:u16) -> Result {
         Ok(())
     }
     fn putchar(&mut self, c:char) -> Result;
