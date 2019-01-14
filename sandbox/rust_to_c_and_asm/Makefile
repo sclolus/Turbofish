@@ -36,7 +36,8 @@ clean: fclean
 kernel: $(kernel)
 
 $(kernel): build_rust $(rust_os) $(assembly_object_files) $(c_object_files)
-	ld $(linker_params) -o $(kernel) $(assembly_object_files) $(c_object_files) $(rust_os)
+	#ld $(linker_params) -o $(kernel) $(assembly_object_files) $(c_object_files) $(rust_os)
+	gcc -o $(kernel) $(assembly_object_files) $(c_object_files) $(rust_os)
 
 build_rust:
 	cargo build $(cargo_flags) --target $(target)
@@ -49,4 +50,4 @@ build/asm/%.o: src/asm/%.asm
 # compile c files
 build/c/%.o: src/c/%.c
 	mkdir -p $(shell dirname $@)
-	gcc -m64 -c $< -o $@
+	gcc -m64 -c -g -O0  $< -o $@
