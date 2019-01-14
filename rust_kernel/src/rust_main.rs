@@ -1,4 +1,4 @@
-use crate::vga::*;
+use crate::monitor::*;
 use crate::multiboot::{MULTIBOOT_INFO, MultibootInfo, save_multiboot_info};
 
 #[no_mangle]
@@ -9,7 +9,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     println!("base memory: {:?} {:?}",
              MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     set_text_color("yellow").unwrap();
-    println!("vga term {:#?}", VGA_TERM);
+    println!("vga term {:#?}", crate::monitor::vga_text_mode::VGA_TEXT);
     match set_text_color("alacrityKikooColor") {
         Ok(()) => (),
         Err(e) => println!("{:?}", e),

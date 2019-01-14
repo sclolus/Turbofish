@@ -4,7 +4,7 @@
 #![feature(format_args_nl)]
 
 #[macro_use]
-pub mod vga;
+pub mod monitor;
 
 pub mod support; // For Rust lang items
 pub mod rust_main;

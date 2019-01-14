@@ -1,27 +1,8 @@
+use crate::monitor::core_monitor::*;
 use core::fmt::Write;
-type Result = core::result::Result<(), &'static str>;
-
-trait IoScreen {
-    fn putchar(&mut self, c:char) -> Result;
-    fn scroll_screen(&mut self) -> Result;
-    fn clear_screen(&mut self) -> Result;
-    fn set_text_color(&mut self, color:TextColor) -> Result;
-    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result;
-}
-
-enum TextColor {
-    Red,
-    Green,
-    Yellow,
-    Cyan,
-    Brown,
-    Magenta,
-    Blue,
-    White,
-}
 
 #[derive(Debug)]
-pub struct VgaTerminal {
+pub struct VgaTextMode {
     memory_location: *mut u8,
     width:usize,
     height:usize,
@@ -30,10 +11,10 @@ pub struct VgaTerminal {
     color:u8,
 }
 
-pub static mut VGA_TERM: VgaTerminal =
-    VgaTerminal {memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3};
+pub static mut VGA_TEXT: VgaTextMode =
+    VgaTextMode {memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3};
 
-impl IoScreen for VgaTerminal {
+impl IoScreen for VgaTextMode {
     fn putchar(&mut self, c:char) -> Result {
         let ptr = self.memory_location;
         let pos = self.x + self.y * self.width;
@@ -90,7 +71,7 @@ impl IoScreen for VgaTerminal {
     }
 }
 
-impl Write for VgaTerminal {
+impl Write for VgaTextMode {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.as_bytes() {
             match *c as char {
@@ -115,59 +96,5 @@ impl Write for VgaTerminal {
             }
         }
         Ok(())
-    }
-}
-
-#[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::vga::VGA_TERM, format_args_nl!($($arg)*)).unwrap();
-        }
-    })
-}
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::vga::VGA_TERM, format_args!($($arg)*)).unwrap();
-        }
-    })
-}
-
-pub fn clear_screen() -> () {
-    unsafe {
-        VGA_TERM.clear_screen().unwrap();
-    }
-}
-
-pub fn set_text_color(s: &'static str) -> Result {
-    let color: TextColor = match s {
-        "red" => TextColor::Red,
-        "green" => TextColor::Green,
-        "yellow" => TextColor::Yellow,
-        "cyan" => TextColor::Cyan,
-        "brown" => TextColor::Brown,
-        "magenta" => TextColor::Magenta,
-        "blue" => TextColor::Blue,
-        "white" => TextColor::White,
-        _ => return Err("color not defined"),
-    };
-    unsafe {
-        match VGA_TERM.set_text_color(color) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-pub fn set_cursor_position(x:usize, y:usize) -> Result {
-    unsafe {
-        match VGA_TERM.set_cursor_position(x, y) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
     }
 }
