@@ -1,4 +1,5 @@
 use crate::monitor::core_monitor::*;
+use crate::registers::{BaseRegisters, real_mode_call};
 use core::fmt::Write;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
@@ -144,5 +145,14 @@ impl Write for VbeMode {
             }
         }
         Ok(())
+    }
+}
+
+pub fn query_vbe_global_infos() -> BaseRegisters {
+    let reg:BaseRegisters = BaseRegisters {
+        edi: TEMPORARY_PTR_LOCATION as u32, esi: 0, ebp: 0, esp: 0, ebx: 0, edx: 0, ecx: 0, eax: 0x4f00
+    };
+    unsafe {
+        real_mode_call(reg, 0x10)
     }
 }
