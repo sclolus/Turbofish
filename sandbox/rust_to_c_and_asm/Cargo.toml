@@ -1,0 +1,13 @@
+[package]
+name = "rust_to_c_and_asm"
+version = "1.0.0"
+authors = ["Mickael Billod <bmickael@student.42.fr>"]
+edition = "2018"
+
+[profile.release]
+opt-level = 3
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
