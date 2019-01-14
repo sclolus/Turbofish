@@ -32,6 +32,10 @@ fclean:
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
 
+mrproper:
+	find . -name "*~" -exec rm -v {} \;
+	find . -name "*#" -exec rm -v {} \;
+
 re: clean all
 
 copy: $(IMG_DISK)
