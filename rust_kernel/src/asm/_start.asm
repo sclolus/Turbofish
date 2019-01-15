@@ -33,12 +33,21 @@ _start:
 
 	jmp init_gdt
 _start_after_init_gdt:	
+
 	call set_sse2
+
+	call rust_ebp_wrapper
+	; --------------------------------------------------------------------
+
+rust_ebp_wrapper:
+	push ebp
+	mov ebp, esp
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx
 	call kmain                      ; kmain is called with this param
 
+	; ---------------------------------------------------------------------
 	jmp $
 
 set_sse2:

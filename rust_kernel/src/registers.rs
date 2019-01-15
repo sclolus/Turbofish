@@ -16,11 +16,23 @@ pub struct BaseRegisters {
 
 extern "C" {
     fn asm_real_mode_op
-        (eax:u32, ebx:u32, ecx:u32, edx:u32, esi:u32, edi:u32, bios_int:u16) -> u32;
+        (reg: BaseRegisters, bios_int:u16) -> u32;
 }
 
-pub fn real_mode_op(reg: BaseRegisters, bios_interrupt: u16) -> u32 {
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn real_mode_op(reg: BaseRegisters, bios_interrupt: u16) -> u32 {
     unsafe {
-        asm_real_mode_op(reg.eax, reg.ebx, reg.ecx, reg.edx, reg.esi, reg.edi, bios_interrupt)
+        asm_real_mode_op(reg, bios_interrupt)
     }
+}
+
+#[no_mangle]
+extern "C" {
+    pub fn _get_ebp() -> *mut u8;
+}
+
+#[no_mangle]
+extern "C" {
+    pub fn _get_esp() -> *mut u8;
 }

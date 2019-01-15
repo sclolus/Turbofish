@@ -47,3 +47,13 @@ asm_real_mode_op:
 
 	pop ebp
 ret
+
+GLOBAL _get_ebp
+_get_ebp:
+	mov eax, ebp
+	ret
+
+GLOBAL _get_esp
+_get_esp:
+	mov eax, esp
+	ret
