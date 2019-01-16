@@ -18,6 +18,14 @@ _Unwind_Resume:
 
 	jmp $
 
+; Hack of rust_eh_personnality for rust compilation in debug mode
+global rust_eh_personality
+rust_eh_personality:
+	push ebp
+	mov ebp, esp
+
+	jmp $
+
 global _start
 global _start_after_init_gdt
 _start:

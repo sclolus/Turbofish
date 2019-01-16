@@ -2,6 +2,7 @@ arch := i686
 kernel := build/kernel.elf
 name := undefined_behavior
 cargo_flags := 
+rustc_params := -C no-redzone -C inline-threshold=0 -Cforce-frame-pointers=yes -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
 linker_script := src/linker.ld
 
@@ -34,7 +35,7 @@ $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script)
 	ld -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 build_rust:
-	cargo rustc $(cargo_flags) --target $(target) -- -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
+	cargo rustc $(cargo_flags) --verbose --target $(target) -- $(rustc_params)
 
 # compile assembly files
 build/asm/%.o: src/asm/%.asm

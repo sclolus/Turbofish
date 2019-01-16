@@ -1,6 +1,8 @@
-//#[lang = "eh_personality"]
+/*
+#[lang = "eh_personality"]
 extern "C" fn eh_personality() {
 }
+*/
 
 /* Keep in mind that Rust use SSE feature when it used with some optimization level */
 
