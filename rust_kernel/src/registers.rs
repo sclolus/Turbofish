@@ -15,16 +15,13 @@ pub struct BaseRegisters {
 }
 
 extern "C" {
-    fn asm_real_mode_op
-        (reg: BaseRegisters, bios_int:u16) -> u32;
+    fn asm_real_mode_op(reg: BaseRegisters, bios_int: u16) -> u32;
 }
 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn real_mode_op(reg: BaseRegisters, bios_interrupt: u16) -> u32 {
-    unsafe {
-        asm_real_mode_op(reg, bios_interrupt)
-    }
+    unsafe { asm_real_mode_op(reg, bios_interrupt) }
 }
 
 #[no_mangle]

@@ -4,18 +4,24 @@ use core::fmt::Write;
 #[derive(Debug)]
 pub struct VgaTextMode {
     memory_location: *mut u8,
-    width:usize,
-    height:usize,
-    x:usize,
-    y:usize,
-    color:u8,
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    color: u8,
 }
 
-pub static mut VGA_TEXT: VgaTextMode =
-    VgaTextMode {memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3};
+pub static mut VGA_TEXT: VgaTextMode = VgaTextMode {
+    memory_location: 0xb8000 as *mut u8,
+    width: 80,
+    height: 25,
+    x: 0,
+    y: 0,
+    color: 3,
+};
 
 impl IoScreen for VgaTextMode {
-    fn putchar(&mut self, c:char) -> Result {
+    fn putchar(&mut self, c: char) -> Result {
         let ptr = self.memory_location;
         let pos = self.x + self.y * self.width;
 
@@ -31,8 +37,16 @@ impl IoScreen for VgaTextMode {
 
         let ptr = self.memory_location;
         unsafe {
-            memmove(ptr, ptr.add(self.width * 2), self.width * (self.height - 1) * 2);
-            memset(ptr.add(self.width * (self.height - 1) * 2), 0, self.width * 2);
+            memmove(
+                ptr,
+                ptr.add(self.width * 2),
+                self.width * (self.height - 1) * 2,
+            );
+            memset(
+                ptr.add(self.width * (self.height - 1) * 2),
+                0,
+                self.width * 2,
+            );
         }
         self.y -= 1;
         Ok(())
@@ -46,8 +60,8 @@ impl IoScreen for VgaTextMode {
         self.y = 0;
         Ok(())
     }
-    fn set_text_color(&mut self, color:TextColor) -> Result {
-        let u8color:u8 = match color {
+    fn set_text_color(&mut self, color: TextColor) -> Result {
+        let u8color: u8 = match color {
             TextColor::Blue => 11,
             TextColor::Green => 10,
             TextColor::Yellow => 14,
@@ -60,7 +74,7 @@ impl IoScreen for VgaTextMode {
         self.color = u8color;
         Ok(())
     }
-    fn set_cursor_position(&mut self, x:usize, y:usize) -> Result {
+    fn set_cursor_position(&mut self, x: usize, y: usize) -> Result {
         if x >= self.width || y >= self.height {
             Err("Unbound Paramater")
         } else {

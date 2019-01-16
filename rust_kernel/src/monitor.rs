@@ -51,7 +51,7 @@ pub fn set_text_color(s: &'static str) -> Result {
     }
 }
 
-pub fn set_cursor_position(x:usize, y:usize) -> Result {
+pub fn set_cursor_position(x: usize, y: usize) -> Result {
     unsafe {
         match VGA_TEXT.set_cursor_position(x, y) {
             Ok(()) => Ok(()),
