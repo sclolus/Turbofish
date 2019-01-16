@@ -31,6 +31,7 @@ _start:
 
 	mov esp, stack_space            ; set stack pointer for a temporary stack
 
+	call disable_cursor
 	jmp init_gdt
 _start_after_init_gdt:	
 
@@ -71,6 +72,24 @@ set_sse2:
 	.end_set_sse2:
 	popad
 	pop ebp
+	ret
+
+disable_cursor:
+	pushf
+	push eax
+	push edx
+ 
+	mov dx, 0x3D4
+	mov al, 0xA	; low cursor shape register
+	out dx, al
+ 
+	inc dx
+	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
+	out dx, al
+ 
+	pop edx
+	pop eax
+	popf
 	ret
 
 section .bss
