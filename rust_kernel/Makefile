@@ -1,4 +1,4 @@
-arch := i686
+arch := x86_64
 kernel := build/kernel.elf
 name := undefined_behavior
 cargo_flags := 
@@ -31,12 +31,12 @@ clean: fclean
 kernel: $(kernel)
 
 $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script)
-	ld -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
+	ld -m elf_x86_64 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 build_rust:
-	cargo build $(cargo_flags) --target $(target)
+	cargo rustc $(cargo_flags) --target $(target)
 
 # compile assembly files
 build/asm/%.o: src/asm/%.asm
 	mkdir -p $(shell dirname $@)
-	nasm -felf $< -o $@
+	nasm -felf64 $< -o $@
