@@ -1,7 +1,4 @@
-#![feature(lang_items)]
-#![feature(asm)]
 #![no_std]
-#![feature(format_args_nl)]
 
 #[macro_use]
 pub mod monitor;

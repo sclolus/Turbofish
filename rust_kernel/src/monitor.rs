@@ -10,7 +10,7 @@ macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
         unsafe {
-            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args_nl!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!($($arg)*)).unwrap();
         }
     })
 }

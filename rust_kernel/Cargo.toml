@@ -6,6 +6,7 @@ edition = "2018"
 
 [profile.release]
 opt-level = 1
+panic = "abort"
 
 [lib]
 crate-type = ["staticlib"]
