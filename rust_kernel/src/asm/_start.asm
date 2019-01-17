@@ -10,6 +10,7 @@ align 4
 extern kmain
 extern init_gdt
 
+
 ; Hack of _Unwind_Resume for Rust linking
 global _Unwind_Resume
 _Unwind_Resume:
@@ -26,6 +27,7 @@ rust_eh_personality:
 
 	jmp $
 
+extern debug_center
 global _start
 global _start_after_init_gdt
 _start:
@@ -41,7 +43,8 @@ _start:
 
 	call disable_cursor
 	jmp init_gdt
-_start_after_init_gdt:	
+_start_after_init_gdt:
+	call debug_center
 
 	call set_sse2
 	call enable_avx
