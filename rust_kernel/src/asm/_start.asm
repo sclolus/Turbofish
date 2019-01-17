@@ -1,5 +1,23 @@
 [BITS 32]
 
+; Declare constants used for creating a multiboot header.
+	%define ALIGN    1 << 0
+	%define MEMINFO  1 << 1
+	%define FLAGS    ALIGN | MEMINFO
+	%define MAGIC    0x1BADB002
+	%define CHECKSUM -(MAGIC + FLAGS)
+
+; Declare a header as in the Multiboot Standard. We put this into a special
+; section so we can force the header to be in the start of the final program.
+; You don't need to understand all these details as it is just magic values that
+; is documented in the multiboot standard. The bootloader will search for this
+; magic sequence and recognize us as a multiboot kernel.
+section .multiboot
+align 4
+	dd MAGIC
+	dd FLAGS
+	dd CHECKSUM
+
 section .text
 	; GRUB multiboot spec
 align 4
@@ -9,23 +27,6 @@ align 4
 
 extern kmain
 extern init_gdt
-
-
-; Hack of _Unwind_Resume for Rust linking
-global _Unwind_Resume
-_Unwind_Resume:
-	push ebp
-	mov ebp, esp
-
-	jmp $
-
-; Hack of rust_eh_personnality for rust compilation in debug mode
-global rust_eh_personality
-rust_eh_personality:
-	push ebp
-	mov ebp, esp
-
-	jmp $
 
 extern debug_center
 global _start
@@ -122,6 +123,23 @@ disable_cursor:
 	pop eax
 	popf
 	ret
+
+; Hack of _Unwind_Resume for Rust linking
+global _Unwind_Resume
+_Unwind_Resume:
+	push ebp
+	mov ebp, esp
+
+	jmp $
+
+; Hack of rust_eh_personnality for rust compilation in debug mode
+global rust_eh_personality
+rust_eh_personality:
+	push ebp
+	mov ebp, esp
+
+	jmp $
+
 
 section .bss
 resb 8192                 ; 8KB for temporary stack
