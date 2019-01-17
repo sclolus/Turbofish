@@ -2,7 +2,7 @@ arch := i686
 kernel := build/kernel.elf
 name := undefined_behavior
 cargo_flags := 
-rustc_params := -C no-redzone -C inline-threshold=0 -Cforce-frame-pointers=yes -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
+rustc_params := -C no-redzone -C inline-threshold=0 -Cforce-frame-pointers=yes -C target-feature=-3dnow,-3dnowa,-avx2
 
 linker_script := src/linker.ld
 
