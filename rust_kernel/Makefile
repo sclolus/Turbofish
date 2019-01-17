@@ -44,7 +44,7 @@ ASMFLAGS = -f elf
 
 # C debuging Rust
 SRC_C_KERNEL += debug_center vga_text
-SRC_ASM_KERNEL += cpuid
+SRC_ASM_KERNEL += cpuid init multiboot
 VPATH += src/debug
 
 OBJ_DIR = objs
@@ -63,7 +63,7 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
 IFLAGS = -Iinclude -I$(LIBFT)/includes
 
-linker_script := src/linker.ld
+linker_script := linker.ld
 
 assembly_source_files := $(wildcard src/asm/*.asm)
 assembly_object_files := $(patsubst src/asm/%.asm, \
@@ -100,7 +100,8 @@ re: fclean all
 kernel: $(kernel)
 
 $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(rust_os) $(assembly_object_files) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+
 
 build_rust:
 	cargo rustc $(cargo_flags) --verbose --target $(target) -- $(rustc_params)

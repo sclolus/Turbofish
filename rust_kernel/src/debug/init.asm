@@ -1,37 +1,15 @@
 [BITS 32]
 
-; Declare constants used for creating a multiboot header.
-	%define ALIGN    1 << 0
-	%define MEMINFO  1 << 1
-	%define FLAGS    ALIGN | MEMINFO
-	%define MAGIC    0x1BADB002
-	%define CHECKSUM -(MAGIC + FLAGS)
-
-; Declare a header as in the Multiboot Standard. We put this into a special
-; section so we can force the header to be in the start of the final program.
-; You don't need to understand all these details as it is just magic values that
-; is documented in the multiboot standard. The bootloader will search for this
-; magic sequence and recognize us as a multiboot kernel.
-section .multiboot
-align 4
-	dd MAGIC
-	dd FLAGS
-	dd CHECKSUM
-
-section .text
-	; GRUB multiboot spec
-align 4
-	dd 0x1BADB002                ; magic
-	dd 0b11                      ; flags
-	dd - (0x1BADB002 + 0b11)     ; checksum. m+f+c should be zero
+segment .text
 
 extern kmain
 extern init_gdt
 
 extern debug_center
-global _start
 global _start_after_init_gdt
-_start:
+
+global init
+init:
 	cli                             ; block interrupts
 
 	push ebp
@@ -61,7 +39,7 @@ rust_ebp_wrapper:
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx
-;	call kmain                      ; kmain is called with this param
+	call kmain                      ; kmain is called with this param
 
 	; ---------------------------------------------------------------------
 	jmp $
@@ -110,15 +88,15 @@ disable_cursor:
 	pushf
 	push eax
 	push edx
- 
+
 	mov dx, 0x3D4
 	mov al, 0xA	; low cursor shape register
 	out dx, al
- 
+
 	inc dx
 	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
 	out dx, al
- 
+
 	pop edx
 	pop eax
 	popf
