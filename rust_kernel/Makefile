@@ -43,7 +43,7 @@ endif
 ASMFLAGS = -f elf
 
 # C debuging Rust
-SRC_C_KERNEL += debug_center
+SRC_C_KERNEL += debug_center vga_text
 SRC_ASM_KERNEL += cpuid
 VPATH += src/debug
 

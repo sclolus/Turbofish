@@ -108,6 +108,6 @@ landing:
 	mov ss, ax
 
 ;	put the stack at 4MB
-	mov esp, 0x400000
+	mov esp, 0x600000
 
 	jmp _start_after_init_gdt

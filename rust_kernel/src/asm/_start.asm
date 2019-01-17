@@ -60,7 +60,7 @@ rust_ebp_wrapper:
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx
-	call kmain                      ; kmain is called with this param
+;	call kmain                      ; kmain is called with this param
 
 	; ---------------------------------------------------------------------
 	jmp $

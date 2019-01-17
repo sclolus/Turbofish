@@ -4,14 +4,15 @@
 
 extern int get_cpu_features(void);
 
-int write(int fd, char *buf, size_t len) {
-	(void)fd;
-	(void)buf;
-	(void)len;
-	return 0;
-}
-
 int debug_center(void) {
 	printk("Les carotes sont cuites\n");
+	printk("{red}Ce sont des choses qui arrivent{eoc}\n");
+	printk("Les carotes sont cuites\n");
+	printk("{red}Ce sont des choses qui arrivent{eoc}\n");
+	printk("Les carotes sont cuites\n");
+	printk("{red}Ce sont des choses qui arrivent{eoc}\n");
+	printk("Les carotes sont cuites\n");
+	printk("Ce sont des choses qui arriventn");
+	while(1);
 	return get_cpu_features();
 }
