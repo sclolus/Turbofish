@@ -10,11 +10,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     println!("ebp = {:?}", _get_ebp());
 
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
-    println!(
-        "base memory: {:?} {:?}",
-        MULTIBOOT_INFO.unwrap().mem_lower,
-        MULTIBOOT_INFO.unwrap().mem_upper
-    );
+    println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
 
     set_text_color("yellow").unwrap();
     println!("vga term {:#?}", crate::monitor::vga_text_mode::VGA_TEXT);

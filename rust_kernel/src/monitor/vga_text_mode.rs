@@ -11,14 +11,8 @@ pub struct VgaTextMode {
     color: u8,
 }
 
-pub static mut VGA_TEXT: VgaTextMode = VgaTextMode {
-    memory_location: 0xb8000 as *mut u8,
-    width: 80,
-    height: 25,
-    x: 0,
-    y: 0,
-    color: 3,
-};
+pub static mut VGA_TEXT: VgaTextMode =
+    VgaTextMode { memory_location: 0xb8000 as *mut u8, width: 80, height: 25, x: 0, y: 0, color: 3 };
 
 impl IoScreen for VgaTextMode {
     fn putchar(&mut self, c: char) -> Result {
@@ -37,16 +31,8 @@ impl IoScreen for VgaTextMode {
 
         let ptr = self.memory_location;
         unsafe {
-            memmove(
-                ptr,
-                ptr.add(self.width * 2),
-                self.width * (self.height - 1) * 2,
-            );
-            memset(
-                ptr.add(self.width * (self.height - 1) * 2),
-                0,
-                self.width * 2,
-            );
+            memmove(ptr, ptr.add(self.width * 2), self.width * (self.height - 1) * 2);
+            memset(ptr.add(self.width * (self.height - 1) * 2), 0, self.width * 2);
         }
         self.y -= 1;
         Ok(())
