@@ -36,7 +36,8 @@ endif
 
 ASMFLAGS = -f elf
 
-LDFLAGS = -m elf_i386 -T link.ld
+LDFLAGS = -m elf_i386
+LDSCRIPT = linker.ld
 
 ### LIBRAIRIES ###
 
@@ -55,7 +56,7 @@ IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs -I$(LIBASM_I386)/includes
 
 # main
 SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = _start
+SRC_ASM_KERNEL = init multiboot
 VPATH = include src
 HEADERS = grub i386_type
 
@@ -146,21 +147,21 @@ all: pre-build target
 
 target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o $(OBJ_DIR)/asterix.o libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
-	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
+	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
 	nm -n $(KERNEL_PATHNAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo MAINBUILD
-	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
+	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
 	nm -n $(KERNEL_PATHNAME) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo POSTBUILD
-	ld $(LDFLAGS) $^ -o $(KERNEL_PATHNAME)
+	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
 
 	chmod -x $(KERNEL_PATHNAME)
 
@@ -223,4 +224,4 @@ help:
 	@echo "--------------------------------------------------------------------------"
 
 exec:
-	qemu-system-x86_64 -kernel $(KERNEL_PATHNAME) --enable-kvm
+	qemu-system-x86_64 -kernel $(KERNEL_PATHNAME) --enable-kvm -cpu IvyBridge
