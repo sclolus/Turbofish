@@ -1,0 +1,33 @@
+{
+  "arch": "x86",
+  "cpu": "pentium4",
+  "data-layout": "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128",
+  "dynamic-linking": false,
+  "env": "gnu",
+  "executables": true,
+  "has-elf-tls": true,
+  "has-rpath": true,
+  "is-builtin": true,
+  "linker-flavor": "gcc",
+  "linker-is-gnu": true,
+  "llvm-target": "i686-unknown-linux-gnu",
+  "max-atomic-width": 64,
+  "os": "linux",
+  "position-independent-executables": true,
+  "pre-link-args": {
+    "gcc": [
+      "-Wl,--as-needed",
+      "-Wl,-z,noexecstack",
+      "-m32"
+    ]
+  },
+  "relro-level": "full",
+  "stack-probes": true,
+  "target-c-int-width": "32",
+  "target-endian": "little",
+  "target-family": "unix",
+  "target-pointer-width": "32",
+  "vendor": "unknown",
+  "features": "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2",
+  "disable-redzone": true
+}

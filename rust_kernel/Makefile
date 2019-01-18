@@ -1,8 +1,7 @@
-arch := i686
+arch := i386
 kernel := build/kernel.elf
 name := undefined_behavior
 cargo_flags := 
-rustc_params := -C no-redzone -C inline-threshold=0 -Cforce-frame-pointers=yes -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
 linker_script := src/linker.ld
 
@@ -10,7 +9,10 @@ assembly_source_files := $(wildcard src/asm/*.asm)
 assembly_object_files := $(patsubst src/asm/%.asm, \
     build/asm/%.o, $(assembly_source_files))
 
-target := $(arch)-unknown-linux-gnu
+target := $(arch)
+custom_target := $(arch).json
+#$ come from this output: rustc -Z unstable-options --print target-spec-json --target i686-unknown-linux-gnu
+#doc about this flags: https://github.com/rust-lang/rust/blob/256e497fe63bf4b13f7c0b58fa17360ca849c54d/src/librustc_back/target/mod.rs#L228-L409 
 
 ifeq ($(DEBUG),yes)
 rust_os := target/$(target)/debug/lib$(name).a
@@ -35,7 +37,7 @@ $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script)
 	ld -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 build_rust:
-	cargo rustc $(cargo_flags) --verbose --target $(target) -- $(rustc_params)
+	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose #-- -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
 # compile assembly files
 build/asm/%.o: src/asm/%.asm
