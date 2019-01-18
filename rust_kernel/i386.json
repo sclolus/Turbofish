@@ -27,5 +27,7 @@
   "target-endian": "little",
   "target-family": "unix",
   "target-pointer-width": "32",
-  "vendor": "unknown"
+  "vendor": "unknown",
+  "features": "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2",
+  "disable-redzone": true
 }
