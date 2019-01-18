@@ -1,8 +1,13 @@
 arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := undefined_behavior
+<<<<<<< HEAD
 # These rustc flags are defined in json xbuild file.
 rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
+=======
+cargo_flags := 
+rustc_params := -C no-redzone -C inline-threshold=0 -Cforce-frame-pointers=yes -C target-feature=-3dnow,-3dnowa,-avx2
+>>>>>>> origin/linker_work
 
 ASM = nasm
 LD = ld
