@@ -1,34 +1,15 @@
 [BITS 32]
 
-section .text
-	; GRUB multiboot spec
-align 4
-	dd 0x1BADB002                ; magic
-	dd 0b11                      ; flags
-	dd - (0x1BADB002 + 0b11)     ; checksum. m+f+c should be zero
+segment .text
 
 extern kmain
 extern init_gdt
 
-; Hack of _Unwind_Resume for Rust linking
-global _Unwind_Resume
-_Unwind_Resume:
-	push ebp
-	mov ebp, esp
-
-	jmp $
-
-; Hack of rust_eh_personnality for rust compilation in debug mode
-global rust_eh_personality
-rust_eh_personality:
-	push ebp
-	mov ebp, esp
-
-	jmp $
-
-global _start
+extern debug_center
 global _start_after_init_gdt
-_start:
+
+global init
+init:
 	cli                             ; block interrupts
 
 	push ebp
@@ -41,9 +22,13 @@ _start:
 
 	call disable_cursor
 	jmp init_gdt
-_start_after_init_gdt:	
+_start_after_init_gdt:
+;	call debug_center
 
 	call set_sse2
+	call enable_avx
+
+	finit						; init the FPU
 
 	call rust_ebp_wrapper
 	; --------------------------------------------------------------------
@@ -74,7 +59,8 @@ set_sse2:
 	or ax, 0x2            ; set coprocessor monitoring  CR0.MP
 	mov cr0, eax
 	mov eax, cr4
-	or ax, 3 << 9         ; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	or eax, 3 << 9         ; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	or eax, 1 << 18		   ; Enable OSXSAVE instructions
 	mov cr4, eax
 
 	.end_set_sse2:
@@ -82,23 +68,56 @@ set_sse2:
 	pop ebp
 	ret
 
+enable_avx:
+    push eax
+    push ecx
+
+    xor ecx, ecx
+
+    xgetbv              ;Load XCR0 register
+
+    or eax, 7           ;Set AVX, SSE, X87 bits
+    xsetbv              ;Save back to XCR0
+
+    pop ecx
+    pop eax
+
+    ret
+
 disable_cursor:
 	pushf
 	push eax
 	push edx
- 
+
 	mov dx, 0x3D4
 	mov al, 0xA	; low cursor shape register
 	out dx, al
- 
+
 	inc dx
 	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
 	out dx, al
- 
+
 	pop edx
 	pop eax
 	popf
 	ret
+
+; Hack of _Unwind_Resume for Rust linking
+global _Unwind_Resume
+_Unwind_Resume:
+	push ebp
+	mov ebp, esp
+
+	jmp $
+
+; Hack of rust_eh_personnality for rust compilation in debug mode
+global rust_eh_personality
+rust_eh_personality:
+	push ebp
+	mov ebp, esp
+
+	jmp $
+
 
 section .bss
 resb 8192                 ; 8KB for temporary stack

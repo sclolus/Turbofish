@@ -35,7 +35,7 @@ gdt_info:
 gdt_start:
 	; empty selector
 	TIMES 8 db 0
-	
+
 	; CODE SELECTOR :
 ;	limit_0_15:
 	dw 0xffff
@@ -49,7 +49,7 @@ gdt_start:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
-	
+
 	; DATA SELECTOR :
 ;	limit_0_15:
 	dw 0xffff
@@ -63,7 +63,7 @@ gdt_start:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
-	
+
 	; STACK SELECTOR :
 ;	limit_0_15:
 	dw 0xffff
@@ -77,7 +77,7 @@ gdt_start:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
-gdt_end: 
+gdt_end:
 
 segment .text
 
@@ -104,11 +104,10 @@ landing:
 	mov gs, ax
 
 	; SS IS STACK SEGMENT REGISTER
-	mov ax, 0x10
+	mov ax, 0x18
 	mov ss, ax
 
-	; put the stack at 4MB
-	mov esp, 0x400000
-;	mov eax, 0xC00000
+;	put the stack at 4MB
+	mov esp, 0x600000
 
 	jmp _start_after_init_gdt

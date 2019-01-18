@@ -1,18 +1,13 @@
 [BITS 32]
 section .text
-        ; GRUB multiboot spec
-        align 4
-        dd 0x1BADB002                ; magic
-        dd 0x0                       ; flags
-        dd - (0x1BADB002 + 0x0)      ; checksum. m+f+c should be zero
 
 extern kmain
 extern init_gdt
 extern g_multiboot_info
 %define MULTIBOOT_INFO_LENGTH 116
 
-global _start
-_start:
+global init
+init:
     cli                             ; block interrupts
 
     push ebp
@@ -31,6 +26,7 @@ _start:
     mov esp, 0x700000
 
     call set_sse2
+    call enable_avx
 
     ; EBX contain pointer to GRUB multiboot information (preserved register)
     push ebx
@@ -54,12 +50,29 @@ set_sse2:
     or ax, 0x2			; set coprocessor monitoring  CR0.MP
     mov cr0, eax
     mov eax, cr4
-    or ax, 3 << 9		; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+    or eax, 3 << 9      ; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+    or eax, 1 << 18     ; Active OSXSAVE generation
     mov cr4, eax
 
 .end_set_sse2:
     popad
     pop ebp
+    ret
+
+enable_avx:
+    push eax
+    push ecx
+
+    xor ecx, ecx
+
+    xgetbv              ;Load XCR0 register
+
+    or eax, 7           ;Set AVX, SSE, X87 bits
+    xsetbv              ;Save back to XCR0
+
+    pop ecx
+    pop eax
+
     ret
 
 section .bss
