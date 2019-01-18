@@ -100,7 +100,7 @@ re: fclean all
 kernel: $(kernel)
 
 $(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(rust_os) $(assembly_object_files) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a $(rust_os) $(assembly_object_files)
 
 
 build_rust:

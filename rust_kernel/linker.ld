@@ -18,6 +18,7 @@ SECTIONS
 		*(.multiboot)
 	}
 
+	/* Base code section */
 	.text BLOCK(4K) : ALIGN(4K)
 	{
 		*(.text)
@@ -33,6 +34,12 @@ SECTIONS
 	.data BLOCK(4K) : ALIGN(4K)
 	{
 		*(.data)
+	}
+
+	/* For special rust debug section: got mysterious N symbols */
+	.rust_debug BLOCK(4k) : ALIGN(4K)
+	{
+		*(.debug*)
 	}
 
 	/* Read-write data (uninitialized) */
