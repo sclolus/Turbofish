@@ -7,45 +7,29 @@ rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse
 
 ASM = nasm
 LD = ld
-
-### C MAIN PARTS
-
 CC = gcc
 
 ### C FLAGS CONFIGURATION ###
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
-	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O2 -fno-omit-frame-pointer
-else
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
-endif
-CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-CFLAGS += -nostdinc
-endif
-
-ifeq ($(UNAME_S),Linux)
-ifeq ($(DEBUG),yes)
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
-else ifeq ($(OPTIM),yes)
-	# -fno-omit-frame-pointer keep good call trace for panic()
+# -fno-omit-frame-pointer keep good call trace for panic()
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
+
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
 CFLAGS += -nostdinc
-endif
 
 ASMFLAGS = -f elf
 
 # C debuging Rust
-#SRC_C_KERNEL += debug_center vga_text
-SRC_C_KERNEL +=
+ifeq ($(DEV), C)
+	SRC_C_KERNEL += debug_center vga_text
+endif
+
 SRC_ASM_KERNEL += cpuid init multiboot gdt
 VPATH += src/boot
 
@@ -88,14 +72,18 @@ endif
 all: $(kernel)
 
 clean:
-#	make -C $(LIBFT)/ clean
+ifeq ($(DEV), C)
+	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
+endif
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
 
 fclean:
-#	make -C $(LIBFT)/ fclean
+ifeq ($(DEV), C)
+	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
+endif
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
 	rm -rf build
@@ -104,9 +92,13 @@ re: fclean all
 
 kernel: $(kernel)
 
-$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL)
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(assembly_object_files)
-
+ifeq ($(DEV), C)
+$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(assembly_object_files) libft/libft.a
+else
+$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL)
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(rust_os) $(assembly_object_files)
+endif
 
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
@@ -116,14 +108,16 @@ build/asm/%.o: src/asm/%.asm
 	mkdir -p $(shell dirname $@)
 	$(ASM) -felf $< -o $@
 
-$(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
-
 $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
+ifeq ($(DEV), C)
+$(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
+	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
+
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+endif
 
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
