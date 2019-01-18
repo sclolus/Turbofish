@@ -1,4 +1,5 @@
 .*
+!.cargo
 *.o
 *.img
 *.elf
