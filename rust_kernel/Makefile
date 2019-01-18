@@ -1,3 +1,4 @@
+
 arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := undefined_behavior
@@ -43,9 +44,10 @@ endif
 ASMFLAGS = -f elf
 
 # C debuging Rust
-SRC_C_KERNEL += debug_center vga_text
-SRC_ASM_KERNEL += cpuid init multiboot
-VPATH += src/debug
+#SRC_C_KERNEL += debug_center vga_text
+SRC_C_KERNEL +=
+SRC_ASM_KERNEL += cpuid init multiboot gdt
+VPATH += src/boot
 
 OBJ_DIR = objs
 
@@ -81,18 +83,18 @@ cargo_flags += --release
 rust_os := target/$(target)/release/lib$(name).a
 endif
 
-.PHONY: all clean kernel
+.PHONY: all clean fclean re exec kernel
 
 all: $(kernel)
 
 clean:
-	make -C $(LIBFT)/ clean
+#	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
 
 fclean:
-	make -C $(LIBFT)/ fclean
+#	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
@@ -102,8 +104,8 @@ re: fclean all
 
 kernel: $(kernel)
 
-$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a $(rust_os) $(assembly_object_files)
+$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL)
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(assembly_object_files)
 
 
 build_rust:
@@ -122,3 +124,6 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+
+exec:
+	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
