@@ -86,7 +86,6 @@ ifeq ($(DEV), C)
 endif
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
-	rm -rf build
 
 re: fclean all
 
