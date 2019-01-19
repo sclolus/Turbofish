@@ -1,2 +1,8 @@
 [build]
 rustflags = ["-C","force-frame-pointers=yes"]
+# custom source for crate.io
+# https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/cargo-can-use-a-local-registry-replacement.html
+[source.crates-io]
+replace-with = 'detournement_crate_io'
+[source.detournement_crate_io]
+registry = 'file:///home/mordak/Documents/KFS/crates.io-index.git'

@@ -4,3 +4,6 @@
 [submodule "common/libasm_i386"]
 	path = common/libasm_i386
 	url = https://gitlab.com/mordaklavache/libasm_i386.git
+[submodule "crates.io-index.git"]
+	path = crates.io-index.git
+	url = https://github.com/rust-lang/crates.io-index.git
