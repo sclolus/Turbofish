@@ -2,7 +2,7 @@
 
 ## You can test that kernel only on a linux machine
 
-## For assembly parts, you need a 'nasm' installation: (for asm parts)
+## For assembly parts, you need a 'nasm' installation (for asm parts)
 debian: sudo apt-get install nasm  
 archLinux: sudo pacman -S nasm
 
@@ -19,11 +19,11 @@ For the moment, you dont need gcc compiler at all !
 
 # CAUTION: NEVER BE A SUDOER NOR A ROOT FOR THE RUST INSTALLATION !
 
-The main code of the kernel is in RUST langage, so you have to follow this procedure to install it:  
+The main code of the kernel is in RUST langage, so you have to follow this procedure to install it  
 curl and a internet connexion are required to launch the installation  
 The total installation of rust takes approximately 1 GB of disc space  
 
-# If you dont have rust on your computer,
+# If you dont have rust on your computer
 First, launch the main install procedure: https://www.rust-lang.org/tools/install  
 -> curl https://sh.rustup.rs -sSf | sh  
 Choose a custom installation, tape 2  
@@ -39,7 +39,7 @@ Put this line in your ~.bashrc (or .zshrc etc...) if you want to have definitive
 The installation lead to the creation of two hiddens subfolder in your HOME/~, .cargo and .rustup  
 when you want to remove completely rust, you have just to remove it !
 
-# If you already have it.  
+# If you already have it  
 Switch the default toolchain to 'nightly'  
 -> rustup toolchain add nightly (install the toolchain)  
 -> rustup default nightly (set this toolchain as default)  
