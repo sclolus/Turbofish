@@ -33,6 +33,9 @@ endif
 SRC_ASM_KERNEL += cpuid init multiboot gdt
 VPATH += src/boot
 
+SRC_ASM_KERNEL += vbe_font
+VPATH += src/monitor
+
 OBJ_DIR = objs
 
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
