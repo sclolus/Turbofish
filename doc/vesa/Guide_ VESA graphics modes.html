@@ -1,0 +1,501 @@
+﻿<html><head>
+    <base href="http://www.delorie.com/djgpp/doc/ug/graphics/vesa.html"><title>Guide: VESA graphics modes</title>
+
+
+    <link rel="icon" href="data:text/plain;base64,AAABAAEAEBAQAAAAAAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACAAAAAgIAAgAAAAIAAgACAgAAAwMDAAICAgAAAAP8AAP8AAAD//wD/AAAA/wD/AP//AAD///8A////////////eAAAh4AACPgAAIiIAAD/cAAH//+AAP+AAH///4AA/4AA////gAD/gAD///+AAP9wAH///4AA//gAB///gAD//3AAh3gAAP///3iIiIAA////////gAD///////+AAP//////d4AA//////94AAD/////////d/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA">
+    <script id="savepage-pageloader" type="application/javascript">
+      savepage_PageLoader(5);
+      "use strict";function savepage_PageLoader(maxframedepth){var resourceMimeType=new Array();var resourceBase64Data=new Array();var resourceBlobUrl=new Array();window.addEventListener("DOMContentLoaded",function(a){createBlobURLs();replaceReferences(0,document.documentElement)},false);function createBlobURLs(){var i,j,binaryString,blobData;var a=new Array();for(i=0;i<resourceMimeType.length;i++){if(typeof resourceMimeType[i]!="undefined"){binaryString=atob(resourceBase64Data[i]);resourceBase64Data[i]="";a.length=0;for(j=0;j<binaryString.length;j++){a[j]=binaryString.charCodeAt(j)}blobData=new Blob([new Uint8Array(a)],{type:resourceMimeType[i]});resourceMimeType[i]="";resourceBlobUrl[i]=window.URL.createObjectURL(blobData)}}}function replaceReferences(a,b){var i,regex1,regex2,csstext,blobData;regex1=/url\(\s*((?:"[^"]+")|(?:'[^']+')|(?:[^\s)]+))\s*\)/gi;regex2=/data:[^;]*;resource=(\d+);base64,/i;if(b.hasAttribute("style")){csstext=b.style.cssText;b.style.cssText=csstext.replace(regex1,replaceCSSRef)}if(b.localName=="style"){csstext=b.textContent;b.textContent=csstext.replace(regex1,replaceCSSRef)}else if(b.localName=="link"&&(b.rel.toLowerCase()=="icon"||b.rel.toLowerCase()=="shortcut icon")){if(b.href!="")b.href=b.href.replace(regex2,replaceRef)}else if(b.localName=="body"){if(b.background!="")b.background=b.background.replace(regex2,replaceRef)}else if(b.localName=="img"){if(b.src!="")b.src=b.src.replace(regex2,replaceRef)}else if(b.localName=="input"&&b.type.toLowerCase()=="image"){if(b.src!="")b.src=b.src.replace(regex2,replaceRef)}else if(b.localName=="audio"){if(b.src!=""){b.src=b.src.replace(regex2,replaceRef);b.load()}}else if(b.localName=="video"){if(b.src!=""){b.src=b.src.replace(regex2,replaceRef);b.load()}if(b.poster!="")b.poster=b.poster.replace(regex2,replaceRef)}else if(b.localName=="source"){if(b.src!=""){b.src=b.src.replace(regex2,replaceRef);b.parentElement.load()}}else if(b.localName=="track"){if(b.src!="")b.src=b.src.replace(regex2,replaceRef)}else if(b.localName=="object"){if(b.data!="")b.data=b.data.replace(regex2,replaceRef)}else if(b.localName=="embed"){if(b.src!="")b.src=b.src.replace(regex2,replaceRef)}if(b.localName=="iframe"||b.localName=="frame"){if(a<maxframedepth){if(b.hasAttribute("data-savepage-sameorigin")){blobData=new Blob([decodeURIComponent(b.src.substr(29))],{type:"text/html;charset=utf-8"});b.onload=function(){try{if(b.contentDocument.documentElement!=null){replaceReferences(a+1,b.contentDocument.documentElement)}}catch(e){}};b.src=window.URL.createObjectURL(blobData)}}}else{for(i=0;i<b.childNodes.length;i++){if(b.childNodes[i]!=null){if(b.childNodes[i].nodeType==1)replaceReferences(a,b.childNodes[i])}}}}function replaceCSSRef(a,b,c,d){var e=new Array();e=b.match(/data:[^;]*;resource=(\d+);base64,/i);if(e!=null)return"url("+resourceBlobUrl[+e[1]]+")";else return a}function replaceRef(a,b,c,d){return resourceBlobUrl[+b]}
+      }
+    </script>
+    <meta name="savepage-url" content="http://www.delorie.com/djgpp/doc/ug/graphics/vesa.html">
+    <meta name="savepage-title" content="Guide: VESA graphics modes">
+    <meta name="savepage-date" content="Sun Jan 20 2019 14:26:53 GMT+0000 (GMT)">
+    <meta name="savepage-state" content="Standard Items; Used page loader; Retained cross-origin frames; Removed unsaved URLs; Max frame depth = 5; Max resource size = 50MB; Max resource time = 10s;">
+    <meta name="savepage-version" content="12.7">
+    <meta name="savepage-comments" content=""></head><body><center><table width="100%" cellspacing="0" cellpadding="3" border="0"><tbody><tr><td valign="top" bgcolor="#ffcc99" align="left"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+<a href="/" target="_top">www.delorie.com</a>/<a href="/djgpp/" target="_top">djgpp</a>/<a href="/djgpp/doc/" target="_top">doc</a>/ug/graphics/vesa.html</b></font></small></td>
+<td valign="top" bgcolor="#ffcc99" align="right"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+<a href="/search/">search</a>  
+</b></font></small></td>
+</tr></tbody></table><a href="bulktrap.html"></a><big><big><b>Guide: VESA graphics modes</b></big></big><p></p></center>
+
+
+<p> The standard VGA modes are all very well, but before long you are
+likely to want a higher resolution, or perhaps one with more than 256
+colors. This means switching to an SVGA mode, which stands for
+Super-VGA, ie. better than what was possible on the original VGA
+board. There are many hundreds of different and incompatible SVGA
+cards on the market today, but you won't need to write special code
+for each one because you can use the standard VESA interface
+instead. This is a software API that was designed by the Video
+Electronics Standards Association, and is usually implemented either
+as a loadable TSR utility or as part of the BIOS ROM on your video
+card.  VESA allows you to do things like setting graphics modes and
+displaying images without needing to know the hardware details for
+every graphics chipset: this is obviously a good thing if you want
+your program to work across a range of different machines!</p>
+
+<p> If you don't already have this, you should start by getting hold
+of a copy of the VESA spec (see the links at the end of this file). A
+lot of material from the official documentation will be repeated here,
+but this is a beginners tutorial rather than a complete technical
+reference so you will probably want to have the spec at hand for
+reference.</p>
+
+<p> All the VESA functions are accessed by calling int 0x10 with a
+value of the form 0x4F?? in the AX register, where ?? represents the
+specific function that you want to execute. They will return a value
+of zero in AH if the call succeeds, or non-zero if there was an error.
+
+</p><p> The first step is to make sure that a VESA driver is present, and
+to retrieve a copy of the VESA information structure. This is defined
+as:</p>
+
+<pre>   typedef struct VESA_INFO
+   { 
+      unsigned char  VESASignature[4]     __attribute__ ((packed));
+      unsigned short VESAVersion          __attribute__ ((packed));
+      unsigned long  OEMStringPtr         __attribute__ ((packed));
+      unsigned char  Capabilities[4]      __attribute__ ((packed));
+      unsigned long  VideoModePtr         __attribute__ ((packed));
+      unsigned short TotalMemory          __attribute__ ((packed));
+      unsigned short OemSoftwareRev       __attribute__ ((packed));
+      unsigned long  OemVendorNamePtr     __attribute__ ((packed));
+      unsigned long  OemProductNamePtr    __attribute__ ((packed));
+      unsigned long  OemProductRevPtr     __attribute__ ((packed));
+      unsigned char  Reserved[222]        __attribute__ ((packed));
+      unsigned char  OemData[256]         __attribute__ ((packed));
+   } VESA_INFO;
+</pre>
+
+<p>The <tt>__attribute__</tt> modifiers are needed to make
+<tt>gcc</tt> pack the structure into the standard VESA layout, rather
+than adding pad bytes between some of the fields like it would
+normally do.</p>
+
+<p> Having declared this structure, you can call VESA function 0x4F00
+to fill it with information about the current driver. Because VESA was
+designed as a real mode API for use by 16 bit programs, this data must
+be transferred via a buffer in conventional memory with the
+<tt>dosmemput()</tt> and <tt>dosmemget()</tt> functions: see the DPMI
+chapter for details of this. The function below will copy the VESA
+driver information into a global <tt>VESA_INFO</tt> structure,
+returning zero on success or -1 if anything goes wrong (ie. no driver
+is available).</p>
+
+<pre>   #include &lt;dpmi.h&gt;
+   #include &lt;go32.h&gt;
+   #include &lt;sys/farptr.h&gt;
+
+
+   VESA_INFO vesa_info;
+
+
+   int get_vesa_info()
+   {
+      __dpmi_regs r;
+      long dosbuf;
+      int c;
+
+      /* use the conventional memory transfer buffer */
+      dosbuf = __tb &amp; 0xFFFFF;
+
+      /* initialize the buffer to zero */
+      for (c=0; c&lt;sizeof(VESA_INFO); c++)
+	 _farpokeb(_dos_ds, dosbuf+c, 0);
+
+      dosmemput("VBE2", 4, dosbuf);
+
+      /* call the VESA function */
+      r.x.ax = 0x4F00;
+      r.x.di = dosbuf &amp; 0xF;
+      r.x.es = (dosbuf&gt;&gt;4) &amp; 0xFFFF;
+      __dpmi_int(0x10, &amp;r);
+
+      /* quit if there was an error */
+      if (r.h.ah)
+	 return -1;
+
+      /* copy the resulting data into our structure */
+      dosmemget(dosbuf, sizeof(VESA_INFO), &amp;vesa_info);
+
+      /* check that we got the right magic marker value */
+      if (strncmp(vesa_info.VESASignature, "VESA", 4) != 0)
+	 return -1;
+
+      /* it worked! */
+      return 0;
+   }
+</pre>
+
+<p>After calling the <tt>get_vesa_info()</tt> function you may want to
+examine a few of the values that it leaves in the vesa_info structure,
+notably the <tt>VESAVersion</tt>, <tt>Capabilities</tt>, and
+<tt>TotalMemory</tt> fields (see the VESA spec for details of
+these). Assuming that this call has succeeded, the next step is to
+work out which mode you want to use, and retrieve another information
+structure that is specific to this mode. VESA can in theory support an
+infinite variety of possible resolutions, but obviously most hardware
+can only handle a few specific modes. By far the most common is the
+640x480 resolution, but most cards can also handle sizes of 640x400,
+800x600, and 1024x768, and many can go up as high as 1280x1024 and
+1600x1200 as well as occasionally supporting low resolution modes like
+320x240 and 360x400, and oddball sizes like 512x512. There are a few
+standard mode numbers like 0x101 for the 640x480 256 color mode, and
+you will see a lot of tutorials and code that use these fixed values,
+but it is not a good idea to rely on them because the most recent
+version of the VESA specification warns that they may change in the
+future. This isn't a problem, though, because there is a perfectly
+good way to check what modes are available at runtime, which also has
+the advantage of letting your program support any strange modes that
+the driver might provide on future or different hardware, even if you
+didn't know about them when you wrote it.</p>
+
+<p> Information about a particular mode can be obtained in a similar
+way to the main VESA information block, but using function 0x4F01 with
+a different structure, eg:</p>
+
+<pre>   typedef struct MODE_INFO
+   {
+      unsigned short ModeAttributes       __attribute__ ((packed));
+      unsigned char  WinAAttributes       __attribute__ ((packed));
+      unsigned char  WinBAttributes       __attribute__ ((packed));
+      unsigned short WinGranularity       __attribute__ ((packed));
+      unsigned short WinSize              __attribute__ ((packed));
+      unsigned short WinASegment          __attribute__ ((packed));
+      unsigned short WinBSegment          __attribute__ ((packed));
+      unsigned long  WinFuncPtr           __attribute__ ((packed));
+      unsigned short BytesPerScanLine     __attribute__ ((packed));
+      unsigned short XResolution          __attribute__ ((packed));
+      unsigned short YResolution          __attribute__ ((packed));
+      unsigned char  XCharSize            __attribute__ ((packed));
+      unsigned char  YCharSize            __attribute__ ((packed));
+      unsigned char  NumberOfPlanes       __attribute__ ((packed));
+      unsigned char  BitsPerPixel         __attribute__ ((packed));
+      unsigned char  NumberOfBanks        __attribute__ ((packed));
+      unsigned char  MemoryModel          __attribute__ ((packed));
+      unsigned char  BankSize             __attribute__ ((packed));
+      unsigned char  NumberOfImagePages   __attribute__ ((packed));
+      unsigned char  Reserved_page        __attribute__ ((packed));
+      unsigned char  RedMaskSize          __attribute__ ((packed));
+      unsigned char  RedMaskPos           __attribute__ ((packed));
+      unsigned char  GreenMaskSize        __attribute__ ((packed));
+      unsigned char  GreenMaskPos         __attribute__ ((packed));
+      unsigned char  BlueMaskSize         __attribute__ ((packed));
+      unsigned char  BlueMaskPos          __attribute__ ((packed));
+      unsigned char  ReservedMaskSize     __attribute__ ((packed));
+      unsigned char  ReservedMaskPos      __attribute__ ((packed));
+      unsigned char  DirectColorModeInfo  __attribute__ ((packed));
+      unsigned long  PhysBasePtr          __attribute__ ((packed));
+      unsigned long  OffScreenMemOffset   __attribute__ ((packed));
+      unsigned short OffScreenMemSize     __attribute__ ((packed));
+      unsigned char  Reserved[206]        __attribute__ ((packed));
+   } MODE_INFO;
+
+
+   MODE_INFO mode_info;
+
+
+   int get_mode_info(int mode)
+   {
+      __dpmi_regs r;
+      long dosbuf;
+      int c;
+
+      /* use the conventional memory transfer buffer */
+      dosbuf = __tb &amp; 0xFFFFF;
+
+      /* initialize the buffer to zero */
+      for (c=0; c&lt;sizeof(MODE_INFO); c++)
+	 _farpokeb(_dos_ds, dosbuf+c, 0);
+
+      /* call the VESA function */
+      r.x.ax = 0x4F01;
+      r.x.di = dosbuf &amp; 0xF;
+      r.x.es = (dosbuf&gt;&gt;4) &amp; 0xFFFF;
+      r.x.cx = mode;
+      __dpmi_int(0x10, &amp;r);
+
+      /* quit if there was an error */
+      if (r.h.ah)
+	 return -1;
+
+      /* copy the resulting data into our structure */
+      dosmemget(dosbuf, sizeof(MODE_INFO), &amp;mode_info);
+
+      /* it worked! */
+      return 0;
+   }
+</pre>
+
+<p>This function is obviously only useful if you already know what
+mode number you should pass as the parameter, but that information can
+easily be obtained from the main VESA information block. This contains
+a list of all the possible modes that are supported by the driver, so
+you can write a little routine that will loop through all these modes,
+retrieving information about each one in turn until it finds the one
+that you are looking for. For example:</p>
+
+<pre>   int find_vesa_mode(int w, int h)
+   {
+      int mode_list[256];
+      int number_of_modes;
+      long mode_ptr;
+      int c;
+
+      /* check that the VESA driver exists, and get information about it */
+      if (get_vesa_info() != 0)
+	 return 0;
+
+      /* convert the mode list pointer from seg:offset to a linear address */
+      mode_ptr = ((vesa_info.VideoModePtr &amp; 0xFFFF0000) &gt;&gt; 12) + 
+		  (vesa_info.VideoModePtr &amp; 0xFFFF);
+
+      number_of_modes = 0;
+
+      /* read the list of available modes */
+      while (_farpeekw(_dos_ds, mode_ptr) != 0xFFFF) {
+	 mode_list[number_of_modes] = _farpeekw(_dos_ds, mode_ptr);
+	 number_of_modes++;
+	 mode_ptr += 2;
+      }
+
+      /* scan through the list of modes looking for the one that we want */
+      for (c=0; c&lt;number_of_modes; c++) {
+
+	 /* get information about this mode */
+	 if (get_mode_info(mode_list[c]) != 0)
+	    continue;
+
+	 /* check the flags field to make sure this is a color graphics mode,
+	  * and that it is supported by the current hardware */
+	 if ((mode_info.ModeAttributes &amp; 0x19) != 0x19)
+	    continue;
+
+	 /* check that this mode is the right size */
+	 if ((mode_info.XResolution != w) || (mode_info.YResolution != h))
+	    continue;
+
+	 /* check that there is only one color plane */
+	 if (mode_info.NumberOfPlanes != 1)
+	    continue;
+
+	 /* check that it is a packed-pixel mode (other values are used for
+	  * different memory layouts, eg. 6 for a truecolor resolution) */
+	 if (mode_info.MemoryModel != 4)
+	    continue;
+
+	 /* check that this is an 8-bit (256 color) mode */
+	 if (mode_info.BitsPerPixel != 8)
+	    continue;
+
+	 /* if it passed all those checks, this must be the mode we want! */
+	 return mode_list[c];
+      }
+
+      /* oh dear, there was no mode matching the one we wanted! */
+      return 0; 
+   }
+</pre>
+
+<p>And at last, you are ready to actually select a VESA graphics mode
+and start drawing things onto the screen! This is done by calling
+function 0x4F02 with a mode number in the BX register, eg:</p>
+
+<pre>   int set_vesa_mode(int w, int h)
+   {
+      __dpmi_regs r;
+      int mode_number;
+
+      /* find the number for this mode */
+      mode_number = find_vesa_mode(w, h);
+      if (!mode_number)
+	 return -1;
+
+      /* call the VESA mode set function */
+      r.x.ax = 0x4F02;
+      r.x.bx = mode_number;
+      __dpmi_int(0x10, &amp;r);
+      if (r.h.ah)
+	 return -1;
+
+      /* it worked! */
+      return 0;
+   }
+</pre>
+
+<p>The SVGA video memory is located at physical address 0xA0000, the
+same as in mode 13h, but there is one small problem with this: there
+simply isn't enough room for it all to fit there! The original DOS
+memory map only included space for 64k of video memory between 0xA0000
+and 0xB0000, which is fine for a 320x200 resolution but nowhere near
+enough for a 640x480 screen (that takes up 300k of framebuffer space,
+and higher resolutions need even more). The SVGA hardware designers
+solved this problem by using a banked memory architecture, where the
+64k VGA memory region is treated as a sliding window onto the larger
+expanse of real video memory inside your card. To access an arbitrary
+location on the SVGA screen you must first call VESA function 0x4F05
+to tell it which bank you want to use, and then write to a memory
+location within that bank. You can set the bank with the function:</p>
+
+<pre>   void set_vesa_bank(int bank_number)
+   {
+      __dpmi_regs r;
+
+      r.x.ax = 0x4F05;
+      r.x.bx = 0;
+      r.x.dx = bank_number;
+      __dpmi_int(0x10, &amp;r);
+   }
+</pre>
+
+<p>Using this, a simple <tt>putpixel</tt> function can be implemented as:</p>
+
+<pre>   void putpixel_vesa_640x480(int x, int y, int color)
+   {
+      int address = y*640+x;
+      int bank_size = mode_info.WinGranularity*1024;
+      int bank_number = address/bank_size;
+      int bank_offset = address%bank_size;
+
+      set_vesa_bank(bank_number);
+
+      _farpokeb(_dos_ds, 0xA0000+bank_offset, color);
+   }
+</pre>
+
+<p><em>Note:</em> Many VESA tutorials, and indeed a few actual
+production programs, assume that the SVGA memory banks will always be
+exactly 64k in size. This is true on about 95% of cards, but there is
+some hardware with bank sizes of 4k or 16k, so the correct approach is
+to read the bank size from the <tt>WinGranularity</tt> field of the mode
+information structure as demonstrated above.</p>
+
+<p> <em>Note 2:</em> The bank switch function is very slow! This
+simplistic <tt>putpixel</tt> routine is far too inefficient to be
+useful in real life. It can be improved by making the
+<tt>set_vesa_bank()</tt> function only bother to change banks if the
+new value is different to the previous one, and you should try to
+optimize your more complex drawing functions to use the minimum
+possible number of bank switches.</p>
+
+<p> Because bank switching is so slow and awkward, it is often better
+to do all your drawing onto a framebuffer array in regular memory, and
+copy it across to the VESA screen in a single pass once the image is
+complete. This can be done with a function along the lines of:</p>
+
+<pre>   void copy_to_vesa_screen(char *memory_buffer, int screen_size)
+   {
+      int bank_size = mode_info.WinSize*1024;
+      int bank_granularity = mode_info.WinGranularity*1024;
+      int bank_number = 0;
+      int todo = screen_size;
+      int copy_size;
+
+      while (todo &gt; 0) {
+	 /* select the appropriate bank */
+	 set_vesa_bank(bank_number);
+
+	 /* how much can we copy in one go? */
+	 if (todo &gt; bank_size)
+	    copy_size = bank_size;
+	 else
+	    copy_size = todo;
+
+	 /* copy a bank of data to the screen */
+	 dosmemput(memory_buffer, copy_size, 0xA0000);
+
+	 /* move on to the next bank of data */
+	 todo -= copy_size;
+	 memory_buffer += copy_size;
+	 bank_number += bank_size/bank_granularity;
+      }
+   }
+</pre>
+
+<p>The description of the bank switching mechanism given above is
+actually a slight simplification of the true state of affairs, because
+VESA supports two different banks (described as "windows" in the
+spec), which can be configured in a variety of ways depending on the
+hardware. Usually there will only be one bank which is used both for
+reading and writing the video memory, but on some cards you may have
+two windows using different address ranges (eg. one from 0xA0000 to
+0xB0000 and another from 0xB0000 to 0xC0000, or two 32k chunks from
+0xA0000 to 0xA8000 and 0xA8000 to 0xB0000), or you might have one
+window for writing to the screen and a different one for reading from
+it, which can be positioned independently of each other. You don't
+need to worry about this when drawing onto the screen, as long as you
+are careful to always use the <tt>WinSize</tt> and
+<tt>WinGranularity</tt> values rather than assuming the banks will
+always be 64k in size, but it is essential to check the window setup
+before you try to read pixel values back from the display.  If the
+bottom two bits in the <tt>mode_info.WinAAttributes</tt> field are
+set, the first window is readable and you can proceed as
+normal. Otherwise you will have to use the second window for your read
+operations, which means changing the <tt>set_vesa_bank()</tt> function
+to put a 1 in the BX register, and writing to
+<tt>mode_info.WinBSegment*16</tt> rather than the default 0xA0000
+address.</p>
+
+<hr>
+
+<p>References (broken links, sorry, use your favorite search engine)</p>
+
+<dl>
+
+<dt>VBE 2.0 spec -
+<a href="http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/specs/vbe20.zip">
+http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/specs/vbe20.zip</a>
+(or <a href="https://www.google.com/search?q=vbe20.zip">google it</a>)
+<br>
+
+</dt><dd>The official VESA specification, version 2.0.
+
+</dd><dt>VESA 1.2 spec -
+<a href="http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/specs/vesasp12.zip">
+http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/specs/vesasp12.zip</a>
+(or <a href="https://www.google.com/search?q=vesasp12.zip">google it</a>)
+<br>
+
+</dt><dd>An earlier version of the VESA specification. This has been replaced by 
+the document above, but can be a useful reference if you want to make sure 
+that your code will work across a wide range of different VESA driver 
+versions.
+
+</dd><dt>VGADOC -
+<a href="http://bos.asmhackers.net/docs/vga/vgadoc4b.zip">
+http://bos.asmhackers.net/docs/vga/vgadoc4b.zip</a>
+(or <a href="https://www.google.com/search?q=vgadoc4b.zip">google it</a>)
+<br>
+
+</dt><dd>For any masochists who want to try writing SVGA code directly at the 
+hardware level rather than using VESA, this contains detailed information 
+about most of the common chipsets.
+
+</dd></dl>
+
+
+
+
+<br clear="all"><p></p>
+<a href="bulktrap.html"></a><table width="100%" cellspacing="0" cellpadding="3" border="0"><tbody><tr>
+<td valign="top" bgcolor="#ffcc99" align="left"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+<a href="/users/dj/" target="_top">webmaster</a>  
+</b></font></small></td>
+<td valign="top" bgcolor="#ffcc99" align="right"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+<a href="/" target="_top">delorie software</a>  
+<a href="/privacy.html" target="_top">privacy</a>  
+</b></font></small></td>
+</tr><tr><td valign="top" bgcolor="#ffcc99" align="left"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+<a href="/copyright.html" target="_top">Copyright © 2019</a>  
+<a href="/users/root/" target="_top">by root</a>  
+</b></font></small></td>
+<td valign="top" bgcolor="#ffcc99" align="right"><small><font face="itc avant garde gothic,helvetica,arial"><b>  
+Updated Jan 20 2019  
+</b></font></small></td>
+</tr></tbody></table>
+<center></center>
+
+
+</body></html>
