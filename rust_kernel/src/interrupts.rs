@@ -46,7 +46,8 @@ pub extern "C" fn _asm_int(int: u32) -> () {
     }
 }
 
-
+#[no_mangle]
+#[inline(never)]
 pub extern "C" fn _asm_get_idtr() -> Idtr {
     unsafe {
         asm_get_idtr()
