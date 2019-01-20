@@ -47,8 +47,8 @@ get_vendor_id:
 	pop ebp
 	ret
 
-GLOBAL get_ecx_cpufeatures
-get_ecx_cpufeatures:
+GLOBAL get_ecx_cpu_features
+get_ecx_cpu_features:
 	push ebp
 	mov ebp, esp
 	pushad
@@ -62,8 +62,8 @@ get_ecx_cpufeatures:
 	pop ebp
 	ret
 
-GLOBAL get_edx_cpufeatures
-get_edx_cpufeatures:
+GLOBAL get_edx_cpu_features
+get_edx_cpu_features:
 	push ebp
 	mov ebp, esp
 	pushad
