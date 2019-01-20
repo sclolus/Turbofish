@@ -173,5 +173,7 @@ pub fn query_vbe_global_infos() -> u32 {
         ecx: 0,
         eax: 0x4f00,
     };
-    real_mode_op(reg, 0x10)
+    unsafe {
+        real_mode_op(reg, 0x10)
+    }
 }

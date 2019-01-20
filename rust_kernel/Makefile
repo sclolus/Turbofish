@@ -33,6 +33,12 @@ endif
 SRC_ASM_KERNEL += cpuid init multiboot gdt
 VPATH += src/boot
 
+SRC_ASM_KERNEL += vbe_font
+VPATH += src/monitor
+
+SRC_ASM_KERNEL += real_mode_call
+VPATH += src/system
+
 OBJ_DIR = objs
 
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
@@ -50,10 +56,6 @@ LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 IFLAGS = -Iinclude -I$(LIBFT)/includes
 
 linker_script := linker.ld
-
-assembly_source_files := $(wildcard src/asm/*.asm)
-assembly_object_files := $(patsubst src/asm/%.asm, \
-    build/asm/%.o, $(assembly_source_files))
 
 target := $(arch)
 custom_target := $(arch).json
@@ -92,20 +94,15 @@ re: fclean all
 kernel: $(kernel)
 
 ifeq ($(DEV), C)
-$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(assembly_object_files) libft/libft.a
+$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
 else
-$(kernel): build_rust $(rust_os) $(assembly_object_files) $(linker_script) $(OBJ_ASM_KERNEL)
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(rust_os) $(assembly_object_files)
+$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL)
+	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(rust_os)
 endif
 
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
-
-# compile assembly files
-build/asm/%.o: src/asm/%.asm
-	mkdir -p $(shell dirname $@)
-	$(ASM) -felf $< -o $@
 
 $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<

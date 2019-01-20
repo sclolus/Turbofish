@@ -14,22 +14,7 @@ pub struct BaseRegisters {
     /*32       |*/ 
 }
 
-extern "C" {
-    fn asm_real_mode_op(reg: BaseRegisters, bios_int: u16) -> u32;
-}
-
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn real_mode_op(reg: BaseRegisters, bios_interrupt: u16) -> u32 {
-    unsafe { asm_real_mode_op(reg, bios_interrupt) }
-}
-
 #[no_mangle]
 extern "C" {
-    pub fn _get_ebp() -> *mut u8;
-}
-
-#[no_mangle]
-extern "C" {
-    pub fn _get_esp() -> *mut u8;
+    pub fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u32;
 }
