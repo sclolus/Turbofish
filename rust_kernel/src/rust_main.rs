@@ -6,6 +6,9 @@ extern "C" {
     pub fn _isr_divide_by_zero(cs: u32, iflag: u32) -> ();
 }
 
+use crate::registers::*;
+use crate::interrupts::*;
+
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     save_multiboot_info(multiboot_info);

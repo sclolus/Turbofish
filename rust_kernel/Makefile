@@ -40,6 +40,9 @@ VPATH += src/monitor
 SRC_ASM_KERNEL += real_mode_call cpu_isr
 VPATH += src/system
 
+SRC_ASM_KERNEL += idt
+VPATH += src/interrupts
+
 OBJ_DIR = objs
 
 __OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
