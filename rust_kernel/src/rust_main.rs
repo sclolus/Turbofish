@@ -36,8 +36,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     };
     print!("value: ");
     println!("esp = {:?}", _get_esp());
+    println!("from {}", function!());    
+
     println!("ebp = {:?}", _get_ebp());
     println!("{:?}", real_mode_op(reg, 0x10));
+
     match set_cursor_position(4, 24) {
         Ok(()) => (),
         Err(e) => println!("{:?}", e),
@@ -49,3 +52,4 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     set_cursor_position(42, 42).unwrap();
     loop {}
 }
+
