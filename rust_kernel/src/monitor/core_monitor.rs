@@ -21,3 +21,23 @@ pub enum TextColor {
     Blue,
     White,
 }
+
+#[macro_export]
+macro_rules! println {
+    () => (print!("\n"));
+    ($($arg:tt)*) => ({
+        unsafe {
+            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!("\n")).unwrap();
+        }
+    })
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        unsafe {
+            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!($($arg)*)).unwrap();
+        }
+    })
+}
