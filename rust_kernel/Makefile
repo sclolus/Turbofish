@@ -37,7 +37,7 @@ VPATH += src/boot
 SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
-SRC_ASM_KERNEL += real_mode_call cpu_isr io
+SRC_ASM_KERNEL += real_mode_call cpu_isr io isr
 VPATH += src/system
 
 SRC_ASM_KERNEL += idt

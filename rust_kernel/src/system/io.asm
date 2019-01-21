@@ -1,7 +1,9 @@
+	[BITS 32]
 
 	segment .text
 
 	global asm_inb
+	global asm_outb
 
 asm_inb:
 	xor eax, eax
@@ -11,7 +13,6 @@ asm_inb:
 	in	al, dx
 	ret
 
-	global asm_outb
 asm_outb:
 	xor eax, eax
 	xor edx, edx

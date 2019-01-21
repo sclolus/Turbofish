@@ -1,43 +1,30 @@
-	%define IDT_LENGTH 0x100  ;; 256
-	%define IDT_BASE 0x2000 ;; no Idea what I'm doing
-	%define IDTR(len, base) ((base << 16) | len)
-	%define TEST_IDTR IDTR(IDT_LENGTH, IDT_BASE)
-
-
-	segment .data
-idt:
-	dw 1028
-	dd 0x0
+[BITS 32]
+	;; This file contains the basic primitives for
+	;; Interrupt Descriptor Table Register handling.
 
 	global asm_load_idtr
-
-asm_load_idtr:
-	;; mov edi, TEST_IDTR
-	push ebp
-	mov ebp, esp
-	mov eax, [dword ebp + 8]
-	lidt [eax]
-	sidt [eax] 					;eventually remove this.
-	mov eax, [dword idt + 4]
-	mov edx, [dword idt + 4]
-	pop ebp
-	ret
-
-
-asm_get_idtr:
-	push ebp
-	mov ebp, esp
-	mov eax, [dword ebp + 8]
-	sidt [eax]
-	mov eax, [dword idt + 4]
-	mov edx, [dword idt + 4]
-	pop ebp
-	ret
-
+	global asm_get_idtr
 	global asm_int
+
+ ;; Loads a specific `struct Idtr` in the Interrupt Descriptor Table Register
+asm_load_idtr:
+
+	;; The only parameter is the address of `struct Idtr`
+	;; passed by the rust _load_idtr routine
+	mov eax, [dword esp + 4]
+	lidt [eax] ;; Load Idtr struct in the idt register
+	ret
+
+;; Fills the `struct Idtr` which is passed as an address
+asm_get_idtr:
+	mov eax, [dword esp + 4]
+	sidt [eax]
+	ret
+
+;;;  For now, this is unusable
 asm_int:
 	push ebp
 	mov ebp, esp
-	int 0x0
+	int 0x1
 	pop ebp
 	ret
