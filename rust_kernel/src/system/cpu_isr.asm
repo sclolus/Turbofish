@@ -27,6 +27,8 @@
     push ds
 %endmacro
 
+extern panic_handler
+
 %macro CREATE_ISR 3
 segment .data
 isr_%1_str:
@@ -38,7 +40,7 @@ _isr_%1:
     mov ebp, esp
     %3
     push isr_%1_str
-    call panic
+    call panic_handler
 %endmacro
 
 ; After expansion of macro (for cpu_default_interrupt)
@@ -91,7 +93,3 @@ CREATE_ISR stack_seg_fault, "stack segment fault", PUSH_ALL_REGISTERS_WITH_ERRCO
 CREATE_ISR general_protect_fault, "general protection fault", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 CREATE_ISR alignment_check, "alignment check", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 CREATE_ISR security_exception, "security exception", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
-
-segment .text
-panic:
-    jmp $
