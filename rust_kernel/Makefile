@@ -20,17 +20,18 @@ else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 
-CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-CFLAGS += -nostdinc
+CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
 
 ASMFLAGS = -f elf
 
 # C debuging Rust
 ifeq ($(DEV), C)
 	SRC_C_KERNEL += debug_center vga_text
+	SRC_ASM_KERNEL += cpuid
+	VPATH += src/boot
 endif
 
-SRC_ASM_KERNEL += cpuid init multiboot gdt
+SRC_ASM_KERNEL += init multiboot gdt
 VPATH += src/boot
 
 SRC_ASM_KERNEL += vbe_font

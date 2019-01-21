@@ -23,8 +23,7 @@ init:
 	call disable_cursor
 	jmp init_gdt
 _start_after_init_gdt:
-	call debug_center
-
+;	call debug_center
 	call set_sse2
 	call enable_avx
 
