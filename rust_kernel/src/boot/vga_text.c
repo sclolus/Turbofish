@@ -1,27 +1,7 @@
 
-#include "i386_type.h"
 #include "libft.h"
 
-enum text_color {
-	red,
-	green,
-	yellow,
-	cyan,
-	brown,
-	magenta,
-	blue,
-	white,
-	undefined,
-};
-
-struct vga_mode {
-	u8 *memory_location;
-	size_t width;
-	size_t height;
-	size_t x;
-	size_t y;
-	u8 color;
-};
+#include "vga_text.h"
 
 static struct vga_mode vga =
 	{memory_location: (u8 *)0xb8000, width: 80, height: 25, x: 0, y: 0, color: 3};
