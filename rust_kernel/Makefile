@@ -37,7 +37,7 @@ VPATH += src/boot
 SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
-SRC_ASM_KERNEL += real_mode_call
+SRC_ASM_KERNEL += real_mode_call cpu_isr
 VPATH += src/system
 
 OBJ_DIR = objs
