@@ -24,6 +24,42 @@ pub struct ExtendedRegisters {
     /*68      |*/
 }
 
+/*
+In a call scheme like that:
+
+fn main(void) -> fn A(int i) -> fn B (int i, int j) -> fn C
+when you took current EBP value in function named 'C',
+EIP of caller (here fn B) is just after !
+
+CALL Anatomy of function 'C' by function 'B':
+---------------------------------------------
+...
+push i
+PUSH EIP
+Go to fn B
+push ebp
+mov ebp, esp
+...            | Some code in B fonction
+push j         | CALL second argument
+push i         | CALL first argument
+push EIP       | CALL code offset when function 'C' is called
+Go to fn C     | CALL
+push ebp       | begin of function C ; EBP of caller
+mov ebp, esp   | begin of function C ; EBP = ESP so EBP[1] = EIP of caller
+...            | Some code in C function
+
+<------------------------------------------------------------------------|
+Stack anatomy
+ ... | EBP | EIP | arg1 | arg2 | ... | EBP | EIP | arg1 | ...
+   stack frame C |        stack frame B          |  stack frame A
+<------------------------------------------------------------------------|
+set EBP variable as pointer -> u32 *EBP = (U32 *)current_ebp
+to find EIP get EBP[1] -> EIP = EBP[1] (EIP is in stack frame B)
+reset EBP -> EBP = *EBP (Go to EBP location in stack frame B)
+to find EIP get EBP[1] -> EIP = EBP[1] (EIP is in stack frame A)
+reset EBP -> EBP = *EBP (Go to EBP location in stack frame A)
+*/
+
 static mut EBP: *const u32 = 0x0 as *const u32;
 
 /// Get eip from global variable EBP
