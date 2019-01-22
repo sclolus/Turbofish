@@ -1,29 +1,10 @@
+#[macro_use]
 pub mod core_monitor;
 use crate::monitor::core_monitor::*;
 pub mod vga_text_mode;
 use crate::monitor::vga_text_mode::*;
 pub mod vbe_mode;
 //use crate::monitor::vbe_mode::*;
-
-#[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!($($arg)*)).unwrap();
-            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!("\n")).unwrap();
-        }
-    })
-}
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::monitor::vga_text_mode::VGA_TEXT, format_args!($($arg)*)).unwrap();
-        }
-    })
-}
 
 pub fn clear_screen() -> () {
     unsafe {

@@ -11,6 +11,8 @@ pub mod multiboot;
 pub mod registers;
 pub mod rust_main;
 pub mod support; // For Rust lang items
+pub mod panic;
+pub mod ffi;
 
 
 use core::panic::PanicInfo;
