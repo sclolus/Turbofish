@@ -30,19 +30,3 @@ struct symbol	_get_symbol(u32 eip)
 	}
 	return (struct symbol){0, "???"};
 }
-
-static u32 *ebp;
-
-void		_init_backtrace(u32 initial_ebp)
-{
-	ebp = (u32 *)initial_ebp;
-}
-
-u32		_get_eip(void)
-{
-	u32 eip = ebp[1];
-	if (eip == 0)
-		return 0;
-	ebp = (u32 *)ebp[0];
-	return eip;
-}

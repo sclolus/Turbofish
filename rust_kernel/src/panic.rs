@@ -12,16 +12,28 @@ pub struct ExtendedRegisters {
     /*20      |*/ pub eip: u32,
     /*24      |*/ pub cs: u32,
     /*28      |*/ pub eflags: u32,
-    /*32      |*/ pub edi:u32,
-    /*36      |*/ pub esi:u32,
-    /*40      |*/ pub new_ebp:u32,
-    /*44      |*/ pub esp:u32,
-    /*48      |*/ pub ebx:u32,
-    /*52      |*/ pub edx:u32,
-    /*56      |*/ pub ecx:u32,
-    /*60      |*/ pub eax:u32,
+    /*32      |*/ pub edi: u32,
+    /*36      |*/ pub esi: u32,
+    /*40      |*/ pub new_ebp: u32,
+    /*44      |*/ pub esp: u32,
+    /*48      |*/ pub ebx: u32,
+    /*52      |*/ pub edx: u32,
+    /*56      |*/ pub ecx: u32,
+    /*60      |*/ pub eax: u32,
     /*64      |*/ pub old_ebp: u32,
     /*68      |*/
+}
+
+static mut EBP: *const u32 = 0x0 as *const u32;
+
+/// Get eip from global variable EBP
+unsafe fn get_eip() -> u32 {
+    let eip: u32 = *EBP.add(1);
+    if eip == 0 {
+        return 0;
+    }
+    EBP = *EBP as *const u32;
+    eip
 }
 
 #[repr(C)]
@@ -30,10 +42,7 @@ struct Symbol {
     name: c_str,
 }
 
-#[no_mangle]
 extern "C" {
-    fn _init_backtrace(initial_ebp: u32) -> ();
-    fn _get_eip() -> u32;
     fn _get_symbol(eip: u32) -> Symbol;
 }
 
@@ -43,13 +52,13 @@ pub extern "C" fn panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     println!("reason {:?}", s);
     println!("{:#X?}\n", ext_reg);
     unsafe {
-        _init_backtrace(ext_reg.new_ebp); // XXX put old_ebp in real ISR situation
+        // TODO put old_ebp in real ISR situation
+        EBP = ext_reg.new_ebp as *const u32;
     }
-
     loop {
         let eip;
         unsafe {
-            eip = _get_eip();
+            eip = get_eip();
         }
         if eip == 0 {
             break;
