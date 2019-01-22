@@ -33,7 +33,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
         eax: 0x4F02,
     };
     print!("value: ");
+    println!("from {}", function!());    
     println!("{:?}", real_mode_op(reg, 0x10));
+
     match set_cursor_position(4, 24) {
         Ok(()) => (),
         Err(e) => println!("{:?}", e),
@@ -45,3 +47,4 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     set_cursor_position(42, 42).unwrap();
     loop {}
 }
+
