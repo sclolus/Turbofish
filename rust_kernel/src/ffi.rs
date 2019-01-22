@@ -25,7 +25,9 @@ pub struct c_str {
 impl fmt::Debug for c_str {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {
-            write!(f, "{:?}", core::slice::from_raw_parts(self.ptr, strlen(self.ptr)))
+            let slice: &[u8] = core::slice::from_raw_parts(self.ptr as *const u8, strlen(self.ptr)); // Make slice of u8 (&[u8]) 
+            
+            write!(f, "{}", core::str::from_utf8_unchecked(slice)) // Make str slice (&[str]) with &[u8]
         }
     }
 }
