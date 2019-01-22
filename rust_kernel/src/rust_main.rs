@@ -7,6 +7,14 @@ extern "C" {
     pub fn _isr_divide_by_zero(cs: u32, iflag: u32) -> ();
 }
 
+#[inline(never)]
+fn divide_wrapper() -> ()
+{
+    unsafe {
+        _isr_divide_by_zero(0x8, 0x11111111);
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     unsafe { interrupts::init() };
@@ -441,9 +449,9 @@ impl From<u16> for VbeError {{
         }}
     }}
 }}
-");
-    
+");    
     unsafe { interrupts::enable() };
+    println!("from {}", function!());    
     loop {}
     unsafe {
         TEXT_MONAD.clear_screen();

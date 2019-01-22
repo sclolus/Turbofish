@@ -35,6 +35,7 @@ SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
 SRC_ASM_KERNEL += real_mode_call cpu_isr io isr
+SRC_C_KERNEL += panic
 VPATH += src/system
 
 SRC_ASM_KERNEL += idt
@@ -78,12 +79,16 @@ clean:
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm.res
+	rm -f nm_map_gen
 	cargo clean
 
 fclean:
 	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm.res
+	rm -f nm_map_gen
 	cargo clean
 
 re: fclean all

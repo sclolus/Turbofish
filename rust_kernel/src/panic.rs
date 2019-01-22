@@ -1,6 +1,6 @@
 use crate::ffi::c_str;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ExtendedRegisters {
@@ -24,10 +24,41 @@ pub struct ExtendedRegisters {
     /*68      |*/
 }
 
+#[repr(C)]
+struct Symbol {
+    offset: u32,
+    name: c_str,
+}
+
+#[no_mangle]
+extern "C" {
+    fn _init_backtrace(initial_ebp: u32) -> ();
+    fn _get_eip() -> u32;
+    fn _get_symbol(eip: u32) -> Symbol;
+}
+
 #[no_mangle]
 pub extern "C" fn panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     println!("KERNEL PANIC !");
     println!("reason {:?}", s);
     println!("{:#X?}\n", ext_reg);
+    unsafe {
+        _init_backtrace(ext_reg.new_ebp); // XXX put old_ebp in real ISR situation
+    }
+
+    loop {
+        let eip;
+        unsafe {
+            eip = _get_eip();
+        }
+        if eip == 0 {
+            break;
+        }
+        let symbol;
+        unsafe {
+            symbol = _get_symbol(eip);
+        }
+        println!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, eip);
+    }
     loop {}
 }

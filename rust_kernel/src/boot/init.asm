@@ -21,20 +21,21 @@ init:
 	mov esp, stack_space            ; set stack pointer for a temporary stack
 
 	call disable_cursor
-	jmp init_gdt
-_start_after_init_gdt:
+
+	call init_gdt
+
+; SS IS STACK SEGMENT REGISTER
+	mov ax, 0x18
+	mov ss, ax
+
+;	put the stack at 4MB
+	mov esp, 0x600000
+
 ;	call debug_center
 	call set_sse2
 	call enable_avx
 
 	finit						; init the FPU
-
-	call rust_ebp_wrapper
-	; --------------------------------------------------------------------
-
-rust_ebp_wrapper:
-	push ebp
-	mov ebp, esp
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx

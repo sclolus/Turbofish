@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
 	sprintf(final_buf, "#define FN_DIR_LEN	%lu\n\n", nb_lines);
 	write_line(fd_file_map, final_buf);
 
-	write_line(fd_file_map, "static struct function_entry "
+	write_line(fd_file_map, "static struct symbol_entry "
 			"function_directory[FN_DIR_LEN] = {\n");
 
 	tmp = lst;

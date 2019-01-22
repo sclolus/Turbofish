@@ -1,6 +1,7 @@
 use core::fmt;
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct c_char(pub u8);
 
 impl fmt::Debug for c_char {
@@ -18,6 +19,7 @@ pub unsafe extern "C" fn strlen(ptr: *const c_char) -> usize {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct c_str {
     pub ptr: *const c_char,
 }
