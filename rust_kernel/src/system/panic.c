@@ -19,14 +19,16 @@ struct symbol {
  */
 struct symbol	_get_symbol(u32 eip)
 {
-	for (int i = 0; i < FN_DIR_LEN; i++) {
+	int i = 0;
+	while (i < FN_DIR_LEN) {
 		if (eip < function_directory[i].offset) {
 			if (i == 0)
 				return (struct symbol){0, "trace error"};
-			return (struct symbol){
-				eip - function_directory[i - 1].offset,
-				function_directory[i - 1].name};
+			break;
 		}
+		i++;
 	}
-	return (struct symbol){0, "???"};
+	return (struct symbol)
+			{eip - function_directory[i - 1].offset,
+			function_directory[i - 1].name};
 }
