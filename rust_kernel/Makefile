@@ -24,12 +24,9 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 ASMFLAGS = -f elf
 
-# C debuging Rust
-ifeq ($(DEV), C)
-	SRC_C_KERNEL += debug_center vga_text
-	SRC_ASM_KERNEL += cpuid
-	VPATH += src/boot
-endif
+SRC_C_KERNEL += debug_center vga_text
+SRC_ASM_KERNEL += cpuid
+VPATH += src/boot
 
 SRC_ASM_KERNEL += init multiboot gdt
 VPATH += src/boot
@@ -78,18 +75,14 @@ endif
 all: $(kernel)
 
 clean:
-ifeq ($(DEV), C)
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
-endif
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
 
 fclean:
-ifeq ($(DEV), C)
 	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
-endif
 	rm -f $(OBJ_ASM_KERNEL)
 	cargo clean
 
@@ -97,13 +90,8 @@ re: fclean all
 
 kernel: $(kernel)
 
-ifeq ($(DEV), C)
 $(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
 	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
-else
-$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL)
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(rust_os)
-endif
 
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
@@ -111,13 +99,11 @@ build_rust:
 $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
-ifeq ($(DEV), C)
 $(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-endif
 
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
