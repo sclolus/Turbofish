@@ -1,6 +1,7 @@
 #![feature(const_raw_ptr_to_usize_cast)] // rust is being annoying on the types of ffi functions
 #![no_std]
 #![feature(core_intrinsics)] // for function! macro
+#![feature(asm)] // for inline asm
 
 #[macro_use]
 pub mod debug;

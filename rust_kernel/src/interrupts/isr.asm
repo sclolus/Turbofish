@@ -44,21 +44,9 @@ _isr_%1:
 	CREATE_ISR floppy_disk, "floppy_disk", generic_interrupt_handler
 	CREATE_ISR lpt1, "lpt1", generic_interrupt_handler 		; unreliable, often a spurious interrupt
 	CREATE_ISR cmos, "CMOS real-time clock", generic_interrupt_handler
+	CREATE_ISR acpi, "ACPI", generic_interrupt_handler
 	CREATE_ISR ps2_mouse, "PS/2 mouse", generic_interrupt_handler
 	CREATE_ISR fpu_coproc, "FPU / Coproc / inter-processor", generic_interrupt_handler
 	CREATE_ISR primary_hard_disk, "Primary ATA hard disk", generic_interrupt_handler
 	CREATE_ISR secondary_hard_disk, "Secondary ATA hard disk", generic_interrupt_handler
 
-	global _cli
-	global _sli
-
-	;; I wonder if this is the best place for thoses functions.
-	;; enables interrupts system wide
-_cli:
-	cli
-	ret
-
-	;; disable interrupts system wide
-_sli:
-	sli
-	ret

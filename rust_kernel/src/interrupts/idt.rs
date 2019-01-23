@@ -1,4 +1,5 @@
 use super::idt_gate_entry::*;
+use core::ffi::c_void;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -79,6 +80,7 @@ impl Idtr {
 }
 
 use super::exceptions::*;
+use super::interrupts::*;
 use GateType::*;
 
 impl<'a> InterruptTable<'a> {
@@ -117,6 +119,25 @@ impl<'a> InterruptTable<'a> {
         (reserved_exception, InterruptGate32),
     ];
 
+    const DEFAULT_IRQS: [unsafe extern "C" fn(); 16] = [
+        _isr_timer,
+        _isr_keyboard,
+        _isr_cascade,
+        _isr_com2,
+        _isr_com1,
+        _isr_lpt2,
+        _isr_floppy_disk,
+        _isr_lpt1,
+        _isr_cmos,
+        _isr_acpi,
+        reserved_interruption,
+        reserved_interruption,
+        _isr_ps2_mouse,
+        _isr_fpu_coproc,
+        _isr_primary_hard_disk,
+        _isr_secondary_hard_disk,
+    ];
+
     // This loads the default interrupt table:
     // All exceptions and interrupts from the PIC.
     pub fn load_default_interrupt_table(&mut self) {
@@ -126,17 +147,19 @@ impl<'a> InterruptTable<'a> {
             .set_selector(1 << 3);
 
         for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
-            gate_entry.set_handler(exception as *const u32 as u32)
+            gate_entry.set_handler(exception as *const c_void as u32)
                 .set_gate_type(gate_type);
 
             self.set_interrupt_entry(index, &gate_entry);
         }
 
-        // for index in 32..=127 {
-        //     gate_entry.set_handler(super::interrupts::_isr_keyboard as *const u32 as u32)
-        //     .set_gate_type(InterruptGate32);
-        //     self.set_interrupt_entry(index, &gate_entry);
-        // }
+        let offset = Self::DEFAULT_EXCEPTIONS.len();
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32)
+            .set_gate_type(InterruptGate32);
+
+            self.set_interrupt_entry(index + offset, &gate_entry);
+        }
     }
 
     // Set the P flag in type_attr to 1

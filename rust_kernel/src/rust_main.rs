@@ -1,13 +1,13 @@
 use crate::interrupts::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
+use crate::registers::*;
+use crate::registers::{_real_mode_op, BaseRegisters};
 
 #[no_mangle]
 extern "C" {
     pub fn _isr_divide_by_zero(cs: u32, iflag: u32) -> ();
 }
-
-use crate::registers::*;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
