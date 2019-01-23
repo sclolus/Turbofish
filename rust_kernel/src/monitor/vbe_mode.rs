@@ -175,22 +175,20 @@ static mut MODE_INFO: Option<ModeInfo> = None;
 
 static mut CRTC_INFO: Option<CrtcInfo> = None;
 
-#[derive(Debug, Copy, Clone)]
-pub struct VbeMode {
-    memory_location: usize,
-    width: usize,
-    height: usize,
-    bpp: usize,
-    x: usize,
-    y: usize,
-    mode: u16,
-    char_height: u8,
-    char_width: u8,
-    nb_lines: usize,
-    nb_colomns: usize,
+extern "C" {
+    static _font: Font;
 }
 
-pub static mut VBE_MODE: Option<VbeMode> = None;
+/// structure contains font for the 255 ascii char
+#[repr(C)]
+struct Font(pub [u8; 16 * 256]);
+
+impl Font {
+    /// return the 16 * u8 slice font corresponding to the char
+    fn get_char(&self, c: u8) -> &[u8] {
+        &self.0[c as usize * 16..(c as usize + 1) * 16]
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct RGB(pub u32);
@@ -202,17 +200,91 @@ impl RGB {
     pub const fn blue() -> Self {
         Self::new(0, 0, 0xFF)
     }
+    pub const fn white() -> Self {
+        Self::new(0xFF, 0xFF, 0xFF)
+    }
 }
 
+/// impl common cursor usable by all graphic mode
+/// x,y,height,width are in unit of char
+#[derive(Debug, Copy, Clone)]
+struct Cursor {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+}
+
+impl Cursor {
+    pub fn set_position(&mut self, x: usize, y: usize) {
+        self.x = x;
+        self.y = y;
+    }
+    /// advance cursor by 1, return false if need to scroll
+    pub fn forward(&mut self) -> bool {
+        self.x = self.x + 1;
+        if self.x == self.width {
+            self.cariage_return()
+        } else {
+            true
+        }
+    }
+    /// return false if need to scroll
+    pub fn cariage_return(&mut self) -> bool {
+        self.x = 0;
+        if self.y + 1 == self.height {
+            false
+        } else {
+            self.y += 1;
+            true
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct VbeMode {
+    memory_location: usize,
+    /// in pixel
+    width: usize,
+    /// in pixel
+    height: usize,
+    /// in bytes
+    bytes_per_pixel: usize,
+    /// in pixel
+    x: usize,
+    /// in pixel
+    y: usize,
+    char_height: usize,
+    char_width: usize,
+    mode: u16,
+    cursor: Cursor,
+}
+
+pub static mut VBE_MODE: Option<VbeMode> = None;
+
 impl VbeMode {
-    pub fn put_pixel(&self, x: usize, y: usize) {
+    pub fn new(memory_location: usize, width: usize, height: usize, bpp: usize) -> Self {
+        Self {
+            memory_location,
+            width,
+            height,
+            bytes_per_pixel: 24 / 8,
+            mode: 0,
+            x: 0,
+            y: 0,
+            char_width: 8,
+            char_height: 16,
+            cursor: Cursor { x: 0, y: 0, height: height / 16, width: width / 8 },
+        }
+    }
+    pub fn put_pixel(&self, y: usize, x: usize) {
         unsafe {
-            *((self.memory_location + y * self.width * self.bpp + x * self.bpp) as *mut u32) = 0xFFFFFF;
+            *((self.memory_location + y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel) as *mut u32) = 0xFFFFFF;
         }
     }
     pub fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + pos * self.bpp / 8) as *mut RGB) = color;
+            *((self.memory_location + pos * self.bytes_per_pixel) as *mut RGB) = color;
         }
     }
     pub fn fill_screen(&self, color: RGB) {
@@ -220,11 +292,51 @@ impl VbeMode {
             self.put_pixel_lin(p, color);
         }
     }
+    pub fn putchar(&self, c: char) {
+        let char_font;
+        unsafe {
+            char_font = _font.get_char(c as u8);
+        }
+        let mut y = self.cursor.y * self.char_height;
+        let mut x;
+        let color = RGB::white();
+        for l in char_font {
+            x = self.cursor.x * self.char_width;
+            for shift in (0..8).rev() {
+                if *l & 1 << shift != 0 {
+                    self.put_pixel(y, x);
+                }
+                x += 1;
+            }
+            y += 1;
+        }
+    }
 }
-/*impl IoScreen for VbeMode {
-    fn set_graphic_mode(&mut self, mode: u16) -> Result {
-        self.mode = mode;
+impl core::fmt::Write for VbeMode {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        for c in s.as_bytes() {
+            match *c as char {
+                '\n' => {
+                    if !self.cursor.cariage_return() {
+                        //self.scroll_screen();
+                    }
+                }
+                _ => {
+                    self.putchar(*c as char);
+                    if !self.cursor.forward() {
+                        //self.scroll_screen();
+                    }
+                }
+            }
+        }
         Ok(())
+    }
+}
+
+/*impl IoScreen for VbeMode {
+fn set_graphic_mode(&mut self, mode: u16) -> Result {
+self.mode = mode;
+Ok(())
     }
     fn putchar(&mut self, _c: char) -> Result {
         Ok(())
@@ -243,33 +355,6 @@ impl VbeMode {
         Ok(())
     }
     fn set_cursor_position(&mut self, _x: usize, _y: usize) -> Result {
-        Ok(())
-    }
-}
-impl Write for VbeMode {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for c in s.as_bytes() {
-            match *c as char {
-                '\n' => {
-                    self.x = 0;
-                    self.y = self.y + 1;
-                    if self.y == self.height {
-                        self.scroll_screen().unwrap();
-                    }
-                }
-                _ => {
-                    self.putchar(*c as char).unwrap();
-                    self.x = self.x + 1;
-                    if self.x == self.width {
-                        self.x = 0;
-                        self.y = self.y + 1;
-                        if self.y == self.height {
-                            self.scroll_screen().unwrap();;
-                        }
-                    }
-                }
-            }
-        }
         Ok(())
     }
 }
@@ -339,26 +424,11 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<(), Error> {
             None => {
                 let (m, mode_info) = VBE_INFO.unwrap().find_best_resolution_mode();
                 MODE_INFO = Some(mode_info);
-                println!("{:?}", MODE_INFO);
-                println!("{:?}", VBE_INFO);
                 set_vbe_mode(m)?;
             }
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
-        VBE_MODE = Some(VbeMode {
-            memory_location: mode_info.phys_base_ptr as usize,
-            mode: 0,
-            width: mode_info.x_resolution as usize,
-            height: mode_info.y_resolution as usize,
-            bpp: mode_info.bits_per_pixel as usize,
-            x: 0,
-            y: 0,
-            char_width: 0,
-            char_height: 0,
-            nb_lines: 0,
-            nb_colomns: 0,
-            //            color_creator: ColorCreator::new(mode_info.lin_red_mask_size, mode_info.lin_red_field_position, mode_info.lin_green_mask_size, mode_info.lin_green_field_position, mode_info.lin_blue_mask_size, mode_info.lin_blue_field_position),
-        });
+        VBE_MODE = Some(VbeMode::new(mode_info.phys_base_ptr as usize, mode_info.x_resolution as usize, mode_info.y_resolution as usize,mode_info.bits_per_pixel as usize));
     }
     Ok(())
 }

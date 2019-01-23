@@ -1,7 +1,9 @@
 [BITS 32]
 segment .data
 GLOBAL _print_graphical_char_begin
+GLOBAL _font
 ; Typical fonts are sized 8 * 16
+_font
 _print_graphical_char_begin: times 512 db 0 ; (16 * 32)
 
 ; .graphical_char_space: 32

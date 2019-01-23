@@ -27,10 +27,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
         Ok(()) => (),
         Err(e) => println!("{:?}", e),
     }
-    init_graphic_mode(None).unwrap();
+    init_graphic_mode(Some(0x118)).unwrap();
     unsafe {
         VBE_MODE.unwrap().put_pixel(100, 100);
         VBE_MODE.unwrap().fill_screen(RGB::blue());
+        use core::fmt::Write;
+        VBE_MODE.unwrap().write_str("\
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum
+");
     }
     loop {}
 }
