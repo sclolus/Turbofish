@@ -46,6 +46,7 @@ pub mod tests;
 pub mod timer;
 #[macro_use]
 pub mod memory;
+pub mod system;
 
 pub mod watch_dog;
 pub use watch_dog::*;
