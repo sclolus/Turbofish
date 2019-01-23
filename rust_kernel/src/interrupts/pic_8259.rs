@@ -158,9 +158,6 @@ pub fn initialize(offset_1: u8, offset_2: u8) {
     send_to_data_slave(1);
     io_wait();
 
-        send_to_data_slave(0);
-    send_to_data_master(0);
-
     set_slave_interrupt_mask(slave_mask);
     io_wait();
     set_master_interrupt_mask(master_mask);
