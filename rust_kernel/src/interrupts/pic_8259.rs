@@ -1,6 +1,6 @@
 //This files contains the code related to the 8259 Programmable interrupt controller
 
-use crate::io::{_inb, _outb};
+use crate::io::{_inb, _outb, io_wait};
 
 struct Pic {
     // Well. If this implementation with complete I guess there would be some data here.
@@ -15,6 +15,8 @@ const SLAVE_DATA_PORT: u16 = SLAVE_COMMAND_PORT + 1;
 // End of Interrupt
 const EOI: u8 = 0x20;
 const INIT: u8 = 0x11;
+const PIC_READ_IRR: u8 = 0x0a;
+const PIC_READ_ISR: u8 = 0x0b;
 
 // Send `byte` to master's command port
 fn send_to_master(byte: u8) {
@@ -44,7 +46,7 @@ fn get_slave_interrupt_mask() -> u8 {
 
 // Get the interrupt mask of the master PIC
 // WARNING: There must be no current command issued
-fn get_master_interrupt_mask() -> u8 {
+pub fn get_master_interrupt_mask() -> u8 {
     _inb(MASTER_DATA_PORT)
 }
 
@@ -109,6 +111,11 @@ pub fn disable_pics() {
     set_master_interrupt_mask(0xff);
 }
 
+pub fn enable_all_interrupts() {
+    set_slave_interrupt_mask(0x0);
+    set_master_interrupt_mask(0x0);
+}
+
 // Send end of interrupt from specific IRQ to the PIC.
 // If the interrupt line is handled by the master chip,
 // only to him the eoi is send.
@@ -131,16 +138,48 @@ pub fn initialize(offset_1: u8, offset_2: u8) {
     let master_mask = get_master_interrupt_mask();
 
     send_to_master(INIT);
+    io_wait();
+
     send_to_slave(INIT);
+    io_wait();
+
     send_to_data_master(offset_1);
+    io_wait();
     send_to_data_slave(offset_2);
+    io_wait();
     send_to_data_master(4); // This tells the master that there is a slave at its IRQ2
+    io_wait();
     send_to_data_slave(2); // This tells the slave its cascade identity
+    io_wait();
 
     // thoses 2 calls set the 8086/88 (MCS-80/85) mode for master and slave.
     send_to_data_master(1);
+    io_wait();
     send_to_data_slave(1);
+    io_wait();
+
+        send_to_data_slave(0);
+    send_to_data_master(0);
 
     set_slave_interrupt_mask(slave_mask);
+    io_wait();
     set_master_interrupt_mask(master_mask);
+    io_wait();
+}
+
+fn pic_get_irq_reg(ocw3: u8) -> u16 {
+    send_to_master(ocw3);
+    send_to_slave(ocw3);
+
+    (_inb(SLAVE_COMMAND_PORT) as u16) << 8 | _inb(MASTER_COMMAND_PORT) as u16
+}
+
+// Returns the combined value the PICs irq request register
+pub fn get_irr() -> u16 {
+    pic_get_irq_reg(PIC_READ_IRR)
+}
+
+// Returns the combined value the PICs irq request register
+pub fn get_isr() -> u16 {
+    pic_get_irq_reg(PIC_READ_ISR)
 }

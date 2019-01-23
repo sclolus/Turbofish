@@ -5,3 +5,4 @@
 *.elf
 loopdevice.map
 !.gitignore
+*~

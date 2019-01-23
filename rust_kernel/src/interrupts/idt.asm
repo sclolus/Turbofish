@@ -25,6 +25,6 @@ asm_get_idtr:
 asm_int:
 	push ebp
 	mov ebp, esp
-	int 0x1
+	int 0x0
 	pop ebp
 	ret
