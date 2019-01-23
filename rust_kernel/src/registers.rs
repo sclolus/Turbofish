@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
@@ -16,5 +18,5 @@ pub struct BaseRegisters {
 
 #[no_mangle]
 extern "C" {
-    pub fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u32;
+    pub fn _real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16;
 }

@@ -43,8 +43,8 @@ segment .text
 %define BASE_LOCATION 0x7C00    ; Payload will be copied at that address
 %define REBASE(x)     (BASE_LOCATION + x - begin_sub_sequence)
 
-GLOBAL real_mode_op
-real_mode_op:
+GLOBAL _real_mode_op
+_real_mode_op:
 	push ebp
 	mov ebp, esp
 

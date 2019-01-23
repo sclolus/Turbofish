@@ -1,8 +1,7 @@
-use crate::monitor::vbe_mode::*;
 use crate::monitor::core_monitor::*;
+use crate::monitor::vbe_mode::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
-use crate::registers::{real_mode_op, BaseRegisters};
 
 #[no_mangle]
 extern "C" {
@@ -28,33 +27,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
         Ok(()) => (),
         Err(e) => println!("{:?}", e),
     }
-
-    let reg: BaseRegisters = BaseRegisters {
-        edi: 0x1,
-        esi: 0x2,
-        ebp: 0x3,
-        esp: 0x4,
-        ebx: 0x118 | (1 << 14),
-        edx: 0x6,
-        ecx: 0x7,
-        eax: 0x4F02,
-    };
-    println!("from {}", function!());    
-    unsafe {
-        _isr_divide_by_zero(0x8, 0x11111111);
-    }
-    loop {}
-    println!("{:?}", real_mode_op(reg, 0x10));
-
-    match set_cursor_position(4, 24) {
-        Ok(()) => (),
-        Err(e) => println!("{:?}", e),
-    }
-    match set_cursor_position(42, 42) {
-        Ok(()) => (),
-        Err(e) => println!("{:?}", e),
-    }
-    set_cursor_position(42, 42).unwrap();
+    init_graphic_mode(None).unwrap();
     loop {}
 }
 
