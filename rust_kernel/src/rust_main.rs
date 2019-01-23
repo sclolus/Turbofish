@@ -8,8 +8,7 @@ extern "C" {
 }
 
 #[inline(never)]
-fn divide_wrapper() -> ()
-{
+fn divide_wrapper() -> () {
     unsafe {
         _isr_divide_by_zero(0x8, 0x11111111);
     }
