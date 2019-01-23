@@ -8,7 +8,6 @@ extern "C" {
 
 use crate::registers::*;
 use crate::interrupts::*;
-use crate::io::*;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
@@ -40,6 +39,7 @@ use crate::monitor::core_monitor::IoResult;
 use crate::monitor::core_monitor::{{Cursor, Drawer, TextColor}};
 use crate::registers::{{BaseRegisters, _real_mode_op}};
 use core::result::Result;
+
 
 #[macro_export]
 macro_rules! impl_raw_data_debug {{
