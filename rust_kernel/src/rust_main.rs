@@ -28,6 +28,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
         Err(e) => println!("{:?}", e),
     }
     init_graphic_mode(None).unwrap();
+    unsafe {
+        VBE_MODE.unwrap().put_pixel(100, 100);
+        VBE_MODE.unwrap().fill_screen(RGB::blue());
+    }
     loop {}
 }
 

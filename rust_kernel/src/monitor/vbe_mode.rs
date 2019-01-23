@@ -175,36 +175,52 @@ static mut MODE_INFO: Option<ModeInfo> = None;
 
 static mut CRTC_INFO: Option<CrtcInfo> = None;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
-    memory_location: *mut u8,
-    mode: u16,
+    memory_location: usize,
     width: usize,
     height: usize,
-    bpp: u8,
+    bpp: usize,
     x: usize,
     y: usize,
+    mode: u16,
     char_height: u8,
     char_width: u8,
     nb_lines: usize,
     nb_colomns: usize,
 }
 
-pub static mut SVGA_VBE: VbeMode = VbeMode {
-    memory_location: 0 as *mut u8,
-    mode: 0,
-    width: 0,
-    height: 0,
-    bpp: 0,
-    x: 0,
-    y: 0,
-    char_width: 0,
-    char_height: 0,
-    nb_lines: 0,
-    nb_colomns: 0,
-};
 pub static mut VBE_MODE: Option<VbeMode> = None;
 
+#[derive(Copy, Clone)]
+pub struct RGB(pub u32);
+
+impl RGB {
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self((r as u32) << 16 | (g as u32) << 8 | b as u32)
+    }
+    pub const fn blue() -> Self {
+        Self::new(0, 0, 0xFF)
+    }
+}
+
+impl VbeMode {
+    pub fn put_pixel(&self, x: usize, y: usize) {
+        unsafe {
+            *((self.memory_location + y * self.width * self.bpp + x * self.bpp) as *mut u32) = 0xFFFFFF;
+        }
+    }
+    pub fn put_pixel_lin(&self, pos: usize, color: RGB) {
+        unsafe {
+            *((self.memory_location + pos * self.bpp / 8) as *mut RGB) = color;
+        }
+    }
+    pub fn fill_screen(&self, color: RGB) {
+        for p in 0..self.width * self.height {
+            self.put_pixel_lin(p, color);
+        }
+    }
+}
 /*impl IoScreen for VbeMode {
     fn set_graphic_mode(&mut self, mode: u16) -> Result {
         self.mode = mode;
@@ -328,6 +344,21 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<(), Error> {
                 set_vbe_mode(m)?;
             }
         }
+        let mode_info: &ModeInfo = &MODE_INFO.unwrap();
+        VBE_MODE = Some(VbeMode {
+            memory_location: mode_info.phys_base_ptr as usize,
+            mode: 0,
+            width: mode_info.x_resolution as usize,
+            height: mode_info.y_resolution as usize,
+            bpp: mode_info.bits_per_pixel as usize,
+            x: 0,
+            y: 0,
+            char_width: 0,
+            char_height: 0,
+            nb_lines: 0,
+            nb_colomns: 0,
+            //            color_creator: ColorCreator::new(mode_info.lin_red_mask_size, mode_info.lin_red_field_position, mode_info.lin_green_mask_size, mode_info.lin_green_field_position, mode_info.lin_blue_mask_size, mode_info.lin_blue_field_position),
+        });
     }
     Ok(())
 }
