@@ -5,6 +5,7 @@
 
 
 	global generic_asm_isr_wrapper
+	global div_by_zero_test
 
 generic_asm_isr_wrapper:
 	pushad

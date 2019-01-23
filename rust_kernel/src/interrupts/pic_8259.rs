@@ -66,7 +66,6 @@ fn set_master_interrupt_mask(mask: u8) {
     send_to_data_master(mask);
 }
 
-
 // This function will set the bit `irq`.
 // Disabling the corresponding interrupt line.
 // if irq < 8, then the master mask is modified.

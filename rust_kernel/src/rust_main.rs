@@ -1,3 +1,4 @@
+use crate::interrupts::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 
@@ -7,12 +8,9 @@ extern "C" {
 }
 
 use crate::registers::*;
-use crate::interrupts::*;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
-    save_multiboot_info(multiboot_info);
-
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
@@ -39,6 +37,7 @@ use crate::monitor::core_monitor::IoResult;
 use crate::monitor::core_monitor::{{Cursor, Drawer, TextColor}};
 use crate::registers::{{BaseRegisters, _real_mode_op}};
 use core::result::Result;
+
 
 
 #[macro_export]

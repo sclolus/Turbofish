@@ -15,5 +15,5 @@ macro_rules! function {
         }
         let name = type_name_of(f);
         &name[6..name.len() - 4]
-    }}
+    }};
 }
