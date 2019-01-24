@@ -75,7 +75,7 @@ impl Idtr {
 }
 
 use super::exceptions::*;
-use super::interrupts::*;
+use super::irqs::*;
 use GateType::*;
 
 impl<'a> InterruptTable<'a> {

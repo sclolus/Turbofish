@@ -1,5 +1,5 @@
 mod exceptions;
-mod interrupts;
+mod irqs;
 
 pub mod idt_gate_entry;
 pub mod idt;
