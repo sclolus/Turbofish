@@ -47,7 +47,7 @@ impl Pic {
 
     /// Get the interrupt mask of the slave PIC
     /// WARNING: There must be no current command issued
-    pub fn get_interrupt_mask(&self) -> u8 {
+    pub unsafe fn get_interrupt_mask(&self) -> u8 {
         self.data.read()
     }
 
@@ -58,7 +58,7 @@ impl Pic {
     /// the corresponding interrupt line is disabled. (ignored by the PIC).
     /// WARNING: The IRQ line 2 of the master is the line used to receive the slave's interrupts.
     /// Setting it will disable all the slave's interrupts.
-    pub fn set_interrupt_mask(&mut self, mask: u8) {
+    pub unsafe fn set_interrupt_mask(&mut self, mask: u8) {
         self.data.write(mask)
     }
 }

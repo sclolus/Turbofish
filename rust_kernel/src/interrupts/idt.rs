@@ -25,24 +25,20 @@ extern "C" {
 #[no_mangle]
 #[inline(never)]
 /// Load the `idtr` passed in parameter into the Interrupt descriptor Table Register
-pub extern "C" fn _load_idtr(idtr: Idtr) -> Idtr {
-    unsafe {
+pub unsafe extern "C" fn _load_idtr(idtr: Idtr) -> Idtr {
         asm_load_idtr(&idtr as *const Idtr);
         idtr
-    }
 }
 
 #[no_mangle]
 #[inline(never)]
 /// Returns the current Interrupt Descriptor Table Register
-pub extern "C" fn _get_idtr() -> Idtr {
-    unsafe {
+pub unsafe extern "C" fn _get_idtr() -> Idtr {
         // Temporary struct Idtr to be filled by the asm routine
         let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
 
         asm_get_idtr(&mut idtr as *mut _);
         idtr
-    }
 }
 
 impl Idtr {
@@ -140,27 +136,25 @@ impl<'a> InterruptTable<'a> {
 
     /// This loads the default interrupt table:
     /// All exceptions and interrupts from the PIC.
-    pub fn load_default_interrupt_table(&mut self) {
+    pub unsafe fn load_default_interrupt_table(&mut self) {
         let mut gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)
             .set_privilege_level(0)
             .set_selector(1 << 3);
 
-        unsafe {
-            for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
-                gate_entry.set_handler(exception as *const c_void as u32)
-                    .set_gate_type(gate_type);
+        for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
+            gate_entry.set_handler(exception as *const c_void as u32)
+                .set_gate_type(gate_type);
 
-                self.set_interrupt_entry(index, &gate_entry).unwrap();
-            }
+            self.set_interrupt_entry(index, &gate_entry).unwrap();
+        }
 
-            let offset = Self::DEFAULT_EXCEPTIONS.len();
-            for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
-                gate_entry.set_handler(interrupt_handler as *const c_void as u32)
-                    .set_gate_type(InterruptGate32);
+        let offset = Self::DEFAULT_EXCEPTIONS.len();
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32)
+                .set_gate_type(InterruptGate32);
 
-                self.set_interrupt_entry(index + offset, &gate_entry).unwrap();
-            }
+            self.set_interrupt_entry(index + offset, &gate_entry).unwrap();
         }
     }
 
