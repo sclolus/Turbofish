@@ -2,12 +2,11 @@
 ;; This file contains the basic primitives for
 ;; Interrupt Descriptor Table Register handling.
 
-global asm_load_idtr
-global asm_get_idtr
-global asm_int
+global _load_idtr
+global _get_idtr
 
 ;; Loads a specific `struct Idtr` in the Interrupt Descriptor Table Register
-asm_load_idtr:
+_load_idtr:
 
 ;; The only parameter is the address of `struct Idtr`
 ;; passed by the rust _load_idtr routine
@@ -16,7 +15,7 @@ asm_load_idtr:
 	ret
 
 ;; Fills the `struct Idtr` which is passed as an address
-asm_get_idtr:
+_get_idtr:
 	mov	eax, [dword esp + 4]
 	sidt	[eax]
 	ret
