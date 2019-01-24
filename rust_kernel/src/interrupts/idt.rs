@@ -77,6 +77,7 @@ impl Idtr {
 use super::exceptions::*;
 use super::irqs::*;
 use GateType::*;
+use InterruptTableError::*;
 
 impl<'a> InterruptTable<'a> {
 
@@ -145,45 +146,59 @@ impl<'a> InterruptTable<'a> {
             .set_privilege_level(0)
             .set_selector(1 << 3);
 
-        for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
-            gate_entry.set_handler(exception as *const c_void as u32)
-                .set_gate_type(gate_type);
+        unsafe {
+            for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
+                gate_entry.set_handler(exception as *const c_void as u32)
+                    .set_gate_type(gate_type);
 
-            self.set_interrupt_entry(index, &gate_entry);
-        }
+                self.set_interrupt_entry(index, &gate_entry).unwrap();
+            }
 
-        let offset = Self::DEFAULT_EXCEPTIONS.len();
-        for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
-            gate_entry.set_handler(interrupt_handler as *const c_void as u32)
-                .set_gate_type(InterruptGate32);
+            let offset = Self::DEFAULT_EXCEPTIONS.len();
+            for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
+                gate_entry.set_handler(interrupt_handler as *const c_void as u32)
+                    .set_gate_type(InterruptGate32);
 
-            self.set_interrupt_entry(index + offset, &gate_entry);
+                self.set_interrupt_entry(index + offset, &gate_entry).unwrap();
+            }
         }
     }
 
     /// Set the P flag in type_attr to 1
     /// WARNING: This is not an interrupts::enable call
     /// The interrupt is merely enabled if sli() was called
-    pub fn enable_interrupt(&mut self, interrupt: usize) {
-        self.entries[interrupt].set_present(true);
+    pub unsafe fn enable_interrupt(&mut self, interrupt: usize) -> Result<(), InterruptTableError> {
+        self.entries.get_mut(interrupt)
+            .map_or(Err(ErrIndexOutOfBound)
+                    , |entry| { entry.set_present(true); Ok(()) })
     }
 
     /// Set the P flag in type_attr to 0
-    pub fn disable_interrupt(&mut self, interrupt: usize) {
-        self.entries[interrupt].set_present(false);
+    pub unsafe fn disable_interrupt(&mut self, interrupt: usize) -> Result<(), InterruptTableError> {
+        self.entries.get_mut(interrupt)
+            .map_or(Err(ErrIndexOutOfBound)
+                    , |entry| { entry.set_present(false); Ok(()) })
     }
 
     /// Sets the P flag in type_attr to 0 for all the Gate Entries
     /// Warning: This is not an interrupts::disable call
     /// The interrupts can still be fired.
-    pub fn disable_all_interrupts(&mut self) {
+    pub unsafe fn disable_all_interrupts(&mut self) {
         for interrupt in 0..self.entries.len() {
             self.disable_interrupt(interrupt);
         }
     }
 
     /// Sets a perticular Gate entry to a specific value.
-    pub fn set_interrupt_entry(&mut self, interrupt: usize, entry: &IdtGateEntry) {
-        self.entries[interrupt] = *entry;
+    pub unsafe fn set_interrupt_entry(&mut self, interrupt: usize, entry: &IdtGateEntry) -> Result<(), InterruptTableError> {
+        self.entries.get_mut(interrupt)
+            .map_or(Err(ErrIndexOutOfBound)
+                    , |slot| { *slot = *entry; Ok(()) })
     }
+}
+
+#[derive(Debug)]
+pub enum InterruptTableError {
+    ErrIndexOutOfBound,
+    UnknownError
 }
