@@ -9,7 +9,7 @@
 # define BUFF_SIZE 		128
 # define MAX_DESCRIPTORS	65536
 
-typedef struct s_buffer
+typedef struct		s_buffer
 {
 	int			fd;
 	int			buff_size;
@@ -17,22 +17,22 @@ typedef struct s_buffer
 	char			buffer[BUFF_SIZE + 1];
 } t_buffer;
 
-struct				s_custom_memory_fn
+struct			s_custom_memory_fn
 {
-	void	*(*allocator)(size_t);
-	void	(*deallocator)(void *);
+	void			*(*allocator)(size_t);
+	void			(*deallocator)(void *);
 };
 
-static char	*s_concat(
-		char **str,
-		t_buffer *index,
-		size_t n,
-		struct s_custom_memory_fn *mem)
+static char		*s_concat(
+				char **str,
+				t_buffer *index,
+				size_t n,
+				struct s_custom_memory_fn *mem)
 {
-	char *output;
+	char			*output;
 
 	if (!(output = (char *)
-			mem->allocator((index->l_size + n + 1) * sizeof(char))))
+		mem->allocator((index->l_size + n + 1) * sizeof(char))))
 		return (NULL);
 	output[index->l_size + n] = '\0';
 	memcpy(output, *str, index->l_size);
@@ -44,13 +44,13 @@ static char	*s_concat(
 	return (output);
 }
 
-static int	s_exec(
-		t_buffer *index,
-		char **line,
-		struct s_custom_memory_fn *mem)
+static int		s_exec(
+				t_buffer *index,
+				char **line,
+				struct s_custom_memory_fn *mem)
 {
-	char		*jump_location;
-	size_t		i;
+	char			*jump_location;
+	size_t			i;
 
 	*line = NULL;
 	index->l_size = 0;
@@ -77,13 +77,13 @@ static int	s_exec(
 	return (1);
 }
 
-int		get_next_line(
-		const int fd,
-		char **line,
-		struct s_custom_memory_fn *mem)
+int			get_next_line(
+				const int fd,
+				char **line,
+				struct s_custom_memory_fn *mem)
 {
-	static t_buffer	*index[MAX_DESCRIPTORS];
-	int				i;
+	static t_buffer		*index[MAX_DESCRIPTORS];
+	int			i;
 
 	if (fd < 0 || fd == 1 || fd == 2 || !line || !mem ||
 			!mem->allocator || !mem->deallocator)
@@ -103,9 +103,9 @@ int		get_next_line(
 	return (s_exec(index[i], line, mem));
 }
 
-char	**create_tab(char *s, int *n_words)
+char			**create_tab(char *s, int *n_words)
 {
-	char **tab;
+	char			**tab;
 
 	while (*s)
 	{
@@ -126,17 +126,17 @@ char	**create_tab(char *s, int *n_words)
 	return (tab);
 }
 
-void	ft_strncpy(char *dst, char *src, int n)
+void			ft_strncpy(char *dst, char *src, int n)
 {
 	while (n--)
 		*dst++ = *src++;
 }
 
-char	**fill_tab(char *s, char **tab)
+char			**fill_tab(char *s, char **tab)
 {
-	char	*ptr;
-	int		i;
-	int		j;
+	char			*ptr;
+	int			i;
+	int			j;
 
 	i = 0;
 	while (*s)
@@ -160,10 +160,10 @@ char	**fill_tab(char *s, char **tab)
 	return (tab);
 }
 
-char	**ft_split_whitespaces(char *str)
+char			**ft_split_whitespaces(char *str)
 {
-	char	**tab;
-	int		n_words;
+	char			**tab;
+	int			n_words;
 
 	n_words = 0;
 	if (!(tab = create_tab(str, &n_words)))
@@ -171,17 +171,17 @@ char	**ft_split_whitespaces(char *str)
 	return (fill_tab(str, tab));
 }
 
-struct s_list
+struct 			s_list
 {
 	void		*content;
 	size_t		content_size;
 	struct s_list	*next;
 };
 
-struct s_list	*lst_create_elem(void *data, size_t len,
-		void *(*allocator)(size_t))
+struct s_list		*lst_create_elem(void *data, size_t len,
+				void *(*allocator)(size_t))
 {
-	struct s_list *elmt;
+	struct s_list		*elmt;
 
 	if (!(elmt = (struct s_list *)allocator(sizeof(struct s_list))))
 		return (NULL);
@@ -190,14 +190,14 @@ struct s_list	*lst_create_elem(void *data, size_t len,
 	return (elmt);
 }
 
-struct s_list	*lst_push_back(
-		struct s_list **alst,
-		void *data,
-		size_t len,
-		void *(*allocator)(size_t))
+struct s_list		*lst_push_back(
+				struct s_list **alst,
+				void *data,
+				size_t len,
+				void *(*allocator)(size_t))
 {
-	struct s_list *m;
-	struct s_list *ptr;
+	struct s_list		*m;
+	struct s_list		*ptr;
 
 	if (!(m = lst_create_elem(data, len, allocator)))
 		return (NULL);
@@ -214,13 +214,13 @@ struct s_list	*lst_push_back(
 	return (*alst);
 }
 
-void	lst_del(
-	struct s_list **alst,
-	void (*del)(void *, size_t, void (*)(void *)),
-	void (*deallocator)(void *))
+void			lst_del(
+				struct s_list **alst,
+				void (*del)(void *, size_t, void (*)(void *)),
+				void (*deallocator)(void *))
 {
-	struct s_list *current;
-	struct s_list *tmp;
+	struct s_list		*current;
+	struct s_list		*tmp;
 
 	current = *alst;
 	while (current) {
@@ -232,33 +232,35 @@ void	lst_del(
 	*alst = NULL;
 }
 
-void	delete_list(void *s, size_t size, void (*unalocator)(void *))
+void			delete_list(
+				void *s, size_t size,
+				void (*unalocator)(void *))
 {
 	(void)size;
 	unalocator(s);
 }
 
-int write_line(int fd, const char *s)
+int 			write_line(int fd, const char *s)
 {
-	size_t size;
+	size_t 			size;
 
 	size = strlen(s);
 
 	return write(fd, s, size);
 }
 
-int main(int argc, char *argv[])
+int			main(int argc, char *argv[])
 {
-	int fd_file_map;
-	int fd_nm;
-	char *buf;
+	int			fd_file_map;
+	int			fd_nm;
+	char			*buf;
 	struct s_custom_memory_fn mem;
-	char **tab;
-	char final_buf[256];
-	struct s_list *lst;
-	int size;
-	size_t nb_lines;
-	struct s_list *tmp;
+	char			**tab;
+	char			final_buf[256];
+	struct s_list		*lst;
+	int			size;
+	size_t			nb_lines;
+	struct s_list		*tmp;
 
 	(void)argc;
 	(void)argv;
