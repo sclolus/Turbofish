@@ -1,69 +1,102 @@
-	[BITS 32]
-
-	segment .text
-
-	global asm_inb
-	global asm_inw
-	global asm_inl
+[BITS 32]
+;; This files contains the primitives for I/O port operations
 	
-	global asm_outb
-	global asm_outw
-	global asm_outl
+segment .text
+
+global asm_inb
+global asm_inw
+global asm_inl
 	
-	global asm_io_wait
+global asm_outb
+global asm_outw
+global asm_outl
+	
+global asm_io_wait
 
 asm_inb:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
+	
+	xor	eax, eax
+	xor	edx, edx
 
-	mov	dx, [dword esp + 4]
+	mov	dx, [dword ebp + 8]
 	in	al, dx
+	pop	ebp
 	ret
 
 asm_inw:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
 
-	mov	dx, [dword esp + 4]
+	xor	eax, eax
+	xor	edx, edx
+
+	mov	dx, [dword ebp + 8]
 	in	ax, dx
+	pop	ebp
 	ret
 
 asm_inl:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
 
-	mov	dx, [dword esp + 4]
+	xor	eax, eax
+	xor	edx, edx
+
+	mov	dx, [dword ebp + 8]
 	in	eax, dx
+	pop	ebp
 	ret
 
 asm_outb:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
 
-	mov dx, [dword esp + 8]
-	mov al, [byte esp + 4]
-	out dx, al
+	xor	eax, eax
+	xor	edx, edx
+
+	mov	dx, [dword ebp + 12]
+	mov	al, [byte ebp + 8]
+	out	dx, al
+	
+	pop	ebp
 	ret
 	
 asm_outw:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
 
-	mov dx, [dword esp + 8]
-	mov ax, [dword esp + 4]
-	out dx, ax
+	xor	eax, eax
+	xor	edx, edx
+
+	mov	dx, [dword ebp + 12]
+	mov	ax, [dword ebp + 8]
+	out	dx, ax
+	
+	pop	ebp
 	ret
 
 asm_outl:
-	xor eax, eax
-	xor edx, edx
+	push	ebp
+	mv	ebp, esp
 
-	mov dx, [dword esp + 8]
-	mov eax, [byte esp + 4]
-	out dx, eax
+	xor	eax, eax
+	xor	edx, edx
+
+	mov	dx, [dword ebp + 12]
+	mov	eax, [byte ebp + 8]
+	out	dx, eax
+	
+	pop	ebp
 	ret
 
-	;; Wait one io cycle by outb'ing at unused port (Needs a way to ensure it is unused)
+;; Wait one io cycle by outb'ing at unused port (Needs a way to ensure it is unused)
 asm_io_wait:
-	out 0x80, al
+	push	ebp
+	mv	ebp, rsp
+	
+	out	0x80, al
+
+	pop	ebp
 	ret

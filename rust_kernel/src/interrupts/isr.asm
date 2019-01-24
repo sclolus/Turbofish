@@ -1,11 +1,11 @@
-	[BITS 32]
+[BITS 32]
 
-	;; This file contains all asm code regarding the interrupt service routines
-	;; For now. just a generic ISR wrapper
+;; This file contains all asm code regarding the interrupt service routines
+;; For now. just a generic ISR wrapper
 
 ;; Currently no reason have macro for those, but could be usefull at some point
 %macro PUSH_ALL_REGISTERS 0
-    pushad
+	pushad
 %endmacro
 
 %macro POP_ALL_REGISTERS 0
@@ -19,19 +19,19 @@ extern generic_interrupt_handler
 ;; The third parameter is the rust function to call for handling the interrupt
 %macro CREATE_ISR 3
 segment .data
-isr_%1_str:
-    db %2, " interrupt", 0
+	isr_%1_str:
+	db %2, " interrupt", 0
 segment .text
 global _isr_%1
-_isr_%1:
-    push ebp
-    mov ebp, esp
+	_isr_%1:
+	push	ebp
+	mov	ebp, esp
 	PUSH_ALL_REGISTERS
-    push isr_%1_str
-	call %3
-	add esp, 4 					;pop interrupt string
+	push	isr_%1_str
+	call	%3
+	add	esp, 4 					;pop interrupt string
 	POP_ALL_REGISTERS
-	pop ebp
+	pop	ebp
 	iret
 %endmacro
 
