@@ -3,17 +3,17 @@
 	
 segment .text
 
-global asm_inb
-global asm_inw
-global asm_inl
+global _inb
+global _inw
+global _inl
 	
-global asm_outb
-global asm_outw
-global asm_outl
+global _outb
+global _outw
+global _outl
 	
-global asm_io_wait
+global _io_wait
 
-asm_inb:
+_inb:
 	push	ebp
 	mov	ebp, esp
 	
@@ -25,7 +25,7 @@ asm_inb:
 	pop	ebp
 	ret
 
-asm_inw:
+_inw:
 	push	ebp
 	mov	ebp, esp
 
@@ -37,7 +37,7 @@ asm_inw:
 	pop	ebp
 	ret
 
-asm_inl:
+_inl:
 	push	ebp
 	mov	ebp, esp
 
@@ -49,7 +49,7 @@ asm_inl:
 	pop	ebp
 	ret
 
-asm_outb:
+_outb:
 	push	ebp
 	mov	ebp, esp
 
@@ -63,7 +63,7 @@ asm_outb:
 	pop	ebp
 	ret
 	
-asm_outw:
+_outw:
 	push	ebp
 	mov	ebp, esp
 
@@ -77,7 +77,7 @@ asm_outw:
 	pop	ebp
 	ret
 
-asm_outl:
+_outl:
 	push	ebp
 	mov	ebp, esp
 
@@ -92,7 +92,7 @@ asm_outl:
 	ret
 
 ;; Wait one io cycle by outb'ing at unused port (Needs a way to ensure it is unused)
-asm_io_wait:
+_io_wait:
 	push	ebp
 	mov	ebp, esp
 	

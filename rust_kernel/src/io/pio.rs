@@ -5,58 +5,58 @@ use super::Io;
 use core::cmp::PartialEq;
 
 extern "C" {
-    fn asm_inb(port: u16) -> u8;
-    fn asm_inw(port: u16) -> u16;
-    fn asm_inl(port: u16) -> u32;
+    fn _inb(port: u16) -> u8;
+    fn _inw(port: u16) -> u16;
+    fn _inl(port: u16) -> u32;
     
-    fn asm_outb(byte: u8, port: u16);
-    fn asm_outw(byte: u16, port: u16);
-    fn asm_outl(byte: u32, port: u16);
+    fn _outb(byte: u8, port: u16);
+    fn _outw(byte: u16, port: u16);
+    fn _outl(byte: u32, port: u16);
     
-    fn asm_io_wait();
+    fn _io_wait();
 }
 
 /// This reads one byte on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _inb(port: u16) -> u8 {
-    unsafe { asm_inb(port) }
+pub extern "C" fn inb(port: u16) -> u8 {
+    unsafe { _inb(port) }
 }
 
 /// This reads two bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _inw(port: u16) -> u16 {
-    unsafe { asm_inw(port) }
+pub extern "C" fn inw(port: u16) -> u16 {
+    unsafe { _inw(port) }
 }
 
 /// This reads four bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _inl(port: u16) -> u32 {
-    unsafe { asm_inl(port) }
+pub extern "C" fn inl(port: u16) -> u32 {
+    unsafe { _inl(port) }
 }
 
 
 /// This writes one byte to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _outb(byte: u8, port: u16) {
-    unsafe { asm_outb(byte, port) }
+pub extern "C" fn outb(byte: u8, port: u16) {
+    unsafe { _outb(byte, port) }
 }
 
 /// This writes two bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _outw(byte: u16, port: u16) {
-    unsafe { asm_outw(byte, port) }
+pub extern "C" fn outw(byte: u16, port: u16) {
+    unsafe { _outw(byte, port) }
 }
 
 /// This writes four bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn _outl(byte: u32, port: u16) {
-    unsafe { asm_outl(byte, port) }
+pub extern "C" fn outl(byte: u32, port: u16) {
+    unsafe { _outl(byte, port) }
 }
 
 /// This waits one IO cycle.
@@ -64,7 +64,7 @@ pub extern "C" fn _outl(byte: u32, port: u16) {
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn io_wait() {
-    unsafe { asm_io_wait() }
+    unsafe { _io_wait() }
 }
 
 /// This is a generic structure to represent IO ports
@@ -89,11 +89,11 @@ impl Io for Pio<u8> {
     type Value = u8;
 
     fn read(&self) -> Self::Value {
-        _inb(self.port)
+        inb(self.port)
     }
     
     fn write(&mut self, value: Self::Value) {
-        _outb(value, self.port)
+        outb(value, self.port)
     }
 }
 
@@ -101,11 +101,11 @@ impl Io for Pio<u16> {
     type Value = u16;
 
     fn read(&self) -> Self::Value {
-        _inw(self.port)
+        inw(self.port)
     }
     
     fn write(&mut self, value: Self::Value) {
-        _outw(value, self.port)
+        outw(value, self.port)
     }
 }
 
@@ -113,10 +113,10 @@ impl Io for Pio<u32> {
     type Value = u32;
 
     fn read(&self) -> Self::Value {
-        _inl(self.port)
+        inl(self.port)
     }
     
     fn write(&mut self, value: Self::Value) {
-        _outl(value, self.port)
+        outl(value, self.port)
     }
 }

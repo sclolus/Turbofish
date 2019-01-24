@@ -1,7 +1,7 @@
 use core::cmp::PartialEq;
 
 pub mod pio;
-pub use pio::{Pio, _inb, _inw, _inl, _outb, _outl, _outw, io_wait};
+pub use pio::{Pio, inb, inw, inl, outb, outl, outw, io_wait};
 
 /// The general Io trait, for In/out objects
 pub trait Io {
