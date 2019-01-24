@@ -77,6 +77,48 @@ gdt_start:
 	db 0xf | SIZE | GRANULARITY
 ;	base_24_31:
 	db 0
+
+	; USER CODE SELECTOR :
+;	limit_0_15:
+	dw 0xffff
+;	base_0_15:
+	dw 0
+;	base_16_23:
+	db 0
+;	access_bytes:
+	db PR | SYSTEM_HOLDER | EXECUTABLE | DPL
+;	limit_flags:
+	db 0xf | SIZE | GRANULARITY
+;	base_24_31:
+	db 0
+
+	; USER DATA SELECTOR :
+;	limit_0_15:
+	dw 0xffff
+;	base_0_15:
+	dw 0
+;	base_16_23:
+	db 0
+;	access_bytes:
+	db PR | SYSTEM_HOLDER | READ_WRITE | DPL
+;	limit_flags:
+	db 0xf | SIZE | GRANULARITY
+;	base_24_31:
+	db 0
+
+	; USER STACK SELECTOR :
+;	limit_0_15:
+	dw 0xffff
+;	base_0_15:
+	dw 0
+;	base_16_23:
+	db 0
+;	access_bytes:
+	db PR | SYSTEM_HOLDER | READ_WRITE | DPL
+;	limit_flags:
+	db 0xf | SIZE | GRANULARITY
+;	base_24_31:
+	db 0
 gdt_end:
 
 segment .text
