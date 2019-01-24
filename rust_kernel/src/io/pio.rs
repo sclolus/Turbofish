@@ -14,18 +14,21 @@ extern "C" {
     fn asm_io_wait();
 }
 
+// This reads one byte on IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _inb(port: u16) -> u8 {
     unsafe { asm_inb(port) }
 }
 
+// This reads two bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _inw(port: u16) -> u16 {
     unsafe { asm_inw(port) }
 }
 
+// This reads four bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _inl(port: u16) -> u32 {
@@ -33,30 +36,37 @@ pub extern "C" fn _inl(port: u16) -> u32 {
 }
 
 
+// This writes one byte to IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _outb(byte: u8, port: u16) {
     unsafe { asm_outb(byte, port) }
 }
 
+// This writes two bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _outw(byte: u16, port: u16) {
     unsafe { asm_outw(byte, port) }
 }
 
+// This writes four bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn _outl(byte: u32, port: u16) {
     unsafe { asm_outl(byte, port) }
 }
 
+// This waits one IO cycle.
+// Most likely useless on most modern hardware.
 #[no_mangle]
 #[inline(always)]
 pub extern "C" fn io_wait() {
     unsafe { asm_io_wait() }
 }
 
+// This is a generic structure to represent IO ports
+// It implements the IO Trait for u8, u16 and u32
 pub struct Pio<T> {
     port: u16,
     value: PhantomData<T>,

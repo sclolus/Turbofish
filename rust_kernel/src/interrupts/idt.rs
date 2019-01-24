@@ -163,7 +163,7 @@ impl<'a> InterruptTable<'a> {
     }
 
     // Set the P flag in type_attr to 1
-    // WARNING: This is not an sli call
+    // WARNING: This is not an interrupts::enable call
     // The interrupt is merely enabled if sli() was called
     pub fn enable_interrupt(&mut self, interrupt: usize) {
         self.entries[interrupt].set_present(true);
@@ -175,7 +175,7 @@ impl<'a> InterruptTable<'a> {
     }
 
     // Sets the P flag in type_attr to 0 for all the Gate Entries
-    // Warning: This is not an cli call
+    // Warning: This is not an interrupts::disable call
     // The interrupts can still be fired.
     pub fn disable_all_interrupts(&mut self) {
         for interrupt in 0..self.entries.len() {

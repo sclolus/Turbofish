@@ -19,6 +19,8 @@ extern "C" {
 }
 
 
+// For now, this is assigned as the handler for every interrupt that are not exceptions
+// Specifically handling the case for the keyboard, just for testing that it's working.
 #[no_mangle]
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
