@@ -19,21 +19,21 @@ extern "C" {
 /// This reads one byte on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn inb(port: u16) -> u8 {
+extern "C" fn inb(port: u16) -> u8 {
     unsafe { _inb(port) }
 }
 
 /// This reads two bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn inw(port: u16) -> u16 {
+extern "C" fn inw(port: u16) -> u16 {
     unsafe { _inw(port) }
 }
 
 /// This reads four bytes on IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn inl(port: u16) -> u32 {
+extern "C" fn inl(port: u16) -> u32 {
     unsafe { _inl(port) }
 }
 
@@ -41,21 +41,21 @@ pub extern "C" fn inl(port: u16) -> u32 {
 /// This writes one byte to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn outb(byte: u8, port: u16) {
+extern "C" fn outb(byte: u8, port: u16) {
     unsafe { _outb(byte, port) }
 }
 
 /// This writes two bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn outw(byte: u16, port: u16) {
+extern "C" fn outw(byte: u16, port: u16) {
     unsafe { _outw(byte, port) }
 }
 
 /// This writes four bytes to IO port `port`
 #[no_mangle]
 #[inline(always)]
-pub extern "C" fn outl(byte: u32, port: u16) {
+extern "C" fn outl(byte: u32, port: u16) {
     unsafe { _outl(byte, port) }
 }
 
