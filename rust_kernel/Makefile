@@ -101,7 +101,6 @@ symbol_gen_exe:
 $(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
 	@echo PREBUILD
 	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
-	echo "banane $(kernel)"
 	nm -n $(kernel) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync

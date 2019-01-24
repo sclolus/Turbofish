@@ -6,6 +6,7 @@
 You need to clone with submodules  
 -> git clone --recurse-submodules GIT_URL  
 If you forget to add recurse submodule when you clone, you can add then later like that  
+-> git submodule init
 -> git submodule update
 
 ## For assembly parts, you need a 'nasm' installation (for asm parts)

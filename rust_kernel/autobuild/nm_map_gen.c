@@ -4,12 +4,10 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdbool.h>
 
 # define BUFF_SIZE 		128
 # define MAX_DESCRIPTORS	65536
-
-# define false 0
-# define true 1
 
 typedef struct s_buffer
 {
@@ -68,12 +66,12 @@ static int	s_exec(
 		if ((jump_location = strchr(index->buffer, '\n')))
 			break ;
 		if (!s_concat(line, index, index->buff_size, mem))
-			return (-1);
+			return EXIT_FAILURE;
 		*index->buffer = '\0';
 		index->buff_size = 0;
 	}
 	if (!s_concat(line, index, (i = jump_location - index->buffer), mem))
-		return (-1);
+		return EXIT_FAILURE;
 	memmove(index->buffer, jump_location + 1, BUFF_SIZE - (i + 1));
 	index->buffer[(index->buff_size -= i + 1)] = '\0';
 	return (1);
@@ -89,15 +87,15 @@ int		get_next_line(
 
 	if (fd < 0 || fd == 1 || fd == 2 || !line || !mem ||
 			!mem->allocator || !mem->deallocator)
-		return (-1);
+		return EXIT_FAILURE;
 	i = 0;
 	while (index[i] != NULL && index[i]->fd != fd && i < MAX_DESCRIPTORS)
 		i++;
 	if (i == MAX_DESCRIPTORS)
-		return (-1);
+		return EXIT_FAILURE;
 	if (index[i] == NULL) {
 		if (!(index[i] = (t_buffer *)mem->allocator(sizeof(t_buffer))))
-			return (-1);
+			return EXIT_FAILURE;
 		bzero(index[i]->buffer, BUFF_SIZE + 1);
 		index[i]->buff_size = 0;
 		index[i]->fd = fd;
@@ -267,23 +265,23 @@ int main(int argc, char *argv[])
 
 	if (argc > 3 || argc == 1) {
 		printf("bad argument number\n");
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	if (argc == 3) {
 		fd_nm = open(argv[2], O_RDONLY);
 		if (fd_nm < 0) {
 			printf("cannot open %s\n", argv[2]);
-			return -1;
+			return EXIT_FAILURE;
 		}
 	} else {
-		fd_nm = -1;
+		fd_nm = EXIT_FAILURE;
 	}
 
 	fd_file_map = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 00644);
 	if (fd_file_map < 0) {
 		printf("cannot open %s\n", argv[1]);
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	mem.allocator = &malloc;
@@ -292,11 +290,11 @@ int main(int argc, char *argv[])
 	lst = NULL;
 	buf = NULL;
 	nb_lines = 0;
-	if (fd_nm != -1) {
+	if (fd_nm != EXIT_FAILURE) {
 		while ((size = get_next_line(fd_nm, &buf, &mem)) > 0) {
 			if (lst_push_back(&lst, buf, size + 1, &malloc) == NULL) {
 				printf("Cannot push back\n");
-				return -1;
+				return EXIT_FAILURE;
 			}
 			nb_lines++;
 		}
@@ -313,7 +311,7 @@ int main(int argc, char *argv[])
 		tab = ft_split_whitespaces((char *)tmp->content);
 		if (tab == NULL) {
 			printf("Cannot split whitespace\n");
-			return -1;
+			return EXIT_FAILURE;
 		}
 
 		int i = 0;
@@ -338,7 +336,7 @@ int main(int argc, char *argv[])
 	lst_del(&lst, &delete_list, &free);
 	close(fd_file_map);
 
-	if (fd_nm != -1)
+	if (fd_nm != EXIT_FAILURE)
 		close(fd_nm);
-	return 0;
+	return EXIT_SUCCESS;
 }
