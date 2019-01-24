@@ -1,27 +1,7 @@
+use super::{Drawer, IoResult, TextColor};
 use crate::ffi::c_char;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
-
-#[macro_export]
-macro_rules! impl_raw_data_debug {
-    ($e:ty) => {
-        impl core::fmt::Debug for $e {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                write!(f, "raw data at address {:?}: {} bytes reserved", &self.0 as *const u8, self.0.len())
-            }
-        }
-    };
-}
-
-macro_rules! define_raw_data {
-    ($name:ident, $size_in_bytes:expr) => {
-        #[derive(Copy, Clone)]
-        #[repr(C)]
-        #[repr(packed)]
-        pub struct $name(pub [u8; $size_in_bytes]);
-        impl_raw_data_debug!($name);
-    };
-}
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
@@ -190,53 +170,20 @@ impl Font {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct RGB(pub u32);
 
-impl RGB {
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self((r as u32) << 16 | (g as u32) << 8 | b as u32)
-    }
-    pub const fn blue() -> Self {
-        Self::new(0, 0, 0xFF)
-    }
-    pub const fn white() -> Self {
-        Self::new(0xFF, 0xFF, 0xFF)
-    }
-}
-
-/// impl common cursor usable by all graphic mode
-/// x,y,height,width are in unit of char
-#[derive(Debug, Copy, Clone)]
-struct Cursor {
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-}
-
-impl Cursor {
-    pub fn set_position(&mut self, x: usize, y: usize) {
-        self.x = x;
-        self.y = y;
-    }
-    /// advance cursor by 1, return false if need to scroll
-    pub fn forward(&mut self) -> bool {
-        self.x = self.x + 1;
-        if self.x == self.width {
-            self.cariage_return()
-        } else {
-            true
-        }
-    }
-    /// return false if need to scroll
-    pub fn cariage_return(&mut self) -> bool {
-        self.x = 0;
-        if self.y + 1 == self.height {
-            false
-        } else {
-            self.y += 1;
-            true
+impl From<TextColor> for RGB {
+    fn from(c: TextColor) -> Self {
+        match c {
+            TextColor::Red => RGB(0xFF0000),
+            TextColor::Green => RGB(0x00FF00),
+            TextColor::Blue => RGB(0x0000FF),
+            TextColor::Yellow => RGB(0xFFFF00),
+            TextColor::Cyan => RGB(0x00FFFF),
+            TextColor::Brown => RGB(0xA52A2A),
+            TextColor::Magenta => RGB(0xFF00FF),
+            TextColor::White => RGB(0xFFFFFF),
         }
     }
 }
@@ -254,13 +201,13 @@ pub struct VbeMode {
     x: usize,
     /// in pixel
     y: usize,
+    /// in pixel
     char_height: usize,
+    /// in pixel
     char_width: usize,
     mode: u16,
-    cursor: Cursor,
+    text_color: RGB,
 }
-
-pub static mut VBE_MODE: Option<VbeMode> = None;
 
 impl VbeMode {
     pub fn new(memory_location: usize, width: usize, height: usize, bpp: usize) -> Self {
@@ -268,99 +215,80 @@ impl VbeMode {
             memory_location,
             width,
             height,
-            bytes_per_pixel: 24 / 8,
+            bytes_per_pixel: bpp / 8,
             mode: 0,
             x: 0,
             y: 0,
             char_width: 8,
             char_height: 16,
-            cursor: Cursor { x: 0, y: 0, height: height / 16, width: width / 8 },
+            text_color: TextColor::White.into(),
         }
     }
-    pub fn put_pixel(&self, y: usize, x: usize) {
+    /// return window size in nb char
+    pub fn query_window_size(&self) -> (usize, usize) {
+        (self.height / self.char_height, self.width / self.char_width)
+    }
+    /// put pixel at position y, x in pixel unit
+    fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel) as *mut u32) = 0xFFFFFF;
+            *((self.memory_location + y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel) as *mut u32) =
+                color.0;
         }
     }
-    pub fn put_pixel_lin(&self, pos: usize, color: RGB) {
+    /// display pixel at linear position pos in pixel unit
+    fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
             *((self.memory_location + pos * self.bytes_per_pixel) as *mut RGB) = color;
         }
     }
+    /// fill screen with color
     pub fn fill_screen(&self, color: RGB) {
         for p in 0..self.width * self.height {
             self.put_pixel_lin(p, color);
         }
     }
-    pub fn putchar(&self, c: char) {
+}
+
+impl Drawer for VbeMode {
+    fn draw_character(&self, c: char, cursor_y: usize, cursor_x: usize) {
         let char_font;
         unsafe {
             char_font = _font.get_char(c as u8);
         }
-        let mut y = self.cursor.y * self.char_height;
+        let mut y = cursor_y * self.char_height;
         let mut x;
-        let color = RGB::white();
         for l in char_font {
-            x = self.cursor.x * self.char_width;
+            x = cursor_x * self.char_width;
             for shift in (0..8).rev() {
                 if *l & 1 << shift != 0 {
-                    self.put_pixel(y, x);
+                    self.put_pixel(y, x, self.text_color);
                 }
                 x += 1;
             }
             y += 1;
         }
     }
-}
-impl core::fmt::Write for VbeMode {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for c in s.as_bytes() {
-            match *c as char {
-                '\n' => {
-                    if !self.cursor.cariage_return() {
-                        //self.scroll_screen();
-                    }
-                }
-                _ => {
-                    self.putchar(*c as char);
-                    if !self.cursor.forward() {
-                        //self.scroll_screen();
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/*impl IoScreen for VbeMode {
-fn set_graphic_mode(&mut self, mode: u16) -> Result {
-self.mode = mode;
-Ok(())
-    }
-    fn putchar(&mut self, _c: char) -> Result {
-        Ok(())
-    }
-    fn scroll_screen(&mut self) -> Result {
-        Ok(())
-    }
-    fn clear_screen(&mut self) -> Result {
-        use crate::support::memset;
+    fn scroll_screen(&self) {
         unsafe {
-            memset(self.memory_location, 0, self.bpp as usize * self.width * self.height);
+            let line_size = self.char_height * self.width * self.bytes_per_pixel;
+            let screen_size = self.width * self.height * self.bytes_per_pixel;
+            (self.memory_location as *mut u8)
+                .copy_from((self.memory_location + line_size) as *const u8, screen_size - line_size);
+            ((self.memory_location + screen_size - line_size) as *mut u8).write_bytes(0, line_size);
         }
-        Ok(())
     }
-    fn set_text_color(&mut self, _color: TextColor) -> Result {
-        Ok(())
+    fn clear_screen(&mut self) {
+        unsafe {
+            (self.memory_location as *mut u8).write_bytes(0, self.bytes_per_pixel * self.width * self.height);
+        }
     }
-    fn set_cursor_position(&mut self, _x: usize, _y: usize) -> Result {
+    fn set_text_color(&mut self, color: TextColor) -> IoResult {
+        self.text_color = color.into();
         Ok(())
     }
 }
-*/
 
-fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(), Error> {
+fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(), VbeError> {
     /*
      ** AL == 4Fh: ** Function is supported
      ** AH == 00h: Function call successful
@@ -376,36 +304,36 @@ fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(), E
     }
 }
 
-fn save_vbe_info() -> core::result::Result<(), Error> {
+fn save_vbe_info() -> core::result::Result<(), VbeError> {
     unsafe {
         // VBE 3.0 specification says to put 'VBE2' in vbe_signature field to have pointers
         // points to reserved field instead of far pointer. So in practice it doesn't work
         TEMPORARY_PTR_LOCATION.copy_from("VBE2".as_ptr(), 4);
     }
     let reg: BaseRegisters = BaseRegisters { edi: TEMPORARY_PTR_LOCATION as u32, eax: 0x4f00, ..Default::default() };
-    real_mode_op(reg, 0x10)?;
+    vbe_real_mode_op(reg, 0x10)?;
     unsafe { VBE_INFO = Some(VbeInfo::new(TEMPORARY_PTR_LOCATION as *const VbeInfo)) }
     Ok(())
 }
 
-fn query_mode_info(mode_number: u16) -> Result<ModeInfo, Error> {
+fn query_mode_info(mode_number: u16) -> Result<ModeInfo, VbeError> {
     let reg: BaseRegisters = BaseRegisters {
         edi: TEMPORARY_PTR_LOCATION as u32,
         eax: 0x4f01,
         ecx: mode_number as u32,
         ..Default::default()
     };
-    unsafe { real_mode_op(reg, 0x10).map(|_| *(TEMPORARY_PTR_LOCATION as *const ModeInfo)) }
+    unsafe { vbe_real_mode_op(reg, 0x10).map(|_| *(TEMPORARY_PTR_LOCATION as *const ModeInfo)) }
 }
 
-fn set_vbe_mode(mode_number: u16) -> Result<(), Error> {
+fn set_vbe_mode(mode_number: u16) -> Result<(), VbeError> {
     let reg: BaseRegisters = BaseRegisters {
         edi: TEMPORARY_PTR_LOCATION as u32,
         eax: 0x4f02,
         ebx: (mode_number | 1 << 14) as u32, // set the bit 14 (from 0) to use linear frame buffer
         ..Default::default()
     };
-    real_mode_op(reg, 0x10)?;
+    vbe_real_mode_op(reg, 0x10)?;
     unsafe {
         CRTC_INFO = Some(*(TEMPORARY_PTR_LOCATION as *const CrtcInfo));
     }
@@ -413,7 +341,7 @@ fn set_vbe_mode(mode_number: u16) -> Result<(), Error> {
 }
 
 /// do all nessesary initialisation and switch to vbe mode 'mode' if given, if not swith to the best resolution mode
-pub fn init_graphic_mode(mode: Option<u16>) -> Result<(), Error> {
+pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
     unsafe {
         save_vbe_info()?;
         match mode {
@@ -428,13 +356,17 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<(), Error> {
             }
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
-        VBE_MODE = Some(VbeMode::new(mode_info.phys_base_ptr as usize, mode_info.x_resolution as usize, mode_info.y_resolution as usize,mode_info.bits_per_pixel as usize));
+        Ok(VbeMode::new(
+            mode_info.phys_base_ptr as usize,
+            mode_info.x_resolution as usize,
+            mode_info.y_resolution as usize,
+            mode_info.bits_per_pixel as usize,
+        ))
     }
-    Ok(())
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Error {
+pub enum VbeError {
     ///AH == 01h:
     Failed,
     ///AH == 02h:
@@ -445,13 +377,13 @@ pub enum Error {
     Unknown,
 }
 
-impl From<u16> for Error {
+impl From<u16> for VbeError {
     fn from(err_code: u16) -> Self {
         match err_code & 0xFF00 {
-            0x0100 => Error::Failed,
-            0x0200 => Error::NotSupportedCurrentConfig,
-            0x0300 => Error::InvalidCurentMode,
-            _ => Error::Unknown,
+            0x0100 => VbeError::Failed,
+            0x0200 => VbeError::NotSupportedCurrentConfig,
+            0x0300 => VbeError::InvalidCurentMode,
+            _ => VbeError::Unknown,
         }
     }
 }
