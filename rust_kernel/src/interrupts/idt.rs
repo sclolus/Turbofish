@@ -2,6 +2,7 @@
 
 use super::idt_gate_entry::*;
 use core::ffi::c_void;
+use core::mem::size_of;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -47,7 +48,7 @@ impl Idtr {
 
     /// Current default idtr, the address is 0x400, just above the idt bios
     /// and just below the current GDT
-    const DEFAULT_IDTR: Idtr = Idtr { length: Idtr::DEFAULT_IDTR_LENGTH, idt_addr: Idtr::DEFAULT_IDTR_ADDR };
+    const DEFAULT_IDTR: Idtr = Idtr { length: Idtr::DEFAULT_IDTR_LENGTH - 1, idt_addr: Idtr::DEFAULT_IDTR_ADDR };
 
     /// Loads the default Idtr
     pub unsafe fn load_default_idtr() -> Idtr {
@@ -56,12 +57,14 @@ impl Idtr {
 
     /// Returns a `&mut [IdtGateEntr]` of the current idt
     unsafe fn idt_gate_entries_slice_mut(&self) -> &mut [IdtGateEntry] {
-        core::slice::from_raw_parts_mut(self.idt_addr, (self.length / 8) as usize)
+        core::slice::from_raw_parts_mut(self.idt_addr,
+                                        (self.length / size_of::<IdtGateEntry>() as u16) as usize)
     }
 
     /// Returns a `&[IdtGateEntr]` of the current idt
     unsafe fn idt_gate_entries_slice(&self) -> &[IdtGateEntry] {
-        core::slice::from_raw_parts_mut(self.idt_addr, (self.length / 8) as usize)
+        core::slice::from_raw_parts_mut(self.idt_addr,
+                                        (self.length / size_of::<IdtGateEntry>() as u16) as usize)
     }
 
     /// Construct the Interrupt Table from the Idtr.
@@ -179,7 +182,7 @@ impl<'a> InterruptTable<'a> {
     /// The interrupts can still be fired.
     pub unsafe fn disable_all_interrupts(&mut self) {
         for interrupt in 0..self.entries.len() {
-            self.disable_interrupt(interrupt);
+            self.disable_interrupt(interrupt).unwrap();
         }
     }
 
