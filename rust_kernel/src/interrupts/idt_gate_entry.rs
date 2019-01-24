@@ -1,3 +1,4 @@
+/// See https://wiki.osdev.org/IDT
 use bit_field::BitField;
 use core::convert::{From, Into};
 
@@ -46,31 +47,39 @@ impl Into<u8> for GateType {
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
 pub struct IdtGateEntry {
-    pub offset_1: u16, // offset bits 0..15. the low part of the address
-    pub selector: u16, // a code segment selector in GDT or LDT
-    pub _zero: u8,     // unused, set to 0
+    /// offset bits 0..15. the low part of the address
+    pub offset_1: u16,
+    
+    /// a code segment selector in GDT or LDT
+    pub selector: u16,
 
-    // The type attr is layout in this way.
-    //   7                           0
-    // +---+---+---+---+---+---+---+---+
-    // | P |  DPL  | S |    GateType   |
-    // +---+---+---+---+---+---+---+---+
+    /// unused, set to 0
+    pub _zero: u8,
 
-    // P        	Present	Set to 0 for unused interrupts.
-    // DPL          Descriptor Privilege Level	Gate call protection.
-    //              Specifies which privilege Level the calling Descriptor minimum
-    //              should have.
-    //              So hardware and CPU interrupts can be protected from
-    //              being called out of userspace.
-    // S            Storage Segment	Set to 0 for interrupt and trap gates
-    // Gate Type 	Possible IDT gate types :
-    //              0b0101	0x5	5	80386 32 bit task gate
-    //              0b0110	0x6	6	80286 16-bit interrupt gate
-    //              0b0111	0x7	7	80286 16-bit trap gate
-    //              0b1110	0xE	14	80386 32-bit interrupt gate
-    //              0b1111	0xF	15	80386 32-bit trap gate
-    pub type_attr: u8, // type and attributes, see below
-    pub offset_2: u16, // offset bits 16..31
+    /// The type attr is layout in this way.
+    ///   7                           0
+    /// +---+---+---+---+---+---+---+---+
+    /// | P |  DPL  | S |    GateType   |
+    /// +---+---+---+---+---+---+---+---+
+
+    /// P        	Present	Set to 0 for unused interrupts.
+    /// DPL          Descriptor Privilege Level	Gate call protection.
+    ///              Specifies which privilege Level the calling Descriptor minimum
+    ///              should have.
+    ///              So hardware and CPU interrupts can be protected from
+    ///              being called out of userspace.
+    /// S            Storage Segment	Set to 0 for interrupt and trap gates
+    /// Gate Type 	Possible IDT gate types :
+    ///              0b0101	0x5	5	80386 32 bit task gate
+    ///              0b0110	0x6	6	80286 16-bit interrupt gate
+    ///              0b0111	0x7	7	80286 16-bit trap gate
+    ///              0b1110	0xE	14	80386 32-bit interrupt gate
+    ///              0b1111	0xF	15	80386 32-bit trap gate
+    /// type and attributes,
+    pub type_attr: u8,
+
+    /// offset bits 16..31
+    pub offset_2: u16,
 }
 
 impl IdtGateEntry {

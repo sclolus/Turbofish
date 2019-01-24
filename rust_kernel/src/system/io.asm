@@ -15,7 +15,7 @@ global asm_io_wait
 
 asm_inb:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 	
 	xor	eax, eax
 	xor	edx, edx
@@ -27,7 +27,7 @@ asm_inb:
 
 asm_inw:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 
 	xor	eax, eax
 	xor	edx, edx
@@ -39,7 +39,7 @@ asm_inw:
 
 asm_inl:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 
 	xor	eax, eax
 	xor	edx, edx
@@ -51,7 +51,7 @@ asm_inl:
 
 asm_outb:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 
 	xor	eax, eax
 	xor	edx, edx
@@ -65,7 +65,7 @@ asm_outb:
 	
 asm_outw:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 
 	xor	eax, eax
 	xor	edx, edx
@@ -79,7 +79,7 @@ asm_outw:
 
 asm_outl:
 	push	ebp
-	mv	ebp, esp
+	mov	ebp, esp
 
 	xor	eax, eax
 	xor	edx, edx
@@ -94,7 +94,7 @@ asm_outl:
 ;; Wait one io cycle by outb'ing at unused port (Needs a way to ensure it is unused)
 asm_io_wait:
 	push	ebp
-	mv	ebp, rsp
+	mov	ebp, esp
 	
 	out	0x80, al
 

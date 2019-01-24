@@ -1,3 +1,4 @@
+/// See https://wiki.osdev.org/ISR
 use crate::ffi::*;
 use crate::interrupts::pic_8259;
 
@@ -19,8 +20,8 @@ extern "C" {
 }
 
 
-// For now, this is assigned as the handler for every interrupt that are not exceptions
-// Specifically handling the case for the keyboard, just for testing that it's working.
+/// For now, this is assigned as the handler for every interrupt that are not exceptions
+/// Specifically handling the case for the keyboard, just for testing that it's working.
 #[no_mangle]
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
@@ -33,6 +34,8 @@ extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     }
 }
 
+/// This is the handler set to the reserved Gate Entries.
+/// Panics when called.
 #[no_mangle]
 pub(super) extern "C" fn reserved_interruption() {
     panic!("Reserved interruption raised");

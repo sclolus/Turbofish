@@ -1,4 +1,5 @@
-// This files contains all ISRs for the exceptions.
+/// This files contains all ISRs for the exceptions.
+/// See https://wiki.osdev.org/Exceptions
 
 extern "C" {
     pub(super) fn _isr_divide_by_zero() -> !;

@@ -2,6 +2,7 @@
 
 ;; This file contains all asm code regarding the interrupt service routines
 ;; For now. just a generic ISR wrapper
+;; See https://wiki.osdev.org/ISR
 
 ;; Currently no reason have macro for those, but could be usefull at some point
 %macro PUSH_ALL_REGISTERS 0
