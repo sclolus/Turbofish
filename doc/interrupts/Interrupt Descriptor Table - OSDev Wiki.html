@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<!-- saved from url=(0026)https://wiki.osdev.org/IDT -->
+<html lang="en" dir="ltr" class="client-js"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Interrupt Descriptor Table - OSDev Wiki</title>
+
+<meta name="generator" content="MediaWiki 1.18.0">
+<link rel="canonical" href="https://wiki.osdev.org/Interrupt_Descriptor_Table">
+<link rel="shortcut icon" href="https://wiki.osdev.org/favicon.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="https://wiki.osdev.org/opensearch_desc.php" title="OSDev Wiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://wiki.osdev.org/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="OSDev Wiki Atom feed" href="https://wiki.osdev.org/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="stylesheet" href="./Interrupt Descriptor Table - OSDev Wiki_files/load.php">
+<style type="text/css" media="all">.mw-collapsible-toggle{float:right} li .mw-collapsible-toggle{float:none} .mw-collapsible-toggle-li{list-style:none}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:4250852ed2349a0d4d0fc6509a3e7d4c */
+</style><style type="text/css" media="all">.js-messagebox{margin:1em 5%;padding:0.5em 2.5%;border:1px solid #ccc;background-color:#fcfcfc;font-size:0.8em}.js-messagebox .js-messagebox-group{margin:1px;padding:0.5em 2.5%;border-bottom:1px solid #ddd}.js-messagebox .js-messagebox-group:last-child{border-bottom:thin none transparent}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:8b08bdc91c52a9ffba396dccfb5b473c */
+</style><meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="./Interrupt Descriptor Table - OSDev Wiki_files/load(1).php">
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+<script src="./Interrupt Descriptor Table - OSDev Wiki_files/load(2).php"></script><script src="./Interrupt Descriptor Table - OSDev Wiki_files/load(3).php"></script>
+<script>if(window.mw){
+	mw.config.set({"wgCanonicalNamespace": "", "wgCanonicalSpecialPageName": false, "wgNamespaceNumber": 0, "wgPageName": "Interrupt_Descriptor_Table", "wgTitle": "Interrupt Descriptor Table", "wgCurRevisionId": 22966, "wgArticleId": 1545, "wgIsArticle": true, "wgAction": "view", "wgUserName": null, "wgUserGroups": ["*"], "wgCategories": ["X86 CPU", "Interrupts"], "wgBreakFrames": false, "wgRestrictionEdit": [], "wgRestrictionMove": []});
+}
+</script><script>if(window.mw){
+	mw.loader.load(["mediawiki.page.startup"]);
+}
+</script><script type="text/javascript" src="./Interrupt Descriptor Table - OSDev Wiki_files/load(4).php"></script>
+<style type="text/css">/*<![CDATA[*/
+.source-c {line-height: normal;}
+.source-c li, .source-c pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for c
+ * CSS class: source-c, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.c.source-c .de1, .c.source-c .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.c.source-c  {font-family:monospace;}
+.c.source-c .imp {font-weight: bold; color: red;}
+.c.source-c li, .c.source-c .li1 {font-weight: normal; vertical-align:top;}
+.c.source-c .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.c.source-c .li2 {font-weight: bold; vertical-align:top;}
+.c.source-c .kw1 {color: #b1b100;}
+.c.source-c .kw2 {color: #000000; font-weight: bold;}
+.c.source-c .kw3 {color: #000066;}
+.c.source-c .kw4 {color: #993333;}
+.c.source-c .co1 {color: #666666; font-style: italic;}
+.c.source-c .co2 {color: #339933;}
+.c.source-c .coMULTI {color: #808080; font-style: italic;}
+.c.source-c .es0 {color: #000099; font-weight: bold;}
+.c.source-c .es1 {color: #000099; font-weight: bold;}
+.c.source-c .es2 {color: #660099; font-weight: bold;}
+.c.source-c .es3 {color: #660099; font-weight: bold;}
+.c.source-c .es4 {color: #660099; font-weight: bold;}
+.c.source-c .es5 {color: #006699; font-weight: bold;}
+.c.source-c .br0 {color: #009900;}
+.c.source-c .sy0 {color: #339933;}
+.c.source-c .st0 {color: #ff0000;}
+.c.source-c .nu0 {color: #0000dd;}
+.c.source-c .nu6 {color: #208080;}
+.c.source-c .nu8 {color: #208080;}
+.c.source-c .nu12 {color: #208080;}
+.c.source-c .nu16 {color:#800080;}
+.c.source-c .nu17 {color:#800080;}
+.c.source-c .nu18 {color:#800080;}
+.c.source-c .nu19 {color:#800080;}
+.c.source-c .me1 {color: #202020;}
+.c.source-c .me2 {color: #202020;}
+.c.source-c .ln-xtra, .c.source-c li.ln-xtra, .c.source-c div.ln-xtra {background-color: #ffc;}
+.c.source-c span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><style type="text/css">/*<![CDATA[*/
+.source-asm {line-height: normal;}
+.source-asm li, .source-asm pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for asm
+ * CSS class: source-asm, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.asm.source-asm .de1, .asm.source-asm .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.asm.source-asm  {font-family:monospace;}
+.asm.source-asm .imp {font-weight: bold; color: red;}
+.asm.source-asm li, .asm.source-asm .li1 {font-weight: normal; vertical-align:top;}
+.asm.source-asm .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.asm.source-asm .li2 {font-weight: bold; vertical-align:top;}
+.asm.source-asm .kw1 {color: #00007f; font-weight: bold;}
+.asm.source-asm .kw2 {color: #0000ff; font-weight: bold;}
+.asm.source-asm .kw3 {color: #00007f;}
+.asm.source-asm .kw4 {color: #000000; font-weight: bold;}
+.asm.source-asm .kw5 {color: #000000; font-weight: bold;}
+.asm.source-asm .co1 {color: #666666; font-style: italic;}
+.asm.source-asm .co2 {color: #adadad; font-style: italic;}
+.asm.source-asm .es0 {color: #000099; font-weight: bold;}
+.asm.source-asm .br0 {color: #009900; font-weight: bold;}
+.asm.source-asm .sy0 {color: #339933;}
+.asm.source-asm .st0 {color: #7f007f;}
+.asm.source-asm .nu0 {color: #0000ff;}
+.asm.source-asm .ln-xtra, .asm.source-asm li.ln-xtra, .asm.source-asm div.ln-xtra {background-color: #ffc;}
+.asm.source-asm span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Interrupt_Descriptor_Table action-view skin-vector">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;" class="js-messagebox"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">Interrupt Descriptor Table</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">From OSDev Wiki</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub">(Redirected from <a href="https://wiki.osdev.org/index.php?title=IDT&amp;redirect=no" title="IDT">IDT</a>)</div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav">
+					Jump to: <a href="https://wiki.osdev.org/IDT#mw-head">navigation</a>,
+					<a href="https://wiki.osdev.org/IDT#p-search">search</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div lang="en" dir="ltr" class="mw-content-ltr"><p>The <b>Interrupt Descriptor Table</b> (<b>IDT</b>) is specific to the IA-32 architecture. It is the <a href="https://wiki.osdev.org/Protected_mode" title="Protected mode" class="mw-redirect">Protected mode</a> counterpart to the <a href="https://wiki.osdev.org/Real_Mode" title="Real Mode">Real Mode</a> Interrupt Vector Table (<a href="https://wiki.osdev.org/IVT" title="IVT" class="mw-redirect">IVT</a>) telling where the <a href="https://wiki.osdev.org/Interrupt_Service_Routines" title="Interrupt Service Routines">Interrupt Service Routines</a> (ISR) are located (one per interrupt vector). It is similar to the <a href="https://wiki.osdev.org/Global_Descriptor_Table" title="Global Descriptor Table">Global Descriptor Table</a> in structure.
+</p><p>The IDT entries are called gates. It can contain Interrupt Gates, Task Gates and Trap Gates.
+</p><p>Before you implement the IDT, make sure you have a working GDT.
+</p>
+<table id="toc" class="toc"><tbody><tr><td><div id="toctitle"><h2>Contents</h2><span class="toctoggle">&nbsp;[<a href="https://wiki.osdev.org/IDT#" class="internal" id="togglelink">hide</a>]&nbsp;</span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="https://wiki.osdev.org/IDT#Location_and_Size"><span class="tocnumber">1</span> <span class="toctext">Location and Size</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="https://wiki.osdev.org/IDT#Structure_IA-32"><span class="tocnumber">2</span> <span class="toctext">Structure IA-32</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="https://wiki.osdev.org/IDT#Structure_AMD64"><span class="tocnumber">3</span> <span class="toctext">Structure AMD64</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="https://wiki.osdev.org/IDT#Gate_Types"><span class="tocnumber">4</span> <span class="toctext">Gate Types</span></a>
+<ul>
+<li class="toclevel-2 tocsection-5"><a href="https://wiki.osdev.org/IDT#I386_Interrupt_Gate"><span class="tocnumber">4.1</span> <span class="toctext">I386 Interrupt Gate</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="https://wiki.osdev.org/IDT#I386_Trap_Gate"><span class="tocnumber">4.2</span> <span class="toctext">I386 Trap Gate</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="https://wiki.osdev.org/IDT#I386_Task_Gate"><span class="tocnumber">4.3</span> <span class="toctext">I386 Task Gate</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-8"><a href="https://wiki.osdev.org/IDT#Loading.2FStoring"><span class="tocnumber">5</span> <span class="toctext">Loading/Storing</span></a></li>
+<li class="toclevel-1 tocsection-9"><a href="https://wiki.osdev.org/IDT#IDT_in_IA-32e_Mode_.2864-bit_IDT.29"><span class="tocnumber">6</span> <span class="toctext">IDT in IA-32e Mode (64-bit IDT)</span></a></li>
+<li class="toclevel-1 tocsection-10"><a href="https://wiki.osdev.org/IDT#See_Also"><span class="tocnumber">7</span> <span class="toctext">See Also</span></a>
+<ul>
+<li class="toclevel-2 tocsection-11"><a href="https://wiki.osdev.org/IDT#Articles"><span class="tocnumber">7.1</span> <span class="toctext">Articles</span></a></li>
+<li class="toclevel-2 tocsection-12"><a href="https://wiki.osdev.org/IDT#External_references"><span class="tocnumber">7.2</span> <span class="toctext">External references</span></a></li>
+</ul>
+</li>
+</ul>
+</td></tr></tbody></table>
+<h2> <span class="mw-headline" id="Location_and_Size"> Location and Size </span></h2>
+<p>Location of IDT (address and size) is kept in the IDTR register of the CPU, which can be loaded/stored using LIDT, SIDT instructions.
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<caption><b>IDTR</b>
+</caption>
+<tbody><tr>
+<td>Name </td>
+<td> Bit </td>
+<td> Description
+</td></tr>
+<tr>
+<td>Limit </td>
+<td> 0..15 </td>
+<td> Defines the length of the IDT in bytes - 1 (minimum value is 100h, a value of 1000h means 200h interrupts).
+</td></tr>
+<tr>
+<td>Base </td>
+<td> 16..47 </td>
+<td> This 32 bits are the linear address where the IDT starts (INT 0)
+</td></tr></tbody></table>
+<p>This is similar to the <a href="https://wiki.osdev.org/GDT" title="GDT" class="mw-redirect">GDT</a>, except:
+</p>
+<ul><li> The first entry (at zero offset) is used in the IDT.
+</li><li> There are 256 interrupts (0..255), so IDT should have 256 entries, each entry corresponding to a specific interrupt.
+</li><li> It can contain more or less than 256 entries. More entries are ignored. When an interrupt or exception is invoked whose entry is not present, a <a href="https://wiki.osdev.org/Exceptions#General_Protection_Fault" title="Exceptions">GPF</a> is raised that tells the number of the missing IDT entry, and even whether it was hardware or software interrupt. There should therefore be at least enough entries so a GPF can be caught.
+</li></ul>
+<h2> <span class="mw-headline" id="Structure_IA-32"> Structure IA-32 </span></h2>
+<p>The table contains 8-byte Gate entries. Each entry has a complex structure:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="kw4">struct</span> IDTDescr <span class="br0">{</span>
+   <span class="kw4">uint16_t</span> offset_1<span class="sy0">;</span> <span class="co1">// offset bits 0..15</span>
+   <span class="kw4">uint16_t</span> selector<span class="sy0">;</span> <span class="co1">// a code segment selector in GDT or LDT</span>
+   <span class="kw4">uint8_t</span> zero<span class="sy0">;</span>      <span class="co1">// unused, set to 0</span>
+   <span class="kw4">uint8_t</span> type_attr<span class="sy0">;</span> <span class="co1">// type and attributes, see below</span>
+   <span class="kw4">uint16_t</span> offset_2<span class="sy0">;</span> <span class="co1">// offset bits 16..31</span>
+<span class="br0">}</span><span class="sy0">;</span></pre></div></div>
+<p>The <tt>offset</tt> is a 32 bit value, split in two parts. It represents the address of the entry point of the ISR.
+</p><p>The <tt>selector</tt> is a 16 bit value and must point to a valid descriptor in your <a href="https://wiki.osdev.org/GDT" title="GDT" class="mw-redirect">GDT</a>.
+</p><p>The <tt>type_attr</tt> is specified here:
+</p>
+<pre>  7                           0
++---+---+---+---+---+---+---+---+
+| P |  DPL  | S |    GateType   |
++---+---+---+---+---+---+---+---+
+</pre>
+<p>The bit fields mean:
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<caption><b>IDT entry, Interrupt Gates</b>
+</caption>
+<tbody><tr>
+<th> Name
+</th>
+<th> Bit
+</th>
+<th> Full Name
+</th>
+<th> Description
+</th></tr>
+<tr>
+<th> Offset
+</th>
+<td> 48..63 </td>
+<td> Offset 16..31 </td>
+<td> Higher part of the offset.
+</td></tr>
+<tr>
+<th> P
+</th>
+<td> 47 </td>
+<td> Present </td>
+<td> Set to <b>0</b> for unused interrupts.
+</td></tr>
+<tr>
+<th> DPL
+</th>
+<td> 45,46 </td>
+<td> Descriptor Privilege Level </td>
+<td> Gate call protection. Specifies which privilege Level the calling <a href="https://wiki.osdev.org/Descriptor" title="Descriptor">Descriptor</a> minimum should have. So hardware and CPU interrupts can be protected from being called out of userspace.
+</td></tr>
+<tr>
+<th> S
+</th>
+<td> 44 </td>
+<td> Storage Segment </td>
+<td> Set to <b>0</b> for interrupt and trap gates (see below).
+</td></tr>
+<tr>
+<th> Type
+</th>
+<td> 40..43 </td>
+<td> Gate Type 0..3 </td>
+<td> Possible IDT gate types&nbsp;:
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<tbody><tr>
+<td> 0b0101 </td>
+<td> 0x5 </td>
+<td> 5 </td>
+<td> 80386 32 bit <a href="https://wiki.osdev.org/IDT#I386_Task_Gate">task gate</a>
+</td></tr>
+<tr>
+<td> 0b0110 </td>
+<td> 0x6 </td>
+<td> 6 </td>
+<td> 80286 16-bit <a href="https://wiki.osdev.org/IDT#I386_Interrupt_Gate">interrupt gate</a>
+</td></tr>
+<tr>
+<td> 0b0111 </td>
+<td> 0x7 </td>
+<td> 7 </td>
+<td> 80286 16-bit <a href="https://wiki.osdev.org/IDT#I386_Trap_Gate">trap gate</a>
+</td></tr>
+<tr>
+<td> 0b1110 </td>
+<td> 0xE </td>
+<td> 14 </td>
+<td> 80386 32-bit <a href="https://wiki.osdev.org/IDT#I386_Interrupt_Gate">interrupt gate</a>
+</td></tr>
+<tr>
+<td> 0b1111 </td>
+<td> 0xF </td>
+<td> 15 </td>
+<td> 80386 32-bit <a href="https://wiki.osdev.org/IDT#I386_Trap_Gate">trap gate</a>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<th> 0
+</th>
+<td> 32..39 </td>
+<td> Unused 0..7 </td>
+<td> Have to be <b>0</b>.
+</td></tr>
+<tr>
+<th> Selector
+</th>
+<td> 16..31 </td>
+<td> Selector 0..15 </td>
+<td> <a href="https://wiki.osdev.org/Selector" title="Selector" class="mw-redirect">Selector</a> of the interrupt function (to make sense - the kernel's selector). The selector's descriptor's DPL field has to be <b>0</b> so the <b>iret</b> instruction won't throw a #GP exeption when executed.
+</td></tr>
+<tr>
+<th> Offset
+</th>
+<td> 0..15 </td>
+<td> Offset 0..15 </td>
+<td> Lower part of the interrupt function's offset address (also known as pointer).
+</td></tr></tbody></table>
+<h2> <span class="mw-headline" id="Structure_AMD64"> Structure AMD64 </span></h2>
+<p>For AMD64 the entries are 16-bytes and looks like this:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="kw4">struct</span> IDTDescr <span class="br0">{</span>
+   <span class="kw4">uint16_t</span> offset_1<span class="sy0">;</span> <span class="co1">// offset bits 0..15</span>
+   <span class="kw4">uint16_t</span> selector<span class="sy0">;</span> <span class="co1">// a code segment selector in GDT or LDT</span>
+   <span class="kw4">uint8_t</span> ist<span class="sy0">;</span>       <span class="co1">// bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.</span>
+   <span class="kw4">uint8_t</span> type_attr<span class="sy0">;</span> <span class="co1">// type and attributes</span>
+   <span class="kw4">uint16_t</span> offset_2<span class="sy0">;</span> <span class="co1">// offset bits 16..31</span>
+   <span class="kw4">uint32_t</span> offset_3<span class="sy0">;</span> <span class="co1">// offset bits 32..63</span>
+   <span class="kw4">uint32_t</span> zero<span class="sy0">;</span>     <span class="co1">// reserved</span>
+<span class="br0">}</span><span class="sy0">;</span></pre></div></div>
+<p>The <tt>offset</tt> is a 64 bit value, split in three parts. It represents the address of the entry point of the ISR.
+</p><p>The <tt>selector</tt> is a 16 bit value and must point to a valid descriptor in your <a href="https://wiki.osdev.org/GDT" title="GDT" class="mw-redirect">GDT</a>.
+</p><p>The <tt>ist</tt> is specified here:
+</p>
+<pre>  7                           0
++---+---+---+---+---+---+---+---+
+|        Zero       |    IST    |
++---+---+---+---+---+---+---+---+
+</pre>
+<p>The low three bits act as an offset into the Interrupt Stack Table, which is stored in the <a href="https://wiki.osdev.org/TSS" title="TSS" class="mw-redirect">TSS</a>. If the bits are all set to zero, the IST mechanism is not used.
+</p><p>The <tt>type_attr</tt> is specified here:
+</p>
+<pre>  7                           0
++---+---+---+---+---+---+---+---+
+| P |  DPL  | Z |    GateType   |
++---+---+---+---+---+---+---+---+
+</pre>
+<h2> <span class="mw-headline" id="Gate_Types"> Gate Types </span></h2>
+<h3> <span class="mw-headline" id="I386_Interrupt_Gate"> I386 Interrupt Gate </span></h3>
+<p>The Interrupt Gate is used to specify an <a href="https://wiki.osdev.org/Interrupt_Service_Routines" title="Interrupt Service Routines">interrupt service routine</a>. When you do <tt><a href="https://wiki.osdev.org/INT" title="INT" class="mw-redirect">INT</a> 50</tt> in assembly, running in protected mode, the CPU looks up the 50th entry (located at 50 * 8) in the IDT. Then the Interrupt Gates selector and offset value is loaded. The selector and offset is used to call the interrupt service routine. When the <tt><a href="https://wiki.osdev.org/index.php?title=IRET&amp;action=edit&amp;redlink=1" class="new" title="IRET (page does not exist)">IRET</a></tt> instruction is read, it returns. If running in 32 bit mode and the specified selector is a 16 bit selector, then the CPU will go in 16 bit protected mode after calling the interrupt service routine. To return you need to do <tt>O32 IRET</tt>, else the CPU doesn't know that it should do a 32 bit return (reading 32 bit offset of the <a href="https://wiki.osdev.org/Stack" title="Stack">stack</a> instead of 16 bit).
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<tbody><tr>
+<th> <a href="https://wiki.osdev.org/Descriptors#type_attr" title="Descriptors">type_attr</a>
+</th>
+<th> Type
+</th></tr>
+<tr>
+<td> 0b1110=0xE
+</td>
+<td> 32-bit interrupt gate
+</td></tr>
+<tr>
+<td> 0b0110=0x6
+</td>
+<td> 16-bit interrupt gate
+</td></tr></tbody></table>
+<p>Here are some pre-cooked type_attr values people are likely to use (assuming DPL=0):
+</p>
+<ul><li> 32-bit Interrupt gate: 0x8E ( P=1, DPL=00b, S=0, type=1110b =&gt; type_attr=1000_1110b=0x8E)
+</li></ul>
+<h3> <span class="mw-headline" id="I386_Trap_Gate"> I386 Trap Gate </span></h3>
+<p>When an interrupt/exception occurs that corresponds to a Trap or Interrupt Gate, the CPU places the return info on the stack (EFLAGS, CS, EIP), so the interrupt handler can resume the interrupted code by IRET.
+</p><p>Then, execution is transferred to the given selector:offset from the gate descriptor.
+</p><p>For some exceptions, an error code is also pushed on the stack, which must be POPped before doing IRET.
+</p><p><br>
+Trap and Interrupt gates are similar, and their descriptors are structurally the same, they differ only in the "type" field. The difference is that for interrupt gates, interrupts are automatically disabled upon entry and reenabled upon IRET which restores the saved EFLAGS.
+</p><p>Choosing type_attr values: (See <a href="https://wiki.osdev.org/Descriptors#type_attr" title="Descriptors">Descriptors#type_attr</a>)
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<tbody><tr>
+<th> <a href="https://wiki.osdev.org/Descriptors#type_attr" title="Descriptors">type_attr</a>
+</th>
+<th> Type
+</th></tr>
+<tr>
+<td> 0b1111=0xf
+</td>
+<td> 32-bit trap gate
+</td></tr>
+<tr>
+<td> 0b0111=0x7
+</td>
+<td> 16-bit trap gate
+</td></tr></tbody></table>
+<p><br>
+Here are some pre-cooked type_attr values people are likely to use (assuming DPL=0):
+</p>
+<ul><li> 32-bit Trap gate: 0x8F ( P=1, DPL=00b, S=0, type=1111b =&gt; type_attr=1000_1111b=0x8F)
+</li></ul>
+<p>Thus, Trap and Interrupt gate descriptors hold the following data (other than type_attr):
+</p>
+<ul><li> 16-bit selector of a code segment in GDT or LDT
+</li><li> 32-bit offset into that segment - address of the handler, where execution will be transferred
+</li></ul>
+<h3> <span class="mw-headline" id="I386_Task_Gate"> I386 Task Gate </span></h3>
+<p>In the Task Gate descriptor the <tt>offset</tt> values are not used. Set them to 0.
+</p><p>When an interrupt/exception occurs whose entry is a Task Gate, a task switch results.
+</p>
+<table class="toccolours" align="center" width="75%" style="padding: 20px 30px 10px 10px;">
+
+<tbody><tr>
+<td>
+<div class="scroll">"A task gate in the IDT references a TSS descriptor in the GDT. A switch to the handler task is handled in the same manner as an ordinary task switch. (..) The link back to the interrupted task is stored in the previous task link field of the handler task's TSS. If an exception caused an error code to be generated, this error code is copied to the stack of the new task."</div>
+<p style="text-align: right;">
+—Intel manual (vol.3 p.5-19)
+</p>
+</td></tr></tbody></table>
+<table class="toccolours" align="center" width="75%" style="padding: 20px 30px 10px 10px;">
+
+<tbody><tr>
+<td>
+<div class="scroll">"*NOTE* Because IA-32 tasks are not re-entrant, an interrupt-handler task must disable interrupts between the time it completes handling the interrupt and the time it executes the IRET instruction. This action prevents another interrupt from occurring while the interrupt task's TSS is still marked busy, which would cause a general-protection (#GP) exception."</div>
+<p style="text-align: right;">
+—Intel manual
+</p>
+</td></tr></tbody></table>
+<p><br>
+Choosing type_attr values: (See 
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<tbody><tr>
+<th> <a href="https://wiki.osdev.org/Descriptors#type_attr" title="Descriptors">type_attr</a>
+</th>
+<th> Type
+</th></tr>
+<tr>
+<td> 0b0101=0x5
+</td>
+<td> task gate
+</td></tr></tbody></table>
+<p>For DPL=0, type_attr=0x85=0b0101
+</p><p>Thus, a TSS selector is the only custom piece of data you need for a Task Gate descriptor.
+</p><p>Advantages over using trap/interrupt gates:
+</p>
+<ul><li> The entire context of the interrupted task is saved automatically (no need to worry about registers)
+</li><li> The handler can be isolated from other tasks in a separate address space in LDT.
+</li><li> <i>"A new tss permits the handler to use a new privilege level 0 stack when handling the exception or interrupt. If an exception or interrupt occurs when the current privilege level 0 stack is corrupted, accessing the handler through a task gate can prevent a system crash by providing the handler with a new privilege level 0 stack"</i> --Intel manual
+</li></ul>
+<p>Disadvantage:
+</p>
+<ul><li> Saving the entire task context into TSS is slower than using a trap/interrupt gate (where the handler can save only what it needs).
+<ul><li> Is it that much faster if the handler does PUSHAD or pushes registers one by one?
+</li><li> Does it make a difference, considering a non-dummy, non-trivial handler?
+</li></ul>
+</li></ul>
+<h2> <span class="mw-headline" id="Loading.2FStoring">Loading/Storing</span></h2>
+<p>The IDT is loaded using the <tt>LIDT</tt> assembly instruction. It expects the address of a IDT description structure:
+</p>
+<pre>Byte:
+       +---------------+---------------+
+   0   |              Size             |
+       +---------------+---------------+
+
+       +---------------+---------------+---------------+---------------+
+   2   |                             Offset                            |
+       +---------------+---------------+---------------+---------------+
+</pre>
+<p>The <tt>offset</tt> is the virtual address of the table itself. The <tt>size</tt> is the size of the table itself subtracted by 1. This structure can be stored to memory again with the <tt>SIDT</tt> instruction.
+</p><p>To define the structure, one would write:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1">idt_info<span class="sy0">:</span>
+    <span class="kw4">dw</span> idt_end <span class="sy0">-</span> idt_start <span class="sy0">-</span> <span class="nu0">1</span>
+    <span class="kw4">dd</span> idt_start</pre></div></div>
+<p>To load the IDT, one would write:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1">    <span class="kw1">lidt</span> <span class="br0">[</span>idt_info<span class="br0">]</span></pre></div></div>
+<h2> <span class="mw-headline" id="IDT_in_IA-32e_Mode_.2864-bit_IDT.29">IDT in IA-32e Mode (64-bit IDT)</span></h2>
+<p>When in long or compatibility mode (once the EFER.LME flag has been set) the IDT's structure changes slightly.
+The IDTR structure's (used by <tt>LIDT</tt> and <tt>SIDT</tt>) <tt>base</tt> field changes to 64-bits to allow the IDT to reside anywhere in memory, and each entry in the IDT grows by 64-bits. The first 32-bit value is the high bits of the address, while the second is zero.
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<caption><b>IDTR</b>
+</caption>
+<tbody><tr>
+<td>Offset </td>
+<td> Size </td>
+<td> Description
+</td></tr>
+<tr>
+<td>0 </td>
+<td> 2 </td>
+<td> Limit - Maximum addressable byte in table
+</td></tr>
+<tr>
+<td>2 </td>
+<td> 8 </td>
+<td> Offset - Linear (paged) base address of IDT
+</td></tr></tbody></table>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+<caption><b>IDT Descriptor</b>
+</caption>
+<tbody><tr>
+<td>Offset </td>
+<td> Size </td>
+<td> Description
+</td></tr>
+<tr>
+<td>0 </td>
+<td> 2 </td>
+<td> Offset low bits (0..15)
+</td></tr>
+<tr>
+<td>2 </td>
+<td> 2 </td>
+<td> Selector (Code segment selector)
+</td></tr>
+<tr>
+<td>4 </td>
+<td> 1 </td>
+<td> Zero
+</td></tr>
+<tr>
+<td>5 </td>
+<td> 1 </td>
+<td> Type and Attributes (same as before)
+</td></tr>
+<tr>
+<td>6 </td>
+<td> 2 </td>
+<td> Offset middle bits (16..31)
+</td></tr>
+<tr>
+<td>8 </td>
+<td> 4 </td>
+<td> Offset high bits (32..63)
+</td></tr>
+<tr>
+<td>12 </td>
+<td> 4 </td>
+<td> Zero
+</td></tr></tbody></table>
+<p>In your interrupt handler routines, <b>remember to use IRETQ instead of IRET</b>, as nasm won't translate that for you. Many 64bit IDT related problems on the forum are caused by that missing 'Q'. Don't let this happen to you.
+</p>
+<h2> <span class="mw-headline" id="See_Also">See Also</span></h2>
+<h3> <span class="mw-headline" id="Articles">Articles</span></h3>
+<ul><li> <a href="https://wiki.osdev.org/GDT" title="GDT" class="mw-redirect">GDT</a>
+</li><li> <a href="https://wiki.osdev.org/IDT_problems" title="IDT problems" class="mw-redirect">IDT problems</a>
+</li></ul>
+<h3> <span class="mw-headline" id="External_references"> External references </span></h3>
+<ul><li> <a rel="nofollow" class="external text" href="http://www.logix.cz/michal/doc/i386/chp09-00.htm">Michal Ludvig's Intel 80386 Programmer's Reference Manual chapter 9</a>
+</li></ul>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 249/1000000
+Post-expand include size: 2485/2097152 bytes
+Template argument size: 947/2097152 bytes
+Expensive parser function count: 0/100
+-->
+
+<!-- Saved in parser cache with key wikidb:pcache:idhash:1545-0!*!0!!en!*!* and timestamp 20190123051910 -->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Retrieved from "<a href="https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;oldid=22966">https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;oldid=22966</a>"				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id="catlinks" class="catlinks"><div id="mw-normal-catlinks"><a href="https://wiki.osdev.org/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="https://wiki.osdev.org/Category:X86_CPU" title="Category:X86 CPU">X86 CPU</a></li><li><a href="https://wiki.osdev.org/Category:Interrupts" title="Category:Interrupts">Interrupts</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Personal tools</h5>
+	<ul>
+		<li id="pt-login"><a href="https://wiki.osdev.org/index.php?title=Special:UserLogin&amp;returnto=Interrupt_Descriptor_Table" title="You are encouraged to log in; however, it is not mandatory [alt-o]" accesskey="o">Log in</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Namespaces</h5>
+	<ul>
+					<li id="ca-nstab-main" class="selected"><span><a href="https://wiki.osdev.org/Interrupt_Descriptor_Table" title="View the content page [alt-c]" accesskey="c">Page</a></span></li>
+					<li id="ca-talk"><span><a href="https://wiki.osdev.org/Talk:Interrupt_Descriptor_Table" title="Discussion about the content page [alt-t]" accesskey="t">Discussion</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+		<h5><span>Variants</span><a href="https://wiki.osdev.org/IDT#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Views</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="https://wiki.osdev.org/Interrupt_Descriptor_Table">Read</a></span></li>
+					<li id="ca-viewsource"><span><a href="https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;action=edit" title="This page is protected.
+You can view its source [alt-e]" accesskey="e">View source</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;action=history" title="Past revisions of this page [alt-h]" accesskey="h">View history</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Actions</span><a href="https://wiki.osdev.org/IDT#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Search</label></h5>
+	<form action="https://wiki.osdev.org/index.php" id="searchform">
+		<input type="hidden" name="title" value="Special:Search">
+				<input type="search" name="search" title="Search OSDev Wiki [alt-f]" accesskey="f" id="searchInput">		<input type="submit" name="go" value="Go" title="Go to a page with this exact name if exists" id="searchGoButton" class="searchButton">		<input type="submit" name="fulltext" value="Search" title="Search the pages for this text" id="mw-searchButton" class="searchButton">			</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(/skins/common/images/osdev.png);" href="https://wiki.osdev.org/Main_Page" title="Visit the main page"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id="p-navigation">
+	<h5>Navigation</h5>
+	<div class="body">
+		<ul>
+			<li id="n-mainpage"><a href="https://wiki.osdev.org/Main_Page" title="Visit the main page [alt-z]" accesskey="z">Main Page</a></li>
+			<li id="n-portal"><a href="http://forum.osdev.org/" rel="nofollow" title="About the project, what you can do, where to find things">Forums</a></li>
+			<li id="n-FAQ"><a href="https://wiki.osdev.org/Category:FAQ">FAQ</a></li>
+			<li id="n-OS-Projects"><a href="https://wiki.osdev.org/Projects">OS Projects</a></li>
+			<li id="n-randompage"><a href="https://wiki.osdev.org/Special:Random" title="Load a random page [alt-x]" accesskey="x">Random page</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- about -->
+<div class="portal" id="p-about">
+	<h5>About</h5>
+	<div class="body">
+		<ul>
+			<li id="n-This-site"><a href="https://wiki.osdev.org/OSDevWiki:About">This site</a></li>
+			<li id="n-Joining"><a href="https://wiki.osdev.org/OSDevWiki:Joining">Joining</a></li>
+			<li id="n-Editing-help"><a href="https://wiki.osdev.org/OSDevWiki:Editing">Editing help</a></li>
+			<li id="n-recentchanges"><a href="https://wiki.osdev.org/Special:RecentChanges" title="A list of recent changes in the wiki [alt-r]" accesskey="r">Recent changes</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /about -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id="p-tb">
+	<h5>Toolbox</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="https://wiki.osdev.org/Special:WhatLinksHere/Interrupt_Descriptor_Table" title="A list of all wiki pages that link here [alt-j]" accesskey="j">What links here</a></li>
+			<li id="t-recentchangeslinked"><a href="https://wiki.osdev.org/Special:RecentChangesLinked/Interrupt_Descriptor_Table" title="Recent changes in pages linked from this page [alt-k]" accesskey="k">Related changes</a></li>
+			<li id="t-specialpages"><a href="https://wiki.osdev.org/Special:SpecialPages" title="A list of all special pages [alt-q]" accesskey="q">Special pages</a></li>
+			<li><a href="https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;printable=yes" rel="alternate">Printable version</a></li>
+			<li id="t-permalink"><a href="https://wiki.osdev.org/index.php?title=Interrupt_Descriptor_Table&amp;oldid=22966" title="Permanent link to this revision of the page">Permanent link</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+<div class="portal" id="p-lang">
+	<h5>In other languages</h5>
+	<div class="body">
+		<ul>
+			<li class="interwiki-de"><a href="http://www.lowlevel.eu/wiki/Interrupt_Descriptor_Table" title="Interrupt Descriptor Table">Deutsch</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> This page was last modified on 25 September 2018, at 14:45.</li>
+											<li id="footer-info-viewcount">This page has been accessed 212,131 times.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="https://wiki.osdev.org/OSDev_Wiki:Privacy_policy" title="OSDev Wiki:Privacy policy">Privacy policy</a></li>
+											<li id="footer-places-about"><a href="https://wiki.osdev.org/OSDev_Wiki:About" title="OSDev Wiki:About">About OSDev Wiki</a></li>
+											<li id="footer-places-disclaimer"><a href="https://wiki.osdev.org/OSDev_Wiki:General_disclaimer" title="OSDev Wiki:General disclaimer">Disclaimers</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="http://www.mediawiki.org/"><img src="./Interrupt Descriptor Table - OSDev Wiki_files/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31"></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<!-- fixalpha -->
+		<script type="text/javascript"> if ( window.isMSIE55 ) fixalpha(); </script>
+		<!-- /fixalpha -->
+		<script src="./Interrupt Descriptor Table - OSDev Wiki_files/load(5).php"></script>
+<script>if(window.mw){
+	mw.loader.load(["mediawiki.user", "mediawiki.util", "mediawiki.page.ready", "mediawiki.legacy.wikibits", "mediawiki.legacy.ajax"]);
+}
+</script><script type="text/javascript" src="./Interrupt Descriptor Table - OSDev Wiki_files/load(6).php"></script>
+<script src="./Interrupt Descriptor Table - OSDev Wiki_files/load(7).php"></script>
+<script>if(window.mw){
+	mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,
+	"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"variant":"en","language":"en","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;mw.user.tokens.set({"editToken":"+\\","watchToken":false});;mw.loader.state({"user.options":"ready","user.tokens":"ready"});
+	
+	/* cache key: wikidb:resourceloader:filter:minify-js:4:19a4b18a9ac79a6b8c60b24af4668814 */
+}
+</script><!-- Served in 0.043 secs. -->
+	
+
+</body></html>

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<!-- saved from url=(0026)https://wiki.osdev.org/PIC -->
+<html lang="en" dir="ltr" class="client-js"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>8259 PIC - OSDev Wiki</title>
+
+<meta name="generator" content="MediaWiki 1.18.0">
+<link rel="canonical" href="https://wiki.osdev.org/8259_PIC">
+<link rel="shortcut icon" href="https://wiki.osdev.org/favicon.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="https://wiki.osdev.org/opensearch_desc.php" title="OSDev Wiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://wiki.osdev.org/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="OSDev Wiki Atom feed" href="https://wiki.osdev.org/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="stylesheet" href="./8259 PIC - OSDev Wiki_files/load.php">
+<style type="text/css" media="all">.mw-collapsible-toggle{float:right} li .mw-collapsible-toggle{float:none} .mw-collapsible-toggle-li{list-style:none}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:4250852ed2349a0d4d0fc6509a3e7d4c */
+</style><style type="text/css" media="all">.js-messagebox{margin:1em 5%;padding:0.5em 2.5%;border:1px solid #ccc;background-color:#fcfcfc;font-size:0.8em}.js-messagebox .js-messagebox-group{margin:1px;padding:0.5em 2.5%;border-bottom:1px solid #ddd}.js-messagebox .js-messagebox-group:last-child{border-bottom:thin none transparent}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:8b08bdc91c52a9ffba396dccfb5b473c */
+</style><meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="./8259 PIC - OSDev Wiki_files/load(1).php">
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+<script src="./8259 PIC - OSDev Wiki_files/load(2).php"></script><script src="./8259 PIC - OSDev Wiki_files/load(3).php"></script>
+<script>if(window.mw){
+	mw.config.set({"wgCanonicalNamespace": "", "wgCanonicalSpecialPageName": false, "wgNamespaceNumber": 0, "wgPageName": "8259_PIC", "wgTitle": "8259 PIC", "wgCurRevisionId": 23048, "wgArticleId": 1478, "wgIsArticle": true, "wgAction": "view", "wgUserName": null, "wgUserGroups": ["*"], "wgCategories": ["Interrupts"], "wgBreakFrames": false, "wgRestrictionEdit": [], "wgRestrictionMove": []});
+}
+</script><script>if(window.mw){
+	mw.loader.load(["mediawiki.page.startup"]);
+}
+</script><script type="text/javascript" src="./8259 PIC - OSDev Wiki_files/load(4).php"></script>
+<style type="text/css">/*<![CDATA[*/
+.source-c {line-height: normal;}
+.source-c li, .source-c pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for c
+ * CSS class: source-c, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.c.source-c .de1, .c.source-c .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.c.source-c  {font-family:monospace;}
+.c.source-c .imp {font-weight: bold; color: red;}
+.c.source-c li, .c.source-c .li1 {font-weight: normal; vertical-align:top;}
+.c.source-c .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.c.source-c .li2 {font-weight: bold; vertical-align:top;}
+.c.source-c .kw1 {color: #b1b100;}
+.c.source-c .kw2 {color: #000000; font-weight: bold;}
+.c.source-c .kw3 {color: #000066;}
+.c.source-c .kw4 {color: #993333;}
+.c.source-c .co1 {color: #666666; font-style: italic;}
+.c.source-c .co2 {color: #339933;}
+.c.source-c .coMULTI {color: #808080; font-style: italic;}
+.c.source-c .es0 {color: #000099; font-weight: bold;}
+.c.source-c .es1 {color: #000099; font-weight: bold;}
+.c.source-c .es2 {color: #660099; font-weight: bold;}
+.c.source-c .es3 {color: #660099; font-weight: bold;}
+.c.source-c .es4 {color: #660099; font-weight: bold;}
+.c.source-c .es5 {color: #006699; font-weight: bold;}
+.c.source-c .br0 {color: #009900;}
+.c.source-c .sy0 {color: #339933;}
+.c.source-c .st0 {color: #ff0000;}
+.c.source-c .nu0 {color: #0000dd;}
+.c.source-c .nu6 {color: #208080;}
+.c.source-c .nu8 {color: #208080;}
+.c.source-c .nu12 {color: #208080;}
+.c.source-c .nu16 {color:#800080;}
+.c.source-c .nu17 {color:#800080;}
+.c.source-c .nu18 {color:#800080;}
+.c.source-c .nu19 {color:#800080;}
+.c.source-c .me1 {color: #202020;}
+.c.source-c .me2 {color: #202020;}
+.c.source-c .ln-xtra, .c.source-c li.ln-xtra, .c.source-c div.ln-xtra {background-color: #ffc;}
+.c.source-c span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><style type="text/css">/*<![CDATA[*/
+.source-asm {line-height: normal;}
+.source-asm li, .source-asm pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for asm
+ * CSS class: source-asm, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.asm.source-asm .de1, .asm.source-asm .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.asm.source-asm  {font-family:monospace;}
+.asm.source-asm .imp {font-weight: bold; color: red;}
+.asm.source-asm li, .asm.source-asm .li1 {font-weight: normal; vertical-align:top;}
+.asm.source-asm .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.asm.source-asm .li2 {font-weight: bold; vertical-align:top;}
+.asm.source-asm .kw1 {color: #00007f; font-weight: bold;}
+.asm.source-asm .kw2 {color: #0000ff; font-weight: bold;}
+.asm.source-asm .kw3 {color: #00007f;}
+.asm.source-asm .kw4 {color: #000000; font-weight: bold;}
+.asm.source-asm .kw5 {color: #000000; font-weight: bold;}
+.asm.source-asm .co1 {color: #666666; font-style: italic;}
+.asm.source-asm .co2 {color: #adadad; font-style: italic;}
+.asm.source-asm .es0 {color: #000099; font-weight: bold;}
+.asm.source-asm .br0 {color: #009900; font-weight: bold;}
+.asm.source-asm .sy0 {color: #339933;}
+.asm.source-asm .st0 {color: #7f007f;}
+.asm.source-asm .nu0 {color: #0000ff;}
+.asm.source-asm .ln-xtra, .asm.source-asm li.ln-xtra, .asm.source-asm div.ln-xtra {background-color: #ffc;}
+.asm.source-asm span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-8259_PIC action-view skin-vector">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;" class="js-messagebox"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">8259 PIC</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">From OSDev Wiki</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub">(Redirected from <a href="https://wiki.osdev.org/index.php?title=PIC&amp;redirect=no" title="PIC">PIC</a>)</div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav">
+					Jump to: <a href="https://wiki.osdev.org/PIC#mw-head">navigation</a>,
+					<a href="https://wiki.osdev.org/PIC#p-search">search</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div lang="en" dir="ltr" class="mw-content-ltr"><p>The 8259 <i>Programmable Interrupt Controller</i> (PIC) is one of the most important chips making up the x86 architecture. Without it, the x86 architecture would not be an interrupt driven architecture. The function of the 8259A is to manage hardware interrupts and send them to the appropriate system <a href="https://wiki.osdev.org/Interrupts" title="Interrupts">interrupt</a>. This allows the system to respond to devices needs without loss of time (from polling the device, for instance).
+</p><p>It is important to note that <a href="https://wiki.osdev.org/APIC" title="APIC">APIC</a> has replaced the 8259 PIC in more modern systems, especially those with multiple cores/processors.
+</p>
+<table id="toc" class="toc"><tbody><tr><td><div id="toctitle"><h2>Contents</h2><span class="toctoggle">&nbsp;[<a href="https://wiki.osdev.org/PIC#" class="internal" id="togglelink">hide</a>]&nbsp;</span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="https://wiki.osdev.org/PIC#What_does_the_8259_PIC_do.3F"><span class="tocnumber">1</span> <span class="toctext">What does the 8259 PIC do?</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="https://wiki.osdev.org/PIC#The_IBM_PC_8259_PIC_Architecture"><span class="tocnumber">1.1</span> <span class="toctext">The IBM PC 8259 PIC Architecture</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="https://wiki.osdev.org/PIC#The_IBM_PC.2FAT_8259_PIC_Architecture"><span class="tocnumber">1.2</span> <span class="toctext">The IBM PC/AT 8259 PIC Architecture</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-4"><a href="https://wiki.osdev.org/PIC#How_does_the_8259_PIC_chip_work.3F"><span class="tocnumber">2</span> <span class="toctext">How does the 8259 PIC chip work?</span></a></li>
+<li class="toclevel-1 tocsection-5"><a href="https://wiki.osdev.org/PIC#Programming_with_the_8259_PIC"><span class="tocnumber">3</span> <span class="toctext">Programming with the 8259 PIC</span></a>
+<ul>
+<li class="toclevel-2 tocsection-6"><a href="https://wiki.osdev.org/PIC#Real_Mode"><span class="tocnumber">3.1</span> <span class="toctext">Real Mode</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="https://wiki.osdev.org/PIC#Protected_Mode"><span class="tocnumber">3.2</span> <span class="toctext">Protected Mode</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-8"><a href="https://wiki.osdev.org/PIC#Code_Examples"><span class="tocnumber">4</span> <span class="toctext">Code Examples</span></a>
+<ul>
+<li class="toclevel-2 tocsection-9"><a href="https://wiki.osdev.org/PIC#Common_Definitions"><span class="tocnumber">4.1</span> <span class="toctext">Common Definitions</span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="https://wiki.osdev.org/PIC#End_of_Interrupt"><span class="tocnumber">4.2</span> <span class="toctext">End of Interrupt</span></a></li>
+<li class="toclevel-2 tocsection-11"><a href="https://wiki.osdev.org/PIC#Initialisation"><span class="tocnumber">4.3</span> <span class="toctext">Initialisation</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-12"><a href="https://wiki.osdev.org/PIC#Disabling"><span class="tocnumber">5</span> <span class="toctext">Disabling</span></a></li>
+<li class="toclevel-1 tocsection-13"><a href="https://wiki.osdev.org/PIC#Masking"><span class="tocnumber">6</span> <span class="toctext">Masking</span></a></li>
+<li class="toclevel-1 tocsection-14"><a href="https://wiki.osdev.org/PIC#ISR_and_IRR"><span class="tocnumber">7</span> <span class="toctext">ISR and IRR</span></a></li>
+<li class="toclevel-1 tocsection-15"><a href="https://wiki.osdev.org/PIC#Spurious_IRQs"><span class="tocnumber">8</span> <span class="toctext">Spurious IRQs</span></a>
+<ul>
+<li class="toclevel-2 tocsection-16"><a href="https://wiki.osdev.org/PIC#Handling_Spurious_IRQs"><span class="tocnumber">8.1</span> <span class="toctext">Handling Spurious IRQs</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-17"><a href="https://wiki.osdev.org/PIC#See_Also"><span class="tocnumber">9</span> <span class="toctext">See Also</span></a>
+<ul>
+<li class="toclevel-2 tocsection-18"><a href="https://wiki.osdev.org/PIC#Articles"><span class="tocnumber">9.1</span> <span class="toctext">Articles</span></a></li>
+<li class="toclevel-2 tocsection-19"><a href="https://wiki.osdev.org/PIC#Threads"><span class="tocnumber">9.2</span> <span class="toctext">Threads</span></a></li>
+<li class="toclevel-2 tocsection-20"><a href="https://wiki.osdev.org/PIC#External_Links"><span class="tocnumber">9.3</span> <span class="toctext">External Links</span></a></li>
+</ul>
+</li>
+</ul>
+</td></tr></tbody></table>
+<h2> <span class="mw-headline" id="What_does_the_8259_PIC_do.3F">What does the 8259 PIC do?</span></h2>
+<p>The 8259 PIC controls the CPU's interrupt mechanism, by accepting several interrupt requests and feeding them to the processor in order. For instance, when a keyboard registers a keyhit, it sends a pulse along its interrupt line (<a href="https://wiki.osdev.org/IRQ" title="IRQ" class="mw-redirect">IRQ</a> 1) to the PIC chip, which then translates the IRQ into a system interrupt, and sends a message to interrupt the CPU from whatever it is doing. Part of the kernel's job is to either handle these IRQs and perform the necessary procedures (poll the keyboard for the scancode) or alert a userspace program to the interrupt (send a message to the keyboard driver).
+</p><p>Without a PIC, you would have to poll all the devices in the system to see if they want to do anything (signal an event), but with a PIC, your system can run along nicely until such time that a device wants to signal an event, which means you don't waste time going to the devices, you let the devices come to you when they are ready.
+</p>
+<h3> <span class="mw-headline" id="The_IBM_PC_8259_PIC_Architecture">The IBM PC 8259 PIC Architecture</span></h3>
+<p>In the beginning (IBM PC and XT), only a single 8259 PIC chip was used, which provided 8 IRQs to the system. These were traditionally mapped by the BIOS to interrupts 8 to 15 (0x08 to 0x0F). It is unlikely that any of these single-PIC machines will be encountered these days.
+</p>
+<h3> <span class="mw-headline" id="The_IBM_PC.2FAT_8259_PIC_Architecture">The IBM PC/AT 8259 PIC Architecture</span></h3>
+<p>The IBM PC/AT extended the PC architecture by adding a second 8259 PIC chip. This was possible due to the 8259A's ability to cascade interrupts, that is, have them flow through one chip and into another. This gives a total of 15 interrupts. Why 15 and not 16? That's because when you cascade chips, the PIC needs to use one of the interrupt lines to signal the other chip.
+</p><p>Thus, in an AT, IRQ line 2 is used to signal the second chip... But to confuse things more, IRQ 9 is redirected to IRQ 2. So when you get an IRQ 9, the signal is redirected to IRQ 2. This two-chip architecture is still used and available in modern systems, and hasn't changed (except for the advent of the above-mentioned APIC architecture).
+</p>
+<h2> <span class="mw-headline" id="How_does_the_8259_PIC_chip_work.3F">How does the 8259 PIC chip work?</span></h2>
+<p>Each of the two 8259 PICs in modern systems have 8 inputs. When any of the inputs is raised, the PIC sets a bit internally telling one of the inputs needs servicing. It then checks whether that channel is masked or not, and whether there's an interrupt already pending.
+If the channel is unmasked and there's no interrupt pending, the PIC will raise the interrupt line. On the slave, this feeds IRQ 2 to the master, and the master is connected to the processor interrupt line.
+</p><p>When the processor accepts the interrupt, the master checks which of the two PICs is responsible for answering, then either supplies the interrupt number to the processor, or asks the slave to do so. The PIC that answers looks up the "vector offset" variable stored internally and adds the input line to form the requested interrupt number. After that the processor will look up the interrupt address and act accordingly (see <a href="https://wiki.osdev.org/Interrupts" title="Interrupts">Interrupts</a> for more details).
+</p>
+<h2> <span class="mw-headline" id="Programming_with_the_8259_PIC">Programming with the 8259 PIC</span></h2>
+<p>Each chip (master and slave) has a command port and a data port (given in the table below). When no command is issued, the data port allows us to access the interrupt mask of the 8259 PIC.
+</p>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+
+<tbody><tr>
+<th> Chip - Purpose
+</th>
+<th> <a href="https://wiki.osdev.org/I/O_ports" title="I/O ports" class="mw-redirect">I/O port</a>
+</th></tr>
+<tr>
+<td> Master PIC - Command
+</td>
+<td> 0x0020
+</td></tr>
+<tr>
+<td> Master PIC - Data
+</td>
+<td> 0x0021
+</td></tr>
+<tr>
+<td> Slave PIC - Command
+</td>
+<td> 0x00A0
+</td></tr>
+<tr>
+<td> Slave PIC - Data
+</td>
+<td> 0x00A1
+</td></tr></tbody></table>
+<ul><li> Each PIC vector offset must be divisible by 8, as the 8259A uses the lower 3 bits for the interrupt number of a particular interrupt (0..7).
+</li><li> The only way to change the vector offsets used by the 8259 PIC is to re-initialize it, which explains why the code is "so long" and plenty of things that have apparently no reasons to be here.
+</li><li> If you plan to return to real mode from protected mode (for any purpose), you really must restore the PIC to its former configuration.
+</li></ul>
+<h3> <span class="mw-headline" id="Real_Mode">Real Mode</span></h3>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+
+<tbody><tr>
+<th> Chip
+</th>
+<th> Interrupt numbers (IRQ)
+</th>
+<th> Vector offset
+</th>
+<th> Interrupt Numbers
+</th></tr>
+<tr>
+<td> Master PIC
+</td>
+<td> 0 to 7
+</td>
+<td> 0x08
+</td>
+<td> 0x08 to 0x0F
+</td></tr>
+<tr>
+<td> Slave PIC
+</td>
+<td> 8 to 15
+</td>
+<td> 0x70
+</td>
+<td> 0x70 to 0x77
+</td></tr></tbody></table>
+<p>These default BIOS values suit real mode programming quite well; they do not conflict with any CPU exceptions like they do in protected mode.
+</p>
+<h3> <span class="mw-headline" id="Protected_Mode">Protected Mode</span></h3>
+<p>In protected mode, the IRQs 0 to 7 conflict with the CPU exception which are reserved by Intel up until 0x1F. (It was an IBM design mistake.) Consequently it is difficult to tell the difference between an IRQ or an software error. It is thus recommended to change the PIC's offsets (also known as remapping the PIC) so that IRQs use non-reserved vectors. A common choice is to move them to the beginning of the available range (IRQs 0..0xF -&gt; INT 0x20..0x2F). For that, we need to set the master PIC's offset to 0x20 and the slave's to 0x28. For code examples, see below.
+</p>
+<h2> <span class="mw-headline" id="Code_Examples">Code Examples</span></h2>
+<h3> <span class="mw-headline" id="Common_Definitions">Common Definitions</span></h3>
+<p>This is just a set of definitions common to the rest of this section. For the outb(), inb() and io_wait() functions, see <a href="https://wiki.osdev.org/Inline_Assembly/Examples#I.2FO_access" title="Inline Assembly/Examples">this page</a>.
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="co2">#define PIC1		0x20		/* IO base address for master PIC */</span>
+<span class="co2">#define PIC2		0xA0		/* IO base address for slave PIC */</span>
+<span class="co2">#define PIC1_COMMAND	PIC1</span>
+<span class="co2">#define PIC1_DATA	(PIC1+1)</span>
+<span class="co2">#define PIC2_COMMAND	PIC2</span>
+<span class="co2">#define PIC2_DATA	(PIC2+1)</span></pre></div></div>
+<h3> <span class="mw-headline" id="End_of_Interrupt">End of Interrupt</span></h3>
+<p>Perhaps the most common command issued to the PIC chips is the <i>end of interrupt</i> (EOI) command (code 0x20). This is issued to the PIC chips at the end of an IRQ-based interrupt routine. If the IRQ came from the Master PIC, it is sufficient to issue this command only to the Master PIC; however if the IRQ came from the Slave PIC, it is necessary to issue the command to both PIC chips.
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="co2">#define PIC_EOI		0x20		/* End-of-interrupt command code */</span>
+&nbsp;
+<span class="kw4">void</span> PIC_sendEOI<span class="br0">(</span><span class="kw4">unsigned</span> <span class="kw4">char</span> irq<span class="br0">)</span>
+<span class="br0">{</span>
+	<span class="kw1">if</span><span class="br0">(</span>irq <span class="sy0">&gt;=</span> <span class="nu0">8</span><span class="br0">)</span>
+		outb<span class="br0">(</span>PIC2_COMMAND<span class="sy0">,</span>PIC_EOI<span class="br0">)</span><span class="sy0">;</span>
+&nbsp;
+	outb<span class="br0">(</span>PIC1_COMMAND<span class="sy0">,</span>PIC_EOI<span class="br0">)</span><span class="sy0">;</span>
+<span class="br0">}</span></pre></div></div>
+<h3> <span class="mw-headline" id="Initialisation">Initialisation</span></h3>
+<p>When you enter protected mode (or even before hand, if you're not using <a href="https://wiki.osdev.org/GRUB" title="GRUB">GRUB</a>) the first command you will need to give the two PICs is the initialise command (code 0x11). This command makes the PIC wait for 3 extra "initialisation words" on the data port. These bytes give the PIC:
+</p>
+<ul><li> Its vector offset. (ICW2)
+</li><li> Tell it how it is wired to master/slaves. (ICW3)
+</li><li> Gives additional information about the environment. (ICW4)
+</li></ul>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* reinitialize the PIC controllers, giving them specified vector offsets
+   rather than 8h and 70h, as configured by default */</span>
+&nbsp;
+<span class="co2">#define ICW1_ICW4	0x01		/* ICW4 (not) needed */</span>
+<span class="co2">#define ICW1_SINGLE	0x02		/* Single (cascade) mode */</span>
+<span class="co2">#define ICW1_INTERVAL4	0x04		/* Call address interval 4 (8) */</span>
+<span class="co2">#define ICW1_LEVEL	0x08		/* Level triggered (edge) mode */</span>
+<span class="co2">#define ICW1_INIT	0x10		/* Initialization - required! */</span>
+&nbsp;
+<span class="co2">#define ICW4_8086	0x01		/* 8086/88 (MCS-80/85) mode */</span>
+<span class="co2">#define ICW4_AUTO	0x02		/* Auto (normal) EOI */</span>
+<span class="co2">#define ICW4_BUF_SLAVE	0x08		/* Buffered mode/slave */</span>
+<span class="co2">#define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */</span>
+<span class="co2">#define ICW4_SFNM	0x10		/* Special fully nested (not) */</span>
+&nbsp;
+<span class="coMULTI">/*
+arguments:
+	offset1 - vector offset for master PIC
+		vectors on the master become offset1..offset1+7
+	offset2 - same for slave PIC: offset2..offset2+7
+*/</span>
+<span class="kw4">void</span> PIC_remap<span class="br0">(</span><span class="kw4">int</span> offset1<span class="sy0">,</span> <span class="kw4">int</span> offset2<span class="br0">)</span>
+<span class="br0">{</span>
+	<span class="kw4">unsigned</span> <span class="kw4">char</span> a1<span class="sy0">,</span> a2<span class="sy0">;</span>
+&nbsp;
+	a1 <span class="sy0">=</span> inb<span class="br0">(</span>PIC1_DATA<span class="br0">)</span><span class="sy0">;</span>                        <span class="co1">// save masks</span>
+	a2 <span class="sy0">=</span> inb<span class="br0">(</span>PIC2_DATA<span class="br0">)</span><span class="sy0">;</span>
+&nbsp;
+	outb<span class="br0">(</span>PIC1_COMMAND<span class="sy0">,</span> ICW1_INIT <span class="sy0">|</span> ICW1_ICW4<span class="br0">)</span><span class="sy0">;</span>  <span class="co1">// starts the initialization sequence (in cascade mode)</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC2_COMMAND<span class="sy0">,</span> ICW1_INIT <span class="sy0">|</span> ICW1_ICW4<span class="br0">)</span><span class="sy0">;</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC1_DATA<span class="sy0">,</span> offset1<span class="br0">)</span><span class="sy0">;</span>                 <span class="co1">// ICW2: Master PIC vector offset</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC2_DATA<span class="sy0">,</span> offset2<span class="br0">)</span><span class="sy0">;</span>                 <span class="co1">// ICW2: Slave PIC vector offset</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC1_DATA<span class="sy0">,</span> <span class="nu0">4</span><span class="br0">)</span><span class="sy0">;</span>                       <span class="co1">// ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC2_DATA<span class="sy0">,</span> <span class="nu0">2</span><span class="br0">)</span><span class="sy0">;</span>                       <span class="co1">// ICW3: tell Slave PIC its cascade identity (0000 0010)</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+&nbsp;
+	outb<span class="br0">(</span>PIC1_DATA<span class="sy0">,</span> ICW4_8086<span class="br0">)</span><span class="sy0">;</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+	outb<span class="br0">(</span>PIC2_DATA<span class="sy0">,</span> ICW4_8086<span class="br0">)</span><span class="sy0">;</span>
+	io_wait<span class="br0">(</span><span class="br0">)</span><span class="sy0">;</span>
+&nbsp;
+	outb<span class="br0">(</span>PIC1_DATA<span class="sy0">,</span> a1<span class="br0">)</span><span class="sy0">;</span>   <span class="co1">// restore saved masks.</span>
+	outb<span class="br0">(</span>PIC2_DATA<span class="sy0">,</span> a2<span class="br0">)</span><span class="sy0">;</span>
+<span class="br0">}</span></pre></div></div>
+<p><i>Note the presence of io_wait() calls, on older machines its necessary to give the PIC some time to react to commands as they might not be processed quickly</i>
+</p>
+<h2> <span class="mw-headline" id="Disabling"> Disabling </span></h2>
+<p>If you are going to use the processor local APIC and the IOAPIC, you must first disable the PIC.  This is done via:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1"><span class="kw1">mov</span> <span class="kw3">al</span><span class="sy0">,</span> <span class="nu0">0xff</span>
+<span class="kw1">out</span> <span class="nu0">0xa1</span><span class="sy0">,</span> <span class="kw3">al</span>
+<span class="kw1">out</span> <span class="nu0">0x21</span><span class="sy0">,</span> <span class="kw3">al</span></pre></div></div>
+<h2> <span class="mw-headline" id="Masking"> Masking </span></h2>
+<p>The PIC has an internal register called the IMR, or the Interrupt Mask Register. It is 8 bits wide. This register is a bitmap of the request lines going into the PIC. When a bit is set, the PIC ignores the request and continues normal operation. Note that setting the mask on a higher request line will not affect a lower line. Masking IRQ2 will cause the Slave PIC to stop raising IRQs.
+</p><p>Here is an example of how to mask an IRQ:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="kw4">void</span> IRQ_set_mask<span class="br0">(</span><span class="kw4">unsigned</span> <span class="kw4">char</span> IRQline<span class="br0">)</span> <span class="br0">{</span>
+    <span class="kw4">uint16_t</span> port<span class="sy0">;</span>
+    <span class="kw4">uint8_t</span> value<span class="sy0">;</span>
+&nbsp;
+    <span class="kw1">if</span><span class="br0">(</span>IRQline <span class="sy0">&lt;</span> <span class="nu0">8</span><span class="br0">)</span> <span class="br0">{</span>
+        port <span class="sy0">=</span> PIC1_DATA<span class="sy0">;</span>
+    <span class="br0">}</span> <span class="kw1">else</span> <span class="br0">{</span>
+        port <span class="sy0">=</span> PIC2_DATA<span class="sy0">;</span>
+        IRQline <span class="sy0">-=</span> <span class="nu0">8</span><span class="sy0">;</span>
+    <span class="br0">}</span>
+    value <span class="sy0">=</span> inb<span class="br0">(</span>port<span class="br0">)</span> <span class="sy0">|</span> <span class="br0">(</span><span class="nu0">1</span> <span class="sy0">&lt;&lt;</span> IRQline<span class="br0">)</span><span class="sy0">;</span>
+    outb<span class="br0">(</span>port<span class="sy0">,</span> value<span class="br0">)</span><span class="sy0">;</span>        
+<span class="br0">}</span>
+&nbsp;
+<span class="kw4">void</span> IRQ_clear_mask<span class="br0">(</span><span class="kw4">unsigned</span> <span class="kw4">char</span> IRQline<span class="br0">)</span> <span class="br0">{</span>
+    <span class="kw4">uint16_t</span> port<span class="sy0">;</span>
+    <span class="kw4">uint8_t</span> value<span class="sy0">;</span>
+&nbsp;
+    <span class="kw1">if</span><span class="br0">(</span>IRQline <span class="sy0">&lt;</span> <span class="nu0">8</span><span class="br0">)</span> <span class="br0">{</span>
+        port <span class="sy0">=</span> PIC1_DATA<span class="sy0">;</span>
+    <span class="br0">}</span> <span class="kw1">else</span> <span class="br0">{</span>
+        port <span class="sy0">=</span> PIC2_DATA<span class="sy0">;</span>
+        IRQline <span class="sy0">-=</span> <span class="nu0">8</span><span class="sy0">;</span>
+    <span class="br0">}</span>
+    value <span class="sy0">=</span> inb<span class="br0">(</span>port<span class="br0">)</span> <span class="sy0">&amp;</span> ~<span class="br0">(</span><span class="nu0">1</span> <span class="sy0">&lt;&lt;</span> IRQline<span class="br0">)</span><span class="sy0">;</span>
+    outb<span class="br0">(</span>port<span class="sy0">,</span> value<span class="br0">)</span><span class="sy0">;</span>        
+<span class="br0">}</span></pre></div></div>
+<h2> <span class="mw-headline" id="ISR_and_IRR">ISR and IRR</span></h2>
+<p>The PIC chip has two interrupt status registers: the In-Service Register (ISR) and the Interrupt Request Register (IRR).  The ISR tells us which interrupts are being serviced, meaning IRQs sent to the CPU.  The IRR tells us which interrupts have been raised.  Based on the interrupt mask (IMR), the PIC will send interrupts from the IRR to the CPU, at which point they are marked in the ISR.
+</p><p>The ISR and IRR can be read via the OCW3 command word.  This is a command sent to one of the command ports (0x20 or 0xa0) with bit 3 set.  To read the ISR or IRR, write the appropriate command to the command port, and then read the command port (not the data port).  To read the IRR, write 0x0a.  To read the ISR, write 0x0b.  
+</p><p>The ISR and IRR are each 8 bits.  Here is an example of how to read 16 bits worth of ISR and IRR data from two cascaded PICs:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="co2">#define PIC1_CMD                    0x20</span>
+<span class="co2">#define PIC1_DATA                   0x21</span>
+<span class="co2">#define PIC2_CMD                    0xA0</span>
+<span class="co2">#define PIC2_DATA                   0xA1</span>
+<span class="co2">#define PIC_READ_IRR                0x0a    /* OCW3 irq ready next CMD read */</span>
+<span class="co2">#define PIC_READ_ISR                0x0b    /* OCW3 irq service next CMD read */</span>
+&nbsp;
+<span class="coMULTI">/* Helper func */</span>
+<span class="kw4">static</span> <span class="kw4">uint16_t</span> __pic_get_irq_reg<span class="br0">(</span><span class="kw4">int</span> ocw3<span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */</span>
+    outb<span class="br0">(</span>PIC1_CMD<span class="sy0">,</span> ocw3<span class="br0">)</span><span class="sy0">;</span>
+    outb<span class="br0">(</span>PIC2_CMD<span class="sy0">,</span> ocw3<span class="br0">)</span><span class="sy0">;</span>
+    <span class="kw1">return</span> <span class="br0">(</span>inb<span class="br0">(</span>PIC2_CMD<span class="br0">)</span> <span class="sy0">&lt;&lt;</span> <span class="nu0">8</span><span class="br0">)</span> <span class="sy0">|</span> inb<span class="br0">(</span>PIC1_CMD<span class="br0">)</span><span class="sy0">;</span>
+<span class="br0">}</span>
+&nbsp;
+<span class="coMULTI">/* Returns the combined value of the cascaded PICs irq request register */</span>
+<span class="kw4">uint16_t</span> pic_get_irr<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="kw1">return</span> __pic_get_irq_reg<span class="br0">(</span>PIC_READ_IRR<span class="br0">)</span><span class="sy0">;</span>
+<span class="br0">}</span>
+&nbsp;
+<span class="coMULTI">/* Returns the combined value of the cascaded PICs in-service register */</span>
+<span class="kw4">uint16_t</span> pic_get_isr<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="kw1">return</span> __pic_get_irq_reg<span class="br0">(</span>PIC_READ_ISR<span class="br0">)</span><span class="sy0">;</span>
+<span class="br0">}</span></pre></div></div>
+<p>Note that these functions will show bit 2 (0x0004) as on whenever any of the PIC2 bits are set, due to the chained nature of the PICs.  Also note that it is not necessary to reset the OCW3 command every time you want to read.  Once you set it for either the IRR or the ISR, future reads of the CMD port will return the appropriate register.  The chip remembers what OCW3 setting you used.  (Disclaimer: I have not tested this last part, but that's what the spec says.)
+</p>
+<h2> <span class="mw-headline" id="Spurious_IRQs">Spurious IRQs</span></h2>
+<p>When an IRQ occurs, the PIC chip tells the CPU (via. the PIC's INTR line) that there's an interrupt, and the CPU acknowledges this and waits for the PIC to send the interrupt vector. This creates a race condition: if the IRQ disappears after the PIC has told the CPU there's an interrupt but before the PIC has sent the interrupt vector to the CPU, then the CPU will be waiting for the PIC to tell it which interrupt vector but the PIC won't have a valid interrupt vector to tell the CPU.
+</p><p>To get around this, the PIC tells the CPU a fake interrupt number. This is a spurious IRQ. The fake interrupt number is the lowest priority interrupt number for the corresponding PIC chip (IRQ 7 for the master PIC, and IRQ 15 for the slave PIC).
+</p><p>There are several reasons for the interrupt to disappear. In my experience the most common reason is software sending an EOI at the wrong time. Other reasons include noise on IRQ lines (or the INTR line).
+</p>
+<h3> <span class="mw-headline" id="Handling_Spurious_IRQs">Handling Spurious IRQs</span></h3>
+<p>For a spurious IRQ, there is no real IRQ and the PIC chip's ISR (In Service Register) flag for the corresponding IRQ will not be set. This means that the interrupt handler must not send an EOI back to the PIC to reset the ISR flag.
+</p><p>The correct way to handle an IRQ 7 is to first check the master PIC chip's ISR to see if the IRQ is a spurious IRQ or a real IRQ. If it is a real IRQ then it is treated the same as any other real IRQ. If it is a spurious IRQ then you ignore it (and do not send the EOI).
+</p><p>The correct way to handle an IRQ 15 is similar, but a little trickier due to the interaction between the slave PIC and the master PIC. First check the slave PIC chip's ISR to see if the IRQ is a spurious IRQ or a real IRQ. If it is a real IRQ then it is treated the same as any other real IRQ. If it's a spurious IRQ then don't send the EOI to the slave PIC; however you will still need to send the EOI to the master PIC because the master PIC itself won't know that it was a spurious IRQ from the slave.
+</p><p>Also note that some operating systems (e.g. Linux) keep track of the number of spurious IRQs that have occurred (e.g. by incrementing a counter when a spurious IRQ occurs). This can be useful for detecting problems in software (e.g. sending EOIs at the wrong time) and detecting problems in hardware (e.g. line noise).
+</p><p><br>
+</p>
+<h2> <span class="mw-headline" id="See_Also"> See Also </span></h2>
+<h3> <span class="mw-headline" id="Articles"> Articles </span></h3>
+<ul><li> <a href="https://wiki.osdev.org/APIC" title="APIC">APIC</a>
+</li><li> <a href="https://wiki.osdev.org/IOAPIC" title="IOAPIC">IOAPIC</a>
+</li><li> <a rel="nofollow" class="external free" href="http://www.brokenthorn.com/Resources/OSDevPic.html">http://www.brokenthorn.com/Resources/OSDevPic.html</a>
+</li></ul>
+<h3> <span class="mw-headline" id="Threads"> Threads </span></h3>
+<h3> <span class="mw-headline" id="External_Links"> External Links </span></h3>
+<ul><li> <a rel="nofollow" class="external text" href="http://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf">Intel Datasheet</a>
+</li></ul>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 180/1000000
+Post-expand include size: 324/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+
+<!-- Saved in parser cache with key wikidb:pcache:idhash:1478-0!*!0!!en!*!* and timestamp 20190123055532 -->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Retrieved from "<a href="https://wiki.osdev.org/index.php?title=8259_PIC&amp;oldid=23048">https://wiki.osdev.org/index.php?title=8259_PIC&amp;oldid=23048</a>"				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id="catlinks" class="catlinks"><div id="mw-normal-catlinks"><a href="https://wiki.osdev.org/Special:Categories" title="Special:Categories">Category</a>: <ul><li><a href="https://wiki.osdev.org/Category:Interrupts" title="Category:Interrupts">Interrupts</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Personal tools</h5>
+	<ul>
+		<li id="pt-login"><a href="https://wiki.osdev.org/index.php?title=Special:UserLogin&amp;returnto=8259_PIC" title="You are encouraged to log in; however, it is not mandatory [alt-o]" accesskey="o">Log in</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Namespaces</h5>
+	<ul>
+					<li id="ca-nstab-main" class="selected"><span><a href="https://wiki.osdev.org/8259_PIC" title="View the content page [alt-c]" accesskey="c">Page</a></span></li>
+					<li id="ca-talk"><span><a href="https://wiki.osdev.org/Talk:8259_PIC" title="Discussion about the content page [alt-t]" accesskey="t">Discussion</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+		<h5><span>Variants</span><a href="https://wiki.osdev.org/PIC#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Views</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="https://wiki.osdev.org/8259_PIC">Read</a></span></li>
+					<li id="ca-viewsource"><span><a href="https://wiki.osdev.org/index.php?title=8259_PIC&amp;action=edit" title="This page is protected.
+You can view its source [alt-e]" accesskey="e">View source</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="https://wiki.osdev.org/index.php?title=8259_PIC&amp;action=history" title="Past revisions of this page [alt-h]" accesskey="h">View history</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Actions</span><a href="https://wiki.osdev.org/PIC#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Search</label></h5>
+	<form action="https://wiki.osdev.org/index.php" id="searchform">
+		<input type="hidden" name="title" value="Special:Search">
+				<input type="search" name="search" title="Search OSDev Wiki [alt-f]" accesskey="f" id="searchInput">		<input type="submit" name="go" value="Go" title="Go to a page with this exact name if exists" id="searchGoButton" class="searchButton">		<input type="submit" name="fulltext" value="Search" title="Search the pages for this text" id="mw-searchButton" class="searchButton">			</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(/skins/common/images/osdev.png);" href="https://wiki.osdev.org/Main_Page" title="Visit the main page"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id="p-navigation">
+	<h5>Navigation</h5>
+	<div class="body">
+		<ul>
+			<li id="n-mainpage"><a href="https://wiki.osdev.org/Main_Page" title="Visit the main page [alt-z]" accesskey="z">Main Page</a></li>
+			<li id="n-portal"><a href="http://forum.osdev.org/" rel="nofollow" title="About the project, what you can do, where to find things">Forums</a></li>
+			<li id="n-FAQ"><a href="https://wiki.osdev.org/Category:FAQ">FAQ</a></li>
+			<li id="n-OS-Projects"><a href="https://wiki.osdev.org/Projects">OS Projects</a></li>
+			<li id="n-randompage"><a href="https://wiki.osdev.org/Special:Random" title="Load a random page [alt-x]" accesskey="x">Random page</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- about -->
+<div class="portal" id="p-about">
+	<h5>About</h5>
+	<div class="body">
+		<ul>
+			<li id="n-This-site"><a href="https://wiki.osdev.org/OSDevWiki:About">This site</a></li>
+			<li id="n-Joining"><a href="https://wiki.osdev.org/OSDevWiki:Joining">Joining</a></li>
+			<li id="n-Editing-help"><a href="https://wiki.osdev.org/OSDevWiki:Editing">Editing help</a></li>
+			<li id="n-recentchanges"><a href="https://wiki.osdev.org/Special:RecentChanges" title="A list of recent changes in the wiki [alt-r]" accesskey="r">Recent changes</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /about -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id="p-tb">
+	<h5>Toolbox</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="https://wiki.osdev.org/Special:WhatLinksHere/8259_PIC" title="A list of all wiki pages that link here [alt-j]" accesskey="j">What links here</a></li>
+			<li id="t-recentchangeslinked"><a href="https://wiki.osdev.org/Special:RecentChangesLinked/8259_PIC" title="Recent changes in pages linked from this page [alt-k]" accesskey="k">Related changes</a></li>
+			<li id="t-specialpages"><a href="https://wiki.osdev.org/Special:SpecialPages" title="A list of all special pages [alt-q]" accesskey="q">Special pages</a></li>
+			<li><a href="https://wiki.osdev.org/index.php?title=8259_PIC&amp;printable=yes" rel="alternate">Printable version</a></li>
+			<li id="t-permalink"><a href="https://wiki.osdev.org/index.php?title=8259_PIC&amp;oldid=23048" title="Permanent link to this revision of the page">Permanent link</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+<div class="portal" id="p-lang">
+	<h5>In other languages</h5>
+	<div class="body">
+		<ul>
+			<li class="interwiki-de"><a href="http://www.lowlevel.eu/wiki/Programmable_Interrupt_Controller" title="Programmable Interrupt Controller">Deutsch</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> This page was last modified on 22 October 2018, at 13:28.</li>
+											<li id="footer-info-viewcount">This page has been accessed 185,829 times.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="https://wiki.osdev.org/OSDev_Wiki:Privacy_policy" title="OSDev Wiki:Privacy policy">Privacy policy</a></li>
+											<li id="footer-places-about"><a href="https://wiki.osdev.org/OSDev_Wiki:About" title="OSDev Wiki:About">About OSDev Wiki</a></li>
+											<li id="footer-places-disclaimer"><a href="https://wiki.osdev.org/OSDev_Wiki:General_disclaimer" title="OSDev Wiki:General disclaimer">Disclaimers</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="http://www.mediawiki.org/"><img src="./8259 PIC - OSDev Wiki_files/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31"></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<!-- fixalpha -->
+		<script type="text/javascript"> if ( window.isMSIE55 ) fixalpha(); </script>
+		<!-- /fixalpha -->
+		<script src="./8259 PIC - OSDev Wiki_files/load(5).php"></script>
+<script>if(window.mw){
+	mw.loader.load(["mediawiki.user", "mediawiki.util", "mediawiki.page.ready", "mediawiki.legacy.wikibits", "mediawiki.legacy.ajax"]);
+}
+</script><script type="text/javascript" src="./8259 PIC - OSDev Wiki_files/load(6).php"></script>
+<script src="./8259 PIC - OSDev Wiki_files/load(7).php"></script>
+<script>if(window.mw){
+	mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,
+	"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"variant":"en","language":"en","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;mw.user.tokens.set({"editToken":"+\\","watchToken":false});;mw.loader.state({"user.options":"ready","user.tokens":"ready"});
+	
+	/* cache key: wikidb:resourceloader:filter:minify-js:4:19a4b18a9ac79a6b8c60b24af4668814 */
+}
+</script><!-- Served in 0.129 secs. -->
+	
+
+</body><div></div></html>
