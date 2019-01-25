@@ -20,18 +20,17 @@ extern "C" {
     pub(super) fn _isr_secondary_hard_disk();
 }
 
-
 /// For now, this is assigned as the handler for every interrupt that are not exceptions
 /// Specifically handling the case for the keyboard, just for testing that it's working.
 #[no_mangle]
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
     let keyboard_port = Pio::<u8>::new(0x60);
-    
+
     pic_8259::send_eoi(1);
     keyboard_port.read();
-    unsafe  {
-    let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
+    unsafe {
+        let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
         println!("From interrupt: {}", core::str::from_utf8_unchecked(slice))
     }
 }

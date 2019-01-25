@@ -25,7 +25,7 @@ extern "C" {
     pub(super) fn _isr_virtualize_exception() -> !;
     // 21-29 reserved
     pub(super) fn _isr_security_exception() -> !;
-    // 31 reserved
+// 31 reserved
 }
 
 pub(super) extern "C" fn reserved_exception() -> ! {

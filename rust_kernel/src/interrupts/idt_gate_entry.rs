@@ -49,7 +49,7 @@ impl Into<u8> for GateType {
 pub struct IdtGateEntry {
     /// offset bits 0..15. the low part of the address
     pub offset_1: u16,
-    
+
     /// a code segment selector in GDT or LDT
     pub selector: u16,
 

@@ -1,18 +1,17 @@
-/// See https://wiki.osdev.org/Port_IO
-
-use core::marker::PhantomData;
 use super::Io;
 use core::cmp::PartialEq;
+/// See https://wiki.osdev.org/Port_IO
+use core::marker::PhantomData;
 
 extern "C" {
     fn _inb(port: u16) -> u8;
     fn _inw(port: u16) -> u16;
     fn _inl(port: u16) -> u32;
-    
+
     fn _outb(byte: u8, port: u16);
     fn _outw(byte: u16, port: u16);
     fn _outl(byte: u32, port: u16);
-    
+
     fn _io_wait();
 }
 
@@ -36,7 +35,6 @@ extern "C" fn inw(port: u16) -> u16 {
 extern "C" fn inl(port: u16) -> u32 {
     unsafe { _inl(port) }
 }
-
 
 /// This writes one byte to IO port `port`
 #[no_mangle]
@@ -75,13 +73,9 @@ pub struct Pio<T> {
 }
 
 impl<T> Pio<T> {
-
     /// Returns a new Pio assigned to the port `port`
     pub const fn new(port: u16) -> Self {
-        Pio {
-            port,
-            value: PhantomData
-        }
+        Pio { port, value: PhantomData }
     }
 }
 
@@ -91,7 +85,7 @@ impl Io for Pio<u8> {
     fn read(&self) -> Self::Value {
         inb(self.port)
     }
-    
+
     fn write(&mut self, value: Self::Value) {
         outb(value, self.port)
     }
@@ -103,7 +97,7 @@ impl Io for Pio<u16> {
     fn read(&self) -> Self::Value {
         inw(self.port)
     }
-    
+
     fn write(&mut self, value: Self::Value) {
         outw(value, self.port)
     }
@@ -115,7 +109,7 @@ impl Io for Pio<u32> {
     fn read(&self) -> Self::Value {
         inl(self.port)
     }
-    
+
     fn write(&mut self, value: Self::Value) {
         outl(value, self.port)
     }

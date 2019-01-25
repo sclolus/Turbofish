@@ -1,6 +1,5 @@
 /// This files contains the code related to the 8259 Programmable interrupt controller
 /// See https://wiki.osdev.org/PIC.
-
 use crate::io::{Io, Pio};
 
 #[allow(non_upper_case_globals)]
@@ -10,7 +9,6 @@ pub static mut slave: Pic = Pic::new(Pic::SLAVE_COMMAND_PORT);
 
 /// Represents a Programmable Interrupt Controller 8259
 pub struct Pic {
-
     /// The PIC's command port.
     command: Pio<u8>,
 
@@ -24,14 +22,14 @@ impl Pic {
 
     /// The default port number for the slave PIC
     const SLAVE_COMMAND_PORT: u16 = 0xA0;
-    
+
     /// The End of Interrupt command, used to reply to the PICs at the end of an interrupt handler
     const EOI: u8 = 0x20;
 
     /// The Initialization command, used to start the initialization of the PICs
     const INIT: u8 = 0x11;
 
-    /// The Read Interrupt Request Register command, used to obtain the Interrupt Request Register from the PICs 
+    /// The Read Interrupt Request Register command, used to obtain the Interrupt Request Register from the PICs
     const PIC_READ_IRR: u8 = 0x0a;
 
     /// The In-Service Register command, used to obtain the In-Service Register from the PICs.
@@ -39,10 +37,7 @@ impl Pic {
 
     /// Creates a new PIC instance with port `port`
     pub const fn new(port: u16) -> Pic {
-        Pic {
-            command: Pio::new(port),
-            data: Pio::new(port + 1),
-        }
+        Pic { command: Pio::new(port), data: Pio::new(port + 1) }
     }
 
     /// Get the interrupt mask of the slave PIC
@@ -118,7 +113,7 @@ pub unsafe fn enable_all_interrupts() {
 pub fn send_eoi(irq: u8) {
     unsafe {
         assert!(irq < 16);
-        
+
         if irq >= 8 {
             slave.command.write(Pic::EOI);
         }
@@ -141,7 +136,7 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
     // Assign the vectors offsets
     master.data.write(offset_1);
     slave.data.write(offset_2);
-    
+
     master.data.write(4); // This tells the master that there is a slave at its IRQ2
     slave.data.write(2); // This tells the slave its cascade identity
 
@@ -163,14 +158,10 @@ unsafe fn pic_get_irq_reg(ocw3: u8) -> u16 {
 
 /// Returns the combined value the PICs irq request register
 pub fn get_irr() -> u16 {
-    unsafe {
-        pic_get_irq_reg(Pic::PIC_READ_IRR)
-    }
+    unsafe { pic_get_irq_reg(Pic::PIC_READ_IRR) }
 }
 
 /// Returns the combined value the PICs irq request register
 pub fn get_isr() -> u16 {
-    unsafe {
-        pic_get_irq_reg(Pic::PIC_READ_ISR)
-    }
+    unsafe { pic_get_irq_reg(Pic::PIC_READ_ISR) }
 }
