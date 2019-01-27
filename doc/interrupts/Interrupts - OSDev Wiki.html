@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<!-- saved from url=(0033)https://wiki.osdev.org/Interrupts -->
+<html lang="en" dir="ltr" class="client-js"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Interrupts - OSDev Wiki</title>
+
+<meta name="generator" content="MediaWiki 1.18.0">
+<link rel="shortcut icon" href="https://wiki.osdev.org/favicon.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="https://wiki.osdev.org/opensearch_desc.php" title="OSDev Wiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://wiki.osdev.org/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="OSDev Wiki Atom feed" href="https://wiki.osdev.org/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="stylesheet" href="./Interrupts - OSDev Wiki_files/load.php">
+<style type="text/css" media="all">.mw-collapsible-toggle{float:right} li .mw-collapsible-toggle{float:none} .mw-collapsible-toggle-li{list-style:none}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:4250852ed2349a0d4d0fc6509a3e7d4c */
+</style><style type="text/css" media="all">.js-messagebox{margin:1em 5%;padding:0.5em 2.5%;border:1px solid #ccc;background-color:#fcfcfc;font-size:0.8em}.js-messagebox .js-messagebox-group{margin:1px;padding:0.5em 2.5%;border-bottom:1px solid #ddd}.js-messagebox .js-messagebox-group:last-child{border-bottom:thin none transparent}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:8b08bdc91c52a9ffba396dccfb5b473c */
+</style><meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="./Interrupts - OSDev Wiki_files/load(1).php">
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+<script src="./Interrupts - OSDev Wiki_files/load(2).php"></script><script src="./Interrupts - OSDev Wiki_files/load(3).php"></script>
+<script>if(window.mw){
+	mw.config.set({"wgCanonicalNamespace": "", "wgCanonicalSpecialPageName": false, "wgNamespaceNumber": 0, "wgPageName": "Interrupts", "wgTitle": "Interrupts", "wgCurRevisionId": 22995, "wgArticleId": 1874, "wgIsArticle": true, "wgAction": "view", "wgUserName": null, "wgUserGroups": ["*"], "wgCategories": ["Interrupts"], "wgBreakFrames": false, "wgRestrictionEdit": [], "wgRestrictionMove": []});
+}
+</script><script>if(window.mw){
+	mw.loader.load(["mediawiki.page.startup"]);
+}
+</script><script type="text/javascript" src="./Interrupts - OSDev Wiki_files/load(4).php"></script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Interrupts action-view skin-vector">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;" class="js-messagebox"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">Interrupts</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">From OSDev Wiki</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav">
+					Jump to: <a href="https://wiki.osdev.org/Interrupts#mw-head">navigation</a>,
+					<a href="https://wiki.osdev.org/Interrupts#p-search">search</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div lang="en" dir="ltr" class="mw-content-ltr"><table id="toc" class="toc"><tbody><tr><td><div id="toctitle"><h2>Contents</h2><span class="toctoggle">&nbsp;[<a href="https://wiki.osdev.org/Interrupts#" class="internal" id="togglelink">hide</a>]&nbsp;</span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="https://wiki.osdev.org/Interrupts#Interrupt_Overview"><span class="tocnumber">1</span> <span class="toctext">Interrupt Overview</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="https://wiki.osdev.org/Interrupts#From_the_keyboard.27s_perspective"><span class="tocnumber">2</span> <span class="toctext">From the keyboard's perspective</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="https://wiki.osdev.org/Interrupts#From_the_PIC.27s_perspective"><span class="tocnumber">3</span> <span class="toctext">From the PIC's perspective</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="https://wiki.osdev.org/Interrupts#From_the_CPU.27s_perspective"><span class="tocnumber">4</span> <span class="toctext">From the CPU's perspective</span></a></li>
+<li class="toclevel-1 tocsection-5"><a href="https://wiki.osdev.org/Interrupts#From_the_OS.27s_perspective"><span class="tocnumber">5</span> <span class="toctext">From the OS's perspective</span></a></li>
+<li class="toclevel-1 tocsection-6"><a href="https://wiki.osdev.org/Interrupts#So_how_do_I_program_this_stuff.3F"><span class="tocnumber">6</span> <span class="toctext">So how do I program this stuff?</span></a></li>
+<li class="toclevel-1 tocsection-7"><a href="https://wiki.osdev.org/Interrupts#General_IBM-PC_Compatible_Interrupt_Information"><span class="tocnumber">7</span> <span class="toctext">General IBM-PC Compatible Interrupt Information</span></a>
+<ul>
+<li class="toclevel-2 tocsection-8"><a href="https://wiki.osdev.org/Interrupts#Standard_ISA_IRQs"><span class="tocnumber">7.1</span> <span class="toctext">Standard ISA IRQs</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="https://wiki.osdev.org/Interrupts#Default_PC_Interrupt_Vector_Assignment"><span class="tocnumber">7.2</span> <span class="toctext">Default PC Interrupt Vector Assignment</span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="https://wiki.osdev.org/Interrupts#Ports"><span class="tocnumber">7.3</span> <span class="toctext">Ports</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-11"><a href="https://wiki.osdev.org/Interrupts#See_Also"><span class="tocnumber">8</span> <span class="toctext">See Also</span></a>
+<ul>
+<li class="toclevel-2 tocsection-12"><a href="https://wiki.osdev.org/Interrupts#Articles"><span class="tocnumber">8.1</span> <span class="toctext">Articles</span></a></li>
+<li class="toclevel-2 tocsection-13"><a href="https://wiki.osdev.org/Interrupts#Threads"><span class="tocnumber">8.2</span> <span class="toctext">Threads</span></a></li>
+<li class="toclevel-2 tocsection-14"><a href="https://wiki.osdev.org/Interrupts#External_Links"><span class="tocnumber">8.3</span> <span class="toctext">External Links</span></a></li>
+</ul>
+</li>
+</ul>
+</td></tr></tbody></table>
+<h2> <span class="mw-headline" id="Interrupt_Overview"> Interrupt Overview </span></h2>
+<p>An interrupt is a signal from a device, such as the keyboard, to the CPU, telling it to immediately stop whatever it is currently doing and do something else. For example, the keyboard controller sends an interrupt when a key is pressed. To know how to call on the kernel when a specific interrupt arise,  the CPU has a table called the <b><a href="https://wiki.osdev.org/IDT" title="IDT" class="mw-redirect">IDT</a></b>, which is a vector table setup by the OS, and stored in memory. There are 256 interrupt vectors on x86 CPUs, numbered from 0 to 255 which act as entry points into the kernel. The number of interrupt vectors or entry points supported by a CPU differs based on the CPU architecture.
+</p><p>There are generally three classes of interrupts on most platforms:
+</p>
+<ul><li> <b>Exception</b>: These are generated internally by the CPU and used to alert the running kernel of an event or situation which requires its attention. On x86 CPUs, these include exception conditions such as Double Fault, Page Fault, General Protection Fault, etc.
+</li></ul>
+<ul><li> <b>Interrupt Request (IRQ) or Hardware Interrupt</b>: This type of interrupt is generated externally by the chipset, and it is signalled by latching onto the #INTR pin or equivalent signal of the CPU in question. There are two types of IRQs in common use today.
+<ul><li> <i>IRQ Lines, or Pin-based IRQs</i>: These are typically statically routed on the chipset. Wires or lines run from the devices on the chipset to an <a href="https://wiki.osdev.org/index.php?title=IRQ_controller&amp;action=edit&amp;redlink=1" class="new" title="IRQ controller (page does not exist)">IRQ controller</a> which serializes the interrupt requests sent by devices, sending them to the CPU one by one to prevent races. In many cases, an IRQ Controller will send multiple IRQs to the CPU at once, based on the priority of the device. An example of a very well known IRQ Controller is the <a href="https://wiki.osdev.org/8259_PIC" title="8259 PIC">Intel 8259</a> controller chain, which is present on all IBM-PC compatible chipsets, chaining two controllers together, each providing 8 input pins for a total of 16 usable IRQ signalling pins on the legacy IBM-PC.
+</li><li> <i><a href="https://wiki.osdev.org/index.php?title=Message_Based_Interrupts&amp;action=edit&amp;redlink=1" class="new" title="Message Based Interrupts (page does not exist)">Message Based Interrupts</a></i>: These are signalled by writing a value to a memory location reserved for information about the interrupting device, the interrupt itself, and the vectoring information. The device is assigned a location to which it writes either by firmware or by the kernel software. Then, an IRQ is generated by the device using an arbitration protocol specific to the device's bus. An example of a bus which provides message based interrupt functionality is the PCI Bus.
+</li></ul>
+</li></ul>
+<ul><li> <b>Software Interrupt</b>: This is an interrupt signalled by software running on a CPU to indicate that it needs the kernel's attention. These types of interrupts are generally used for <a href="https://wiki.osdev.org/System_Calls" title="System Calls">System Calls</a>. On x86 CPUs, the instruction which is used to initiate a software interrupt is the "INT" instruction. Since the x86 CPU can use any of the 256 available interrupt vectors for software interrupts, kernels generally choose one. For example, many contemporary unixes use vector 0x80 on the x86 based platforms.
+</li></ul>
+<p>As a rule, where a CPU gives the developer the freedom to choose which vectors to use for what (as on x86), one should refrain from having interrupts of different types coming in on the same vector. Common practice is to leave the first 32 vectors for exceptions, as mandated by Intel. However you partition of the rest of the vectors is up to you.
+</p>
+<h2> <span class="mw-headline" id="From_the_keyboard.27s_perspective">From the keyboard's perspective</span></h2>
+<p>Basically, when a key is pressed, the keyboard controller tells a device called the <a href="https://wiki.osdev.org/PIC" title="PIC" class="mw-redirect">Programmable Interrupt Controller</a>, or PIC, to cause an interrupt. Because of the wiring of keyboard and PIC, IRQ #1 is the keyboard interrupt, so when a key is pressed, IRQ 1 is sent to the PIC. The role of the PIC will be to decide whether the CPU should be immediately notified of that IRQ or not and to translate the IRQ number into an <i>interrupt vector</i> (i.e. a number between 0 and 255) for the CPU's table.
+</p><p>The OS is supposed to handle the interrupt by talking to the keyboard, via <tt>in</tt> and <tt>out</tt> instructions (or <tt>inportb</tt>/<tt>outportb</tt>, <tt>inportw</tt>/<tt>outportw</tt>, and <tt>inportd</tt>/<tt>outportd</tt> in C, see <a href="https://wiki.osdev.org/Inline_Assembly/Examples" title="Inline Assembly/Examples">Inline Assembly/Examples</a>), asking what key was pressed, doing something about it (such as displaying the key on the screen, and notifying the current application that a key has been pressed), and returning to whatever code was executing when the interrupt came in. Indeed, failure to read the key from the buffer will prevent any subsequent IRQs from the keyboard.
+</p>
+<h2> <span class="mw-headline" id="From_the_PIC.27s_perspective">From the PIC's perspective</span></h2>
+<p>There are actually two PICs on most systems, and each has 8 different inputs, plus one output signal that's used to tell the CPU that an IRQ occurred. The slave PIC's output signal is connected to the master PIC's third input (input #2); so when the slave PIC wants to tell the CPU an interrupt occurred it actually tells the master PIC, and the master PIC tells the CPU. This is called "cascade". The master PIC's third input is configured for this and not configured as a normal IRQ, which means that IRQ 2 can't happen.
+</p><p>A device sends a PIC chip an interrupt, and the PIC tells the CPU an interrupt occurred (either directly or indirectly). When the CPU acknowledges the "interrupt occurred" signal, the PIC chip sends the interrupt number (between 00h and FFh, or 0 and 255 decimal) to the CPU. When the system first starts up, IRQs 0 to 7 are set to interrupts 08h to 0Fh, and IRQs 8 to 15 are set to interrupts 70h to 77h. Therefore, for IRQ 6 the PIC would tell the CPU to service INT 0Eh, which presumably has code for interacting with whatever device is connected to the master PIC chip's "input #6". Of course, there can be trouble when two or more devices share an IRQ; if you wonder how this works, check out <a href="https://wiki.osdev.org/Where_Can_I_Find_Info_On_PNP" title="Where Can I Find Info On PNP" class="mw-redirect">Plug and Play</a>. Note that interrupts are handled by priority level: 0, 1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 3, 4, 5, 6, 7. So, if IRQ 8 and IRQ 3 come in simultaneously, IRQ 8 is sent to the CPU. When the CPU finishes handling the interrupt, it tells the PIC that it's OK to resume sending interrupts:
+</p>
+<pre>mov al,20h
+out 20h,al
+</pre>
+<p>or if the interrupt came from the slave PIC:
+</p>
+<pre>mov al, 20h
+out A0h, al
+out 20h, al
+</pre>
+<p>and the PIC sends the interrupt assigned to IRQ 3, which the CPU handles (using the IDT to look up the handler for that interrupt).
+</p><p>Alert readers will notice that the CPU has reserved interrupts 0-31, yet IRQs 0-7 are set to interrupts 08-0Fh. Now the reserved interrupts are called when, for example, a dreadful error has occurred that the OS must handle. Now when the computer first starts up, most errors of this type won't occur. However, when you enter protected mode (and every OS should use protected mode, real mode is obsolete), these errors may occur at any time, and the OS needs to be able to handle them. How's the OS going to tell the difference between INT 9, Exception: Coprocessor segment overrun, and INT 9: IRQ 1? Well, it can ask the device whether there is really an interrupt for that device. But this is slow, and hackish, and not all devices are able to do this type of thing. The best way to do it is to tell the PIC to map the IRQs to <i>different</i> interrupts, such as INT 78h-7Fh. For information on this, see the <a href="https://wiki.osdev.org/PIC" title="PIC" class="mw-redirect">PIC</a> FAQ. Note that IRQs can only be mapped to INTs that are multiples of 08h: 00h-07h, 08h-0Fh, 10h-17h, 17h-1Fh. And you probably want to use 20h-27h, or greater, since 00h-1Fh are reserved by the CPU. Also, each PIC has to be programmed separately. You can tell the Master PIC to map IRQs 0-7 to INTs 20h-27h, but IRQs 8-F will still be INTs 70h-77h, unless you tell the Slave PIC to put them elsewhere as well.
+</p><p>See <a href="https://wiki.osdev.org/PIC#Programming_the_PIC_chips" title="PIC" class="mw-redirect">programming the PIC chips</a> for detailed information.
+</p>
+<h2> <span class="mw-headline" id="From_the_CPU.27s_perspective">From the CPU's perspective</span></h2>
+<p>Every time the CPU is done with one machine instruction, it will check if the PIC's pin has notified an interrupt. If that's the case, it stores some state information on the stack (so that it can return to whatever it is doing currently, when the INT is done being serviced by the OS) and jumps to a location pointed to by the IDT. The OS takes over from there.
+The current program can, however, prevent the CPU from being disturbed by interrupts by means of the <i>interrupt flag</i> (IF in status register). As long as this flag is cleared, the CPU ignores the PIC's requests and continues running the current program. Assembly instructions <tt>cli</tt> and <tt>sti</tt> can control that flag.
+</p>
+<h2> <span class="mw-headline" id="From_the_OS.27s_perspective">From the OS's perspective</span></h2>
+<p>When an interrupt comes in, the <a href="https://wiki.osdev.org/IDT" title="IDT" class="mw-redirect">IDT</a> (which is setup by the OS in advance) is used to jump to code portion of the OS, which handles the interrupt (and therefore called the "interrupt handler" or "<a href="https://wiki.osdev.org/Interrupt_Service_Routines" title="Interrupt Service Routines">Interrupt Service Routines</a>"). Usually the code interacts with the device, then returns to whatever it was doing previously with an <tt>iret</tt> instruction (which tells the CPU to load the state information it saved, from the stack). Before the <tt>ret</tt>, this code is executed, to tell the PIC that it's OK to send any new or pending interrupts, because the current one is done. The PIC doesn't send any more interrupts until the cpu acknowledges the interrupt:
+</p>
+<pre>mov al,20h
+out 20h,al
+</pre>
+<p>In the case of the <a href="https://wiki.osdev.org/PS/2_Keyboard" title="PS/2 Keyboard">keyboard input</a>, the interrupt handler asks the keyboard which key was pressed, does something with the information, then acknowledges and return:
+</p>
+<pre>push eax   &nbsp;;; make sure you don't damage current state
+in al,60h  &nbsp;;; read information from the keyboard
+
+mov al,20h
+out 20h,al &nbsp;;; acknowledge the interrupt to the PIC
+pop eax    &nbsp;;; restore state
+iret       &nbsp;;; return to code executed before.
+</pre>
+<p>Whatever the CPU was previously doing is then resumed (unless another INT was received by the PIC while servicing this one, in which case the PIC tells the CPU about it and a new interrupt handler is executed, once the CPU saves state information on the stack again).
+</p>
+<h2> <span class="mw-headline" id="So_how_do_I_program_this_stuff.3F"> So how do I program this stuff?</span></h2>
+<p>Step by step, now that you've grabbed the whole thing and know what's to be done:
+</p>
+<ul><li> Make space for the interrupt descriptor table
+</li><li> Tell the CPU where that space is (see <a href="https://wiki.osdev.org/GDT_Tutorial" title="GDT Tutorial">GDT Tutorial</a>: <tt>lidt</tt> works the very same way as <tt>lgdt</tt>)
+</li><li> Tell the PIC that you no longer want to use the BIOS defaults (see <a href="https://wiki.osdev.org/PIC#Programming_the_PIC_chips" title="PIC" class="mw-redirect">Programming the PIC chips</a>)
+</li><li> Write a couple of ISR handlers (see <a href="https://wiki.osdev.org/Interrupt_Service_Routines" title="Interrupt Service Routines">Interrupt Service Routines</a>) for both IRQs and exceptions
+</li><li> Put the addresses of the ISR handlers in the appropriate descriptors (in <a href="https://wiki.osdev.org/Interrupt_Descriptor_Table" title="Interrupt Descriptor Table">Interrupt Descriptor Table</a>)
+</li><li> Enable all supported interrupts in the IRQ mask (of the PIC)
+</li></ul>
+<h2> <span class="mw-headline" id="General_IBM-PC_Compatible_Interrupt_Information"> General IBM-PC Compatible Interrupt Information </span></h2>
+<h3> <span class="mw-headline" id="Standard_ISA_IRQs"> Standard <a href="https://wiki.osdev.org/ISA" title="ISA">ISA</a> IRQs </span></h3>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+
+<tbody><tr>
+<th> IRQ </th>
+<th> Description
+</th></tr>
+<tr>
+<td> 0 </td>
+<td> Programmable Interrupt Timer Interrupt
+</td></tr>
+<tr>
+<td> 1 </td>
+<td> Keyboard Interrupt
+</td></tr>
+<tr>
+<td> 2 </td>
+<td> Cascade (used internally by the two PICs. never raised)
+</td></tr>
+<tr>
+<td> 3 </td>
+<td> COM2 (if enabled)
+</td></tr>
+<tr>
+<td> 4 </td>
+<td> COM1 (if enabled)
+</td></tr>
+<tr>
+<td> 5 </td>
+<td> LPT2 (if enabled)
+</td></tr>
+<tr>
+<td> 6 </td>
+<td> Floppy Disk
+</td></tr>
+<tr>
+<td> 7 </td>
+<td> LPT1 / Unreliable <a href="https://wiki.osdev.org/8259_PIC#Spurious_IRQs" title="8259 PIC">"spurious" interrupt</a> (usually)
+</td></tr>
+<tr>
+<td> 8 </td>
+<td> CMOS real-time clock (if enabled)
+</td></tr>
+<tr>
+<td> 9 </td>
+<td> Free for peripherals / legacy SCSI / NIC
+</td></tr>
+<tr>
+<td> 10 </td>
+<td> Free for peripherals / SCSI / NIC
+</td></tr>
+<tr>
+<td> 11 </td>
+<td> Free for peripherals / SCSI / NIC
+</td></tr>
+<tr>
+<td> 12 </td>
+<td> PS2 Mouse
+</td></tr>
+<tr>
+<td> 13 </td>
+<td> FPU / Coprocessor / Inter-processor
+</td></tr>
+<tr>
+<td> 14 </td>
+<td> Primary ATA Hard Disk
+</td></tr>
+<tr>
+<td> 15 </td>
+<td> Secondary ATA Hard Disk
+</td></tr></tbody></table>
+<h3> <span class="mw-headline" id="Default_PC_Interrupt_Vector_Assignment"> Default PC Interrupt Vector Assignment </span></h3>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+
+<tbody><tr>
+<th> Int </th>
+<th> Description
+</th></tr>
+<tr>
+<td> 0-31 </td>
+<td> <a href="https://wiki.osdev.org/Protected_Mode" title="Protected Mode">Protected Mode</a> Exceptions (Reserved by Intel)
+</td></tr>
+<tr>
+<td> 8-15 </td>
+<td> Default mapping of IRQ0-7 by the BIOS at bootstrap
+</td></tr>
+<tr>
+<td> 70h-78h </td>
+<td> Default mapping of IRQ8-15 by the BIOS at bootstrap
+</td></tr></tbody></table>
+<h3> <span class="mw-headline" id="Ports"> Ports </span></h3>
+<table border="2" cellpadding="4" cellspacing="0" style="margin-top:1em; margin-bottom:1em; background:#f9f9f9; border:1px #aaa solid; border-collapse:collapse; {{{1}}}">
+
+<tbody><tr>
+<th> Port </th>
+<th> Description
+</th></tr>
+<tr>
+<td> 20h &amp; 21h </td>
+<td> control/mask ports of the master PIC
+</td></tr>
+<tr>
+<td> A0h &amp; A1h </td>
+<td> control/mask ports of the slave PIC
+</td></tr>
+<tr>
+<td> 60h </td>
+<td> data port from the keyboard controller
+</td></tr>
+<tr>
+<td> 64h </td>
+<td> command port for keyboard controller - use to enable/disable kbd interrupts, etc.
+</td></tr>
+</tbody></table>
+<h2> <span class="mw-headline" id="See_Also"> See Also </span></h2>
+<h3> <span class="mw-headline" id="Articles"> Articles </span></h3>
+<ul><li> <a href="https://wiki.osdev.org/Ralf_Brown%27s_Interrupt_List" title="Ralf Brown&#39;s Interrupt List">Ralf Brown's Interrupt List</a>
+</li><li> <a href="https://wiki.osdev.org/Interrupts_tutorial" title="Interrupts tutorial">Interrupts tutorial</a>
+</li></ul>
+<h3> <span class="mw-headline" id="Threads"> Threads </span></h3>
+<h3> <span class="mw-headline" id="External_Links"> External Links </span></h3>
+<ul><li> <a rel="nofollow" class="external text" href="http://os-development.000webhostapp.com/prerusenia.html">Tutorial for setting interrupts in slovak langunge(Návod v slovenskom jazyku) </a>
+</li></ul>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 160/1000000
+Post-expand include size: 486/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+
+<!-- Saved in parser cache with key wikidb:pcache:idhash:1874-0!*!0!!en!*!* and timestamp 20190123051912 -->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Retrieved from "<a href="https://wiki.osdev.org/index.php?title=Interrupts&amp;oldid=22995">https://wiki.osdev.org/index.php?title=Interrupts&amp;oldid=22995</a>"				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id="catlinks" class="catlinks"><div id="mw-normal-catlinks"><a href="https://wiki.osdev.org/Special:Categories" title="Special:Categories">Category</a>: <ul><li><a href="https://wiki.osdev.org/Category:Interrupts" title="Category:Interrupts">Interrupts</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Personal tools</h5>
+	<ul>
+		<li id="pt-login"><a href="https://wiki.osdev.org/index.php?title=Special:UserLogin&amp;returnto=Interrupts" title="You are encouraged to log in; however, it is not mandatory [alt-o]" accesskey="o">Log in</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Namespaces</h5>
+	<ul>
+					<li id="ca-nstab-main" class="selected"><span><a href="https://wiki.osdev.org/Interrupts" title="View the content page [alt-c]" accesskey="c">Page</a></span></li>
+					<li id="ca-talk"><span><a href="https://wiki.osdev.org/Talk:Interrupts" title="Discussion about the content page [alt-t]" accesskey="t">Discussion</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+		<h5><span>Variants</span><a href="https://wiki.osdev.org/Interrupts#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Views</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="https://wiki.osdev.org/Interrupts">Read</a></span></li>
+					<li id="ca-viewsource"><span><a href="https://wiki.osdev.org/index.php?title=Interrupts&amp;action=edit" title="This page is protected.
+You can view its source [alt-e]" accesskey="e">View source</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="https://wiki.osdev.org/index.php?title=Interrupts&amp;action=history" title="Past revisions of this page [alt-h]" accesskey="h">View history</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Actions</span><a href="https://wiki.osdev.org/Interrupts#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Search</label></h5>
+	<form action="https://wiki.osdev.org/index.php" id="searchform">
+		<input type="hidden" name="title" value="Special:Search">
+				<input type="search" name="search" title="Search OSDev Wiki [alt-f]" accesskey="f" id="searchInput">		<input type="submit" name="go" value="Go" title="Go to a page with this exact name if exists" id="searchGoButton" class="searchButton">		<input type="submit" name="fulltext" value="Search" title="Search the pages for this text" id="mw-searchButton" class="searchButton">			</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(/skins/common/images/osdev.png);" href="https://wiki.osdev.org/Main_Page" title="Visit the main page"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id="p-navigation">
+	<h5>Navigation</h5>
+	<div class="body">
+		<ul>
+			<li id="n-mainpage"><a href="https://wiki.osdev.org/Main_Page" title="Visit the main page [alt-z]" accesskey="z">Main Page</a></li>
+			<li id="n-portal"><a href="http://forum.osdev.org/" rel="nofollow" title="About the project, what you can do, where to find things">Forums</a></li>
+			<li id="n-FAQ"><a href="https://wiki.osdev.org/Category:FAQ">FAQ</a></li>
+			<li id="n-OS-Projects"><a href="https://wiki.osdev.org/Projects">OS Projects</a></li>
+			<li id="n-randompage"><a href="https://wiki.osdev.org/Special:Random" title="Load a random page [alt-x]" accesskey="x">Random page</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- about -->
+<div class="portal" id="p-about">
+	<h5>About</h5>
+	<div class="body">
+		<ul>
+			<li id="n-This-site"><a href="https://wiki.osdev.org/OSDevWiki:About">This site</a></li>
+			<li id="n-Joining"><a href="https://wiki.osdev.org/OSDevWiki:Joining">Joining</a></li>
+			<li id="n-Editing-help"><a href="https://wiki.osdev.org/OSDevWiki:Editing">Editing help</a></li>
+			<li id="n-recentchanges"><a href="https://wiki.osdev.org/Special:RecentChanges" title="A list of recent changes in the wiki [alt-r]" accesskey="r">Recent changes</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /about -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id="p-tb">
+	<h5>Toolbox</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="https://wiki.osdev.org/Special:WhatLinksHere/Interrupts" title="A list of all wiki pages that link here [alt-j]" accesskey="j">What links here</a></li>
+			<li id="t-recentchangeslinked"><a href="https://wiki.osdev.org/Special:RecentChangesLinked/Interrupts" title="Recent changes in pages linked from this page [alt-k]" accesskey="k">Related changes</a></li>
+			<li id="t-specialpages"><a href="https://wiki.osdev.org/Special:SpecialPages" title="A list of all special pages [alt-q]" accesskey="q">Special pages</a></li>
+			<li><a href="https://wiki.osdev.org/index.php?title=Interrupts&amp;printable=yes" rel="alternate">Printable version</a></li>
+			<li id="t-permalink"><a href="https://wiki.osdev.org/index.php?title=Interrupts&amp;oldid=22995" title="Permanent link to this revision of the page">Permanent link</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> This page was last modified on 27 September 2018, at 12:48.</li>
+											<li id="footer-info-viewcount">This page has been accessed 228,590 times.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="https://wiki.osdev.org/OSDev_Wiki:Privacy_policy" title="OSDev Wiki:Privacy policy">Privacy policy</a></li>
+											<li id="footer-places-about"><a href="https://wiki.osdev.org/OSDev_Wiki:About" title="OSDev Wiki:About">About OSDev Wiki</a></li>
+											<li id="footer-places-disclaimer"><a href="https://wiki.osdev.org/OSDev_Wiki:General_disclaimer" title="OSDev Wiki:General disclaimer">Disclaimers</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="http://www.mediawiki.org/"><img src="./Interrupts - OSDev Wiki_files/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31"></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<!-- fixalpha -->
+		<script type="text/javascript"> if ( window.isMSIE55 ) fixalpha(); </script>
+		<!-- /fixalpha -->
+		<script src="./Interrupts - OSDev Wiki_files/load(5).php"></script>
+<script>if(window.mw){
+	mw.loader.load(["mediawiki.user", "mediawiki.util", "mediawiki.page.ready", "mediawiki.legacy.wikibits", "mediawiki.legacy.ajax"]);
+}
+</script><script type="text/javascript" src="./Interrupts - OSDev Wiki_files/load(6).php"></script>
+<script src="./Interrupts - OSDev Wiki_files/load(7).php"></script>
+<script>if(window.mw){
+	mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,
+	"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"variant":"en","language":"en","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;mw.user.tokens.set({"editToken":"+\\","watchToken":false});;mw.loader.state({"user.options":"ready","user.tokens":"ready"});
+	
+	/* cache key: wikidb:resourceloader:filter:minify-js:4:19a4b18a9ac79a6b8c60b24af4668814 */
+}
+</script><!-- Served in 0.036 secs. -->
+	
+
+</body></html>

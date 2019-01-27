@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<!-- saved from url=(0026)https://wiki.osdev.org/ISR -->
+<html lang="en" dir="ltr" class="client-js"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Interrupt Service Routines - OSDev Wiki</title>
+
+<meta name="generator" content="MediaWiki 1.18.0">
+<link rel="canonical" href="https://wiki.osdev.org/Interrupt_Service_Routines">
+<link rel="shortcut icon" href="https://wiki.osdev.org/favicon.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="https://wiki.osdev.org/opensearch_desc.php" title="OSDev Wiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://wiki.osdev.org/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="OSDev Wiki Atom feed" href="https://wiki.osdev.org/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="stylesheet" href="./Interrupt Service Routines - OSDev Wiki_files/load.php">
+<style type="text/css" media="all">.mw-collapsible-toggle{float:right} li .mw-collapsible-toggle{float:none} .mw-collapsible-toggle-li{list-style:none}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:4250852ed2349a0d4d0fc6509a3e7d4c */
+</style><style type="text/css" media="all">.js-messagebox{margin:1em 5%;padding:0.5em 2.5%;border:1px solid #ccc;background-color:#fcfcfc;font-size:0.8em}.js-messagebox .js-messagebox-group{margin:1px;padding:0.5em 2.5%;border-bottom:1px solid #ddd}.js-messagebox .js-messagebox-group:last-child{border-bottom:thin none transparent}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:8b08bdc91c52a9ffba396dccfb5b473c */
+</style><meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="./Interrupt Service Routines - OSDev Wiki_files/load(1).php">
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: wikidb:resourceloader:filter:minify-css:4:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+<script src="./Interrupt Service Routines - OSDev Wiki_files/load(2).php"></script><script src="./Interrupt Service Routines - OSDev Wiki_files/load(3).php"></script>
+<script>if(window.mw){
+	mw.config.set({"wgCanonicalNamespace": "", "wgCanonicalSpecialPageName": false, "wgNamespaceNumber": 0, "wgPageName": "Interrupt_Service_Routines", "wgTitle": "Interrupt Service Routines", "wgCurRevisionId": 22664, "wgArticleId": 1719, "wgIsArticle": true, "wgAction": "view", "wgUserName": null, "wgUserGroups": ["*"], "wgCategories": ["Interrupts", "X86"], "wgBreakFrames": false, "wgRestrictionEdit": [], "wgRestrictionMove": []});
+}
+</script><script>if(window.mw){
+	mw.loader.load(["mediawiki.page.startup"]);
+}
+</script><script type="text/javascript" src="./Interrupt Service Routines - OSDev Wiki_files/load(4).php"></script>
+<style type="text/css">/*<![CDATA[*/
+.source-c {line-height: normal;}
+.source-c li, .source-c pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for c
+ * CSS class: source-c, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.c.source-c .de1, .c.source-c .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.c.source-c  {font-family:monospace;}
+.c.source-c .imp {font-weight: bold; color: red;}
+.c.source-c li, .c.source-c .li1 {font-weight: normal; vertical-align:top;}
+.c.source-c .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.c.source-c .li2 {font-weight: bold; vertical-align:top;}
+.c.source-c .kw1 {color: #b1b100;}
+.c.source-c .kw2 {color: #000000; font-weight: bold;}
+.c.source-c .kw3 {color: #000066;}
+.c.source-c .kw4 {color: #993333;}
+.c.source-c .co1 {color: #666666; font-style: italic;}
+.c.source-c .co2 {color: #339933;}
+.c.source-c .coMULTI {color: #808080; font-style: italic;}
+.c.source-c .es0 {color: #000099; font-weight: bold;}
+.c.source-c .es1 {color: #000099; font-weight: bold;}
+.c.source-c .es2 {color: #660099; font-weight: bold;}
+.c.source-c .es3 {color: #660099; font-weight: bold;}
+.c.source-c .es4 {color: #660099; font-weight: bold;}
+.c.source-c .es5 {color: #006699; font-weight: bold;}
+.c.source-c .br0 {color: #009900;}
+.c.source-c .sy0 {color: #339933;}
+.c.source-c .st0 {color: #ff0000;}
+.c.source-c .nu0 {color: #0000dd;}
+.c.source-c .nu6 {color: #208080;}
+.c.source-c .nu8 {color: #208080;}
+.c.source-c .nu12 {color: #208080;}
+.c.source-c .nu16 {color:#800080;}
+.c.source-c .nu17 {color:#800080;}
+.c.source-c .nu18 {color:#800080;}
+.c.source-c .nu19 {color:#800080;}
+.c.source-c .me1 {color: #202020;}
+.c.source-c .me2 {color: #202020;}
+.c.source-c .ln-xtra, .c.source-c li.ln-xtra, .c.source-c div.ln-xtra {background-color: #ffc;}
+.c.source-c span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><style type="text/css">/*<![CDATA[*/
+.source-asm {line-height: normal;}
+.source-asm li, .source-asm pre {
+	line-height: normal; border: 0px none white;
+}
+/**
+ * GeSHi Dynamically Generated Stylesheet
+ * --------------------------------------
+ * Dynamically generated stylesheet for asm
+ * CSS class: source-asm, CSS id: 
+ * GeSHi (C) 2004 - 2007 Nigel McNie, 2007 - 2008 Benny Baumann
+ * (http://qbnz.com/highlighter/ and http://geshi.org/)
+ * --------------------------------------
+ */
+.asm.source-asm .de1, .asm.source-asm .de2 {font: normal normal 1em/1.2em monospace; margin:0; padding:0; background:none; vertical-align:top;}
+.asm.source-asm  {font-family:monospace;}
+.asm.source-asm .imp {font-weight: bold; color: red;}
+.asm.source-asm li, .asm.source-asm .li1 {font-weight: normal; vertical-align:top;}
+.asm.source-asm .ln {width:1px;text-align:right;margin:0;padding:0 2px;vertical-align:top;}
+.asm.source-asm .li2 {font-weight: bold; vertical-align:top;}
+.asm.source-asm .kw1 {color: #00007f; font-weight: bold;}
+.asm.source-asm .kw2 {color: #0000ff; font-weight: bold;}
+.asm.source-asm .kw3 {color: #00007f;}
+.asm.source-asm .kw4 {color: #000000; font-weight: bold;}
+.asm.source-asm .kw5 {color: #000000; font-weight: bold;}
+.asm.source-asm .co1 {color: #666666; font-style: italic;}
+.asm.source-asm .co2 {color: #adadad; font-style: italic;}
+.asm.source-asm .es0 {color: #000099; font-weight: bold;}
+.asm.source-asm .br0 {color: #009900; font-weight: bold;}
+.asm.source-asm .sy0 {color: #339933;}
+.asm.source-asm .st0 {color: #7f007f;}
+.asm.source-asm .nu0 {color: #0000ff;}
+.asm.source-asm .ln-xtra, .asm.source-asm li.ln-xtra, .asm.source-asm div.ln-xtra {background-color: #ffc;}
+.asm.source-asm span.xtra { display:block; }
+
+/*]]>*/
+</style>
+<style type="text/css">/*<![CDATA[*/
+@import "/index.php?title=MediaWiki:Geshi.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+/*]]>*/
+</style><!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Interrupt_Service_Routines action-view skin-vector">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;" class="js-messagebox"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">Interrupt Service Routines</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">From OSDev Wiki</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub">(Redirected from <a href="https://wiki.osdev.org/index.php?title=ISR&amp;redirect=no" title="ISR">ISR</a>)</div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav">
+					Jump to: <a href="https://wiki.osdev.org/ISR#mw-head">navigation</a>,
+					<a href="https://wiki.osdev.org/ISR#p-search">search</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div lang="en" dir="ltr" class="mw-content-ltr"><p>The <a href="https://wiki.osdev.org/Category:X86" title="Category:X86">x86</a> architecture is an <a href="https://wiki.osdev.org/Interrupt" title="Interrupt" class="mw-redirect">interrupt</a> driven system. External events trigger an interrupt — the normal control flow is interrupted and an <b>Interrupt Service Routine</b> (ISR) is called.
+</p><p>Such events can be triggered by hardware or software. An example of a hardware interrupt is the keyboard: every time you press a key, the keyboard triggers IRQ1 (Interrupt Request 1), and the corresponding interrupt handler is called. Timers and disk request completion are other possible sources of hardware interrupts.
+</p><p>Software driven interrupts are triggered by the <tt>int</tt> opcode; e.g. the services provided by MS-DOS are called by the software triggering <tt>INT 21h</tt> and passing the applicable parameters in CPU registers.
+</p><p>For the system to know which interrupt service routine to call when a certain interrupt occurs, offsets to the ISRs are stored in the <a href="https://wiki.osdev.org/IDT" title="IDT" class="mw-redirect">Interrupt Descriptor Table</a> when you're in <a href="https://wiki.osdev.org/Protected_mode" title="Protected mode" class="mw-redirect">Protected mode</a>, or in the <a href="https://wiki.osdev.org/Interrupt_Vector_Table" title="Interrupt Vector Table">Interrupt Vector Table</a> when you're in <a href="https://wiki.osdev.org/Real_Mode" title="Real Mode">Real Mode</a>.
+</p><p>An ISR is called directly by the CPU, and the protocol for calling an ISR differs from calling e.g. a C function. Most importantly, an ISR has to end with the <tt>iret</tt> opcode, whereas usual C functions end with <tt>ret</tt> or <tt>retf</tt>. The obvious but nevertheless wrong solution leads to one of the most "popular" triple-fault errors among OS programmers.
+</p>
+<table id="toc" class="toc"><tbody><tr><td><div id="toctitle"><h2>Contents</h2><span class="toctoggle">&nbsp;[<a href="https://wiki.osdev.org/ISR#" class="internal" id="togglelink">hide</a>]&nbsp;</span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="https://wiki.osdev.org/ISR#The_Problem"><span class="tocnumber">1</span> <span class="toctext">The Problem</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="https://wiki.osdev.org/ISR#Solutions"><span class="tocnumber">2</span> <span class="toctext">Solutions</span></a>
+<ul>
+<li class="toclevel-2 tocsection-3"><a href="https://wiki.osdev.org/ISR#Plain_Assembly"><span class="tocnumber">2.1</span> <span class="toctext">Plain Assembly</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="https://wiki.osdev.org/ISR#Two-Stage_Assembly_Wrapping"><span class="tocnumber">2.2</span> <span class="toctext">Two-Stage Assembly Wrapping</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="https://wiki.osdev.org/ISR#Compiler_Specific_Interrupt_Directives"><span class="tocnumber">2.3</span> <span class="toctext">Compiler Specific Interrupt Directives</span></a>
+<ul>
+<li class="toclevel-3 tocsection-6"><a href="https://wiki.osdev.org/ISR#Clang"><span class="tocnumber">2.3.1</span> <span class="toctext">Clang</span></a></li>
+<li class="toclevel-3 tocsection-7"><a href="https://wiki.osdev.org/ISR#Borland_C"><span class="tocnumber">2.3.2</span> <span class="toctext">Borland C</span></a></li>
+<li class="toclevel-3 tocsection-8"><a href="https://wiki.osdev.org/ISR#Watcom_C.2FC.2B.2B"><span class="tocnumber">2.3.3</span> <span class="toctext">Watcom C/C++</span></a></li>
+<li class="toclevel-3 tocsection-9"><a href="https://wiki.osdev.org/ISR#Naked_Functions"><span class="tocnumber">2.3.4</span> <span class="toctext">Naked Functions</span></a></li>
+<li class="toclevel-3 tocsection-10"><a href="https://wiki.osdev.org/ISR#Visual_C.2B.2B"><span class="tocnumber">2.3.5</span> <span class="toctext">Visual C++</span></a></li>
+<li class="toclevel-3 tocsection-11"><a href="https://wiki.osdev.org/ISR#GCC_.2F_G.2B.2B"><span class="tocnumber">2.3.6</span> <span class="toctext">GCC / G++</span></a>
+<ul>
+<li class="toclevel-4 tocsection-12"><a href="https://wiki.osdev.org/ISR#Black_Magic"><span class="tocnumber">2.3.6.1</span> <span class="toctext">Black Magic</span></a></li>
+<li class="toclevel-4 tocsection-13"><a href="https://wiki.osdev.org/ISR#Assembly_Goto"><span class="tocnumber">2.3.6.2</span> <span class="toctext">Assembly Goto</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</td></tr></tbody></table>
+<h2> <span class="mw-headline" id="The_Problem"> The Problem </span></h2>
+<p>Many people shun away from assembly, and want to do as much as possible in their favorite high-level language. <a href="https://wiki.osdev.org/GCC" title="GCC">GCC</a> (as well as other compilers) allow you to add inline assembly, so many programmers are tempted to write an ISR like this:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* How NOT to write an interrupt handler */</span>
+<span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    asm<span class="br0">(</span><span class="st0">"pushad"</span><span class="br0">)</span><span class="sy0">;</span> <span class="coMULTI">/* Save registers. */</span>
+    <span class="coMULTI">/* do something */</span>
+    asm<span class="br0">(</span><span class="st0">"popad"</span><span class="br0">)</span><span class="sy0">;</span>  <span class="coMULTI">/* Restore registers. */</span>
+    asm<span class="br0">(</span><span class="st0">"iret"</span><span class="br0">)</span><span class="sy0">;</span>   <span class="coMULTI">/* This will triple-fault! */</span>
+<span class="br0">}</span></pre></div></div>
+<p>This cannot work. The compiler doesn't understand what is going on. It doesn't understand that the registers and stack are required to be preserved between the asm statements; the optimizer will likely corrupt the function. Additionally, the compiler adds stack handling code before and after your function, which together with the iret results in assembly code resembling this:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1"><span class="kw1">push</span>   <span class="sy0">%</span><span class="kw3">ebp</span>
+<span class="kw1">mov</span>    <span class="sy0">%</span><span class="kw3">esp</span><span class="sy0">,%</span><span class="kw3">ebp</span>
+<span class="kw1">sub</span>    $&lt;<span class="kw4">size</span> of <span class="kw4">local</span> variables&gt;<span class="sy0">,%</span><span class="kw3">esp</span>
+<span class="kw1">pushad</span>
+# <span class="kw5">C</span> <span class="kw4">code</span> comes here
+<span class="kw1">popad</span>
+<span class="kw1">iret</span>
+# <span class="st0">'leave'</span> <span class="kw4">if</span> you use <span class="kw4">local</span> variables<span class="sy0">,</span> <span class="st0">'pop&nbsp;%ebp'</span> otherwise<span class="sy0">.</span>
+<span class="kw1">leave</span>
+<span class="kw1">ret</span></pre></div></div>
+<p>It should be obvious how this messes up the stack (ebp gets pushed but never popped). Don't do this. Instead, these are your options.
+</p>
+<h2> <span class="mw-headline" id="Solutions"> Solutions </span></h2>
+<h3> <span class="mw-headline" id="Plain_Assembly"> Plain Assembly </span></h3>
+<p>Learn enough about assembly to write your interrupt handlers in it.&nbsp;;-)
+</p>
+<h3> <span class="mw-headline" id="Two-Stage_Assembly_Wrapping"> Two-Stage Assembly Wrapping </span></h3>
+<p>Write an assembly wrapper calling the C function to do the real work, and then doing the iret.
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1"><span class="sy0">/*</span> filename<span class="sy0">:</span> isr_wrapper<span class="sy0">.</span>s <span class="sy0">*/</span>
+<span class="sy0">.</span>globl   isr_wrapper
+<span class="sy0">.</span><span class="kw4">align</span>   <span class="nu0">4</span>
+&nbsp;
+isr_wrapper<span class="sy0">:</span>
+    <span class="kw1">pushad</span>
+    <span class="kw1">cld</span> <span class="sy0">/*</span> <span class="kw5">C</span> <span class="kw4">code</span> following the sysV ABI requires <span class="kw4">DF</span> to be clear on function entry <span class="sy0">*/</span>
+    <span class="kw1">call</span> interrupt_handler
+    <span class="kw1">popad</span>
+    <span class="kw1">iret</span></pre></div></div>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* filename: interrupt_handler.c */</span>
+<span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* do something */</span>
+<span class="br0">}</span></pre></div></div>
+<h3> <span class="mw-headline" id="Compiler_Specific_Interrupt_Directives"> Compiler Specific Interrupt Directives </span></h3>
+<p>Some compilers for some processors have directives allowing you to declare a routine interrupt, offer a #pragma interrupt, or a dedicated macro. Clang 3.9, Borland C, Watcom C/C++, Microsoft C 6.0 and Free Pascal Compiler 1.9.* upward and GCC offer this. Visual C++ offers an alternative shown under <b>Naked Functions</b>:
+</p>
+<h4> <span class="mw-headline" id="Clang"> Clang </span></h4>
+<p>As of version 3.9 it supports <a rel="nofollow" class="external text" href="http://clang.llvm.org/docs/AttributeReference.html#id1">interrupt attribute</a> for x86/x86-64 targets.
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="kw4">struct</span> interrupt_frame
+<span class="br0">{</span>
+    uword_t ip<span class="sy0">;</span>
+    uword_t cs<span class="sy0">;</span>
+    uword_t flags<span class="sy0">;</span>
+    uword_t sp<span class="sy0">;</span>
+    uword_t ss<span class="sy0">;</span>
+<span class="br0">}</span><span class="sy0">;</span>
+&nbsp;
+__attribute__ <span class="br0">(</span><span class="br0">(</span>interrupt<span class="br0">)</span><span class="br0">)</span>
+<span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="kw4">struct</span> interrupt_frame <span class="sy0">*</span>frame<span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* do something */</span>
+<span class="br0">}</span></pre></div></div>
+<h4> <span class="mw-headline" id="Borland_C"> Borland C </span></h4>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* Borland C */</span>
+<span class="kw4">void</span> interrupt interrupt_handler<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* do something */</span>
+<span class="br0">}</span></pre></div></div>
+<h4> <span class="mw-headline" id="Watcom_C.2FC.2B.2B"> Watcom C/C++ </span></h4>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* Watcom C/C++ */</span>
+<span class="kw4">void</span> _interrupt interrupt_handler<span class="br0">(</span><span class="kw4">void</span><span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* do something */</span>
+<span class="br0">}</span></pre></div></div>
+<h4> <span class="mw-headline" id="Naked_Functions"> Naked Functions </span></h4>
+<p>Some compilers can be used to make interrupt routines, but require you to manually handle the stack and return operations. Doing so requires that the function is generated without an epilogue or prologue. This is called making the function <i>naked</i> — this is done in Visual C++ by adding the attribute <i>_declspec(naked)</i> to the function. You need to verify that you do include a return operation (such as <i>iretd</i>) as that is part of the epilogue that the compiler has now been instructed to not include.
+</p><p>If you intend to use local variables, you must set up the stack frame in the manner which the compiler expects; as ISRs are non-reentrant, however, you can simply use static variables.
+</p>
+<h4> <span class="mw-headline" id="Visual_C.2B.2B"> Visual C++ </span></h4>
+<p>Visual C++ also supplies the __LOCAL_SIZE assembler macro, which notifies you how much space is required by the objects on the stack for the function.
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* Microsoft Visual C++ */</span>
+<span class="kw4">void</span> _declspec<span class="br0">(</span>naked<span class="br0">)</span> interrupt_handler<span class="br0">(</span><span class="br0">)</span>
+<span class="br0">{</span>
+    _asm pushad<span class="sy0">;</span>
+&nbsp;
+    <span class="coMULTI">/* do something */</span>
+&nbsp;
+    _asm<span class="br0">{</span>
+        popad
+        iretd
+    <span class="br0">}</span>
+<span class="br0">}</span></pre></div></div>
+<h4> <span class="mw-headline" id="GCC_.2F_G.2B.2B"> GCC / G++ </span></h4>
+<p><a rel="nofollow" class="external text" href="https://gcc.gnu.org/onlinedocs/gcc/x86-Function-Attributes.html#x86-Function-Attributes">The online docs</a> say that by using GCC's function attributes, they have added the ability to write interrupt handlers in C interface by using __attribute__((interrupt)). So instead of:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* BLACK MAGIC – strongly discouraged! */</span>
+<span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="br0">)</span> <span class="br0">{</span>
+    __asm__<span class="br0">(</span><span class="st0">"pushad"</span><span class="br0">)</span><span class="sy0">;</span>
+    <span class="coMULTI">/* do something */</span>
+    __asm__<span class="br0">(</span><span class="st0">"popad; leave; iret"</span><span class="br0">)</span><span class="sy0">;</span> <span class="coMULTI">/* BLACK MAGIC! */</span>
+<span class="br0">}</span></pre></div></div>
+<p>You can have the correct (GCC) form:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="kw4">struct</span> interrupt_frame<span class="sy0">;</span>
+&nbsp;
+__attribute__<span class="br0">(</span><span class="br0">(</span>interrupt<span class="br0">)</span><span class="br0">)</span> <span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="kw4">struct</span> interrupt_frame<span class="sy0">*</span> frame<span class="br0">)</span>
+<span class="br0">{</span>
+    <span class="coMULTI">/* do something */</span>
+<span class="br0">}</span></pre></div></div>
+<p>The documentation for GCC states that if the interrupt attribute is used, the iret instruction will be used instead of ret on x86 and x86-64 architectures.
+</p>
+<h5> <span class="mw-headline" id="Black_Magic"> Black Magic </span></h5>
+<p>Look at the faulty code <a href="https://wiki.osdev.org/Interrupt_Service_Routines#The_Problem" title="Interrupt Service Routines">above</a>, where the proper C function exit code was skipped, screwing up the stack. Now, consider this code snippet, where the exit code is added manually:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="c source-c"><pre class="de1"><span class="coMULTI">/* BLACK MAGIC – strongly discouraged! */</span>
+<span class="kw4">void</span> interrupt_handler<span class="br0">(</span><span class="br0">)</span> <span class="br0">{</span>
+    __asm__<span class="br0">(</span><span class="st0">"pushad"</span><span class="br0">)</span><span class="sy0">;</span>
+    <span class="coMULTI">/* do something */</span>
+    __asm__<span class="br0">(</span><span class="st0">"popad; leave; iret"</span><span class="br0">)</span><span class="sy0">;</span> <span class="coMULTI">/* BLACK MAGIC! */</span>
+<span class="br0">}</span></pre></div></div>
+<p>The corresponding output would look somewhat like this:
+</p>
+<div dir="ltr" class="mw-geshi" style="text-align: left;"><div class="asm source-asm"><pre class="de1"><span class="kw1">push</span>   <span class="sy0">%</span><span class="kw3">ebp</span>
+<span class="kw1">mov</span>    <span class="sy0">%</span><span class="kw3">esp</span><span class="sy0">,%</span><span class="kw3">ebp</span>
+<span class="kw1">sub</span>    $&lt;<span class="kw4">size</span> of <span class="kw4">local</span> variables&gt;<span class="sy0">,%</span><span class="kw3">esp</span>
+<span class="kw1">pushad</span>
+# <span class="kw5">C</span> <span class="kw4">code</span> comes here
+<span class="kw1">popad</span>
+<span class="kw1">leave</span>
+<span class="kw1">iret</span>
+<span class="kw1">leave</span> # dead <span class="kw4">code</span>
+<span class="kw1">ret</span>   # dead <span class="kw4">code</span></pre></div></div>
+<p>This assumes that <tt>leave</tt> is the correct end-of-function handling — you are doing the function return code "by hand", and leave the compiler-generated handling as "dead code". Needless to say, such assumptions on compiler internals are dangerous. This code can break on a different compiler, or even a different version of the same compiler. It is therefore strongly discouraged, and listed only for completeness.
+</p>
+<h5> <span class="mw-headline" id="Assembly_Goto"> Assembly Goto </span></h5>
+<dl><dd><i>Full article: <a href="https://wiki.osdev.org/index.php?title=ISRs_PIC_And_Multitasking&amp;action=edit&amp;redlink=1" class="new" title="ISRs PIC And Multitasking (page does not exist)">ISRs, PIC, And Multitasking</a></i>
+</dd></dl>
+<p>Since version 4.5, GCC supports the "asm goto" statement. It can be used to make ISRs as functions which return the correct address of the ISR entry point.
+</p>
+<!-- 
+NewPP limit report
+Preprocessor node count: 189/1000000
+Post-expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+
+<!-- Saved in parser cache with key wikidb:pcache:idhash:1719-0!*!0!!en!*!* and timestamp 20190124181050 -->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Retrieved from "<a href="https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;oldid=22664">https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;oldid=22664</a>"				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id="catlinks" class="catlinks"><div id="mw-normal-catlinks"><a href="https://wiki.osdev.org/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="https://wiki.osdev.org/Category:Interrupts" title="Category:Interrupts">Interrupts</a></li><li><a href="https://wiki.osdev.org/Category:X86" title="Category:X86">X86</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Personal tools</h5>
+	<ul>
+		<li id="pt-login"><a href="https://wiki.osdev.org/index.php?title=Special:UserLogin&amp;returnto=Interrupt_Service_Routines" title="You are encouraged to log in; however, it is not mandatory [alt-o]" accesskey="o">Log in</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Namespaces</h5>
+	<ul>
+					<li id="ca-nstab-main" class="selected"><span><a href="https://wiki.osdev.org/Interrupt_Service_Routines" title="View the content page [alt-c]" accesskey="c">Page</a></span></li>
+					<li id="ca-talk" class="new"><span><a href="https://wiki.osdev.org/index.php?title=Talk:Interrupt_Service_Routines&amp;action=edit&amp;redlink=1" title="Discussion about the content page [alt-t]" accesskey="t">Discussion</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+		<h5><span>Variants</span><a href="https://wiki.osdev.org/ISR#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Views</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="https://wiki.osdev.org/Interrupt_Service_Routines">Read</a></span></li>
+					<li id="ca-viewsource"><span><a href="https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;action=edit" title="This page is protected.
+You can view its source [alt-e]" accesskey="e">View source</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;action=history" title="Past revisions of this page [alt-h]" accesskey="h">View history</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Actions</span><a href="https://wiki.osdev.org/ISR#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Search</label></h5>
+	<form action="https://wiki.osdev.org/index.php" id="searchform">
+		<input type="hidden" name="title" value="Special:Search">
+				<input type="search" name="search" title="Search OSDev Wiki [alt-f]" accesskey="f" id="searchInput">		<input type="submit" name="go" value="Go" title="Go to a page with this exact name if exists" id="searchGoButton" class="searchButton">		<input type="submit" name="fulltext" value="Search" title="Search the pages for this text" id="mw-searchButton" class="searchButton">			</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(/skins/common/images/osdev.png);" href="https://wiki.osdev.org/Main_Page" title="Visit the main page"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id="p-navigation">
+	<h5>Navigation</h5>
+	<div class="body">
+		<ul>
+			<li id="n-mainpage"><a href="https://wiki.osdev.org/Main_Page" title="Visit the main page [alt-z]" accesskey="z">Main Page</a></li>
+			<li id="n-portal"><a href="http://forum.osdev.org/" rel="nofollow" title="About the project, what you can do, where to find things">Forums</a></li>
+			<li id="n-FAQ"><a href="https://wiki.osdev.org/Category:FAQ">FAQ</a></li>
+			<li id="n-OS-Projects"><a href="https://wiki.osdev.org/Projects">OS Projects</a></li>
+			<li id="n-randompage"><a href="https://wiki.osdev.org/Special:Random" title="Load a random page [alt-x]" accesskey="x">Random page</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- about -->
+<div class="portal" id="p-about">
+	<h5>About</h5>
+	<div class="body">
+		<ul>
+			<li id="n-This-site"><a href="https://wiki.osdev.org/OSDevWiki:About">This site</a></li>
+			<li id="n-Joining"><a href="https://wiki.osdev.org/OSDevWiki:Joining">Joining</a></li>
+			<li id="n-Editing-help"><a href="https://wiki.osdev.org/OSDevWiki:Editing">Editing help</a></li>
+			<li id="n-recentchanges"><a href="https://wiki.osdev.org/Special:RecentChanges" title="A list of recent changes in the wiki [alt-r]" accesskey="r">Recent changes</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /about -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id="p-tb">
+	<h5>Toolbox</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="https://wiki.osdev.org/Special:WhatLinksHere/Interrupt_Service_Routines" title="A list of all wiki pages that link here [alt-j]" accesskey="j">What links here</a></li>
+			<li id="t-recentchangeslinked"><a href="https://wiki.osdev.org/Special:RecentChangesLinked/Interrupt_Service_Routines" title="Recent changes in pages linked from this page [alt-k]" accesskey="k">Related changes</a></li>
+			<li id="t-specialpages"><a href="https://wiki.osdev.org/Special:SpecialPages" title="A list of all special pages [alt-q]" accesskey="q">Special pages</a></li>
+			<li><a href="https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;printable=yes" rel="alternate">Printable version</a></li>
+			<li id="t-permalink"><a href="https://wiki.osdev.org/index.php?title=Interrupt_Service_Routines&amp;oldid=22664" title="Permanent link to this revision of the page">Permanent link</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> This page was last modified on 9 September 2018, at 18:07.</li>
+											<li id="footer-info-viewcount">This page has been accessed 200,560 times.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="https://wiki.osdev.org/OSDev_Wiki:Privacy_policy" title="OSDev Wiki:Privacy policy">Privacy policy</a></li>
+											<li id="footer-places-about"><a href="https://wiki.osdev.org/OSDev_Wiki:About" title="OSDev Wiki:About">About OSDev Wiki</a></li>
+											<li id="footer-places-disclaimer"><a href="https://wiki.osdev.org/OSDev_Wiki:General_disclaimer" title="OSDev Wiki:General disclaimer">Disclaimers</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="http://www.mediawiki.org/"><img src="./Interrupt Service Routines - OSDev Wiki_files/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31"></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<!-- fixalpha -->
+		<script type="text/javascript"> if ( window.isMSIE55 ) fixalpha(); </script>
+		<!-- /fixalpha -->
+		<script src="./Interrupt Service Routines - OSDev Wiki_files/load(5).php"></script>
+<script>if(window.mw){
+	mw.loader.load(["mediawiki.user", "mediawiki.util", "mediawiki.page.ready", "mediawiki.legacy.wikibits", "mediawiki.legacy.ajax"]);
+}
+</script><script type="text/javascript" src="./Interrupt Service Routines - OSDev Wiki_files/load(6).php"></script>
+<script src="./Interrupt Service Routines - OSDev Wiki_files/load(7).php"></script>
+<script>if(window.mw){
+	mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,
+	"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"variant":"en","language":"en","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;mw.user.tokens.set({"editToken":"+\\","watchToken":false});;mw.loader.state({"user.options":"ready","user.tokens":"ready"});
+	
+	/* cache key: wikidb:resourceloader:filter:minify-js:4:19a4b18a9ac79a6b8c60b24af4668814 */
+}
+</script><!-- Served in 0.165 secs. -->
+	
+
+</body></html>

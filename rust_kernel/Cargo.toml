@@ -1,7 +1,7 @@
 [package]
 name = "undefined_behavior"
 version = "0.0.2"
-authors = ["Vincent Combey <vcombey@student.42.fr>", "Mickael Billod <bmickael@student.42.fr>"]
+authors = ["Vincent Combey <vcombey@student.42.fr>", "Mickael Billod <bmickael@student.42.fr>", "Sebastien Clolus <sclolus@student.42.fr>"]
 edition = "2018"
 
 [profile.release]
@@ -15,3 +15,4 @@ panic = "abort"
 crate-type = ["staticlib"]
 
 [dependencies]
+bit_field = "0.9.0"

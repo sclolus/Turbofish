@@ -10,7 +10,7 @@ global _start_after_init_gdt
 
 global init
 init:
-	cli                             ; block interrupts
+	cli							; block interrupts
 
 	push ebp
 	mov ebp, esp
