@@ -3,18 +3,6 @@ use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 
 #[no_mangle]
-extern "C" {
-    pub fn _isr_divide_by_zero(cs: u32, iflag: u32) -> ();
-}
-
-#[inline(never)]
-fn divide_wrapper() -> () {
-    unsafe {
-        _isr_divide_by_zero(0x8, 0x11111111);
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     unsafe { interrupts::init() };
     save_multiboot_info(multiboot_info);

@@ -24,9 +24,9 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 ASMFLAGS = -f elf
 
-SRC_C_KERNEL += debug_center vga_text
-SRC_ASM_KERNEL += cpuid
-VPATH += src/boot
+#SRC_C_KERNEL += debug_center vga_text
+#SRC_ASM_KERNEL += cpuid
+#VPATH += src/boot
 
 SRC_ASM_KERNEL += init multiboot gdt
 VPATH += src/boot
@@ -98,23 +98,23 @@ symbol_gen_exe:
 	./nm_map_gen src/system/nm.map
 	sync
 
-$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
+$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL)
 	@echo PREBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
 	nm -n $(kernel) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo MAINBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
 	nm -n $(kernel) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo POSTBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
 
 
 build_rust:
