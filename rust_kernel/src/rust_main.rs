@@ -1,4 +1,4 @@
-use crate::interrupts::*;
+use crate::interrupts;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::registers::*;
