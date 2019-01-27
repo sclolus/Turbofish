@@ -1,8 +1,6 @@
 use crate::interrupts;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
-use crate::registers::*;
-use crate::registers::{_real_mode_op, BaseRegisters};
 
 #[no_mangle]
 extern "C" {
@@ -12,7 +10,6 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     unsafe { interrupts::init() };
-
     save_multiboot_info(multiboot_info);
 
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
@@ -445,6 +442,8 @@ impl From<u16> for VbeError {{
     }}
 }}
 ");
+    
+    unsafe { interrupts::enable() };
     loop {}
     unsafe {
         TEXT_MONAD.clear_screen();
