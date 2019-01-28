@@ -15,6 +15,18 @@
 
 extern _align_stack
 extern generic_interrupt_handler
+extern timer_interrupt_handler
+
+extern TIME
+
+segment .text
+timer:
+	inc dword [TIME]
+	; send EOI master pic, irq0
+	mov al, 0x20
+	out 0x20, al
+	ret
+
 
 ;; This generates the Interrupt service routines. The first paramater completes the indentifier
 ;; The second paramater is the name of the interrupt as a string
@@ -39,7 +51,7 @@ global _isr_%1
 	iret
 %endmacro
 
-	CREATE_ISR timer, "Timer", generic_interrupt_handler
+	CREATE_ISR timer, "Timer", timer_interrupt_handler
 	CREATE_ISR keyboard, "Keyboard", generic_interrupt_handler
 	CREATE_ISR cascade, "cascade, never used", generic_interrupt_handler ; should never be raised
 	CREATE_ISR com2, "COM2", generic_interrupt_handler

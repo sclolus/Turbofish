@@ -66,6 +66,7 @@ pub extern "C" fn io_wait() {
 
 /// This is a generic structure to represent IO ports
 /// It implements the IO Trait for u8, u16 and u32
+#[derive(Debug)]
 pub struct Pio<T> {
     port: u16,
     value: PhantomData<T>,

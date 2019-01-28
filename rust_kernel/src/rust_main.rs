@@ -1,10 +1,11 @@
+use crate::debug;
 use crate::interrupts;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
+use crate::{interrupts::pit::*, interrupts::*};
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
-    unsafe { interrupts::init() };
     save_multiboot_info(multiboot_info);
 
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
@@ -12,6 +13,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     unsafe {
         TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         TEXT_MONAD.clear_screen();
+        unsafe { interrupts::init() };
+        pic_8259::irq_clear_mask(0);
+        PIT0.configure(OperatingMode::RateGenerator);
+        PIT0.start_at_frequency(18.0).unwrap();
     }
 
     //    set_text_color("yellow").unwrap();
@@ -26,13 +31,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     }
     */
     //init_graphic_mode(Some(0x118)).unwrap();
-    println!("
+    debug::bench_start();
+    for _i in 0..3 {
+        println!("
 use crate::ffi::c_char;
 use crate::monitor::core_monitor::IoResult;
 use crate::monitor::core_monitor::{{Cursor, Drawer, TextColor}};
 use crate::registers::{{BaseRegisters, _real_mode_op}};
 use core::result::Result;
-
 
 #[macro_export]
 macro_rules! impl_raw_data_debug {{
@@ -436,7 +442,16 @@ impl From<u16> for VbeError {{
     }}
 }}
 ");
+    }
     unsafe { interrupts::enable() };
     println!("from {}", function!());
+    println!("{:?} ms ellapsed", debug::bench_end());
+    unsafe {
+        PIT0.start_at_frequency(10000.).unwrap();
+    }
+    debug::bench_start();
+    println!("pit: {:?}", PIT0);
+
+    println!("{:?} ms ellapsed", debug::bench_end());
     loop {}
 }

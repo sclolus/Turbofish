@@ -4,6 +4,7 @@ mod irqs;
 pub mod idt;
 pub mod idt_gate_entry;
 pub mod pic_8259;
+pub mod pit;
 
 pub use idt::*;
 pub use idt_gate_entry::*;
