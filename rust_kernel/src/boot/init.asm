@@ -4,6 +4,7 @@ segment .text
 
 extern kmain
 extern init_gdt
+extern _align_stack
 
 extern debug_center
 global _start_after_init_gdt
@@ -39,8 +40,13 @@ init:
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx
-	call kmain                      ; kmain is called with this param
+	push 4
+	; kmain is called with EBX param
+	push kmain
 
+	call _align_stack
+
+	add esp, 12
 	; ---------------------------------------------------------------------
 	jmp $
 
