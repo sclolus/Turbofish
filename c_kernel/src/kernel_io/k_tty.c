@@ -105,7 +105,7 @@ void		copy_tty_content(struct k_tty *tty)
  */
 void		fill_tty_background(struct k_tty *tty)
 {
-	sse2_memcpy(
+	_sse2_memcpy(
 			(u32 *)DB_FRAMEBUFFER_ADDR,
 			(void *)tty->background_img,
 			vesa_ctx.mode.pitch

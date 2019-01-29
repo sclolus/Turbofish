@@ -50,7 +50,7 @@ static u32	extract_modifier(const u8 *buf)
  */
 static void	update_line(u32 location)
 {
-	sse2_memcpy(
+	_sse2_memcpy(
 			(void *)location + vesa_ctx.mode.framebuffer,
 			(void *)location + DB_FRAMEBUFFER_ADDR,
 			vesa_ctx.mode.pitch * CHAR_HEIGHT);

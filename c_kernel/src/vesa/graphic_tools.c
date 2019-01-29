@@ -37,7 +37,7 @@ void	fill_window(u8 red, u8 green, u8 blue)
 }
 
 void refresh_screen(void) {
-	sse2_memcpy(
+	_sse2_memcpy(
 			(u32 *)vesa_ctx.mode.framebuffer,
 			(void *)DB_FRAMEBUFFER_ADDR,
 			vesa_ctx.mode.pitch * vesa_ctx.mode.height);
