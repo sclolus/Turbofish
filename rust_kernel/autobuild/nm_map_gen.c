@@ -274,10 +274,10 @@ int			main(int argc, char *argv[])
 		fd_nm = open(argv[2], O_RDONLY);
 		if (fd_nm < 0) {
 			printf("cannot open %s\n", argv[2]);
-			return EXIT_FAILURE;
+			fd_nm = -1;
 		}
 	} else {
-		fd_nm = EXIT_FAILURE;
+		fd_nm = -1;
 	}
 
 	fd_file_map = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 00644);
@@ -292,7 +292,7 @@ int			main(int argc, char *argv[])
 	lst = NULL;
 	buf = NULL;
 	nb_lines = 0;
-	if (fd_nm != EXIT_FAILURE) {
+	if (fd_nm != -1) {
 		while ((size = get_next_line(fd_nm, &buf, &mem)) > 0) {
 			if (lst_push_back(&lst, buf, size + 1, &malloc) == NULL) {
 				printf("Cannot push back\n");
