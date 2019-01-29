@@ -76,12 +76,13 @@ endif
 
 .PHONY: all clean fclean re exec kernel
 
-all: symbol_gen_exe $(kernel)
+all: symbol_gen_exe build_rust build_libasm_i386 $(kernel)
 
 clean:
 ifeq ($(DEV), C)
 	make -C $(LIBFT)/ clean
 endif
+	make -C libasm_i386 clean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f nm.res
@@ -92,6 +93,7 @@ fclean:
 ifeq ($(DEV), C)
 	make -C $(LIBFT)/ fclean
 endif
+	make -C libasm_i386 fclean
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f nm.res
@@ -105,27 +107,34 @@ symbol_gen_exe:
 	./nm_map_gen src/system/nm.map
 	sync
 
-$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL)
+ifeq ($(DEV), C)
+$(kernel): libft/libft.a $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libasm_i386/libasm_i386.a
+else
+$(kernel): $(OBJ_ASM_KERNEL)  $(OBJ_C_KERNEL) $(rust_os) libasm_i386/libasm_i386.a
+endif
+
 	@echo PREBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $^
 	nm -n $(kernel) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo MAINBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $^
 	nm -n $(kernel) > nm.res
 	./nm_map_gen src/system/nm.map nm.res
 	sync
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 
 	@echo POSTBUILD
-	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
-
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $^
 
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
+
+build_libasm_i386:
+	make -C libasm_i386 all
 
 $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
@@ -135,7 +144,8 @@ $(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 
 ifeq ($(DEV), C)
 libft/libft.a:
-	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 endif
+
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf

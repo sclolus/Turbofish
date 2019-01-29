@@ -5,6 +5,11 @@ use core::result::Result;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
+extern "C" {
+        pub fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
+        pub fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 #[repr(packed)]
@@ -274,9 +279,13 @@ impl Drawer for VbeMode {
         unsafe {
             let line_size = self.char_height * self.width * self.bytes_per_pixel;
             let screen_size = self.width * self.height * self.bytes_per_pixel;
-            (self.memory_location as *mut u8)
-                .copy_from((self.memory_location + line_size) as *const u8, screen_size - line_size);
-            ((self.memory_location + screen_size - line_size) as *mut u8).write_bytes(0, line_size);
+
+            _sse2_memcpy(
+                self.memory_location as *mut u8,
+                (self.memory_location + line_size) as *const u8,
+                screen_size - line_size);
+            _sse2_memzero(
+                (self.memory_location + screen_size - line_size) as *mut u8, line_size);
         }
     }
     fn clear_screen(&mut self) {
