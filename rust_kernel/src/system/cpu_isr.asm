@@ -28,6 +28,7 @@
 %endmacro
 
 extern panic_handler
+extern _align_stack
 
 %macro CREATE_ISR 3
 segment .data
@@ -40,7 +41,9 @@ _isr_%1:
     mov ebp, esp
     %3
     push isr_%1_str
-    call panic_handler
+    push 68
+    push panic_handler
+    call _align_stack
 %endmacro
 
 ; After expansion of macro (for cpu_default_interrupt)

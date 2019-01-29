@@ -24,9 +24,12 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 ASMFLAGS = -f elf
 
-#SRC_C_KERNEL += debug_center vga_text
-#SRC_ASM_KERNEL += cpuid
-#VPATH += src/boot
+# C debuging Rust
+ifeq ($(DEV), C)
+	SRC_C_KERNEL += debug_center vga_text
+	SRC_ASM_KERNEL += cpuid
+	VPATH += src/boot
+endif
 
 SRC_ASM_KERNEL += init multiboot gdt
 VPATH += src/boot
@@ -34,8 +37,8 @@ VPATH += src/boot
 SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
-SRC_ASM_KERNEL += real_mode_call cpu_isr io isr
 SRC_C_KERNEL += panic
+SRC_ASM_KERNEL += real_mode_call cpu_isr io isr align_stack
 VPATH += src/system
 
 SRC_ASM_KERNEL += idt
@@ -76,7 +79,9 @@ endif
 all: symbol_gen_exe $(kernel)
 
 clean:
+ifeq ($(DEV), C)
 	make -C $(LIBFT)/ clean
+endif
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f nm.res
@@ -84,7 +89,9 @@ clean:
 	cargo clean
 
 fclean:
+ifeq ($(DEV), C)
 	make -C $(LIBFT)/ fclean
+endif
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f nm.res
@@ -126,8 +133,9 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
+ifeq ($(DEV), C)
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-
+endif
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf

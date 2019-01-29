@@ -13,6 +13,7 @@
 	popad
 %endmacro
 
+extern _align_stack
 extern generic_interrupt_handler
 
 ;; This generates the Interrupt service routines. The first paramater completes the indentifier
@@ -25,12 +26,14 @@ segment .data
 segment .text
 global _isr_%1
 	_isr_%1:
-	push	ebp
+	push ebp
 	mov	ebp, esp
 	PUSH_ALL_REGISTERS
-	push	isr_%1_str
-	call	%3
-	add	esp, 4 					;pop interrupt string
+	push isr_%1_str
+	push 4
+	push %3
+	call _align_stack
+	add esp, 12 ;pop interrupt string
 	POP_ALL_REGISTERS
 	pop	ebp
 	iret
