@@ -32,7 +32,7 @@ static u32	extract_modifier(const u8 *buf)
 	l = 0;
 	while (l < MODIFIER_QUANTITY) {
 		size_t len = strlen(modifier_list[l].string);
-		if (memcmp(modifier_list[l].string, buf, len) == 0) {
+		if (ft_memcmp(modifier_list[l].string, buf, len) == 0) {
 			if (l != 0)
 				set_text_color(modifier_list[l].color);
 			else

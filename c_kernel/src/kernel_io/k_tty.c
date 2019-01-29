@@ -57,7 +57,7 @@ static int	memmove_tty(u32 i)
 	while (i < kernel_io_ctx.nb_tty) {
 		if (&kernel_io_ctx.tty[i + 1] == kernel_io_ctx.current_tty)
 			kernel_io_ctx.current_tty = &kernel_io_ctx.tty[i];
-		memcpy(
+		ft_memcpy(
 				&kernel_io_ctx.tty[i],
 				&kernel_io_ctx.tty[i + 1],
 				sizeof(struct k_tty));
@@ -163,7 +163,7 @@ static void	mark_color(struct k_tty *tty)
 	for (size_t i = 0; i < MODIFIER_QUANTITY; i++) {
 		if (get_text_color() == modifier_list[i].color) {
 			size_t len = strlen(modifier_list[i].string);
-			memcpy(
+			ft_memcpy(
 					tty->line[tty->nb_line].str,
 					 modifier_list[i].string,
 					 len

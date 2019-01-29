@@ -34,7 +34,7 @@ s32		set_vbe(u16 selected_mode)
 	reg.edi = VESA_GLOBAL_INFO_PTR;
 	int8086(0x10, reg);
 
-	memcpy(
+	ft_memcpy(
 		&vesa_ctx.global_info,
 		(void *)VESA_GLOBAL_INFO_PTR,
 		sizeof(struct vesa_global_info));
@@ -64,7 +64,7 @@ s32		set_vbe(u16 selected_mode)
 	reg.edi = VESA_MODE_INFO_PTR;
 	int8086(0x10, reg);
 
-	memcpy(
+	ft_memcpy(
 		&vesa_ctx.mode,
 		(void *)VESA_MODE_INFO_PTR,
 		sizeof(struct vesa_mode_info));

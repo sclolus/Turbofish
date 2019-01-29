@@ -60,7 +60,7 @@ int		mark_physical_area(void *addr, u32 page_request)
 void		init_physical_map(void *limit_phy_addr)
 {
 	phy_map = (u8 *)PHY_MAP_LOCATION;
-	memset(phy_map, 0, MAP_LENGTH);
+	ft_memset(phy_map, 0, MAP_LENGTH);
 
 	int ret = mark_area_limit(phy_map, (u32)limit_phy_addr, 1, 0);
 	if (ret < 0)

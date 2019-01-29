@@ -118,7 +118,7 @@ static int		add_object(
 			ctx->tab_ptr[nb_elmt].c,
 			size,
 			allocated);
-	memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
+	ft_memset(ctx->tab_ptr[nb_elmt].ptr, ctx->tab_ptr[nb_elmt].c, size);
 	return 0;
 }
 
@@ -216,7 +216,7 @@ static int		realloc_test_next(
 	}
 	ctx->tab_ptr[i].size = (size_t)x;
 	ctx->tab_ptr[i].c = x % 256;
-	memset(ctx->tab_ptr[i].ptr, ctx->tab_ptr[i].c, x);
+	ft_memset(ctx->tab_ptr[i].ptr, ctx->tab_ptr[i].c, x);
 	return 0;
 }
 
@@ -298,7 +298,7 @@ static int		base_realloc(struct mem_test_ctx *ctx, int verbosity)
 	int		max_alloc;
 
 	nb_elmt = 0;
-	memset(global_count, 0, 3 * sizeof(int));
+	ft_memset(global_count, 0, 3 * sizeof(int));
 	if ((max_alloc = loop_realloc(
 			ctx, global_count, &nb_elmt)) == -1)
 		return -1;
@@ -331,7 +331,7 @@ static int		base_test(
 	int		max_alloc;
 
 	nb_elmt = 0;
-	memset(global_count, 0, 2 * sizeof(int));
+	ft_memset(global_count, 0, 2 * sizeof(int));
 	if ((max_alloc = loop_test(
 			ctx,
 			global_count,
