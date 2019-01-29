@@ -24,12 +24,9 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 ASMFLAGS = -f elf
 
-# C debuging Rust
-ifeq ($(DEV), C)
-	SRC_C_KERNEL += debug_center vga_text
-	SRC_ASM_KERNEL += cpuid
-	VPATH += src/boot
-endif
+#SRC_C_KERNEL += debug_center vga_text
+#SRC_ASM_KERNEL += cpuid
+#VPATH += src/boot
 
 SRC_ASM_KERNEL += init multiboot gdt
 VPATH += src/boot
@@ -38,6 +35,7 @@ SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
 SRC_ASM_KERNEL += real_mode_call cpu_isr io isr
+SRC_C_KERNEL += panic
 VPATH += src/system
 
 SRC_ASM_KERNEL += idt
@@ -75,35 +73,49 @@ endif
 
 .PHONY: all clean fclean re exec kernel
 
-all: $(kernel)
+all: symbol_gen_exe $(kernel)
 
 clean:
-ifeq ($(DEV), C)
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ_C_KERNEL)
-endif
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm.res
+	rm -f nm_map_gen
 	cargo clean
 
 fclean:
-ifeq ($(DEV), C)
 	make -C $(LIBFT)/ fclean
 	rm -f $(OBJ_C_KERNEL)
-endif
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f nm.res
+	rm -f nm_map_gen
 	cargo clean
 
 re: fclean all
 
-kernel: $(kernel)
+symbol_gen_exe:
+	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
+	./nm_map_gen src/system/nm.map
+	sync
 
-ifeq ($(DEV), C)
-$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a
-else
-$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL)
-	$(LD) --verbose -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(rust_os)
-endif
+$(kernel): build_rust $(rust_os) $(linker_script) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL)
+	@echo PREBUILD
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
+	nm -n $(kernel) > nm.res
+	./nm_map_gen src/system/nm.map nm.res
+	sync
+	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+
+	@echo MAINBUILD
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
+	nm -n $(kernel) > nm.res
+	./nm_map_gen src/system/nm.map nm.res
+	sync
+	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+
+	@echo POSTBUILD
+	$(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os)
+
 
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
@@ -111,13 +123,11 @@ build_rust:
 $(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
-ifeq ($(DEV), C)
 $(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 libft/libft.a:
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-endif
 
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf

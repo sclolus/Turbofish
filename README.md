@@ -2,6 +2,13 @@
 
 ## You can test that kernel only on a linux machine
 
+## cloning this repository
+You need to clone with submodules  
+-> git clone --recurse-submodules GIT_URL  
+If you forget to add recurse submodule when you clone, you can add then later like that  
+-> git submodule init
+-> git submodule update
+
 ## For assembly parts, you need a 'nasm' installation (for asm parts)
 debian: sudo apt-get install nasm  
 archLinux: sudo pacman -S nasm
@@ -13,9 +20,11 @@ archLinux: sudo pacman -S nasm
 ## You need also 'losetup' to create a disk image  
 debian: sudo apt-get install mount
 
-## And to execute the kernel, you need 'qemu' (virtual machine system) with kvm
+## To compile C code, you need to install gcc
+debian: sudo apt-get install gcc  
+archLinux: sudo pacman -S gcc
 
-For the moment, you dont need gcc compiler at all !
+## And to execute the kernel, you need 'qemu' (virtual machine system) with kvm
 
 # CAUTION: NEVER BE A SUDOER NOR A ROOT FOR THE RUST INSTALLATION !
 

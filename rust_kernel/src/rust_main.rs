@@ -3,11 +3,6 @@ use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 
 #[no_mangle]
-extern "C" {
-    pub fn _isr_divide_by_zero(cs: u32, iflag: u32) -> ();
-}
-
-#[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     unsafe { interrupts::init() };
     save_multiboot_info(multiboot_info);
@@ -441,9 +436,9 @@ impl From<u16> for VbeError {{
         }}
     }}
 }}
-");
-    
+");    
     unsafe { interrupts::enable() };
+    println!("from {}", function!());    
     loop {}
     unsafe {
         TEXT_MONAD.clear_screen();

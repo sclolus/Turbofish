@@ -145,11 +145,4 @@ landing:
 	mov fs, ax
 	mov gs, ax
 
-	; SS IS STACK SEGMENT REGISTER
-	mov ax, 0x18
-	mov ss, ax
-
-;	put the stack at 4MB
-	mov esp, 0x600000
-
-	jmp _start_after_init_gdt
+	ret
