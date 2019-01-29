@@ -1,5 +1,10 @@
 use super::{Drawer, IoError, IoResult, TextColor};
 
+extern "C" {
+    pub fn ft_memset(p: *mut u8, val: i32, len: usize) -> *mut u8;
+    pub fn ft_memmove(dst: *mut u8, src: *mut u8, len: usize) -> *mut u8;
+}
+
 const HEIGHT: usize = 25;
 const WIDTH: usize = 80;
 
@@ -30,19 +35,15 @@ impl Drawer for VgaTextMode {
         }
     }
     fn scroll_screen(&self) {
-        use crate::support::memmove;
-        use crate::support::memset;
-
         let ptr = self.memory_location;
         unsafe {
-            memmove(ptr, ptr.add(WIDTH * 2), WIDTH * (HEIGHT - 1) * 2);
-            memset(ptr.add(WIDTH * (HEIGHT - 1) * 2), 0, WIDTH * 2);
+            ft_memmove(ptr, ptr.add(WIDTH * 2), WIDTH * (HEIGHT - 1) * 2);
+            ft_memset(ptr.add(WIDTH * (HEIGHT - 1) * 2), 0, WIDTH * 2);
         }
     }
     fn clear_screen(&mut self) {
-        use crate::support::memset;
         unsafe {
-            memset(self.memory_location, 0, WIDTH * HEIGHT * 2);
+            ft_memset(self.memory_location, 0, WIDTH * HEIGHT * 2);
         }
     }
     fn set_text_color(&mut self, color: TextColor) -> IoResult {

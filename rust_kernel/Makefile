@@ -1,4 +1,3 @@
-
 arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := undefined_behavior
@@ -7,10 +6,13 @@ name := undefined_behavior
 # rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
 ASM = nasm
-LD = ld
 CC = gcc
 
-### C FLAGS CONFIGURATION ###
+LD = ld
+linker_script := linker.ld
+LDFLAGS = -m elf_i386 -n --gc-sections
+
+ASMFLAGS = -f elf
 
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
@@ -23,7 +25,7 @@ endif
 
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
 
-ASMFLAGS = -f elf
+IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
 
 # C debuging Rust
 ifeq ($(DEV), C)
@@ -45,32 +47,23 @@ VPATH += src/system
 SRC_ASM_KERNEL += idt
 VPATH += src/interrupts
 
-OBJ_DIR = objs
-
-__OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
-OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
-
-__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
-OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
-
-
-IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
-
-linker_script := linker.ld
+OBJ_DIR := objs
+OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
+OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_KERNEL)))))
 
 target := $(arch)
 custom_target := $(arch).json
-#$ come from this output: rustc -Z unstable-options --print target-spec-json --target i686-unknown-linux-gnu
-#doc about this flags: https://github.com/rust-lang/rust/blob/256e497fe63bf4b13f7c0b58fa17360ca849c54d/src/librustc_back/target/mod.rs#L228-L409 
+# $ come from this output: rustc -Z unstable-options --print target-spec-json --target i686-unknown-linux-gnu
+# doc about this flags: https://github.com/rust-lang/rust/blob/256e497fe63bf4b13f7c0b58fa17360ca849c54d/src/librustc_back/target/mod.rs#L228-L409
 
 ifeq ($(DEBUG),yes)
-rust_os := target/$(target)/debug/lib$(name).a
+	rust_os := target/$(target)/debug/lib$(name).a
 else
-cargo_flags += --release
-rust_os := target/$(target)/release/lib$(name).a
+	cargo_flags += --release
+	rust_os := target/$(target)/release/lib$(name).a
 endif
 
-.PHONY: all clean fclean common_clean re exec kernel
+.PHONY: all clean fclean common_clean re exec $(kernel)
 
 all: symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
 
@@ -79,12 +72,12 @@ common_clean:
 	rm -f $(OBJ_ASM_KERNEL)
 	rm -f nm.res
 	rm -f nm_map_gen
+	rm -f $(kernel)
 	cargo clean
 
 clean: common_clean
 	make -C libft clean
 	make -C libasm_i386 clean
-
 
 fclean: common_clean
 	make -C libft fclean
@@ -93,9 +86,9 @@ fclean: common_clean
 re: fclean all
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-extract_kernel_symbols = nm -n $(kernel) > nm.res
+extract_kernel_symbols = nm -n $@ > nm.res
 gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
-link_kernel = $(LD) -m elf_i386 -n --gc-sections -T $(linker_script) -o $(kernel) $^
+link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
 symbol_gen_exe:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
@@ -126,10 +119,10 @@ build_libasm_i386:
 build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 exec:
