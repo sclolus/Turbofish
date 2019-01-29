@@ -61,7 +61,7 @@ static void	update_line(u32 location)
  */
 static void	test_scroll(void)
 {
-	if (g_cur_loc < (vesa_ctx.mode.pitch * vesa_ctx.mode.height))
+	if (g_cur_loc < (u32)(vesa_ctx.mode.pitch * vesa_ctx.mode.height))
 		return ;
 
 	fill_tty_background(kernel_io_ctx.current_tty);

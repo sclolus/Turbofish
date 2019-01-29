@@ -53,6 +53,12 @@ extern char _binary_medias_asterix_bmp_start;
  */
 #define PIT_FREQUENCY	100
 
+extern int _mmx_test(void);
+extern int _sse1_sse2_test(void);
+extern int _avx_test(void);
+
+extern u32 _align_stack(u32(*f)(), u32 args_len, ...);
+
 /*
  * Main Kernel
  */
@@ -123,6 +129,9 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	select_tty(0);
 
+	/* ----------------------------------------------------- */
+	asm("sti");
+
 	printk("Kernel loaded: {green}OK{eoc}\n");
 	printk("VBE initialized: {green}OK\n{eoc}");
 
@@ -168,6 +177,24 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 
 	printk("Initialize PIC: ");
 	printk("{green}OK\n{eoc}");
+
+	printk("mmx test: ");
+	if (_mmx_test() == 0)
+		printk("{green}OK\n{eoc}");
+	else
+		printk("{red}FAIL\n{eoc}");
+
+	printk("sse1 sse2 test: ");
+	if (_align_stack((u32 (*)(void))(&_sse1_sse2_test), 8, 42, 31) == 11)
+		printk("{green}OK\n{eoc}");
+	else
+		printk("{red}FAIL\n{eoc}");
+
+	printk("avx test: ");
+	if (_avx_test() == 0)
+		printk("{green}OK\n{eoc}");
+	else
+		printk("{red}FAIL\n{eoc}");
 
 	printk("Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);

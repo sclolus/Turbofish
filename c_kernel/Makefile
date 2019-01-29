@@ -63,7 +63,7 @@ HEADERS = grub i386_type
 # system
 SRC_C_KERNEL += bios_services idt panic
 SRC_ASM_KERNEL += gdt int8086 irq_cpu exit_panic
-SRC_ASM_KERNEL += init_pic 8254_pit 8042_keyboard default_pic_isr
+SRC_ASM_KERNEL += init_pic 8254_pit 8042_keyboard default_pic_isr align_stack
 VPATH += src/system src/system/pic
 HEADERS += system
 
@@ -115,6 +115,7 @@ HEADERS += memory_manager main_headers alloc_btree dynamic_allocator
 
 # tests
 SRC_C_KERNEL += mem_test rand_test
+SRC_ASM_KERNEL += mmx sse1_sse2 avx
 VPATH += src/tests
 HEADER += tests
 
