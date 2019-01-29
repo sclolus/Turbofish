@@ -60,6 +60,7 @@ impl Idtr {
     }
 
     /// Returns a `&[IdtGateEntr]` of the current idt
+    #[allow(dead_code)]
     unsafe fn idt_gate_entries_slice(&self) -> &[IdtGateEntry] {
         core::slice::from_raw_parts_mut(self.idt_addr, (self.length / size_of::<IdtGateEntry>() as u16) as usize)
     }

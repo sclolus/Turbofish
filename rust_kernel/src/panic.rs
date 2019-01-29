@@ -1,6 +1,6 @@
 use crate::ffi::c_str;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug, Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ExtendedRegisters {
