@@ -17,13 +17,13 @@ void putchar(char c) {
 void scroll_screen() {
 	u8 *ptr = vga.memory_location;
 
-	memmove((void *)ptr, (void *)(ptr + vga.width * 2), vga.width * (vga.height - 1) * 2);
-	memset((void *)(ptr + (vga.width * (vga.height - 1) * 2)), 0, vga.width * 2);
+	ft_memmove((void *)ptr, (void *)(ptr + vga.width * 2), vga.width * (vga.height - 1) * 2);
+	ft_memset((void *)(ptr + (vga.width * (vga.height - 1) * 2)), 0, vga.width * 2);
 	vga.y -= 1;
 }
 
 void clear_screen() {
-	memset(vga.memory_location, 0, vga.width * vga.height * 2);
+	ft_memset(vga.memory_location, 0, vga.width * vga.height * 2);
 	vga.x = 0;
 	vga.y = 0;
 }
@@ -98,7 +98,7 @@ static u32	extract_modifier(const char *buf)
 	l = 0;
 	while (l < MODIFIER_QUANTITY) {
 		size_t len = strlen(modifier_list[l].s);
-		if (memcmp(modifier_list[l].s, buf, len) == 0) {
+		if (ft_memcmp(modifier_list[l].s, buf, len) == 0) {
 			set_text_color(modifier_list[l].color);
 			return len - 1;
 		}
