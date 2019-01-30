@@ -31,7 +31,8 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
 ifeq ($(DEV), C)
 	SRC_C_KERNEL += debug_center vga_text
 	SRC_ASM_KERNEL += cpuid
-	VPATH += src/boot
+	HEADERS += vga_text.h cpuid.h
+	VPATH += src/debug
 endif
 
 SRC_ASM_KERNEL += init multiboot gdt
