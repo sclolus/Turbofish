@@ -1,6 +1,5 @@
-use super::Io;
-use core::cmp::PartialEq;
 /// See https://wiki.osdev.org/Port_IO
+use super::Io;
 use core::marker::PhantomData;
 
 extern "C" {

@@ -11,7 +11,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
         TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
-        println!("coucou");
         TEXT_MONAD.clear_screen();
     }
 
@@ -436,11 +435,8 @@ impl From<u16> for VbeError {{
         }}
     }}
 }}
-");    
+");
     unsafe { interrupts::enable() };
-    println!("from {}", function!());    
+    println!("from {}", function!());
     loop {}
-    unsafe {
-        TEXT_MONAD.clear_screen();
-    }
 }

@@ -236,12 +236,14 @@ impl VbeMode {
         }
     }
     /// display pixel at linear position pos in pixel unit
+    #[allow(dead_code)]
     fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
             *((self.memory_location + pos * self.bytes_per_pixel) as *mut RGB) = color;
         }
     }
     /// fill screen with color
+    #[allow(dead_code)]
     pub fn fill_screen(&self, color: RGB) {
         for p in 0..self.width * self.height {
             self.put_pixel_lin(p, color);

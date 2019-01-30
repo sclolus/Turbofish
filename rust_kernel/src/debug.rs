@@ -6,6 +6,7 @@ pub const POISON_SLAB: u32 = 0x5a5a5a5a;
 // Then by the type_name instrinsics, get the slice of the full specified name of the function f()
 // we then truncate the slice by the range notation to the name of the current function.
 // That is the slice with 5 characters removed.
+#[allow(unused_macros)]
 macro_rules! function {
     () => {{
         fn f() {}

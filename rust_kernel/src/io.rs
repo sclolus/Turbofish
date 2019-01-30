@@ -1,12 +1,11 @@
 use core::cmp::PartialEq;
 
 pub mod pio;
-pub use pio::{Pio, io_wait};
+pub use pio::{io_wait, Pio};
 
 /// The general Io trait, for In/out objects
 pub trait Io {
-
-    /// Type of the values returned by read and write. 
+    /// Type of the values returned by read and write.
     type Value: PartialEq;
 
     /// Reads from object returning a `Self::value`
@@ -23,9 +22,7 @@ pub struct ReadOnly<I: Io> {
 
 impl<I: Io> ReadOnly<I> {
     pub fn new(inner: I) -> Self {
-        ReadOnly {
-            inner
-        }
+        ReadOnly { inner }
     }
 
     pub fn read(&self) -> I::Value {
@@ -33,21 +30,17 @@ impl<I: Io> ReadOnly<I> {
     }
 }
 
-
 /// This is a struct that encapsulate an object that is Io, in a write only mode
 pub struct WriteOnly<I: Io> {
     inner: I,
 }
 
-impl <I: Io> WriteOnly<I> {
+impl<I: Io> WriteOnly<I> {
     pub fn new(inner: I) -> Self {
-        WriteOnly {
-            inner
-        }
+        WriteOnly { inner }
     }
 
     pub fn write(&mut self, value: I::Value) {
         self.inner.write(value)
     }
-
 }

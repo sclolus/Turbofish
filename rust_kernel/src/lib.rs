@@ -2,6 +2,7 @@
 #![no_std]
 #![feature(core_intrinsics)] // for function! macro
 #![feature(asm)] // for inline asm
+#![allow(unused_unsafe)]
 
 #[macro_use]
 pub mod debug;
@@ -11,13 +12,13 @@ pub mod ffi;
 
 #[macro_use]
 pub mod monitor;
+pub mod interrupts;
+pub mod io;
 pub mod multiboot;
 pub mod panic;
 pub mod registers;
 pub mod rust_main;
 pub mod support; // For Rust lang items
-pub mod io;
-pub mod interrupts;
 
 use core::panic::PanicInfo;
 
