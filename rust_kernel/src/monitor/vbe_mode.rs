@@ -195,7 +195,7 @@ impl From<TextColor> for RGB {
 
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
-    memory_location: usize,
+    memory_location: *mut u8,
     /// in pixel
     width: usize,
     /// in pixel
@@ -215,7 +215,7 @@ pub struct VbeMode {
 }
 
 impl VbeMode {
-    pub fn new(memory_location: usize, width: usize, height: usize, bpp: usize) -> Self {
+    pub fn new(memory_location: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
         Self {
             memory_location,
             width,
@@ -236,15 +236,15 @@ impl VbeMode {
     /// put pixel at position y, x in pixel unit
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel) as *mut u32) =
-                color.0;
+            *((self.memory_location.add(y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel))
+                as *mut u32) = color.0;
         }
     }
     /// display pixel at linear position pos in pixel unit
     #[allow(dead_code)]
     fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + pos * self.bytes_per_pixel) as *mut RGB) = color;
+            *((self.memory_location.add(pos * self.bytes_per_pixel)) as *mut RGB) = color;
         }
     }
     /// fill screen with color
@@ -281,16 +281,16 @@ impl Drawer for VbeMode {
             let screen_size = self.width * self.height * self.bytes_per_pixel;
 
             _sse2_memcpy(
-                self.memory_location as *mut u8,
-                (self.memory_location + line_size) as *const u8,
+                self.memory_location,
+                (self.memory_location.add(line_size)) as *const u8,
                 screen_size - line_size,
             );
-            _sse2_memzero((self.memory_location + screen_size - line_size) as *mut u8, line_size);
+            _sse2_memzero(self.memory_location.add(screen_size - line_size), line_size);
         }
     }
     fn clear_screen(&mut self) {
         unsafe {
-            (self.memory_location as *mut u8).write_bytes(0, self.bytes_per_pixel * self.width * self.height);
+            self.memory_location.write_bytes(0, self.bytes_per_pixel * self.width * self.height);
         }
     }
     fn set_text_color(&mut self, color: TextColor) -> IoResult {
@@ -368,7 +368,7 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
         Ok(VbeMode::new(
-            mode_info.phys_base_ptr as usize,
+            mode_info.phys_base_ptr as *mut u8,
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,
