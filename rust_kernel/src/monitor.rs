@@ -16,6 +16,7 @@ pub trait Drawer {
     fn scroll_screen(&self);
     fn clear_screen(&mut self);
     fn set_text_color(&mut self, color: TextColor) -> IoResult;
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -67,25 +68,6 @@ impl Cursor {
             self.x = x;
             self.y = y;
             Ok(())
-        }
-    }
-    /// advance cursor by 1, return false if need to scroll
-    pub fn forward(&mut self) -> bool {
-        self.x = self.x + 1;
-        if self.x == self.columns {
-            self.cariage_return()
-        } else {
-            true
-        }
-    }
-    /// return false if need to scroll
-    pub fn cariage_return(&mut self) -> bool {
-        self.x = 0;
-        if self.y + 1 == self.lines {
-            false
-        } else {
-            self.y += 1;
-            true
         }
     }
 }
@@ -144,24 +126,49 @@ impl Drawer for TextMonad {
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
         }
     }
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(vga) => vga.refresh_text_line(x1, x2, y),
+            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(x1, x2, y),
+        }
+    }
 }
 
 impl core::fmt::Write for TextMonad {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let mut x_origin: usize = self.cursor.x;
         for c in s.as_bytes() {
             match *c as char {
                 '\n' => {
-                    if !self.cursor.cariage_return() {
+                    if self.cursor.y + 1 == self.cursor.lines {
                         self.scroll_screen();
+                    } else {
+                        self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+                        self.cursor.y += 1;
                     }
+                    self.cursor.x = 0;
+                    x_origin = 0;
                 }
                 _ => {
                     self.draw_character(*c as char, self.cursor.y, self.cursor.x);
-                    if !self.cursor.forward() {
-                        self.scroll_screen();
+
+                    if self.cursor.x + 1 == self.cursor.columns {
+                        if self.cursor.y + 1 == self.cursor.lines {
+                            self.scroll_screen();
+                        } else {
+                            self.refresh_text_line(x_origin, self.cursor.columns, self.cursor.y);
+                            self.cursor.y += 1;
+                        }
+                        self.cursor.x = 0;
+                        x_origin = 0;
+                    } else {
+                        self.cursor.x += 1;
                     }
                 }
             }
+        }
+        if self.cursor.x != x_origin {
+            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
         }
         Ok(())
     }

@@ -60,4 +60,5 @@ impl Drawer for VgaTextMode {
         self.color = u8color;
         Ok(())
     }
+    fn refresh_text_line(&mut self, _x1: usize, _x2: usize, _y: usize) {}
 }

@@ -2,12 +2,15 @@ use super::{Drawer, IoResult, TextColor};
 use crate::ffi::c_char;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
+use core::slice;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
+const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
 
 extern "C" {
-    pub fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
-    pub fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
+    /* Fast and Furious ASM SSE2 method to copy entire buffers */
+    fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
+    fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -195,13 +198,18 @@ impl From<TextColor> for RGB {
 
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
+    /// linear frame buffer address
     memory_location: *mut u8,
+    /// double framebuffer location
+    db_frame_buffer: *mut u8,
     /// in pixel
     width: usize,
     /// in pixel
     height: usize,
     /// in bytes
     bytes_per_pixel: usize,
+    /// bytes_per_line
+    pitch: usize,
     /// in pixel
     x: usize,
     /// in pixel
@@ -216,11 +224,14 @@ pub struct VbeMode {
 
 impl VbeMode {
     pub fn new(memory_location: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
+        let bytes_per_pixel: usize = bpp / 8;
         Self {
             memory_location,
+            db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
             width,
             height,
-            bytes_per_pixel: bpp / 8,
+            bytes_per_pixel: bytes_per_pixel,
+            pitch: width * bytes_per_pixel,
             mode: 0,
             x: 0,
             y: 0,
@@ -229,14 +240,17 @@ impl VbeMode {
             text_color: TextColor::White.into(),
         }
     }
+
     /// return window size in nb char
     pub fn query_window_size(&self) -> (usize, usize) {
         (self.height / self.char_height, self.width / self.char_width)
     }
     /// put pixel at position y, x in pixel unit
+    #[allow(dead_code)]
+    #[inline(always)]
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
-            *((self.memory_location.add(y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel))
+            *((self.db_frame_buffer.add(y * self.pitch + x * self.bytes_per_pixel))
                 as *mut u32) = color.0;
         }
     }
@@ -244,7 +258,7 @@ impl VbeMode {
     #[allow(dead_code)]
     fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
-            *((self.memory_location.add(pos * self.bytes_per_pixel)) as *mut RGB) = color;
+            *((self.db_frame_buffer.add(pos * self.bytes_per_pixel)) as *mut RGB) = color;
         }
     }
     /// fill screen with color
@@ -252,6 +266,16 @@ impl VbeMode {
     pub fn fill_screen(&self, color: RGB) {
         for p in 0..self.width * self.height {
             self.put_pixel_lin(p, color);
+        }
+    }
+    /// refresh global area of framebuffer
+    pub fn refresh_global_area(&self, ptr: *mut u8, len: usize) {
+        unsafe {
+            _sse2_memcpy(
+                self.memory_location.add(ptr as usize),
+                self.db_frame_buffer.add(ptr as usize) as *const u8,
+                len
+             );
         }
     }
 }
@@ -277,25 +301,42 @@ impl Drawer for VbeMode {
     }
     fn scroll_screen(&self) {
         unsafe {
-            let line_size = self.char_height * self.width * self.bytes_per_pixel;
-            let screen_size = self.width * self.height * self.bytes_per_pixel;
+            let line_size = self.pitch * self.char_height;
+            let screen_size = self.pitch * self.height;
 
             _sse2_memcpy(
-                self.memory_location,
-                (self.memory_location.add(line_size)) as *const u8,
+                self.db_frame_buffer,
+                (self.db_frame_buffer.add(line_size)) as *const u8,
                 screen_size - line_size,
             );
-            _sse2_memzero(self.memory_location.add(screen_size - line_size), line_size);
+            _sse2_memzero(self.db_frame_buffer.add(screen_size - line_size), line_size);
         }
+        self.refresh_global_area(0 as *mut u8, self.pitch * self.height);
     }
     fn clear_screen(&mut self) {
         unsafe {
-            self.memory_location.write_bytes(0, self.bytes_per_pixel * self.width * self.height);
+            self.db_frame_buffer.write_bytes(0, self.pitch * self.height);
         }
+        self.refresh_global_area(0 as *mut u8, self.pitch * self.height);
     }
     fn set_text_color(&mut self, color: TextColor) -> IoResult {
         self.text_color = color.into();
         Ok(())
+    }
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+        let lfb = unsafe {
+            slice::from_raw_parts_mut(self.memory_location, self.pitch * self.height)
+        };
+        let db_frame_buffer = unsafe {
+            slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height)
+        };
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            assert!(o1 <= self.pitch * self.height);
+            assert!(o2 <= self.pitch * self.height);
+            lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
+        }
     }
 }
 
