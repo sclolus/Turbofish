@@ -22,12 +22,26 @@ pub unsafe fn disable() {
     asm!("cli" :::: "volatile");
 }
 
+/// Get the current interrupts state
+pub fn get_interrupts_state() -> bool {
+    use crate::registers::Eflags;
+
+    unsafe { Eflags::get_eflags().interrupt_flag() }
+}
+
+/// Restore the interrupts state
+pub unsafe fn restore_interrupts_state(state: bool) {
+    match state {
+        true => enable(),
+        false => disable(),
+    }
+}
+
 /// Wrapper to init the Interrupt Descriptor Table.
 pub unsafe fn init() {
     disable();
 
     let idt = Idtr::load_default_idtr();
-    println!("Current idtr: {:?}", idt);
 
     idt.get_interrupt_table().load_default_interrupt_table();
 

@@ -11,6 +11,7 @@ pub struct Idtr {
     pub idt_addr: *mut IdtGateEntry,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct InterruptTable<'a> {
     entries: &'a mut [IdtGateEntry],
 }
@@ -191,6 +192,11 @@ impl<'a> InterruptTable<'a> {
             *slot = *entry;
             Ok(())
         })
+    }
+
+    /// Returns the InterruptTable as a slice of IdtGateEntry.
+    pub fn as_slice(&self) -> &[IdtGateEntry] {
+        self.entries
     }
 }
 

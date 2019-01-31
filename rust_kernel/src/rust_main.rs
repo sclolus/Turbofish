@@ -1,10 +1,10 @@
 use crate::debug;
 use crate::interrupts;
 use crate::monitor::bmp_loader::*;
+use crate::interrupts::pit::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::timer::Rtc;
-use crate::{interrupts::pit::*, interrupts::*};
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -13,8 +13,11 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
-    save_multiboot_info(multiboot_info);
+    unsafe { interrupts::init() };
+    let idtr = unsafe { interrupts::get_idtr() };
+    let idt = unsafe { idtr.get_interrupt_table() };
 
+    save_multiboot_info(multiboot_info);
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
@@ -473,7 +476,26 @@ impl From<u16> for VbeError {{
         println!("!");
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
-    unsafe { interrupts::enable() };
+
+    println!("from {}", function!());
+    println!("irqs state: {}", interrupts::get_interrupts_state());
+    let _keyboard_port = Pio::<u8>::new(0x60);
+    use crate::interrupts::{pic_8259, pic_8259::*};
+    use crate::io::Pio;
+
+    println!("irq mask: {:b}", master.get_interrupt_mask());
+
+    unsafe {
+        assert_eq!(idt, interrupts::get_idtr().get_interrupt_table());
+        for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
+            println!("{}: {:?}", index, gate);
+        }
+    }
+    let eflags = crate::registers::Eflags::get_eflags();
+    println!("idtr: {:x?}", interrupts::get_idtr());
+    println!("{}", eflags);
+    println!("{:x?}", eflags);
+
     println!("from {}", function!());
     println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {

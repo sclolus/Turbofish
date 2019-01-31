@@ -4,7 +4,7 @@ use core::convert::{From, Into};
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum GateType {
     TaskGate32,
     InterruptGate32,
@@ -44,7 +44,7 @@ impl Into<u8> for GateType {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(C, packed)]
 pub struct IdtGateEntry {
     /// offset bits 0..15. the low part of the address

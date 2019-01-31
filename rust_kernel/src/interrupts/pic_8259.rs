@@ -1,6 +1,7 @@
 /// This files contains the code related to the 8259 Programmable interrupt controller
 /// See https://wiki.osdev.org/PIC.
 use crate::io::{Io, Pio};
+use bit_field::BitField;
 
 #[allow(non_upper_case_globals)]
 pub static mut master: Pic = Pic::new(Pic::MASTER_COMMAND_PORT);
@@ -14,6 +15,8 @@ pub struct Pic {
 
     /// The PIC's data port.
     data: Pio<u8>,
+
+    default_imr: Option<u8>,
 }
 
 impl Pic {
@@ -37,7 +40,7 @@ impl Pic {
 
     /// Creates a new PIC instance with port `port`
     pub const fn new(port: u16) -> Pic {
-        Pic { command: Pio::new(port), data: Pio::new(port + 1) }
+        Pic { command: Pio::new(port), data: Pio::new(port + 1), default_imr: None }
     }
 
     /// Get the interrupt mask of the slave PIC
@@ -77,7 +80,7 @@ pub unsafe fn irq_set_mask(mut irq: u8) {
 }
 
 /// This function will clear the bit `irq`.
-/// Enabling the corresopnding interrupt line.
+/// Enabling the corresponding interrupt line.
 /// if irq < 8, then the master mask is modified.
 /// if irq >= 8 then the slave mask is modified.
 pub unsafe fn irq_clear_mask(mut irq: u8) {
@@ -107,6 +110,14 @@ pub unsafe fn enable_all_interrupts() {
     slave.set_interrupt_mask(0x0);
 }
 
+/// Restores the IMRs of the master and slave PICs to the combined `mask` parameter
+/// The bits 0 to 7 (inclusive) are the master's IMR.
+/// The bits 8 to 15 (inclusive) are the slave's IMR.
+pub unsafe fn restore_masks(mask: u16) {
+    master.set_interrupt_mask(mask.get_bits(0..8) as u8);
+    slave.set_interrupt_mask(mask.get_bits(8..16) as u8);
+}
+
 /// Send end of interrupt from specific IRQ to the PIC.
 /// If the interrupt line is handled by the master chip, only to him the eoi is send.
 /// If the interrupt line is handled by the slave chip, both the slave and the master must be notified.
@@ -125,9 +136,18 @@ pub fn send_eoi(irq: u8) {
 /// and `offset_2` as the vector offset for slave.
 /// Which means that the vectors for master are now: offset_1..=offset_1+7
 /// and for slave: offset_2..=offset_2+7.
+/// It also remember the default IMR of the pics if this is the first call of this function
 pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
     let slave_mask = slave.get_interrupt_mask();
     let master_mask = master.get_interrupt_mask();
+
+    if slave.default_imr.is_none() {
+        slave.default_imr = Some(slave_mask);
+    }
+
+    if master.default_imr.is_none() {
+        master.default_imr = Some(master_mask);
+    }
 
     master.command.write(Pic::INIT);
 
@@ -149,6 +169,24 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
     master.set_interrupt_mask(master_mask);
 }
 
+/// Reset the PICs to the defaults IMR and irq vector offsets
+/// Returning the combined IMRs of the PICs before the reset
+pub unsafe fn reset_to_default() -> u16 {
+    use crate::interrupts;
+
+    let interrupts_state = interrupts::get_interrupts_state();
+    let imrs = (master.get_interrupt_mask() as u16) | ((slave.get_interrupt_mask() as u16) << 8);
+
+    interrupts::disable();
+
+    initialize(0x8, 0x70);
+    master.set_interrupt_mask(master.default_imr.unwrap_or(0x0)); // I don't know which default imr to set if the default_imr hasn't been initialized
+    slave.set_interrupt_mask(slave.default_imr.unwrap_or(0x0));
+
+    interrupts::restore_interrupts_state(interrupts_state);
+    imrs
+}
+
 unsafe fn pic_get_irq_reg(ocw3: u8) -> u16 {
     master.command.write(ocw3);
     slave.command.write(ocw3);
@@ -161,7 +199,7 @@ pub fn get_irr() -> u16 {
     unsafe { pic_get_irq_reg(Pic::PIC_READ_IRR) }
 }
 
-/// Returns the combined value the PICs irq request register
+/// Returns the combined value the PICs in-service register
 pub fn get_isr() -> u16 {
     unsafe { pic_get_irq_reg(Pic::PIC_READ_ISR) }
 }
