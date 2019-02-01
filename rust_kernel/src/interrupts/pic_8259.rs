@@ -111,6 +111,13 @@ pub unsafe fn enable_all_interrupts() {
     slave.set_interrupt_mask(0x0);
 }
 
+/// Gets the combined IMRs of the master and slave PICs
+/// The bits 0 to 7 (inclusive) are the master's IMR.
+/// The bits 8 to 15 (inclusive) are the slave's IMR.
+pub fn get_masks() -> u16 {
+    unsafe { (master.get_interrupt_mask() as u16) | ((slave.get_interrupt_mask() as u16) << 8) }
+}
+
 /// Restores the IMRs of the master and slave PICs to the combined `mask` parameter
 /// The bits 0 to 7 (inclusive) are the master's IMR.
 /// The bits 8 to 15 (inclusive) are the slave's IMR.
@@ -174,7 +181,7 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
 /// Returning the combined IMRs of the PICs before the reset
 pub unsafe fn reset_to_default() -> u16 {
     preserve_interrupts!({
-        let imrs = (master.get_interrupt_mask() as u16) | ((slave.get_interrupt_mask() as u16) << 8);
+        let imrs = get_masks();
 
         interrupts::disable();
 
