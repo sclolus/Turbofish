@@ -120,9 +120,9 @@ impl Eflags {
     }
 
     /// Returns if the cpu supports the cpuid instruction.
-    /// For unknown reasons, even if the cpu does support CPUID instruction, this flags still is false...
+    /// This method relies directly on core. So I'm not sure this should be a EFLAGS method, but it still has semantic sense.
     pub fn cpuid_flag(&self) -> bool {
-        self.inner.get_bit(21)
+        core::arch::x86::has_cpuid()
     }
 }
 

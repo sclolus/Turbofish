@@ -4,6 +4,7 @@
 #![feature(asm)] // for inline asm
 #![feature(try_from)]
 #![allow(unused_unsafe)]
+#![feature(stdsimd)] // for has_cpuid, dafuq rust.
 
 #[macro_use]
 pub mod debug;
