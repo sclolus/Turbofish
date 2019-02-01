@@ -13,13 +13,13 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
-    unsafe { interrupts::init() };
-    let idtr = unsafe { interrupts::get_idtr() };
-    let idt = unsafe { idtr.get_interrupt_table() };
-
     save_multiboot_info(multiboot_info);
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
+
+    unsafe { interrupts::init() };
+    let idtr = unsafe { interrupts::get_idtr() };
+    let _idt = unsafe { idtr.get_interrupt_table() };
     unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
@@ -478,6 +478,7 @@ impl From<u16> for VbeError {{
     }
 
     println!("from {}", function!());
+
     println!("irqs state: {}", interrupts::get_interrupts_state());
     let _keyboard_port = Pio::<u8>::new(0x60);
     use crate::interrupts::{pic_8259, pic_8259::*};
@@ -486,7 +487,7 @@ impl From<u16> for VbeError {{
     println!("irq mask: {:b}", master.get_interrupt_mask());
 
     unsafe {
-        assert_eq!(idt, interrupts::get_idtr().get_interrupt_table());
+        assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
         for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
             println!("{}: {:?}", index, gate);
         }

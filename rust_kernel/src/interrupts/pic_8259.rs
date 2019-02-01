@@ -1,3 +1,4 @@
+use crate::interrupts;
 /// This files contains the code related to the 8259 Programmable interrupt controller
 /// See https://wiki.osdev.org/PIC.
 use crate::io::{Io, Pio};
@@ -172,19 +173,17 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
 /// Reset the PICs to the defaults IMR and irq vector offsets
 /// Returning the combined IMRs of the PICs before the reset
 pub unsafe fn reset_to_default() -> u16 {
-    use crate::interrupts;
+    preserve_interrupts!({
+        let imrs = (master.get_interrupt_mask() as u16) | ((slave.get_interrupt_mask() as u16) << 8);
 
-    let interrupts_state = interrupts::get_interrupts_state();
-    let imrs = (master.get_interrupt_mask() as u16) | ((slave.get_interrupt_mask() as u16) << 8);
+        interrupts::disable();
 
-    interrupts::disable();
+        initialize(0x8, 0x70);
+        master.set_interrupt_mask(master.default_imr.unwrap_or(0x0)); // I don't know which default imr to set if the default_imr hasn't been initialized
+        slave.set_interrupt_mask(slave.default_imr.unwrap_or(0x0));
 
-    initialize(0x8, 0x70);
-    master.set_interrupt_mask(master.default_imr.unwrap_or(0x0)); // I don't know which default imr to set if the default_imr hasn't been initialized
-    slave.set_interrupt_mask(slave.default_imr.unwrap_or(0x0));
-
-    interrupts::restore_interrupts_state(interrupts_state);
-    imrs
+        imrs
+    })
 }
 
 unsafe fn pic_get_irq_reg(ocw3: u8) -> u16 {

@@ -1,15 +1,3 @@
-mod exceptions;
-mod irqs;
-
-pub mod idt;
-pub mod idt_gate_entry;
-pub mod pic_8259;
-pub mod pit;
-
-pub use idt::*;
-pub use idt_gate_entry::*;
-pub use pic_8259::*;
-
 /// Enables interrupts system-wide
 #[inline(always)]
 pub unsafe fn enable() {
@@ -51,3 +39,30 @@ pub unsafe fn init() {
 
     enable();
 }
+
+/// This macro gets the current interrupts state before executing arbitrary code,
+/// it then restores the interrupt state. It helps limiting the boilerplate required to preserve the interrupts.
+#[macro_export]
+macro_rules! preserve_interrupts {
+    ($code: block) => {{
+        use crate::interrupts::{get_interrupts_state, restore_interrupts_state};
+
+        let interrupts_state = get_interrupts_state();
+        let ret = { $code };
+
+        restore_interrupts_state(interrupts_state);
+        ret
+    }};
+}
+
+mod exceptions;
+mod irqs;
+
+pub mod idt;
+pub mod idt_gate_entry;
+pub mod pic_8259;
+pub mod pit;
+
+pub use idt::*;
+pub use idt_gate_entry::*;
+pub use pic_8259::*;

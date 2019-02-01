@@ -182,15 +182,14 @@ pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
     use crate::interrupts;
     use crate::interrupts::pic_8259;
 
-    let interrupts_state = interrupts::get_interrupts_state();
-    interrupts::disable();
+    preserve_interrupts!({
+        interrupts::disable();
+        let imrs = pic_8259::reset_to_default();
 
-    let imrs = pic_8259::reset_to_default();
+        let ret = _real_mode_op(reg, bios_int);
 
-    let ret = _real_mode_op(reg, bios_int);
-    pic_8259::initialize(0x20, 0x28);
-
-    pic_8259::restore_masks(imrs);
-    interrupts::restore_interrupts_state(interrupts_state);
-    ret
+        pic_8259::initialize(0x20, 0x28);
+        pic_8259::restore_masks(imrs);
+        ret
+    })
 }
