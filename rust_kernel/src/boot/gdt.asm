@@ -123,8 +123,8 @@ gdt_end:
 
 segment .text
 
-global init_gdt
-init_gdt:
+global _init_gdt
+_init_gdt:
 	; jmp _start_after_init_gdt	;
 	; mov gdt and gdt info in 0x800
 	mov esi, gdt_start
@@ -135,8 +135,8 @@ init_gdt:
 	lgdt [gdt_info]
 
 	; CS IS CODE SEGMENT REGISTER
-	jmp 0x8:landing
-landing:
+	jmp 0x8:.landing
+.landing:
 
 	; DS, ES, FS and GS ARE DATA SEGMENT REGISTER
 	mov ax, 0x10

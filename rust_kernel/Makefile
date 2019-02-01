@@ -35,7 +35,7 @@ ifeq ($(DEV), C)
 	VPATH += src/debug
 endif
 
-SRC_ASM_KERNEL += init multiboot gdt
+SRC_ASM_KERNEL += init multiboot gdt rust_ld cpu_features
 VPATH += src/boot
 
 SRC_ASM_KERNEL += vbe_font
