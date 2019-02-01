@@ -179,6 +179,7 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
 
 /// Reset the PICs to the defaults IMR and irq vector offsets
 /// Returning the combined IMRs of the PICs before the reset
+/// WARNING: This fonction should not be called if the PICs were never initialized as it would panic.
 pub unsafe fn reset_to_default() -> u16 {
     preserve_interrupts!({
         let imrs = get_masks();
