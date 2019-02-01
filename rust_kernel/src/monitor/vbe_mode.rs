@@ -12,15 +12,12 @@ const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 #[repr(packed)]
-pub struct BmpImage
-{
-    /// file header
+pub struct BmpImage {
     /*0  */ signature: [c_char; 2],
     /*2  */ filesize: u32,
     /*6  */ reserved: u32,
     /*10 */ fileoffset_to_pixelarray: u32,
 
-    /// bitmapinfoheader
     /*14 */ dibheadersize: u32,
     /*18 */ width: u32,
     /*22 */ height: u32,
@@ -265,9 +262,7 @@ impl VbeMode {
         Self {
             memory_location,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
-            graphic_buffer: unsafe {
-                _get_image_buffer(&_binary_medias_asterix_bmp_start, width, height, bpp)
-            },
+            graphic_buffer: unsafe { _get_image_buffer(&_binary_medias_asterix_bmp_start, width, height, bpp) },
             width,
             height,
             bytes_per_pixel: bytes_per_pixel,
@@ -288,8 +283,7 @@ impl VbeMode {
     #[inline(always)]
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
-            *((self.db_frame_buffer.add(y * self.pitch + x * self.bytes_per_pixel))
-                as *mut u32) = color.0;
+            *((self.db_frame_buffer.add(y * self.pitch + x * self.bytes_per_pixel)) as *mut u32) = color.0;
         }
     }
     /*
@@ -338,21 +332,13 @@ impl VbeMode {
     pub fn refresh_screen(&self) {
         // Copy graphic buffer to double buffer
         unsafe {
-            _sse2_memcpy(
-                self.db_frame_buffer,
-                self.graphic_buffer as *const u8,
-                self.pitch * self.height
-             );
+            _sse2_memcpy(self.db_frame_buffer, self.graphic_buffer as *const u8, self.pitch * self.height);
         }
         // Rend all character from character_buffer to db_buffer
         self.render_text_buffer(0, 128 * 48);
         // copy double buffer to linear frame buffer
         unsafe {
-            _sse2_memcpy(
-                self.memory_location,
-                self.db_frame_buffer as *const u8,
-                self.pitch * self.height
-             );
+            _sse2_memcpy(self.memory_location, self.db_frame_buffer as *const u8, self.pitch * self.height);
         }
     }
 }
@@ -386,12 +372,8 @@ impl Drawer for VbeMode {
         Ok(())
     }
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
-        let lfb = unsafe {
-            slice::from_raw_parts_mut(self.memory_location, self.pitch * self.height)
-        };
-        let db_frame_buffer = unsafe {
-            slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height)
-        };
+        let lfb = unsafe { slice::from_raw_parts_mut(self.memory_location, self.pitch * self.height) };
+        let db_frame_buffer = unsafe { slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height) };
         // get characters from character buffer and pixelize it in db_buffer
 
         /*
