@@ -29,6 +29,7 @@ pub enum TextColor {
     Magenta,
     Blue,
     White,
+    Black,
 }
 
 #[macro_export]
@@ -143,7 +144,9 @@ impl core::fmt::Write for TextMonad {
                     if self.cursor.y + 1 == self.cursor.lines {
                         self.scroll_screen();
                     } else {
-                        self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+                        if self.cursor.x != x_origin {
+                            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+                        }
                         self.cursor.y += 1;
                     }
                     self.cursor.x = 0;

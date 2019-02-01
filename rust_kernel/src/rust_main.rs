@@ -12,14 +12,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
         TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
+        TEXT_MONAD.set_text_color(TextColor::Black).unwrap();
         TEXT_MONAD.clear_screen();
-        loop {}
         unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(18.0).unwrap();
     }
-
     //    set_text_color("yellow").unwrap();
 
     /*   match set_text_color("alacrityKikooColor") {

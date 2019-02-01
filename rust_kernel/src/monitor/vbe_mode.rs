@@ -223,6 +223,7 @@ impl From<TextColor> for RGB {
             TextColor::Brown => RGB(0xA52A2A),
             TextColor::Magenta => RGB(0xFF00FF),
             TextColor::White => RGB(0xFFFFFF),
+            TextColor::Black => RGB(0x000000),
         }
     }
 }
@@ -279,13 +280,11 @@ impl VbeMode {
             text_color: TextColor::White.into(),
         }
     }
-
     /// return window size in nb char
     pub fn query_window_size(&self) -> (usize, usize) {
         (self.height / self.char_height, self.width / self.char_width)
     }
     /// put pixel at position y, x in pixel unit
-    #[allow(dead_code)]
     #[inline(always)]
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
@@ -293,6 +292,7 @@ impl VbeMode {
                 as *mut u32) = color.0;
         }
     }
+    /*
     /// display pixel at linear position pos in pixel unit
     #[allow(dead_code)]
     fn put_pixel_lin(&self, pos: usize, color: RGB) {
@@ -307,13 +307,51 @@ impl VbeMode {
             self.put_pixel_lin(p, color);
         }
     }
-    /// refresh global area of framebuffer
-    pub fn refresh_global_area(&self, ptr: *mut u8, len: usize) {
+     */
+    /// Copy characters from characters_buffer to double buffer
+    fn render_text_buffer(&self, x1: usize, x2: usize) {
+        unsafe {
+            for (i, elem) in CHARACTERS_BUFFER[x1..x2].iter().enumerate() {
+                if *elem as u8 == 0 {
+                    continue;
+                }
+                let char_font = _font.get_char(*elem as u8);
+                let cursor_x = (i + x1) % 128;
+                let cursor_y = (i + x1) / 128;
+
+                let mut y = cursor_y * self.char_height;
+                let mut x;
+                for l in char_font {
+                    x = cursor_x * self.char_width;
+                    for shift in (0..8).rev() {
+                        if *l & 1 << shift != 0 {
+                            self.put_pixel(y, x, self.text_color);
+                        }
+                        x += 1;
+                    }
+                    y += 1;
+                }
+            }
+        }
+    }
+    /// refresh framebuffer
+    pub fn refresh_screen(&self) {
+        // Copy graphic buffer to double buffer
         unsafe {
             _sse2_memcpy(
-                self.memory_location.add(ptr as usize),
-                self.db_frame_buffer.add(ptr as usize) as *const u8,
-                len
+                self.db_frame_buffer,
+                self.graphic_buffer as *const u8,
+                self.pitch * self.height
+             );
+        }
+        // Rend all character from character_buffer to db_buffer
+        self.render_text_buffer(0, 128 * 48);
+        // copy double buffer to linear frame buffer
+        unsafe {
+            _sse2_memcpy(
+                self.memory_location,
+                self.db_frame_buffer as *const u8,
+                self.pitch * self.height
              );
         }
     }
@@ -324,46 +362,24 @@ impl Drawer for VbeMode {
         unsafe {
             CHARACTERS_BUFFER[cursor_y * 128 + cursor_x] = c as u8;
         }
-        let char_font;
-        unsafe {
-            char_font = _font.get_char(c as u8);
-        }
-        let mut y = cursor_y * self.char_height;
-        let mut x;
-        for l in char_font {
-            x = cursor_x * self.char_width;
-            for shift in (0..8).rev() {
-                if *l & 1 << shift != 0 {
-                    self.put_pixel(y, x, self.text_color);
-                }
-                x += 1;
-            }
-            y += 1;
-        }
     }
     fn scroll_screen(&self) {
+        // scroll left the character_buffer
+        let m = 128 * (48 - 1);
         unsafe {
-            let line_size = self.pitch * self.char_height;
-            let screen_size = self.pitch * self.height;
-
-            _sse2_memcpy(
-                self.db_frame_buffer,
-                (self.db_frame_buffer.add(line_size)) as *const u8,
-                screen_size - line_size,
-            );
-            _sse2_memzero(self.db_frame_buffer.add(screen_size - line_size), line_size);
+            CHARACTERS_BUFFER[0..m].copy_from_slice(&CHARACTERS_BUFFER[128..m + 128]);
+            for elem in CHARACTERS_BUFFER[m..m + 128].iter_mut() {
+                *elem = 0;
+            }
         }
-        self.refresh_global_area(0 as *mut u8, self.pitch * self.height);
+        self.refresh_screen();
     }
     fn clear_screen(&mut self) {
+        // clean the character buffer
         unsafe {
-            _sse2_memcpy(
-                self.db_frame_buffer,
-                self.graphic_buffer as *const u8,
-                self.height * self.pitch
-            );
+            CHARACTERS_BUFFER = [0u8; 128 * 48];
         }
-        self.refresh_global_area(0 as *mut u8, self.pitch * self.height);
+        self.refresh_screen();
     }
     fn set_text_color(&mut self, color: TextColor) -> IoResult {
         self.text_color = color.into();
@@ -376,11 +392,26 @@ impl Drawer for VbeMode {
         let db_frame_buffer = unsafe {
             slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height)
         };
+        // get characters from character buffer and pixelize it in db_buffer
+
+        /*
+        assert!(x1 < 128);
+        assert!(x2 < 128);
+        assert!(x1 < x2);
+        assert!(y < 48);
+         */
+
+        self.render_text_buffer(y * 128 + x1, y * 128 + x2);
+        // Copy selected area from double buffer to linear frame buffer
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+
+            /*
             assert!(o1 <= self.pitch * self.height);
             assert!(o2 <= self.pitch * self.height);
+            */
+
             lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
         }
     }
