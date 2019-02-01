@@ -13,6 +13,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     unsafe {
         TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         TEXT_MONAD.clear_screen();
+        loop {}
         unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);

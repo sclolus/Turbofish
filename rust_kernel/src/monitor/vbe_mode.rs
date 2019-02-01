@@ -7,10 +7,39 @@ use core::slice;
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+#[repr(packed)]
+pub struct BmpImage
+{
+    /// file header
+    /*0  */ signature: [c_char; 2],
+    /*2  */ filesize: u32,
+    /*6  */ reserved: u32,
+    /*10 */ fileoffset_to_pixelarray: u32,
+
+    /// bitmapinfoheader
+    /*14 */ dibheadersize: u32,
+    /*18 */ width: u32,
+    /*22 */ height: u32,
+    /*24 */ planes: u16,
+    /*26 */ bitsperpixel: u16,
+    /*28 */ compression: u32,
+    /*32 */ imagesize: u32,
+    /*36 */ ypixelpermeter: u32,
+    /*40 */ xpixelpermeter: u32,
+    /*44 */ numcolorspallette: u32,
+    /*48 */ mostimpcolor: u32,
+}
+
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
     fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
     fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
+
+    /* C derived image buffer */
+    fn _get_image_buffer(image_ptr: &BmpImage, width: usize, height: usize, bpp: usize) -> *mut u8;
+    static _binary_medias_asterix_bmp_start: BmpImage;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -202,6 +231,8 @@ pub struct VbeMode {
     memory_location: *mut u8,
     /// double framebuffer location
     db_frame_buffer: *mut u8,
+    /// graphic buffer location
+    graphic_buffer: *mut u8,
     /// in pixel
     width: usize,
     /// in pixel
@@ -228,6 +259,9 @@ impl VbeMode {
         Self {
             memory_location,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
+            graphic_buffer: unsafe {
+                _get_image_buffer(&_binary_medias_asterix_bmp_start, width, height, bpp)
+            },
             width,
             height,
             bytes_per_pixel: bytes_per_pixel,
@@ -315,7 +349,11 @@ impl Drawer for VbeMode {
     }
     fn clear_screen(&mut self) {
         unsafe {
-            self.db_frame_buffer.write_bytes(0, self.pitch * self.height);
+            _sse2_memcpy(
+                self.db_frame_buffer,
+                self.graphic_buffer as *const u8,
+                self.height * self.pitch
+            );
         }
         self.refresh_global_area(0 as *mut u8, self.pitch * self.height);
     }

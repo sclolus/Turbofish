@@ -42,7 +42,9 @@ endif
 SRC_ASM_KERNEL += init multiboot gdt rust_ld cpu_features
 VPATH += src/boot
 
+SRC_C_KERNEL += bmp_load
 SRC_ASM_KERNEL += vbe_font
+HEADERS += bmp.h
 VPATH += src/monitor
 
 SRC_C_KERNEL += panic
@@ -99,7 +101,7 @@ symbol_gen_exe:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-$(kernel): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i386/libasm_i386.a
+$(kernel): $(OBJ_DIR)/asterix.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
@@ -129,6 +131,9 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
+
+$(OBJ_DIR)/asterix.o: medias/asterix.bmp
+	ld -m elf_i386 -r -b binary $< -o $@
 
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
