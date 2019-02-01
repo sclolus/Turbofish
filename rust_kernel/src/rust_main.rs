@@ -5,7 +5,7 @@ use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::{interrupts::pit::*, interrupts::*};
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     save_multiboot_info(multiboot_info);
 
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
@@ -453,5 +453,5 @@ impl From<u16> for VbeError {{
     println!("pit: {:?}", PIT0);
 
     println!("{:?} ms ellapsed", debug::bench_end());
-    loop {}
+    0
 }

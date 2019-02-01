@@ -11,7 +11,8 @@ global _start_after_init_gdt
 
 global init
 init:
-	cli							; block interrupts
+	; block interrupts
+	cli
 
 	push ebp
 	mov ebp, esp
@@ -19,24 +20,26 @@ init:
 	; set EIP of caller GRUB on stack at 0, prevent infinite loop for backtrace
 	mov [ebp + 4], dword 0
 
-	mov esp, stack_space            ; set stack pointer for a temporary stack
+	; set stack pointer for a temporary stack
+	mov esp, stack_space
 
 	call disable_cursor
 
 	call init_gdt
 
-; SS IS STACK SEGMENT REGISTER
+	; SS IS STACK SEGMENT REGISTER
 	mov ax, 0x18
 	mov ss, ax
 
-;	put the stack at 4MB
+	; put the stack at 4MB
 	mov esp, 0x600000
 
-;	call debug_center
+	; call debug_center
 	call set_sse2
 	call enable_avx
 
-	finit						; init the FPU
+	; init the FPU
+	finit
 
 	; EBX contain pointer to GRUB multiboot information (preserved register)
 	push ebx
@@ -47,8 +50,10 @@ init:
 	call _align_stack
 
 	add esp, 12
-	; ---------------------------------------------------------------------
-	jmp $
+
+.idle:
+	hlt
+	jmp .idle
 
 set_sse2:
 	push ebp
