@@ -5,6 +5,8 @@ use core::result::Result;
 use core::slice;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
+
+// TODO Cannot allocated dynamiquely for the moment
 const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
 
 #[derive(Copy, Clone, Debug)]
@@ -225,6 +227,9 @@ impl From<TextColor> for RGB {
     }
 }
 
+// TODO With allocator, this array will be dynamiquely allocated and be part of VbeMode structure
+static mut CHARACTERS_BUFFER: [u8; 128 * 48] = [0u8; 128 * 48];
+
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
     /// linear frame buffer address
@@ -316,6 +321,9 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     fn draw_character(&self, c: char, cursor_y: usize, cursor_x: usize) {
+        unsafe {
+            CHARACTERS_BUFFER[cursor_y * 128 + cursor_x] = c as u8;
+        }
         let char_font;
         unsafe {
             char_font = _font.get_char(c as u8);
