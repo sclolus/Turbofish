@@ -42,9 +42,7 @@ endif
 SRC_ASM_KERNEL += init multiboot gdt rust_ld cpu_features
 VPATH += src/boot
 
-SRC_C_KERNEL += bmp_load
 SRC_ASM_KERNEL += vbe_font
-HEADERS += bmp.h
 VPATH += src/monitor
 
 SRC_C_KERNEL += panic

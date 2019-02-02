@@ -3,6 +3,8 @@ use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
 
+pub mod bmp_loader;
+
 pub type IoResult = core::result::Result<(), IoError>;
 
 #[derive(Debug, Copy, Clone)]

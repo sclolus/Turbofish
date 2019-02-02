@@ -1,5 +1,6 @@
 use super::{Drawer, IoResult, TextColor};
 use crate::ffi::c_char;
+use crate::monitor::bmp_loader::load_image_buffer;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
 use core::slice;
@@ -9,36 +10,10 @@ const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 // TODO Cannot allocated dynamiquely for the moment
 const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
 
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
-pub struct BmpImage {
-    /*0  */ signature: [c_char; 2],
-    /*2  */ filesize: u32,
-    /*6  */ reserved: u32,
-    /*10 */ fileoffset_to_pixelarray: u32,
-
-    /*14 */ dibheadersize: u32,
-    /*18 */ width: u32,
-    /*22 */ height: u32,
-    /*24 */ planes: u16,
-    /*26 */ bitsperpixel: u16,
-    /*28 */ compression: u32,
-    /*32 */ imagesize: u32,
-    /*36 */ ypixelpermeter: u32,
-    /*40 */ xpixelpermeter: u32,
-    /*44 */ numcolorspallette: u32,
-    /*48 */ mostimpcolor: u32,
-}
-
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
     fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
     fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
-
-    /* C derived image buffer */
-    fn _get_image_buffer(image_ptr: &BmpImage, width: usize, height: usize, bpp: usize) -> *mut u8;
-    static _binary_medias_asterix_bmp_start: BmpImage;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -265,7 +240,7 @@ impl VbeMode {
         Self {
             memory_location,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
-            graphic_buffer: unsafe { _get_image_buffer(&_binary_medias_asterix_bmp_start, width, height, bpp) },
+            graphic_buffer: load_image_buffer(width, height, bpp).unwrap(),
             width,
             height,
             bytes_per_pixel: bytes_per_pixel,
