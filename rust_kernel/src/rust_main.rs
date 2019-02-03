@@ -1,5 +1,6 @@
 use crate::debug;
 use crate::interrupts;
+use crate::monitor::bmp_loader::do_fistfuckix;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::{interrupts::pit::*, interrupts::*};
@@ -14,6 +15,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         TEXT_MONAD.set_text_color(ColorName::Black).unwrap();
         TEXT_MONAD.clear_screen();
+        TEXT_MONAD.draw_graphic_buffer(do_fistfuckix).unwrap();
         unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);

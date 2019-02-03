@@ -1,6 +1,5 @@
-use super::{Drawer, IoResult, ColorName};
+use super::{AdvancedGraphic, ColorName, Drawer, IoResult};
 use crate::ffi::c_char;
-use crate::monitor::bmp_loader::load_image_buffer;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
 use core::slice;
@@ -9,6 +8,9 @@ const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
 const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
+
+// TODO Cannot allocated dynamiquely for the moment
+const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x2000000 as *mut u8;
 
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
@@ -240,7 +242,7 @@ impl VbeMode {
         Self {
             linear_frame_buffer,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
-            graphic_buffer: load_image_buffer(width, height, bpp).unwrap(),
+            graphic_buffer: GRAPHIC_BUFFER_LOCATION,
             width,
             height,
             bytes_per_pixel: bytes_per_pixel,
@@ -351,6 +353,9 @@ impl Drawer for VbeMode {
         self.text_color = color.into();
         Ok(())
     }
+}
+
+impl AdvancedGraphic for VbeMode {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
         let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
         let db_frame_buffer = unsafe { slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height) };
@@ -369,6 +374,15 @@ impl Drawer for VbeMode {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
             lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
+        }
+    }
+    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
+        match f(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8) {
+            Ok(()) => {
+                self.refresh_screen();
+                Ok(())
+            }
+            Err(e) => Err(e),
         }
     }
 }

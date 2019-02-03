@@ -11,6 +11,8 @@ pub type IoResult = core::result::Result<(), IoError>;
 pub enum IoError {
     ColorNotSupported,
     CursorOutOfBound,
+    GraphicModeNotFounded,
+    NotSupported,
 }
 
 trait Drawer {
@@ -18,7 +20,6 @@ trait Drawer {
     fn scroll_screen(&self);
     fn clear_screen(&mut self);
     fn set_text_color(&mut self, color: ColorName) -> IoResult;
-    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
 }
 
 trait CursorControler {
@@ -26,6 +27,11 @@ trait CursorControler {
     fn is_cursor_moved(&mut self, x_origin: usize) -> usize;
     fn cursor_forward(&mut self, x_origin: usize) -> usize;
     fn cursor_cariage_return(&mut self, x_origin: usize) -> usize;
+}
+
+trait AdvancedGraphic {
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
+    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -111,6 +117,10 @@ impl TextMonad {
     pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
         CursorControler::set_cursor_position(self, x, y)
     }
+    /// fill the graphic buffer with a custom fn
+    pub fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
+        AdvancedGraphic::draw_graphic_buffer(self, f)
+    }
 }
 
 /// private
@@ -142,13 +152,6 @@ impl Drawer for TextMonad {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.set_text_color(color),
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
-        }
-    }
-    /// command a refresh for selected graphic area
-    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
-        match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.refresh_text_line(x1, x2, y),
-            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(x1, x2, y),
         }
     }
 }
@@ -191,6 +194,24 @@ impl CursorControler for TextMonad {
         }
         self.cursor.x = 0;
         0
+    }
+}
+
+/// private
+impl AdvancedGraphic for TextMonad {
+    /// command a refresh for selected graphic area
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => (),
+            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(x1, x2, y),
+        }
+    }
+    /// fill the graphic buffer with a custom function
+    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
+            DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(f),
+        }
     }
 }
 
