@@ -1,4 +1,4 @@
-use super::{Drawer, IoResult, TextColor};
+use super::{Drawer, IoResult, ColorName};
 use crate::ffi::c_char;
 use crate::monitor::bmp_loader::load_image_buffer;
 use crate::registers::{BaseRegisters, _real_mode_op};
@@ -187,18 +187,18 @@ impl Font {
 #[derive(Debug, Copy, Clone)]
 pub struct RGB(pub u32);
 
-impl From<TextColor> for RGB {
-    fn from(c: TextColor) -> Self {
+impl From<ColorName> for RGB {
+    fn from(c: ColorName) -> Self {
         match c {
-            TextColor::Red => RGB(0xFF0000),
-            TextColor::Green => RGB(0x00FF00),
-            TextColor::Blue => RGB(0x0000FF),
-            TextColor::Yellow => RGB(0xFFFF00),
-            TextColor::Cyan => RGB(0x00FFFF),
-            TextColor::Brown => RGB(0xA52A2A),
-            TextColor::Magenta => RGB(0xFF00FF),
-            TextColor::White => RGB(0xFFFFFF),
-            TextColor::Black => RGB(0x000000),
+            ColorName::Red => RGB(0xFF0000),
+            ColorName::Green => RGB(0x00FF00),
+            ColorName::Blue => RGB(0x0000FF),
+            ColorName::Yellow => RGB(0xFFFF00),
+            ColorName::Cyan => RGB(0x00FFFF),
+            ColorName::Brown => RGB(0xA52A2A),
+            ColorName::Magenta => RGB(0xFF00FF),
+            ColorName::White => RGB(0xFFFFFF),
+            ColorName::Black => RGB(0x000000),
         }
     }
 }
@@ -209,7 +209,7 @@ static mut CHARACTERS_BUFFER: [u8; 128 * 48] = [0u8; 128 * 48];
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
     /// linear frame buffer address
-    memory_location: *mut u8,
+    linear_frame_buffer: *mut u8,
     /// double framebuffer location
     db_frame_buffer: *mut u8,
     /// graphic buffer location
@@ -235,10 +235,10 @@ pub struct VbeMode {
 }
 
 impl VbeMode {
-    pub fn new(memory_location: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
+    pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
         Self {
-            memory_location,
+            linear_frame_buffer,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
             graphic_buffer: load_image_buffer(width, height, bpp).unwrap(),
             width,
@@ -249,7 +249,7 @@ impl VbeMode {
             char_height: unsafe { _font_height },
             columns: unsafe { width / _font_width },
             lines: unsafe { height / _font_height },
-            text_color: TextColor::White.into(),
+            text_color: ColorName::White.into(),
         }
     }
     /// return window size in nb char
@@ -317,7 +317,7 @@ impl VbeMode {
         self.render_text_buffer(0, self.columns * self.lines);
         // copy double buffer to linear frame buffer
         unsafe {
-            _sse2_memcpy(self.memory_location, self.db_frame_buffer as *const u8, self.pitch * self.height);
+            _sse2_memcpy(self.linear_frame_buffer, self.db_frame_buffer as *const u8, self.pitch * self.height);
         }
     }
 }
@@ -347,29 +347,27 @@ impl Drawer for VbeMode {
         }
         self.refresh_screen();
     }
-    fn set_text_color(&mut self, color: TextColor) -> IoResult {
+    fn set_text_color(&mut self, color: ColorName) -> IoResult {
         self.text_color = color.into();
         Ok(())
     }
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
-        let lfb = unsafe { slice::from_raw_parts_mut(self.memory_location, self.pitch * self.height) };
+        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
         let db_frame_buffer = unsafe { slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height) };
+        let graphic_buffer = unsafe { slice::from_raw_parts_mut(self.graphic_buffer, self.pitch * self.height) };
+
+        // Copy selected area from graphic buffer to double frame buffer
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            db_frame_buffer[o1..o2].copy_from_slice(&graphic_buffer[o1..o2]);
+        }
         // get characters from character buffer and pixelize it in db_buffer
-        /*
-        assert!(x1 < self.columns);
-        assert!(x2 < self.columns);
-        assert!(x1 < x2);
-        assert!(y < self.lines);
-         */
         self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
         // Copy selected area from double buffer to linear frame buffer
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            /*
-            assert!(o1 <= self.pitch * self.height);
-            assert!(o2 <= self.pitch * self.height);
-            */
             lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
         }
     }

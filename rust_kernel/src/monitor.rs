@@ -17,7 +17,7 @@ trait Drawer {
     fn draw_character(&self, c: char, y: usize, x: usize);
     fn scroll_screen(&self);
     fn clear_screen(&mut self);
-    fn set_text_color(&mut self, color: TextColor) -> IoResult;
+    fn set_text_color(&mut self, color: ColorName) -> IoResult;
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
 }
 
@@ -29,7 +29,7 @@ trait CursorControler {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum TextColor {
+pub enum ColorName {
     Red,
     Green,
     Yellow,
@@ -100,7 +100,7 @@ impl TextMonad {
         Ok(())
     }
     /// basic, simple
-    pub fn set_text_color(&mut self, color: TextColor) -> IoResult {
+    pub fn set_text_color(&mut self, color: ColorName) -> IoResult {
         Drawer::set_text_color(self, color)
     }
     /// void the screen
@@ -138,7 +138,7 @@ impl Drawer for TextMonad {
         self.set_cursor_position(0, 0).unwrap();
     }
     /// basic, simple
-    fn set_text_color(&mut self, color: TextColor) -> IoResult {
+    fn set_text_color(&mut self, color: ColorName) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.set_text_color(color),
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
