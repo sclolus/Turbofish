@@ -52,8 +52,8 @@ macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
         unsafe {
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!($($arg)*)).unwrap();
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!("\n")).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!("\n")).unwrap();
         }
     })
 }
@@ -62,7 +62,7 @@ macro_rules! println {
 macro_rules! print {
     ($($arg:tt)*) => ({
         unsafe {
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
         }
     })
 }
@@ -87,7 +87,7 @@ pub struct TextMonad {
     cursor: Cursor,
 }
 
-pub static mut TEXT_MONAD: TextMonad = TextMonad::new();
+pub static mut SCREEN_MONAD: TextMonad = TextMonad::new();
 
 /// public
 impl TextMonad {
