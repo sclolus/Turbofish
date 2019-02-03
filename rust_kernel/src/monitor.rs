@@ -82,15 +82,15 @@ enum DrawingMode {
 }
 
 /// Control the cursor and can put text on screen thanks to its drawer slave
-pub struct TextMonad {
+pub struct ScreenModad {
     drawing_mode: DrawingMode,
     cursor: Cursor,
 }
 
-pub static mut SCREEN_MONAD: TextMonad = TextMonad::new();
+pub static mut SCREEN_MONAD: ScreenModad = ScreenModad::new();
 
 /// public
-impl TextMonad {
+impl ScreenModad {
     /// default VGA_TEXT_MODE
     const fn new() -> Self {
         let vga = VgaTextMode::new();
@@ -124,7 +124,7 @@ impl TextMonad {
 }
 
 /// private
-impl Drawer for TextMonad {
+impl Drawer for ScreenModad {
     /// put a character into the screen
     fn draw_character(&self, c: char, y: usize, x: usize) {
         match &self.drawing_mode {
@@ -157,7 +157,7 @@ impl Drawer for TextMonad {
 }
 
 /// private
-impl CursorControler for TextMonad {
+impl CursorControler for ScreenModad {
     /// set manualy position of cursor
     fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
         if x >= self.cursor.columns || y >= self.cursor.lines {
@@ -198,7 +198,7 @@ impl CursorControler for TextMonad {
 }
 
 /// private
-impl AdvancedGraphic for TextMonad {
+impl AdvancedGraphic for ScreenModad {
     /// command a refresh for selected graphic area
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
         match &mut self.drawing_mode {
@@ -216,7 +216,7 @@ impl AdvancedGraphic for TextMonad {
 }
 
 /// common Write implementation
-impl core::fmt::Write for TextMonad {
+impl core::fmt::Write for ScreenModad {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         let mut x_origin: usize = self.cursor.x;
         for c in s.as_bytes() {
