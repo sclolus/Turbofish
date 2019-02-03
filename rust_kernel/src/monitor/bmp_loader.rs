@@ -2,10 +2,6 @@ use super::{IoError, IoResult};
 use crate::ffi::c_char;
 use core::slice;
 
-extern "C" {
-    static _binary_medias_asterix_bmp_start: BmpImage;
-}
-
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
@@ -50,16 +46,15 @@ fn fill_image(output: *mut u8, image: *const u8, width: usize, height: usize, bp
 }
 
 // This function implemente no scale change, only work with 1024 * 768 * (24b || 32b bitmap)
-pub fn do_fistfuckix(buffer: *mut u8, width: usize, height: usize, bpp: usize) -> IoResult {
+pub fn draw_image(image: *const BmpImage, buffer: *mut u8, width: usize, height: usize, bpp: usize) -> IoResult {
     if bpp != 32 && bpp != 24 {
         Err(IoError::NotSupported)
     } else {
-        let header = unsafe { _binary_medias_asterix_bmp_start };
+        let header = unsafe { *image };
         if header.bitsperpixel != 24 && header.width != 1024 && header.height != 768 {
             Err(IoError::NotSupported)
         } else {
-            let ptr = unsafe { &_binary_medias_asterix_bmp_start as *const BmpImage as *const u8 };
-
+            let ptr = image as *const u8;
             fill_image(
                 buffer,
                 unsafe { ptr.add(header.fileoffset_to_pixelarray as usize) },

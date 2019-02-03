@@ -31,7 +31,7 @@ trait CursorControler {
 
 trait AdvancedGraphic {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
-    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult;
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -118,8 +118,8 @@ impl TextMonad {
         CursorControler::set_cursor_position(self, x, y)
     }
     /// fill the graphic buffer with a custom fn
-    pub fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
-        AdvancedGraphic::draw_graphic_buffer(self, f)
+    pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+        AdvancedGraphic::draw_graphic_buffer(self, closure)
     }
 }
 
@@ -207,10 +207,10 @@ impl AdvancedGraphic for TextMonad {
         }
     }
     /// fill the graphic buffer with a custom function
-    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
-            DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(f),
+            DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
         }
     }
 }

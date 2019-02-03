@@ -376,8 +376,8 @@ impl AdvancedGraphic for VbeMode {
             lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
         }
     }
-    fn draw_graphic_buffer(&mut self, f: fn(*mut u8, usize, usize, usize) -> IoResult) -> IoResult {
-        match f(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8) {
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+        match closure(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8) {
             Ok(()) => {
                 self.refresh_screen();
                 Ok(())
