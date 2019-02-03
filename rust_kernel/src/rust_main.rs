@@ -443,6 +443,35 @@ impl From<u16> for VbeError {{
 }}
 ");
     }
+    unsafe {
+        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
+        print!("H");
+        SCREEN_MONAD.set_text_color(ColorName::Red).unwrap();
+        print!("E");
+        SCREEN_MONAD.set_text_color(ColorName::Blue).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(ColorName::Yellow).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(ColorName::Cyan).unwrap();
+        print!("O");
+        SCREEN_MONAD.set_text_color(ColorName::Brown).unwrap();
+        print!(" ");
+        SCREEN_MONAD.set_text_color(ColorName::Magenta).unwrap();
+        print!("W");
+        SCREEN_MONAD.set_text_color(ColorName::White).unwrap();
+        print!("O");
+        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
+        print!("R");
+        SCREEN_MONAD.set_text_color(ColorName::Red).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(ColorName::Blue).unwrap();
+        print!("D");
+        SCREEN_MONAD.set_text_color(ColorName::Yellow).unwrap();
+        print!(" ");
+        SCREEN_MONAD.set_text_color(ColorName::Cyan).unwrap();
+        println!("!");
+        SCREEN_MONAD.set_text_color(ColorName::White).unwrap();
+    }
     unsafe { interrupts::enable() };
     println!("from {}", function!());
     println!("{:?} ms ellapsed", debug::bench_end());
@@ -459,6 +488,7 @@ impl From<u16> for VbeError {{
                 draw_image(&_binary_medias_wanggle_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
+        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
     }
     0
 }
