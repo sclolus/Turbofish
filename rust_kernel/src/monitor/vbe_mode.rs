@@ -206,9 +206,7 @@ impl From<ColorName> for RGB {
 }
 
 // TODO With allocator, this array will be dynamiquely allocated and be part of VbeMode structure
-// TODO With allocator, RGB(0) expr will be disapeer to ColorName::Black.into():
-// Cur_Err -> calls in statics are limited to constant functions, tuple structs and tuple variants
-static mut CHARACTERS_BUFFER: [(u8, RGB); 128 * 48] = [(0u8, RGB(0)); 128 * 48];
+static mut CHARACTERS_BUFFER: [Option<(u8, RGB)>; 128 * 48] = [None; 128 * 48];
 
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
@@ -247,7 +245,7 @@ impl VbeMode {
             graphic_buffer: GRAPHIC_BUFFER_LOCATION,
             width,
             height,
-            bytes_per_pixel: bytes_per_pixel,
+            bytes_per_pixel,
             pitch: width * bytes_per_pixel,
             char_width: unsafe { _font_width },
             char_height: unsafe { _font_height },
@@ -288,10 +286,10 @@ impl VbeMode {
     /// Copy characters from characters_buffer to double buffer
     fn render_text_buffer(&self, x1: usize, x2: usize) {
         unsafe {
-            for (i, elem) in CHARACTERS_BUFFER[x1..x2].iter().enumerate() {
-                if (*elem).0 as u8 == 0 {
-                    continue;
-                }
+            for (i, elem) in CHARACTERS_BUFFER[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
+                Some(x) => Some((i, x)),
+                None => None,
+            }) {
                 let char_font = _font.get_char((*elem).0 as u8);
                 let cursor_x = (i + x1) % self.columns;
                 let cursor_y = (i + x1) / self.columns;
@@ -329,16 +327,16 @@ impl VbeMode {
 impl Drawer for VbeMode {
     fn draw_character(&self, c: char, cursor_y: usize, cursor_x: usize) {
         unsafe {
-            CHARACTERS_BUFFER[cursor_y * self.columns + cursor_x] = (c as u8, self.text_color);
+            CHARACTERS_BUFFER[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
         }
     }
     fn scroll_screen(&self) {
         // scroll left the character_buffer
         let m = self.columns * (self.lines - 1);
         unsafe {
-            CHARACTERS_BUFFER[0..m].copy_from_slice(&CHARACTERS_BUFFER[self.columns..m + self.columns]);
-            for elem in CHARACTERS_BUFFER[m..m + self.columns].iter_mut() {
-                *elem = (0, ColorName::Black.into());
+            CHARACTERS_BUFFER[0..m].copy_from_slice(&CHARACTERS_BUFFER[self.columns..]);
+            for elem in CHARACTERS_BUFFER[m..].iter_mut() {
+                *elem = None;
             }
         }
         self.refresh_screen();
@@ -347,7 +345,7 @@ impl Drawer for VbeMode {
         // clean the character buffer
         unsafe {
             // TODO remove magic when dynamicely allocated
-            CHARACTERS_BUFFER = [(0u8, ColorName::Black.into()); 128 * 48];
+            CHARACTERS_BUFFER = [None; 128 * 48];
         }
         self.refresh_screen();
     }
@@ -379,13 +377,9 @@ impl AdvancedGraphic for VbeMode {
         }
     }
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
-        match closure(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8) {
-            Ok(()) => {
-                self.refresh_screen();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        closure(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8)?;
+        self.refresh_screen();
+        Ok(())
     }
 }
 
