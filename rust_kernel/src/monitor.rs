@@ -22,13 +22,6 @@ trait Drawer {
     fn set_text_color(&mut self, color: ColorName) -> IoResult;
 }
 
-trait CursorControler {
-    fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult;
-    fn is_cursor_moved(&mut self, x_origin: usize) -> usize;
-    fn cursor_forward(&mut self, x_origin: usize) -> usize;
-    fn cursor_cariage_return(&mut self, x_origin: usize) -> usize;
-}
-
 trait AdvancedGraphic {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
@@ -89,8 +82,8 @@ pub struct ScreenModad {
 
 pub static mut SCREEN_MONAD: ScreenModad = ScreenModad::new();
 
-/// public
 impl ScreenModad {
+    // public methods
     /// default VGA_TEXT_MODE
     const fn new() -> Self {
         let vga = VgaTextMode::new();
@@ -113,13 +106,48 @@ impl ScreenModad {
     pub fn clear_screen(&mut self) {
         Drawer::clear_screen(self);
     }
-    /// set manualy position of cursor
-    pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
-        CursorControler::set_cursor_position(self, x, y)
-    }
     /// fill the graphic buffer with a custom fn
     pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         AdvancedGraphic::draw_graphic_buffer(self, closure)
+    }
+    /// set manualy position of cursor
+    pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
+        if x >= self.cursor.columns || y >= self.cursor.lines {
+            Err(IoError::CursorOutOfBound)
+        } else {
+            self.cursor.x = x;
+            self.cursor.y = y;
+            Ok(())
+        }
+    }
+
+    // private methods
+    /// check if cursor has moved
+    fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
+        if self.cursor.x != x_origin {
+            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+        }
+        self.cursor.x
+    }
+    /// advance cursor by 1
+    fn cursor_forward(&mut self, x_origin: usize) -> usize {
+        if self.cursor.x + 1 == self.cursor.columns {
+            self.cursor_cariage_return(x_origin)
+        } else {
+            self.cursor.x += 1;
+            x_origin
+        }
+    }
+    /// new line
+    fn cursor_cariage_return(&mut self, x_origin: usize) -> usize {
+        if self.cursor.y + 1 == self.cursor.lines {
+            self.scroll_screen();
+        } else {
+            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+            self.cursor.y += 1;
+        }
+        self.cursor.x = 0;
+        0
     }
 }
 
@@ -153,47 +181,6 @@ impl Drawer for ScreenModad {
             DrawingMode::Vga(vga) => vga.set_text_color(color),
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
         }
-    }
-}
-
-/// private
-impl CursorControler for ScreenModad {
-    /// set manualy position of cursor
-    fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
-        if x >= self.cursor.columns || y >= self.cursor.lines {
-            Err(IoError::CursorOutOfBound)
-        } else {
-            self.cursor.x = x;
-            self.cursor.y = y;
-            Ok(())
-        }
-    }
-    /// check if cursor has moved
-    fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
-        if self.cursor.x != x_origin {
-            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
-        }
-        self.cursor.x
-    }
-    /// advance cursor by 1
-    fn cursor_forward(&mut self, x_origin: usize) -> usize {
-        if self.cursor.x + 1 == self.cursor.columns {
-            self.cursor_cariage_return(x_origin)
-        } else {
-            self.cursor.x += 1;
-            x_origin
-        }
-    }
-    /// new line
-    fn cursor_cariage_return(&mut self, x_origin: usize) -> usize {
-        if self.cursor.y + 1 == self.cursor.lines {
-            self.scroll_screen();
-        } else {
-            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
-            self.cursor.y += 1;
-        }
-        self.cursor.x = 0;
-        0
     }
 }
 
