@@ -102,3 +102,17 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
     trace_back(ext_reg.new_ebp as *const u32);
     loop {}
 }
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+#[no_mangle]
+fn panic(info: &PanicInfo) -> ! {
+    println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
+    let ebp: *const u32;
+    unsafe {
+        asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel")
+    }
+    trace_back(ebp);
+    loop {}
+}

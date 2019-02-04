@@ -21,12 +21,3 @@ pub mod registers;
 pub mod rust_main;
 pub mod support; // For Rust lang items
 pub mod timer;
-
-use core::panic::PanicInfo;
-
-#[panic_handler]
-#[no_mangle]
-fn panic(_info: &PanicInfo) -> ! {
-    print!("Just a panic, not a SegFault");
-    loop {}
-}
