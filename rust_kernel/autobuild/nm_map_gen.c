@@ -323,6 +323,10 @@ int			main(int argc, char *argv[])
 			sprintf(final_buf, "\t{0x%s, '%s', \"%s\"},\n",
 					tab[0], tab[1], tab[2]);
 			write_line(fd_file_map, final_buf);
+		} else if (i == 2){
+			sprintf(final_buf, "\t{0x%s, '%s', \"%s\"},\n",
+					tab[0], tab[1], "");
+			write_line(fd_file_map, final_buf);
 		} else {
 			printf("bad size array\n");
 		}
