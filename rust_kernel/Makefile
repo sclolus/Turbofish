@@ -16,6 +16,7 @@ ASMFLAGS = -f elf
 
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
+	ASMFLAGS += -g
 else ifeq ($(OPTIM),yes)
 # -fno-omit-frame-pointer keep good call trace for panic()
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
