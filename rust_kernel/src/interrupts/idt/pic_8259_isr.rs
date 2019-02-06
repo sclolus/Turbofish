@@ -1,6 +1,5 @@
 /// See https://wiki.osdev.org/ISR
 use crate::ffi::*;
-use crate::io::{Io, Pio};
 
 extern "C" {
     pub(super) fn _isr_timer();
@@ -25,18 +24,6 @@ extern "C" {
 #[no_mangle]
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
-    unsafe {
-        let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
-        println!("From interrupt: {}", core::str::from_utf8_unchecked(slice))
-    }
-}
-
-#[no_mangle]
-extern "C" fn keyboard_interrupt_handler(interrupt_name: *const u8) {
-    println!("in keyboard context");
-    let keyboard_port = Pio::<u8>::new(0x60);
-
-    keyboard_port.read();
     unsafe {
         let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
         println!("From interrupt: {}", core::str::from_utf8_unchecked(slice))

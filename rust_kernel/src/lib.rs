@@ -25,3 +25,4 @@ pub mod panic;
 pub mod registers;
 pub mod rust_main;
 pub mod timer;
+pub mod keyboard;
