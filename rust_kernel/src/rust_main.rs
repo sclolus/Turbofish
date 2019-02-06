@@ -30,7 +30,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(18.0).unwrap();
+        PIT0.start_at_frequency(1000.0).unwrap();
     }
     debug::bench_start();
     for _i in 0..3 {
@@ -477,7 +477,7 @@ impl From<u16> for VbeError {{
     println!("from {}", function!());
     println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
-        PIT0.start_at_frequency(10000.).unwrap();
+        PIT0.start_at_frequency(1000.).unwrap();
     }
     debug::bench_start();
     println!("pit: {:?}", PIT0);
