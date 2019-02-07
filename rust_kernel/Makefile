@@ -14,6 +14,9 @@ LDFLAGS = -m elf_i386 -n --gc-sections
 
 ASMFLAGS = -f elf
 
+### GDB CONFIG ###
+GDB_TCP_PORT = 9000
+
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
@@ -128,3 +131,6 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 
 exec:
 	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
+
+exec_gdb:
+	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf

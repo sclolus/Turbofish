@@ -1,0 +1,7 @@
+target remote tcp::9000
+symbol-file -readnow build/kernel.elf
+#add-symbol-file build/kernel.elf 0x100000
+set disassembly-flavor intel
+hbreak get_eflags
+layout asm
+layout regs
