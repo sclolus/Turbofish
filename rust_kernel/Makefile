@@ -52,9 +52,13 @@ VPATH += src/system
 SRC_ASM_KERNEL += idt
 VPATH += src/interrupts
 
+SRC_PICTURES += asterix wanggle
+VPATH += medias
+
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
 OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_KERNEL)))))
+OBJ_PICTURES	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_PICTURES)))))
 
 target := $(arch)
 custom_target := $(arch).json
@@ -75,6 +79,7 @@ all: symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
 common_clean:
 	rm -f $(OBJ_C_KERNEL)
 	rm -f $(OBJ_ASM_KERNEL)
+	rm -f $(OBJ_PICTURES)
 	rm -f nm.res
 	rm -f nm_map_gen
 	rm -f $(kernel)
@@ -99,7 +104,7 @@ symbol_gen_exe:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-$(kernel): $(OBJ_DIR)/asterix.o $(OBJ_DIR)/wanggle.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i386/libasm_i386.a
+$(kernel): $(OBJ_PICTURES) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i386/libasm_i386.a
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
@@ -130,10 +135,7 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_DIR)/asterix.o: medias/asterix.bmp
-	ld -m elf_i386 -r -b binary $< -o $@
-
-$(OBJ_DIR)/wanggle.o: medias/wanggle.bmp
+$(OBJ_DIR)/%.o: %.bmp Makefile
 	ld -m elf_i386 -r -b binary $< -o $@
 
 exec:
