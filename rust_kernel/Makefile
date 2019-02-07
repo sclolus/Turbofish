@@ -50,6 +50,7 @@ SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
 SRC_C_KERNEL += panic
+
 SRC_ASM_KERNEL += real_mode_call io align_stack
 VPATH += src/system
 
@@ -64,6 +65,9 @@ VPATH += src/math
 
 SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias
+
+SRC_ASM_KERNEL += paging
+VPATH += src/mm
 
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
@@ -159,3 +163,6 @@ exec:
 
 exec_gdb:
 	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
+
+tests:
+	cargo test

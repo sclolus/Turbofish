@@ -2,6 +2,7 @@ use crate::debug;
 use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
+use crate::mm;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
@@ -118,5 +119,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);
+
+    unsafe {
+        mm::init_paging().unwrap();
+    }
     0
 }

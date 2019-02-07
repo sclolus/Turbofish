@@ -7,6 +7,7 @@
 #![allow(unused_unsafe)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
+// #![deny(missing_docs)]
 
 #[macro_use]
 pub mod utils;
@@ -34,5 +35,7 @@ pub mod registers;
 pub mod rust_main;
 pub mod tests;
 pub mod timer;
+#[macro_use]
+pub mod mm;
 
 pub mod test_helpers;
