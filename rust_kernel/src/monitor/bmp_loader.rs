@@ -3,8 +3,7 @@ use crate::ffi::c_char;
 use core::slice;
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct BmpImage {
     /*0  */ signature: [c_char; 2],
     /*2  */ filesize: u32,

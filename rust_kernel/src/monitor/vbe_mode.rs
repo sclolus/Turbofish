@@ -19,8 +19,7 @@ extern "C" {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct VbeInfo {
     /*0  */ pub vbe_signature: [c_char; 4], //db 'VESA' ; VBE Signature
     /*4  */ pub vbe_version: u16, //dw 0300h ; vbe version
@@ -87,8 +86,7 @@ impl VbeInfo {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct ModeInfo {
     /// Mandatory information for all VBE revisions
     mode_attributes: u16, // dw ? ; mode attributes
@@ -145,8 +143,7 @@ pub struct ModeInfo {
 define_raw_data!(ModeInfoReserved4, 189);
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct CrtcInfo {
     horizontal_total: u16,      //dw ?  ; Horizontal total in pixels
     horizontal_sync_start: u16, //dw ?  ; Horizontal sync start in pixels
