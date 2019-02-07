@@ -447,6 +447,33 @@ impl From<u16> for VbeError {{
 }}
 ");
     }
+    println!("from {}", function!());
+
+    println!("irqs state: {}", interrupts::get_interrupts_state());
+    let _keyboard_port = Pio::<u8>::new(0x60);
+    use crate::interrupts::{pic_8259, pic_8259::*};
+    use crate::io::Pio;
+
+    println!("irq mask: {:b}", master.get_interrupt_mask());
+
+    unsafe {
+        assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
+        for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
+            println!("{}: {:?}", index, gate);
+        }
+    }
+    let eflags = crate::registers::Eflags::get_eflags();
+    println!("idtr: {:x?}", interrupts::get_idtr());
+    println!("{}", eflags);
+    println!("{:x?}", eflags);
+
+    println!("from {}", function!());
+    println!("{:?} ms ellapsed", debug::bench_end());
+    unsafe {
+        PIT0.start_at_frequency(10000.).unwrap();
+    }
+    debug::bench_start();
+    println!("pit: {:?}", PIT0);
     unsafe {
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("H");
@@ -476,36 +503,6 @@ impl From<u16> for VbeError {{
         println!("!");
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
-
-    println!("from {}", function!());
-
-    println!("irqs state: {}", interrupts::get_interrupts_state());
-    let _keyboard_port = Pio::<u8>::new(0x60);
-    use crate::interrupts::{pic_8259, pic_8259::*};
-    use crate::io::Pio;
-
-    println!("irq mask: {:b}", master.get_interrupt_mask());
-
-    unsafe {
-        assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
-        for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
-            println!("{}: {:?}", index, gate);
-        }
-    }
-    let eflags = crate::registers::Eflags::get_eflags();
-    println!("idtr: {:x?}", interrupts::get_idtr());
-    println!("{}", eflags);
-    println!("{:x?}", eflags);
-
-    println!("from {}", function!());
-    println!("{:?} ms ellapsed", debug::bench_end());
-    unsafe {
-        PIT0.start_at_frequency(1000.).unwrap();
-    }
-    debug::bench_start();
-    println!("pit: {:?}", PIT0);
-
-    println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
