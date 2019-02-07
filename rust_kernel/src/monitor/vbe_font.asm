@@ -1,5 +1,15 @@
 [BITS 32]
 segment .data
+align 16
+
+GLOBAL _font_width
+_font_width dd 8
+
+GLOBAL _font_height
+_font_height dd 16
+
+times 8 db 0
+
 GLOBAL _font
 ; Typical fonts are sized 8 * 16
 _font: times 512 db 0 ; (16 * 32)

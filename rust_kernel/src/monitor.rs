@@ -3,23 +3,32 @@ use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
 
+pub mod bmp_loader;
+
 pub type IoResult = core::result::Result<(), IoError>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum IoError {
     ColorNotSupported,
     CursorOutOfBound,
+    GraphicModeNotFounded,
+    NotSupported,
 }
 
-pub trait Drawer {
+trait Drawer {
     fn draw_character(&self, c: char, y: usize, x: usize);
     fn scroll_screen(&self);
     fn clear_screen(&mut self);
-    fn set_text_color(&mut self, color: TextColor) -> IoResult;
+    fn set_text_color(&mut self, color: Color) -> IoResult;
+}
+
+trait AdvancedGraphic {
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum TextColor {
+pub enum Color {
     Red,
     Green,
     Yellow,
@@ -28,6 +37,7 @@ pub enum TextColor {
     Magenta,
     Blue,
     White,
+    Black,
 }
 
 #[macro_export]
@@ -35,8 +45,8 @@ macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
         unsafe {
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!($($arg)*)).unwrap();
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!("\n")).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!("\n")).unwrap();
         }
     })
 }
@@ -45,7 +55,7 @@ macro_rules! println {
 macro_rules! print {
     ($($arg:tt)*) => ({
         unsafe {
-            core::fmt::write(&mut $crate::monitor::TEXT_MONAD, format_args!($($arg)*)).unwrap();
+            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
         }
     })
 }
@@ -59,56 +69,28 @@ struct Cursor {
     pub lines: usize,
 }
 
-impl Cursor {
-    pub fn set_position(&mut self, x: usize, y: usize) -> IoResult {
-        if x >= self.columns || y >= self.lines {
-            Err(IoError::CursorOutOfBound)
-        } else {
-            self.x = x;
-            self.y = y;
-            Ok(())
-        }
-    }
-    /// advance cursor by 1, return false if need to scroll
-    pub fn forward(&mut self) -> bool {
-        self.x = self.x + 1;
-        if self.x == self.columns {
-            self.cariage_return()
-        } else {
-            true
-        }
-    }
-    /// return false if need to scroll
-    pub fn cariage_return(&mut self) -> bool {
-        self.x = 0;
-        if self.y + 1 == self.lines {
-            false
-        } else {
-            self.y += 1;
-            true
-        }
-    }
-}
-
 enum DrawingMode {
     Vga(VgaTextMode),
     Vbe(VbeMode),
 }
 
 /// Control the cursor and can put text on screen thanks to its drawer slave
-pub struct TextMonad {
+pub struct ScreenModad {
     drawing_mode: DrawingMode,
     cursor: Cursor,
 }
 
-pub static mut TEXT_MONAD: TextMonad = TextMonad::new();
+pub static mut SCREEN_MONAD: ScreenModad = ScreenModad::new();
 
-impl TextMonad {
+impl ScreenModad {
+    // public methods
+    /// default VGA_TEXT_MODE
     const fn new() -> Self {
         let vga = VgaTextMode::new();
         let (lines, columns) = vga.query_window_size();
         Self { drawing_mode: DrawingMode::Vga(vga), cursor: Cursor { x: 0, y: 0, columns, lines } }
     }
+    /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
         self.drawing_mode = DrawingMode::Vbe(vbe);
@@ -116,29 +98,85 @@ impl TextMonad {
         self.cursor = Cursor { x: 0, y: 0, columns, lines };
         Ok(())
     }
+    /// basic, simple
+    pub fn set_text_color(&mut self, color: Color) -> IoResult {
+        Drawer::set_text_color(self, color)
+    }
+    /// void the screen
+    pub fn clear_screen(&mut self) {
+        Drawer::clear_screen(self);
+    }
+    /// fill the graphic buffer with a custom fn
+    pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+        AdvancedGraphic::draw_graphic_buffer(self, closure)
+    }
+    /// set manualy position of cursor
+    pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
+        if x >= self.cursor.columns || y >= self.cursor.lines {
+            Err(IoError::CursorOutOfBound)
+        } else {
+            self.cursor.x = x;
+            self.cursor.y = y;
+            Ok(())
+        }
+    }
+
+    // private methods
+    /// check if cursor has moved
+    fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
+        if self.cursor.x != x_origin {
+            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+        }
+        self.cursor.x
+    }
+    /// advance cursor by 1
+    fn cursor_forward(&mut self, x_origin: usize) -> usize {
+        if self.cursor.x + 1 == self.cursor.columns {
+            self.cursor_cariage_return(x_origin)
+        } else {
+            self.cursor.x += 1;
+            x_origin
+        }
+    }
+    /// new line
+    fn cursor_cariage_return(&mut self, x_origin: usize) -> usize {
+        if self.cursor.y + 1 == self.cursor.lines {
+            self.scroll_screen();
+        } else {
+            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
+            self.cursor.y += 1;
+        }
+        self.cursor.x = 0;
+        0
+    }
 }
 
-impl Drawer for TextMonad {
+/// private
+impl Drawer for ScreenModad {
+    /// put a character into the screen
     fn draw_character(&self, c: char, y: usize, x: usize) {
         match &self.drawing_mode {
             DrawingMode::Vga(vga) => vga.draw_character(c, y, x),
             DrawingMode::Vbe(vbe) => vbe.draw_character(c, y, x),
         }
     }
+    /// just scroll a bit
     fn scroll_screen(&self) {
         match &self.drawing_mode {
             DrawingMode::Vga(vga) => vga.scroll_screen(),
             DrawingMode::Vbe(vbe) => vbe.scroll_screen(),
         }
     }
+    /// void the screen
     fn clear_screen(&mut self) {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.clear_screen(),
             DrawingMode::Vbe(vbe) => vbe.clear_screen(),
         }
-        self.cursor.set_position(0, 0).unwrap();
+        self.set_cursor_position(0, 0).unwrap();
     }
-    fn set_text_color(&mut self, color: TextColor) -> IoResult {
+    /// basic, simple
+    fn set_text_color(&mut self, color: Color) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.set_text_color(color),
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
@@ -146,23 +184,38 @@ impl Drawer for TextMonad {
     }
 }
 
-impl core::fmt::Write for TextMonad {
+/// private
+impl AdvancedGraphic for ScreenModad {
+    /// command a refresh for selected graphic area
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => (),
+            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(x1, x2, y),
+        }
+    }
+    /// fill the graphic buffer with a custom function
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
+            DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
+        }
+    }
+}
+
+/// common Write implementation
+impl core::fmt::Write for ScreenModad {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let mut x_origin: usize = self.cursor.x;
         for c in s.as_bytes() {
             match *c as char {
-                '\n' => {
-                    if !self.cursor.cariage_return() {
-                        self.scroll_screen();
-                    }
-                }
+                '\n' => x_origin = self.cursor_cariage_return(x_origin),
                 _ => {
                     self.draw_character(*c as char, self.cursor.y, self.cursor.x);
-                    if !self.cursor.forward() {
-                        self.scroll_screen();
-                    }
+                    x_origin = self.cursor_forward(x_origin);
                 }
             }
         }
+        self.is_cursor_moved(x_origin);
         Ok(())
     }
 }

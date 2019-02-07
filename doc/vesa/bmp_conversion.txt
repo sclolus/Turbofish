@@ -1,0 +1,1 @@
+convert input.bmp -verbose -depth 24 -compress None -depth 24 +matte output.bmp

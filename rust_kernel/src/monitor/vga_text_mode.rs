@@ -1,4 +1,4 @@
-use super::{Drawer, IoError, IoResult, TextColor};
+use super::{Color, Drawer, IoError, IoResult};
 
 extern "C" {
     pub fn ft_memset(p: *mut u8, val: i32, len: usize) -> *mut u8;
@@ -46,15 +46,15 @@ impl Drawer for VgaTextMode {
             ft_memset(self.memory_location, 0, WIDTH * HEIGHT * 2);
         }
     }
-    fn set_text_color(&mut self, color: TextColor) -> IoResult {
+    fn set_text_color(&mut self, color: Color) -> IoResult {
         let u8color: u8 = match color {
-            TextColor::Blue => 11,
-            TextColor::Green => 10,
-            TextColor::Yellow => 14,
-            TextColor::Cyan => 3,
-            TextColor::Red => 4,
-            TextColor::Magenta => 13,
-            TextColor::White => 7,
+            Color::Blue => 11,
+            Color::Green => 10,
+            Color::Yellow => 14,
+            Color::Cyan => 3,
+            Color::Red => 4,
+            Color::Magenta => 13,
+            Color::White => 7,
             _ => return Err(IoError::ColorNotSupported),
         };
         self.color = u8color;

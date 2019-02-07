@@ -1,18 +1,25 @@
-use super::{Drawer, IoResult, TextColor};
+use super::{AdvancedGraphic, Color, Drawer, IoResult};
 use crate::ffi::c_char;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
+use core::slice;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
+// TODO Cannot allocated dynamiquely for the moment
+const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
+
+// TODO Cannot allocated dynamiquely for the moment
+const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x2000000 as *mut u8;
+
 extern "C" {
-    pub fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
-    pub fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
+    /* Fast and Furious ASM SSE2 method to copy entire buffers */
+    fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
+    fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct VbeInfo {
     /*0  */ pub vbe_signature: [c_char; 4], //db 'VESA' ; VBE Signature
     /*4  */ pub vbe_version: u16, //dw 0300h ; vbe version
@@ -79,8 +86,7 @@ impl VbeInfo {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct ModeInfo {
     /// Mandatory information for all VBE revisions
     mode_attributes: u16, // dw ? ; mode attributes
@@ -137,8 +143,7 @@ pub struct ModeInfo {
 define_raw_data!(ModeInfoReserved4, 189);
 
 #[derive(Copy, Clone, Debug)]
-#[repr(C)]
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct CrtcInfo {
     horizontal_total: u16,      //dw ?  ; Horizontal total in pixels
     horizontal_sync_start: u16, //dw ?  ; Horizontal sync start in pixels
@@ -162,10 +167,13 @@ static mut CRTC_INFO: Option<CrtcInfo> = None;
 
 extern "C" {
     static _font: Font;
+    static _font_width: usize;
+    static _font_height: usize;
 }
 
 /// structure contains font for the 255 ascii char
 #[repr(C)]
+// TODO Must be declared dynamiquely and remove 16 magic
 struct Font(pub [u8; 16 * 256]);
 
 impl Font {
@@ -178,55 +186,69 @@ impl Font {
 #[derive(Debug, Copy, Clone)]
 pub struct RGB(pub u32);
 
-impl From<TextColor> for RGB {
-    fn from(c: TextColor) -> Self {
+impl From<Color> for RGB {
+    fn from(c: Color) -> Self {
         match c {
-            TextColor::Red => RGB(0xFF0000),
-            TextColor::Green => RGB(0x00FF00),
-            TextColor::Blue => RGB(0x0000FF),
-            TextColor::Yellow => RGB(0xFFFF00),
-            TextColor::Cyan => RGB(0x00FFFF),
-            TextColor::Brown => RGB(0xA52A2A),
-            TextColor::Magenta => RGB(0xFF00FF),
-            TextColor::White => RGB(0xFFFFFF),
+            Color::Red => RGB(0xFF0000),
+            Color::Green => RGB(0x00FF00),
+            Color::Blue => RGB(0x0000FF),
+            Color::Yellow => RGB(0xFFFF00),
+            Color::Cyan => RGB(0x00FFFF),
+            Color::Brown => RGB(0xA52A2A),
+            Color::Magenta => RGB(0xFF00FF),
+            Color::White => RGB(0xFFFFFF),
+            Color::Black => RGB(0x000000),
         }
     }
 }
 
+// TODO With allocator, this array will be dynamiquely allocated and be part of VbeMode structure
+static mut CHARACTERS_BUFFER: [Option<(u8, RGB)>; 128 * 48] = [None; 128 * 48];
+
 #[derive(Debug, Copy, Clone)]
 pub struct VbeMode {
-    memory_location: usize,
+    /// linear frame buffer address
+    linear_frame_buffer: *mut u8,
+    /// double framebuffer location
+    db_frame_buffer: *mut u8,
+    /// graphic buffer location
+    graphic_buffer: *mut u8,
     /// in pixel
     width: usize,
     /// in pixel
     height: usize,
     /// in bytes
     bytes_per_pixel: usize,
-    /// in pixel
-    x: usize,
-    /// in pixel
-    y: usize,
+    /// bytes_per_line
+    pitch: usize,
     /// in pixel
     char_height: usize,
     /// in pixel
     char_width: usize,
-    mode: u16,
+    /// characters per columns
+    columns: usize,
+    /// number of characters lines
+    lines: usize,
+    /// current text color
     text_color: RGB,
 }
 
 impl VbeMode {
-    pub fn new(memory_location: usize, width: usize, height: usize, bpp: usize) -> Self {
+    pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
+        let bytes_per_pixel: usize = bpp / 8;
         Self {
-            memory_location,
+            linear_frame_buffer,
+            db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
+            graphic_buffer: GRAPHIC_BUFFER_LOCATION,
             width,
             height,
-            bytes_per_pixel: bpp / 8,
-            mode: 0,
-            x: 0,
-            y: 0,
-            char_width: 8,
-            char_height: 16,
-            text_color: TextColor::White.into(),
+            bytes_per_pixel,
+            pitch: width * bytes_per_pixel,
+            char_width: unsafe { _font_width },
+            char_height: unsafe { _font_height },
+            columns: unsafe { width / _font_width },
+            lines: unsafe { height / _font_height },
+            text_color: Color::White.into(),
         }
     }
     /// return window size in nb char
@@ -234,19 +256,22 @@ impl VbeMode {
         (self.height / self.char_height, self.width / self.char_width)
     }
     /// put pixel at position y, x in pixel unit
+    #[inline(always)]
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + y * self.width * self.bytes_per_pixel + x * self.bytes_per_pixel) as *mut u32) =
-                color.0;
+            *((self.db_frame_buffer.add(y * self.pitch + x * self.bytes_per_pixel)) as *mut u32) = color.0;
         }
     }
+    /*
+    TODO Cannot manage properly without Dynamic allocator
     /// display pixel at linear position pos in pixel unit
     #[allow(dead_code)]
     fn put_pixel_lin(&self, pos: usize, color: RGB) {
         unsafe {
-            *((self.memory_location + pos * self.bytes_per_pixel) as *mut RGB) = color;
+            *((self.db_frame_buffer.add(pos * self.bytes_per_pixel)) as *mut RGB) = color;
         }
     }
+    TODO Cannot manage properly without Dynamic allocator
     /// fill screen with color
     #[allow(dead_code)]
     pub fn fill_screen(&self, color: RGB) {
@@ -254,47 +279,103 @@ impl VbeMode {
             self.put_pixel_lin(p, color);
         }
     }
+     */
+    /// Copy characters from characters_buffer to double buffer
+    fn render_text_buffer(&self, x1: usize, x2: usize) {
+        unsafe {
+            for (i, elem) in CHARACTERS_BUFFER[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
+                Some(x) => Some((i, x)),
+                None => None,
+            }) {
+                let char_font = _font.get_char((*elem).0 as u8);
+                let cursor_x = (i + x1) % self.columns;
+                let cursor_y = (i + x1) / self.columns;
+
+                let mut y = cursor_y * self.char_height;
+                let mut x;
+                for l in char_font {
+                    x = cursor_x * self.char_width;
+                    for shift in (0..8).rev() {
+                        if *l & 1 << shift != 0 {
+                            self.put_pixel(y, x, (*elem).1);
+                        }
+                        x += 1;
+                    }
+                    y += 1;
+                }
+            }
+        }
+    }
+    /// refresh framebuffer
+    pub fn refresh_screen(&self) {
+        // Copy graphic buffer to double buffer
+        unsafe {
+            _sse2_memcpy(self.db_frame_buffer, self.graphic_buffer as *const u8, self.pitch * self.height);
+        }
+        // Rend all character from character_buffer to db_buffer
+        self.render_text_buffer(0, self.columns * self.lines);
+        // copy double buffer to linear frame buffer
+        unsafe {
+            _sse2_memcpy(self.linear_frame_buffer, self.db_frame_buffer as *const u8, self.pitch * self.height);
+        }
+    }
 }
 
 impl Drawer for VbeMode {
     fn draw_character(&self, c: char, cursor_y: usize, cursor_x: usize) {
-        let char_font;
         unsafe {
-            char_font = _font.get_char(c as u8);
-        }
-        let mut y = cursor_y * self.char_height;
-        let mut x;
-        for l in char_font {
-            x = cursor_x * self.char_width;
-            for shift in (0..8).rev() {
-                if *l & 1 << shift != 0 {
-                    self.put_pixel(y, x, self.text_color);
-                }
-                x += 1;
-            }
-            y += 1;
+            CHARACTERS_BUFFER[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
         }
     }
     fn scroll_screen(&self) {
+        // scroll left the character_buffer
+        let m = self.columns * (self.lines - 1);
         unsafe {
-            let line_size = self.char_height * self.width * self.bytes_per_pixel;
-            let screen_size = self.width * self.height * self.bytes_per_pixel;
-
-            _sse2_memcpy(
-                self.memory_location as *mut u8,
-                (self.memory_location + line_size) as *const u8,
-                screen_size - line_size,
-            );
-            _sse2_memzero((self.memory_location + screen_size - line_size) as *mut u8, line_size);
+            CHARACTERS_BUFFER[0..m].copy_from_slice(&CHARACTERS_BUFFER[self.columns..]);
+            for elem in CHARACTERS_BUFFER[m..].iter_mut() {
+                *elem = None;
+            }
         }
+        self.refresh_screen();
     }
     fn clear_screen(&mut self) {
+        // clean the character buffer
         unsafe {
-            (self.memory_location as *mut u8).write_bytes(0, self.bytes_per_pixel * self.width * self.height);
+            // TODO remove magic when dynamicely allocated
+            CHARACTERS_BUFFER = [None; 128 * 48];
+        }
+        self.refresh_screen();
+    }
+    fn set_text_color(&mut self, color: Color) -> IoResult {
+        self.text_color = color.into();
+        Ok(())
+    }
+}
+
+impl AdvancedGraphic for VbeMode {
+    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
+        let db_frame_buffer = unsafe { slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height) };
+        let graphic_buffer = unsafe { slice::from_raw_parts_mut(self.graphic_buffer, self.pitch * self.height) };
+
+        // Copy selected area from graphic buffer to double frame buffer
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            db_frame_buffer[o1..o2].copy_from_slice(&graphic_buffer[o1..o2]);
+        }
+        // get characters from character buffer and pixelize it in db_buffer
+        self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
+        // Copy selected area from double buffer to linear frame buffer
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
         }
     }
-    fn set_text_color(&mut self, color: TextColor) -> IoResult {
-        self.text_color = color.into();
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+        closure(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8)?;
+        self.refresh_screen();
         Ok(())
     }
 }
@@ -304,7 +385,6 @@ fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(
      ** AL == 4Fh: ** Function is supported
      ** AH == 00h: Function call successful
      */
-
     unsafe {
         let res = _real_mode_op(reg, bios_int);
         if res & 0xFF != 0x4F || res & 0xFF00 != 0x00 {
@@ -368,7 +448,7 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
         Ok(VbeMode::new(
-            mode_info.phys_base_ptr as usize,
+            mode_info.phys_base_ptr as *mut u8,
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,

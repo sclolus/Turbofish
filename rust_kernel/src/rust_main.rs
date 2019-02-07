@@ -1,8 +1,14 @@
 use crate::debug;
 use crate::interrupts;
+use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::{interrupts::pit::*, interrupts::*};
+
+extern "C" {
+    static _binary_medias_asterix_bmp_start: BmpImage;
+    static _binary_medias_wanggle_bmp_start: BmpImage;
+}
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
@@ -11,26 +17,20 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
-        TEXT_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
-        TEXT_MONAD.clear_screen();
+        SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+        SCREEN_MONAD.clear_screen();
+        SCREEN_MONAD
+            .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+                draw_image(&_binary_medias_asterix_bmp_start, buffer, width, height, bpp)
+            })
+            .unwrap();
+
         unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(18.0).unwrap();
     }
-
-    //    set_text_color("yellow").unwrap();
-
-    /*   match set_text_color("alacrityKikooColor") {
-        Ok(()) => (),
-        Err(e) => println!("{:?}", e),
-    }
-    match set_text_color("brown") {
-        Ok(()) => (),
-        Err(e) => println!("{:?}", e),
-    }
-    */
-    //init_graphic_mode(Some(0x118)).unwrap();
     debug::bench_start();
     for _i in 0..3 {
         println!("
@@ -443,6 +443,35 @@ impl From<u16> for VbeError {{
 }}
 ");
     }
+    unsafe {
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+        print!("H");
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
+        print!("E");
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+        print!("O");
+        SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
+        print!(" ");
+        SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
+        print!("W");
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
+        print!("O");
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+        print!("R");
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
+        print!("L");
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+        print!("D");
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
+        print!(" ");
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+        println!("!");
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
+    }
     unsafe { interrupts::enable() };
     println!("from {}", function!());
     println!("{:?} ms ellapsed", debug::bench_end());
@@ -454,7 +483,12 @@ impl From<u16> for VbeError {{
 
     println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
-        PIT0.start_at_frequency(1.).unwrap();
+        SCREEN_MONAD
+            .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+                draw_image(&_binary_medias_wanggle_bmp_start, buffer, width, height, bpp)
+            })
+            .unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
     0
 }

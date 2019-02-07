@@ -32,8 +32,8 @@ _init:
 	mov ax, 0x18
 	mov ss, ax
 
-	; put the stack at 6MB
-	mov esp, 0x600000
+	; put the stack at 8MB
+	mov esp, 0x800000
 
 	call _set_sse
 	call _set_avx
