@@ -10,17 +10,17 @@ pub struct BmpImage {
     /*6  */ reserved: u32,
     /*10 */ fileoffset_to_pixelarray: u32,
 
-    /*14 */ dibheadersize: u32,
+    /*14 */ dib_header_size: u32,
     /*18 */ width: u32,
     /*22 */ height: u32,
     /*24 */ planes: u16,
-    /*26 */ bitsperpixel: u16,
+    /*26 */ bits_per_pixel: u16,
     /*28 */ compression: u32,
-    /*32 */ imagesize: u32,
-    /*36 */ ypixelpermeter: u32,
-    /*40 */ xpixelpermeter: u32,
-    /*44 */ numcolorspallette: u32,
-    /*48 */ mostimpcolor: u32,
+    /*32 */ image_size: u32,
+    /*36 */ y_pixel_parameter: u32,
+    /*40 */ x_pixel_parameter: u32,
+    /*44 */ num_colors_pallette: u32,
+    /*48 */ most_important_color: u32,
 }
 
 // Last pixel line of bitmap format is the first line of standard screen format
@@ -50,7 +50,7 @@ pub fn draw_image(image: *const BmpImage, buffer: *mut u8, width: usize, height:
         Err(IoError::NotSupported)
     } else {
         let header = unsafe { *image };
-        if header.bitsperpixel != 24 && header.width != 1024 && header.height != 768 {
+        if header.bits_per_pixel != 24 && header.width != 1024 && header.height != 768 {
             Err(IoError::NotSupported)
         } else {
             let ptr = image as *const u8;
