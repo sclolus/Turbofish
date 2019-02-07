@@ -18,7 +18,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
     unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
-        SCREEN_MONAD.set_text_color(ColorName::Blue).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         SCREEN_MONAD.clear_screen();
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
@@ -444,33 +444,33 @@ impl From<u16> for VbeError {{
 ");
     }
     unsafe {
-        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("H");
-        SCREEN_MONAD.set_text_color(ColorName::Red).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
         print!("E");
-        SCREEN_MONAD.set_text_color(ColorName::Blue).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         print!("L");
-        SCREEN_MONAD.set_text_color(ColorName::Yellow).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
         print!("L");
-        SCREEN_MONAD.set_text_color(ColorName::Cyan).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
         print!("O");
-        SCREEN_MONAD.set_text_color(ColorName::Brown).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
         print!(" ");
-        SCREEN_MONAD.set_text_color(ColorName::Magenta).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
         print!("W");
-        SCREEN_MONAD.set_text_color(ColorName::White).unwrap();
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
         print!("O");
-        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("R");
-        SCREEN_MONAD.set_text_color(ColorName::Red).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
         print!("L");
-        SCREEN_MONAD.set_text_color(ColorName::Blue).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         print!("D");
-        SCREEN_MONAD.set_text_color(ColorName::Yellow).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
         print!(" ");
-        SCREEN_MONAD.set_text_color(ColorName::Cyan).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
         println!("!");
-        SCREEN_MONAD.set_text_color(ColorName::White).unwrap();
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
     unsafe { interrupts::enable() };
     println!("from {}", function!());
@@ -488,7 +488,7 @@ impl From<u16> for VbeError {{
                 draw_image(&_binary_medias_wanggle_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
-        SCREEN_MONAD.set_text_color(ColorName::Green).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
     0
 }

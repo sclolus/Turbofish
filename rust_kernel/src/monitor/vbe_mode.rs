@@ -1,4 +1,4 @@
-use super::{AdvancedGraphic, ColorName, Drawer, IoResult};
+use super::{AdvancedGraphic, Color, Drawer, IoResult};
 use crate::ffi::c_char;
 use crate::registers::{BaseRegisters, _real_mode_op};
 use core::result::Result;
@@ -186,18 +186,18 @@ impl Font {
 #[derive(Debug, Copy, Clone)]
 pub struct RGB(pub u32);
 
-impl From<ColorName> for RGB {
-    fn from(c: ColorName) -> Self {
+impl From<Color> for RGB {
+    fn from(c: Color) -> Self {
         match c {
-            ColorName::Red => RGB(0xFF0000),
-            ColorName::Green => RGB(0x00FF00),
-            ColorName::Blue => RGB(0x0000FF),
-            ColorName::Yellow => RGB(0xFFFF00),
-            ColorName::Cyan => RGB(0x00FFFF),
-            ColorName::Brown => RGB(0xA52A2A),
-            ColorName::Magenta => RGB(0xFF00FF),
-            ColorName::White => RGB(0xFFFFFF),
-            ColorName::Black => RGB(0x000000),
+            Color::Red => RGB(0xFF0000),
+            Color::Green => RGB(0x00FF00),
+            Color::Blue => RGB(0x0000FF),
+            Color::Yellow => RGB(0xFFFF00),
+            Color::Cyan => RGB(0x00FFFF),
+            Color::Brown => RGB(0xA52A2A),
+            Color::Magenta => RGB(0xFF00FF),
+            Color::White => RGB(0xFFFFFF),
+            Color::Black => RGB(0x000000),
         }
     }
 }
@@ -248,7 +248,7 @@ impl VbeMode {
             char_height: unsafe { _font_height },
             columns: unsafe { width / _font_width },
             lines: unsafe { height / _font_height },
-            text_color: ColorName::White.into(),
+            text_color: Color::White.into(),
         }
     }
     /// return window size in nb char
@@ -346,7 +346,7 @@ impl Drawer for VbeMode {
         }
         self.refresh_screen();
     }
-    fn set_text_color(&mut self, color: ColorName) -> IoResult {
+    fn set_text_color(&mut self, color: Color) -> IoResult {
         self.text_color = color.into();
         Ok(())
     }

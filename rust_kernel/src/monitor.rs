@@ -19,7 +19,7 @@ trait Drawer {
     fn draw_character(&self, c: char, y: usize, x: usize);
     fn scroll_screen(&self);
     fn clear_screen(&mut self);
-    fn set_text_color(&mut self, color: ColorName) -> IoResult;
+    fn set_text_color(&mut self, color: Color) -> IoResult;
 }
 
 trait AdvancedGraphic {
@@ -28,7 +28,7 @@ trait AdvancedGraphic {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum ColorName {
+pub enum Color {
     Red,
     Green,
     Yellow,
@@ -99,7 +99,7 @@ impl ScreenModad {
         Ok(())
     }
     /// basic, simple
-    pub fn set_text_color(&mut self, color: ColorName) -> IoResult {
+    pub fn set_text_color(&mut self, color: Color) -> IoResult {
         Drawer::set_text_color(self, color)
     }
     /// void the screen
@@ -176,7 +176,7 @@ impl Drawer for ScreenModad {
         self.set_cursor_position(0, 0).unwrap();
     }
     /// basic, simple
-    fn set_text_color(&mut self, color: ColorName) -> IoResult {
+    fn set_text_color(&mut self, color: Color) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.set_text_color(color),
             DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
