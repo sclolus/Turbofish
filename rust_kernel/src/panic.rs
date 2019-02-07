@@ -60,16 +60,8 @@ to find EIP get EBP[1] -> EIP = EBP[1] (EIP is in stack frame A)
 reset EBP -> EBP = *EBP (Go to EBP location in stack frame A)
 */
 
-static mut EBP: *const u32 = 0x0 as *const u32;
-
-/// Get eip from global variable EBP
-unsafe fn get_eip() -> u32 {
-    let eip: u32 = *EBP.add(1);
-    if eip == 0 {
-        return 0;
-    }
-    EBP = *EBP as *const u32;
-    eip
+extern "C" {
+    fn _get_symbol(eip: u32) -> Symbol;
 }
 
 #[repr(C)]
@@ -78,32 +70,49 @@ struct Symbol {
     name: c_str,
 }
 
-extern "C" {
-    fn _get_symbol(eip: u32) -> Symbol;
+/// Get eip from ebp
+// return tupple of (eip, ebp)
+fn get_eip(ebp: *const u32) -> (u32, *const u32) {
+    let eip = unsafe { *ebp.add(1) };
+    if eip == 0 {
+        (0, ebp)
+    } else {
+        (eip, unsafe { *ebp as *const u32 })
+    }
+}
+
+fn trace_back(ebp_origin: *const u32) {
+    let mut s: (u32, *const u32) = (0, ebp_origin);
+    loop {
+        s = get_eip(s.1);
+        if s.0 == 0 {
+            break;
+        }
+        let symbol = unsafe { _get_symbol(s.0) };
+        println!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
+pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     println!("KERNEL PANIC !");
     println!("reason {:?}", s);
     println!("{:#X?}\n", ext_reg);
+
+    trace_back(ext_reg.new_ebp as *const u32);
+    loop {}
+}
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+#[no_mangle]
+fn panic(info: &PanicInfo) -> ! {
+    println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
+    let ebp: *const u32;
     unsafe {
-        // TODO put old_ebp in real ISR situation
-        EBP = ext_reg.new_ebp as *const u32;
+        asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel")
     }
-    loop {
-        let eip;
-        unsafe {
-            eip = get_eip();
-        }
-        if eip == 0 {
-            break;
-        }
-        let symbol;
-        unsafe {
-            symbol = _get_symbol(eip);
-        }
-        println!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, eip);
-    }
+    trace_back(ebp);
     loop {}
 }

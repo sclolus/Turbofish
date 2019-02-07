@@ -27,7 +27,7 @@
     push ds
 %endmacro
 
-extern panic_handler
+extern cpu_panic_handler
 extern _align_stack
 
 %macro CREATE_ISR 3
@@ -42,7 +42,7 @@ _isr_%1:
     %3
     push isr_%1_str
     push 68
-    push panic_handler
+    push cpu_panic_handler
     call _align_stack
 %endmacro
 

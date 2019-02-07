@@ -453,5 +453,8 @@ impl From<u16> for VbeError {{
     println!("pit: {:?}", PIT0);
 
     println!("{:?} ms ellapsed", debug::bench_end());
+    unsafe {
+        PIT0.start_at_frequency(1.).unwrap();
+    }
     0
 }
