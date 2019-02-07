@@ -188,8 +188,8 @@ pub unsafe fn reset_to_default() -> u16 {
         let imrs = get_masks();
 
         set_idt_vectors(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR);
-        master.set_interrupt_mask(master.default_imr.unwrap());
-        slave.set_interrupt_mask(slave.default_imr.unwrap());
+        master.set_interrupt_mask(master.default_imr.expect("The Master PIC's default imr was never saved"));
+        slave.set_interrupt_mask(slave.default_imr.expect("The slave PIC's default imr was never saved"));
 
         imrs
     })
