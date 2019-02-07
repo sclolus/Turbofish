@@ -1,12 +1,15 @@
 use crate::io::{Io, Pio};
 pub mod keysymb;
-use crate::keyboard::keysymb::KeySymb;
+//use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP;
 use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
+use crate::keyboard::keysymb::{CapsLockSensitive, KeySymb};
 
 #[allow(dead_code)]
 struct Ps2Controler {
     data: Pio<u8>,
-    command: Pio<u8>,
+    /// command port unused for the moment
+    _command: Pio<u8>,
+    /// stock the current bytes of the scancode being read
     current_scancode: Option<u32>,
 }
 
@@ -14,8 +17,10 @@ static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
 
 impl Ps2Controler {
     pub const fn new() -> Self {
-        Ps2Controler { data: Pio::new(0x60), command: Pio::new(0x64), current_scancode: None }
+        Ps2Controler { data: Pio::new(0x60), _command: Pio::new(0x64), current_scancode: None }
     }
+    // TODO or NOT TODO: it handle only escape sequence 0xE0, 0xE0 0xF0 for the moment
+    /// read one byte on data port, return an entire scancode if any
     pub fn read_scancode(&mut self) -> Option<u32> {
         let key = self.data.read();
         match self.current_scancode {
@@ -49,39 +54,44 @@ pub enum KeyCode {
 }
 
 impl KeyCode {
+    // TODO or NOT TODO: add more conversion
+    /// generated with showkey and showkey -s
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    const ESCAPED_SCANCODE_TO_KEYCODE: [u8; 0x80] = [
+        /*e0 00:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 08:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 10:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 18:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 20:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 28:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 30:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 38:*/  100,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 40:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 48:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 50:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 58:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 60:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 68:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 70:*/    0,   0,   0,   0,   0,   0,   0,   0,
+        /*e0 78:*/    0,   0,   0,   0,   0,   0,   0,   0,
+    ];
+    /// transform the multibyte scancode into One byte Keycode
     pub fn from_scancode(scancode: u32) -> Option<Self> {
-        if scancode >= 0x1 && scancode <= 0x53 {
+        if scancode >= 0x1 && scancode <= 0x58 {
             return Some(KeyCode::Pressed(scancode as u8));
         }
-        if scancode >= 0x81 && scancode <= 0xd3 {
+        if scancode >= 0x81 && scancode <= 0xd8 {
             return Some(KeyCode::Released((scancode - 0x80) as u8));
         }
+        if scancode >= 0xe010 && scancode <= 0xe06d {
+            return Some(KeyCode::Pressed(Self::ESCAPED_SCANCODE_TO_KEYCODE[(scancode & 0xFF) as usize] as u8));
+        }
+        if scancode >= 0xe090 && scancode <= 0xe0ed {
+            return Some(KeyCode::Released(
+                (Self::ESCAPED_SCANCODE_TO_KEYCODE[((scancode & 0xFF) - 0x80) as usize]) as u8,
+            ));
+        }
         None
-        /*
-         0x50:   80  81  82  83  99   0  86  87
-         0x58:   88 117   0   0  95 183 184 185
-         0x60:    0   0   0   0   0   0   0   0
-         0x68:    0   0   0   0   0   0   0   0
-         0x70:   93   0   0  89   0   0  85  91
-         0x78:   90  92   0  94   0 124 121   0
-
-        e0 00:    0   0   0   0   0   0   0   0
-        e0 08:    0   0   0   0   0   0   0   0
-        e0 10:  165   0   0   0   0   0   0   0
-        e0 18:    0 163   0   0  96  97   0   0
-        e0 20:  113 140 164   0 166   0   0   0
-        e0 28:    0   0 255   0   0   0 114   0
-        e0 30:  115   0 150   0   0  98 255  99
-        e0 38:  100   0   0   0   0   0   0   0
-        e0 40:    0   0   0   0   0 119 119 102
-        e0 48:  103 104   0 105 112 106 118 107
-        e0 50:  108 109 110 111   0   0   0   0
-        e0 58:    0   0   0 125 126 127 116 142
-        e0 60:    0   0   0 143   0 217 156 173
-        e0 68:  128 159 158 157 155 226   0 112
-        e0 70:    0   0   0   0   0   0   0   0
-        e0 78:    0   0   0   0   0   0   0   0
-        */
     }
 }
 #[allow(dead_code)]
@@ -90,14 +100,10 @@ enum EscapeKeyMask {
     Altgr = 2,
     Control = 4,
     Alt = 8,
-    Shiftl = 16,
-    Shiftr = 32,
-    Ctrll = 64,
-    Ctrlr = 128,
 }
 
 struct KeyboardDriver {
-    escape_keys_lock: u8,
+    escape_key_mask: u8,
     capslock: bool,
 }
 
@@ -105,44 +111,57 @@ static mut KEYBOARD_DRIVER: KeyboardDriver = KeyboardDriver::new();
 
 impl KeyboardDriver {
     pub const fn new() -> Self {
-        Self { escape_keys_lock: 0, capslock: false }
+        Self { escape_key_mask: 0, capslock: false }
     }
 
     pub fn keycode_to_keymap(&mut self, keycode: KeyCode) -> Option<KeySymb> {
         match keycode {
             KeyCode::Pressed(k) => {
-                let symb = &KEYMAP[k as usize][(self.escape_keys_lock ^ self.capslock as u8) as usize];
+                let symb = &KEYMAP[k as usize][(self.escape_key_mask) as usize];
                 match symb {
-                    KeySymb::Control => {
-                        self.escape_keys_lock |= EscapeKeyMask::Control as u8;
+                    CapsLockSensitive::No(KeySymb::Control) => {
+                        self.escape_key_mask |= EscapeKeyMask::Control as u8;
                         None
                     }
-                    KeySymb::Shift => {
-                        self.escape_keys_lock |= EscapeKeyMask::Shift as u8;
+                    CapsLockSensitive::No(KeySymb::Shift) => {
+                        self.escape_key_mask |= EscapeKeyMask::Shift as u8;
                         None
                     }
-                    KeySymb::Alt => {
-                        self.escape_keys_lock |= EscapeKeyMask::Alt as u8;
+                    CapsLockSensitive::No(KeySymb::Alt) => {
+                        self.escape_key_mask |= EscapeKeyMask::Alt as u8;
                         None
                     }
-                    KeySymb::CtrlL_Lock => {
+                    CapsLockSensitive::No(KeySymb::AltGr) => {
+                        self.escape_key_mask |= EscapeKeyMask::Altgr as u8;
+                        None
+                    }
+                    CapsLockSensitive::No(KeySymb::CtrlL_Lock) => {
                         self.capslock = !self.capslock;
                         None
                     }
-                    other => Some(*other),
+                    CapsLockSensitive::No(other) => Some(*other),
+                    CapsLockSensitive::Yes(_) => {
+                        let symb = &KEYMAP[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
+                        match symb {
+                            CapsLockSensitive::No(other) | CapsLockSensitive::Yes(other) => Some(*other),
+                        }
+                    }
                 }
             }
             KeyCode::Released(k) => {
-                let symb = &KEYMAP[k as usize][(self.escape_keys_lock ^ self.capslock as u8) as usize];
+                let symb = &KEYMAP[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
                 match symb {
-                    KeySymb::Control => {
-                        self.escape_keys_lock &= !(EscapeKeyMask::Control as u8);
+                    CapsLockSensitive::No(KeySymb::Control) => {
+                        self.escape_key_mask &= !(EscapeKeyMask::Control as u8);
                     }
-                    KeySymb::Shift => {
-                        self.escape_keys_lock &= !(EscapeKeyMask::Shift as u8);
+                    CapsLockSensitive::No(KeySymb::Shift) => {
+                        self.escape_key_mask &= !(EscapeKeyMask::Shift as u8);
                     }
-                    KeySymb::Alt => {
-                        self.escape_keys_lock &= !(EscapeKeyMask::Alt as u8);
+                    CapsLockSensitive::No(KeySymb::Alt) => {
+                        self.escape_key_mask &= !(EscapeKeyMask::Alt as u8);
+                    }
+                    CapsLockSensitive::No(KeySymb::AltGr) => {
+                        self.escape_key_mask &= !(EscapeKeyMask::Altgr as u8);
                     }
                     _ => {}
                 }
@@ -162,9 +181,9 @@ extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
             let keysymb = unsafe { KEYBOARD_DRIVER.keycode_to_keymap(keycode) };
             println!("keycode {:X?}", keycode);
             if let Some(keysymb) = keysymb {
-                println!("keysymb {:?}", keysymb);
+                println!("keysymb {:?}, = {:X?}", keysymb, keysymb as u32);
                 let keysymb = keysymb as u32;
-                if keysymb > 0x20 && keysymb < 0x7E {
+                if keysymb >= 0x20 && keysymb <= 0x7E {
                     println!("keysymb {:?}", keysymb as u8 as char);
                 }
             }

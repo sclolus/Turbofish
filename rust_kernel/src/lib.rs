@@ -20,9 +20,9 @@ pub mod monitor;
 pub mod interrupts;
 
 pub mod io;
+pub mod keyboard;
 pub mod multiboot;
 pub mod panic;
 pub mod registers;
 pub mod rust_main;
 pub mod timer;
-pub mod keyboard;
