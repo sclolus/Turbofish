@@ -179,11 +179,9 @@ extern "C" {
 /// values before calling _real_mode_op.
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
 pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
-    use crate::interrupts;
     use crate::interrupts::pic_8259;
 
-    preserve_interrupts!({
-        interrupts::disable();
+    without_interrupts!({
         let imrs = pic_8259::reset_to_default();
 
         let ret = _real_mode_op(reg, bios_int);

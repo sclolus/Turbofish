@@ -1,4 +1,3 @@
-use crate::interrupts;
 /// This files contains the code related to the 8259 Programmable interrupt controller
 /// See https://wiki.osdev.org/PIC.
 use crate::io::{Io, Pio};
@@ -100,7 +99,7 @@ pub unsafe fn irq_clear_mask(mut irq: u8) {
 
 /// Disable both Slave and Master PICs
 /// This is done by sending 0xff to their respective data ports
-pub unsafe fn disable_pics() {
+pub unsafe fn mask_all_interrupts() {
     master.set_interrupt_mask(0xff);
     slave.set_interrupt_mask(0xff);
 }
@@ -181,10 +180,8 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
 /// Returning the combined IMRs of the PICs before the reset
 /// WARNING: This fonction should not be called if the PICs were never initialized as it would panic.
 pub unsafe fn reset_to_default() -> u16 {
-    preserve_interrupts!({
+    without_interrupts!({
         let imrs = get_masks();
-
-        interrupts::disable();
 
         initialize(0x8, 0x70);
         master.set_interrupt_mask(master.default_imr.unwrap_or(0x0)); // I don't know which default imr to set if the default_imr hasn't been initialized
