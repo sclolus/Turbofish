@@ -1,7 +1,7 @@
 use crate::debug;
 use crate::interrupts;
-use crate::monitor::bmp_loader::*;
 use crate::interrupts::pit::*;
+use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::timer::Rtc;
