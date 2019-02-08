@@ -184,8 +184,8 @@ pub unsafe fn reset_to_default() -> u16 {
         let imrs = get_masks();
 
         initialize(0x8, 0x70);
-        master.set_interrupt_mask(master.default_imr.unwrap_or(0x0)); // I don't know which default imr to set if the default_imr hasn't been initialized
-        slave.set_interrupt_mask(slave.default_imr.unwrap_or(0x0));
+        master.set_interrupt_mask(master.default_imr.unwrap());
+        slave.set_interrupt_mask(slave.default_imr.unwrap());
 
         imrs
     })
