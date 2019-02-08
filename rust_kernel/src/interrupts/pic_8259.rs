@@ -8,6 +8,12 @@ pub static mut master: Pic = Pic::new(Pic::MASTER_COMMAND_PORT);
 #[allow(non_upper_case_globals)]
 pub static mut slave: Pic = Pic::new(Pic::SLAVE_COMMAND_PORT);
 
+const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
+const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
+
+pub const KERNEL_PIC_MASTER_IDT_VECTOR: u8 = 0x20 as u8;
+pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x28 as u8;
+
 /// Represents a Programmable Interrupt Controller 8259
 pub struct Pic {
     /// The PIC's command port.
@@ -143,21 +149,8 @@ pub fn send_eoi(irq: u8) {
 /// and `offset_2` as the vector offset for slave.
 /// Which means that the vectors for master are now: offset_1..=offset_1+7
 /// and for slave: offset_2..=offset_2+7.
-/// It also remember the default IMR of the pics if this is the first call of this function
-pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
-    let slave_mask = slave.get_interrupt_mask();
-    let master_mask = master.get_interrupt_mask();
-
-    if slave.default_imr.is_none() {
-        slave.default_imr = Some(slave_mask);
-    }
-
-    if master.default_imr.is_none() {
-        master.default_imr = Some(master_mask);
-    }
-
+pub unsafe fn set_idt_vectors(offset_1: u8, offset_2: u8) {
     master.command.write(Pic::INIT);
-
     slave.command.write(Pic::INIT);
 
     // Assign the vectors offsets
@@ -170,10 +163,21 @@ pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
     // thoses 2 calls set the 8086/88 (MCS-80/85) mode for master and slave.
     master.data.write(1);
     slave.data.write(1);
+}
 
-    // Reset all interrupt masks
-    slave.set_interrupt_mask(slave_mask);
-    master.set_interrupt_mask(master_mask);
+/// Must be called when PIC is initialized
+/// The bios default IMR are stored when this function is called
+pub unsafe fn save_default_imr() {
+    let slave_mask = slave.get_interrupt_mask();
+    let master_mask = master.get_interrupt_mask();
+
+    if slave.default_imr.is_none() {
+        slave.default_imr = Some(slave_mask);
+    }
+
+    if master.default_imr.is_none() {
+        master.default_imr = Some(master_mask);
+    }
 }
 
 /// Reset the PICs to the defaults IMR and irq vector offsets
@@ -183,7 +187,7 @@ pub unsafe fn reset_to_default() -> u16 {
     without_interrupts!({
         let imrs = get_masks();
 
-        initialize(0x8, 0x70);
+        set_idt_vectors(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR);
         master.set_interrupt_mask(master.default_imr.unwrap());
         slave.set_interrupt_mask(slave.default_imr.unwrap());
 

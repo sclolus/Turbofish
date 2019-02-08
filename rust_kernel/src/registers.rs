@@ -186,7 +186,7 @@ pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
 
         let ret = _real_mode_op(reg, bios_int);
 
-        pic_8259::initialize(0x20, 0x28);
+        pic_8259::set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
         pic_8259::restore_masks(imrs);
         ret
     })

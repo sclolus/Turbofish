@@ -1,11 +1,10 @@
-
 /// This macro gets the current interrupts state before executing arbitrary code,
 /// The interrupts are disabled inside this macro.
 /// it then restores the interrupt state. It helps limiting the boilerplate required to preserve the interrupts.
 #[macro_export]
 macro_rules! without_interrupts {
     ($code: block) => {{
-        use crate::interrupts::{get_interrupts_state, disable, enable};
+        use crate::interrupts::{disable, enable, get_interrupts_state};
 
         let interrupts_state = get_interrupts_state();
         if interrupts_state == true {
