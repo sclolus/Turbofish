@@ -12,7 +12,7 @@ const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
 const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 
 pub const KERNEL_PIC_MASTER_IDT_VECTOR: u8 = 0x20 as u8;
-pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x28 as u8;
+pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 
 /// Represents a Programmable Interrupt Controller 8259
 pub struct Pic {

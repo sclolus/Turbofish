@@ -114,9 +114,9 @@ impl<'a> InterruptTable<'a> {
         (reserved_exception, InterruptGate32),
     ];
 
-    /// Those are the current default handlers for the IRQs from the PICs 8259
-    /// They are mapped from 0x20 to 0x2F
-    const DEFAULT_IRQS: [unsafe extern "C" fn(); 16] = [
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
+    /// They are mapped from 0x20 to 0x27
+    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] = [
         _isr_timer,
         _isr_keyboard,
         _isr_cascade,
@@ -125,6 +125,11 @@ impl<'a> InterruptTable<'a> {
         _isr_lpt2,
         _isr_floppy_disk,
         _isr_lpt1,
+    ];
+
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
+    /// They are mapped from 0x70 to 0x77
+    const DEFAULT_IRQS_SLAVE: [unsafe extern "C" fn(); 8] = [
         _isr_cmos,
         _isr_acpi,
         reserved_interruption,
@@ -147,11 +152,20 @@ impl<'a> InterruptTable<'a> {
             self.set_interrupt_entry(index, &gate_entry).unwrap();
         }
 
-        let offset = Self::DEFAULT_EXCEPTIONS.len();
-        for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
+        use crate::interrupts::pic_8259;
+
+        let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
             gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
 
-            self.set_interrupt_entry(index + offset, &gate_entry).unwrap();
+            self.set_interrupt_entry(index + offset as usize, &gate_entry).unwrap();
+        }
+
+        let offset = pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_SLAVE.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
+
+            self.set_interrupt_entry(index + offset as usize, &gate_entry).unwrap();
         }
     }
 

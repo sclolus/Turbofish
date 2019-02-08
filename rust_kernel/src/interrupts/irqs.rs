@@ -1,6 +1,5 @@
 /// See https://wiki.osdev.org/ISR
 use crate::ffi::*;
-use crate::interrupts::pic_8259;
 use crate::io::{Io, Pio};
 
 extern "C" {
@@ -27,7 +26,6 @@ extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
     let keyboard_port = Pio::<u8>::new(0x60);
 
-    pic_8259::send_eoi(1);
     keyboard_port.read();
     unsafe {
         let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));

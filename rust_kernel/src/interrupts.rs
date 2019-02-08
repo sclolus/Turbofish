@@ -51,6 +51,7 @@ pub unsafe fn init() {
     pic_8259::set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
     pic_8259::mask_all_interrupts();
     pic_8259::irq_clear_mask(1); // enable only the keyboard.
+    pic_8259::irq_clear_mask(2); // slave cascade
 
     enable();
 }
