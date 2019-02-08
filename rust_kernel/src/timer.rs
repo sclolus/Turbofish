@@ -1,7 +1,7 @@
 use crate::interrupts::pic_8259;
 use crate::io::{Io, Pio};
 use bit_field::BitField;
-use core::mem;
+use core::convert::{TryFrom, TryInto};
 use core::sync::atomic::{AtomicU32, Ordering};
 use core::{fmt, fmt::Display};
 
@@ -34,9 +34,28 @@ enum Month {
     December,
 }
 
-impl From<u8> for Month {
-    fn from(n: u8) -> Self {
-        unsafe { mem::transmute(n) }
+#[derive(Debug)]
+pub struct InvalidMonth(());
+
+impl TryFrom<u8> for Month {
+    type Error = InvalidMonth;
+    fn try_from(n: u8) -> Result<Self, Self::Error> {
+        use Month::*;
+        match n {
+            1 => Ok(January),
+            2 => Ok(February),
+            3 => Ok(March),
+            4 => Ok(April),
+            5 => Ok(May),
+            6 => Ok(June),
+            7 => Ok(July),
+            8 => Ok(August),
+            9 => Ok(September),
+            10 => Ok(October),
+            11 => Ok(November),
+            12 => Ok(December),
+            _ => Err(InvalidMonth(())),
+        }
     }
 }
 
@@ -70,7 +89,7 @@ pub struct Rtc {
 }
 
 impl Rtc {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { register_selector: Pio::new(0x70), data: Pio::new(0x71) }
     }
 
@@ -114,7 +133,7 @@ impl Rtc {
             minutes: convert_to_binary(self.read_register(0x02)),
             hours: convert_to_binary_24hour(self.read_register(0x04)),
             day_of_month: self.read_register(0x07),
-            month: self.read_register(0x08).into(),
+            month: self.read_register(0x08).try_into().unwrap(),
             year: {
                 let year: u32 = convert_to_binary(self.read_register(0x09)) as u32;
                 if year > 90 {
