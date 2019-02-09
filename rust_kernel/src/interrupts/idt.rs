@@ -170,7 +170,7 @@ impl Idtr {
     /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
     /// They are mapped from 0x20 to 0x27
     const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] =
-        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _isr_lpt1];
+        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _default_isr];
 
     /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
     /// They are mapped from 0x70 to 0x77

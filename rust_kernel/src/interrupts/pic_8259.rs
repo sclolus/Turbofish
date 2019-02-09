@@ -122,7 +122,7 @@ impl Pic8259 {
     /// Disabling the corresponding interrupt line.
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave is modified.
-    pub unsafe fn irq_set_mask(&mut self, irq: Irq) {
+    pub unsafe fn disable_irq(&mut self, irq: Irq) {
         let mut nirq = irq as u16;
         assert!(nirq < 16);
         if nirq < 8 {
@@ -141,7 +141,7 @@ impl Pic8259 {
     /// Enabling the corresponding interrupt line.
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
-    pub unsafe fn irq_clear_mask(&mut self, irq: Irq) {
+    pub unsafe fn enable_irq(&mut self, irq: Irq) {
         let mut nirq = irq as u16;
         assert!(nirq < 16);
         if nirq < 8 {
@@ -161,6 +161,20 @@ impl Pic8259 {
         }
     }
 
+    /// Disable both Slave and Master PICs
+    /// This is done by sending 0xff to their respective data ports
+    pub unsafe fn disable_all_irqs(&mut self) {
+        self.master.set_interrupt_mask(0xff);
+        self.slave.set_interrupt_mask(0xff);
+    }
+
+    /// Enable all interrupts of the PICs by clearing their Interrupt Mask
+    pub unsafe fn enable_all_irqs(&mut self) {
+        self.master.set_interrupt_mask(0x0);
+        self.slave.set_interrupt_mask(0x0);
+    }
+
+
     /// Restores the IMRs of the self.master and self.slave PICs to the combined `mask` parameter
     /// The bits 0 to 7 (inclusive) are the self.master's IMR.
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
@@ -174,19 +188,6 @@ impl Pic8259 {
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
     pub fn get_masks(&mut self) -> u16 {
         unsafe { (self.master.get_interrupt_mask() as u16) | ((self.slave.get_interrupt_mask() as u16) << 8) }
-    }
-
-    /// Disable both Slave and Master PICs
-    /// This is done by sending 0xff to their respective data ports
-    pub unsafe fn mask_all_interrupts(&mut self) {
-        self.master.set_interrupt_mask(0xff);
-        self.slave.set_interrupt_mask(0xff);
-    }
-
-    /// Enable all interrupts of the PICs by clearing their Interrupt Mask
-    pub unsafe fn enable_all_interrupts(&mut self) {
-        self.master.set_interrupt_mask(0x0);
-        self.slave.set_interrupt_mask(0x0);
     }
 
     /// Send end of interrupt from specific IRQ to the PIC.

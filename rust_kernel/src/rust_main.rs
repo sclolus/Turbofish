@@ -23,8 +23,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
         Idtr::init_idt();
         PIC_8259.init();
-        PIC_8259.mask_all_interrupts();
-        PIC_8259.irq_clear_mask(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+        PIC_8259.disable_all_irqs();
+        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
 
         interrupts::enable();
     }
@@ -39,7 +39,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
 
-        PIC_8259.irq_clear_mask(pic_8259::Irq::SystemTimer);
+        PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.0).unwrap();
     }
