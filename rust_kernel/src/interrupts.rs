@@ -4,12 +4,10 @@ mod irqs;
 #[macro_use]
 pub mod macros;
 pub mod idt;
-pub mod idt_gate_entry;
 pub mod pic_8259;
 pub mod pit;
 
 pub use idt::*;
-pub use idt_gate_entry::*;
 pub use pic_8259::*;
 
 /// Enables interrupts system-wide
@@ -43,9 +41,7 @@ pub unsafe fn restore_interrupts_state(state: bool) {
 pub unsafe fn init() {
     disable();
 
-    let idt = Idtr::load_default_idtr();
-
-    idt.get_interrupt_table().load_default_interrupt_table();
+    Idtr::init_idt();
 
     pic_8259::save_default_imr();
     pic_8259::set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);

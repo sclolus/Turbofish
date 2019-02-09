@@ -18,8 +18,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
 
     unsafe { interrupts::init() };
-    let idtr = unsafe { interrupts::get_idtr() };
-    let _idt = unsafe { idtr.get_interrupt_table() };
     unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
@@ -30,7 +28,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
 
-        unsafe { interrupts::init() };
         pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.0).unwrap();
@@ -456,12 +453,14 @@ impl From<u16> for VbeError {{
 
     println!("irq mask: {:b}", master.get_interrupt_mask());
 
+    /*
     unsafe {
         assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
         for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
             println!("{}: {:?}", index, gate);
         }
     }
+    */
     let eflags = crate::registers::Eflags::get_eflags();
     println!("idtr: {:x?}", interrupts::get_idtr());
     println!("{}", eflags);

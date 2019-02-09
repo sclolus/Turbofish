@@ -41,13 +41,16 @@ _isr_timer:
 	mov al, 0x20
 	out 0x20, al
 	pop eax
-
 	iret
 
 global _get_pic_time
 _get_pic_time:
 	lock cmpxchg [_pic_time], eax
 	ret
+
+global _default_isr
+_default_isr:
+    iret
 
 ;; This generates the Interrupt service routines. The first paramater completes the indentifier
 ;; The second paramater is the name of the interrupt as a string
