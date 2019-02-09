@@ -1,6 +1,8 @@
 /// See https://wiki.osdev.org/IDT and https://wiki.osdev.org/Interrupts
-use super::exceptions::*;
-use super::irqs::*;
+mod exceptions;
+mod irqs;
+use exceptions::*;
+use irqs::*;
 use crate::interrupts::pic_8259;
 use bit_field::BitField;
 use core::ffi::c_void;

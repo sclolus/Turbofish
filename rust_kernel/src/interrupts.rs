@@ -1,6 +1,3 @@
-mod exceptions;
-mod irqs;
-
 #[macro_use]
 pub mod macros;
 pub mod idt;

@@ -50,7 +50,7 @@ SRC_ASM_KERNEL += real_mode_call cpu_isr io isr align_stack
 VPATH += src/system
 
 SRC_ASM_KERNEL += idt
-VPATH += src/interrupts
+VPATH += src/interrupts/idt
 
 SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias
