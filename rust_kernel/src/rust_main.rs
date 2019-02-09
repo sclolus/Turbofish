@@ -1,6 +1,7 @@
 use crate::debug;
 use crate::interrupts;
 use crate::interrupts::pit::*;
+use crate::interrupts::{pic_8259, Idtr, PIC_8259};
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
@@ -17,7 +18,17 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
 
-    unsafe { interrupts::init() };
+    unsafe {
+        interrupts::disable();
+
+        Idtr::init_idt();
+        PIC_8259.init();
+        PIC_8259.mask_all_interrupts();
+        PIC_8259.irq_clear_mask(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+
+        interrupts::enable();
+    }
+
     unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
@@ -28,7 +39,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
 
-        pic_8259::irq_clear_mask(0);
+        PIC_8259.irq_clear_mask(pic_8259::Irq::SystemTimer);
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.0).unwrap();
     }
@@ -448,10 +459,9 @@ impl From<u16> for VbeError {{
 
     println!("irqs state: {}", interrupts::get_interrupts_state());
     let _keyboard_port = Pio::<u8>::new(0x60);
-    use crate::interrupts::{pic_8259, pic_8259::*};
     use crate::io::Pio;
 
-    println!("irq mask: {:b}", master.get_interrupt_mask());
+    println!("irq mask: {:b}", PIC_8259.get_masks());
 
     /*
     unsafe {
@@ -462,7 +472,7 @@ impl From<u16> for VbeError {{
     }
     */
     let eflags = crate::registers::Eflags::get_eflags();
-    println!("idtr: {:x?}", interrupts::get_idtr());
+    //println!("idtr: {:x?}", interrupts::get_idtr());
     println!("{}", eflags);
     println!("{:x?}", eflags);
 

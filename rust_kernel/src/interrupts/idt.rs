@@ -1,11 +1,11 @@
 /// See https://wiki.osdev.org/IDT and https://wiki.osdev.org/Interrupts
 mod exceptions;
 mod irqs;
-use exceptions::*;
-use irqs::*;
 use crate::interrupts::pic_8259;
 use bit_field::BitField;
 use core::ffi::c_void;
+use exceptions::*;
+use irqs::*;
 
 pub type InterruptHandler = extern "C" fn() -> !;
 

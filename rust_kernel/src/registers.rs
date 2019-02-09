@@ -1,3 +1,4 @@
+use crate::interrupts::PIC_8259;
 use bit_field::BitField;
 use core::{fmt, fmt::Display};
 
@@ -170,7 +171,7 @@ has CPUID (ID): {}\n",
 
 #[no_mangle]
 extern "C" {
-    pub fn _real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16;
+    fn _real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16;
 }
 
 /// This is a wrapper of the _real_mode_op fonction.
@@ -182,12 +183,12 @@ pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
     use crate::interrupts::pic_8259;
 
     without_interrupts!({
-        let imrs = pic_8259::reset_to_default();
+        let imrs = PIC_8259.reset_to_default();
 
         let ret = _real_mode_op(reg, bios_int);
 
-        pic_8259::set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
-        pic_8259::restore_masks(imrs);
+        PIC_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
+        PIC_8259.set_masks(imrs);
         ret
     })
 }
