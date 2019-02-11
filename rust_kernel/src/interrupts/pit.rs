@@ -111,11 +111,11 @@ impl Pit {
     /// if not in this range take the closest frequency
     /// freq = base_freq / divisor -> divisor = base_freq / freq
     pub fn start_at_frequency(&mut self, freq: f32) -> Result<(), PitError> {
-        unsafe {
-            interrupts::disable();
-        }
         if freq < 18.0 || freq > Self::BASE_FREQUENCY {
             return Err(PitError::BadFrequency);
+        }
+        unsafe {
+            interrupts::disable();
         }
         let mut divisor = (Self::BASE_FREQUENCY / freq) as u32;
         if divisor > u16::MAX as u32 {
