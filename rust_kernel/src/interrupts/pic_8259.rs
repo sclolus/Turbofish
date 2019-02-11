@@ -174,7 +174,6 @@ impl Pic8259 {
         self.slave.set_interrupt_mask(0x0);
     }
 
-
     /// Restores the IMRs of the self.master and self.slave PICs to the combined `mask` parameter
     /// The bits 0 to 7 (inclusive) are the self.master's IMR.
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
