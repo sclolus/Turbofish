@@ -110,13 +110,6 @@ pub struct Idtr {
     pub idt_addr: *mut IdtGateEntry,
 }
 
-extern "C" {
-    fn _load_idtr(param: *const Idtr);
-    fn _get_idtr(to_fill: *mut Idtr);
-
-    pub fn generic_asm_isr_wrapper();
-}
-
 #[no_mangle]
 #[inline(never)]
 /// Returns the current Interrupt Descriptor Table Register
@@ -124,7 +117,7 @@ pub unsafe extern "C" fn get_idtr() -> Idtr {
     // Temporary struct Idtr to be filled by the asm routine
     let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
 
-    _get_idtr(&mut idtr as *mut _);
+    asm!("sidt $0" : "=*m"(&mut idtr) :: "memory" : "volatile");
     idtr
 }
 
@@ -221,7 +214,7 @@ impl Idtr {
             idt_slice[index + offset as usize] = gate_entry;
         }
         unsafe {
-            _load_idtr(&idt as *const Idtr);
+            asm!("lidt ($0)" :: "r" (&idt) : "memory" : "volatile");
         }
     }
 }

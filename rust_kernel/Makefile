@@ -49,7 +49,7 @@ SRC_C_KERNEL += panic
 SRC_ASM_KERNEL += real_mode_call io align_stack
 VPATH += src/system
 
-SRC_ASM_KERNEL += idt cpu_isr common_isr
+SRC_ASM_KERNEL += cpu_isr common_isr
 VPATH += src/interrupts/idt
 
 SRC_ASM_KERNEL += asterix wanggle
