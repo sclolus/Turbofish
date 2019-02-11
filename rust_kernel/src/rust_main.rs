@@ -39,9 +39,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
 
-        PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
         PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(1000.0).unwrap();
+        PIT0.start_at_frequency(18.0).unwrap();
+        PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
     debug::bench_start();
     for _i in 0..3 {
