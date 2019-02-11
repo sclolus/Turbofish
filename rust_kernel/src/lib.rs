@@ -27,6 +27,7 @@ pub mod ffi;
 
 #[macro_use]
 pub mod monitor;
+pub mod cpuid;
 
 #[macro_use]
 pub mod interrupts;

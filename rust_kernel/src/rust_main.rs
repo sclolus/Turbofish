@@ -159,6 +159,32 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let t = debug::bench_end();
     println!("{:?} ms ellapsed {:?}", t, sum);
     */
+    use crate::cpuid;
+
+    if let cpuid::CpuidRes::ManufacturerId(id) = cpuid::get_cpuid_feature(cpuid::CpuidFeatures::ManufacturerId) {
+        println!("get_cpuid_Feature -> {}", id.as_ref());
+    }
+    if let cpuid::CpuidRes::ProcInfoAndFeatures { proc_info, additional_info } =
+        cpuid::get_cpuid_feature(cpuid::CpuidFeatures::ProcessorInfo)
+    {
+        println!("proc_info -> {:?}", proc_info);
+        println!("additional_info -> {:?}", additional_info);
+        println!("Has clflush: {}", cpuid::has_feature(cpuid::Feature::Clfsh));
+        println!("Has hyper_threading: {}", cpuid::has_feature(cpuid::Feature::Htt));
+    }
+    for index in 0..64 {
+        let feature = unsafe { core::mem::transmute::<u8, cpuid::Feature>(index) };
+        if cpuid::has_feature(feature) {
+            println!("{}: CPU has {:?} feature: {}", index, feature, true);
+        }
+    }
+    for index in 0..94 {
+        let feature = unsafe { core::mem::transmute::<u8, cpuid::ExtendedFeature>(index) };
+        if cpuid::has_extended_feature(feature) {
+            println!("{}: CPU has {:?} extended feature: {}", index, feature, true);
+        }
+    }
+    println!("{:?} ms ellapsed", t);
     crate::watch_dog();
     sum
 }
