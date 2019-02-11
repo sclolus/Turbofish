@@ -1,12 +1,13 @@
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
+use core::ops::{Index, IndexMut};
 
 #[repr(C)] // this should be equivalent to `transparent` I hope
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(super) struct PageDirectoryEntry {
     // Should this be u32 or usize ? I guess u32 is more accurate but...
-    inner: u32,
+    inner: usize,
 }
 
 impl PageDirectoryEntry {
@@ -130,9 +131,9 @@ impl PageDirectoryEntry {
     #[allow(dead_code)]
     pub fn set_entry_addr(&mut self, addr: usize) -> &mut Self {
         // asserts that if the page_size bit is set for this entry, the set addr is 4-MiB aligned.
-        assert!(if self.page_size() { addr.get_bits(0..12) == 0 } else { true });
+        assert!(if self.page_size() { addr.get_bits(0..22) == 0 } else { addr.get_bits(0..12) == 0 });
 
-        self.inner.set_bits(12..32, addr.get_bits(12..32) as u32);
+        self.inner.set_bits(12..32, addr.get_bits(12..32));
         self
     }
 
@@ -148,7 +149,7 @@ impl PageDirectoryEntry {
     /// Currently this is more a placeholder then a definitive implementation. It should be decided what is done with those bits.
     #[allow(dead_code)]
     pub fn set_available_field(mut self, bits: u8) -> Self {
-        self.inner.set_bits(9..12, bits as u32);
+        self.inner.set_bits(9..12, bits as usize);
         self
     }
 
@@ -196,6 +197,20 @@ impl PageDirectory {
         let _ptindex = ((vaddr >> 12) & 0x0fff) as usize;
 
         // &self.entries[_pdindex][_ptindex]
+    }
+}
+
+impl Index<usize> for PageDirectory {
+    type Output = PageDirectoryEntry;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.entries.index(index)
+    }
+}
+
+impl IndexMut<usize> for PageDirectory {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.entries.index_mut(index)
     }
 }
 

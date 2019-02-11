@@ -5,7 +5,8 @@ authors = ["Vincent Combey <vcombey@student.42.fr>", "Mickael Billod <bmickael@s
 edition = "2018"
 
 [profile.release]
-opt-level = 3
+opt-level = 0
+debug = true
 panic = "abort"
 
 [profile.dev]

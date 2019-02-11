@@ -18,14 +18,14 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
 /// set the 16 first Mib of virtual address = real address
-pub fn auto_ref_kernel_base() {
+pub unsafe fn auto_ref_kernel_base() {
     let dir = &mut PAGE_DIRECTORY;
     let table = &mut PAGE_TABLES;
     let mut offset = 0;
     for j in 0..16 {
         offset = j * 1024;
 
-        dir.entries[j] = *PageDirectoryEntry::new()
+        dir[j] = *PageDirectoryEntry::new()
             .set_present(true)
             .set_read_write(true)
             .set_entry_addr(&table[j] as *const PageTable as usize);
@@ -34,27 +34,27 @@ pub fn auto_ref_kernel_base() {
             *e = *PageTableEntry::new()
                 .set_present(true)
                 .set_read_write(true)
-                .set_physical_address(((offset + i) as u32) << 12);
+                .set_physical_address(((offset + i) as usize) << 12);
         }
     }
 }
 
-pub fn remap_addr(virt_addr: u32, phys_addr: u32) {
+pub unsafe fn remap_addr(virt_addr: usize, phys_addr: usize) {
     assert_eq!(virt_addr % 4096, 0);
     let dir = &mut PAGE_DIRECTORY;
     let table = &mut PAGE_TABLES;
     let page_dir_index = virt_addr.get_bits(22..32);
-    dir.entries[page_dir_index as usize] = *PageDirectoryEntry::new()
+    dir[page_dir_index] = *PageDirectoryEntry::new()
         .set_present(true)
         .set_read_write(true)
-        .set_entry_addr(&table[page_dir_index as usize] as *const PageTable as u32);
+        .set_entry_addr(&table[page_dir_index] as *const PageTable as usize);
 
     let page_table_index = virt_addr.get_bits(12..22);
-    table[page_dir_index as usize][page_table_index as usize] =
-        *PageTableEntry::new().set_present(true).set_read_write(true).set_physical_address(phys_addr << 12);
+    table[page_dir_index][page_table_index] =
+        *PageTableEntry::new().set_present(true).set_read_write(true).set_physical_address(phys_addr);
 }
 
-pub fn remap_range_addr(virt_addr_range: Range<u32>, phys_addr_range: Range<u32>) {
+pub unsafe fn remap_range_addr(virt_addr_range: Range<usize>, phys_addr_range: Range<usize>) {
     assert_eq!(virt_addr_range.start % 4096, 0);
     assert_eq!(phys_addr_range.start % 4096, 0);
     for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(4096) {
@@ -70,25 +70,32 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         assert!(dir_entry.present() == false);
     }
 
-    let first_directory_entry = PageDirectoryEntry::new()
+    let first_directory_entry = *PageDirectoryEntry::new()
         .set_present(true)
         .set_read_write(true)
-        .set_entry_addr((PAGE_TABLES[0].as_ref().as_ptr() as usize) >> 12);
+        .set_entry_addr((PAGE_TABLES[0].as_ref().as_ptr() as usize));
 
     println!("ptr for first entry: {:x}", first_directory_entry.entry_addr() << 12);
-    PAGE_DIRECTORY.set_directory_entry(0, first_directory_entry);
+    PAGE_DIRECTORY[0] = first_directory_entry;
 
     let init_page_table = &mut PAGE_TABLES[0];
     for index in 0u32..1024u32 {
-        let page_entry =
-            *PageTableEntry::new().set_global(true).set_present(true).set_read_write(true).set_physical_address(index);
+        let page_entry = *PageTableEntry::new()
+            .set_global(true)
+            .set_present(true)
+            .set_read_write(true)
+            .set_physical_address((index as usize) << 12);
 
-        init_page_table.set_page_entry(index as usize, page_entry);
+        init_page_table[index as usize] = page_entry;
     }
 
+    use crate::monitor::SCREEN_MONAD;
     println!("arg to enable_paging: {:p}", PAGE_DIRECTORY.as_mut().as_mut_ptr());
-    // _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
-    // loop {}
+    auto_ref_kernel_base();
+
+    remap_range_addr(4244635648..(4244635648 + 1024 * 768 * 3), 4244635648..(4244635648 + 1024 * 768 * 3));
+    println!("{:?}", SCREEN_MONAD);
+    _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 
     Ok(())
 }

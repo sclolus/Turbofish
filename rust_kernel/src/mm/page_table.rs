@@ -1,11 +1,12 @@
 /// This module contains code related to the Page Tables in the MMU.
 use bit_field::BitField;
+use core::ops::{Index, IndexMut};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(super) struct PageTableEntry {
     // Should this be u32 or usize ? I guess u32 is more accurate but...
-    inner: u32,
+    inner: usize,
 }
 
 impl PageTableEntry {
@@ -13,10 +14,16 @@ impl PageTableEntry {
     pub const fn new() -> Self {
         unsafe { Self { inner: 0 } }
     }
-    pub fn set_physical_address(&mut self, addr: u32) -> &mut Self {
-        assert_eq!(addr % 4096, 0);
+
+    pub fn set_physical_address(&mut self, addr: usize) -> &mut Self {
+        assert!(addr.get_bits(0..12) == 0);
+
         self.inner.set_bits(12..32, addr.get_bits(12..32));
         self
+    }
+
+    pub fn physical_address(&self) -> usize {
+        self.inner.get_bits(12..32) << 12
     }
 
     gen_builder_pattern_bitfields_methods!(
@@ -160,6 +167,20 @@ impl PageTable {
     #[allow(dead_code)]
     pub fn get_page_entry(&self, index: usize) -> Result<PageTableEntry, PageTableError> {
         self.entries.get(index).map_or(Err(ErrIndexOutOfBound), |slot| Ok(*slot))
+    }
+}
+
+impl Index<usize> for PageTable {
+    type Output = PageTableEntry;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.entries.index(index)
+    }
+}
+
+impl IndexMut<usize> for PageTable {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.entries.index_mut(index)
     }
 }
 
