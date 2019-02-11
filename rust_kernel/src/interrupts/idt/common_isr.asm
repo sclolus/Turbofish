@@ -8,6 +8,8 @@ extern _align_stack
 extern generic_interrupt_handler
 extern debug_pit
 
+extern keyboard_interrupt_handler
+
 segment .data
 _pic_time dd 0
 
@@ -96,7 +98,7 @@ global _isr_%1
 	iret
 %endmacro
 
-	CREATE_MASTER_ISR keyboard, "Keyboard", generic_interrupt_handler
+	CREATE_MASTER_ISR keyboard, "Keyboard", keyboard_interrupt_handler
 	CREATE_MASTER_ISR cascade, "cascade, never used", generic_interrupt_handler ; should never be raised
 	CREATE_MASTER_ISR com2, "COM2", generic_interrupt_handler
 	CREATE_MASTER_ISR com1, "COM1", generic_interrupt_handler
