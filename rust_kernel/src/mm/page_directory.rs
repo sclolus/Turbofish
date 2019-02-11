@@ -128,11 +128,11 @@ impl PageDirectoryEntry {
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[allow(dead_code)]
-    pub fn set_entry_addr(mut self, addr: usize) -> Self {
+    pub fn set_entry_addr(&mut self, addr: usize) -> &mut Self {
         // asserts that if the page_size bit is set for this entry, the set addr is 4-MiB aligned.
         assert!(if self.page_size() { addr.get_bits(0..12) == 0 } else { true });
 
-        self.inner.set_bits(12..32, addr as u32);
+        self.inner.set_bits(12..32, addr.get_bits(12..32) as u32);
         self
     }
 

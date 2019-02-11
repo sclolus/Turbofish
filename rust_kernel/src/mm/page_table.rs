@@ -14,6 +14,7 @@ impl PageTableEntry {
         unsafe { Self { inner: 0 } }
     }
     pub fn set_physical_address(&mut self, addr: u32) -> &mut Self {
+        assert_eq!(addr % 4096, 0);
         self.inner.set_bits(12..32, addr.get_bits(12..32));
         self
     }
