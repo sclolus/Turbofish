@@ -236,6 +236,9 @@ pub struct VbeMode {
 impl VbeMode {
     pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
+        unsafe {
+            _sse2_memzero(GRAPHIC_BUFFER_LOCATION, bytes_per_pixel * width * height);
+        }
         Self {
             linear_frame_buffer,
             db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
