@@ -4,15 +4,6 @@
 ;; For now. just a generic ISR wrapper
 ;; See https://wiki.osdev.org/ISR
 
-;; Currently no reason have macro for those, but could be usefull at some point
-%macro PUSH_ALL_REGISTERS 0
-	pushad
-%endmacro
-
-%macro POP_ALL_REGISTERS 0
-	popad
-%endmacro
-
 extern _align_stack
 extern generic_interrupt_handler
 extern debug_pit
@@ -64,7 +55,7 @@ global _isr_%1
 	_isr_%1:
 	push ebp
 	mov	ebp, esp
-	PUSH_ALL_REGISTERS
+	pushad
 	push isr_%1_str
 	push 4
 	push %3
@@ -74,7 +65,7 @@ global _isr_%1
 	mov al, 0x20
 	out 0x20, al
 
-	POP_ALL_REGISTERS
+	popad
 	pop	ebp
 	iret
 %endmacro
@@ -88,7 +79,7 @@ global _isr_%1
 	_isr_%1:
 	push ebp
 	mov	ebp, esp
-	PUSH_ALL_REGISTERS
+	pushad
 	push isr_%1_str
 	push 4
 	push %3
@@ -100,7 +91,7 @@ global _isr_%1
 	mov al, 0xa0
 	out 0xa0, al
 
-	POP_ALL_REGISTERS
+	popad
 	pop	ebp
 	iret
 %endmacro
