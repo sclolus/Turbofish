@@ -1,8 +1,8 @@
 #![feature(const_raw_ptr_to_usize_cast)] // rust is being annoying on the types of ffi functions
-#![feature(integer_atomics)]
 #![no_std]
 #![feature(core_intrinsics)] // for function! macro
 #![feature(asm)] // for inline asm
+#![feature(try_from)]
 #![allow(unused_unsafe)]
 
 #[macro_use]

@@ -3,6 +3,7 @@ use crate::interrupts;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
+use crate::timer::Rtc;
 use crate::{interrupts::pit::*, interrupts::*};
 
 extern "C" {
@@ -490,5 +491,8 @@ impl From<u16> for VbeError {{
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
+    let mut rtc = Rtc::new();
+    let date = rtc.read_date();
+    println!("{}", date);
     0
 }
