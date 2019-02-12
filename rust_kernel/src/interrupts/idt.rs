@@ -43,6 +43,12 @@ impl From<u8> for GateType {
 
 use GateType::*;
 
+/// The IdtGateEntry is a type of descriptor that populates the Interrupt Descriptor Table.
+/// When trying to fire an interrupt of interrupt number `intn`, the CPU will look inside the IDT at index `indn`,
+/// and if possible depending on the different flags in the entry, will call the registered handler in the entry.
+/// The handler's address is contained in two parts inside the fields `offset_1` and `offset_2`.
+/// The handler's address is actually an offset inside the Segment, contained inside the GDT/LDT, indexed by the Selector `Selector`.
+/// If the CPU has to ignore the entry, (because it's present bitflag is not set or in other cases) the CPU will throw a Double Fault.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(C, packed)]
 pub struct IdtGateEntry {
