@@ -19,5 +19,4 @@ pub mod multiboot;
 pub mod panic;
 pub mod registers;
 pub mod rust_main;
-pub mod support; // For Rust lang items
 pub mod timer;
