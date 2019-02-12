@@ -126,7 +126,7 @@ $(kernel): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i38
 	$(link_kernel)
 
 build_rust:
-	cargo +nightly xbuild $(cargo_flags) --target $(custom_target) --verbose
+	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
 
 build_libasm_i386:
 	make -C libasm_i386 all
