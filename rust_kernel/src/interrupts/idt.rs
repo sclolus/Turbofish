@@ -82,7 +82,6 @@ pub struct IdtGateEntry {
 }
 
 impl IdtGateEntry {
-
     /// Returns a minimal IdtGateEntry, which is just a zeroed out entry.
     fn minimal() -> Self {
         unsafe { core::mem::zeroed() }
@@ -189,7 +188,6 @@ impl Default for Idtr {
 }
 
 impl Idtr {
-
     /// Consumes the Idtr, returning the corresponding InterruptTable.
     pub unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
         InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
@@ -240,6 +238,9 @@ pub struct InterruptTable<'a> {
 
 /// The InterruptTable implements Index<usize> which enables us to use the syntax: `idt[index]`,
 /// instead of `idt.entries[index]` in an immutable context.
+///
+/// # Panics
+/// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
 impl Index<usize> for InterruptTable<'_> {
     type Output = IdtGateEntry;
 
@@ -250,6 +251,9 @@ impl Index<usize> for InterruptTable<'_> {
 
 /// The InterruptTable implements IndexMut which enables us to use the syntax: `idt[index] = SomeIdtGateEntry`
 /// instead of `idt.entries[index] = SomeIdtGateEntry` in a mutable context.
+///
+/// # Panics
+/// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
 impl IndexMut<usize> for InterruptTable<'_> {
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         self.entries.index_mut(idx)
@@ -340,6 +344,8 @@ impl InterruptTable<'_> {
     ];
 
     /// Loads the default configuration of the InterruptTable.
+    /// # Panics
+    /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
     pub fn init_default(&mut self) {
         assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
 
@@ -358,7 +364,6 @@ impl InterruptTable<'_> {
 
             self[index] = gate_entry;
         }
-
         gate_entry.set_gate_type(InterruptGate32);
 
         let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR as usize;
