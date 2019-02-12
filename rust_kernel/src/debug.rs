@@ -1,6 +1,4 @@
 use crate::interrupts::pit::*;
-use crate::timer::TIME;
-use core::sync::atomic::Ordering;
 
 pub const POISON_SLAB: u32 = 0x5a5a5a5a;
 
@@ -23,15 +21,19 @@ macro_rules! function {
     }};
 }
 
+extern "C" {
+    fn _get_pic_time() -> u32;
+}
+
 static mut BENCH_START_TIME: u32 = 0;
 
 pub fn bench_start() {
     unsafe {
-        BENCH_START_TIME = TIME.load(Ordering::SeqCst);
+        BENCH_START_TIME = _get_pic_time();
     }
 }
 
 /// return time elapsed since bench_start in ms using the pit actual configuration
 pub fn bench_end() -> u32 {
-    unsafe { ((TIME.load(Ordering::SeqCst) - BENCH_START_TIME) as f32 * PIT0.period) as u32 }
+    unsafe { ((_get_pic_time() - BENCH_START_TIME) as f32 * PIT0.period) as u32 }
 }
