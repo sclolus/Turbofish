@@ -199,9 +199,9 @@ impl Idtr {
         InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
     }
 
+    /// Returns the current Interrupt Descriptor Table Register
     #[no_mangle]
     #[inline(never)]
-    /// Returns the current Interrupt Descriptor Table Register
     pub unsafe extern "C" fn get_idtr() -> Idtr {
         // Temporary struct Idtr to be filled by the asm routine
         let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
@@ -210,9 +210,9 @@ impl Idtr {
         idtr
     }
 
+    /// Loads the contents of `idtr` into the Interrupt Descriptor Table Register.
     #[no_mangle]
     #[inline(never)]
-    /// Loads the contents of `idtr` into the Interrupt Descriptor Table Register.
     pub unsafe extern "C" fn load_idtr(&self) {
         asm!("lidt ($0)" :: "r" (self as *const _) : "memory" : "volatile");
     }
@@ -352,7 +352,7 @@ impl InterruptTable<'_> {
     /// Loads the default configuration of the InterruptTable.
     /// # Panics
     /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
-    pub fn init_default(&mut self) {
+    pub unsafe fn init_default(&mut self) {
         assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
 
         let mut gate_entry = *IdtGateEntry::new()
@@ -370,6 +370,7 @@ impl InterruptTable<'_> {
 
             self[index] = gate_entry;
         }
+
         gate_entry.set_gate_type(InterruptGate32);
 
         let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR as usize;
@@ -385,5 +386,12 @@ impl InterruptTable<'_> {
 
             self[index + offset] = gate_entry;
         }
+    }
+
+    /// Gets the current InterruptTable as specified by the current IDTR.
+    /// This method is basically just a shorthand.
+    pub unsafe fn current_interrupt_table<'a>() -> InterruptTable<'a> {
+        // Do we keep this function ? It seems handy ?
+        Idtr::get_idtr().interrupt_table()
     }
 }
