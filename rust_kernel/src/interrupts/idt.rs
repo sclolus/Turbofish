@@ -10,6 +10,13 @@ use irqs::*;
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
+/// The GateType is the type of Gate for the IdtGateEntry.
+/// Gate Type 	Possible IDT gate types :
+///              0b0101	0x5	5	80386 32 bit task gate
+///              0b0110	0x6	6	80286 16-bit interrupt gate
+///              0b0111	0x7	7	80286 16-bit trap gate
+///              0b1110	0xE	14	80386 32-bit interrupt gate
+///              0b1111	0xF	15	80386 32-bit trap gate
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum GateType {
     TaskGate32 = 0x5,
@@ -17,6 +24,21 @@ pub enum GateType {
     TrapGate16 = 0x7,
     InterruptGate32 = 0xE,
     TrapGate32 = 0xF,
+    InvalidGateType,
+}
+
+/// We might from to implement TryFrom instead of From.
+impl From<u8> for GateType {
+    fn from(value: u8) -> Self {
+        match value {
+            0x5 => TaskGate32,
+            0x6 => InterruptGate16,
+            0x7 => TrapGate16,
+            0xE => InterruptGate32,
+            0xF => TaskGate32,
+            _ => InvalidGateType,
+        }
+    }
 }
 
 use GateType::*;
@@ -55,15 +77,18 @@ pub struct IdtGateEntry {
     /// type and attributes,
     pub type_attr: u8,
 
-    /// offset bits 16..31
+    /// offset bits 16..31. The high part of the address.
     pub offset_2: u16,
 }
 
 impl IdtGateEntry {
+
+    /// Returns a minimal IdtGateEntry, which is just a zeroed out entry.
     fn minimal() -> Self {
         unsafe { core::mem::zeroed() }
     }
 
+    /// Returns a new IdtGateEntry, the entry is set as present and all other fields are zeroed out.
     pub fn new() -> Self {
         let mut new = Self::minimal();
 
@@ -71,35 +96,74 @@ impl IdtGateEntry {
         new
     }
 
+    /// Sets the present flag of the IdtGateEntry.
+    /// If this is set, then the Gate is used by the cpu when the corresponding interrupt is triggered.
+    /// If this is not, then the Gate is unused.
     pub fn set_present(&mut self, present: bool) -> &mut Self {
         self.type_attr.set_bit(7, present);
         self
     }
 
+    /// Gets the value of the present flag of the IdtGateEntry.
+    /// If this is set, then the Gate is used by the cpu when the corresponding interrupt is triggered.
+    /// If this is not, then the Gate is unused.
+    pub fn present(&self) -> bool {
+        self.type_attr.get_bit(7)
+    }
+
+    /// Sets the value of the storage segment flag of the entry.
     pub fn set_storage_segment(&mut self, storage: bool) -> &mut Self {
         self.type_attr.set_bit(4, storage);
         self
     }
 
+    /// Gets the value of the storage segment flag of the entry.
+    pub fn storage_segment(&self) -> bool {
+        self.type_attr.get_bit(4)
+    }
+
+    /// This sets the GateType of the entry.
     pub fn set_gate_type(&mut self, gate_type: GateType) -> &mut Self {
         self.type_attr.set_bits(0..4, gate_type as u8);
         self
     }
 
+    /// Gets the GateType of the entry.
+    pub fn gate_type(&self) -> GateType {
+        self.type_attr.get_bits(0..4).into()
+    }
+
+    /// This sets the DPL (Descriptor Privilege Level) of the entry.
+    /// If the privilege level of the current user is not atleast of DPL (0 being the highest), a General Protection Fault will be thrown.
     pub fn set_privilege_level(&mut self, dpl: u8) -> &mut Self {
         self.type_attr.set_bits(4..6, dpl);
         self
     }
 
+    /// Gets the DPL (Descriptor Privilege Level) of the entry.
+    /// If the privilege level of the current user is not atleast of DPL (0 being the highest), a General Protection Fault will be thrown.
+    pub fn get_privilege_level(&self) -> u8 {
+        self.type_attr.get_bits(4..6)
+    }
+
+    /// Sets the Selector of the entry. This is the selector in the GDT (or LDT) containing the handler for the interrupt.
     pub fn set_selector(&mut self, selector: u16) -> &mut Self {
         self.selector = selector;
         self
     }
 
+    /// Sets the handler of the entry.
+    /// The lower half of the handler address is stored in member `offset_1`, while the higher half is stored in member `offset_2`.
     pub fn set_handler(&mut self, handler: u32) -> &mut Self {
         self.offset_1 = handler as u16;
         self.offset_2 = ((handler as usize) >> 16) as u16;
         self
+    }
+
+    /// Gets the handler of the entry.
+    /// The lower half of the handler address is stored in member `offset_1`, while the higher half is stored in member `offset_2`.
+    pub fn handler(&self) -> u32 {
+        ((self.offset_2 as u32) << 16) | (self.offset_1 as u32)
     }
 }
 
