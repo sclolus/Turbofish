@@ -121,6 +121,7 @@ $(kernel): $(OBJ_PICTURES) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/li
 	$(link_kernel)
 
 build_rust:
+	./install_rust.sh
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
 
 build_libasm_i386:
