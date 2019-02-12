@@ -25,10 +25,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     unsafe {
         interrupts::init();
-
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+
         SCREEN_MONAD.clear_screen();
+
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
                 draw_image(&_asterix_bmp_start, buffer, width, height, bpp)

@@ -47,7 +47,6 @@ SECTIONS
 	}
 
 	/* Read-write data (uninitialized) */
-	. = 16M;
 	.bss BLOCK(4K) : ALIGN(4K)
 	{
 		*(.bss)

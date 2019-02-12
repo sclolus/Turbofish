@@ -177,6 +177,18 @@ impl PageDirectory {
         Self { entries: [PageDirectoryEntry::new(); 1024] }
     }
 
+    /// This is a trick that ensures that the page tables are mapped into virtual memory.
+    /// The idea is that the last PageDirectoryEntry points to self, viewed as a Page Table.
+    /// It means that the Virtual Addresses of the PageTables have their 10-higher bits set.
+    /// The range of bits [12..22] then describes the index inside the PageDirectory, that is the index of the PageTable itself.
+    /// Then the range of bits [0..12] describes the offset inside the PageTable, which is fine since a PageTable is exactly 4096 bytes.
+    pub fn self_map_tables(&mut self) {
+        let entry =
+            *PageDirectoryEntry::new().set_present(true).set_read_write(true).set_entry_addr(self as *const _ as usize);
+
+        self[1023] = entry;
+    }
+
     #[allow(dead_code)]
     pub fn set_directory_entry(&mut self, index: usize, entry: PageDirectoryEntry) -> Result<(), PageDirectoryError> {
         self.entries.get_mut(index).map_or(Err(ErrIndexOutOfBound), |slot| {

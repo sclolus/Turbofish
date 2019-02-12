@@ -11,6 +11,34 @@ use core::ops::Range;
 use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::{PageTable, PageTableEntry};
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct VirtualAddr {
+    addr: usize,
+}
+
+impl VirtualAddr {
+    pub fn physical_addr(&self) -> Option<PhysicalAddr> {
+        let page_directory_index = self.addr.get_bits(22..32);
+        let page_table_index = self.addr.get_bits(12..22);
+
+        unsafe {
+            if PAGE_DIRECTORY[page_directory_index].present() {
+                return None;
+            }
+        }
+
+        // if PAGE_TABLES[
+        None
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct PhysicalAddr {
+    addr: usize,
+}
+
+impl PhysicalAddr {}
+
 #[allow(dead_code)]
 static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] = // should be renamed to INIT_PAGE_TABLES
     [PageTable::new(); PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE];
@@ -67,8 +95,9 @@ pub unsafe fn init_paging() -> Result<(), ()> {
 
     for dir_entry in PAGE_DIRECTORY.as_mut().iter_mut() {
         dir_entry.set_present(false);
-        assert!(dir_entry.present() == false);
+        debug_assert!(dir_entry.present() == false);
     }
+    PAGE_DIRECTORY.self_map_tables();
 
     let first_directory_entry = *PageDirectoryEntry::new()
         .set_present(true)
