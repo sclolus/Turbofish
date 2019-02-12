@@ -4,6 +4,7 @@ mod irqs;
 use crate::interrupts::pic_8259;
 use bit_field::BitField;
 use core::ffi::c_void;
+use core::ops::{Deref, DerefMut, Index, IndexMut};
 use cpu_exceptions::*;
 use irqs::*;
 
@@ -110,20 +111,82 @@ pub struct Idtr {
     pub idt_addr: *mut IdtGateEntry,
 }
 
-#[no_mangle]
-#[inline(never)]
-/// Returns the current Interrupt Descriptor Table Register
-pub unsafe extern "C" fn get_idtr() -> Idtr {
-    // Temporary struct Idtr to be filled by the asm routine
-    let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
-
-    asm!("sidt $0" : "=*m"(&mut idtr) :: "memory" : "volatile");
-    idtr
+impl Default for Idtr {
+    fn default() -> Self {
+        Idtr { length: InterruptTable::DEFAULT_IDT_SIZE - 1, idt_addr: InterruptTable::DEFAULT_IDT_ADDR }
+    }
 }
 
 impl Idtr {
-    const DEFAULT_IDTR_SIZE: u16 = 256 * 8;
-    const DEFAULT_IDTR_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
+    pub unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
+        InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
+    }
+
+    #[no_mangle]
+    #[inline(never)]
+    /// Returns the current Interrupt Descriptor Table Register
+    pub unsafe extern "C" fn get_idtr() -> Idtr {
+        // Temporary struct Idtr to be filled by the asm routine
+        let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
+
+        asm!("sidt $0" : "=*m"(&mut idtr as *mut _) :: "memory" : "volatile");
+        idtr
+    }
+
+    #[no_mangle]
+    #[inline(never)]
+    /// Loads the contents of `idtr` into the Interrupt Descriptor Table Register.
+    pub unsafe extern "C" fn load_idtr(&self) {
+        asm!("lidt ($0)" :: "r" (self as *const _) : "memory" : "volatile");
+    }
+
+    pub unsafe fn init_idt<'a>(self) -> InterruptTable<'a> {
+        without_interrupts!({
+            self.load_idtr();
+
+            let mut idt = self.interrupt_table();
+
+            idt.init_default();
+            idt
+        })
+    }
+}
+
+pub struct InterruptTable<'a> {
+    entries: &'a mut [IdtGateEntry],
+}
+
+impl Index<usize> for InterruptTable<'_> {
+    type Output = IdtGateEntry;
+
+    fn index(&self, idx: usize) -> &Self::Output {
+        self.entries.index(idx)
+    }
+}
+
+impl IndexMut<usize> for InterruptTable<'_> {
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        self.entries.index_mut(idx)
+    }
+}
+
+impl Deref for InterruptTable<'_> {
+    type Target = [IdtGateEntry];
+
+    fn deref(&self) -> &Self::Target {
+        self.entries
+    }
+}
+
+impl DerefMut for InterruptTable<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.entries
+    }
+}
+
+impl InterruptTable<'_> {
+    const DEFAULT_IDT_SIZE: u16 = 256 * 8;
+    const DEFAULT_IDT_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
 
     const DEFAULT_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
         (_isr_divide_by_zero, InterruptGate32),
@@ -166,7 +229,7 @@ impl Idtr {
         [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _default_isr];
 
     /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
-    /// They are mapped from 0x70 to 0x77
+    /// They are mapped from 0x28 to 0x30
     const DEFAULT_IRQS_SLAVE: [unsafe extern "C" fn(); 8] = [
         _isr_cmos,
         _isr_acpi,
@@ -178,43 +241,37 @@ impl Idtr {
         _isr_secondary_hard_disk,
     ];
 
-    pub fn init_idt() {
-        let idt: Idtr = Idtr { length: Idtr::DEFAULT_IDTR_SIZE - 1, idt_addr: Idtr::DEFAULT_IDTR_ADDR };
-        let idt_slice =
-            unsafe { core::slice::from_raw_parts_mut(idt.idt_addr, (Idtr::DEFAULT_IDTR_SIZE / 8) as usize) };
-        for entry in idt_slice.iter_mut() {
-            *entry = *IdtGateEntry::new()
-                .set_storage_segment(false)
-                .set_privilege_level(0)
-                .set_selector(1 << 3)
-                .set_gate_type(InterruptGate32)
-                .set_handler(_default_isr as *const c_void as u32);
-        }
+    pub fn init_default(&mut self) {
+        let mut gate_entry = *IdtGateEntry::new()
+            .set_storage_segment(false)
+            .set_privilege_level(0)
+            .set_selector(1 << 3)
+            .set_gate_type(InterruptGate32);
 
-        let mut gate_entry =
-            *IdtGateEntry::new().set_storage_segment(false).set_privilege_level(0).set_selector(1 << 3);
+        for entry in self.iter_mut() {
+            *entry = *gate_entry.set_handler(_default_isr as *const c_void as u32);
+        }
 
         for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
             gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
 
-            idt_slice[index] = gate_entry;
+            self[index] = gate_entry;
         }
 
-        let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR;
+        gate_entry.set_gate_type(InterruptGate32);
+
+        let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR as usize;
         for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
-            gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
 
-            idt_slice[index + offset as usize] = gate_entry;
+            self[index + offset] = gate_entry;
         }
 
-        let offset = pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR;
+        let offset = pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR as usize;
         for (index, &interrupt_handler) in Self::DEFAULT_IRQS_SLAVE.iter().enumerate() {
-            gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
 
-            idt_slice[index + offset as usize] = gate_entry;
-        }
-        unsafe {
-            asm!("lidt ($0)" :: "r" (&idt) : "memory" : "volatile");
+            self[index + offset] = gate_entry;
         }
     }
 }

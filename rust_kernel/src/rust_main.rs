@@ -21,7 +21,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     unsafe {
         interrupts::disable();
 
-        Idtr::init_idt();
+        Idtr::default().init_idt();
         PIC_8259.init();
         PIC_8259.disable_all_irqs();
         PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.

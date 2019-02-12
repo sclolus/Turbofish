@@ -7,7 +7,7 @@ const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
 const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 
 pub const KERNEL_PIC_MASTER_IDT_VECTOR: u8 = 0x20 as u8;
-pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
+pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x28 as u8;
 
 /// Represents a Programmable Interrupt Controller 8259
 pub struct Pic {
@@ -63,21 +63,53 @@ pub struct Pic8259 {
 pub static mut PIC_8259: Pic8259 = Pic8259::new();
 
 pub enum Irq {
+    /// The System timer, (PIT: Programmable Interval Timer) IRQ.
     SystemTimer = 0,
+
+    /// The Keyboard Controller IRQ.
     KeyboardController = 1,
+
     //IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
-    SerialPortController2 = 3, // for serial port 2 (shared with serial port 4, if present)
-    SerialPortController1 = 4, // for serial port 1 (shared with serial port 3, if present)
-    ParallelPort2And3 = 5,     //  or  sound card
+    /// The Serial Port 2 IRQ (shared with the Serial Port 4, if it is present).
+    SerialPortController2 = 3,
+
+    /// The Serial Port 1 IRQ (shared with the Serial Port 3, if it is present).
+    SerialPortController1 = 4,
+
+    /// The IRQ for Parallel Ports 2 and 3, or the Sound card.
+    ParallelPort2And3 = 5, //  or  sound card
+
+    /// The IRQ for the FloppyDisk Controller.
     FloppyDiskController = 6,
-    ParallelPort1 = 7, //. It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
+
+    /// The IRQ for the Parallel Port 1.
+    /// Note: It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
+    ParallelPort1 = 7,
+
+    /// The Real Time Clock (RTC) IRQ.
     RealTimeClock = 8, // (RTC)
+
+    /// The IRQ for the Advanced Configuration and Power Interface (on Intel chips, mostly).
     ACPI = 9,
-    Irq10 = 10, // – The Interrupt is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
-    Irq11 = 11, // – The Interrupt is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
-    MouseOnPS2Controler = 12,
-    Irq13 = 13, // CPU co-processor  or  integrated floating point unit  or  inter-processor interrupt (use depends on OS)
-    PrimaryATAChannel = 14, // (ATA interface usually serves hard disk drives and CD drives)
+
+    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC).
+    Irq10 = 10,
+
+    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
+    Irq11 = 11,
+
+    /// The IRQ for the mouse from the PS/2 Controller.
+    MouseOnPS2Controller = 12,
+
+    /// The IRQ for CPU co-processor or integrated floating point unit or inter-processor interrupt (use depends on OS).
+    Irq13 = 13,
+
+    /// The IRQ for the Primary ATA Channel.
+    /// (ATA interface usually serves hard disk drives and CD drives)
+    PrimaryATAChannel = 14,
+
+    /// The IRQ for the Secondary ATA Channel.
+    /// (ATA interface usually serves hard disk drives and CD drives)
     SecondaryATAChannel = 15,
 }
 
@@ -91,6 +123,7 @@ impl Pic8259 {
     pub const fn new() -> Self {
         Self { master: Pic::new(Self::MASTER_COMMAND_PORT), slave: Pic::new(Self::SLAVE_COMMAND_PORT), bios_imr: None }
     }
+
     /// Must be called when PIC is initialized
     /// The bios default IMR are stored when this function is called
     pub unsafe fn init(&mut self) {
@@ -123,15 +156,15 @@ impl Pic8259 {
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave is modified.
     pub unsafe fn disable_irq(&mut self, irq: Irq) {
-        let mut nirq = irq as u16;
+        let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {
-            let mask = self.master.get_interrupt_mask() | (0x1 << nirq);
+            let mask = *self.master.get_interrupt_mask().set_bit(nirq, true);
 
             self.master.set_interrupt_mask(mask);
         } else {
             nirq -= 8;
-            let mask = self.slave.get_interrupt_mask() | (0x1 << nirq);
+            let mask = *self.slave.get_interrupt_mask().set_bit(nirq, true);
 
             self.slave.set_interrupt_mask(mask);
         }
@@ -142,20 +175,20 @@ impl Pic8259 {
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
     pub unsafe fn enable_irq(&mut self, irq: Irq) {
-        let mut nirq = irq as u16;
+        let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {
-            let mask = self.master.get_interrupt_mask() & !(0x1 << nirq);
+            let mask = *self.master.get_interrupt_mask().set_bit(nirq, false);
 
             self.master.set_interrupt_mask(mask);
         } else {
             nirq -= 8;
-            let mask = self.slave.get_interrupt_mask() & !(0x1 << nirq);
+            let mask = *self.slave.get_interrupt_mask().set_bit(nirq, false);
 
             self.slave.set_interrupt_mask(mask);
 
             // Also clear irq 2 to enable slave sending to master
-            let mask = self.master.get_interrupt_mask() | 0b100;
+            let mask = *self.master.get_interrupt_mask().set_bit(2, false);
 
             self.master.set_interrupt_mask(mask);
         }
