@@ -167,14 +167,21 @@ impl IdtGateEntry {
     }
 }
 
+/// This is the Interrupt Descriptor Table Register representation. It contains the `length in bytes - 1` and the address of the IDT.
+/// It may be generated and then loaded in the actual register IDTR, which tells the CPU to start using the IDT at `idt_addr` for Interrupt Gates lookup.
+/// It can be consumed in order to obtain an InterruptTable struct which is the interface to modify IdtGateEntries.
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Idtr {
+    /// The `length in bytes - 1` of the IDT.
     pub length: u16,
+
+    /// The address of the IDT.
     pub idt_addr: *mut IdtGateEntry,
 }
 
+/// Returns the default values for the Idtr.
 impl Default for Idtr {
     fn default() -> Self {
         Idtr { length: InterruptTable::DEFAULT_IDT_SIZE - 1, idt_addr: InterruptTable::DEFAULT_IDT_ADDR }
@@ -182,6 +189,8 @@ impl Default for Idtr {
 }
 
 impl Idtr {
+
+    /// Consumes the Idtr, returning the corresponding InterruptTable.
     pub unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
         InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
     }
@@ -204,6 +213,10 @@ impl Idtr {
         asm!("lidt ($0)" :: "r" (self as *const _) : "memory" : "volatile");
     }
 
+    /// Loads the Idtr structure in the actual register IDTR.
+    /// It then creates an InterruptTable struct, consuming the Idtr struct (to prevent aliasing of the memory zone used by the InterruptTable),
+    /// loads the default configuration of the InterruptTable,
+    /// and finally, returns it.
     pub unsafe fn init_idt<'a>(self) -> InterruptTable<'a> {
         without_interrupts!({
             self.load_idtr();
@@ -216,10 +229,17 @@ impl Idtr {
     }
 }
 
+/// This is the representation of the IDT (Interrupt Descriptor Table).
+/// It consists of a slice of IdtGateEntries.
+/// Its lifetime is basically a fake unbounded lifetime, this issue can't be resolved.
+/// The InterruptTable is the interface to modify the entries inside the IDT.
+#[derive(Debug)]
 pub struct InterruptTable<'a> {
     entries: &'a mut [IdtGateEntry],
 }
 
+/// The InterruptTable implements Index<usize> which enables us to use the syntax: `idt[index]`,
+/// instead of `idt.entries[index]` in an immutable context.
 impl Index<usize> for InterruptTable<'_> {
     type Output = IdtGateEntry;
 
@@ -228,12 +248,17 @@ impl Index<usize> for InterruptTable<'_> {
     }
 }
 
+/// The InterruptTable implements IndexMut which enables us to use the syntax: `idt[index] = SomeIdtGateEntry`
+/// instead of `idt.entries[index] = SomeIdtGateEntry` in a mutable context.
 impl IndexMut<usize> for InterruptTable<'_> {
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         self.entries.index_mut(idx)
     }
 }
 
+/// The InterruptTable implements Deref, which makes it a Smart Pointer.
+/// The main purpose of this is to enable the coersion of a &InterruptTable in a slice of IdtGateEntries: `&[IdtGateEntries]`,
+/// which basically means that all the immutable methods of &[IdtGateEntries] (the slice methods) are available for the InterruptTable.
 impl Deref for InterruptTable<'_> {
     type Target = [IdtGateEntry];
 
@@ -242,6 +267,9 @@ impl Deref for InterruptTable<'_> {
     }
 }
 
+/// The InterruptTable implements DerefMut, which makes it a Smart Pointer.
+/// The main purpose of this is to enable the coersion of a &mut InterruptTable in a mutable slice of IdtGateEntries: `&mut [IdtGateEntries]`,
+/// which basically means that all the mutable methods of &mut [IdtGateEntries] (the slice methods) are available for the InterruptTable.
 impl DerefMut for InterruptTable<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.entries
@@ -249,9 +277,15 @@ impl DerefMut for InterruptTable<'_> {
 }
 
 impl InterruptTable<'_> {
+    /// This is the default size (in bytes) of the IDT, and also the maximum size of the IDT on x86.
+    /// As an IdtGateEntry has a size of 8 bytes, there are 256 entries in the table.
     const DEFAULT_IDT_SIZE: u16 = 256 * 8;
+
+    /// This is the default address of the IDT.
     const DEFAULT_IDT_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
 
+    /// The list of the default exception handlers.
+    /// They are loaded by the `init_default` method.
     const DEFAULT_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
         (_isr_divide_by_zero, InterruptGate32),
         (_isr_debug, TrapGate32),
@@ -305,7 +339,10 @@ impl InterruptTable<'_> {
         _isr_secondary_hard_disk,
     ];
 
+    /// Loads the default configuration of the InterruptTable.
     pub fn init_default(&mut self) {
+        assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
+
         let mut gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)
             .set_privilege_level(0)
