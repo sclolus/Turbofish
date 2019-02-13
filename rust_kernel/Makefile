@@ -1,6 +1,7 @@
 arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := undefined_behavior
+CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 
 # These rustc flags are defined in json xbuild file.
 # rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
@@ -79,7 +80,15 @@ endif
 
 .PHONY: all clean fclean common_clean re exec $(kernel)
 
-all: symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
+all: .rust_toolchain .xbuild_toolchain symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
+
+.rust_toolchain: rust-toolchain
+	rustup component add rust-src
+	echo "Updated" > .rust_toolchain
+
+.xbuild_toolchain: xbuild-toolchain
+	cargo install --version $(CARGO_XBUILD_VERSION) cargo-xbuild --force
+	echo "Updated" > .xbuild_toolchain
 
 common_clean:
 	rm -f $(OBJ_C_KERNEL)
