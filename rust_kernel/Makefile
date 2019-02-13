@@ -46,11 +46,11 @@ SRC_ASM_KERNEL += vbe_font
 VPATH += src/monitor
 
 SRC_C_KERNEL += panic
-SRC_ASM_KERNEL += real_mode_call cpu_isr io isr align_stack
+SRC_ASM_KERNEL += real_mode_call io align_stack
 VPATH += src/system
 
-SRC_ASM_KERNEL += idt
-VPATH += src/interrupts
+SRC_ASM_KERNEL += cpu_isr common_isr
+VPATH += src/interrupts/idt
 
 SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias

@@ -54,6 +54,11 @@ pub enum PitError {
     BadFrequency,
 }
 
+#[no_mangle]
+pub fn debug_pit(tic: u32) -> () {
+    print!("{} ", tic);
+}
+
 impl Pit {
     /// Channel 0 data port (read/write)
     const CHANEL0_PORT: u16 = 0x40;

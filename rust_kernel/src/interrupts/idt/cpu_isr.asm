@@ -4,27 +4,27 @@
 ; These CPU ISR gates are on vector 0 -> 31
 
 %macro PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET 0
-    pushad
-    push dword [ebp + 16] ; eflags
-    push dword [ebp + 12] ; cs
-    push dword [ebp + 8]  ; eip
-    push ss
-    push gs
-    push fs
-    push es
-    push ds
+	pushad
+	push dword [ebp + 16] ; eflags
+	push dword [ebp + 12] ; cs
+	push dword [ebp + 8]  ; eip
+	push ss
+	push gs
+	push fs
+	push es
+	push ds
 %endmacro
 
 %macro PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET 0
-    pushad
-    push dword [ebp + 12] ; eflags
-    push dword [ebp + 8]  ; cs
-    push dword [ebp + 4]  ; eip
-    push ss
-    push gs
-    push fs
-    push es
-    push ds
+	pushad
+	push dword [ebp + 12] ; eflags
+	push dword [ebp + 8]  ; cs
+	push dword [ebp + 4]  ; eip
+	push ss
+	push gs
+	push fs
+	push es
+	push ds
 %endmacro
 
 extern cpu_panic_handler
@@ -32,18 +32,17 @@ extern _align_stack
 
 %macro CREATE_ISR 3
 segment .data
-isr_%1_str:
-    db %2, " error", 0
+	isr_%1_str: db %2, " error", 0
 segment .text
 GLOBAL _isr_%1
 _isr_%1:
-    push ebp
-    mov ebp, esp
-    %3
-    push isr_%1_str
-    push 68
-    push cpu_panic_handler
-    call _align_stack
+	push ebp
+	mov ebp, esp
+	%3
+	push isr_%1_str
+	push 68
+	push cpu_panic_handler
+	call _align_stack
 %endmacro
 
 ; After expansion of macro (for cpu_default_interrupt)

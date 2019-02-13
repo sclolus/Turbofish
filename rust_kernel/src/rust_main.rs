@@ -1,10 +1,11 @@
 use crate::debug;
 use crate::interrupts;
+use crate::interrupts::pit::*;
+use crate::interrupts::{pic_8259, Idtr, PIC_8259};
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::timer::Rtc;
-use crate::{interrupts::pit::*, interrupts::*};
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -14,9 +15,20 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     save_multiboot_info(multiboot_info);
-
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
+
+    unsafe {
+        interrupts::disable();
+
+        Idtr::init_idt();
+        PIC_8259.init();
+        PIC_8259.disable_all_irqs();
+        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+
+        interrupts::enable();
+    }
+
     unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
@@ -27,10 +39,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
 
-        unsafe { interrupts::init() };
-        pic_8259::irq_clear_mask(0);
         PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(1000.0).unwrap();
+        PIT0.start_at_frequency(18.0).unwrap();
+        PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
     debug::bench_start();
     for _i in 0..3 {
@@ -444,6 +455,34 @@ impl From<u16> for VbeError {{
 }}
 ");
     }
+    println!("from {}", function!());
+
+    println!("irqs state: {}", interrupts::get_interrupts_state());
+    let _keyboard_port = Pio::<u8>::new(0x60);
+    use crate::io::Pio;
+
+    println!("irq mask: {:b}", PIC_8259.get_masks());
+
+    /*
+    unsafe {
+        assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
+        for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
+            println!("{}: {:?}", index, gate);
+        }
+    }
+    */
+    let eflags = crate::registers::Eflags::get_eflags();
+    //println!("idtr: {:x?}", interrupts::get_idtr());
+    println!("{}", eflags);
+    println!("{:x?}", eflags);
+
+    println!("from {}", function!());
+    println!("{:?} ms ellapsed", debug::bench_end());
+    unsafe {
+        PIT0.start_at_frequency(18.).unwrap();
+    }
+    debug::bench_start();
+    println!("pit: {:?}", PIT0);
     unsafe {
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("H");
@@ -473,16 +512,6 @@ impl From<u16> for VbeError {{
         println!("!");
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
-    unsafe { interrupts::enable() };
-    println!("from {}", function!());
-    println!("{:?} ms ellapsed", debug::bench_end());
-    unsafe {
-        PIT0.start_at_frequency(1000.).unwrap();
-    }
-    debug::bench_start();
-    println!("pit: {:?}", PIT0);
-
-    println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {

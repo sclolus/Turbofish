@@ -29,7 +29,6 @@ extern "C" {
 }
 
 pub(super) extern "C" fn reserved_exception() -> ! {
-    loop {
-        println!("This is a reserved exception");
-    }
+    println!("This is a reserved exception");
+    loop {}
 }

@@ -1,14 +1,11 @@
-mod exceptions;
-mod irqs;
-
+#[macro_use]
+pub mod macros;
 pub mod idt;
-pub mod idt_gate_entry;
 pub mod pic_8259;
 pub mod pit;
 
-pub use idt::*;
-pub use idt_gate_entry::*;
-pub use pic_8259::*;
+pub use self::idt::Idtr;
+pub use self::pic_8259::PIC_8259;
 
 /// Enables interrupts system-wide
 #[inline(always)]
@@ -22,18 +19,17 @@ pub unsafe fn disable() {
     asm!("cli" :::: "volatile");
 }
 
-/// Wrapper to init the Interrupt Descriptor Table.
-pub unsafe fn init() {
-    disable();
+/// Get the current interrupts state
+pub fn get_interrupts_state() -> bool {
+    use crate::registers::Eflags;
 
-    let idt = Idtr::load_default_idtr();
-    println!("Current idtr: {:?}", idt);
+    unsafe { Eflags::get_eflags().interrupt_flag() }
+}
 
-    idt.get_interrupt_table().load_default_interrupt_table();
-
-    pic_8259::initialize(0x20, 0x28);
-    pic_8259::disable_pics();
-    pic_8259::irq_clear_mask(1); // enable only the keyboard.
-
-    enable();
+/// Restore the interrupts state
+pub unsafe fn restore_interrupts_state(state: bool) {
+    match state {
+        true => enable(),
+        false => disable(),
+    }
 }

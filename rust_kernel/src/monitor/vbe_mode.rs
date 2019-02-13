@@ -1,6 +1,6 @@
 use super::{AdvancedGraphic, Color, Drawer, IoResult};
 use crate::ffi::c_char;
-use crate::registers::{BaseRegisters, _real_mode_op};
+use crate::registers::{real_mode_op, BaseRegisters};
 use core::result::Result;
 use core::slice;
 
@@ -389,7 +389,7 @@ fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(
      ** AH == 00h: Function call successful
      */
     unsafe {
-        let res = _real_mode_op(reg, bios_int);
+        let res = real_mode_op(reg, bios_int);
         if res & 0xFF != 0x4F || res & 0xFF00 != 0x00 {
             Err(res.into())
         } else {

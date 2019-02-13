@@ -1,11 +1,13 @@
 /// This files contains the code related to the 8259 Programmable interrupt controller
 /// See https://wiki.osdev.org/PIC.
 use crate::io::{Io, Pio};
+use bit_field::BitField;
 
-#[allow(non_upper_case_globals)]
-pub static mut master: Pic = Pic::new(Pic::MASTER_COMMAND_PORT);
-#[allow(non_upper_case_globals)]
-pub static mut slave: Pic = Pic::new(Pic::SLAVE_COMMAND_PORT);
+const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
+const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
+
+pub const KERNEL_PIC_MASTER_IDT_VECTOR: u8 = 0x20 as u8;
+pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 
 /// Represents a Programmable Interrupt Controller 8259
 pub struct Pic {
@@ -17,12 +19,6 @@ pub struct Pic {
 }
 
 impl Pic {
-    /// The default port number for the master PIC
-    const MASTER_COMMAND_PORT: u16 = 0x20;
-
-    /// The default port number for the slave PIC
-    const SLAVE_COMMAND_PORT: u16 = 0xA0;
-
     /// The End of Interrupt command, used to reply to the PICs at the end of an interrupt handler
     const EOI: u8 = 0x20;
 
@@ -36,7 +32,7 @@ impl Pic {
     const PIC_READ_ISR: u8 = 0x0b;
 
     /// Creates a new PIC instance with port `port`
-    pub const fn new(port: u16) -> Pic {
+    pub const fn new(port: u16) -> Self {
         Pic { command: Pio::new(port), data: Pio::new(port + 1) }
     }
 
@@ -58,110 +54,183 @@ impl Pic {
     }
 }
 
-/// This function will set the bit `irq`.
-/// Disabling the corresponding interrupt line.
-/// if irq < 8, then the master mask is modified.
-/// if irq >= 8 then the slave mask is modified.
-pub unsafe fn irq_set_mask(mut irq: u8) {
-    assert!(irq < 16);
-    if irq < 8 {
-        let mask = master.get_interrupt_mask() | (0x1 << irq);
+pub struct Pic8259 {
+    master: Pic,
+    slave: Pic,
+    bios_imr: Option<u16>,
+}
 
-        master.set_interrupt_mask(mask);
-    } else {
-        irq -= 8;
-        let mask = slave.get_interrupt_mask() | (0x1 << irq);
+pub static mut PIC_8259: Pic8259 = Pic8259::new();
 
-        slave.set_interrupt_mask(mask);
+pub enum Irq {
+    SystemTimer = 0,
+    KeyboardController = 1,
+    //IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
+    SerialPortController2 = 3, // for serial port 2 (shared with serial port 4, if present)
+    SerialPortController1 = 4, // for serial port 1 (shared with serial port 3, if present)
+    ParallelPort2And3 = 5,     //  or  sound card
+    FloppyDiskController = 6,
+    ParallelPort1 = 7, //. It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
+    RealTimeClock = 8, // (RTC)
+    ACPI = 9,
+    Irq10 = 10, // – The Interrupt is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
+    Irq11 = 11, // – The Interrupt is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
+    MouseOnPS2Controler = 12,
+    Irq13 = 13, // CPU co-processor  or  integrated floating point unit  or  inter-processor interrupt (use depends on OS)
+    PrimaryATAChannel = 14, // (ATA interface usually serves hard disk drives and CD drives)
+    SecondaryATAChannel = 15,
+}
+
+impl Pic8259 {
+    /// The default port number for the master PIC
+    const MASTER_COMMAND_PORT: u16 = 0x20;
+
+    /// The default port number for the slave PIC
+    const SLAVE_COMMAND_PORT: u16 = 0xA0;
+
+    pub const fn new() -> Self {
+        Self { master: Pic::new(Self::MASTER_COMMAND_PORT), slave: Pic::new(Self::SLAVE_COMMAND_PORT), bios_imr: None }
     }
-}
-
-/// This function will clear the bit `irq`.
-/// Enabling the corresopnding interrupt line.
-/// if irq < 8, then the master mask is modified.
-/// if irq >= 8 then the slave mask is modified.
-pub unsafe fn irq_clear_mask(mut irq: u8) {
-    assert!(irq < 16);
-    if irq < 8 {
-        let mask = master.get_interrupt_mask() & !(0x1 << irq);
-
-        master.set_interrupt_mask(mask);
-    } else {
-        irq -= 8;
-        let mask = slave.get_interrupt_mask() & !(0x1 << irq);
-
-        slave.set_interrupt_mask(mask);
+    /// Must be called when PIC is initialized
+    /// The bios default IMR are stored when this function is called
+    pub unsafe fn init(&mut self) {
+        self.bios_imr = Some(self.get_masks());
+        self.set_idt_vectors(KERNEL_PIC_MASTER_IDT_VECTOR, KERNEL_PIC_SLAVE_IDT_VECTOR);
     }
-}
 
-/// Disable both Slave and Master PICs
-/// This is done by sending 0xff to their respective data ports
-pub unsafe fn disable_pics() {
-    master.set_interrupt_mask(0xff);
-    slave.set_interrupt_mask(0xff);
-}
+    /// Initialize the PICs with `offset_1` as the vector offset for self.master
+    /// and `offset_2` as the vector offset for self.slave.
+    /// Which means that the vectors for self.master are now: offset_1..=offset_1+7
+    /// and for self.slave: offset_2..=offset_2+7.
+    pub unsafe fn set_idt_vectors(&mut self, offset_1: u8, offset_2: u8) {
+        self.master.command.write(Pic::INIT);
+        self.slave.command.write(Pic::INIT);
 
-/// Enable all interrupts of the PICs by clearing their Interrupt Mask
-pub unsafe fn enable_all_interrupts() {
-    master.set_interrupt_mask(0x0);
-    slave.set_interrupt_mask(0x0);
-}
+        // Assign the vectors offsets
+        self.master.data.write(offset_1);
+        self.slave.data.write(offset_2);
 
-/// Send end of interrupt from specific IRQ to the PIC.
-/// If the interrupt line is handled by the master chip, only to him the eoi is send.
-/// If the interrupt line is handled by the slave chip, both the slave and the master must be notified.
-pub fn send_eoi(irq: u8) {
-    unsafe {
-        assert!(irq < 16);
+        self.master.data.write(0b100); // This tells the self.master that there is a self.slave at its IRQ2
+        self.slave.data.write(0b10); // This tells the self.slave its cascade identity
 
-        if irq >= 8 {
-            slave.command.write(Pic::EOI);
+        // thoses 2 calls set the 8086/88 (MCS-80/85) mode for self.master and self.slave.
+        self.master.data.write(1);
+        self.slave.data.write(1);
+    }
+
+    /// This function will set the bit `irq`.
+    /// Disabling the corresponding interrupt line.
+    /// if irq < 8, then the self.master mask is modified.
+    /// if irq >= 8 then the self.slave is modified.
+    pub unsafe fn disable_irq(&mut self, irq: Irq) {
+        let mut nirq = irq as u16;
+        assert!(nirq < 16);
+        if nirq < 8 {
+            let mask = self.master.get_interrupt_mask() | (0x1 << nirq);
+
+            self.master.set_interrupt_mask(mask);
+        } else {
+            nirq -= 8;
+            let mask = self.slave.get_interrupt_mask() | (0x1 << nirq);
+
+            self.slave.set_interrupt_mask(mask);
         }
-        master.command.write(Pic::EOI);
     }
-}
 
-/// Initialize the PICs with `offset_1` as the vector offset for master
-/// and `offset_2` as the vector offset for slave.
-/// Which means that the vectors for master are now: offset_1..=offset_1+7
-/// and for slave: offset_2..=offset_2+7.
-pub unsafe fn initialize(offset_1: u8, offset_2: u8) {
-    let slave_mask = slave.get_interrupt_mask();
-    let master_mask = master.get_interrupt_mask();
+    /// This function will clear the bit `irq`.
+    /// Enabling the corresponding interrupt line.
+    /// if irq < 8, then the self.master mask is modified.
+    /// if irq >= 8 then the self.slave and master mask is modified.
+    pub unsafe fn enable_irq(&mut self, irq: Irq) {
+        let mut nirq = irq as u16;
+        assert!(nirq < 16);
+        if nirq < 8 {
+            let mask = self.master.get_interrupt_mask() & !(0x1 << nirq);
 
-    master.command.write(Pic::INIT);
+            self.master.set_interrupt_mask(mask);
+        } else {
+            nirq -= 8;
+            let mask = self.slave.get_interrupt_mask() & !(0x1 << nirq);
 
-    slave.command.write(Pic::INIT);
+            self.slave.set_interrupt_mask(mask);
 
-    // Assign the vectors offsets
-    master.data.write(offset_1);
-    slave.data.write(offset_2);
+            // Also clear irq 2 to enable slave sending to master
+            let mask = self.master.get_interrupt_mask() | 0b100;
 
-    master.data.write(4); // This tells the master that there is a slave at its IRQ2
-    slave.data.write(2); // This tells the slave its cascade identity
+            self.master.set_interrupt_mask(mask);
+        }
+    }
 
-    // thoses 2 calls set the 8086/88 (MCS-80/85) mode for master and slave.
-    master.data.write(1);
-    slave.data.write(1);
+    /// Disable both Slave and Master PICs
+    /// This is done by sending 0xff to their respective data ports
+    pub unsafe fn disable_all_irqs(&mut self) {
+        self.master.set_interrupt_mask(0xff);
+        self.slave.set_interrupt_mask(0xff);
+    }
 
-    // Reset all interrupt masks
-    slave.set_interrupt_mask(slave_mask);
-    master.set_interrupt_mask(master_mask);
-}
+    /// Enable all interrupts of the PICs by clearing their Interrupt Mask
+    pub unsafe fn enable_all_irqs(&mut self) {
+        self.master.set_interrupt_mask(0x0);
+        self.slave.set_interrupt_mask(0x0);
+    }
 
-unsafe fn pic_get_irq_reg(ocw3: u8) -> u16 {
-    master.command.write(ocw3);
-    slave.command.write(ocw3);
+    /// Restores the IMRs of the self.master and self.slave PICs to the combined `mask` parameter
+    /// The bits 0 to 7 (inclusive) are the self.master's IMR.
+    /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
+    pub unsafe fn set_masks(&mut self, mask: u16) {
+        self.master.set_interrupt_mask(mask.get_bits(0..8) as u8);
+        self.slave.set_interrupt_mask(mask.get_bits(8..16) as u8);
+    }
 
-    (slave.command.read() as u16) << 8 | master.command.read() as u16
-}
+    /// Gets the combined IMRs of the self.master and self.slave PICs
+    /// The bits 0 to 7 (inclusive) are the self.master's IMR.
+    /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
+    pub fn get_masks(&mut self) -> u16 {
+        unsafe { (self.master.get_interrupt_mask() as u16) | ((self.slave.get_interrupt_mask() as u16) << 8) }
+    }
 
-/// Returns the combined value the PICs irq request register
-pub fn get_irr() -> u16 {
-    unsafe { pic_get_irq_reg(Pic::PIC_READ_IRR) }
-}
+    /// Send end of interrupt from specific IRQ to the PIC.
+    /// If the interrupt line is handled by the self.master chip, only to him the eoi is send.
+    /// If the interrupt line is handled by the self.slave chip, both the self.slave and the self.master must be notified.
+    pub fn send_eoi(&mut self, irq: Irq) {
+        let nirq = irq as u16;
+        assert!(nirq < 16);
+        unsafe {
+            if nirq >= 8 {
+                self.slave.command.write(Pic::EOI);
+            }
+            self.master.command.write(Pic::EOI);
+        }
+    }
 
-/// Returns the combined value the PICs irq request register
-pub fn get_isr() -> u16 {
-    unsafe { pic_get_irq_reg(Pic::PIC_READ_ISR) }
+    /// Reset the PICs to the defaults IMR and irq vector offsets
+    /// Returning the combined IMRs of the PICs before the reset
+    /// WARNING: This fonction should not be called if the PICs were never initialized as it would panic.
+    pub unsafe fn reset_to_default(&mut self) -> u16 {
+        without_interrupts!({
+            let imrs = self.get_masks();
+
+            self.set_idt_vectors(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR);
+            self.set_masks(self.bios_imr.expect("The PIC default imr was never saved"));
+
+            imrs
+        })
+    }
+
+    unsafe fn pic_get_irq_reg(&mut self, ocw3: u8) -> u16 {
+        self.master.command.write(ocw3);
+        self.slave.command.write(ocw3);
+
+        (self.slave.command.read() as u16) << 8 | self.master.command.read() as u16
+    }
+
+    /// Returns the combined value the PICs irq request register
+    pub fn get_irr(&mut self) -> u16 {
+        unsafe { self.pic_get_irq_reg(Pic::PIC_READ_IRR) }
+    }
+
+    /// Returns the combined value the PICs in-service register
+    pub fn get_isr(&mut self) -> u16 {
+        unsafe { self.pic_get_irq_reg(Pic::PIC_READ_ISR) }
+    }
 }

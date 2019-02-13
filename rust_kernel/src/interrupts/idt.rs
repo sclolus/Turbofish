@@ -1,7 +1,106 @@
 /// See https://wiki.osdev.org/IDT and https://wiki.osdev.org/Interrupts
-use super::idt_gate_entry::*;
+mod cpu_exceptions;
+mod irqs;
+use crate::interrupts::pic_8259;
+use bit_field::BitField;
 use core::ffi::c_void;
-use core::mem::size_of;
+use cpu_exceptions::*;
+use irqs::*;
+
+pub type InterruptHandler = extern "C" fn() -> !;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum GateType {
+    TaskGate32 = 0x5,
+    InterruptGate16 = 0x6,
+    TrapGate16 = 0x7,
+    InterruptGate32 = 0xE,
+    TrapGate32 = 0xF,
+}
+
+use GateType::*;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(C, packed)]
+pub struct IdtGateEntry {
+    /// offset bits 0..15. the low part of the address
+    pub offset_1: u16,
+
+    /// a code segment selector in GDT or LDT
+    pub selector: u16,
+
+    /// unused, set to 0
+    pub _zero: u8,
+
+    /// The type attr is layout in this way.
+    ///   7                           0
+    /// +---+---+---+---+---+---+---+---+
+    /// | P |  DPL  | S |    GateType   |
+    /// +---+---+---+---+---+---+---+---+
+
+    /// P        	Present	Set to 0 for unused interrupts.
+    /// DPL          Descriptor Privilege Level	Gate call protection.
+    ///              Specifies which privilege Level the calling Descriptor minimum
+    ///              should have.
+    ///              So hardware and CPU interrupts can be protected from
+    ///              being called out of userspace.
+    /// S            Storage Segment	Set to 0 for interrupt and trap gates
+    /// Gate Type 	Possible IDT gate types :
+    ///              0b0101	0x5	5	80386 32 bit task gate
+    ///              0b0110	0x6	6	80286 16-bit interrupt gate
+    ///              0b0111	0x7	7	80286 16-bit trap gate
+    ///              0b1110	0xE	14	80386 32-bit interrupt gate
+    ///              0b1111	0xF	15	80386 32-bit trap gate
+    /// type and attributes,
+    pub type_attr: u8,
+
+    /// offset bits 16..31
+    pub offset_2: u16,
+}
+
+impl IdtGateEntry {
+    fn minimal() -> Self {
+        unsafe { core::mem::zeroed() }
+    }
+
+    pub fn new() -> Self {
+        let mut new = Self::minimal();
+
+        new.set_present(true);
+        new
+    }
+
+    pub fn set_present(&mut self, present: bool) -> &mut Self {
+        self.type_attr.set_bit(7, present);
+        self
+    }
+
+    pub fn set_storage_segment(&mut self, storage: bool) -> &mut Self {
+        self.type_attr.set_bit(4, storage);
+        self
+    }
+
+    pub fn set_gate_type(&mut self, gate_type: GateType) -> &mut Self {
+        self.type_attr.set_bits(0..4, gate_type as u8);
+        self
+    }
+
+    pub fn set_privilege_level(&mut self, dpl: u8) -> &mut Self {
+        self.type_attr.set_bits(4..6, dpl);
+        self
+    }
+
+    pub fn set_selector(&mut self, selector: u16) -> &mut Self {
+        self.selector = selector;
+        self
+    }
+
+    pub fn set_handler(&mut self, handler: u32) -> &mut Self {
+        self.offset_1 = handler as u16;
+        self.offset_2 = ((handler as usize) >> 16) as u16;
+        self
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -11,25 +110,6 @@ pub struct Idtr {
     pub idt_addr: *mut IdtGateEntry,
 }
 
-pub struct InterruptTable<'a> {
-    entries: &'a mut [IdtGateEntry],
-}
-
-extern "C" {
-    fn _load_idtr(param: *const Idtr);
-    fn _get_idtr(to_fill: *mut Idtr);
-
-    pub fn generic_asm_isr_wrapper();
-}
-
-#[no_mangle]
-#[inline(never)]
-/// Load the `idtr` passed in parameter into the Interrupt descriptor Table Register
-pub unsafe extern "C" fn load_idtr(idtr: Idtr) -> Idtr {
-    _load_idtr(&idtr as *const Idtr);
-    idtr
-}
-
 #[no_mangle]
 #[inline(never)]
 /// Returns the current Interrupt Descriptor Table Register
@@ -37,47 +117,14 @@ pub unsafe extern "C" fn get_idtr() -> Idtr {
     // Temporary struct Idtr to be filled by the asm routine
     let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
 
-    _get_idtr(&mut idtr as *mut _);
+    asm!("sidt $0" : "=*m"(&mut idtr) :: "memory" : "volatile");
     idtr
 }
 
 impl Idtr {
-    const DEFAULT_IDTR_LENGTH: u16 = 1024;
-    const DEFAULT_IDTR_ADDR: *mut IdtGateEntry = 0x400 as *mut _;
+    const DEFAULT_IDTR_SIZE: u16 = 256 * 8;
+    const DEFAULT_IDTR_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
 
-    /// Current default idtr, the address is 0x400, just above the idt bios
-    /// and just below the current GDT
-    const DEFAULT_IDTR: Idtr = Idtr { length: Idtr::DEFAULT_IDTR_LENGTH - 1, idt_addr: Idtr::DEFAULT_IDTR_ADDR };
-
-    /// Loads the default Idtr
-    pub unsafe fn load_default_idtr() -> Idtr {
-        load_idtr(Self::DEFAULT_IDTR)
-    }
-
-    /// Returns a `&mut [IdtGateEntr]` of the current idt
-    unsafe fn idt_gate_entries_slice_mut(&self) -> &mut [IdtGateEntry] {
-        core::slice::from_raw_parts_mut(self.idt_addr, (self.length / size_of::<IdtGateEntry>() as u16) as usize)
-    }
-
-    /// Returns a `&[IdtGateEntr]` of the current idt
-    #[allow(dead_code)]
-    unsafe fn idt_gate_entries_slice(&self) -> &[IdtGateEntry] {
-        core::slice::from_raw_parts_mut(self.idt_addr, (self.length / size_of::<IdtGateEntry>() as u16) as usize)
-    }
-
-    /// Construct the Interrupt Table from the Idtr.
-    pub unsafe fn get_interrupt_table(&self) -> InterruptTable {
-        InterruptTable { entries: self.idt_gate_entries_slice_mut() }
-    }
-}
-
-use super::exceptions::*;
-use super::irqs::*;
-use GateType::*;
-use InterruptTableError::*;
-
-impl<'a> InterruptTable<'a> {
-    /// Those are the current default handlers for the exceptions from 0x0 to 0x1F
     const DEFAULT_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
         (_isr_divide_by_zero, InterruptGate32),
         (_isr_debug, TrapGate32),
@@ -113,17 +160,14 @@ impl<'a> InterruptTable<'a> {
         (reserved_exception, InterruptGate32),
     ];
 
-    /// Those are the current default handlers for the IRQs from the PICs 8259
-    /// They are mapped from 0x20 to 0x2F
-    const DEFAULT_IRQS: [unsafe extern "C" fn(); 16] = [
-        _isr_timer,
-        _isr_keyboard,
-        _isr_cascade,
-        _isr_com2,
-        _isr_com1,
-        _isr_lpt2,
-        _isr_floppy_disk,
-        _isr_lpt1,
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
+    /// They are mapped from 0x20 to 0x27
+    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] =
+        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _default_isr];
+
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
+    /// They are mapped from 0x70 to 0x77
+    const DEFAULT_IRQS_SLAVE: [unsafe extern "C" fn(); 8] = [
         _isr_cmos,
         _isr_acpi,
         reserved_interruption,
@@ -134,68 +178,43 @@ impl<'a> InterruptTable<'a> {
         _isr_secondary_hard_disk,
     ];
 
-    /// This loads the default interrupt table:
-    /// All exceptions and interrupts from the PIC.
-    pub unsafe fn load_default_interrupt_table(&mut self) {
+    pub fn init_idt() {
+        let idt: Idtr = Idtr { length: Idtr::DEFAULT_IDTR_SIZE - 1, idt_addr: Idtr::DEFAULT_IDTR_ADDR };
+        let idt_slice =
+            unsafe { core::slice::from_raw_parts_mut(idt.idt_addr, (Idtr::DEFAULT_IDTR_SIZE / 8) as usize) };
+        for entry in idt_slice.iter_mut() {
+            *entry = *IdtGateEntry::new()
+                .set_storage_segment(false)
+                .set_privilege_level(0)
+                .set_selector(1 << 3)
+                .set_gate_type(InterruptGate32)
+                .set_handler(_default_isr as *const c_void as u32);
+        }
+
         let mut gate_entry =
             *IdtGateEntry::new().set_storage_segment(false).set_privilege_level(0).set_selector(1 << 3);
 
         for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
             gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
 
-            self.set_interrupt_entry(index, &gate_entry).unwrap();
+            idt_slice[index] = gate_entry;
         }
 
-        let offset = Self::DEFAULT_EXCEPTIONS.len();
-        for (index, &interrupt_handler) in Self::DEFAULT_IRQS.iter().enumerate() {
+        let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
             gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
 
-            self.set_interrupt_entry(index + offset, &gate_entry).unwrap();
+            idt_slice[index + offset as usize] = gate_entry;
+        }
+
+        let offset = pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_SLAVE.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32).set_gate_type(InterruptGate32);
+
+            idt_slice[index + offset as usize] = gate_entry;
+        }
+        unsafe {
+            asm!("lidt ($0)" :: "r" (&idt) : "memory" : "volatile");
         }
     }
-
-    /// Set the P flag in type_attr to 1
-    /// WARNING: This is not an interrupts::enable call
-    /// The interrupt is merely enabled if sli() was called
-    pub unsafe fn enable_interrupt(&mut self, interrupt: usize) -> Result<(), InterruptTableError> {
-        self.entries.get_mut(interrupt).map_or(Err(ErrIndexOutOfBound), |entry| {
-            entry.set_present(true);
-            Ok(())
-        })
-    }
-
-    /// Set the P flag in type_attr to 0
-    pub unsafe fn disable_interrupt(&mut self, interrupt: usize) -> Result<(), InterruptTableError> {
-        self.entries.get_mut(interrupt).map_or(Err(ErrIndexOutOfBound), |entry| {
-            entry.set_present(false);
-            Ok(())
-        })
-    }
-
-    /// Sets the P flag in type_attr to 0 for all the Gate Entries
-    /// Warning: This is not an interrupts::disable call
-    /// The interrupts can still be fired.
-    pub unsafe fn disable_all_interrupts(&mut self) {
-        for interrupt in 0..self.entries.len() {
-            self.disable_interrupt(interrupt).unwrap();
-        }
-    }
-
-    /// Sets a perticular Gate entry to a specific value.
-    pub unsafe fn set_interrupt_entry(
-        &mut self,
-        interrupt: usize,
-        entry: &IdtGateEntry,
-    ) -> Result<(), InterruptTableError> {
-        self.entries.get_mut(interrupt).map_or(Err(ErrIndexOutOfBound), |slot| {
-            *slot = *entry;
-            Ok(())
-        })
-    }
-}
-
-#[derive(Debug)]
-pub enum InterruptTableError {
-    ErrIndexOutOfBound,
-    UnknownError,
 }

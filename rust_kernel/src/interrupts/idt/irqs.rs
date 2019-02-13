@@ -1,6 +1,5 @@
 /// See https://wiki.osdev.org/ISR
 use crate::ffi::*;
-use crate::interrupts::pic_8259;
 use crate::io::{Io, Pio};
 
 extern "C" {
@@ -18,6 +17,7 @@ extern "C" {
     pub(super) fn _isr_fpu_coproc();
     pub(super) fn _isr_primary_hard_disk();
     pub(super) fn _isr_secondary_hard_disk();
+    pub(super) fn _default_isr();
 }
 
 /// For now, this is assigned as the handler for every interrupt that are not exceptions
@@ -25,9 +25,17 @@ extern "C" {
 #[no_mangle]
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
+    unsafe {
+        let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
+        println!("From interrupt: {}", core::str::from_utf8_unchecked(slice))
+    }
+}
+
+#[no_mangle]
+extern "C" fn keyboard_interrupt_handler(interrupt_name: *const u8) {
+    println!("in keyboard context");
     let keyboard_port = Pio::<u8>::new(0x60);
 
-    pic_8259::send_eoi(1);
     keyboard_port.read();
     unsafe {
         let slice: &[u8] = core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char));
