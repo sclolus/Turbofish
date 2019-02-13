@@ -7,8 +7,8 @@ use crate::timer::Rtc;
 use crate::{interrupts::pit::*, interrupts::*};
 
 extern "C" {
-    static _binary_medias_asterix_bmp_start: BmpImage;
-    static _binary_medias_wanggle_bmp_start: BmpImage;
+    static _asterix_bmp_start: BmpImage;
+    static _wanggle_bmp_start: BmpImage;
 }
 
 #[no_mangle]
@@ -23,7 +23,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         SCREEN_MONAD.clear_screen();
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-                draw_image(&_binary_medias_asterix_bmp_start, buffer, width, height, bpp)
+                draw_image(&_asterix_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
 
@@ -486,7 +486,7 @@ impl From<u16> for VbeError {{
     unsafe {
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-                draw_image(&_binary_medias_wanggle_bmp_start, buffer, width, height, bpp)
+                draw_image(&_wanggle_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
