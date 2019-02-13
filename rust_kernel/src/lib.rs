@@ -5,6 +5,7 @@
 #![feature(try_from)]
 #![allow(unused_unsafe)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
+#![feature(slice_index_methods)]
 
 #[macro_use]
 pub mod debug;

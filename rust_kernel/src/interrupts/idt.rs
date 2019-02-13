@@ -7,6 +7,7 @@ use core::ffi::c_void;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use cpu_exceptions::*;
 use irqs::*;
+use core::slice::SliceIndex;
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
@@ -242,27 +243,35 @@ pub struct InterruptTable<'a> {
     entries: &'a mut [IdtGateEntry],
 }
 
-/// The InterruptTable implements Index<usize> which enables us to use the syntax: `idt[index]`,
+/// The InterruptTable implements Index which enables us to use the syntax: `idt[index]`,
 /// instead of `idt.entries[index]` in an immutable context.
+/// This generic implementation also enables us to use the syntax idt[n..m] or any other Range slice indexing.
 ///
 /// # Panics
 /// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
-impl Index<usize> for InterruptTable<'_> {
-    type Output = IdtGateEntry;
+impl<'a, T> Index<T> for InterruptTable<'a>
+    where T: SliceIndex<[IdtGateEntry]>
+{
+    type Output = T::Output;
 
-    fn index(&self, idx: usize) -> &Self::Output {
-        self.entries.index(idx)
+    #[inline]
+    fn index(&self, idx: T) -> &Self::Output {
+        idx.index(self.entries)
     }
 }
 
 /// The InterruptTable implements IndexMut which enables us to use the syntax: `idt[index] = SomeIdtGateEntry`
 /// instead of `idt.entries[index] = SomeIdtGateEntry` in a mutable context.
+/// This generic implementation also enables us to use the syntax idt[n..m] or any other Range slice indexing.
 ///
 /// # Panics
 /// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
-impl IndexMut<usize> for InterruptTable<'_> {
-    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-        self.entries.index_mut(idx)
+impl<'a, T> IndexMut<T> for InterruptTable<'a>
+    where T: SliceIndex<[IdtGateEntry]>
+{
+    #[inline]
+    fn index_mut(&mut self, idx: T) -> &mut Self::Output {
+        idx.index_mut(self.entries)
     }
 }
 
@@ -272,6 +281,7 @@ impl IndexMut<usize> for InterruptTable<'_> {
 impl Deref for InterruptTable<'_> {
     type Target = [IdtGateEntry];
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.entries
     }
@@ -281,6 +291,7 @@ impl Deref for InterruptTable<'_> {
 /// The main purpose of this is to enable the coersion of a &mut InterruptTable in a mutable slice of IdtGateEntries: `&mut [IdtGateEntries]`,
 /// which basically means that all the mutable methods of &mut [IdtGateEntries] (the slice methods) are available for the InterruptTable.
 impl DerefMut for InterruptTable<'_> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.entries
     }
