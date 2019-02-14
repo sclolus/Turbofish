@@ -3,6 +3,7 @@
 use crate::interrupts;
 use crate::io::{Io, Pio};
 use bit_field::BitField;
+use core::time::Duration;
 use core::u16;
 
 #[derive(Debug)]
@@ -143,9 +144,11 @@ impl Pit {
 
     /// assume that PIT is correctely configured, 8259 bit 0 is clear and interrupts are enable
     /// i'am not sure that it is easy to ensure the PIT is well configured
-    pub fn sleep(&mut self, ms: u32) -> () {
+    pub fn sleep(&mut self, duration: Duration) -> () {
+        assert!(interrupts::get_interrupts_state());
         use crate::math::convert::*;
 
+        let ms = duration.as_millis();
         let next_tic = ms as f32 / 1000 as f32 / self.period;
         unsafe {
             _sleep(next_tic.round() as u32);

@@ -7,6 +7,7 @@ use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::test_helpers::fucking_big_string::fucking_big_string;
 use crate::timer::Rtc;
+use core::time::Duration;
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -70,46 +71,46 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         println!("pit: {:?}", PIT0);
     }
     unsafe {
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("H");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Red).unwrap();
         print!("E");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         print!("L");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
         print!("L");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
         print!("O");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
         print!(" ");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
         print!("W");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
         print!("O");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("R");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Red).unwrap();
         print!("L");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         print!("D");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
         print!(" ");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
         println!("!");
-        PIT0.sleep(200);
+        PIT0.sleep(Duration::from_millis(200));
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
     let t = debug::bench_end();
