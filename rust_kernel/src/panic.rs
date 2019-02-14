@@ -106,6 +106,7 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 use core::panic::PanicInfo;
 
 #[panic_handler]
+#[cfg(not(test))] // only compile when the test flag is not set
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
