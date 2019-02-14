@@ -82,9 +82,7 @@ endif
 all: symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
 
 common_clean:
-	rm -f $(OBJ_C_KERNEL)
-	rm -f $(OBJ_ASM_KERNEL)
-	rm -f $(OBJ_PICTURES)
+	rm -rvf $(OBJ_DIR)*/**
 	rm -f nm.res
 	rm -f nm_map_gen
 	rm -f $(kernel)
