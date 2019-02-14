@@ -1,13 +1,13 @@
 /// See https://wiki.osdev.org/IDT and https://wiki.osdev.org/Interrupts
-mod cpu_exceptions;
+mod cpu_exceptions_isr;
 mod pic_8259_isr;
 use crate::interrupts::pic_8259;
 use bit_field::BitField;
 use core::ffi::c_void;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
-use cpu_exceptions::*;
-use pic_8259_isr::*;
 use core::slice::SliceIndex;
+use cpu_exceptions_isr::*;
+use pic_8259_isr::*;
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
