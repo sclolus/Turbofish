@@ -15,3 +15,5 @@ else
 	echo "cargo-xbuild $CARGO_XBUILD_VERSION already installed"
 fi
 exit 0
+
+sudo apt-get install qemu-system-x86
