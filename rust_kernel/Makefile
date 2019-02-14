@@ -11,6 +11,9 @@ CC = gcc
 LD = ld
 linker_script := linker.ld
 LDFLAGS = -m elf_i386 -n --gc-sections
+ifeq ($(LDMAP),yes)
+	LDFLAGS += -M
+endif
 
 ASMFLAGS = -f elf
 

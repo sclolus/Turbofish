@@ -37,16 +37,20 @@ SECTIONS
 	}
 
 	/* For special rust debug section: got mysterious N symbols */
-	.rust_debug BLOCK(4k) : ALIGN(4K)
+	.debug BLOCK(4k) : ALIGN(4K)
 	{
-		*(.debug*)
+		*(.debug_*)
+		*(.comment)
+		*(.note.GNU-stack)
+		*(.stab)
+		*(.stabstr)
 	}
 
 	/* Read-write data (uninitialized) */
 	.bss BLOCK(4K) : ALIGN(4K)
 	{
-		*(COMMON)
 		*(.bss)
+		*(COMMON)
 	}
 	/* The compiler may produce other sections, by default it will put them in
 	   a segment with the same name. Simply add stuff here as needed. */
