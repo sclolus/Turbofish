@@ -1,7 +1,6 @@
 [BITS 32]
 
-;; This file contains all asm code regarding the interrupt service routines
-;; For now. just a generic ISR wrapper
+;; This file contains all asm code regarding the interrupt service routines of the 8259 PIC
 ;; See https://wiki.osdev.org/ISR
 
 extern _align_stack
@@ -40,11 +39,6 @@ global _get_pic_time
 _get_pic_time:
 	lock cmpxchg [_pic_time], eax
 	ret
-
-; default ISR for all IDT entries
-global _default_isr
-_default_isr:
-	iret
 
 ;; This generates the Interrupt service routines. The first paramater completes the indentifier
 ;; the first parameter identified if is a master pic or slave irq

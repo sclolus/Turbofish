@@ -1,7 +1,7 @@
 use crate::debug;
 use crate::interrupts;
 use crate::interrupts::pit::*;
-use crate::interrupts::{pic_8259, Idtr, PIC_8259};
+use crate::interrupts::{pic_8259, PIC_8259};
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
@@ -19,14 +19,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
 
     unsafe {
-        interrupts::disable();
-
-        Idtr::init_idt();
-        PIC_8259.init();
-        PIC_8259.disable_all_irqs();
-        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
-
-        interrupts::enable();
+        interrupts::init();
     }
 
     unsafe {
