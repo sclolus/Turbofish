@@ -250,7 +250,8 @@ pub struct InterruptTable<'a> {
 /// # Panics
 /// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
 impl<'a, T> Index<T> for InterruptTable<'a>
-    where T: SliceIndex<[IdtGateEntry]>
+where
+    T: SliceIndex<[IdtGateEntry]>,
 {
     type Output = T::Output;
 
@@ -267,7 +268,8 @@ impl<'a, T> Index<T> for InterruptTable<'a>
 /// # Panics
 /// Panics if `index` is outside of the InterruptTable, that is, if index >= InterruptTable.entries.len()
 impl<'a, T> IndexMut<T> for InterruptTable<'a>
-    where T: SliceIndex<[IdtGateEntry]>
+where
+    T: SliceIndex<[IdtGateEntry]>,
 {
     #[inline]
     fn index_mut(&mut self, idx: T) -> &mut Self::Output {

@@ -1,4 +1,3 @@
-
 use crate::io::{Io, Pio};
 use bit_field::BitField;
 use core::convert::{TryFrom, TryInto};
