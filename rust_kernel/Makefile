@@ -84,6 +84,7 @@ all: .rust_toolchain .xbuild_toolchain symbol_gen_exe build_rust build_libasm_i3
 
 .rust_toolchain: rust-toolchain
 	rustup component add rust-src
+	rustup component add rustfmt
 	echo "Updated" > .rust_toolchain
 
 .xbuild_toolchain: xbuild-toolchain
