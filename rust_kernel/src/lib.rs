@@ -26,4 +26,4 @@ pub mod registers;
 pub mod rust_main;
 pub mod timer;
 
-pub mod tests;
+pub mod test_helpers;

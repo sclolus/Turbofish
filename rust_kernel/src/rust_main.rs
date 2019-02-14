@@ -6,7 +6,7 @@ use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
 use crate::timer::Rtc;
-use crate::tests::fucking_big_string::fucking_big_string;
+use crate::test_helpers::fucking_big_string::fucking_big_string;
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
