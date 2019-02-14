@@ -15,14 +15,10 @@ _init:
 	; block interrupts
 	cli
 
-	push ebp
+	; set up the stack pointer for a temporary stack
+	; dont worry about overflow for stack, the first push will be at [temporary_stack - 4], not in [temporary_stack]
+	mov esp, temporary_stack
 	mov ebp, esp
-
-	; set EIP of caller GRUB on stack at 0, prevent infinite loop for backtrace
-	mov [ebp + 4], dword 0
-
-	; set stack pointer for a temporary stack
-	mov esp, stack_space
 
 	call .disable_cursor
 
@@ -32,8 +28,17 @@ _init:
 	mov ax, 0x18
 	mov ss, ax
 
-	; put the stack at 8MB
-	mov esp, 0x800000
+	; set the base EIP on stack at 0x0, prevent infinite loop for backtrace
+
+	; set up the main kernel stack
+	;      stack frame 2             | stack frame 1             | stack frame 0
+	; <--- (EBP EIP ARGx ... VARx ...) (EBP EIP ARGx ... VARx ...) ((ptr - 8) 0x0) | *** kernel_stack SYMBOL *** |
+	;                                  <----     ESP EXPANSION   |    *ebp
+
+	; This mechanism is for Panic handler. See details on 'panic.rs' file
+	mov [kernel_stack - 4], dword 0x0
+	mov esp, kernel_stack - 8
+	mov ebp, esp
 
 	call _set_sse
 	call _set_avx
@@ -72,6 +77,11 @@ _init:
 	ret
 
 segment .bss
-; 8KB for temporary stack
-resb 8192
-stack_space:
+
+; 4kb for temporary stack
+resb 1 << 12
+temporary_stack:
+
+; 1mo for the main kernel stack
+resb 1 << 20
+kernel_stack:
