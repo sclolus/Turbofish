@@ -15,15 +15,14 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
+
     save_multiboot_info(multiboot_info);
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
 
     unsafe {
         interrupts::init();
-    }
 
-    unsafe {
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
         SCREEN_MONAD.clear_screen();
@@ -37,31 +36,21 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIT0.start_at_frequency(18.0).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
+
     debug::bench_start();
     fucking_big_string(3);
+    let t = debug::bench_end();
+    println!("{:?} ms ellapsed", t);
+
     println!("from {}", function!());
 
     println!("irqs state: {}", interrupts::get_interrupts_state());
-    let _keyboard_port = Pio::<u8>::new(0x60);
-    use crate::io::Pio;
 
     println!("irq mask: {:b}", PIC_8259.get_masks());
 
-    /*
-    unsafe {
-        assert_eq!(_idt, interrupts::get_idtr().get_interrupt_table());
-        for (index, gate) in interrupts::get_idtr().get_interrupt_table().as_slice()[..48].iter().enumerate() {
-            println!("{}: {:?}", index, gate);
-        }
-    }
-    */
     let eflags = crate::registers::Eflags::get_eflags();
-    //println!("idtr: {:x?}", interrupts::get_idtr());
-    println!("{}", eflags);
     println!("{:x?}", eflags);
 
-    println!("from {}", function!());
-    println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
         PIT0.start_at_frequency(18.).unwrap();
     }
@@ -96,6 +85,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         println!("!");
         SCREEN_MONAD.set_text_color(Color::White).unwrap();
     }
+    println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
