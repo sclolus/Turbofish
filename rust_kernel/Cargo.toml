@@ -16,3 +16,10 @@ crate-type = ["staticlib"]
 
 [dependencies]
 bit_field = "0.9.0"
+bitflags = "*"
+
+[features]
+qemu-graphical= []
+test-basic= []
+test-failed= []
+test = []

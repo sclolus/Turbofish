@@ -23,12 +23,15 @@ pub mod monitor;
 #[macro_use]
 pub mod interrupts;
 
+#[macro_use]
 pub mod io;
 pub mod keyboard;
 pub mod multiboot;
 pub mod panic;
 pub mod registers;
+#[cfg(not(feature = "test"))]
 pub mod rust_main;
+pub mod tests;
 pub mod timer;
 
 pub mod test_helpers;

@@ -140,7 +140,7 @@ build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	@make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
 test:
 	cargo test --target i686-unknown-linux-gnu

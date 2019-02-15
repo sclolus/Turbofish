@@ -2,6 +2,9 @@ use core::cmp::PartialEq;
 
 pub mod pio;
 pub use pio::{io_wait, Pio};
+#[macro_use]
+pub mod uart_16550;
+pub use uart_16550::UART_16550;
 
 /// The general Io trait, for In/out objects
 pub trait Io {

@@ -89,7 +89,7 @@ fn trace_back(ebp_origin: *const u32) {
             break;
         }
         let symbol = unsafe { _get_symbol(s.0) };
-        println!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
+        eprintln!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
     }
 }
 
@@ -106,12 +106,25 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 use core::panic::PanicInfo;
 
 #[panic_handler]
-#[cfg(not(test))] // only compile when the test flag is not set
+#[cfg(any(all(not(test), not(feature = "test")), feature = "qemu-graphical"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
     let ebp: *const u32;
     unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
     trace_back(ebp);
+    loop {}
+}
+
+#[panic_handler]
+#[cfg(all(not(feature = "qemu-graphical"), feature = "test"))] //for integration test when not in graphical
+#[no_mangle]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
+    let ebp: *const u32;
+    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
+    trace_back(ebp);
+    use crate::tests::helpers::exit_qemu;
+    exit_qemu(1);
     loop {}
 }
