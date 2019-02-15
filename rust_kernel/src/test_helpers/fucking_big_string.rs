@@ -1,7 +1,6 @@
-
 pub fn fucking_big_string(count: u32) -> () {
     for _i in 0..count {
-         println!("
+        println!("
 use crate::ffi::c_char;
 use crate::monitor::core_monitor::IoResult;
 use crate::monitor::core_monitor::{{Cursor, Drawer, TextColor}};
