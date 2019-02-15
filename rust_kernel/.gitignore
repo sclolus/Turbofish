@@ -2,4 +2,3 @@
 *.map
 nm_map_gen
 target
-Cargo.lock
