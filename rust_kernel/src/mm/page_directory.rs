@@ -1,7 +1,8 @@
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
-use core::ops::{Index, IndexMut};
+use core::ops::{Deref, DerefMut, Index, IndexMut};
+use core::slice::SliceIndex;
 
 #[repr(C)] // this should be equivalent to `transparent` I hope
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -167,8 +168,53 @@ pub(super) struct PageDirectory {
     entries: [PageDirectoryEntry; 1024],
 }
 
+/// The PageDirectory implements Index which enables us to use the syntax: `pd[index]`,
+/// instead of `pd.entries[index]` in an immutable context.
+/// This generic implementation also enables us to use the syntax pd[n..m] or any other Range slice indexing.
+///
+/// # Panics
+/// Panics if `index` is outside of the PageDirectory, that is, if index >= PageDirectory.entries.len()
+impl<'a, T> Index<T> for PageDirectory
+where
+    T: SliceIndex<[PageDirectoryEntry]>,
+{
+    type Output = T::Output;
+
+    #[inline]
+    fn index(&self, idx: T) -> &Self::Output {
+        idx.index(&self.entries)
+    }
+}
+
+/// The PageDirectory implements IndexMut which enables us to use the syntax: `pd[index] = SomePageDirectoryEntry`
+/// instead of `pd.entries[index] = SomePageDirectoryEntry` in a mutable context.
+/// This generic implementation also enables us to use the syntax pd[n..m] or any other Range slice indexing.
+///
+/// # Panics
+/// Panics if `index` is outside of the PageDirectory, that is, if index >= PageDirectory.entries.len()
+impl<'a, T> IndexMut<T> for PageDirectory
+where
+    T: SliceIndex<[PageDirectoryEntry]>,
+{
+    #[inline]
+    fn index_mut(&mut self, idx: T) -> &mut Self::Output {
+        idx.index_mut(&mut self.entries)
+    }
+}
+
+impl AsRef<[PageDirectoryEntry]> for PageDirectory {
+    fn as_ref(&self) -> &[PageDirectoryEntry] {
+        &self.entries
+    }
+}
+
+impl AsMut<[PageDirectoryEntry]> for PageDirectory {
+    fn as_mut(&mut self) -> &mut [PageDirectoryEntry] {
+        &mut self.entries
+    }
+}
+
 use super::page_table::*;
-use PageDirectoryError::*;
 impl PageDirectory {
     pub const DEFAULT_PAGE_DIRECTORY_SIZE: usize = 1024;
 
@@ -190,19 +236,6 @@ impl PageDirectory {
     }
 
     #[allow(dead_code)]
-    pub fn set_directory_entry(&mut self, index: usize, entry: PageDirectoryEntry) -> Result<(), PageDirectoryError> {
-        self.entries.get_mut(index).map_or(Err(ErrIndexOutOfBound), |slot| {
-            *slot = entry;
-            Ok(())
-        })
-    }
-
-    #[allow(dead_code)]
-    pub fn get_directory_entry(&self, index: usize) -> Result<PageDirectoryEntry, PageDirectoryError> {
-        self.entries.get(index).map_or(Err(ErrIndexOutOfBound), |slot| Ok(*slot))
-    }
-
-    #[allow(dead_code)]
     pub fn get_page_from_vaddr(&self, vaddr: u32) // -> &PageTableEntry
     {
         let _pdindex = (vaddr >> 22) as usize;
@@ -210,37 +243,4 @@ impl PageDirectory {
 
         // &self.entries[_pdindex][_ptindex]
     }
-}
-
-impl Index<usize> for PageDirectory {
-    type Output = PageDirectoryEntry;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        self.entries.index(index)
-    }
-}
-
-impl IndexMut<usize> for PageDirectory {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.entries.index_mut(index)
-    }
-}
-
-// impl Deref<PageDirectoryEntry>
-
-impl AsRef<[PageDirectoryEntry]> for PageDirectory {
-    fn as_ref(&self) -> &[PageDirectoryEntry] {
-        &self.entries
-    }
-}
-
-impl AsMut<[PageDirectoryEntry]> for PageDirectory {
-    fn as_mut(&mut self) -> &mut [PageDirectoryEntry] {
-        &mut self.entries
-    }
-}
-
-pub enum PageDirectoryError {
-    ErrIndexOutOfBound,
-    UnknownError,
 }
