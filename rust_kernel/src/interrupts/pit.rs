@@ -146,9 +146,8 @@ impl Pit {
     /// i'am not sure that it is easy to ensure the PIT is well configured
     pub fn sleep(&mut self, duration: Duration) -> () {
         assert!(interrupts::get_interrupts_state());
-        use crate::math::convert::*;
-        use crate::math::rand::*;
-        use crate::math::srand::*;
+        use crate::math::convert::Convert;
+        use crate::math::random::{srand_init, Random};;
 
         println!("res: {:?}", core::i32::MAX.rand());
         println!("res: {:?}", core::i32::MAX.rand());
