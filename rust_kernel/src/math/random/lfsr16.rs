@@ -5,7 +5,7 @@ use bit_field::BitField;
 
 /// see https://en.wikipedia.org/wiki/Linear-feedback_shift_register
 const SEQ_SIZE: usize = 1 << 11;
-/// (fibo array, current_offset, stored seed)
+/// That tupple contains 'fibo array' 'current_offset' 'stored seed'
 static mut LFSR_FIBONACCI: ([u32; SEQ_SIZE], usize, Option<u16>) = ([0; SEQ_SIZE], 0, None);
 
 /// Fibonacci LFSR
@@ -15,7 +15,7 @@ pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
     } else {
         let mut lfsr: u16 = seed;
         unsafe {
-            // lfsr fly time must be 1 ^ 16
+            // lfsr fly time must be at 1 ^ 16
             // enumerator is only used for assert! check
             for (i, elem) in LFSR_FIBONACCI.0.iter_mut().enumerate() {
                 for j in 0..32 {
@@ -24,7 +24,7 @@ pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
                     lfsr.set_bit(15, bits.get_bit(0));
                     (*elem).set_bit(j, bits.get_bit(0));
 
-                    // check of algorythm calculation coherency
+                    // check of algorythm mathematical coherency
                     assert!(lfsr != seed || (lfsr == seed && i as usize == SEQ_SIZE - 1 && j == 30));
                 }
             }
@@ -39,8 +39,8 @@ pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
 /// Return the current lfsr seed
 pub fn lfsr16_get_seed() -> MathResult<u16> {
     match unsafe { LFSR_FIBONACCI.2 } {
-        None => Err(MathError::NotInitialized),
         Some(s) => Ok(s),
+        None => Err(MathError::NotInitialized),
     }
 }
 

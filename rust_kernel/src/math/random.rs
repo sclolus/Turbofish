@@ -23,17 +23,17 @@ pub enum Methods {
     Lfsr16,
 }
 
-/// internal trait, randup (not roundup) which is a common family name in US
+/// internal trait, Randup (not roundup) is a common family name in US
 pub trait Rand<T> {
     fn randup(self, _method: Methods) -> T;
 }
 
-/// For now, lfsr16 is the only one method for srand, implentantion may be extended in future
+/// For now, lfsr16 is the only one method for srand, implentation may be extended in future
 pub fn srand_init(seed: u16) -> MathResult<()> {
     lfsr16_srand_init(seed)
 }
 
-/// Main trait heritance implementation
+/// Main trait inherance
 impl<T: Rand<T>> Random<T> for T {
     fn rand(self) -> T {
         T::randup(self, Methods::Rdrand)
