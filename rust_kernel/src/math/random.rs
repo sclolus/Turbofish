@@ -7,7 +7,7 @@ mod rdrand;
 use rdrand::rdrand;
 
 mod lfsr16;
-use lfsr16::{lfsr16_srand_init, GetPseudoNumber};
+use lfsr16::{lfsr16_get_seed, lfsr16_srand_init, GetPseudoNumber};
 
 /// Has provide two methods
 /// rand is totally undetermined and use RDRAND cpu feature (ivybridge +)
@@ -39,7 +39,10 @@ impl<T: Rand<T>> Random<T> for T {
         T::randup(self, Methods::Rdrand)
     }
     fn srand(self) -> T {
-        T::randup(self, Methods::Lfsr16)
+        match lfsr16_get_seed() {
+            Ok(_) => T::randup(self, Methods::Lfsr16),
+            Err(e) => panic!("{} {:?}", function!(), e),
+        }
     }
 }
 

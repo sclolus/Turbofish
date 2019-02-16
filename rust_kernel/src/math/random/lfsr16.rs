@@ -5,7 +5,8 @@ use bit_field::BitField;
 
 /// see https://en.wikipedia.org/wiki/Linear-feedback_shift_register
 const SEQ_SIZE: usize = 1 << 11;
-static mut LFSR_FIBONACCI: ([u32; SEQ_SIZE], usize) = ([0; SEQ_SIZE], 0);
+/// (fibo array, current_offset, stored seed)
+static mut LFSR_FIBONACCI: ([u32; SEQ_SIZE], usize, Option<u16>) = ([0; SEQ_SIZE], 0, None);
 
 /// Fibonacci LFSR
 pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
@@ -27,11 +28,19 @@ pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
                     assert!(lfsr != seed || (lfsr == seed && i as usize == SEQ_SIZE - 1 && j == 30));
                 }
             }
+            LFSR_FIBONACCI.2 = Some(seed);
         }
         // partial check of algorythm calculation success
         assert!(lfsr << 1 == seed & 0xfffe);
-
         Ok(())
+    }
+}
+
+/// Return the current lfsr seed
+pub fn lfsr16_get_seed() -> MathResult<u16> {
+    match unsafe { LFSR_FIBONACCI.2 } {
+        None => Err(MathError::NotInitialized),
+        Some(s) => Ok(s),
     }
 }
 
