@@ -1,17 +1,31 @@
 use super::convert::Convert;
 use super::MathError;
 use super::MathResult;
+use bit_field::BitField;
 
-static mut SEED: Option<u16> = None;
+// see https://en.wikipedia.org/wiki/Linear-feedback_shift_register
+const SEQ_SIZE: usize = 1 << 11;
+static mut LFSR_FIBONACCI_ARRAY: [u32; SEQ_SIZE] = [0; SEQ_SIZE];
 
+/// Fibonacci LFSR
 pub fn srand_init(seed: u16) -> MathResult<()> {
     if seed == 0 {
         Err(MathError::OutOfBound)
     } else {
+        let mut lfsr: u16 = seed;
         unsafe {
-            SEED = Some(seed);
+            // lfsr fly time must be 1 ^ 16
+            for elem in LFSR_FIBONACCI_ARRAY.iter_mut() {
+                for j in 0..32 {
+                    let bits: u16 = (lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5);
+                    lfsr = lfsr >> 1;
+                    lfsr.set_bit(15, bits.get_bit(0));
+                    (*elem).set_bit(j, bits.get_bit(0));
+                }
+            }
         }
-        // generate diagram
+        // partial check of algorythm calculation success
+        assert!(lfsr << 1 == seed & 0xfffe);
         Ok(())
     }
 }
