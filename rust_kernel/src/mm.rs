@@ -2,6 +2,7 @@
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 pub mod page_directory;
 pub mod page_table;
+pub mod page_alloc;
 use bit_field::BitField;
 use core::ops::Range;
 
