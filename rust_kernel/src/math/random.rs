@@ -9,6 +9,8 @@ use rdrand::rdrand;
 mod lfsr16;
 use lfsr16::{lfsr16_get_seed, lfsr16_srand_init, GetPseudoNumber};
 
+use bit_field::BitField;
+
 /// Has provide two methods
 /// rand is totally undetermined and use RDRAND cpu feature (ivybridge +)
 /// srand is seeded based random and use a seed algorythm
@@ -25,7 +27,7 @@ pub enum Methods {
 
 /// internal trait, Randup (not roundup) is a common family name in US
 pub trait Rand<T> {
-    fn randup(self, _method: Methods) -> T;
+    fn randup(self, method: Methods) -> T;
 }
 
 /// For now, lfsr16 is the only one method for srand, implentation may be extended in future
@@ -140,5 +142,14 @@ impl Rand<u8> for u8 {
     fn randup(self, method: Methods) -> u8 {
         let t: u32 = u32::generate(method);
         (t as f32 / core::u32::MAX as f32 * self as f32).round() as u8
+    }
+}
+
+/// bool rand: 0..1 as bool
+impl Rand<bool> for bool {
+    /// [0..core::u32::MAX] € N -> &0b1 [FALSE | TRUE]
+    fn randup(self, method: Methods) -> bool {
+        let t: u32 = u32::generate(method);
+        t.get_bit(0)
     }
 }
