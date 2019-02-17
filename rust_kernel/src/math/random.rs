@@ -7,7 +7,7 @@ mod rdrand;
 use rdrand::rdrand;
 
 mod lfsr16;
-use lfsr16::{lfsr16_get_seed, lfsr16_srand_init, GetPseudoNumber};
+use lfsr16::{lfsr16_get_seed, lfsr16_set_seed, GetPseudoNumber};
 
 use bit_field::BitField;
 
@@ -32,7 +32,7 @@ pub trait Rand<T> {
 
 /// For now, lfsr16 is the only one method for srand, implentation may be extended in future
 pub fn srand_init(seed: u16) -> MathResult<()> {
-    lfsr16_srand_init(seed)
+    lfsr16_set_seed(seed)
 }
 
 /// Main trait inherance

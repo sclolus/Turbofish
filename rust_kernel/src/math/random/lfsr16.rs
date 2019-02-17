@@ -9,7 +9,7 @@ const SEQ_SIZE: usize = 1 << 11;
 static mut LFSR_FIBONACCI: ([u32; SEQ_SIZE], usize, Option<u16>) = ([0; SEQ_SIZE], 0, None);
 
 /// Fibonacci LFSR
-pub fn lfsr16_srand_init(seed: u16) -> MathResult<()> {
+pub fn lfsr16_set_seed(seed: u16) -> MathResult<()> {
     if seed == 0 {
         Err(MathError::OutOfBound)
     } else {
