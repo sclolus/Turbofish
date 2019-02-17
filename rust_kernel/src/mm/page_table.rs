@@ -155,6 +155,20 @@ impl PageTable {
     pub const fn new() -> Self {
         Self { entries: [PageTableEntry::new(); 1024] }
     }
+
+    pub fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
+        assert!(virt_addr % 4096 == 0);
+        assert!(phys_addr % 4096 == 0);
+
+        let page_table_index = virt_addr.get_bits(12..22);
+
+        if self[page_table_index].present() {
+            return Err(());
+        }
+
+        self[page_table_index].set_read_write(true).set_present(true).set_physical_address(phys_addr);
+        Ok(())
+    }
 }
 
 /// The PageTable implements Index which enables us to use the syntax: `pd[index]`,

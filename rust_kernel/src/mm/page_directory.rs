@@ -1,7 +1,7 @@
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
-use core::ops::{Deref, DerefMut, Index, IndexMut};
+use core::ops::{Deref, DerefMut, Index, IndexMut, Range};
 use core::slice::SliceIndex;
 
 #[repr(C)] // this should be equivalent to `transparent` I hope
@@ -20,7 +20,7 @@ impl PageDirectoryEntry {
     /// If set, indicates that the page directory is currently in memory.
     /// If not set, then the CPU will ignore this directory in its search for an address translation.
     #[allow(dead_code)]
-    pub fn set_present(mut self, bit: bool) -> Self {
+    pub fn set_present(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(0, bit);
         self
     }
@@ -34,7 +34,7 @@ impl PageDirectoryEntry {
     }
 
     #[allow(dead_code)]
-    pub fn set_read_write(mut self, bit: bool) -> Self {
+    pub fn set_read_write(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(1, bit);
         self
     }
@@ -48,7 +48,7 @@ impl PageDirectoryEntry {
     /// When set, this bit indicate that the page directory contains pages that can be accessed by everyone.
     /// When not set, only the supervisor can access those pages.
     #[allow(dead_code)]
-    pub fn set_user_bit(mut self, bit: bool) -> Self {
+    pub fn set_user_bit(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(2, bit);
         self
     }
@@ -64,7 +64,7 @@ impl PageDirectoryEntry {
     /// Controls the `write-through` ability of the page when set.
     /// When not set, `write-back` is enabled instead.
     #[allow(dead_code)]
-    pub fn set_write_through(mut self, bit: bool) -> Self {
+    pub fn set_write_through(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(3, bit);
         self
     }
@@ -78,7 +78,7 @@ impl PageDirectoryEntry {
     /// If this is set, then the page will not be cached by the CPU.
     /// If this is not set, then the page will be cached if possible.
     #[allow(dead_code)]
-    pub fn set_cache_disable(mut self, bit: bool) -> Self {
+    pub fn set_cache_disable(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(4, bit);
         self
     }
@@ -97,7 +97,7 @@ impl PageDirectoryEntry {
     /// This flag is set by the cpu when a page in the directory is accessed.
     /// It won't be cleared by the CPU, so it is the responsability of the kernel to clear it, If the kernel needs it at all.
     #[allow(dead_code)]
-    pub fn set_accessed(mut self, bit: bool) -> Self {
+    pub fn set_accessed(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(5, bit);
         self
     }
@@ -112,7 +112,7 @@ impl PageDirectoryEntry {
     /// There is no paging table involved in the address translation.
     /// Note: With 4-MiB pages, bits 21 through 12 are reserved! Thus, the physical address must also be 4-MiB-aligned.
     #[allow(dead_code)]
-    pub fn set_page_size(mut self, bit: bool) -> Self {
+    pub fn set_page_size(&mut self, bit: bool) -> &mut Self {
         self.inner.set_bit(7, bit);
         self
     }
@@ -149,7 +149,7 @@ impl PageDirectoryEntry {
     /// This sets the 3 available bits of the entry.
     /// Currently this is more a placeholder then a definitive implementation. It should be decided what is done with those bits.
     #[allow(dead_code)]
-    pub fn set_available_field(mut self, bits: u8) -> Self {
+    pub fn set_available_field(&mut self, bits: u8) -> &mut Self {
         self.inner.set_bits(9..12, bits as usize);
         self
     }
@@ -236,11 +236,42 @@ impl PageDirectory {
     }
 
     #[allow(dead_code)]
-    pub fn get_page_from_vaddr(&self, vaddr: u32) // -> &PageTableEntry
-    {
-        let _pdindex = (vaddr >> 22) as usize;
-        let _ptindex = ((vaddr >> 12) & 0x0fff) as usize;
+    pub fn get_page_from_vaddr(&self, vaddr: u32) -> Option<&PageTableEntry> {
+        let pdindex = (vaddr >> 22) as usize;
+        let ptindex = ((vaddr >> 12) & 0x0fff) as usize;
 
-        // &self.entries[_pdindex][_ptindex]
+        if !self[pdindex].present() {
+            return None;
+        }
+
+        let page_table = unsafe { &mut *(self[pdindex].entry_addr() as *mut PageTable) };
+
+        Some(&page_table[ptindex])
+    }
+
+    pub unsafe fn remap_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
+        assert_eq!(virt_addr % 4096, 0);
+        let page_dir_index = virt_addr.get_bits(22..32);
+
+        self[page_dir_index] = *PageDirectoryEntry::new().set_present(true).set_read_write(true);
+        // .set_entry_addr(&table[page_dir_index] as *const PageTable as usize);
+
+        let page_table_index = virt_addr.get_bits(12..22);
+        let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
+
+        if page_table[page_table_index].present() {
+            return Err(());
+        }
+
+        page_table.map_addr(virt_addr, phys_addr)?;
+        Ok(())
+    }
+
+    pub unsafe fn remap_range_addr(&mut self, virt_addr_range: Range<usize>, phys_addr_range: Range<usize>) {
+        assert_eq!(virt_addr_range.start % 4096, 0);
+        assert_eq!(phys_addr_range.start % 4096, 0);
+        for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(4096) {
+            self.remap_addr(virt, phys);
+        }
     }
 }

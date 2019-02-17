@@ -7,6 +7,7 @@
 #![allow(unused_unsafe)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
+#![feature(concat_idents)]
 // #![deny(missing_docs)]
 
 #[macro_use]

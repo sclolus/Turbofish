@@ -40,9 +40,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
-
+    unsafe {
+        println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
+    }
     debug::bench_start();
-    fucking_big_string(3);
+    // fucking_big_string(3);
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
 

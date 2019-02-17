@@ -1,8 +1,8 @@
+pub mod page_alloc;
 /// This module contains the code for the Memory Management Unit and (probably) the Current Implementation of the Memory Manager
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 pub mod page_directory;
 pub mod page_table;
-pub mod page_alloc;
 use bit_field::BitField;
 use core::ops::Range;
 
@@ -11,6 +11,27 @@ use core::ops::Range;
 
 use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::{PageTable, PageTableEntry};
+
+extern "C" {
+    static __test_symbol: u8;
+    static __start_text: u8;
+    static __end_text: u8;
+
+    static __start_boot: u8;
+    static __end_boot: u8;
+
+    static __start_rodata: u8;
+    static __end_rodata: u8;
+
+    static __start_data: u8;
+    static __end_data: u8;
+
+    static __start_debug: u8;
+    static __end_debug: u8;
+
+    static __start_bss: u8;
+    static __end_bss: u8;
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct VirtualAddr {
@@ -46,51 +67,6 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
-/// set the 16 first Mib of virtual address = real address
-pub unsafe fn auto_ref_kernel_base() {
-    let dir = &mut PAGE_DIRECTORY;
-    let table = &mut PAGE_TABLES;
-    let mut offset = 0;
-    for j in 0..16 {
-        offset = j * 1024;
-
-        dir[j] = *PageDirectoryEntry::new()
-            .set_present(true)
-            .set_read_write(true)
-            .set_entry_addr(&table[j] as *const PageTable as usize);
-
-        for (i, e) in table[j].as_mut().iter_mut().enumerate() {
-            *e = *PageTableEntry::new()
-                .set_present(true)
-                .set_read_write(true)
-                .set_physical_address(((offset + i) as usize) << 12);
-        }
-    }
-}
-
-pub unsafe fn remap_addr(virt_addr: usize, phys_addr: usize) {
-    assert_eq!(virt_addr % 4096, 0);
-    let dir = &mut PAGE_DIRECTORY;
-    let table = &mut PAGE_TABLES;
-    let page_dir_index = virt_addr.get_bits(22..32);
-    dir[page_dir_index] = *PageDirectoryEntry::new()
-        .set_present(true)
-        .set_read_write(true)
-        .set_entry_addr(&table[page_dir_index] as *const PageTable as usize);
-
-    let page_table_index = virt_addr.get_bits(12..22);
-    table[page_dir_index][page_table_index] =
-        *PageTableEntry::new().set_present(true).set_read_write(true).set_physical_address(phys_addr);
-}
-
-pub unsafe fn remap_range_addr(virt_addr_range: Range<usize>, phys_addr_range: Range<usize>) {
-    assert_eq!(virt_addr_range.start % 4096, 0);
-    assert_eq!(phys_addr_range.start % 4096, 0);
-    for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(4096) {
-        remap_addr(virt, phys);
-    }
-}
-
 pub unsafe fn init_paging() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
 
@@ -121,9 +97,28 @@ pub unsafe fn init_paging() -> Result<(), ()> {
 
     use crate::monitor::SCREEN_MONAD;
     println!("arg to enable_paging: {:p}", PAGE_DIRECTORY.as_mut().as_mut_ptr());
-    auto_ref_kernel_base();
+    // PAGE_DIRECTORY.auto_ref_kernel_base();
 
-    remap_range_addr(4244635648..(4244635648 + 1024 * 768 * 3), 4244635648..(4244635648 + 1024 * 768 * 3));
+    macro_rules! print_section {
+        ($ident: ident) => {
+            println!(
+                "{}: [{:p}: {:p}[",
+                stringify!($ident),
+                &concat_idents!(__, start_, $ident),
+                &concat_idents!(__, end_, $ident)
+            );
+        };
+    }
+    println!("{:x}", __test_symbol);
+    print_section!(text);
+    print_section!(boot);
+    print_section!(bss);
+    print_section!(rodata);
+    print_section!(debug);
+
+    loop {}
+    // PAGE_DIRECTORY
+    //     .remap_range_addr(4244635648..(4244635648 + 1024 * 768 * 3), 4244635648..(4244635648 + 1024 * 768 * 3));
     println!("{:?}", SCREEN_MONAD);
     _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 

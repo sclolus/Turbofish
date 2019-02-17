@@ -20,7 +20,7 @@ impl Buddy {
         occupied, set_occupied, 1, inner);
 }
 
-impl Index<usize> for Buddies {
+impl<'a> Index<usize> for Buddies<'a> {
     type Output = Buddy;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -28,38 +28,38 @@ impl Index<usize> for Buddies {
     }
 }
 
-impl IndexMut<usize> for Buddies {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.entries.index_mut(index)
-    }
-}
+// impl<'a> IndexMut<usize> for Buddies<'a> {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         self.entries.index_mut(index)
+//     }
+// }
 
-impl AsRef<[Buddy]> for Buddies {
+impl<'a> AsRef<[Buddy]> for Buddies<'a> {
     fn as_ref(&self) -> &[Buddy] {
         &self.entries
     }
 }
 
-impl AsMut<[Buddy]> for Buddies {
-    fn as_mut(&mut self) -> &mut [Buddy] {
-        &mut self.entries
-    }
+// impl<'a> AsMut<[Buddy]> for Buddies<'a> {
+//     fn as_mut(&mut self) -> &mut [Buddy] {
+//         &mut self.entries
+//     }
+// }
+
+pub struct Buddies<'a> {
+    entries: &'a [Buddy],
 }
 
-pub struct Buddies {
-    entries: [Buddy; 0x400000],
-}
+static BUDDIES: Buddies = Buddies { entries: &[Buddy::new(); 0x400000] };
 
-static BUDDIES: Buddies = Buddies { entries: [Buddy::new(); 0x400000] };
-
-impl Buddies {
+impl<'a> Buddies<'a> {
     fn left_child_index(i: usize) -> usize {
         i * 2 + 1
     }
     fn right_child_index(i: usize) -> usize {
         i * 2 + 2
     }
-   /* fn alloc_aux(&mut self, pages_reclaim: usize, i: usize, depth: usize) -> Option<usize> {
+    /* fn alloc_aux(&mut self, pages_reclaim: usize, i: usize, depth: usize) -> Option<usize> {
         let curr = self[i];
         let curr_block_size = 1 << (20 - depth);
         if curr.occupied {
@@ -73,7 +73,36 @@ impl Buddies {
     pub fn alloc(&mut self, pages_reclaim: usize) -> Option<usize> {
         //assert!(pages_reclaim.is_power_of_two());
         self.alloc_aux(pages_reclaim, 0, 0)
-         
+
     }
     */
+}
+
+struct BuddyAllocator<'a> {
+    addr: usize,
+    size: usize,
+    block_size: usize,
+    max_order: u32,
+    buddies: &'a mut [Buddy],
+}
+
+impl<'a> BuddyAllocator<'a> {
+    pub fn new(addr: usize, size: usize, block_size: usize) -> Self {
+        assert!((addr / block_size).is_power_of_two());
+
+        let max_order = (addr / block_size).trailing_zeros();
+
+        BuddyAllocator {
+            addr,
+            size,
+            block_size,
+            max_order,
+            buddies: unsafe {
+                core::slice::from_raw_parts_mut(
+                    addr as *mut _,
+                    core::mem::size_of::<Buddy>() * ((2 * (max_order as usize)) - 1),
+                )
+            },
+        }
+    }
 }
