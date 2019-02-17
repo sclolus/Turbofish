@@ -69,6 +69,15 @@ impl Generate<i32> for i32 {
     }
 }
 
+/// f64 rand: -self..+self as f64
+impl Rand<f64> for f64 {
+    /// [core::i32::MIN..core::i32::MAX] € Z -> [+1..~-1] € D -> [+self..-self] € D
+    fn randup(self, method: Methods) -> f64 {
+        let t: i32 = i32::generate(method);
+        t as f64 / core::i32::MIN as f64 * self as f64
+    }
+}
+
 /// f32 rand: -self..+self as f32
 impl Rand<f32> for f32 {
     /// [core::i32::MIN..core::i32::MAX] € Z -> [+1..~-1] € D -> [+self..-self] € D
@@ -83,7 +92,8 @@ impl Rand<i32> for i32 {
     /// [core::i32::MIN..core::i32::MAX] € Z -> [+1..~-1] € D -> [+self..-self] € D -> [+self..-self] € Z
     fn randup(self, method: Methods) -> i32 {
         let t: i32 = i32::generate(method);
-        (t as f32 / core::i32::MIN as f32 * self as f32).round() as i32
+        // lack of precision for i32 type with f32, usage of f64 instead
+        (t as f64 / core::i32::MIN as f64 * self as f64).round() as i32
     }
 }
 
@@ -110,7 +120,8 @@ impl Rand<u32> for u32 {
     /// [0..core::u32::MAX] € N -> [0..+1] € D -> [0..+self] € D -> [0..+self] € N
     fn randup(self, method: Methods) -> u32 {
         let t: u32 = u32::generate(method);
-        (t as f32 / core::u32::MAX as f32 * self as f32).round() as u32
+        // lack of precision for u32 type with f32, usage of f64 instead
+        (t as f64 / core::u32::MAX as f64 * self as f64).round() as u32
     }
 }
 
