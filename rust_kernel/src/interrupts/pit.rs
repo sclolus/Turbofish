@@ -147,7 +147,7 @@ impl Pit {
     pub fn sleep(&mut self, duration: Duration) -> () {
         assert!(interrupts::get_interrupts_state());
         use crate::math::convert::Convert;
-        use crate::math::random::{srand_init, Random};;
+        use crate::math::random::{rand, srand, srand_init, Random};
 
         println!("res: {:?}", core::i32::MAX.rand());
         println!("res: {:?}", core::i32::MAX.rand());
@@ -180,6 +180,10 @@ impl Pit {
 
         println!("res: {:?}", u8::srand(1));
         println!("res: {:?}", i8::srand(1));
+
+        let a = srand(core::u32::MAX);
+        let b = rand(10);
+        println!("a {:?} b {:?}", a, b);
 
         let ms = duration.as_millis();
         let next_tic = ms as f32 / 1000 as f32 / self.period;
