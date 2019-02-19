@@ -20,6 +20,7 @@ pub mod monitor;
 pub mod interrupts;
 
 pub mod io;
+pub mod keyboard;
 pub mod multiboot;
 pub mod panic;
 pub mod registers;
