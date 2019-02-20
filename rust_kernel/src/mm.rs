@@ -67,6 +67,8 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
+static mut BUDDIES: [page_alloc::Buddy; 7] = [page_alloc::Buddy::new(); 7];
+
 pub unsafe fn init_paging() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
 
@@ -109,12 +111,36 @@ pub unsafe fn init_paging() -> Result<(), ()> {
             );
         };
     }
+
+    macro_rules! get_section_tuple {
+        ($ident: ident) => {
+            (
+                &concat_idents!(__, start_, $ident) as *const _ as usize,
+                &concat_idents!(__, end_, $ident) as *const _ as usize,
+            )
+        };
+    }
+
     println!("{:x}", __test_symbol);
     print_section!(text);
     print_section!(boot);
     print_section!(bss);
     print_section!(rodata);
     print_section!(debug);
+
+    let (start_addr, end_addr) = get_section_tuple!(text);
+
+    let map_location = 0x00000000 as *const u8;
+
+    let mut buddy_allocator = page_alloc::BuddyAllocator::new(map_location as usize, 4 * 4096, 4096, &mut BUDDIES);
+    println!("mapping [{:x}:{:x}[ to {:p}", start_addr, end_addr, map_location);
+    // println!("mapping_addr: {:p}", buddy_allocator.alloc(4).unwrap());
+
+    println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
+    println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
+    println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
+    println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
+    println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
 
     loop {}
     // PAGE_DIRECTORY

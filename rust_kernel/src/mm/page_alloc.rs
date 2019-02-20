@@ -1,3 +1,5 @@
+use core::ffi::c_void;
+use core::mem;
 use core::ops::{Index, IndexMut};
 
 #[derive(Copy, Clone)]
@@ -6,6 +8,13 @@ pub struct Buddy {
 }
 
 impl Buddy {
+    fn left_child_index(i: usize) -> usize {
+        i * 2 + 1
+    }
+    fn right_child_index(i: usize) -> usize {
+        i * 2 + 2
+    }
+
     pub const fn new() -> Self {
         Self { inner: 0 }
     }
@@ -78,7 +87,7 @@ impl<'a> Buddies<'a> {
     */
 }
 
-struct BuddyAllocator<'a> {
+pub struct BuddyAllocator<'a> {
     addr: usize,
     size: usize,
     block_size: usize,
@@ -87,22 +96,136 @@ struct BuddyAllocator<'a> {
 }
 
 impl<'a> BuddyAllocator<'a> {
-    pub fn new(addr: usize, size: usize, block_size: usize) -> Self {
-        assert!((addr / block_size).is_power_of_two());
+    pub fn new(addr: usize, size: usize, block_size: usize, buddies: &'a mut [Buddy]) -> Self {
+        assert!((size / block_size).is_power_of_two());
+        assert!(addr % block_size == 0);
 
-        let max_order = (addr / block_size).trailing_zeros();
+        let max_order = (size / block_size).trailing_zeros();
+        println!("Max order: {} for buddy allocator at addr: {}", max_order, addr);
 
-        BuddyAllocator {
-            addr,
-            size,
-            block_size,
-            max_order,
-            buddies: unsafe {
-                core::slice::from_raw_parts_mut(
-                    addr as *mut _,
-                    core::mem::size_of::<Buddy>() * ((2 * (max_order as usize)) - 1),
-                )
-            },
+        let nbr_buddies = (2 * ((size / block_size) as usize)) - 1;
+        println!("nbr_buddies = {}", nbr_buddies);
+
+        //TODO: bzero memory for buddies
+        for buddy in buddies.iter_mut() {
+            buddy.set_occupied(false);
+            buddy.set_splitted(false);
+        }
+
+        BuddyAllocator { addr, size, block_size, max_order, buddies }
+    }
+
+    fn split_buddy(&mut self, index: usize) -> Result<(), ()> {
+        assert!(index < self.buddies.len() / 2 - 1);
+        assert!(self.buddies[index].splitted() == false);
+        assert!(self.buddies[index].occupied() == false);
+
+        self.buddies[index].set_splitted(true);
+
+        let left_index = Buddy::left_child_index(index);
+        let right_index = Buddy::right_child_index(index);
+
+        self.buddies[left_index].set_splitted(false);
+        self.buddies[left_index].set_occupied(false);
+
+        self.buddies[right_index].set_splitted(false);
+        self.buddies[right_index].set_occupied(false);
+
+        Ok(())
+    }
+
+    fn _find_allocable_buddy(&mut self, target_depth: usize, current_depth: usize, index: usize) -> Option<usize> {
+        if target_depth == current_depth {
+            if self.buddies[index].occupied() {
+                return None;
+            }
+            return Some(index);
+        }
+
+        if self.buddies[index].occupied() {
+            return None;
+        }
+
+        if self.buddies[index].splitted() {
+            if let Some(buddy_index) =
+                self._find_allocable_buddy(target_depth, current_depth + 1, Buddy::left_child_index(index))
+            {
+                return Some(buddy_index);
+            }
+            self._find_allocable_buddy(target_depth, current_depth + 1, Buddy::right_child_index(index))
+        } else {
+            if let Err(_) = self.split_buddy(index) {
+                return None;
+            }
+            self._find_allocable_buddy(target_depth, current_depth + 1, Buddy::left_child_index(index))
+        }
+    }
+
+    fn find_allocable_buddy(&mut self, target_depth: usize) -> Option<usize> {
+        // while current_depth < target_depth {
+        //     if !self.buddies[index].occupied() {
+        //         if self.buddies[index].splitted() {
+        //             let left_index = Buddy::left_child_index(index);
+        //             let right_index = Buddy::right_child_index(index);
+
+        //             if !self.buddies[left_index].occupied() {
+        //                 index = left_index;
+        //             } else if !self.buddies[right_index].occupied() {
+        //                 index = right_index;
+        //             } else {
+        //                 return None;
+        //             }
+
+        //             current_depth += 1;
+        //         } else {
+        //             self.split_buddy(index).unwrap();
+        //             return Some(Buddy::left_child_index(index));
+        //         }
+        //     } else if self.buddies[index].occupied() {
+        //         return None;
+        //     }
+        // }
+        self._find_allocable_buddy(target_depth, 0, 0)
+    }
+
+    pub fn buddy_addr(&self, index: usize) -> *const c_void {
+        0x0 as *const c_void
+    }
+
+    pub fn alloc(&mut self, size: usize) -> Option<*const c_void> {
+        let target_depth = {
+            let mut buddy_size = 2usize.pow(self.max_order) * self.block_size;
+            let mut target_depth = 0;
+
+            while buddy_size / 2 >= size {
+                // println!("$$$$$$$$$${:?} -> {:?} ({:?})", buddy_size, size, target_depth);
+                buddy_size /= 2;
+                target_depth += 1;
+            }
+            target_depth
+        };
+        // println!("Searching for target_depth: {}", target_depth);
+
+        if let Some(buddy_index) = self.find_allocable_buddy(target_depth) {
+            self.buddies[buddy_index].set_occupied(true);
+
+            let depth_size = 2usize.pow((target_depth - 1) as u32);
+
+            assert!(depth_size < buddy_index);
+            let buddy_layer_index: usize = buddy_index - ((2 * depth_size) - 1);
+            // println!(
+            //     "Buddy size: {}, requested size: {}",
+            //     (2usize.pow(self.max_order) * self.block_size) / 2usize.pow(target_depth as u32),
+            //     size
+            // );
+
+            println!("Found buddy_index: {}", buddy_layer_index);
+            let addr =
+                2usize.pow(self.max_order - target_depth as u32) * self.block_size * buddy_layer_index + self.addr;
+
+            Some(addr as *const c_void)
+        } else {
+            None
         }
     }
 }
