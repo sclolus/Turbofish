@@ -16,8 +16,10 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     save_multiboot_info(multiboot_info);
-    println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
-    println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
+    unsafe {
+        println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
+        println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
+    }
 
     unsafe {
         interrupts::init();
@@ -45,7 +47,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     println!("irqs state: {}", interrupts::get_interrupts_state());
 
-    println!("irq mask: {:b}", PIC_8259.get_masks());
+    unsafe {
+        println!("irq mask: {:b}", PIC_8259.get_masks());
+    }
 
     let eflags = crate::registers::Eflags::get_eflags();
     println!("{:x?}", eflags);
@@ -54,7 +58,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIT0.start_at_frequency(18.).unwrap();
     }
     debug::bench_start();
-    println!("pit: {:?}", PIT0);
+    unsafe {
+        println!("pit: {:?}", PIT0);
+    }
     unsafe {
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
         print!("H");

@@ -41,21 +41,31 @@ pub enum Color {
 }
 
 #[macro_export]
+#[cfg(not(test))]
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
-            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!("\n")).unwrap();
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, a).unwrap();
+                    core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!("\n")).unwrap();
+                }
+            }
         }
     })
 }
 
 #[macro_export]
+#[cfg(not(test))]
 macro_rules! print {
     ($($arg:tt)*) => ({
-        unsafe {
-            core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, format_args!($($arg)*)).unwrap();
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, a).unwrap();
+                }
+            }
         }
     })
 }

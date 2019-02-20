@@ -411,3 +411,12 @@ impl From<u16> for VbeError {{
 ");
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_fucking_big_string() {
+        fucking_big_string(1);
+    }
+}
