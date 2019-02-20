@@ -182,7 +182,7 @@ mod tests {
 
         assert_eq!(entry.present(), false);
         entry.set_present(true);
-        assert_ne!(entry.set_present(true), PageDirectoryEntry::new());
+        assert_ne!(*entry.set_present(true), PageDirectoryEntry::new());
         assert_eq!(entry.present(), true);
     }
 }
