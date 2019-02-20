@@ -75,14 +75,9 @@ fn main() {
                 .expect("failed to execute process");
 
             match child.wait_timeout(TIMEOUT) {
-                Err(e) => {
-                    println!("error {}", e);
-                    child.kill().expect("cant kill");
-                    println!("{}", "TIMEOUT".red());
-                    Err(TestError::Timeout)
-                }
-                Ok(exit_status) => {
-                    let exit_status = exit_status.unwrap().code().unwrap() >> 1;
+                Err(e) => panic!("Internal error: {}", e),
+                Ok(Some(exit_status)) => {
+                    let exit_status = exit_status.code().unwrap() >> 1;
                     if exit_status != 0 {
                         let mut output = String::new();
                         File::open(output_file).unwrap().read_to_string(&mut output).unwrap();
@@ -93,6 +88,11 @@ fn main() {
                         println!("{}", "Ok".green());
                         Ok(())
                     }
+                }
+                Ok(None) => {
+                    child.kill().expect("cant kill");
+                    println!("{}", "TIMEOUT".red());
+                    Err(TestError::Timeout)
                 }
             }
         })
