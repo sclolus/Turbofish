@@ -57,3 +57,17 @@ macro_rules! define_raw_data {
         impl_raw_data_debug!($name);
     };
 }
+
+#[cfg(test)]
+mod test {
+    use crate::ffi::{c_char, strlen};
+    #[test]
+    fn test_strlen() {
+        unsafe {
+            let s = "12345\0";
+            assert_eq!(strlen(s as *const _ as *const c_char), 5);
+            let s = "\0";
+            assert_eq!(strlen(s as *const _ as *const c_char), 0);
+        }
+    }
+}
