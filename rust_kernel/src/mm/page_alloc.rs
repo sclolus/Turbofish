@@ -2,17 +2,30 @@ use core::ffi::c_void;
 use core::mem;
 use core::ops::{Index, IndexMut};
 
+use core::fmt::Debug;
+
 #[derive(Copy, Clone)]
 pub struct Buddy {
     inner: u8,
+}
+
+impl Debug for Buddy {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "[occupied: {}, splitted:{}]", self.occupied(), self.splitted())
+    }
 }
 
 impl Buddy {
     fn left_child_index(i: usize) -> usize {
         i * 2 + 1
     }
+
     fn right_child_index(i: usize) -> usize {
         i * 2 + 2
+    }
+
+    fn parent_index(i: usize) -> Option<usize> {
+        Some(i.checked_sub(1)? / 2)
     }
 
     pub const fn new() -> Self {
@@ -22,7 +35,7 @@ impl Buddy {
     gen_builder_pattern_bitfields_methods!(
         #[doc = " "],
         #[doc = " "],
-        splitted, set_splitted, 1, inner);
+        splitted, set_splitted, 0, inner);
     gen_builder_pattern_bitfields_methods!(
         #[doc = " "],
         #[doc = " "],
@@ -65,9 +78,11 @@ impl<'a> Buddies<'a> {
     fn left_child_index(i: usize) -> usize {
         i * 2 + 1
     }
+
     fn right_child_index(i: usize) -> usize {
         i * 2 + 2
     }
+
     /* fn alloc_aux(&mut self, pages_reclaim: usize, i: usize, depth: usize) -> Option<usize> {
         let curr = self[i];
         let curr_block_size = 1 << (20 - depth);
@@ -92,7 +107,7 @@ pub struct BuddyAllocator<'a> {
     size: usize,
     block_size: usize,
     max_order: u32,
-    buddies: &'a mut [Buddy],
+    pub buddies: &'a mut [Buddy],
 }
 
 impl<'a> BuddyAllocator<'a> {
@@ -116,7 +131,7 @@ impl<'a> BuddyAllocator<'a> {
     }
 
     fn split_buddy(&mut self, index: usize) -> Result<(), ()> {
-        assert!(index < self.buddies.len() / 2 - 1);
+        assert!(index < self.buddies.len() / 2);
         assert!(self.buddies[index].splitted() == false);
         assert!(self.buddies[index].occupied() == false);
 
@@ -135,6 +150,8 @@ impl<'a> BuddyAllocator<'a> {
     }
 
     fn _find_allocable_buddy(&mut self, target_depth: usize, current_depth: usize, index: usize) -> Option<usize> {
+        //dbg!(index);
+        //dbg!(current_depth);
         if target_depth == current_depth {
             if self.buddies[index].occupied() {
                 return None;
@@ -147,13 +164,15 @@ impl<'a> BuddyAllocator<'a> {
         }
 
         if self.buddies[index].splitted() {
-            if let Some(buddy_index) =
-                self._find_allocable_buddy(target_depth, current_depth + 1, Buddy::left_child_index(index))
-            {
+            let left_index = Buddy::left_child_index(index);
+            let right_index = Buddy::right_child_index(index);
+
+            if let Some(buddy_index) = self._find_allocable_buddy(target_depth, current_depth + 1, left_index) {
                 return Some(buddy_index);
             }
-            self._find_allocable_buddy(target_depth, current_depth + 1, Buddy::right_child_index(index))
+            self._find_allocable_buddy(target_depth, current_depth + 1, right_index)
         } else {
+            //            println!("Splitting buddy: {}", index);
             if let Err(_) = self.split_buddy(index) {
                 return None;
             }
@@ -185,11 +204,48 @@ impl<'a> BuddyAllocator<'a> {
         //         return None;
         //     }
         // }
+        // //dbg!(&self.buddies);
         self._find_allocable_buddy(target_depth, 0, 0)
     }
 
     pub fn buddy_addr(&self, index: usize) -> *const c_void {
         0x0 as *const c_void
+    }
+    /// size in bytes
+    pub fn buddy_index(&self, addr: usize, size: usize) -> usize {
+        assert!(addr % self.block_size == 0);
+        assert!(addr >= self.addr && addr < self.addr + self.size);
+        assert!(size >= self.block_size);
+        assert!(size % self.block_size == 0);
+        assert!(size <= self.block_size * 2usize.pow(self.max_order));
+        let order = size.trailing_zeros() - self.block_size.trailing_zeros();
+
+        (addr - self.addr) / (2usize.pow(order) * self.block_size) + (2usize.pow(self.max_order - order) - 1)
+    }
+
+    fn set_occupied(&mut self, mut index: usize, value: bool) {
+        self.buddies[index].set_occupied(value);
+        if value == false {
+            self.buddies[index].set_splitted(false);
+        }
+
+        while let Some(parent_index) = Buddy::parent_index(index) {
+            let left_child = Buddy::left_child_index(parent_index);
+            let right_child = Buddy::right_child_index(parent_index);
+
+            if self.buddies[right_child].occupied() == value && self.buddies[left_child].occupied() == value {
+                self.buddies[parent_index].set_occupied(value);
+                if value == false {
+                    self.buddies[parent_index].set_splitted(false);
+                }
+            }
+
+            index = parent_index;
+        }
+    }
+
+    pub fn free(&mut self, addr: usize, size: usize) {
+        self.set_occupied(self.buddy_index(addr, size), false)
     }
 
     pub fn alloc(&mut self, size: usize) -> Option<*const c_void> {
@@ -197,29 +253,30 @@ impl<'a> BuddyAllocator<'a> {
             let mut buddy_size = 2usize.pow(self.max_order) * self.block_size;
             let mut target_depth = 0;
 
+            //dbg!(buddy_size);
             while buddy_size / 2 >= size {
                 // println!("$$$$$$$$$${:?} -> {:?} ({:?})", buddy_size, size, target_depth);
                 buddy_size /= 2;
                 target_depth += 1;
             }
+            //dbg!(buddy_size);
             target_depth
         };
+        //dbg!(target_depth);
         // println!("Searching for target_depth: {}", target_depth);
 
         if let Some(buddy_index) = self.find_allocable_buddy(target_depth) {
-            self.buddies[buddy_index].set_occupied(true);
+            self.set_occupied(buddy_index, true);
+            //dbg!(buddy_index);
 
             let depth_size = 2usize.pow((target_depth - 1) as u32);
+            //dbg!(depth_size);
 
-            assert!(depth_size < buddy_index);
+            assert!(depth_size <= buddy_index);
+            assert!(2 * depth_size - 1 <= buddy_index);
             let buddy_layer_index: usize = buddy_index - ((2 * depth_size) - 1);
-            // println!(
-            //     "Buddy size: {}, requested size: {}",
-            //     (2usize.pow(self.max_order) * self.block_size) / 2usize.pow(target_depth as u32),
-            //     size
-            // );
+            //dbg!(buddy_layer_index);
 
-            println!("Found buddy_index: {}", buddy_layer_index);
             let addr =
                 2usize.pow(self.max_order - target_depth as u32) * self.block_size * buddy_layer_index + self.addr;
 
