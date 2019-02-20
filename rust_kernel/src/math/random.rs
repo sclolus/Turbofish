@@ -163,3 +163,64 @@ impl Rand for bool {
         t.get_bit(0)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::Random;
+
+    #[test]
+    fn random_out_of_bound_i16_test() {
+        for i in (core::i16::MIN..0).into_iter().step_by(128) {
+            let x: i16 = i.rand();
+            let limit_high = match i {
+                core::i16::MIN => core::i16::MAX,
+                _ => -1 * i,
+            };
+            assert!(x >= i && x <= limit_high);
+        }
+    }
+    #[test]
+    fn random_out_of_bound_i32_test() {
+        for i in (core::i32::MIN..0).into_iter().step_by(4096) {
+            // test signed 32
+            let x: i32 = i.rand();
+            let limit_high = match i {
+                core::i32::MIN => core::i32::MAX,
+                _ => -1 * i,
+            };
+            assert!(x >= i && x <= limit_high);
+        }
+    }
+    #[test]
+    fn random_out_of_bound_u16_test() {
+        for i in (0..core::u16::MAX).into_iter().step_by(128) {
+            // test unsigned 16
+            let x: u16 = i.rand();
+            assert!(x <= i);
+        }
+    }
+    #[test]
+    fn random_out_of_bound_u32_test() {
+        for i in (0..core::u32::MAX).into_iter().step_by(4096) {
+            // test unsigned 32
+            let x: u32 = i.rand();
+            assert!(x <= i);
+        }
+    }
+    #[test]
+    fn random_out_of_bound_f32_test() {
+        for i in (0..core::u32::MAX).into_iter().step_by(4096) {
+            // test f32
+            let x: f32 = (i as f32).rand();
+            assert!(x >= (i as f32 * -1.) && x <= i as f32);
+        }
+    }
+    #[test]
+    fn random_out_of_bound_f64_test() {
+        for i in (0..core::u32::MAX).into_iter().step_by(4096) {
+            // test f64
+            let x: f64 = (i as f64).rand();
+            assert!(x >= (i as f64 * -1.) && x <= i as f64);
+        }
+    }
+}
