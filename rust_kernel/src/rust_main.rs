@@ -5,8 +5,8 @@ use crate::interrupts::{pic_8259, PIC_8259};
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
-use crate::timer::Rtc;
 use crate::test_helpers::fucking_big_string::fucking_big_string;
+use crate::timer::Rtc;
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -15,7 +15,6 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
-
     save_multiboot_info(multiboot_info);
     println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);

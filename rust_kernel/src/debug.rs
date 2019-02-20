@@ -21,6 +21,18 @@ macro_rules! function {
     }};
 }
 
+#[allow(unused_macros)]
+macro_rules! dbg {
+    ($val: expr) => {
+        match $val {
+            tmp => {
+                println!("[{}:{}] {} = {:#?}", file!(), line!(), stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+}
+
 extern "C" {
     fn _get_pic_time() -> u32;
 }
