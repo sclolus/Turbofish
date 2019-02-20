@@ -34,7 +34,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             .unwrap();
 
         PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(18.0).unwrap();
+        PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
 
@@ -55,42 +55,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("{:x?}", eflags);
 
     unsafe {
-        PIT0.start_at_frequency(18.).unwrap();
+        PIT0.start_at_frequency(1000.).unwrap();
     }
-    debug::bench_start();
-    unsafe {
-        println!("pit: {:?}", PIT0);
-    }
-    unsafe {
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
-        print!("H");
-        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
-        print!("E");
-        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
-        print!("L");
-        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
-        print!("L");
-        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        print!("O");
-        SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
-        print!(" ");
-        SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
-        print!("W");
-        SCREEN_MONAD.set_text_color(Color::White).unwrap();
-        print!("O");
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
-        print!("R");
-        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
-        print!("L");
-        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
-        print!("D");
-        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
-        print!(" ");
-        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        println!("!");
-        SCREEN_MONAD.set_text_color(Color::White).unwrap();
-    }
-    println!("{:?} ms ellapsed", debug::bench_end());
     unsafe {
         SCREEN_MONAD
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
@@ -99,6 +65,55 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
+    debug::bench_start();
+    unsafe {
+        println!("pit: {:?}", PIT0);
+    }
+    unsafe {
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+        print!("H");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
+        print!("E");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+        print!("L");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
+        print!("L");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+        print!("O");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
+        print!(" ");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
+        print!("W");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
+        print!("O");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+        print!("R");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
+        print!("L");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+        print!("D");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
+        print!(" ");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+        println!("!");
+        PIT0.sleep(200);
+        SCREEN_MONAD.set_text_color(Color::White).unwrap();
+    }
+    let t = debug::bench_end();
+    println!("{:?} ms ellapsed", t);
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);

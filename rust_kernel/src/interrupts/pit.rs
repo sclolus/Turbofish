@@ -18,7 +18,7 @@ pub struct Pit {
     /// stock configured operating mode
     operating_mode: Option<OperatingMode>,
 
-    /// period between 2 interrupts in ms
+    /// period between 2 interrupts in s
     pub period: f32,
 }
 
@@ -59,6 +59,10 @@ pub fn debug_pit(tic: u32) -> () {
     print!("{} ", tic);
 }
 
+extern "C" {
+    fn _sleep(next_tic: u32) -> ();
+}
+
 impl Pit {
     /// Channel 0 data port (read/write)
     const CHANEL0_PORT: u16 = 0x40;
@@ -66,8 +70,8 @@ impl Pit {
     /// Mode/Command register (write only, a read is ignored)
     const COMMAND_PORT: u16 = 0x43;
 
-    /// period in ms if the pit is configured at its highest frequency
-    const PERIOD_MIN: f32 = 0.00083809534;
+    /// period in second if the pit is configured at its highest frequency
+    const PERIOD_MIN: f32 = 0.00000083809534;
 
     /// base frequency wich is also the highest frequency
     const BASE_FREQUENCY: f32 = 1193181.6666;
@@ -135,5 +139,16 @@ impl Pit {
             interrupts::enable();
         }
         Ok(())
+    }
+
+    /// assume that PIT is correctely configured, 8259 bit 0 is clear and interrupts are enable
+    /// i'am not sure that it is easy to ensure the PIT is well configured
+    pub fn sleep(&mut self, ms: u32) -> () {
+        use crate::math::convert::*;
+
+        let next_tic = ms as f32 / 1000 as f32 / self.period;
+        unsafe {
+            _sleep(next_tic.round() as u32);
+        }
     }
 }

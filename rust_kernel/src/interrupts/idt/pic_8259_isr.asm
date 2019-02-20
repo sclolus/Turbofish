@@ -19,17 +19,6 @@ _isr_timer:
 	lock inc dword [_pic_time]
 	; send EOI master pic, irq0
 
-	pushad
-
-	call _get_pic_time
-	push eax
-	push 4
-	push debug_pit
-	call _align_stack
-	add esp, 12
-
-	popad
-
 	mov al, 0x20
 	out 0x20, al
 	pop eax
@@ -38,6 +27,27 @@ _isr_timer:
 global _get_pic_time
 _get_pic_time:
 	lock cmpxchg [_pic_time], eax
+	ret
+
+; have a while to make coffee
+global _sleep
+_sleep:
+	push ebp
+	mov ebp, esp
+
+	mov edx, [ebp + 8]
+	call _get_pic_time
+	add edx, eax
+
+.loop:
+	hlt
+
+	call _get_pic_time
+	cmp eax, edx
+
+	jb .loop
+
+	pop ebp
 	ret
 
 ;; This generates the Interrupt service routines. The first paramater completes the indentifier
