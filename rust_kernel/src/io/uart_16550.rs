@@ -1,29 +1,13 @@
-/// This files contains the code related to the 8259 Programmable interrupt controller
-/// See https://wiki.osdev.org/PIC.
 use crate::io::{Io, Pio};
-use bitflags::bitflags;
-
 use core::fmt;
 
-bitflags! {
-    /// Interrupt enable flags
-    struct IntEnFlags: u8 {
-        const RECEIVED = 1;
-        const SENT = 1 << 1;
-        const ERRORED = 1 << 2;
-        const STATUS_CHANGE = 1 << 3;
-        // 4 to 7 are unused
-    }
+struct LineStsFlags {
+    data: u8,
 }
 
-bitflags! {
-    /// Line status flags
-    struct LineStsFlags: u8 {
-        const INPUT_FULL = 1;
-        // 1 to 4 unknown
-        const OUTPUT_EMPTY = 1 << 5;
-        // 6 and 7 unknown
-    }
+impl LineStsFlags {
+    gen_builder_pattern_bitfields_methods!(#[doc=""], #[doc=""], input_full, set_input_full, 0, data);
+    gen_builder_pattern_bitfields_methods!(#[doc=""], #[doc=""], output_empty, set_output_empty, 5, data);
 }
 
 pub struct Uart16550 {
@@ -61,12 +45,12 @@ impl Uart16550 {
     }
 
     fn line_sts(&self) -> LineStsFlags {
-        unsafe { LineStsFlags::from_bits_truncate(self.line_sts.read()) }
+        unsafe { LineStsFlags { data: self.line_sts.read() } }
     }
 
     pub fn send(&mut self, byte: u8) {
         unsafe {
-            while !self.line_sts().contains(LineStsFlags::OUTPUT_EMPTY) {}
+            while !self.line_sts().output_empty() {}
             self.data.write(byte);
         }
     }
