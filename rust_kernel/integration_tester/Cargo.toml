@@ -1,0 +1,11 @@
+[package]
+name = "integration_tester"
+version = "0.1.0"
+authors = ["vcombey <vcombey@student.42.fr>"]
+edition = "2018"
+
+[dependencies]
+toml = "0.4.8"
+wait-timeout = "0.1.5"
+colorful = "0.2.1"
+getopts = "0.2.18"
