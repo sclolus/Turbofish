@@ -11,6 +11,8 @@
 #![cfg_attr(test, feature(allocator_api))]
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
+#![feature(underscore_const_names)]
+
 // #![deny(missing_docs)]
 
 extern crate alloc;
