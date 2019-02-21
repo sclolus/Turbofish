@@ -86,3 +86,47 @@ _trunc:
     pop ecx
     pop ebp
     ret
+
+; simple and basic trigonometry functions
+
+global _cos
+_cos:
+    push ebp
+    mov ebp, esp
+
+    finit
+
+    fld qword [ebp + 8]    		; load double
+
+    fcos
+
+    pop ebp
+    ret
+
+global _sin
+_sin:
+    push ebp
+    mov ebp, esp
+
+    finit
+
+    fld qword [ebp + 8]    		; load double
+
+    fsin
+
+    pop ebp
+    ret
+
+global _tan
+_tan:
+    push ebp
+    mov ebp, esp
+
+    finit
+
+    fld qword [ebp + 8]    		; load double
+
+    fptan
+
+    pop ebp
+    ret
