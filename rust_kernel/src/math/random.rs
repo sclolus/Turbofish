@@ -223,4 +223,43 @@ mod test {
             assert!(x >= (i as f64 * -1.) && x <= i as f64);
         }
     }
+    #[test]
+    fn random_mediane_test() {
+        let mut mediane_u: f64 = 0.;
+        // u32 test
+        for i in 1..100000 {
+            mediane_u += (core::u32::MAX.rand() as f64 - mediane_u) / i as f64;
+        }
+        // i32 test
+        let mut mediane_i: f64 = 0.;
+        for i in 1..100000 {
+            mediane_i += (core::i32::MIN.rand() as f64 - mediane_i) / i as f64;
+        }
+        // f32 test
+        let mut mediane_f: f64 = 0.;
+        for i in 1..100000 {
+            mediane_f += ((4242.4242).rand() as f64 - mediane_f) / i as f64;
+        }
+        println!("{}\nu32 -> {:?}\ni32 -> {:?}\nf32 -> {:?}", function!(), mediane_u, mediane_i, mediane_f);
+    }
+    #[test]
+    fn random_distribution_test() {
+        use std::collections::HashMap;
+        let mut buckets = HashMap::new();
+
+        let gen_nbr = (0..100000).into_iter().map(|_| u32::rand(1000));
+        let n_buckets = 50;
+        let gen_key = |nbr| nbr % n_buckets;
+
+        for nbr in gen_nbr {
+            *buckets.entry(gen_key(nbr)).or_insert(0) += 1;
+        }
+
+        let first_iter = buckets.iter().map(|(_, &value)| value as i64);
+        let cloned_iter = first_iter.clone().take((n_buckets - 1) as usize);
+        let final_iter = first_iter.skip(1).zip(cloned_iter);
+
+        let s = final_iter.fold(0, |acc, (first, second): (i64, i64)| acc + (first - second).abs());
+        println!("{} distribution / 100000 rand(). 50 buckets on range of 1000 -> {:?}", function!(), s);
+    }
 }

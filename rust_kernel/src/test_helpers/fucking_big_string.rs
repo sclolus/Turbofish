@@ -207,6 +207,7 @@ impl From<TextColor> for RGB {{
             TextColor::Blue => RGB(0x0000FF),
             TextColor::Yellow => RGB(0xFFFF00),
             TextColor::Cyan => RGB(0x00FFFF),
+capture
             TextColor::Brown => RGB(0xA52A2A),
             TextColor::Magenta => RGB(0xFF00FF),
             TextColor::White => RGB(0xFFFFFF),
@@ -409,14 +410,5 @@ impl From<u16> for VbeError {{
     }}
 }}
 ");
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn test_fucking_big_string() {
-        fucking_big_string(1);
     }
 }
