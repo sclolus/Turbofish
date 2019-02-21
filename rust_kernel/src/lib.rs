@@ -9,6 +9,9 @@
 #![feature(slice_index_methods)]
 
 #[macro_use]
+pub mod utils;
+
+#[macro_use]
 pub mod debug;
 
 #[macro_use]
