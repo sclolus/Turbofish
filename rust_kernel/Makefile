@@ -56,6 +56,27 @@ VPATH += src/interrupts/idt
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
 
+SRC_C_KERNEL += ctor mem_syscall \
+		size_fn \
+		index \
+		debug_show_alloc debug_display_nodes \
+		node_custom_allocator node_custom_deallocator \
+		cmp_range cmp_fixe \
+		free_record \
+		allocator \
+		reallocator \
+		deallocator \
+		k_main_prototypes \
+		trace \
+		sizeof_object \
+		alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
+		alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
+		alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
+		alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
+		alloc_btree_get_neighbours
+HEADERS += main_headers.h alloc_btree.h alloc_btree_internal_header.h
+VPATH += src/mm/k_alloc src/mm/k_alloc/alloc_btree
+
 SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias
 
