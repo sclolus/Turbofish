@@ -105,14 +105,18 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 
 use core::panic::PanicInfo;
 
+fn panic_sa_mere(info: &PanicInfo) {
+    eprintln!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
+    let ebp: *const u32;
+    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
+    trace_back(ebp);
+}
+
 #[panic_handler]
 #[cfg(any(all(not(test), not(feature = "test")), feature = "qemu-graphical"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
-    println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
-    let ebp: *const u32;
-    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
-    trace_back(ebp);
+    panic_sa_mere(info);
     loop {}
 }
 
@@ -120,10 +124,7 @@ fn panic(info: &PanicInfo) -> ! {
 #[cfg(all(not(feature = "qemu-graphical"), feature = "test"))] //for integration test when not in graphical
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
-    let ebp: *const u32;
-    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
-    trace_back(ebp);
+    panic_sa_mere(info);
     use crate::tests::helpers::exit_qemu;
     exit_qemu(1);
     loop {}
