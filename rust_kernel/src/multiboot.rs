@@ -51,3 +51,13 @@ pub fn save_multiboot_info(multiboot_info: *const MultibootInfo) {
         MULTIBOOT_INFO = Some(*multiboot_info);
     }
 }
+
+impl MultibootInfo {
+    pub fn get_system_memory_amount(&self) -> usize {
+        (self.mem_upper as usize + 1024) * 1024
+    }
+
+    pub fn get_system_starting_addr(&self) -> usize {
+        (self.mem_lower as usize + 1024) * 1024
+    }
+}

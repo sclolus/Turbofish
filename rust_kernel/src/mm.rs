@@ -6,8 +6,7 @@ pub mod page_table;
 use bit_field::BitField;
 use core::ops::Range;
 
-// pub use page_directory::PageDirectoryEntry;
-// pub use page_table::PageTableEntry;
+pub const PAGE_SIZE: usize = 4096;
 
 use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::{PageTable, PageTableEntry};
@@ -33,6 +32,7 @@ extern "C" {
     static __end_bss: u8;
 }
 
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct VirtualAddr {
     addr: usize,
@@ -52,8 +52,21 @@ impl VirtualAddr {
         // if PAGE_TABLES[
         None
     }
+
+    pub fn pd_index(&self) -> usize {
+        self.addr.get_bits(22..32)
+    }
+
+    pub fn pt_index(&self) -> usize {
+        self.addr.get_bits(12..22)
+    }
+
+    pub fn offset(&self) -> usize {
+        self.addr.get_bits(0..12)
+    }
 }
 
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct PhysicalAddr {
     addr: usize,
@@ -67,8 +80,10 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
-static mut BUDDIES: [page_alloc::Buddy; ((1024 * 1024 * 1024) / 4096) * 2 - 1] =
-    [page_alloc::Buddy::new(); (1024 * 1024 * 1024 / 4096) * 2 - 1];
+static mut BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
+    [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+
+pub static mut PHYSICAL_ALLOCATOR: Option<page_alloc::BuddyAllocator<'static>> = None;
 
 pub unsafe fn init_paging() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
@@ -131,23 +146,26 @@ pub unsafe fn init_paging() -> Result<(), ()> {
 
     let (start_addr, end_addr) = get_section_tuple!(text);
 
-    let map_location = 0x00000000 as *const u8;
-
-    let mut buddy_allocator =
-        page_alloc::BuddyAllocator::new(map_location as usize, 1024 * 1024 * 1024, 4096, &mut BUDDIES);
-    println!("mapping [{:x}:{:x}[ to {:p}", start_addr, end_addr, map_location);
-    // println!("mapping_addr: {:p}", buddy_allocator.alloc(4).unwrap());
+    println!("mapping [{:x}:{:x}[ to {:p}", start_addr, end_addr, 0x0 as *const u8);
+    PHYSICAL_ALLOCATOR = Some(unsafe {
+        page_alloc::BuddyAllocator::new(
+            0x0,
+            (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
+            4096,
+            &mut BUDDIES,
+        )
+    }); // println!("mapping_addr: {:p}", buddy_allocator.alloc(4).unwrap());
 
     for __ in 0..(1024 * 1024 * 1024) {
         let alloc_size = 4096 * 1024;
-        let mut addr = buddy_allocator.alloc(alloc_size);
+        let mut addr = PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(alloc_size);
 
         if addr.is_some() {
-            let buddy_index = buddy_allocator.buddy_index(addr.unwrap() as usize, alloc_size);
-        // println!("mapping_addr: {:?}, buddy_index: {}", addr, buddy_index);
+            let buddy_index = PHYSICAL_ALLOCATOR.as_mut().unwrap().buddy_index(addr.unwrap() as usize, alloc_size);
+            println!("mapping_addr: {:?}, buddy_index: {}", addr, buddy_index);
         } else {
+            println!("mapping_addr: {:?}", addr);
             break;
-            // println!("mapping_addr: {:?}", addr);
         }
         // buddy_allocator.free(addr.unwrap() as usize, alloc_size);
     }
