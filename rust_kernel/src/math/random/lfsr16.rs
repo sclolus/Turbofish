@@ -62,29 +62,12 @@ fn move_offset(offset: usize) -> usize {
     }
 }
 
-pub trait GetPseudoNumber {
-    /// get a pseudo random number from the lfsr fibonacci suite
-    fn get_pseudo_number() -> Self;
-}
-
-impl GetPseudoNumber for u32 {
-    fn get_pseudo_number() -> u32 {
+/// get a pseudo random number from the lfsr fibonacci suite
+pub fn lfsr16_get_pseudo_number() -> u32 {
         let result: u32;
         unsafe {
             result = LFSR_FIBONACCI.registers[LFSR_FIBONACCI.current_offset];
             LFSR_FIBONACCI.current_offset = move_offset(LFSR_FIBONACCI.current_offset);
         }
         result
-    }
-}
-
-impl GetPseudoNumber for i32 {
-    fn get_pseudo_number() -> i32 {
-        let result: i32;
-        unsafe {
-            result = LFSR_FIBONACCI.registers[LFSR_FIBONACCI.current_offset] as i32;
-            LFSR_FIBONACCI.current_offset = move_offset(LFSR_FIBONACCI.current_offset);
-        }
-        result
-    }
 }

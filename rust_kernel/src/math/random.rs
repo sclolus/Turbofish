@@ -7,7 +7,7 @@ mod rdrand;
 use rdrand::rdrand;
 
 mod lfsr16;
-use lfsr16::{lfsr16_get_seed, lfsr16_set_seed, GetPseudoNumber};
+use lfsr16::{lfsr16_get_seed, lfsr16_set_seed, lfsr16_get_pseudo_number};
 
 use bit_field::BitField;
 
@@ -67,7 +67,7 @@ impl Generate for u32 {
     fn generate(method: Methods) -> Self {
         match method {
             Methods::Rdrand => rdrand(),
-            Methods::Lfsr16 => u32::get_pseudo_number(),
+            Methods::Lfsr16 => lfsr16_get_pseudo_number(),
         }
     }
 }
@@ -75,8 +75,8 @@ impl Generate for u32 {
 impl Generate for i32 {
     fn generate(method: Methods) -> Self {
         match method {
-            Methods::Rdrand => rdrand(),
-            Methods::Lfsr16 => i32::get_pseudo_number(),
+            Methods::Rdrand => rdrand() as i32,
+            Methods::Lfsr16 => lfsr16_get_pseudo_number() as i32,
         }
     }
 }
