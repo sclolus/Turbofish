@@ -45,7 +45,6 @@ pub struct MultibootInfo {
 }
 
 pub static mut MULTIBOOT_INFO: Option<MultibootInfo> = None;
-// MultibootInfo{..Default::default()};// MultibootInfo::default();
 
 pub fn save_multiboot_info(multiboot_info: *const MultibootInfo) {
     unsafe {

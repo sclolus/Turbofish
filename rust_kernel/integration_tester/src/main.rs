@@ -28,7 +28,7 @@ fn main() {
     opts.optflag("h", "help", "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
-        Err(f) => {
+        Err(_f) => {
             print_usage(&program, opts);
             std::process::exit(1);
         }
@@ -68,7 +68,7 @@ fn main() {
                 .expect("failed to execute process");
             println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
             println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
-            let output_file = format!("{}/{}", env!("PWD"), format!("{}-output", feature));
+            let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
             let mut child = Command::new("qemu-system-x86_64")
                 .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "64M", "-kernel", "build/kernel.elf"])
                 .args(&["-serial", &format!("file:{}", output_file)])
