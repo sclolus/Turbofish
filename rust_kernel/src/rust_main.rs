@@ -14,19 +14,6 @@ extern "C" {
     static _wanggle_bmp_start: BmpImage;
 }
 
-mod exemple {
-    #[allow(dead_code)]
-    struct Example {
-        _1: usize,
-        _2: usize,
-    }
-
-    const_assert!(core::mem::size_of::<Example>() == 8);
-}
-
-const_assert!(true);
-const_assert!(true,,,);
-
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     #[cfg(feature = "serial-eprintln")]
@@ -140,10 +127,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("{:?} ms ellapsed", t);
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
-
-    const_assert!(true);
-    const_assert!(core::mem::size_of::<usize>() == 4);
-
     println!("{}", date);
 
     use alloc::vec;
