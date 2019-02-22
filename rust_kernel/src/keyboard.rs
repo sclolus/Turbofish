@@ -1,3 +1,4 @@
+//! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
 use crate::io::{Io, Pio};
 pub mod keysymb;
 //use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP;
