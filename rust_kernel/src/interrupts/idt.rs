@@ -63,24 +63,26 @@ pub struct IdtGateEntry {
     pub _zero: u8,
 
     /// The type attr is layout in this way.
-    ///   7                           0
-    /// +---+---+---+---+---+---+---+---+
-    /// | P |  DPL  | S |    GateType   |
-    /// +---+---+---+---+---+---+---+---+
-
-    /// P        	Present	Set to 0 for unused interrupts.
-    /// DPL          Descriptor Privilege Level	Gate call protection.
-    ///              Specifies which privilege Level the calling Descriptor minimum
-    ///              should have.
-    ///              So hardware and CPU interrupts can be protected from
-    ///              being called out of userspace.
-    /// S            Storage Segment	Set to 0 for interrupt and trap gates
-    /// Gate Type 	Possible IDT gate types :
-    ///              0b0101	0x5	5	80386 32 bit task gate
-    ///              0b0110	0x6	6	80286 16-bit interrupt gate
-    ///              0b0111	0x7	7	80286 16-bit trap gate
-    ///              0b1110	0xE	14	80386 32-bit interrupt gate
-    ///              0b1111	0xF	15	80386 32-bit trap gate
+    ///
+    /// ```None
+    ///  7                             0  
+    /// +---+---+---+---+---+---+---+---+  
+    /// | P |  DPL  | S |    GateType   |  
+    /// +---+---+---+---+---+---+---+---+  
+    /// - P:          Present	Set to 0 for unused interrupts.  
+    /// - DPL:        Descriptor Privilege Level	Gate call protection.
+    ///               Specifies which privilege Level the calling Descriptor minimum
+    ///               should have.
+    ///               So hardware and CPU interrupts can be protected from
+    ///               being called out of userspace.  
+    /// - S:          Storage Segment	Set to 0 for interrupt and trap gates  
+    /// - Gate Type:  Possible IDT gate types :
+    ///               0b0101	0x5	5	80386 32 bit task gate
+    ///               0b0110	0x6	6	80286 16-bit interrupt gate
+    ///               0b0111	0x7	7	80286 16-bit trap gate
+    ///               0b1110	0xE	14	80386 32-bit interrupt gate
+    ///               0b1111	0xF	15	80386 32-bit trap gate  
+    /// ```
     /// type and attributes,
     pub type_attr: u8,
 
@@ -278,8 +280,8 @@ where
 }
 
 /// The InterruptTable implements Deref, which makes it a Smart Pointer.
-/// The main purpose of this is to enable the coersion of a &InterruptTable in a slice of IdtGateEntries: `&[IdtGateEntries]`,
-/// which basically means that all the immutable methods of &[IdtGateEntries] (the slice methods) are available for the InterruptTable.
+/// The main purpose of this is to enable the coersion of a &InterruptTable in a slice of IdtGateEntries: `&\[IdtGateEntries\]`,
+/// which basically means that all the immutable methods of &\[IdtGateEntries\] (the slice methods) are available for the InterruptTable.
 impl Deref for InterruptTable<'_> {
     type Target = [IdtGateEntry];
 
@@ -290,8 +292,8 @@ impl Deref for InterruptTable<'_> {
 }
 
 /// The InterruptTable implements DerefMut, which makes it a Smart Pointer.
-/// The main purpose of this is to enable the coersion of a &mut InterruptTable in a mutable slice of IdtGateEntries: `&mut [IdtGateEntries]`,
-/// which basically means that all the mutable methods of &mut [IdtGateEntries] (the slice methods) are available for the InterruptTable.
+/// The main purpose of this is to enable the coersion of a &mut InterruptTable in a mutable slice of IdtGateEntries: `&mut \[IdtGateEntries\]`,
+/// which basically means that all the mutable methods of &mut \[IdtGateEntries\] (the slice methods) are available for the InterruptTable.
 impl DerefMut for InterruptTable<'_> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
