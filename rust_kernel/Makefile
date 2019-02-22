@@ -59,6 +59,9 @@ VPATH += src/io
 SRC_ASM_KERNEL += cpu_exceptions_isr pic_8259_isr default_isr
 VPATH += src/interrupts/idt
 
+SRC_ASM_KERNEL += 8087
+VPATH += src/math
+
 SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias
 

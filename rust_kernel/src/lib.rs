@@ -26,6 +26,7 @@ pub mod interrupts;
 #[macro_use]
 pub mod io;
 pub mod keyboard;
+pub mod math;
 pub mod multiboot;
 pub mod panic;
 pub mod registers;
