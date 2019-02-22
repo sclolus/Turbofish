@@ -45,6 +45,7 @@ pub fn lfsr16_set_seed(seed: u16) -> MathResult<()> {
 }
 
 /// Return the current lfsr seed
+#[allow(dead_code)]
 pub fn lfsr16_get_seed() -> MathResult<u16> {
     match unsafe { LFSR_FIBONACCI.stored_seed } {
         Some(s) => Ok(s),
@@ -63,11 +64,16 @@ fn move_offset(offset: usize) -> usize {
 }
 
 /// get a pseudo random number from the lfsr fibonacci suite
-pub fn lfsr16_get_pseudo_number() -> u32 {
-        let result: u32;
-        unsafe {
-            result = LFSR_FIBONACCI.registers[LFSR_FIBONACCI.current_offset];
-            LFSR_FIBONACCI.current_offset = move_offset(LFSR_FIBONACCI.current_offset);
+pub fn lfsr16_get_pseudo_number() -> MathResult<u32> {
+    match unsafe { LFSR_FIBONACCI.stored_seed } {
+        Some(_) => {
+            let result: u32;
+            unsafe {
+                result = LFSR_FIBONACCI.registers[LFSR_FIBONACCI.current_offset];
+                LFSR_FIBONACCI.current_offset = move_offset(LFSR_FIBONACCI.current_offset);
+            }
+            Ok(result)
         }
-        result
+        None => Err(MathError::NotInitialized),
+    }
 }

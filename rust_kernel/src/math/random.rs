@@ -7,7 +7,7 @@ mod rdrand;
 use rdrand::rdrand;
 
 mod lfsr16;
-use lfsr16::{lfsr16_get_seed, lfsr16_set_seed, lfsr16_get_pseudo_number};
+use lfsr16::{lfsr16_get_pseudo_number, lfsr16_set_seed};
 
 use bit_field::BitField;
 
@@ -51,10 +51,7 @@ impl<T: Rand> Random for T {
         T::randup(self, Methods::Rdrand)
     }
     fn srand(self) -> Self {
-        match lfsr16_get_seed() {
-            Ok(_) => T::randup(self, Methods::Lfsr16),
-            Err(e) => panic!("{} {:?}", function!(), e),
-        }
+        T::randup(self, Methods::Lfsr16)
     }
 }
 
@@ -67,7 +64,7 @@ impl Generate for u32 {
     fn generate(method: Methods) -> Self {
         match method {
             Methods::Rdrand => rdrand(),
-            Methods::Lfsr16 => lfsr16_get_pseudo_number(),
+            Methods::Lfsr16 => lfsr16_get_pseudo_number().unwrap(),
         }
     }
 }
@@ -76,7 +73,7 @@ impl Generate for i32 {
     fn generate(method: Methods) -> Self {
         match method {
             Methods::Rdrand => rdrand() as i32,
-            Methods::Lfsr16 => lfsr16_get_pseudo_number() as i32,
+            Methods::Lfsr16 => lfsr16_get_pseudo_number().unwrap() as i32,
         }
     }
 }

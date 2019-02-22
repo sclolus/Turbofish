@@ -147,43 +147,6 @@ impl Pit {
     pub fn sleep(&mut self, duration: Duration) -> () {
         assert!(interrupts::get_interrupts_state());
         use crate::math::convert::Convert;
-        use crate::math::random::{rand, srand, srand_init, Random};
-
-        println!("res: {:?}", core::i32::MAX.rand());
-        println!("res: {:?}", core::i32::MAX.rand());
-
-        println!("res: {:?}", core::u32::MAX.rand());
-        println!("res: {:?}", core::u32::MAX.rand());
-
-        println!("res: {:?}", core::f32::consts::PI.rand());
-        println!("res: {:?}", core::f32::consts::PI.rand());
-
-        println!("res: {:?}", u16::rand(15));
-        println!("res: {:?}", i16::rand(-15));
-
-        println!("res: {:?}", u8::rand(1));
-        println!("res: {:?}", i8::rand(1));
-
-        srand_init(0x4f2e).unwrap();
-
-        println!("res: {:?}", core::i32::MAX.srand());
-        println!("res: {:?}", core::i32::MAX.srand());
-
-        println!("res: {:?}", core::u32::MAX.srand());
-        println!("res: {:?}", core::u32::MAX.srand());
-
-        println!("res: {:?}", core::f32::consts::PI.srand());
-        println!("res: {:?}", core::f32::consts::PI.srand());
-
-        println!("res: {:?}", u16::srand(15));
-        println!("res: {:?}", i16::srand(-15));
-
-        println!("res: {:?}", u8::srand(1));
-        println!("res: {:?}", i8::srand(1));
-
-        let a = srand(core::u32::MAX);
-        let b = rand(10);
-        println!("a {:?} b {:?}", a, b);
 
         let ms = duration.as_millis();
         let next_tic = ms as f32 / 1000 as f32 / self.period;
