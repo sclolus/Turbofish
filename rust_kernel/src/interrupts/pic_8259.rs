@@ -1,5 +1,5 @@
-/// This files contains the code related to the 8259 Programmable interrupt controller
-/// See https://wiki.osdev.org/PIC.
+//! This files contains the code related to the 8259 Programmable interrupt controller.
+//! See [PIC](https://wiki.osdev.org/PIC)
 use crate::io::{Io, Pio};
 use bit_field::BitField;
 

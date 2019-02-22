@@ -1,4 +1,4 @@
-/// See https://wiki.osdev.org/Port_IO
+//! See [Port_IO](https://wiki.osdev.org/Port_IO)
 use super::Io;
 use core::marker::PhantomData;
 
