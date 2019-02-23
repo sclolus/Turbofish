@@ -1,5 +1,5 @@
 use super::{
-    pci::{PciType0, IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass},
+    pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0},
     PCI,
 };
 

@@ -18,6 +18,9 @@ pub use pic_8259::PIC_8259;
 pub mod pit_8253;
 pub use pit_8253::PIT0;
 
+pub mod dummy_ata;
+pub use dummy_ata::DummyAta;
+
 pub mod ide_controller;
 pub use ide_controller::IdeController;
 

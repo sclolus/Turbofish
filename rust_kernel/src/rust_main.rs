@@ -1,5 +1,5 @@
 use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::{pic_8259, Acpi, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
+use crate::drivers::{pic_8259, Acpi, DummyAta, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
 
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
@@ -108,6 +108,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         crate::syscall::_write(1, s.as_ptr(), s.len());
     }
+
+    let disk = DummyAta::new();
+    println!("{:#X?}", disk);
+
     shell();
     0
 }
