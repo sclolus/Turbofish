@@ -11,7 +11,7 @@
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
 #![feature(underscore_const_names)]
-
+#![feature(fixed_size_array)]
 // #![deny(missing_docs)]
 
 extern crate alloc;
