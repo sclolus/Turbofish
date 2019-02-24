@@ -1,3 +1,4 @@
+use super::PAGE_SIZE;
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
@@ -267,11 +268,16 @@ impl PageDirectory {
         Ok(())
     }
 
-    pub unsafe fn remap_range_addr(&mut self, virt_addr_range: Range<usize>, phys_addr_range: Range<usize>) {
-        assert_eq!(virt_addr_range.start % 4096, 0);
-        assert_eq!(phys_addr_range.start % 4096, 0);
-        for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(4096) {
-            self.remap_addr(virt, phys);
+    pub unsafe fn remap_range_addr(
+        &mut self,
+        virt_addr_range: Range<usize>,
+        phys_addr_range: Range<usize>,
+    ) -> Result<(), ()> {
+        assert_eq!(virt_addr_range.start % PAGE_SIZE, 0);
+        assert_eq!(phys_addr_range.start % PAGE_SIZE, 0);
+        for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(PAGE_SIZE) {
+            self.remap_addr(virt, phys)?;
         }
+        Ok(())
     }
 }

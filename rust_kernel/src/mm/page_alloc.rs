@@ -1,8 +1,10 @@
+use super::PAGE_DIRECTORY;
+use super::PAGE_TABLES;
 use bit_field::BitField;
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, Range};
 
 pub struct Buddy<'a> {
     data: &'a mut u8,
@@ -60,8 +62,12 @@ pub struct BuddyAllocator<'a> {
 
 impl<'a> BuddyAllocator<'a> {
     pub fn new(addr: usize, mut size: usize, block_size: usize, buddies: &'a mut [u8]) -> Self {
-        size = size.next_power_of_two(); //TODO: set the unavailable area to occupied that is : [size.next_power_of_two - size..]
+        let normalized_size = size.next_power_of_two();
+        let unavailable_range = addr + size..addr + size + (normalized_size - size);
+
+        size = normalized_size; //TODO: set the unavailable area to occupied that is : [size.next_power_of_two - size..]... Now supposedly done.
         assert!((size / block_size).is_power_of_two());
+        assert!(block_size.is_power_of_two());
         assert!(addr % block_size == 0);
 
         let max_order = (size / block_size).trailing_zeros();
@@ -75,7 +81,20 @@ impl<'a> BuddyAllocator<'a> {
         for byte in buddies.iter_mut() {
             *byte = 0;
         }
-        BuddyAllocator { addr, size, block_size, max_order, buddies, nbr_buddies }
+
+        let buddies_len = buddies.len();
+        let mut new = BuddyAllocator { addr, size, block_size, max_order, buddies, nbr_buddies };
+        let buddies_addr = new.buddies.as_mut_ptr() as usize;
+
+        let range = addr..addr + size;
+        if range.contains(&buddies_addr) {
+            // You clearly are trying to bullshit me if you provided a partially overlapping buddies slice this function.
+            assert!(range.contains(&(buddies_addr + buddies_len)));
+            new.reserve(buddies_addr..buddies_addr + buddies_len);
+        }
+
+        new.reserve(unavailable_range);
+        new
     }
 
     pub fn get_buddy(&mut self, index: usize) -> Buddy<'_> {
@@ -83,8 +102,8 @@ impl<'a> BuddyAllocator<'a> {
     }
 
     fn split_buddy(&mut self, index: usize) {
-        dbg!(index);
-        dbg!(self.nbr_buddies);
+        // dbg!(index);
+        // dbg!(self.nbr_buddies);
         assert!(index < self.nbr_buddies / 2);
         assert!(self.get_buddy(index).splitted() == false);
         assert!(self.get_buddy(index).occupied() == false);
@@ -134,18 +153,18 @@ impl<'a> BuddyAllocator<'a> {
         self._find_allocable_buddy(target_depth, 0, 0)
     }
 
-    pub fn buddy_addr(&self, index: usize) -> *const c_void {
-        0x0 as *const c_void
+    fn buddy_addr(&self, index: usize) -> usize {
+        0x0
     }
 
-    /// size in bytes
+    /// size in number of pages.
     pub fn buddy_index(&self, addr: usize, size: usize) -> usize {
         assert!(addr % self.block_size == 0);
         assert!(addr >= self.addr && addr < self.addr + self.size);
-        assert!(size >= self.block_size);
-        assert!(size % self.block_size == 0);
-        assert!(size <= self.block_size * 2usize.pow(self.max_order));
-        let order = size.trailing_zeros() - self.block_size.trailing_zeros();
+        assert!(size * self.block_size <= self.size);
+        assert!(size.is_power_of_two());
+
+        let order = size.trailing_zeros();
 
         (addr - self.addr) / (2usize.pow(order) * self.block_size) + (2usize.pow(self.max_order - order) - 1)
     }
@@ -167,16 +186,22 @@ impl<'a> BuddyAllocator<'a> {
                 }
             }
 
+            // I think this should be like this...
+            if value == true {
+                self.get_buddy(parent_index).set_splitted(true);
+            }
+
             index = parent_index;
         }
     }
 
-    pub fn free(&mut self, addr: usize, size: usize) {
-        self.set_occupied(self.buddy_index(addr, size), false)
+    pub fn free(&mut self, addr: usize, nbr_pages: usize) {
+        self.set_occupied(self.buddy_index(addr, nbr_pages), false)
     }
 
+    /// size in number of pages.
     fn depth_buddy_from_size(&self, size: usize) -> u32 {
-        (self.max_order - (size.trailing_zeros() - self.block_size.trailing_zeros()))
+        self.max_order - size.trailing_zeros()
     }
 
     fn first_layer_index(&self, depth: u32) -> usize {
@@ -188,12 +213,12 @@ impl<'a> BuddyAllocator<'a> {
     }
 
     /// size in bytes
-    pub fn alloc(&mut self, size: usize) -> Option<*const c_void> {
-        if size > self.size {
+    pub fn alloc(&mut self, nbr_pages: usize) -> Option<usize> {
+        if nbr_pages.checked_mul(self.block_size)? > self.size {
             return None;
         }
 
-        let target_depth = self.depth_buddy_from_size(size);
+        let target_depth = self.depth_buddy_from_size(nbr_pages);
         dbg!(target_depth);
         // println!("Searching for target_depth: {}", target_depth);
 
@@ -213,10 +238,28 @@ impl<'a> BuddyAllocator<'a> {
             let addr =
                 2usize.pow(self.max_order - target_depth as u32) * self.block_size * buddy_layer_index + self.addr;
 
-            Some(addr as *const c_void)
+            dbg!(addr);
+
+            Some(addr)
         } else {
             None
         }
+    }
+
+    /// Reserve atleast the `range` specified.
+    pub fn reserve(&mut self, range: Range<usize>) {
+        if range.start == range.end {
+            return;
+        }
+
+        let normalized_start = range.start - (range.start & (self.block_size - 1));
+        let normalized_end = range.end + (self.block_size - (range.end & (self.block_size - 1)));
+        let size = (normalized_end - normalized_start).next_power_of_two() / self.block_size;
+        // assert!(size.is_power_of_two());
+
+        let index = self.buddy_index(normalized_start, size);
+
+        self.set_occupied(index, true);
     }
 
     fn left_child_index(i: usize) -> usize {
@@ -230,6 +273,97 @@ impl<'a> BuddyAllocator<'a> {
     fn parent_index(i: usize) -> Option<usize> {
         Some(i.checked_sub(1)? / 2)
     }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum PhysicalAllocatorType {
+    Normal,
+    Dma,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum VirtualAllocatorType {
+    KernelSpace,
+    UserSpace,
+}
+
+const PAGE_CONST: u8 = 0x2;
+const PAGE_CACHABLE_DISABLED: u8 = 0x4;
+const PAGE_USER: u8 = 0x8;
+const MAY_SLEEP: u8 = 0x10;
+const NO_RETRY: u8 = 0x40;
+const PAGE_DMA: u8 = 0x80;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct AllocFlags(u8);
+
+const ALLOC_DMA: u8 = PAGE_CACHABLE_DISABLED | PAGE_DMA;
+const ALLOC_ATOMIC: u8 = NO_RETRY;
+const ALLOC_NORMAL: u8 = MAY_SLEEP;
+
+struct PageAllocator<'a, 'b: 'a> {
+    //different lifetimes for each type of buddy allocators ?
+    zoned_physical_buddy_allocators: &'b mut [(BuddyAllocator<'a>, PhysicalAllocatorType)],
+    zoned_virtual_buddy_allocators: &'b mut [(BuddyAllocator<'a>, VirtualAllocatorType)],
+}
+
+impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
+    // pub fn new() -> Self {
+    //     //??
+
+    // }
+
+    pub fn alloc(&mut self, nbr_pages: usize, flags: AllocFlags) -> Option<usize> {
+        use PhysicalAllocatorType::*;
+        use VirtualAllocatorType::*;
+        let pbuddy;
+        let vbuddy;
+        let requested_pbuddy_type;
+        let requested_vbuddy_type;
+
+        if flags.0 & PAGE_DMA != 0 {
+            requested_pbuddy_type = Dma;
+        } else {
+            requested_pbuddy_type = Normal;
+        }
+        pbuddy = self
+            .zoned_physical_buddy_allocators
+            .iter_mut()
+            .find(|(buddy, btype)| *btype == requested_pbuddy_type)
+            .map(|(buddy, _)| buddy)?;
+
+        if flags.0 & PAGE_USER != 0 {
+            requested_vbuddy_type = UserSpace;
+        } else {
+            requested_vbuddy_type = KernelSpace;
+        }
+        vbuddy = self
+            .zoned_virtual_buddy_allocators
+            .iter_mut()
+            .find(|(buddy, btype)| *btype == requested_vbuddy_type)
+            .map(|(buddy, _)| buddy)?;
+
+        let vaddr = vbuddy.alloc(nbr_pages)?;
+        let paddr = pbuddy.alloc(nbr_pages).or_else(|| {
+            vbuddy.free(vaddr, nbr_pages);
+            None
+        })?;
+
+        unsafe {
+            PAGE_DIRECTORY
+                .remap_addr(vaddr, paddr)
+                .or_else(|err| {
+                    vbuddy.free(vaddr, nbr_pages);
+                    pbuddy.free(vaddr, nbr_pages);
+                    Err(err)
+                })
+                .ok()?; //OK SO THIS DOES NOT MAP ALL THE PAGES FIX THIS..
+        }
+
+        Some(vaddr)
+    }
+
+    pub fn free(&mut self, addr: usize, nbr_pages: usize) {}
 }
 
 #[cfg(test)]

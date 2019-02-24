@@ -8,6 +8,10 @@
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
 #![feature(concat_idents)]
+#![feature(range_contains)]
+#![feature(trace_macros)]
+#![feature(log_syntax)]
+#![feature(fixed_size_array)]
 // #![deny(missing_docs)]
 
 #[macro_use]
@@ -38,5 +42,11 @@ pub mod tests;
 pub mod timer;
 #[macro_use]
 pub mod mm;
+
+/// As a matter of fact, we can't declare the MemoryManager inside a submodule.
+use crate::mm::MemoryManager;
+
+#[global_allocator]
+static MEMORY_MANAGER: MemoryManager = MemoryManager;
 
 pub mod test_helpers;

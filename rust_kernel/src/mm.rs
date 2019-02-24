@@ -7,12 +7,17 @@ use bit_field::BitField;
 use core::ops::Range;
 
 pub const PAGE_SIZE: usize = 4096;
+// const_assert!(PAGE_SIZE.is_power_of_two());
 
 use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::{PageTable, PageTableEntry};
 
 extern "C" {
-    static __test_symbol: u8;
+    fn _enable_paging(addr: *mut PageDirectoryEntry);
+    fn _enable_pse();
+}
+
+extern "C" {
     static __start_text: u8;
     static __end_text: u8;
 
@@ -80,10 +85,15 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
-static mut BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
+static mut PHYSICAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
     [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
 
 pub static mut PHYSICAL_ALLOCATOR: Option<page_alloc::BuddyAllocator<'static>> = None;
+
+static mut VIRTUAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
+    [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+
+pub static mut VIRTUAL_ALLOCATOR: Option<page_alloc::BuddyAllocator<'static>> = None;
 
 pub unsafe fn init_paging() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
@@ -137,58 +147,103 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         };
     }
 
-    println!("{:x}", __test_symbol);
     print_section!(text);
     print_section!(boot);
     print_section!(bss);
     print_section!(rodata);
     print_section!(debug);
 
-    let (start_addr, end_addr) = get_section_tuple!(text);
-
-    println!("mapping [{:x}:{:x}[ to {:p}", start_addr, end_addr, 0x0 as *const u8);
-    PHYSICAL_ALLOCATOR = Some(unsafe {
-        page_alloc::BuddyAllocator::new(
-            0x0,
-            (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
-            4096,
-            &mut BUDDIES,
-        )
-    }); // println!("mapping_addr: {:p}", buddy_allocator.alloc(4).unwrap());
-
-    for __ in 0..(1024 * 1024 * 1024) {
-        let alloc_size = 4096 * 1024;
-        let mut addr = PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(alloc_size);
-
-        if addr.is_some() {
-            let buddy_index = PHYSICAL_ALLOCATOR.as_mut().unwrap().buddy_index(addr.unwrap() as usize, alloc_size);
-            println!("mapping_addr: {:?}, buddy_index: {}", addr, buddy_index);
-        } else {
-            println!("mapping_addr: {:?}", addr);
-            break;
-        }
-        // buddy_allocator.free(addr.unwrap() as usize, alloc_size);
+    macro_rules! sections {
+        () => {
+            [
+                ("text", get_section_tuple!(text)),
+                ("boot", get_section_tuple!(boot)),
+                ("bss", get_section_tuple!(bss)),
+                ("rodata", get_section_tuple!(rodata)),
+                ("debug", get_section_tuple!(debug)),
+            ]
+            .iter()
+        };
     }
-    println!("done");
-    // dbg!(buddy_allocator.buddies);
-    // println!("mapping_addr: {:?}", buddy_allocator.alloc(8192));
-    // println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
-    // println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
-    // println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
-    // println!("mapping_addr: {:?}", buddy_allocator.alloc(4096));
 
-    loop {}
-    // PAGE_DIRECTORY
-    //     .remap_range_addr(4244635648..(4244635648 + 1024 * 768 * 3), 4244635648..(4244635648 + 1024 * 768 * 3));
+    MEMORY_MANAGER.init();
+    /// reserve the first 8 megabytes. This is just a commodity for now.
+    let _layout = core::alloc::Layout::from_size_align(1024 * 1024 * 8, PAGE_SIZE).unwrap();
+    dbg!(MEMORY_MANAGER.alloc(_layout));
+
+    for (section_name, (start_addr, end_addr)) in sections!() {
+        assert!(start_addr <= end_addr);
+        let section_size = end_addr - start_addr;
+        let section_layout = core::alloc::Layout::from_size_align(section_size, PAGE_SIZE).unwrap();
+        let ptr = PHYSICAL_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .alloc(section_size / PAGE_SIZE + 1 * (section_size % PAGE_SIZE != 0) as usize)
+            .unwrap_or_else(|| panic!("Not enough memory to allocate section {}", section_name));
+
+        println!("Remapping section {} to [{:x}:{:x}[", section_name, ptr as usize, ptr as usize + section_size);
+        //Nothing done here for now.
+    }
+
+    PAGE_DIRECTORY
+        .remap_range_addr(4244635648..(4244635648 + 1024 * 768 * 3), 4244635648..(4244635648 + 1024 * 768 * 3));
+
     println!("{:?}", SCREEN_MONAD);
-    _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
+
+    // _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 
     Ok(())
 }
 
-extern "C" {
-    fn _enable_paging(addr: *mut PageDirectoryEntry);
-    fn _enable_pse();
+pub struct MemoryManager;
+use crate::MEMORY_MANAGER;
+
+impl MemoryManager {
+    pub unsafe fn init(&self) {
+        VIRTUAL_ALLOCATOR = Some(page_alloc::BuddyAllocator::new(
+            0x0,
+            (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
+            PAGE_SIZE,
+            &mut VIRTUAL_BUDDIES,
+        ));
+
+        PHYSICAL_ALLOCATOR = Some(page_alloc::BuddyAllocator::new(
+            0x0,
+            (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
+            PAGE_SIZE,
+            &mut PHYSICAL_BUDDIES,
+        ));
+    }
+}
+
+use core::alloc::{GlobalAlloc, Layout};
+
+unsafe impl GlobalAlloc for MemoryManager {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        use core::ptr;
+        let size = layout.size().next_power_of_two();
+        let virtual_allocator = VIRTUAL_ALLOCATOR.as_mut().expect("Virtual Allocator was not initialized");
+        let physical_allocator = PHYSICAL_ALLOCATOR.as_mut().expect("Physical Allocator was not initialized");
+
+        if let Some(virt_addr) = virtual_allocator.alloc(size) {
+            if let Some(phys_addr) = physical_allocator.alloc(size) {
+                if PAGE_DIRECTORY.remap_range_addr(virt_addr..virt_addr + size, phys_addr..phys_addr + size).is_err() {
+                    virtual_allocator.free(virt_addr, size);
+                    physical_allocator.free(phys_addr, size);
+                    ptr::null_mut()
+                } else {
+                    virt_addr as *mut u8
+                }
+            } else {
+                virtual_allocator.free(virt_addr, size);
+                ptr::null_mut()
+            }
+        } else {
+            ptr::null_mut()
+        }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {}
 }
 
 #[cfg(test)]
