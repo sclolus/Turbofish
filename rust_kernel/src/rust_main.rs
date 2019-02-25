@@ -97,7 +97,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
 
-    println!("{:?}", get_conponent(1, 1, 5));
+    unsafe {
+        PCI.scan_pci_buses();
+    }
 
     debug::bench_start();
 
