@@ -43,10 +43,10 @@ pub mod timer;
 #[macro_use]
 pub mod mm;
 
-/// As a matter of fact, we can't declare the MemoryManager inside a submodule.
-use crate::mm::MemoryManager;
-
-#[global_allocator]
-static MEMORY_MANAGER: MemoryManager = MemoryManager;
+///// As a matter of fact, we can't declare the MemoryManager inside a submodule.
+//use crate::mm::MemoryManager;
+//
+//#[global_allocator]
+//static MEMORY_MANAGER: MemoryManager = MemoryManager;
 
 pub mod test_helpers;

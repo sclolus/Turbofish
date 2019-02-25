@@ -1,3 +1,4 @@
+use super::MemoryError;
 use super::PAGE_SIZE;
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
@@ -45,8 +46,7 @@ impl PageDirectoryEntry {
         self.inner.get_bit(1)
     }
 
-    /// Sets the user bit of the entry.
-    /// When set, this bit indicate that the page directory contains pages that can be accessed by everyone.
+    /// Sets the user bit of the entry. /// When set, this bit indicate that the page directory contains pages that can be accessed by everyone.
     /// When not set, only the supervisor can access those pages.
     #[allow(dead_code)]
     pub fn set_user_bit(&mut self, bit: bool) -> &mut Self {
@@ -268,16 +268,19 @@ impl PageDirectory {
         Ok(())
     }
 
-    pub unsafe fn remap_range_addr(
-        &mut self,
-        virt_addr_range: Range<usize>,
-        phys_addr_range: Range<usize>,
-    ) -> Result<(), ()> {
-        assert_eq!(virt_addr_range.start % PAGE_SIZE, 0);
-        assert_eq!(phys_addr_range.start % PAGE_SIZE, 0);
-        for (virt, phys) in virt_addr_range.zip(phys_addr_range).step_by(PAGE_SIZE) {
-            self.remap_addr(virt, phys)?;
+    //TODO: check overflow
+    pub unsafe fn remap_range_addr(&mut self, virt_addr: usize, phys_addr: usize, nb_pages: usize) -> Result<(), ()> {
+        assert_eq!(virt_addr % PAGE_SIZE, 0);
+        assert_eq!(phys_addr % PAGE_SIZE, 0);
+        for offset in (0..nb_pages).map(|offset| offset * PAGE_SIZE) {
+            self.remap_addr(virt_addr + offset, phys_addr + offset)?;
         }
         Ok(())
+    }
+    pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
+        for (i, pt) in page_tables.iter().enumerate() {
+            self[offset + i].set_entry_addr(pt.as_ref().as_ptr() as usize);
+            self[offset + i].set_present(true);
+        }
     }
 }

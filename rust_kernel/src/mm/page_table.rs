@@ -166,6 +166,7 @@ impl PageTable {
             return Err(());
         }
 
+        //TODO: take custom flags
         self[page_table_index].set_read_write(true).set_present(true).set_physical_address(phys_addr);
         Ok(())
     }
