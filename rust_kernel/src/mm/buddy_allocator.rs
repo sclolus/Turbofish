@@ -286,11 +286,101 @@ impl<'a> BuddyAllocator<'a> {
 mod test {
     use super::*;
     use core::ffi::c_void;
-    static mut BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
-        [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+    #[test]
+    fn sodo_allocator() {
+        use rand::prelude::*;
+        use std::alloc::{Alloc, Global, Layout, System};
+
+        const NB_ALLOC: usize = 1000;
+        let mut allocator: System = System;
+
+        const nb_block: usize = 0x10000;
+        let address_space =
+            unsafe { allocator.alloc(Layout::from_size_align(nb_block * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
+        const max_order: u32 = nb_block.trailing_zeros();
+
+        static mut BUDDIES: [u8; (nb_block * 2 - 1) / 4 + 1] = [0u8; (nb_block * 2 - 1) / 4 + 1];
+
+        let mut buddy_allocator = unsafe {
+            BuddyAllocator::new(address_space.as_ptr() as usize, nb_block * PAGE_SIZE, PAGE_SIZE, &mut BUDDIES)
+        };
+
+        #[derive(Debug)]
+        struct Allocation<'a> {
+            nb_page: usize,
+            random_u8: u8,
+            ptr: &'a mut [u8],
+        }
+
+        let mut rng: StdRng = StdRng::seed_from_u64(4);
+
+        let mut allocations: Vec<Allocation> = vec![];
+
+        for nth_alloc in 0..NB_ALLOC {
+            let type_alloc = rng.gen::<u32>() % 2;
+            match type_alloc {
+                0 => {
+                    let order = rng.gen::<u32>() % (max_order / 2);
+                    let nb_page = 1 << order;
+                    let mem = buddy_allocator.alloc(nb_page);
+                    dbg!(order);
+                    dbg!(nb_page);
+                    dbg!(mem);
+                    // let mem = unsafe {
+                    //     Some(
+                    //         allocator
+                    //             .alloc(Layout::from_size_align(nb_page * PAGE_SIZE, PAGE_SIZE).unwrap())
+                    //             .unwrap()
+                    //             .as_ptr() as usize,
+                    //     )
+                    // };
+                    match mem {
+                        None => {}
+                        Some(mem) => {
+                            let mem = unsafe { core::slice::from_raw_parts_mut(mem as *mut u8, nb_page * PAGE_SIZE) };
+                            let random_u8 = rng.gen::<u8>();
+                            for c in mem.iter_mut() {
+                                *c = random_u8;
+                            }
+                            allocations.push(Allocation { nb_page, ptr: mem, random_u8 });
+                        }
+                    }
+                }
+                1 => {
+                    if allocations.len() != 0 {
+                        println!("desaloc");
+                        let index = rng.gen::<usize>() % allocations.len();
+                        let elem = allocations.remove(index);
+                        for (i, c) in elem.ptr.iter().enumerate() {
+                            if *c != elem.random_u8 {
+                                dbg!(index);
+                                dbg!(i);
+                                dbg!(nth_alloc);
+                                assert_eq!(*c, elem.random_u8);
+                            }
+                        }
+                        buddy_allocator.free(elem.ptr.as_ptr() as usize, elem.nb_page);
+
+                        // unsafe {
+                        //     allocator.dealloc(
+                        //         std::ptr::NonNull::new(elem.ptr.as_ptr() as *mut u8).unwrap(),
+                        //         Layout::from_size_align(elem.nb_page * PAGE_SIZE, PAGE_SIZE).unwrap(),
+                        //     )
+                        // }
+                    }
+                }
+                _ => {
+                    panic!("WTF");
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_allocator() {
+        static mut BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
+            [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+
         let map_location = 0x00000000 as *const u8;
         let nb_block = 4;
 

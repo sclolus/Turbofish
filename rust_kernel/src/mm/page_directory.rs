@@ -284,3 +284,21 @@ impl PageDirectory {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new();
+    static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] =
+        [PageTable::new(); PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE];
+
+    #[test]
+    fn test_entry_addrs() {
+        unsafe {
+            PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
+            for (pd, pt) in PAGE_DIRECTORY.as_ref().iter().zip(PAGE_TABLES.iter()) {
+                assert_eq!(pd.entry_addr(), pt as *const _ as usize);
+            }
+        }
+    }
+}

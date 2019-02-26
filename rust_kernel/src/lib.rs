@@ -12,6 +12,7 @@
 #![feature(trace_macros)]
 #![feature(log_syntax)]
 #![feature(fixed_size_array)]
+#![cfg_attr(test, feature(allocator_api))]
 // #![deny(missing_docs)]
 
 #[macro_use]
