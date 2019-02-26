@@ -176,15 +176,15 @@ struct PciDeviceType2 {
     /*38       |*/ io_limit_1: u32,
     /*3c       |*/ interrupt_line: u8,
     /*3d       |*/ interrupt_pin: u8,
-    /*3e       |*/
-    bridge_control: u16,
+    /*3e       |*/ bridge_control: u16,
     /*40       |*/
-
-        // Non-coherant documentation
-    /*  /*40       |*/ subsystem_device_id: u16,
-        /*42       |*/ subsystem_vendor_id: u16,
-        /*44       |*/ b16_pc_card_legacy_mode_base_address: u32, */
 }
+// Non-coherant documentation
+/*
+/*40       |*/ subsystem_device_id: u16,
+/*42       |*/ subsystem_vendor_id: u16,
+/*44       |*/ b16_pc_card_legacy_mode_base_address: u32,
+ */
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
