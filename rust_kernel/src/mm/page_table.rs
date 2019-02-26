@@ -7,7 +7,7 @@ use core::slice::SliceIndex;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(super) struct PageTableEntry {
     // Should this be u32 or usize ? I guess u32 is more accurate but...
-    inner: usize,
+    pub inner: usize,
 }
 
 impl PageTableEntry {
@@ -163,7 +163,10 @@ impl PageTable {
         let page_table_index = virt_addr.get_bits(12..22);
 
         if self[page_table_index].present() {
+            // println!("Entry {} is present: {:b}", page_table_index, self[page_table_index].inner);
             return Err(());
+        } else {
+            // println!("Entry {} is not present: {:b}", page_table_index, self[page_table_index].inner);
         }
 
         //TODO: take custom flags

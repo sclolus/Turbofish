@@ -39,7 +39,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
-        //PIC_8259.disable_irq(pic_8259::Irq::SystemTimer);
+        PIC_8259.disable_irq(pic_8259::Irq::SystemTimer);
     }
     unsafe {
         println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
@@ -127,5 +127,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     unsafe {
         mm::init_paging().unwrap();
     }
+
+    use alloc::vec::Vec;
+    let mut vec: Vec<u8> = Vec::new();
+    for index in 0..100 {
+        vec.push(index)
+    }
+
+    println!("{:?}", vec);
     0
 }

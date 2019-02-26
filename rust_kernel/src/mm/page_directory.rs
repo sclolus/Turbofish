@@ -144,7 +144,7 @@ impl PageDirectoryEntry {
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[allow(dead_code)]
     pub fn entry_addr(&self) -> usize {
-        self.inner.get_bits(12..32) as usize
+        (self.inner.get_bits(12..32) as usize) << 12
     }
 
     /// This sets the 3 available bits of the entry.
@@ -251,18 +251,43 @@ impl PageDirectory {
     }
 
     pub unsafe fn remap_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
-        assert_eq!(virt_addr % 4096, 0);
+        assert_eq!(virt_addr % PAGE_SIZE, 0);
+        assert_eq!(phys_addr % PAGE_SIZE, 0);
+
         let page_dir_index = virt_addr.get_bits(22..32);
 
-        self[page_dir_index] = *PageDirectoryEntry::new().set_present(true).set_read_write(true);
-        // .set_entry_addr(&table[page_dir_index] as *const PageTable as usize);
+        // Do not uncomment.
+        // self[page_dir_index] = *PageDirectoryEntry::new().set_present(true).set_read_write(true);
 
+        if page_dir_index == 1023 {
+            println!("{:x}", virt_addr);
+            println!("{:x}", phys_addr);
+        }
         let page_table_index = virt_addr.get_bits(12..22);
         let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
 
-        if page_table[page_table_index].present() {
-            return Err(());
+        assert_eq!(
+            page_table as *const PageTable as usize,
+            self[page_dir_index].entry_addr() as *const PageTable as usize
+        );
+
+        use super::PAGE_TABLES;
+        if PAGE_TABLES.iter().any(|iter_table| {
+            // println!("{:p} != {:p}", iter_table, page_table);
+            iter_table as *const _ == page_table as *const _
+        }) == false
+        {
+            for (index, table) in PAGE_TABLES.iter().enumerate() {
+                // println!(
+                //     "{} -> {:p} != {:p} is not found in PAGE_TABLES",
+                //     index, table as *const _, page_table as *const _
+                // );
+            }
         }
+        assert!(PAGE_TABLES.iter().any(|iter_table| {
+            // println!("{:p} != {:p}", iter_table, page_table);
+            iter_table as *const _ == page_table as *const _
+        }));
 
         page_table.map_addr(virt_addr, phys_addr)?;
         Ok(())
@@ -277,6 +302,7 @@ impl PageDirectory {
         }
         Ok(())
     }
+
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             self[offset + i].set_entry_addr(pt.as_ref().as_ptr() as usize);

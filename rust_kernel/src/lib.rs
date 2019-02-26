@@ -13,7 +13,11 @@
 #![feature(log_syntax)]
 #![feature(fixed_size_array)]
 #![cfg_attr(test, feature(allocator_api))]
+#![feature(alloc)]
+#![feature(alloc_error_handler)]
 // #![deny(missing_docs)]
+
+extern crate alloc;
 
 #[macro_use]
 pub mod utils;
@@ -44,10 +48,10 @@ pub mod timer;
 #[macro_use]
 pub mod mm;
 
-///// As a matter of fact, we can't declare the MemoryManager inside a submodule.
-//use crate::mm::MemoryManager;
-//
-//#[global_allocator]
-//static MEMORY_MANAGER: MemoryManager = MemoryManager;
+///As a matter of fact, we can't declare the MemoryManager inside a submodule.
+use crate::mm::MemoryManager;
+
+#[global_allocator]
+static MEMORY_MANAGER: MemoryManager = MemoryManager;
 
 pub mod test_helpers;

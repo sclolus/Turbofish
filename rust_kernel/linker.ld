@@ -16,7 +16,7 @@ SECTIONS
 	.boot BLOCK(4K) : ALIGN(4K)
 	{
 		__start_boot = .;
-		*(.multiboot)
+		*(.multiboot*)
 		__end_boot = .;
 	}
 
@@ -24,7 +24,7 @@ SECTIONS
 	.text BLOCK(4K) : ALIGN(4K)
 	{
 		__start_text = .;
-		*(.text)
+		*(.text*)
 		__end_text = .;
 	}
 
@@ -32,7 +32,7 @@ SECTIONS
 	.rodata BLOCK(4K) : ALIGN(4K)
 	{
 		__start_rodata = .;
-		*(.rodata)
+		*(.rodata*)
 		__end_rodata = .;
 	}
 
@@ -40,7 +40,7 @@ SECTIONS
 	.data BLOCK(4K) : ALIGN(4K)
 	{
 		__start_data = .;
-		*(.data)
+		*(.data*)
 		__end_data = .;
 	}
 
@@ -61,6 +61,7 @@ SECTIONS
 	{
 		__start_bss = .;
 		*(.bss)
+		*(.bss*)
 		*(COMMON)
 		__end_bss = .;
 	}
