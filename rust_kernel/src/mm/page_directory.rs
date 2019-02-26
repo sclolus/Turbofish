@@ -7,7 +7,7 @@ use core::slice::SliceIndex;
 
 #[repr(C)] // this should be equivalent to `transparent` I hope
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(super) struct PageDirectoryEntry {
+pub struct PageDirectoryEntry {
     // Should this be u32 or usize ? I guess u32 is more accurate but...
     inner: usize,
 }

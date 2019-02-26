@@ -21,7 +21,9 @@ use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::PageTable;
 
 extern "C" {
-    fn _enable_paging(addr: *mut PageDirectoryEntry);
+    pub fn _enable_paging_with_cr(addr: *mut PageDirectoryEntry);
+    pub fn _enable_paging();
+    pub fn _disable_paging();
     fn _enable_pse();
 }
 
@@ -297,7 +299,7 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         .reserve(0x0, 0x0, (1024 * 1024) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
         .expect("Failed to reserve the first megabyte of physical memory");
 
-    _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
+    _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
     Ok(())
 }
 

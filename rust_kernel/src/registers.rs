@@ -181,14 +181,18 @@ extern "C" {
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
 pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
     use crate::interrupts::pic_8259;
+    use crate::mm;
 
     without_interrupts!({
         let imrs = PIC_8259.reset_to_default();
 
+        mm::_disable_paging();
         let ret = _real_mode_op(reg, bios_int);
+        mm::_enable_paging(); // cr3 might be modified by real_mode operations.
 
         PIC_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
         PIC_8259.set_masks(imrs);
+
         ret
     })
 }
