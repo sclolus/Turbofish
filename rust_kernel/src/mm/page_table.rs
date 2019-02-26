@@ -1,6 +1,6 @@
 /// This module contains code related to the Page Tables in the MMU.
 use bit_field::BitField;
-use core::ops::{Deref, DerefMut, Index, IndexMut};
+use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
 #[repr(C)]
@@ -23,6 +23,7 @@ impl PageTableEntry {
         self
     }
 
+    #[allow(dead_code)]
     pub fn physical_address(&self) -> usize {
         self.inner.get_bits(12..32) << 12
     }
@@ -148,8 +149,6 @@ pub(super) struct PageTable {
 }
 
 impl PageTable {
-    pub const DEFAULT_PAGE_TABLE_SIZE: usize = 1024;
-
     /// This fonction creates a PageTable at addr `page_directory_addr`
     #[allow(dead_code)]
     pub const fn new() -> Self {

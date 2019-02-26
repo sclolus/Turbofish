@@ -4,6 +4,8 @@ use super::PAGE_SIZE;
 use core::fmt::Debug;
 use core::ops::Range;
 
+type ResultAlloc<T> = Result<T, MemoryError>;
+
 #[derive(Debug, Copy, Clone)]
 struct LinkedList<T: Copy + Clone + Debug> {
     prev: Option<*mut LinkedList<T>>,
@@ -61,6 +63,7 @@ where
         }
     }
 
+    #[allow(dead_code)]
     fn push_front(&mut self, node: *mut Self) -> &mut Self {
         unsafe {
             (*node).next = Some(self as *mut Self);
@@ -103,10 +106,11 @@ impl PageZone {
 }
 
 impl PageZone {
+    #[allow(dead_code)]
     fn contains(&self, range: Range<usize>) -> bool {
         let zone_range = self.ptr as usize..self.ptr as usize + PAGE_SIZE * self.size;
 
-        zone_range.contains(&range.start) && zone_range.contains(&range.end)
+        zone_range.contains(&range.start) && zone_range.contains(&(range.end - 1))
     }
 
     fn overlaps(&self, range: Range<usize>) -> bool {
@@ -145,10 +149,11 @@ impl<'a> DummyAllocator<'a> {
         Self { addr, nbr_pages, page_size, metadata, nbr_zones: 0, zones: None }
     }
 
-    fn allocate_new_zone(&mut self, ptr: *const u8, nbr_pages: usize) -> Result<(), &str> {
+    fn allocate_new_zone(&mut self, ptr: *const u8, nbr_pages: usize) -> ResultAlloc<()> {
         let slot = match self.metadata.iter_mut().find(|x| x.is_none()) {
             Some(slot) => slot,
-            None => return Err("Out of metadata to store allocated zone"),
+            // None => return Err("Out of metadata to store allocated zone"),
+            None => return Err(MemoryError::OutOfMem),
         };
 
         *slot = Some(LinkedList::new(PageZone::new(ptr, nbr_pages)));
@@ -174,7 +179,7 @@ impl<'a> DummyAllocator<'a> {
             (self.addr..self.addr + self.page_size * self.nbr_pages).step_by(self.page_size).find(|addr| {
                 let addr_range = *addr..*addr + nbr_pages * self.page_size;
                 let res = match &self.zones {
-                    Some(zones) => zones.iter().all(|LinkedList { prev, next, content: zone }| {
+                    Some(zones) => zones.iter().all(|LinkedList { prev: _, next: _, content: zone }| {
                         // println!(
                         //     "zone_range: [{:x}:{:x}[, [{:x}:{:x}[",
                         //     zone.ptr as usize,
@@ -189,7 +194,7 @@ impl<'a> DummyAllocator<'a> {
                 res
             })
         {
-            self.allocate_new_zone(addr as *const u8, nbr_pages);
+            self.allocate_new_zone(addr as *const u8, nbr_pages).ok()?;
             Some(addr)
         } else {
             None
@@ -204,7 +209,7 @@ impl<'a> DummyAllocator<'a> {
             .as_ref()
             .expect("Tried to free while no zones are currently allocated")
             .iter()
-            .find(|LinkedList { prev, next, content: zone }| zone.ptr as usize == addr)
+            .find(|LinkedList { prev: _, next: _, content: zone }| zone.ptr as usize == addr)
             .expect("Tried to free non-allocated zone");
 
         assert!(node.content.size == nbr_pages);
@@ -232,7 +237,7 @@ impl<'a> DummyAllocator<'a> {
     // interface
     // safety
     // harmonic
-    pub fn reserve(&mut self, addr: usize, nbr_pages: usize) -> Result<(), MemoryError> {
+    pub fn reserve(&mut self, addr: usize, nbr_pages: usize) -> ResultAlloc<()> {
         // println!("Attempting to reserve addr: {:x} for {} pages", addr, nbr_pages);
         let addr = (addr / self.page_size) * self.page_size;
         assert!(addr % self.page_size == 0);
@@ -241,13 +246,13 @@ impl<'a> DummyAllocator<'a> {
 
         if match &self.zones {
             Some(zones) => {
-                zones.iter().any(|LinkedList { prev, next, content: zone }| zone.overlaps(addr_range.clone()))
+                zones.iter().any(|LinkedList { prev: _, next: _, content: zone }| zone.overlaps(addr_range.clone()))
             }
             None => false,
         } {
             return Err(MemoryError::AlreadyMapped);
         } else {
-            self.allocate_new_zone(addr as *const u8, nbr_pages);
+            self.allocate_new_zone(addr as *const u8, nbr_pages)?;
             Ok(())
         }
     }
@@ -278,7 +283,6 @@ mod test {
         let mut allocator: System = System;
 
         const nb_block: usize = 0x10000;
-        eprintln!("J'aime les poneys");
         let address_space =
             unsafe { allocator.alloc(Layout::from_size_align(nb_block * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
         const max_order: u32 = nb_block.trailing_zeros();

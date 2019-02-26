@@ -1,9 +1,8 @@
-use super::MemoryError;
 use super::PAGE_SIZE;
 /// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 /// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
-use core::ops::{Deref, DerefMut, Index, IndexMut, Range};
+use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
 #[repr(C)] // this should be equivalent to `transparent` I hope
@@ -229,6 +228,7 @@ impl PageDirectory {
     /// It means that the Virtual Addresses of the PageTables have their 10-higher bits set.
     /// The range of bits [12..22] then describes the index inside the PageDirectory, that is the index of the PageTable itself.
     /// Then the range of bits [0..12] describes the offset inside the PageTable, which is fine since a PageTable is exactly 4096 bytes.
+    #[allow(dead_code)]
     pub fn self_map_tables(&mut self) {
         let entry =
             *PageDirectoryEntry::new().set_present(true).set_read_write(true).set_entry_addr(self as *const _ as usize);
@@ -263,7 +263,6 @@ impl PageDirectory {
             println!("{:x}", virt_addr);
             println!("{:x}", phys_addr);
         }
-        let page_table_index = virt_addr.get_bits(12..22);
         let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
 
         assert_eq!(
@@ -277,7 +276,7 @@ impl PageDirectory {
             iter_table as *const _ == page_table as *const _
         }) == false
         {
-            for (index, table) in PAGE_TABLES.iter().enumerate() {
+            for (_, _table) in PAGE_TABLES.iter().enumerate() {
                 // println!(
                 //     "{} -> {:p} != {:p} is not found in PAGE_TABLES",
                 //     index, table as *const _, page_table as *const _

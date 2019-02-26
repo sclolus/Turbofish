@@ -4,10 +4,10 @@ pub mod buddy_allocator;
 pub mod page_alloc;
 pub mod page_directory;
 pub mod page_table;
-use bit_field::BitField;
+
+#[allow(unused_imports)]
 use buddy_allocator::*;
 use core::convert::AsRef;
-use core::ops::Range;
 use page_alloc::{AllocFlags, PageAllocator, PhysicalAllocatorType, VirtualAllocatorType, ALLOC_NORMAL};
 
 //Remove this eventually.
@@ -18,7 +18,7 @@ pub const PAGE_SIZE: usize = 4096;
 // const_assert!(PAGE_SIZE.is_power_of_two());
 
 use page_directory::{PageDirectory, PageDirectoryEntry};
-use page_table::{PageTable, PageTableEntry};
+use page_table::PageTable;
 
 extern "C" {
     fn _enable_paging(addr: *mut PageDirectoryEntry);
@@ -47,6 +47,7 @@ extern "C" {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MemoryError {
+    /// This might also significate that the allocator has no memory for internal storage of metadatas left.
     OutOfMem,
     OutOfBound,
     AlreadyOccupied,
@@ -86,47 +87,106 @@ macro_rules! sections {
     };
 }
 
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct VirtualAddr {
-    addr: usize,
-}
+// #[repr(transparent)]
+// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+// pub struct VirtualAddr {
+//     addr: usize,
+// }
 
-impl VirtualAddr {
-    pub fn physical_addr(&self) -> Option<PhysicalAddr> {
-        let page_directory_index = self.addr.get_bits(22..32);
-        let page_table_index = self.addr.get_bits(12..22);
+// impl VirtualAddr {
+//     pub fn physical_addr(&self) -> Option<PhysicalAddr> {
+//         let page_directory_index = self.addr.get_bits(22..32);
+//         let page_table_index = self.addr.get_bits(12..22);
 
-        unsafe {
-            if PAGE_DIRECTORY[page_directory_index].present() {
-                return None;
-            }
-        }
+//         unsafe {
+//             if PAGE_DIRECTORY[page_directory_index].present() {
+//                 return None;
+//             }
+//         }
 
-        // if PAGE_TABLES[
-        None
-    }
+//         // if PAGE_TABLES[
+//         None
+//     }
 
-    pub fn pd_index(&self) -> usize {
-        self.addr.get_bits(22..32)
-    }
+//     pub fn pd_index(&self) -> usize {
+//         self.addr.get_bits(22..32)
+//     }
 
-    pub fn pt_index(&self) -> usize {
-        self.addr.get_bits(12..22)
-    }
+//     pub fn pt_index(&self) -> usize {
+//         self.addr.get_bits(12..22)
+//     }
 
-    pub fn offset(&self) -> usize {
-        self.addr.get_bits(0..12)
-    }
-}
+//     pub fn offset(&self) -> usize {
+//         self.addr.get_bits(0..12)
+//     }
+// }
 
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct PhysicalAddr {
-    addr: usize,
-}
+// impl From<usize> for VirtualAddr {
+//     fn from(addr: usize) -> Self {
+//         Self { addr }
+//     }
+// }
 
-impl PhysicalAddr {}
+// impl Address for VirtualAddr {}
+
+// #[repr(transparent)]
+// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+// pub struct PhysicalAddr {
+//     addr: usize,
+// }
+
+// impl From<usize> for PhysicalAddr {
+//     fn from(addr: usize) -> Self {
+//         Self { addr }
+//     }
+// }
+
+// impl PhysicalAddr {}
+// impl Address for PhysicalAddr {}
+
+// pub trait Address: From<usize> + Into<usize> {}
+
+// #[repr(transparent)]
+// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+// pub struct Page {
+//     number: usize,
+// }
+
+// impl Page {
+//     // or impl<T: Address> From<T> for Page
+//     fn from_address<T: Address>(addr: T) -> Self {
+//         Self { number: (addr.into()) / PAGE_SIZE }
+//     }
+
+//     fn inclusive_range(from: Page, to: Page) -> PageIter {
+//         PageIter { current: from, end: to }
+//     }
+
+//     fn exclusive_range(from: Page, mut to: Page) -> PageIter {
+//         assert!(to.number > 0);
+//         let end = Page { number: to.number - 1 };
+//         PageIter { current: from, end }
+//     }
+// }
+
+// pub struct PageIter {
+//     current: Page,
+//     end: Page,
+// }
+
+// impl Iterator for PageIter {
+//     type Item = Page;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.current > self.end {
+//             None
+//         } else {
+//             let page = self.current;
+//             self.current.number += 1;
+//             Some(page)
+//         }
+//     }
+// }
 
 #[allow(dead_code)]
 static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] = // should be renamed to INIT_PAGE_TABLES
@@ -163,33 +223,16 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         dir_entry.set_present(true);
         debug_assert!(dir_entry.present() == true);
     }
-    //MEMORY_MANAGER.init();
-
-    // PAGE_DIRECTORY.self_map_tables();
-
-    // VIRTUAL_ALLOCATOR = Some(BuddyAllocator::new(
-    //     0x0,
-    //     (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
-    //     PAGE_SIZE,
-    //     &mut VIRTUAL_BUDDIES,
-    // ));
-
-    // PHYSICAL_ALLOCATOR = Some(BuddyAllocator::new(
-    //     0x0,
-    //     (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12) << 12,
-    //     PAGE_SIZE,
-    //     &mut PHYSICAL_BUDDIES,
-    // ));
 
     PHYSICAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
         0x0,
-        (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12),
+        crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
         PAGE_SIZE,
         &mut PHYSICAL_DUMMY_ALLOCATOR_DATA,
     ));
     VIRTUAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
         0x0,
-        (crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12),
+        crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
         PAGE_SIZE,
         &mut VIRTUAL_DUMMY_ALLOCATOR_DATA,
     ));
@@ -198,10 +241,6 @@ pub unsafe fn init_paging() -> Result<(), ()> {
     VIRTUAL_TEST = Some([(VIRTUAL_DUMMY_ALLOCATOR.take().unwrap(), VirtualAllocatorType::KernelSpace)]);
 
     PAGE_ALLOCATOR = Some(PageAllocator::new(PHYSICAL_TEST.as_mut().unwrap(), VIRTUAL_TEST.as_mut().unwrap()));
-    //MEMORY_MANAGER.init();
-    ///// reserve the first 8 megabytes. This is just a commodity for now.
-    //let _layout = core::alloc::Layout::from_size_align(1024 * 1024 * 8, PAGE_SIZE).unwrap();
-    //dbg!(MEMORY_MANAGER.alloc(_layout));
 
     print_section!(text);
     print_section!(boot);
@@ -210,8 +249,8 @@ pub unsafe fn init_paging() -> Result<(), ()> {
     print_section!(data);
     print_section!(debug);
 
-    for (pd_index, table) in PAGE_TABLES.iter().enumerate() {
-        for (pt_index, entry) in table.as_ref().iter().enumerate() {
+    for (_pd_index, table) in PAGE_TABLES.iter().enumerate() {
+        for (_pt_index, entry) in table.as_ref().iter().enumerate() {
             // println!("{}:{} is_present: {}", pd_index, pt_index, entry.present());
             assert!(entry.present() == false);
             assert!(entry.inner == 0);
@@ -244,26 +283,25 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         .as_mut()
         .unwrap()
         .reserve(0x3000000, 0x3000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("linear frame buffer mapping failed");
+        .expect("double frame buffer mapping failed");
 
     PAGE_ALLOCATOR
         .as_mut()
         .unwrap()
         .reserve(0x4000000, 0x4000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("linear frame buffer mapping failed");
+        .expect("graphic frame buffer mapping failed");
 
     PAGE_ALLOCATOR
         .as_mut()
         .unwrap()
         .reserve(0x0, 0x0, (1024 * 1024) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("linear frame buffer mapping failed");
+        .expect("Failed to reserve the first megabyte of physical memory");
 
     _enable_paging(PAGE_DIRECTORY.as_mut().as_mut_ptr());
     Ok(())
 }
 
 pub struct MemoryManager;
-use crate::MEMORY_MANAGER;
 
 impl MemoryManager {
     // pub unsafe fn init(&self) {
@@ -287,7 +325,6 @@ use core::alloc::{GlobalAlloc, Layout};
 
 unsafe impl GlobalAlloc for MemoryManager {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        use core::ptr;
         let size = layout.size().next_power_of_two();
         let page_allocator = PAGE_ALLOCATOR.as_mut().unwrap();
 
@@ -296,7 +333,7 @@ unsafe impl GlobalAlloc for MemoryManager {
         page_allocator.alloc(nbr_pages, AllocFlags(ALLOC_NORMAL)).unwrap_or(0x0) as *mut u8
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {}
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }
 
 #[alloc_error_handler]

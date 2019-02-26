@@ -1,9 +1,7 @@
 use super::MemoryError;
-use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::fmt::Debug;
-use core::mem;
-use core::ops::{Index, IndexMut, Range};
+use core::ops::IndexMut;
 
 pub struct Buddy<'a> {
     data: &'a mut u8,
@@ -144,10 +142,6 @@ impl<'a> BuddyAllocator<'a> {
 
     fn find_allocable_buddy(&mut self, target_depth: usize) -> Option<usize> {
         self._find_allocable_buddy(target_depth, 0, 0)
-    }
-
-    fn buddy_addr(&self, index: usize) -> usize {
-        0x0
     }
 
     /// size in number of pages.

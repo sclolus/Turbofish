@@ -1,12 +1,9 @@
+#[allow(unused_imports)]
 use super::buddy_allocator::BuddyAllocator;
 use super::dummy_allocator::DummyAllocator;
 use super::MemoryError;
 use super::PAGE_DIRECTORY;
 use super::PAGE_SIZE;
-use super::PAGE_TABLES;
-use core::fmt::Debug;
-use core::mem;
-use core::ops::{Index, IndexMut, Range};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PhysicalAllocatorType {
@@ -70,7 +67,7 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
         pbuddy = self
             .zoned_physical_buddy_allocators
             .iter_mut()
-            .find(|(buddy, btype)| *btype == requested_pbuddy_type)
+            .find(|(_, btype)| *btype == requested_pbuddy_type)
             .map(|(buddy, _)| buddy)?;
 
         if flags.0 & PAGE_USER != 0 {
@@ -81,7 +78,7 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
         vbuddy = self
             .zoned_virtual_buddy_allocators
             .iter_mut()
-            .find(|(buddy, btype)| *btype == requested_vbuddy_type)
+            .find(|(_, btype)| *btype == requested_vbuddy_type)
             .map(|(buddy, _)| buddy)?;
         Some((vbuddy, pbuddy))
     }
@@ -112,7 +109,7 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
         })?;
 
         unsafe {
-            PAGE_DIRECTORY.remap_range_addr(vaddr, paddr, nbr_pages).or_else(|err| {
+            PAGE_DIRECTORY.remap_range_addr(vaddr, paddr, nbr_pages).or_else(|_err| {
                 println!("Failed to remap addr range: [{:x}:{:x}[", vaddr, vaddr + PAGE_SIZE * nbr_pages);
                 vbuddy.free(vaddr, nbr_pages);
                 pbuddy.free(vaddr, nbr_pages);
@@ -143,5 +140,5 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
         Some(vaddr)
     }
 
-    pub fn free(&mut self, addr: usize, nbr_pages: usize) {}
+    pub fn free(&mut self, _addr: usize, _nbr_pages: usize) {}
 }

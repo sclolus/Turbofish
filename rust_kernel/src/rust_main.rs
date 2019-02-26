@@ -6,7 +6,6 @@ use crate::mm;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
-use crate::test_helpers::fucking_big_string::fucking_big_string;
 use crate::timer::Rtc;
 use core::time::Duration;
 
