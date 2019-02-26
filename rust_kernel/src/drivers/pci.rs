@@ -3,7 +3,9 @@ use crate::io::{Io, Pio};
 
 use bit_field::BitField;
 
-pub struct Pci {}
+pub struct Pci {
+    devices_list: CustomPciDeviceAllocator,
+}
 
 pub static mut PCI: Pci = Pci::new();
 
@@ -217,17 +219,70 @@ impl core::fmt::Debug for PciDevice {
     }
 }
 
+/// static  allocator for Self::CAPACITY devices max
+struct CustomPciDeviceAllocator {
+    devices_array: [Option<PciDevice>; Self::CAPACITY],
+    len: usize,
+}
+
+/// Basic implementation of static allocator for PciDevices
+impl CustomPciDeviceAllocator {
+    const CAPACITY: usize = 256;
+
+    /// Constructor
+    pub const fn new() -> Self {
+        CustomPciDeviceAllocator { devices_array: [None; Self::CAPACITY], len: 0 }
+    }
+
+    /// Push a new device
+    pub fn push(&mut self, s: PciDevice) -> core::result::Result<(), ()> {
+        if self.len == Self::CAPACITY {
+            Err(())
+        } else {
+            self.devices_array[self.len] = Some(s);
+            self.len += 1;
+            Ok(())
+        }
+    }
+
+    /// Allow Ability to iterate
+    pub fn iter(&self) -> CustomPciDeviceAllocatorIterator {
+        CustomPciDeviceAllocatorIterator { parent_reference: self, current_iter: 0 }
+    }
+}
+
+/// Iterator structure definition for CustomPciAllocator
+struct CustomPciDeviceAllocatorIterator<'a> {
+    parent_reference: &'a CustomPciDeviceAllocator,
+    current_iter: usize,
+}
+
+/// Iterator implementation
+impl<'a> Iterator for CustomPciDeviceAllocatorIterator<'a> {
+    type Item = PciDevice;
+
+    /// Iterator must have just a next method
+    fn next(&mut self) -> Option<PciDevice> {
+        if self.current_iter == self.parent_reference.len {
+            None
+        } else {
+            self.current_iter += 1;
+            self.parent_reference.devices_array[self.current_iter - 1]
+        }
+    }
+}
+
 impl Pci {
     /// PCI configuration address
     const CONFIG_ADDRESS: u16 = 0x0CF8;
     const CONFIG_DATA: u16 = 0x0CFC;
 
     pub const fn new() -> Pci {
-        Pci {}
+        Pci { devices_list: CustomPciDeviceAllocator::new() }
     }
 
     /// Output all connected pci devices
-    pub fn scan_pci_buses(&self) {
+    pub fn scan_pci_buses(&mut self) {
         println!("scanning PCI buses ...");
 
         // Simple and Basic brute force scan method is used here !
@@ -235,13 +290,14 @@ impl Pci {
             for slot in 0..=31 {
                 match self.check_device(bus, slot, 0) {
                     Some(device) => {
-                        println!("{:?}", device);
+                        self.devices_list.push(device).unwrap();
                         // check if is a multi-function device
                         if device.header_body.header_type.get_bit(7) {
-                            println!("Multifunction device detected !");
                             for function in 1..=7 {
                                 match self.check_device(bus, slot, function) {
-                                    Some(device) => println!("{:?}", device),
+                                    Some(device) => {
+                                        self.devices_list.push(device).unwrap();
+                                    }
                                     None => {}
                                 }
                             }
@@ -250,6 +306,13 @@ impl Pci {
                     None => {}
                 }
             }
+        }
+    }
+
+    /// List and enumerate all devices
+    pub fn list_pci_devices(&mut self) {
+        for (i, elem) in self.devices_list.iter().enumerate() {
+            println!("{:?} {:?}", i, elem);
         }
     }
 

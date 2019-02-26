@@ -99,6 +99,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     unsafe {
         PCI.scan_pci_buses();
+        PCI.list_pci_devices();
     }
 
     debug::bench_start();
