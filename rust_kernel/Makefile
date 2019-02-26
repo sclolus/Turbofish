@@ -155,7 +155,7 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 exec:
-	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf
+	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 128M -kernel build/kernel.elf
 
 exec_gdb:
 	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) --enable-kvm -cpu IvyBridge -m 64M -kernel build/kernel.elf

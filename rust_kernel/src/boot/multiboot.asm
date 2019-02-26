@@ -1,5 +1,7 @@
 [BITS 32]
 
+%include "src/boot/virtual_offset.asm"
+
 ; Declare constants used for creating a multiboot header.
 %define ALIGN     (1 << 0)
 %define MEMINFO   (1 << 1)
@@ -42,4 +44,7 @@ align 4
 extern _init
 GLOBAL _start
 _start:
+	; usage of absolute jump to avoid nasty side effect in high memory model
+	; normally, the instruction 'jmp _init' will be a relative jump, witch is safe, but we don't know ...
+	; be very carefull about that instruction, IT MUST BE A RELATIVE JUMP !
 	jmp _init
