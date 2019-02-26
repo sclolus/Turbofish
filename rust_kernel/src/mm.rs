@@ -339,6 +339,7 @@ unsafe impl GlobalAlloc for MemoryManager {
 }
 
 #[alloc_error_handler]
+#[cfg(not(test))]
 fn out_of_memory(_: core::alloc::Layout) -> ! {
     panic!("Out of memory: Failed to allocate a rust data structure");
 }

@@ -1,7 +1,8 @@
 use super::MemoryError;
+use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::fmt::Debug;
-use core::ops::IndexMut;
+use core::ops::{Add, IndexMut, Sub};
 
 pub struct Buddy<'a> {
     data: &'a mut u8,
@@ -19,15 +20,6 @@ impl<'a> Buddy<'a> {
         assert!(index < 4);
         Self { data, index }
     }
-
-    // gen_builder_pattern_bitfields_methods!(
-    //     #[doc = " "],
-    //     #[doc = " "],
-    //     splitted, set_splitted, 0, inner);
-    // gen_builder_pattern_bitfields_methods!(
-    //     #[doc = " "],
-    //     #[doc = " "],
-    //     occupied, set_occupied, 1, inner);
 
     pub fn splitted(&self) -> bool {
         self.data.get_bit((self.index << 1) as usize)
@@ -48,53 +40,141 @@ impl<'a> Buddy<'a> {
     }
 }
 
+/// 0 -> PAGE_SIZE bytes
+#[derive(Debug, Copy, Clone, PartialEq, Ord, PartialOrd, Eq)]
+pub struct Order(pub usize);
+
+impl Sub<Self> for Order {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        assert!(rhs <= self);
+        Order(self.0 - rhs.0)
+    }
+}
+
+impl Add<Self> for Order {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Order(self.0 + rhs.0)
+    }
+}
+
+impl Order {
+    pub fn nbr_pages(self) -> usize {
+        1 << self.0
+    }
+
+    pub fn from_nbr_pages(nb_pages: usize) -> Self {
+        Order(nb_pages.next_power_of_two().trailing_zeros() as usize)
+    }
+
+    pub fn from_size(size: usize) -> Self {
+        Self::from_nbr_pages(size / PAGE_SIZE + (size % PAGE_SIZE != 0) as usize)
+    }
+}
+
 pub struct BuddyAllocator<'a> {
     addr: usize,
     size: usize,
-    block_size: usize,
-    max_order: u32,
+    max_order: Order,
     /// Invariant: all unused buddies are zeroed
     pub buddies: &'a mut [u8],
     nbr_buddies: usize,
 }
 
 impl<'a> BuddyAllocator<'a> {
-    pub fn new(addr: usize, mut size: usize, block_size: usize, buddies: &'a mut [u8]) -> Self {
+    /// size in bytes
+    pub fn new(addr: usize, size: usize, buddies: &'a mut [u8]) -> Self {
+        assert!(addr % PAGE_SIZE == 0);
+
         let normalized_size = size.next_power_of_two();
         let unavailable_range = addr + size..addr + normalized_size;
+        let max_order = Order::from_size(size);
+        let nbr_buddies = Self::nbr_buddies(max_order.0);
 
-        size = normalized_size; //TODO: set the unavailable area to occupied that is : [size.next_power_of_two - size..]... Now supposedly done.
-        assert!((size / block_size).is_power_of_two());
-        assert!(block_size.is_power_of_two());
-        assert!(addr % block_size == 0);
-
-        let max_order = (size / block_size).trailing_zeros();
-        //println!("Max order: {} for buddy allocator at addr: {}", max_order, addr);
-
-        let nbr_buddies = (2 * ((size / block_size) as usize)) - 1;
         assert!(buddies.len() * 4 >= nbr_buddies);
-        //println!("nbr_buddies = {}", nbr_buddies);
 
-        //TODO: bzero memory for buddies
         for byte in buddies.iter_mut() {
             *byte = 0;
         }
+        dbg!(max_order);
+        dbg!(nbr_buddies);
 
         let buddies_len = buddies.len();
-        let mut new = BuddyAllocator { addr, size, block_size, max_order, buddies, nbr_buddies };
-        let buddies_addr = new.buddies.as_mut_ptr() as usize;
+        let mut new = BuddyAllocator { addr, size, max_order, buddies, nbr_buddies };
 
-        let range = addr..addr + size;
-        if range.contains(&buddies_addr) {
-            // You clearly are trying to bullshit me if you provided a partially overlapping buddies slice this function.
-            assert!(range.contains(&(buddies_addr + buddies_len)));
-            new.reserve(buddies_addr, (buddies_len) / new.block_size + (buddies_len % new.block_size != 0) as usize)
-                .expect("self reserve buddy alocator failed");
-        }
-        for p in unavailable_range.step_by(new.block_size) {
-            new.reserve(p, 1).expect("exess memory reserved failed");
+        for p in unavailable_range.step_by(PAGE_SIZE) {
+            new.reserve(p, Order(0)).expect("exess memory reserved failed");
         }
         new
+    }
+
+    /// Returns the index of the buddy of order `order` starting at address `addr`.
+    pub fn buddy_index(&self, addr: usize, order: Order) -> usize {
+        assert_eq!(addr % (order.nbr_pages() * PAGE_SIZE), 0);
+        assert!(addr >= self.addr && addr < self.addr + self.max_order.nbr_pages() * PAGE_SIZE);
+
+        self.first_layer_index(order) + (addr - self.addr) / (order.nbr_pages() * PAGE_SIZE) 
+    }
+
+    // /// Returns the starting address represented by the buddy at index `index`.
+    // fn buddy_addr(&self, index: usize) {
+    //     let layer_index = Self::first_layer_index(order);
+    //     let buddy_layer_index: usize = buddy_index - layer_index;
+    //     self.max_order.nbr_pages() - ((index.next_power_of_two() >> 1 - 1) & index)
+    // }
+
+    /// size in bytes
+    pub fn alloc(&mut self, order: Order) -> Option<usize> {
+        if order > self.max_order {
+            return None;
+        }
+
+        self.find_allocable_buddy(order).map(|buddy_index| {
+            dbg!(buddy_index);
+            self.set_occupied(buddy_index, true);
+            let layer_index = self.first_layer_index(order);
+            dbg!(layer_index);
+            assert!(layer_index <= buddy_index);
+            let buddy_layer_index: usize = buddy_index - layer_index;
+            dbg!(buddy_layer_index);
+
+            order.nbr_pages() * PAGE_SIZE * buddy_layer_index + self.addr
+        }
+    }
+
+    pub fn free(&mut self, addr: usize, order: Order) {
+        self.set_occupied(self.buddy_index(addr, order), false)
+    }
+
+    /// Reserves a buddy of order `order` starting at address `addr`.
+    /// addr must be 
+    pub fn reserve(&mut self, addr: usize, order: Order) -> Result<(), MemoryError> {
+        assert_eq!(addr % (order.nbr_pages() * PAGE_SIZE), 0);
+
+        if order > self.max_order || addr < self.addr || addr + order.nbr_pages() * PAGE_SIZE > self.addr + self.max_order.nbr_pages() * PAGE_SIZE {
+            return Err(MemoryError::OutOfBound);
+        }
+
+        let index = self.buddy_index(addr, order);
+        if self.get_buddy(index).occupied() {
+            return Err(MemoryError::AlreadyOccupied);
+        }
+
+        self.set_occupied(index, true);
+        Ok(())
+    }
+
+    fn left_child_index(i: usize) -> usize {
+        i * 2 + 1
+    }
+
+    fn right_child_index(i: usize) -> usize {
+        i * 2 + 2
+    }
+
+    fn parent_index(i: usize) -> Option<usize> {
+        Some(i.checked_sub(1)? / 2)
     }
 
     pub fn get_buddy(&mut self, index: usize) -> Buddy<'_> {
@@ -140,20 +220,8 @@ impl<'a> BuddyAllocator<'a> {
         }
     }
 
-    fn find_allocable_buddy(&mut self, target_depth: usize) -> Option<usize> {
-        self._find_allocable_buddy(target_depth, 0, 0)
-    }
-
-    /// size in number of pages.
-    pub fn buddy_index(&self, addr: usize, size: usize) -> usize {
-        assert!(addr % self.block_size == 0);
-        assert!(addr >= self.addr && addr < self.addr + self.size);
-        assert!(size * self.block_size <= self.size);
-        assert!(size.is_power_of_two());
-
-        let order = size.trailing_zeros();
-
-        (addr - self.addr) / (2usize.pow(order) * self.block_size) + (2usize.pow(self.max_order - order) - 1)
+    fn find_allocable_buddy(&mut self, order: Order) -> Option<usize> {
+        self._find_allocable_buddy(self.depth_buddy_from_order(order), 0, 0)
     }
 
     fn set_occupied(&mut self, mut index: usize, value: bool) {
@@ -183,96 +251,27 @@ impl<'a> BuddyAllocator<'a> {
         }
     }
 
-    pub fn free(&mut self, addr: usize, nbr_pages: usize) {
-        self.set_occupied(self.buddy_index(addr, nbr_pages.next_power_of_two()), false)
-    }
-
     /// size in number of pages.
-    fn depth_buddy_from_size(&self, size: usize) -> u32 {
-        self.max_order - size.trailing_zeros()
+    fn depth_buddy_from_order(&self, order: Order) -> usize {
+        self.max_order.0 - order.0
     }
 
-    fn first_layer_index(&self, depth: u32) -> usize {
-        if depth == 0 {
+    /// Returns the Buddyallocator's first index (as by layer indexing of perfect Btree) at the layer of buddies of order `order`.
+    fn first_layer_index(&self, order: Order) -> usize {
+        if order == self.max_order {
             return 0;
         }
-        let sub_depth_size = 2usize.pow((depth - 1) as u32);
-        2 * sub_depth_size - 1
+        Self::nbr_buddies(self.depth_buddy_from_order(order) - 1)
     }
 
-    /// size in bytes
-    pub fn alloc(&mut self, nbr_pages: usize) -> Option<usize> {
-        if nbr_pages.checked_mul(self.block_size)? > self.size {
-            return None;
-        }
-
-        let target_depth = self.depth_buddy_from_size(nbr_pages);
-        dbg!(target_depth);
-        // println!("Searching for target_depth: {}", target_depth);
-
-        if let Some(buddy_index) = self.find_allocable_buddy(target_depth as usize) {
-            self.set_occupied(buddy_index, true);
-            //dbg!(buddy_index);
-
-            let layer_index = self.first_layer_index(target_depth);
-            //dbg!(depth_size);
-
-            dbg!(layer_index);
-            dbg!(buddy_index);
-            assert!(layer_index <= buddy_index);
-            let buddy_layer_index: usize = buddy_index - layer_index;
-            //dbg!(buddy_layer_index);
-
-            let addr =
-                2usize.pow(self.max_order - target_depth as u32) * self.block_size * buddy_layer_index + self.addr;
-
-            dbg!(addr);
-
-            Some(addr)
-        } else {
-            None
-        }
-    }
-    /// Reserve atleast the `range` specified.
-    pub fn reserve(&mut self, addr: usize, nb_page: usize) -> Result<(), MemoryError> {
-        // TODO: optimize that bu segmeting
-        let end = addr + nb_page * self.block_size;
-        let normalized_start = addr - (addr & (self.block_size - 1));
-        let normalized_end = if (end & (self.block_size - 1)) != 0 {
-            end + (self.block_size - (end & (self.block_size - 1)))
-        } else {
-            end
-        };
-        let size = (normalized_end - normalized_start).next_power_of_two() / self.block_size;
-        // assert!(size.is_power_of_two());
-        dbg!(self.addr);
-        dbg!(self.size);
-        dbg!(normalized_start);
-        dbg!(normalized_end);
-
-        if normalized_end > self.addr + self.size || normalized_start < self.addr {
-            return Err(MemoryError::OutOfBound);
-        }
-
-        let index = self.buddy_index(normalized_start, size);
-        if self.get_buddy(index).occupied() {
-            return Err(MemoryError::AlreadyOccupied);
-        }
-
-        self.set_occupied(index, true);
-        Ok(())
+    /// Returns the size in bytes taken by the metadata taken by a BuddyAllocator of order `order`.
+    pub fn metadata_size(max_order: Order) -> usize {
+        Self::nbr_buddies(max_order.0) / 4 + 1
     }
 
-    fn left_child_index(i: usize) -> usize {
-        i * 2 + 1
-    }
-
-    fn right_child_index(i: usize) -> usize {
-        i * 2 + 2
-    }
-
-    fn parent_index(i: usize) -> Option<usize> {
-        Some(i.checked_sub(1)? / 2)
+    /// Returns the number of buddies of a BuddyAllocator of max order `order`.
+    pub fn nbr_buddies(depth: usize) -> usize {
+        2_usize.pow(depth as u32) * 2 - 1
     }
 }
 
@@ -291,17 +290,17 @@ mod test {
         const nb_block: usize = 0x10000;
         let address_space =
             unsafe { allocator.alloc(Layout::from_size_align(nb_block * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
-        const max_order: u32 = nb_block.trailing_zeros();
+        const max_order: usize = nb_block.trailing_zeros() as usize;
 
         static mut BUDDIES: [u8; (nb_block * 2 - 1) / 4 + 1] = [0u8; (nb_block * 2 - 1) / 4 + 1];
 
         let mut buddy_allocator = unsafe {
-            BuddyAllocator::new(address_space.as_ptr() as usize, nb_block * PAGE_SIZE, PAGE_SIZE, &mut BUDDIES)
+            BuddyAllocator::new(address_space.as_ptr() as usize, nb_block * PAGE_SIZE, &mut BUDDIES)
         };
 
         #[derive(Debug)]
         struct Allocation<'a> {
-            nb_page: usize,
+            order: Order,
             random_u8: u8,
             ptr: &'a mut [u8],
         }
@@ -314,9 +313,9 @@ mod test {
             let type_alloc = rng.gen::<u32>() % 2;
             match type_alloc {
                 0 => {
-                    let order = rng.gen::<u32>() % (max_order / 2);
-                    let nb_page = 1 << order;
-                    let mem = buddy_allocator.alloc(nb_page);
+                    let order = Order(rng.gen::<usize>() % (max_order / 2));
+                    let nb_page = 1 << order.0;
+                    let mem = buddy_allocator.alloc(order);
                     dbg!(order);
                     dbg!(nb_page);
                     dbg!(mem);
@@ -336,7 +335,7 @@ mod test {
                             for c in mem.iter_mut() {
                                 *c = random_u8;
                             }
-                            allocations.push(Allocation { nb_page, ptr: mem, random_u8 });
+                            allocations.push(Allocation { order, ptr: mem, random_u8 });
                         }
                     }
                 }
@@ -353,7 +352,9 @@ mod test {
                                 assert_eq!(*c, elem.random_u8);
                             }
                         }
-                        buddy_allocator.free(elem.ptr.as_ptr() as usize, elem.nb_page);
+                        dbg!(elem.ptr.as_ptr() as usize);
+                        dbg!( elem.order);
+                        buddy_allocator.free(elem.ptr.as_ptr() as usize, elem.order);
 
                         // unsafe {
                         //     allocator.dealloc(
@@ -379,11 +380,12 @@ mod test {
         let nb_block = 4;
 
         let mut buddy_allocator =
-            unsafe { BuddyAllocator::new(map_location as usize, nb_block * 4096, 4096, &mut BUDDIES) };
+            unsafe { BuddyAllocator::new(map_location as usize, nb_block * 4096, &mut BUDDIES) };
 
         for i in 0..(nb_block) {
             let alloc_size = 1;
-            let mut addr = buddy_allocator.alloc(1);
+            let mut addr = buddy_allocator.alloc(Order(0));
+            dbg!(i);
             assert_eq!(addr, Some(4096 * i));
         }
     }
