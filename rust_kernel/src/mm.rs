@@ -196,15 +196,15 @@ static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] 
 
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
-// static mut PHYSICAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
-//     [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+static mut PHYSICAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 4 + 1] =
+    [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 4 + 1];
 
-// pub static mut PHYSICAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
+pub static mut PHYSICAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
 
-// static mut VIRTUAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
-//     [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
+static mut VIRTUAL_BUDDIES: [u8; (((usize::max_value()) / 4096) * 2 - 1) / 4 + 1] =
+    [0u8; ((usize::max_value() / 4096) * 2 - 1) / 4 + 1];
 
-// pub static mut VIRTUAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
+pub static mut VIRTUAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
 
 pub static mut PHYSICAL_DUMMY_ALLOCATOR_DATA: [u8; 1024 * 1024 * 16] = [0u8; 1024 * 1024 * 16];
 pub static mut VIRTUAL_DUMMY_ALLOCATOR_DATA: [u8; 1024 * 1024 * 16] = [0u8; 1024 * 1024 * 16];
@@ -212,8 +212,11 @@ pub static mut VIRTUAL_DUMMY_ALLOCATOR_DATA: [u8; 1024 * 1024 * 16] = [0u8; 1024
 pub static mut PHYSICAL_DUMMY_ALLOCATOR: Option<DummyAllocator<'static>> = None;
 pub static mut VIRTUAL_DUMMY_ALLOCATOR: Option<DummyAllocator<'static>> = None;
 
-pub static mut PHYSICAL_TEST: Option<[(DummyAllocator<'static>, PhysicalAllocatorType); 1]> = None;
-pub static mut VIRTUAL_TEST: Option<[(DummyAllocator<'static>, VirtualAllocatorType); 1]> = None;
+// pub static mut PHYSICAL_TEST: Option<[(DummyAllocator<'static>, PhysicalAllocatorType); 1]> = None;
+// pub static mut VIRTUAL_TEST: Option<[(DummyAllocator<'static>, VirtualAllocatorType); 1]> = None;
+pub static mut PHYSICAL_TEST: Option<[(BuddyAllocator<'static>, PhysicalAllocatorType); 1]> = None;
+pub static mut VIRTUAL_TEST: Option<[(BuddyAllocator<'static>, VirtualAllocatorType); 1]> = None;
+
 pub static mut PAGE_ALLOCATOR: Option<PageAllocator<'static, 'static>> = None;
 
 pub unsafe fn init_paging() -> Result<(), ()> {
@@ -226,21 +229,31 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         debug_assert!(dir_entry.present() == true);
     }
 
-    PHYSICAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
+    PHYSICAL_ALLOCATOR = Some(BuddyAllocator::new(
         0x0,
         crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
-        PAGE_SIZE,
-        &mut PHYSICAL_DUMMY_ALLOCATOR_DATA,
+        &mut PHYSICAL_BUDDIES,
     ));
-    VIRTUAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
-        0x0,
-        crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
-        PAGE_SIZE,
-        &mut VIRTUAL_DUMMY_ALLOCATOR_DATA,
-    ));
+    VIRTUAL_ALLOCATOR = Some(BuddyAllocator::new(0x0, 1024 * 1024, &mut VIRTUAL_BUDDIES));
 
-    PHYSICAL_TEST = Some([(PHYSICAL_DUMMY_ALLOCATOR.take().unwrap(), PhysicalAllocatorType::Normal)]);
-    VIRTUAL_TEST = Some([(VIRTUAL_DUMMY_ALLOCATOR.take().unwrap(), VirtualAllocatorType::KernelSpace)]);
+    PHYSICAL_TEST = Some([(PHYSICAL_ALLOCATOR.take().unwrap(), PhysicalAllocatorType::Normal)]);
+    VIRTUAL_TEST = Some([(VIRTUAL_ALLOCATOR.take().unwrap(), VirtualAllocatorType::KernelSpace)]);
+
+    // PHYSICAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
+    //     0x0,
+    //     crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
+    //     PAGE_SIZE,
+    //     &mut PHYSICAL_DUMMY_ALLOCATOR_DATA,
+    // ));
+    // VIRTUAL_DUMMY_ALLOCATOR = Some(DummyAllocator::new(
+    //     0x0,
+    //     crate::multiboot::MULTIBOOT_INFO.unwrap().get_system_memory_amount() >> 12,
+    //     PAGE_SIZE,
+    //     &mut VIRTUAL_DUMMY_ALLOCATOR_DATA,
+    // ));
+
+    // PHYSICAL_TEST = Some([(PHYSICAL_DUMMY_ALLOCATOR.take().unwrap(), PhysicalAllocatorType::Normal)]);
+    // VIRTUAL_TEST = Some([(VIRTUAL_DUMMY_ALLOCATOR.take().unwrap(), VirtualAllocatorType::KernelSpace)]);
 
     PAGE_ALLOCATOR = Some(PageAllocator::new(PHYSICAL_TEST.as_mut().unwrap(), VIRTUAL_TEST.as_mut().unwrap()));
 
@@ -275,32 +288,34 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         }
     }
 
-    PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .reserve(4244635648, 4244635648, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("linear_frame_buffer mapping failed");
+    loop {}
+    // PAGE_ALLOCATOR
+    //     .as_mut()
+    //     .unwrap()
+    //     .reserve(4244635648, 4244635648, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
+    //     .expect("linear_frame_buffer mapping failed");
 
-    PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .reserve(0x3000000, 0x3000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("double frame buffer mapping failed");
+    // PAGE_ALLOCATOR
+    //     .as_mut()
+    //     .unwrap()
+    //     .reserve(0x3000000, 0x3000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
+    //     .expect("double frame buffer mapping failed");
 
-    PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .reserve(0x4000000, 0x4000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("graphic frame buffer mapping failed");
+    // PAGE_ALLOCATOR
+    //     .as_mut()
+    //     .unwrap()
+    //     .reserve(0x4000000, 0x4000000, (1024 * 768 * 3) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
+    //     .expect("graphic frame buffer mapping failed");
 
-    PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .reserve(0x0, 0x0, (1024 * 1024) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
-        .expect("Failed to reserve the first megabyte of physical memory");
+    // PAGE_ALLOCATOR
+    //     .as_mut()
+    //     .unwrap()
+    //     .reserve(0x0, 0x0, (1024 * 1024) / PAGE_SIZE, AllocFlags(ALLOC_NORMAL))
+    //     .expect("Failed to reserve the first megabyte of physical memory");
 
-    _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
-    Ok(())
+    // println!("Enabling paging at {:p}", PAGE_DIRECTORY.as_mut().as_mut_ptr());
+    // _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
+    // Ok(())
 }
 
 pub struct MemoryManager;
