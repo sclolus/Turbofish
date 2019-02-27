@@ -5,6 +5,7 @@ pub mod page_alloc;
 pub mod page_directory;
 pub mod page_table;
 
+use bit_field::BitField;
 #[allow(unused_imports)]
 use buddy_allocator::*;
 use core::convert::AsRef;
@@ -89,106 +90,144 @@ macro_rules! sections {
     };
 }
 
-// #[repr(transparent)]
-// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-// pub struct VirtualAddr {
-//     addr: usize,
-// }
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct VirtualAddr(pub usize);
 
-// impl VirtualAddr {
-//     pub fn physical_addr(&self) -> Option<PhysicalAddr> {
-//         let page_directory_index = self.addr.get_bits(22..32);
-//         let page_table_index = self.addr.get_bits(12..22);
+impl VirtualAddr {
+    pub fn physical_addr(&self) -> Option<PhysicalAddr> {
+        let page_directory_index = self.0.get_bits(22..32);
+        let page_table_index = self.0.get_bits(12..22);
 
-//         unsafe {
-//             if PAGE_DIRECTORY[page_directory_index].present() {
-//                 return None;
-//             }
-//         }
+        unsafe {
+            if PAGE_DIRECTORY[page_directory_index].present() {
+                return None;
+            }
+        }
 
-//         // if PAGE_TABLES[
-//         None
-//     }
+        // if PAGE_TABLES[
+        None
+    }
 
-//     pub fn pd_index(&self) -> usize {
-//         self.addr.get_bits(22..32)
-//     }
+    pub fn pd_index(&self) -> usize {
+        self.0.get_bits(22..32)
+    }
 
-//     pub fn pt_index(&self) -> usize {
-//         self.addr.get_bits(12..22)
-//     }
+    pub fn pt_index(&self) -> usize {
+        self.0.get_bits(12..22)
+    }
 
-//     pub fn offset(&self) -> usize {
-//         self.addr.get_bits(0..12)
-//     }
-// }
+    pub fn offset(&self) -> usize {
+        self.0.get_bits(0..12)
+    }
+}
 
-// impl From<usize> for VirtualAddr {
-//     fn from(addr: usize) -> Self {
-//         Self { addr }
-//     }
-// }
+impl Into<usize> for VirtualAddr {
+    fn into(self) -> usize {
+        self.0
+    }
+}
 
-// impl Address for VirtualAddr {}
+impl From<usize> for VirtualAddr {
+    fn from(addr: usize) -> Self {
+        Self(addr)
+    }
+}
 
-// #[repr(transparent)]
-// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-// pub struct PhysicalAddr {
-//     addr: usize,
-// }
+impl Address for VirtualAddr {}
 
-// impl From<usize> for PhysicalAddr {
-//     fn from(addr: usize) -> Self {
-//         Self { addr }
-//     }
-// }
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct PhysicalAddr(pub usize);
 
-// impl PhysicalAddr {}
-// impl Address for PhysicalAddr {}
+impl Into<usize> for PhysicalAddr {
+    fn into(self) -> usize {
+        self.0
+    }
+}
 
-// pub trait Address: From<usize> + Into<usize> {}
+impl From<usize> for PhysicalAddr {
+    fn from(addr: usize) -> Self {
+        Self(addr)
+    }
+}
 
-// #[repr(transparent)]
-// #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-// pub struct Page {
-//     number: usize,
-// }
+impl PhysicalAddr {}
+impl Address for PhysicalAddr {}
 
-// impl Page {
-//     // or impl<T: Address> From<T> for Page
-//     fn from_address<T: Address>(addr: T) -> Self {
-//         Self { number: (addr.into()) / PAGE_SIZE }
-//     }
+pub trait Address: From<usize> + Into<usize> {}
 
-//     fn inclusive_range(from: Page, to: Page) -> PageIter {
-//         PageIter { current: from, end: to }
-//     }
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Page {
+    number: usize,
+}
 
-//     fn exclusive_range(from: Page, mut to: Page) -> PageIter {
-//         assert!(to.number > 0);
-//         let end = Page { number: to.number - 1 };
-//         PageIter { current: from, end }
-//     }
-// }
+impl Page {
+    // or impl<T: Address> From<T> for Page
+    fn from_address<T: Address>(addr: T) -> Self {
+        Self { number: (addr.into()) / PAGE_SIZE }
+    }
 
-// pub struct PageIter {
-//     current: Page,
-//     end: Page,
-// }
+    fn inclusive_range(from: Page, to: Page) -> PageIter {
+        PageIter { current: from, end: to }
+    }
 
-// impl Iterator for PageIter {
-//     type Item = Page;
+    fn exclusive_range(from: Page, mut to: Page) -> PageIter {
+        assert!(to.number > 0);
+        let end = Page { number: to.number - 1 };
+        PageIter { current: from, end }
+    }
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.current > self.end {
+// impl core::iter::Step for Page {
+//     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+//         if start.number > end.number {
 //             None
 //         } else {
-//             let page = self.current;
-//             self.current.number += 1;
-//             Some(page)
+//             Some(end.number - start.number)
 //         }
 //     }
+
+//     fn replace_one(&mut self) -> Self {
+//         core::mem::replace(self, Page { number: 1 })
+//     }
+
+//     fn replace_zero(&mut self) -> Self {
+//         core::mem::replace(self, Page { number: 1 })
+//     }
+
+//     fn add_one(&self) -> Self {
+//         Page { number: self.number + 1 }
+//     }
+
+//     fn sub_one(&self) -> Self {
+//         Page { number: self.number - 1 }
+//     }
+
+//     fn add_usize(&self, n: usize) -> Option<Self> {
+//         Page { number: self.number.checked_add(n)? }
+//     }
 // }
+
+pub struct PageIter {
+    current: Page,
+    end: Page,
+}
+
+impl Iterator for PageIter {
+    type Item = Page;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current > self.end {
+            None
+        } else {
+            let page = self.current;
+            self.current.number += 1;
+            Some(page)
+        }
+    }
+}
 
 #[allow(dead_code)]
 static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] = // should be renamed to INIT_PAGE_TABLES
@@ -288,6 +327,10 @@ pub unsafe fn init_paging() -> Result<(), ()> {
         }
     }
 
+    for page in Page::inclusive_range(Page::from_address(VirtualAddr(0x0)), Page::from_address(VirtualAddr(0x1000000)))
+    {
+        println!("{:?}", page);
+    }
     loop {}
     // PAGE_ALLOCATOR
     //     .as_mut()

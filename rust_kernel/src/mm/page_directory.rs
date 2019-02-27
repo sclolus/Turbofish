@@ -308,6 +308,18 @@ impl PageDirectory {
             self[offset + i].set_present(true);
         }
     }
+
+    pub unsafe fn load_current_page_directory(ptr: *mut PageDirectory) {
+        use crate::registers::Cr3;
+
+        Cr3::write(ptr as usize);
+    }
+
+    pub unsafe fn get_current_page_directory() -> *mut PageDirectory {
+        use crate::registers::Cr3;
+
+        Cr3::read() as *mut PageDirectory
+    }
 }
 
 #[cfg(test)]

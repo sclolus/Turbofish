@@ -169,6 +169,23 @@ has CPUID (ID): {}\n",
     }
 }
 
+pub struct Cr3;
+
+impl Cr3 {
+    pub unsafe fn write(value: usize) {
+        asm!("mov cr3, $0" : "=*m"(value):: "memory" : "volatile")
+    }
+
+    pub unsafe fn read() -> usize {
+        let mut value = 0;
+        asm!("mov $0, cr3" : "=*m"(value)  :: "memory" : "volatile");
+
+        value
+    }
+}
+
+pub struct Cr0;
+
 #[no_mangle]
 extern "C" {
     fn _real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16;
