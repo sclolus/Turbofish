@@ -23,9 +23,9 @@ extern _set_fpu
 %define PAGE_SIZE 4096
 %define PAGE_TABLE_PER_DIRECTORY 1024
 
-; 0x00000000 -> 0x08000000 mapped to phy 0x00000000 -> 0x08000000
-; 0xC0000000 -> 0xC8000000 mapped to phy 0x00000000 -> 0x08000000
-; 0xE0000000 -> 0xFFFFFFFF mapped to phy 0xE0000000 -> 0xFFFFFFFF (LFB)
+; 0x00000000 -> 0x04000000 mapped to phy 0x00000000 -> 0x04000000
+; 0xC0000000 -> 0xC4000000 mapped to phy 0x00000000 -> 0x04000000
+; 0xF0000000 -> ... mapped to phy ??? -> ??? + LFB_SIZE
 
 global _init
 _init:
@@ -34,16 +34,16 @@ _init:
 
 	; STORING KERNEL IN HIGH MEMORY by setting a early pagination
 	; -----------------------------------------------------------------------
-	; FIRST STEP => IDENTITY MAPPING OF THE FIRST 128 MO: MAPPING of 0x0 => 0x8000000
-	; create the first heap of page directory for mapping of 128mo Kernel Size
+	; FIRST STEP => IDENTITY MAPPING OF THE FIRST 64 MO: MAPPING of 0x0 => 0x4000000
+	; create the first heap of page directory for mapping of 64 mo Kernel Size
 	; a page directory can contains 1024 pages entries witch allocated at most 4mo
 	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area)
 
 	; pointer to the first set of page table
 	mov edx, VIRT2PHY_ADDR(page_table_alpha_area)
 
-	; prepare to assign 32 * 4 mo of memory -> 128 mo
-	mov ecx, 32
+	; prepare to assign 16 * 4 mo of memory -> 64 mo
+	mov ecx, 16
 .l0_a:
 	mov eax, edx
 	and eax, PAGE_MASK
@@ -52,7 +52,7 @@ _init:
 	add edx, PAGE_SIZE
 	loop .l0_a
 
-	; created for IDENTITY MAPPING of the first 128 mo
+	; created for IDENTITY MAPPING of the first 64 mo
 	mov edi, VIRT2PHY_ADDR(page_table_alpha_area)
 	xor edx, edx
 .l0_b:
@@ -61,16 +61,16 @@ _init:
 	or eax, READ_WRITE | PRESENT
 	stosd
 	add edx, PAGE_SIZE
-	cmp edx, (1 << 20) * 128 ; limit at 128 mo
+	cmp edx, (1 << 20) * 64 ; limit at 64 mo
 	jne .l0_b
 
 	; --------------------------------------------------------------------------
-	; SECOND STEP => MAP VIRTUAL HIGH MEMORY IN 0xC0000000 to PHYSICAL 0xC8000000
+	; SECOND STEP => MAP VIRTUAL HIGH MEMORY IN 0xC0000000 to PHYSICAL 0xC4000000
 	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area) + 768 * 4                        ; high memory, correspond to 0xC0000000 in virtual space
-	mov edx, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 32 * 4  ; next 1024 * 32 pages (SHL by 2)
+	mov edx, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 16 * 4  ; next 1024 * 16 pages (SHL by 2)
 
-	; TODO need to calc the kernel size ! count of 4mo block (32 * 4mo = 128 mo)
-	mov ecx, 32
+	; TODO need to calc the kernel size ! count of 4mo block (16 * 4mo = 64 mo)
+	mov ecx, 16
 .l1_a:
 	mov eax, edx
 	and eax, PAGE_MASK
@@ -80,7 +80,7 @@ _init:
 	loop .l1_a
 
 	; create the corresponding pages for tranlation from high virt memory to low phy memory
-	mov edi, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 32 * 4	; 1024 * 32 pages are currently allocated
+	mov edi, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 16 * 4	; 1024 * 16 pages are currently allocated
 	xor edx, edx
 .l1_b:
 	mov eax, edx
@@ -88,35 +88,8 @@ _init:
 	or eax, READ_WRITE | PRESENT
 	stosd
 	add edx, PAGE_SIZE
-	cmp edx, (1 << 20) * 128 ; limit -> Relative to Kernel size (1mo + (1mo * 128) = 0x0 -> 0x8000000 range 128 mo)
+	cmp edx, (1 << 20) * 64 ; limit -> Relative to Kernel size (1mo + (1mo * 64) = 0x0 -> 0x4000000 range 64 mo)
 	jne .l1_b
-
-	; --------------------------------------------------------------------------
-	; THIRD STEP => (LINEAR FRAME BUFFER) MAP VIRTUAL HIGH MEMORY 0xE0000000 to PHYSICAL 0xE0000000
-	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area) + (1024 - 128) * 4                     ; high memory, correspond to 0xE0000000 in virtual space
-	mov edx, VIRT2PHY_ADDR(page_table_alpha_area) + (PAGE_TABLE_PER_DIRECTORY * 32 * 4) * 2  ; next 1024 * 32 pages (SHL by 2)
-
-	; count of 4mo block (128 * 4mo = 512 mo)
-	mov ecx, 128
-.l2_a:
-	mov eax, edx
-	and eax, PAGE_MASK
-	or eax, READ_WRITE | PRESENT
-	stosd
-	add edx, PAGE_SIZE
-	loop .l2_a
-
-	; create the corresponding pages for tranlation from linear framebuffer to low phy memory
-	mov edi, VIRT2PHY_ADDR(page_table_alpha_area) + (PAGE_TABLE_PER_DIRECTORY * 32 * 4) * 2	 ; 1024 * 32 * 4 * 2 pages are currently allocated
-	mov edx, 0xE0000000
-.l2_b:
-	mov eax, edx
-	and eax, PAGE_MASK
-	or eax, READ_WRITE | PRESENT
-	stosd
-	add edx, PAGE_SIZE
-	cmp edx, 0x0 ; limit = 0xe0000000 -> 0x00000000 range 512 mo. Using of overflow
-	jne .l2_b
 
 	; ACTIVATE PAGING
 	; ----------------------------------------------
@@ -194,11 +167,62 @@ _init:
 	pop eax
 	ret
 
+; hack for LFB allocation
+GLOBAL _allocate_linear_frame_buffer
+_allocate_linear_frame_buffer:
+	push ebp
+	mov ebp, esp
+
+	push edi
+	push ecx
+	push edx
+
+	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area) + (1024 - 64) * 4                 ; placement at 0xf0000000
+	mov edx, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 32 * 4   ; next pages
+
+	mov ecx, [ebp + 12]          ; len
+	mov eax, ecx
+	shr ecx, 12                  ; len = len / 4096
+	and eax, 0xfff               ; if reste. len + 1
+	cmp eax, 0
+	je .l2_a
+	add ecx, 1
+
+.l2_a:
+	mov eax, edx
+	and eax, PAGE_MASK
+	or eax, READ_WRITE | PRESENT
+	stosd
+	add edx, PAGE_SIZE
+	loop .l2_a
+
+	; create the corresponding pages for tranlation from high virt memory to low phy memory
+	mov edi, VIRT2PHY_ADDR(page_table_alpha_area) + PAGE_TABLE_PER_DIRECTORY * 32 * 4	; 1024 * 16 pages are currently allocated
+
+	mov edx, [ebp + 8]           ; phy_addr
+	mov ecx, [ebp + 12]          ; len
+	add ecx, edx                 ; phy_addr + len = end_addr
+
+.l2_b:
+	mov eax, edx
+	and eax, PAGE_MASK
+	or eax, READ_WRITE | PRESENT
+	stosd
+	add edx, PAGE_SIZE
+	cmp edx, ecx
+	jb .l2_b
+
+	pop edx
+	pop ecx
+	pop edi
+	pop ebp
+	ret
+
 segment .bss
 align 4096
 
-; 1mo reserved for alpha pages tables Can allocate 1 go: Kernel_low: 128. Kernel_High: 128. FrameBuffer 512.
-; KERNEL SIZE CANNOT EXCEED 128 MO !
+; 1mo reserved for alpha pages tables Can allocate 1 go: Kernel_low: 64. Kernel_High: 64. Custom, 768.
+; KERNEL SIZE CANNOT EXCEED 64 MO !
 page_table_alpha_area:
 resb 1 << 20
 

@@ -7,15 +7,17 @@ use core::slice;
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x1000000 as *mut u8;
+const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x2000000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x2000000 as *mut u8;
+const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x2800000 as *mut u8;
 
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
     fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
     fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
+    /* Depanage LFB */
+    fn _allocate_linear_frame_buffer(phy_addr: *mut u8, len: usize);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -450,8 +452,16 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
             }
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
+        unsafe {
+            _allocate_linear_frame_buffer(
+                mode_info.phys_base_ptr as *mut u8,
+                mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
+                    / 3,
+            );
+        }
+
         Ok(VbeMode::new(
-            mode_info.phys_base_ptr as *mut u8,
+            0xF0000000 as *mut u8,
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,
