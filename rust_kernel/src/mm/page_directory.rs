@@ -159,13 +159,21 @@ impl PageDirectoryEntry {
     pub fn available_field(&self) -> u8 {
         self.inner.get_bits(9..12) as u8
     }
+
+    pub unsafe fn get_page_table(&self) -> Option<*mut PageTable> {
+        if self.present() {
+            Some(self.entry_addr() as *mut PageTable)
+        } else {
+            None
+        }
+    }
 }
 
 /// This is the representation of the topmost paging structure.
 /// It is composed of 1024 PageDirectoryEntry.
 /// This structure must be 4-KiB aligned.
 #[repr(C, align(4096))]
-pub(super) struct PageDirectory {
+pub struct PageDirectory {
     entries: [PageDirectoryEntry; 1024],
 }
 

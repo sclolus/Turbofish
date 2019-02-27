@@ -5,7 +5,7 @@ use core::slice::SliceIndex;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(super) struct PageTableEntry {
+pub struct PageTableEntry {
     // Should this be u32 or usize ? I guess u32 is more accurate but...
     pub inner: usize,
 }
@@ -144,7 +144,7 @@ This is flag is currently unused and can be assigned to any role it may fulfill"
 /// This structure must be 4-KiB aligned.
 #[repr(C, align(4096))]
 #[derive(Copy, Clone)]
-pub(super) struct PageTable {
+pub struct PageTable {
     entries: [PageTableEntry; 1024],
 }
 

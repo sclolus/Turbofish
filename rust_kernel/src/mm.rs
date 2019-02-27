@@ -22,7 +22,7 @@ use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::PageTable;
 
 extern "C" {
-    pub fn _enable_paging_with_cr(addr: *mut PageDirectoryEntry);
+    pub fn _enable_paging_with_cr(addr: *mut PageDirectory);
     pub fn _enable_paging();
     pub fn _disable_paging();
     fn _enable_pse();
@@ -96,39 +96,44 @@ pub struct VirtualAddr(pub usize);
 
 impl VirtualAddr {
     pub fn physical_addr(&self) -> Option<PhysicalAddr> {
-        let page_directory_index = self.0.get_bits(22..32);
-        let page_table_index = self.0.get_bits(12..22);
+        let page_directory_index = self.pd_index();
+        let page_table_index = self.pt_index();
+        let page_directory = unsafe { &*PageDirectory::get_current_page_directory() };
 
-        unsafe {
-            if PAGE_DIRECTORY[page_directory_index].present() {
-                return None;
-            }
+        let page_table = unsafe { &*page_directory[page_directory_index].get_page_table()? };
+
+        if page_table[page_table_index].present() {
+            Some(page_table[page_table_index].physical_address().into())
+        } else {
+            None
         }
-
-        // if PAGE_TABLES[
-        None
     }
 
+    #[inline]
     pub fn pd_index(&self) -> usize {
         self.0.get_bits(22..32)
     }
 
+    #[inline]
     pub fn pt_index(&self) -> usize {
         self.0.get_bits(12..22)
     }
 
+    #[inline]
     pub fn offset(&self) -> usize {
         self.0.get_bits(0..12)
     }
 }
 
 impl Into<usize> for VirtualAddr {
+    #[inline(always)]
     fn into(self) -> usize {
         self.0
     }
 }
 
 impl From<usize> for VirtualAddr {
+    #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
     }
@@ -141,12 +146,14 @@ impl Address for VirtualAddr {}
 pub struct PhysicalAddr(pub usize);
 
 impl Into<usize> for PhysicalAddr {
+    #[inline(always)]
     fn into(self) -> usize {
         self.0
     }
 }
 
 impl From<usize> for PhysicalAddr {
+    #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
     }
@@ -155,7 +162,14 @@ impl From<usize> for PhysicalAddr {
 impl PhysicalAddr {}
 impl Address for PhysicalAddr {}
 
-pub trait Address: From<usize> + Into<usize> {}
+pub trait Address: From<usize> + Into<usize> + Copy + Clone + Ord + Eq {
+    #[inline(always)]
+    fn page_aligned(&self) -> bool {
+        let addr: usize = (*self).into();
+
+        (addr & (PAGE_SIZE - 1)) == 0
+    }
+}
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
