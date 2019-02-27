@@ -3,6 +3,7 @@ use super::buddy_allocator::BuddyAllocator;
 use super::MemoryError;
 use super::PAGE_DIRECTORY;
 use super::PAGE_SIZE;
+use super::{PhysicalAddr, VirtualAddr};
 #[allow(unused_imports)]
 use core::convert::{From, Into};
 
@@ -34,16 +35,16 @@ pub const ALLOC_NORMAL: u8 = MAY_SLEEP;
 
 pub struct PageAllocator<'a, 'b: 'a> {
     //different lifetimes for each type of buddy allocators ?
-    zoned_physical_buddy_allocators: &'b mut [(BuddyAllocator<'a>, PhysicalAllocatorType)],
-    zoned_virtual_buddy_allocators: &'b mut [(BuddyAllocator<'a>, VirtualAllocatorType)],
+    zoned_physical_buddy_allocators: &'b mut [(BuddyAllocator<'a, PhysicalAddr>, PhysicalAllocatorType)],
+    zoned_virtual_buddy_allocators: &'b mut [(BuddyAllocator<'a, VirtualAddr>, VirtualAllocatorType)],
     // zoned_physical_buddy_allocators: &'b mut [(DummyAllocator<'a>, PhysicalAllocatorType)],
     // zoned_virtual_buddy_allocators: &'b mut [(DummyAllocator<'a>, VirtualAllocatorType)],
 }
 
 impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
     pub fn new(
-        zoned_physical_buddy_allocators: &'b mut [(BuddyAllocator<'a>, PhysicalAllocatorType)],
-        zoned_virtual_buddy_allocators: &'b mut [(BuddyAllocator<'a>, VirtualAllocatorType)],
+        zoned_physical_buddy_allocators: &'b mut [(BuddyAllocator<'a, PhysicalAddr>, PhysicalAllocatorType)],
+        zoned_virtual_buddy_allocators: &'b mut [(BuddyAllocator<'a, VirtualAddr>, VirtualAllocatorType)],
         // zoned_physical_buddy_allocators: &'b mut [(DummyAllocator<'a>, PhysicalAllocatorType)],
         // zoned_virtual_buddy_allocators: &'b mut [(DummyAllocator<'a>, VirtualAllocatorType)],
     ) -> Self {
@@ -52,7 +53,7 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
     fn select_buddy_allocators(
         &mut self,
         flags: AllocFlags,
-    ) -> Option<(&mut BuddyAllocator<'a>, &mut BuddyAllocator<'a>)> {
+    ) -> Option<(&mut BuddyAllocator<'a, VirtualAddr>, &mut BuddyAllocator<'a, PhysicalAddr>)> {
         use PhysicalAllocatorType::*;
         use VirtualAllocatorType::*;
         let pbuddy;
@@ -86,41 +87,41 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
 
     pub fn reserve(
         &mut self,
-        vaddr: usize,
-        paddr: usize,
+        vaddr: VirtualAddr,
+        paddr: PhysicalAddr,
         nbr_pages: usize,
         flags: AllocFlags,
     ) -> Result<(), MemoryError> {
         let (vbuddy, pbuddy) = self.select_buddy_allocators(flags).ok_or(MemoryError::NotSatifiableFlags)?;
 
-        assert!(vaddr % 4096 == 0);
-        assert!(paddr % 4096 == 0);
+        assert!(vaddr.0 % 4096 == 0);
+        assert!(paddr.0 % 4096 == 0);
         match vbuddy.reserve(vaddr, nbr_pages.into()) {
             Ok(_) => (),
             Err(e) => {
-                println!("Virtual Allocator failed to reserve {:x}", vaddr);
+                println!("Virtual Allocator failed to reserve {:x?}", vaddr);
                 return Err(e);
             }
         }
 
         pbuddy.reserve(paddr, nbr_pages.into()).or_else(|e| {
             // WARNING: if buddy segmente it wont work
-            println!("Physical allocator failed to reserve {:x}", paddr);
+            println!("Physical allocator failed to reserve {:x?}", paddr);
             vbuddy.free(vaddr, nbr_pages.into());
             Err(e)
         })?;
 
         unsafe {
             PAGE_DIRECTORY.remap_range_addr(vaddr, paddr, nbr_pages).or_else(|_err| {
-                println!("Failed to remap addr range: [{:x}:{:x}[", vaddr, vaddr + PAGE_SIZE * nbr_pages);
+                println!("Failed to remap addr range: [{:x?}:{:x?}[", vaddr, vaddr.0 + PAGE_SIZE * nbr_pages);
                 vbuddy.free(vaddr, nbr_pages.into());
-                pbuddy.free(vaddr, nbr_pages.into());
+                pbuddy.free(paddr, nbr_pages.into());
                 Err(MemoryError::AlreadyMapped)
             })
         }
     }
 
-    pub fn alloc(&mut self, nbr_pages: usize, flags: AllocFlags) -> Option<usize> {
+    pub fn alloc(&mut self, nbr_pages: usize, flags: AllocFlags) -> Option<VirtualAddr> {
         let (vbuddy, pbuddy) = self.select_buddy_allocators(flags)?;
         let vaddr = vbuddy.alloc(nbr_pages.into())?;
         let paddr = pbuddy.alloc(nbr_pages.into()).or_else(|| {
@@ -133,7 +134,7 @@ impl<'a, 'b: 'a> PageAllocator<'a, 'b> {
                 .remap_range_addr(vaddr, paddr, nbr_pages)
                 .or_else(|err| {
                     vbuddy.free(vaddr, nbr_pages.into());
-                    pbuddy.free(vaddr, nbr_pages.into());
+                    pbuddy.free(paddr, nbr_pages.into());
                     Err(err)
                 })
                 .ok()?;

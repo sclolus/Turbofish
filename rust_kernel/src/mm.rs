@@ -238,12 +238,12 @@ static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be re
 static mut PHYSICAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 4 + 1] =
     [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 4 + 1];
 
-pub static mut PHYSICAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
+pub static mut PHYSICAL_ALLOCATOR: Option<BuddyAllocator<'static, PhysicalAddr>> = None;
 
 static mut VIRTUAL_BUDDIES: [u8; (((usize::max_value()) / 4096) * 2 - 1) / 4 + 1] =
     [0u8; ((usize::max_value() / 4096) * 2 - 1) / 4 + 1];
 
-pub static mut VIRTUAL_ALLOCATOR: Option<BuddyAllocator<'static>> = None;
+pub static mut VIRTUAL_ALLOCATOR: Option<BuddyAllocator<'static, VirtualAddr>> = None;
 
 pub static mut PHYSICAL_DUMMY_ALLOCATOR_DATA: [u8; 1024 * 1024 * 16] = [0u8; 1024 * 1024 * 16];
 pub static mut VIRTUAL_DUMMY_ALLOCATOR_DATA: [u8; 1024 * 1024 * 16] = [0u8; 1024 * 1024 * 16];
@@ -253,8 +253,8 @@ pub static mut VIRTUAL_DUMMY_ALLOCATOR: Option<DummyAllocator<'static>> = None;
 
 // pub static mut PHYSICAL_TEST: Option<[(DummyAllocator<'static>, PhysicalAllocatorType); 1]> = None;
 // pub static mut VIRTUAL_TEST: Option<[(DummyAllocator<'static>, VirtualAllocatorType); 1]> = None;
-pub static mut PHYSICAL_TEST: Option<[(BuddyAllocator<'static>, PhysicalAllocatorType); 1]> = None;
-pub static mut VIRTUAL_TEST: Option<[(BuddyAllocator<'static>, VirtualAllocatorType); 1]> = None;
+pub static mut PHYSICAL_TEST: Option<[(BuddyAllocator<'static, PhysicalAddr>, PhysicalAllocatorType); 1]> = None;
+pub static mut VIRTUAL_TEST: Option<[(BuddyAllocator<'static, VirtualAddr>, VirtualAllocatorType); 1]> = None;
 
 pub static mut PAGE_ALLOCATOR: Option<PageAllocator<'static, 'static>> = None;
 
@@ -322,7 +322,7 @@ pub unsafe fn init_paging() -> Result<(), ()> {
             PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
-                .reserve(p, p, 1, AllocFlags(ALLOC_NORMAL))
+                .reserve(VirtualAddr(p), PhysicalAddr(p), 1, AllocFlags(ALLOC_NORMAL))
                 .expect("self kernel reserve failed");
         }
     }
@@ -390,7 +390,7 @@ unsafe impl GlobalAlloc for MemoryManager {
 
         let nbr_pages = size / 4096 + (size % 4096 != 0) as usize;
 
-        page_allocator.alloc(nbr_pages, AllocFlags(ALLOC_NORMAL)).unwrap_or(0x0) as *mut u8
+        page_allocator.alloc(nbr_pages, AllocFlags(ALLOC_NORMAL)).unwrap_or(VirtualAddr(0x0)).0 as *mut u8
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
