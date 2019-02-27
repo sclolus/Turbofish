@@ -16,10 +16,6 @@
 	;     /*32       |*/
 	; }
 
-	; CAUTION
-	; If enabled, The PIC must be disabled before calling this code
-	; For the moment, there is undefined behavior where paging is enable before calling this code
-
 	; Rust calling convention i386: The first parameter is close than EIP, obviously, access is EBP + 8
 	; for example, fn (x:u32. y:u32) -> u32, after pushing EBP, x is on (EBP + 8) and y is on (EBP + 12)
 	; the classical return is the EAX register. Caution: Never return structure between two compiler
@@ -71,6 +67,9 @@
 	; Enable interrupts:
 	;     Enable maskable interrupts with STI.
 	;     Continue on in real mode with all bios interrupts.
+
+	; CAUTION
+	; If enabled, The PIC must be disabled before calling this code
 
 [BITS 32]
 segment .text

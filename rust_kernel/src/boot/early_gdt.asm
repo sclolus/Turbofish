@@ -1,5 +1,3 @@
-[BITS 32]
-
 ; ACCESS BYTES DESCRIPTION
 %DEFINE ACCESSED 1; WAS IT ACCESSED
 %DEFINE READ_WRITE 1 << 1; FOR DATA SEGMENT IS WRITING ALLOWED ?
@@ -15,7 +13,6 @@
 %DEFINE SIZE 1 << 6; (0) 16 BIT (1) FOR 32 BIT PROTECTED
 %DEFINE GRANULARITY 1 << 7; LIMIT IS IN 0 = BYTES, 1 = PAGES OF LIMIT 4096 BYTES EACH
 
-%DEFINE GDT_DESTINATION 0x800
 ;struc gdt_entry_struct
 ;	limit_0_15:				resb 2
 ;	base_0_15:				resb 2
@@ -27,7 +24,9 @@
 
 segment .data
 
-extern _start_after_init_gdt
+%DEFINE GDT_DESTINATION 0x800
+
+align 16
 gdt_info:
 	dw gdt_end - gdt_start
 	dd GDT_DESTINATION
@@ -120,29 +119,3 @@ gdt_start:
 ;	base_24_31:
 	db 0
 gdt_end:
-
-segment .text
-
-global _init_gdt
-_init_gdt:
-	; jmp _start_after_init_gdt	;
-	; mov gdt and gdt info in 0x800
-	mov esi, gdt_start
-	mov edi, GDT_DESTINATION
-	mov ecx, gdt_end - gdt_start
-	cld
-	rep movsb
-	lgdt [gdt_info]
-
-	; CS IS CODE SEGMENT REGISTER
-	jmp 0x8:.landing
-.landing:
-
-	; DS, ES, FS and GS ARE DATA SEGMENT REGISTER
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	ret
