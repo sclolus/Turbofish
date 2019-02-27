@@ -1,7 +1,5 @@
 [BITS 32]
 
-%include "src/boot/virtual_offset.asm"
-
 ; Declare constants used for creating a multiboot header.
 %define ALIGN     (1 << 0)
 %define MEMINFO   (1 << 1)

@@ -17,7 +17,7 @@ extern "C" {
     fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
     fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
     /* Depanage LFB */
-    fn _allocate_linear_frame_buffer(phy_addr: *mut u8, len: usize);
+    fn _allocate_linear_frame_buffer(phy_addr: *mut u8, len: usize) -> *mut u8;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -452,16 +452,17 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
             }
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
-        unsafe {
-            _allocate_linear_frame_buffer(
-                mode_info.phys_base_ptr as *mut u8,
-                mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
-                    / 3,
-            );
-        }
 
         Ok(VbeMode::new(
-            0xF0000000 as *mut u8,
+            unsafe {
+                _allocate_linear_frame_buffer(
+                    mode_info.phys_base_ptr as *mut u8,
+                    mode_info.x_resolution as usize
+                        * mode_info.y_resolution as usize
+                        * mode_info.bits_per_pixel as usize
+                        / 3,
+                )
+            },
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,

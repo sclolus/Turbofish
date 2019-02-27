@@ -2,8 +2,6 @@
 
 [BITS 32]
 
-%include "src/boot/virtual_offset.asm"
-
 segment .text
 
 extern kmain
@@ -13,6 +11,10 @@ extern _align_stack
 extern _set_sse
 extern _set_avx
 extern _set_fpu
+
+; early paging
+%define virtual_offset 0xC0000000
+%define VIRT2PHY_ADDR(x) (x - virtual_offset)
 
 ; Some usefull paging const
 %define READ_WRITE (1 << 1)
@@ -31,6 +33,7 @@ global _init
 _init:
 	; block interrupts
 	cli
+
 
 	; STORING KERNEL IN HIGH MEMORY by setting a early pagination
 	; -----------------------------------------------------------------------
@@ -64,6 +67,7 @@ _init:
 	cmp edx, (1 << 20) * 64 ; limit at 64 mo
 	jne .l0_b
 
+
 	; --------------------------------------------------------------------------
 	; SECOND STEP => MAP VIRTUAL HIGH MEMORY IN 0xC0000000 to PHYSICAL 0xC4000000
 	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area) + 768 * 4                        ; high memory, correspond to 0xC0000000 in virtual space
@@ -91,6 +95,7 @@ _init:
 	cmp edx, (1 << 20) * 64 ; limit -> Relative to Kernel size (1mo + (1mo * 64) = 0x0 -> 0x4000000 range 64 mo)
 	jne .l1_b
 
+
 	; ACTIVATE PAGING
 	; ----------------------------------------------
 	mov eax, VIRT2PHY_ADDR(page_directory_alpha_area)
@@ -100,6 +105,7 @@ _init:
 	mov eax, cr0
 	or eax, 0x80000001          ; enable Paging bit (PG). Protection bit must be also recall here
 	mov cr0, eax
+
 
 	; FINALLY, JUMP TO HIGH MEMORY
 	; ----------------------------
@@ -167,6 +173,8 @@ _init:
 	pop eax
 	ret
 
+%define VIRTUAL_LINEAR_FB_LOCATION 0xF0000000
+
 ; hack for LFB allocation
 GLOBAL _allocate_linear_frame_buffer
 _allocate_linear_frame_buffer:
@@ -211,6 +219,8 @@ _allocate_linear_frame_buffer:
 	add edx, PAGE_SIZE
 	cmp edx, ecx
 	jb .l2_b
+
+	mov eax, VIRTUAL_LINEAR_FB_LOCATION
 
 	pop edx
 	pop ecx
