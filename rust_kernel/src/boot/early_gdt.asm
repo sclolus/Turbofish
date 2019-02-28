@@ -27,6 +27,7 @@ segment .data
 %DEFINE GDT_DESTINATION 0x800
 
 align 16
+GLOBAL gdt_info
 gdt_info:
 	dw gdt_end - gdt_start
 	dd GDT_DESTINATION

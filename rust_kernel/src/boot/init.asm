@@ -20,24 +20,24 @@ _init:
 .low_memory_area:
 	; set temporary stack
 	; set up the stack pointer for a temporary stack
-	mov esp, VIRT2PHY_ADDR(temporary_stack)
+
+	TRANSLATE_ADDR temporary_stack
+	mov esp, eax
 	mov ebp, esp
 
 ; INITIALIZE GDT
 .init_gdt:
-	; mov gdt and gdt info in 0x800
-	mov esi, VIRT2PHY_ADDR(gdt_start)
+	TRANSLATE_ADDR gdt_start
+	mov esi, eax
+
 	mov edi, GDT_DESTINATION
 	mov ecx, gdt_end - gdt_start
 
 	cld
 	rep movsb
-	mov eax, VIRT2PHY_ADDR(gdt_info)
-	lgdt [eax]
 
-	; CS IS CODE SEGMENT REGISTER
-	jmp 0x8:VIRT2PHY_ADDR(.landing)
-.landing:
+	TRANSLATE_ADDR gdt_info
+	lgdt [eax]
 
 	; DS, ES, FS and GS ARE DATA SEGMENT REGISTER
 	mov ax, 0x10
@@ -71,7 +71,7 @@ _init:
 	PAGINATE_ADDR half_high_mem_mapping, l1_virt_offset, l1_page_offset, l1_physic_addr, l1_len
 
 	; Active paging
-	mov eax, VIRT2PHY_ADDR(page_directory_alpha_area)
+	TRANSLATE_ADDR page_directory_alpha_area
 	mov edx, eax
 	mov cr3, eax 				; fill CR3 with physic mem pointer to page directory
 
@@ -79,9 +79,8 @@ _init:
 	or eax, 0x80000001          ; enable Paging bit (PG). Protection bit must be also recall here
 	mov cr0, eax
 
-	; Jump to high memory
-	lea eax, [.high_memory_area]
-	jmp eax
+	; Jump to high memory, init code segment
+	jmp 0x8: .high_memory_area
 
 .high_memory_area:
 	call .disable_cursor

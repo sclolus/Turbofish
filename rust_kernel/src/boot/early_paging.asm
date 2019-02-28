@@ -3,8 +3,9 @@
 ; It must be include in all boot/init sources files before switch to half high memory
 
 ; early paging
-%define virtual_offset 0xC0000000
-%define VIRT2PHY_ADDR(x) (x - virtual_offset)
+extern virtual_offset
+extern kernel_physical_start
+extern kernel_physical_end
 
 ; Some usefull paging const
 %define READ_WRITE (1 << 1)
@@ -15,6 +16,34 @@
 %define PAGE_SIZE 4096
 %define PAGE_TABLE_PER_DIRECTORY 1024
 
+; Translate high mem address to low address: fn foo(address) -> eax
+%macro TRANSLATE_ADDR 1
+	lea eax, [%1]
+	sub eax, dword virtual_offset
+%endmacro
+
+; Get the kernel size: fn foo(eax) -> eax
+%macro GET_KERNEL_LENGTH 0
+	push edx
+	mov eax, dword kernel_physical_end
+	mov edx, dword kernel_physical_start
+	sub eax, edx
+	pop edx
+%endmacro
+
+; Convert a size in bytes to a number of pages: fn foo(eax) -> eax
+%macro BYTES_TO_PAGES 0
+	push edx
+	mov edx, eax
+	shr eax, 12
+	and edx, PAGE_MASK
+	cmp edx, 0
+	je %%next
+	inc eax
+%%next:
+	pop edx
+%endmacro
+
 ; Manual pagination system:
 ; %1 Area name
 ; %2 Offset in page directory: value ∈ [0..1024] -> virt_addr ∈ [0x0..0x1_00_00_00_00]
@@ -23,8 +52,16 @@
 ; %5 Len of Physical area in mo (BE CAREFULL: MUST BE MULTIPLE OF 2^2)
 
 %macro PAGINATE_ADDR 5
-	mov edi, VIRT2PHY_ADDR(page_directory_alpha_area) + (%2 * 4)
-	mov edx, VIRT2PHY_ADDR(page_table_alpha_area) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
+	; EDI = (page_directory_alpha_area - virtual_offset) + (%2 * 4)
+	mov edx, %2 * 4
+	TRANSLATE_ADDR page_directory_alpha_area
+	add eax, edx
+	mov edi, eax
+
+	; EDX = (page_table_alpha_area - virtual_offset) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
+	mov edx, PAGE_TABLE_PER_DIRECTORY * %3 * 4
+	TRANSLATE_ADDR page_table_alpha_area
+	add edx, eax
 
 	mov ecx, %5
 	shr ecx, 2          ; -> initialize counter of len / 4 (paquets of 4mb
@@ -36,8 +73,13 @@
 	add edx, PAGE_SIZE
 	loop .%1_a
 
-	; Mapping og physical address
-	mov edi, VIRT2PHY_ADDR(page_table_alpha_area) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
+	; Mapping of physical address
+	; EDI = (page_table_alpha_area - virtual_offset) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
+	mov edx, PAGE_TABLE_PER_DIRECTORY * %3 * 4
+	TRANSLATE_ADDR page_table_alpha_area
+	add eax, edx
+	mov edi, eax
+
 	mov edx, %4 				; -> beginning of physical area associated
 .%1_b:
 	mov eax, edx
@@ -70,14 +112,19 @@ _dynamic_map:
 	mov edx, 4
 	mul edx
 
-	add eax, VIRT2PHY_ADDR(page_directory_alpha_area)
+	mov edx, eax
+	TRANSLATE_ADDR page_directory_alpha_area
+	add eax, edx
 	mov edi, eax
 
 	mov eax, [ebp + 12]
 	mov edx, (PAGE_TABLE_PER_DIRECTORY * 4)
 	mul edx
 	mov edx, eax
-	add edx, VIRT2PHY_ADDR(page_table_alpha_area)
+
+	TRANSLATE_ADDR page_table_alpha_area
+	add edx, eax
+
 	push edx
 
 	mov ecx, [ebp + 20]          ; len
@@ -121,14 +168,24 @@ _dynamic_map:
 	pop ebp
 	ret
 
+GLOBAL _get_kernel_length
+_get_kernel_length:
+	GET_KERNEL_LENGTH
+	ret
+
+segment .data
+current_page: dd 0
+
 segment .bss
 align 4096
 
-; 1mo reserved for alpha pages tables Can allocate 1 go: Kernel_low: 64. Kernel_High: 64. Custom, 768.
+; 1mo reserved for alpha pages tables Can allocate 512 mo: Kernel_low: 256 mo. Kernel_High: 256 Mo. Custom, -?-.
 ; KERNEL SIZE CANNOT EXCEED 64 MO !
+GLOBAL page_table_alpha_area
 page_table_alpha_area:
-	resb 1 << 20
+	resb 1 << 19
 
 ; 4kb reserved for alpha pages table directory: Can allocate 4 go
+GLOBAL page_directory_alpha_area
 page_directory_alpha_area:
 	resb 1 << 12
