@@ -16,6 +16,14 @@ extern kernel_physical_end
 %define PAGE_SIZE 4096
 %define PAGE_TABLE_PER_DIRECTORY 1024
 
+; Initialize page pointer
+%macro INIT_PAGING_ENV 0
+	TRANSLATE_ADDR page_table_alpha_area
+	mov edx, eax
+	TRANSLATE_ADDR page_pointer
+	mov dword [eax], edx
+%endmacro
+
 ; Translate high mem address to low address: fn foo(address) -> eax
 %macro TRANSLATE_ADDR 1
 	lea eax, [%1]
@@ -45,57 +53,52 @@ extern kernel_physical_end
 %endmacro
 
 ; Manual pagination system:
-; %1 Area name
-; %2 Offset in page directory: value ∈ [0..1024] -> virt_addr ∈ [0x0..0x1_00_00_00_00]
-; %3 location in page table: value ∈ [0..2^6] (limitation due to 1go max of addressable mem)
-; %4 Physical area associated
-; %5 Len of Physical area in mo (BE CAREFULL: MUST BE MULTIPLE OF 2^2)
+; %1 Offset in page directory: value ∈ [0..1024] -> virt_addr ∈ [0x0..0x1_00_00_00_00]
+; %2 Physical area associated
+; %3 Len of Physical area in mo (BE CAREFULL: MUST BE MULTIPLE OF 2^2)
 
-%macro PAGINATE_ADDR 5
+%macro PAGINATE_ADDR 3
 	; EDI = (page_directory_alpha_area - virtual_offset) + (%2 * 4)
-	mov edx, %2 * 4
+	mov edx, %1 * 4
 	TRANSLATE_ADDR page_directory_alpha_area
 	add eax, edx
 	mov edi, eax
 
-	; EDX = (page_table_alpha_area - virtual_offset) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
-	mov edx, PAGE_TABLE_PER_DIRECTORY * %3 * 4
-	TRANSLATE_ADDR page_table_alpha_area
-	add edx, eax
+	TRANSLATE_ADDR page_pointer
+	mov edx, [eax]
 
-	mov ecx, %5
+	mov ecx, %3
 	shr ecx, 2          ; -> initialize counter of len / 4 (paquets of 4mb
-.%1_a:
+%%write_pd:
 	mov eax, edx
 	and eax, PAGE_MASK
 	or eax, READ_WRITE | PRESENT
 	stosd
 	add edx, PAGE_SIZE
-	loop .%1_a
+	loop %%write_pd
 
 	; Mapping of physical address
-	; EDI = (page_table_alpha_area - virtual_offset) + (PAGE_TABLE_PER_DIRECTORY * %3 * 4)
-	mov edx, PAGE_TABLE_PER_DIRECTORY * %3 * 4
-	TRANSLATE_ADDR page_table_alpha_area
-	add eax, edx
-	mov edi, eax
+	TRANSLATE_ADDR page_pointer
+	mov edi, [eax]
 
-	mov edx, %4 				; -> beginning of physical area associated
-.%1_b:
+	mov edx, %2 				; -> beginning of physical area associated
+%%write_pages:
 	mov eax, edx
 	and eax, PAGE_MASK
 	or eax, READ_WRITE | PRESENT
 	stosd
 	add edx, PAGE_SIZE
-	cmp edx, %4 + (1 << 20) * %5 ; -> rep until cur_phy_addr != base_phy_addr + len in mb
-	jne .%1_b
+	cmp edx, %2 + (1 << 20) * %3 ; -> rep until cur_phy_addr != base_phy_addr + len in mb
+	jne %%write_pages
+
+	TRANSLATE_ADDR page_pointer
+	mov dword [eax], edi
 %endmacro
 
 ; Functionnal pagination system:
 ; %1 Offset in page directory: value ∈ [0..1024] -> virt_addr ∈ [0x0..0x1_00_00_00_00]
-; %2 location in page table: value ∈ [0..2^6] (limitation due to 1go max of addressable mem)
-; %3 Physical area associated
-; %4 Len of Physical area in octet
+; %2 Physical area associated
+; %3 Len of Physical area in octet
 
 ; CAUTION: Usable only when high memory is initialized
 segment .text
@@ -117,23 +120,12 @@ _dynamic_map:
 	add eax, edx
 	mov edi, eax
 
-	mov eax, [ebp + 12]
-	mov edx, (PAGE_TABLE_PER_DIRECTORY * 4)
-	mul edx
-	mov edx, eax
+	TRANSLATE_ADDR page_pointer
+	mov edx, [eax]
 
-	TRANSLATE_ADDR page_table_alpha_area
-	add edx, eax
-
-	push edx
-
-	mov ecx, [ebp + 20]          ; len
-	mov eax, ecx
-	shr ecx, 12                  ; len = len / 4096
-	and eax, 0xfff               ; if reste. len + 1
-	cmp eax, 0
-	je .l2_a
-	add ecx, 1
+	mov eax, [ebp + 16]
+	BYTES_TO_PAGES
+	mov ecx, eax
 
 .l2_a:
 	mov eax, edx
@@ -143,11 +135,11 @@ _dynamic_map:
 	add edx, PAGE_SIZE
 	loop .l2_a
 
-	pop edx
-	mov edi, edx
+	TRANSLATE_ADDR page_pointer
+	mov edi, [eax]
 
-	mov edx, [ebp + 16]          ; phy_addr
-	mov ecx, [ebp + 20]          ; len
+	mov edx, [ebp + 12]          ; phy_addr
+	mov ecx, [ebp + 16]          ; len
 	add ecx, edx                 ; phy_addr + len = end_addr
 
 .l2_b:
@@ -158,6 +150,9 @@ _dynamic_map:
 	add edx, PAGE_SIZE
 	cmp edx, ecx
 	jb .l2_b
+
+	TRANSLATE_ADDR page_pointer
+	mov dword [eax], edi
 
 	pop edx
 	pop ecx
@@ -174,16 +169,17 @@ _get_kernel_length:
 	ret
 
 segment .data
-current_page: dd 0
+GLOBAL page_pointer
+page_pointer: dd 0xDEADBEEF
 
 segment .bss
 align 4096
 
-; 1mo reserved for alpha pages tables Can allocate 512 mo: Kernel_low: 256 mo. Kernel_High: 256 Mo. Custom, -?-.
-; KERNEL SIZE CANNOT EXCEED 64 MO !
+; 256 ko reserved for alpha pages tables Can allocate 256 mo: Kernel_low: 128 mo. Kernel_High: 128 Mo. Custom, -?-.
+; KERNEL SIZE CANNOT EXCEED 128 MO !
 GLOBAL page_table_alpha_area
 page_table_alpha_area:
-	resb 1 << 19
+	resb 1 << 18
 
 ; 4kb reserved for alpha pages table directory: Can allocate 4 go
 GLOBAL page_directory_alpha_area

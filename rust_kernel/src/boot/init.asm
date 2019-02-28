@@ -12,6 +12,8 @@ extern _set_fpu
 
 segment .text
 
+%define KERNEL_MAX_SIZE 64
+
 global _init
 _init:
 	; block interrupts
@@ -51,24 +53,23 @@ _init:
 	mov ss, ax
 
 	; Paginate kernel in half high memory (do also identity mapping)
+	INIT_PAGING_ENV
 
 	; 0x00000000 -> 0x04000000 mapped to phy 0x00000000 -> 0x04000000
 
 %define l0_virt_offset 0
-%define l0_page_offset 0
 %define l0_physic_addr 0
-%define l0_len 64
+%define l0_len KERNEL_MAX_SIZE
 
-	PAGINATE_ADDR identity_mapping, l0_virt_offset, l0_page_offset, l0_physic_addr, l0_len
+	PAGINATE_ADDR l0_virt_offset, l0_physic_addr, l0_len
 
 	; 0xC0000000 -> 0xC4000000 mapped to phy 0x00000000 -> 0x04000000
 
 %define l1_virt_offset 768
-%define l1_page_offset 16
 %define l1_physic_addr 0
-%define l1_len 64
+%define l1_len KERNEL_MAX_SIZE
 
-	PAGINATE_ADDR half_high_mem_mapping, l1_virt_offset, l1_page_offset, l1_physic_addr, l1_len
+	PAGINATE_ADDR l1_virt_offset, l1_physic_addr, l1_len
 
 	; Active paging
 	TRANSLATE_ADDR page_directory_alpha_area
@@ -146,12 +147,11 @@ _allocate_linear_frame_buffer:
 
 	push dword [ebp + 12]               ; len
 	push dword [ebp + 8]                ; physical address
-	push 32                             ; offset in page table
 	push (1024 - 64)                    ; virt addr offset. eq 0xF0000000
 
 	call _dynamic_map
 
-	add esp, 16
+	add esp, 12
 
 	mov eax, VIRTUAL_LINEAR_FB_LOCATION
 
