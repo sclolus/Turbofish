@@ -155,18 +155,19 @@ impl PageTable {
         Self { entries: [PageTableEntry::new(); 1024] }
     }
 
+    #[inline(always)]
     pub fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
-        assert!(virt_addr % 4096 == 0);
-        assert!(phys_addr % 4096 == 0);
+        //assert!(virt_addr % 4096 == 0);
+        //assert!(phys_addr % 4096 == 0);
 
         let page_table_index = virt_addr.get_bits(12..22);
 
-        if self[page_table_index].present() {
-            // println!("Entry {} is present: {:b}", page_table_index, self[page_table_index].inner);
-            return Err(());
-        } else {
-            // println!("Entry {} is not present: {:b}", page_table_index, self[page_table_index].inner);
-        }
+        // if self[page_table_index].present() {
+        //     // println!("Entry {} is present: {:b}", page_table_index, self[page_table_index].inner);
+        //     return Err(());
+        // } else {
+        //     // println!("Entry {} is not present: {:b}", page_table_index, self[page_table_index].inner);
+        // }
 
         //TODO: take custom flags
         self[page_table_index].set_read_write(true).set_present(true).set_physical_address(phys_addr);

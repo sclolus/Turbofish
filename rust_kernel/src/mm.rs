@@ -1,19 +1,24 @@
 //! This module contains the code for the Memory Management Unit and (probably) the Current Implementation of the Memory Manager
 //! See https://wiki.osdev.org/Paging for relevant documentation.
+pub mod address;
+pub use address::*;
 pub mod buddy_allocator;
-pub mod page_alloc;
+//pub mod page_alloc;
+//use page_alloc::{AllocFlags, PageAllocator, PhysicalAllocatorType, VirtualAllocatorType, ALLOC_NORMAL};
+pub mod nbr_pages;
 pub mod page_directory;
 pub mod page_table;
+pub mod physical_allocator;
+pub use nbr_pages::*;
+use physical_allocator::{init_physical_allocator, PHYSICAL_ALLOCATOR};
 
-use bit_field::BitField;
+//use bit_field::BitField;
 #[allow(unused_imports)]
 use buddy_allocator::*;
 use core::convert::AsRef;
-use page_alloc::{AllocFlags, PageAllocator, PhysicalAllocatorType, VirtualAllocatorType, ALLOC_NORMAL};
 
 //Remove this eventually.
 pub mod dummy_allocator;
-use dummy_allocator::DummyAllocator;
 
 pub const PAGE_SIZE: usize = 4096;
 // const_assert!(PAGE_SIZE.is_power_of_two());
@@ -22,7 +27,7 @@ use page_directory::{PageDirectory, PageDirectoryEntry};
 use page_table::PageTable;
 
 extern "C" {
-    pub fn _enable_paging_with_cr(addr: *mut PageDirectory);
+    pub fn _enable_paging_with_cr(addr: *mut PageDirectoryEntry);
     pub fn _enable_paging();
     pub fn _disable_paging();
     fn _enable_pse();
@@ -48,7 +53,7 @@ extern "C" {
     static __end_bss: u8;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryError {
     /// This might also significate that the allocator has no memory for internal storage of metadatas left.
     OutOfMem,
@@ -56,198 +61,69 @@ pub enum MemoryError {
     AlreadyOccupied,
     NotSatifiableFlags,
     AlreadyMapped,
-}
-macro_rules! print_section {
-    ($ident: ident) => {
-        println!(
-            "{}: [{:p}: {:p}[",
-            stringify!($ident),
-            &concat_idents!(__, start_, $ident),
-            &concat_idents!(__, end_, $ident)
-        );
-    };
-}
-
-macro_rules! get_section_tuple {
-    ($ident: ident) => {
-        (
-            &concat_idents!(__, start_, $ident) as *const _ as usize,
-            &concat_idents!(__, end_, $ident) as *const _ as usize,
-        )
-    };
-}
-macro_rules! sections {
-    () => {
-        [
-            ("text", get_section_tuple!(text)),
-            ("boot", get_section_tuple!(boot)),
-            ("bss", get_section_tuple!(bss)),
-            ("rodata", get_section_tuple!(rodata)),
-            ("data", get_section_tuple!(data)),
-            ("debug", get_section_tuple!(debug)),
-        ]
-        .iter()
-    };
-}
-
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct VirtualAddr(pub usize);
-
-impl VirtualAddr {
-    pub fn physical_addr(&self) -> Option<PhysicalAddr> {
-        let page_directory_index = self.pd_index();
-        let page_table_index = self.pt_index();
-        let page_directory = unsafe { &*PageDirectory::get_current_page_directory() };
-
-        let page_table = unsafe { &*page_directory[page_directory_index].get_page_table()? };
-
-        if page_table[page_table_index].present() {
-            Some(page_table[page_table_index].physical_address().into())
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn pd_index(&self) -> usize {
-        self.0.get_bits(22..32)
-    }
-
-    #[inline]
-    pub fn pt_index(&self) -> usize {
-        self.0.get_bits(12..22)
-    }
-
-    #[inline]
-    pub fn offset(&self) -> usize {
-        self.0.get_bits(0..12)
-    }
-}
-
-impl Into<usize> for VirtualAddr {
-    #[inline(always)]
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl From<usize> for VirtualAddr {
-    #[inline(always)]
-    fn from(addr: usize) -> Self {
-        Self(addr)
-    }
-}
-
-impl Address for VirtualAddr {}
-
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct PhysicalAddr(pub usize);
-
-impl Into<usize> for PhysicalAddr {
-    #[inline(always)]
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl From<usize> for PhysicalAddr {
-    #[inline(always)]
-    fn from(addr: usize) -> Self {
-        Self(addr)
-    }
-}
-
-impl PhysicalAddr {}
-impl Address for PhysicalAddr {}
-
-pub trait Address: From<usize> + Into<usize> + Copy + Clone + Ord + Eq {
-    #[inline(always)]
-    fn page_aligned(&self) -> bool {
-        let addr: usize = (*self).into();
-
-        (addr & (PAGE_SIZE - 1)) == 0
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Page {
-    number: usize,
-}
-
-impl Page {
-    // or impl<T: Address> From<T> for Page
-    fn from_address<T: Address>(addr: T) -> Self {
-        Self { number: (addr.into()) / PAGE_SIZE }
-    }
-
-    fn inclusive_range(from: Page, to: Page) -> PageIter {
-        PageIter { current: from, end: to }
-    }
-
-    fn exclusive_range(from: Page, mut to: Page) -> PageIter {
-        assert!(to.number > 0);
-        let end = Page { number: to.number - 1 };
-        PageIter { current: from, end }
-    }
-}
-
-// impl core::iter::Step for Page {
-//     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-//         if start.number > end.number {
-//             None
-//         } else {
-//             Some(end.number - start.number)
-//         }
-//     }
-
-//     fn replace_one(&mut self) -> Self {
-//         core::mem::replace(self, Page { number: 1 })
-//     }
-
-//     fn replace_zero(&mut self) -> Self {
-//         core::mem::replace(self, Page { number: 1 })
-//     }
-
-//     fn add_one(&self) -> Self {
-//         Page { number: self.number + 1 }
-//     }
-
-//     fn sub_one(&self) -> Self {
-//         Page { number: self.number - 1 }
-//     }
-
-//     fn add_usize(&self, n: usize) -> Option<Self> {
-//         Page { number: self.number.checked_add(n)? }
-//     }
-// }
-
-pub struct PageIter {
-    current: Page,
-    end: Page,
-}
-
-impl Iterator for PageIter {
-    type Item = Page;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current > self.end {
-            None
-        } else {
-            let page = self.current;
-            self.current.number += 1;
-            Some(page)
-        }
-    }
+    CannotFree,
 }
 
 #[allow(dead_code)]
 static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] = // should be renamed to INIT_PAGE_TABLES
     [PageTable::new(); PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE];
-
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
+
+use core::alloc::{GlobalAlloc, Layout};
+
+pub struct MemoryManager;
+
+unsafe impl GlobalAlloc for MemoryManager {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let page_allocator = PHYSICAL_ALLOCATOR.as_mut().unwrap();
+
+        page_allocator.alloc_kernel(layout.size()).unwrap().0 as *mut u8 //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        let page_allocator = PHYSICAL_ALLOCATOR.as_mut().unwrap();
+        page_allocator.free_kernel(PhysicalAddr(ptr as usize), layout.size()).unwrap(); //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+    }
+}
+
+#[alloc_error_handler]
+#[cfg(not(test))]
+fn out_of_memory(_: core::alloc::Layout) -> ! {
+    panic!("Out of memory: Failed to allocate a rust data structure");
+}
+
+pub unsafe fn init_memory_system() -> Result<(), ()> {
+    println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
+    PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
+    println!("step 1");
+    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0), PhysicalAddr(0), ((1 << 20) * 128) >> 12).unwrap();
+    println!("step 2");
+
+    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0xc0000000), PhysicalAddr(0xc0000000), ((1 << 20) * 1024) >> 12).unwrap();
+
+    // for dir_entry in PAGE_DIRECTORY.as_mut().iter_mut() {
+    //     dir_entry.set_present(true);
+    //     debug_assert!(dir_entry.present() == true);
+    // }
+
+    println!("before enable paging");
+    _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
+
+    println!("after enable paging");
+    init_physical_allocator();
+    /*
+    let toto: *mut u8;
+    toto = 0x60000000 as *mut u8;
+    unsafe {
+        *toto = 42;
+    }
+    */
+    println!("toto");
+
+    Ok(())
+}
+
+/*
 
 static mut PHYSICAL_BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 4 + 1] =
     [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 4 + 1];
@@ -415,7 +291,7 @@ unsafe impl GlobalAlloc for MemoryManager {
 fn out_of_memory(_: core::alloc::Layout) -> ! {
     panic!("Out of memory: Failed to allocate a rust data structure");
 }
-
+*/
 #[cfg(test)]
 mod tests {
     use super::*;

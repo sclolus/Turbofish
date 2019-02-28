@@ -1,4 +1,4 @@
-use super::{Address, MemoryError, PAGE_SIZE};
+use super::{Address, MemoryError, NbrPages, PAGE_SIZE};
 use bit_field::BitField;
 use core::fmt::Debug;
 use core::ops::{Add, IndexMut, Sub};
@@ -63,12 +63,14 @@ impl Order {
         1 << self.0
     }
 
+    #[inline(always)]
     pub fn from_nbr_pages(nbr_pages: usize) -> Self {
         Order(nbr_pages.next_power_of_two().trailing_zeros() as usize)
     }
 
+    #[inline(always)]
     pub fn from_size(size: usize) -> Self {
-        Self::from_nbr_pages(size / PAGE_SIZE + (size % PAGE_SIZE != 0) as usize)
+        Self::from_nbr_pages((size >> 12) + (size & 0xFFF != 0) as usize)
     }
 }
 
@@ -78,37 +80,44 @@ impl From<usize> for Order {
     }
 }
 
-pub struct BuddyAllocator<'a, T: Address> {
+/// METADATA for a buddy wich address 2 ^ 20 pages (ie: 4GB)
+/// multiply by 2 to get nb buddies
+/// divide by 4 because a buddy is 2 bytes
+const METADATA_SIZE: usize = (1 << 20) * 2 / 4;
+
+pub struct BuddyAllocator<T: Address> {
     addr: usize,
     /// In number of pages.
     size: usize,
     max_order: Order,
     /// Invariant: all unused buddies are zeroed
-    pub buddies: &'a mut [u8],
+    buddies: [u8; METADATA_SIZE],
     nbr_buddies: usize,
     _phantom: core::marker::PhantomData<T>,
 }
 
-impl<'a, T: Address> BuddyAllocator<'a, T> {
+impl<T: Address> BuddyAllocator<T> {
     /// Size in number of pages.
-    pub fn new(addr: usize, size: usize, buddies: &'a mut [u8]) -> Self {
+    #[inline(always)]
+    pub fn new(addr: usize, size: NbrPages) -> Self {
+        let size = size.0;
         assert!(addr % PAGE_SIZE == 0);
 
         let normalized_size = size.next_power_of_two();
         let unavailable_range = size..normalized_size;
         let max_order = Order::from_nbr_pages(normalized_size);
-        let nbr_buddies: usize = Self::nbr_buddies(dbg!(max_order.0));
+        let nbr_buddies: usize = Self::nbr_buddies(max_order.0);
 
-        assert!(dbg!(buddies.len() * 4) >= dbg!(nbr_buddies));
+        let mut new = Self {
+            addr,
+            size,
+            max_order,
+            buddies: [0; METADATA_SIZE],
+            nbr_buddies,
+            _phantom: core::marker::PhantomData,
+        };
 
-        for byte in buddies.iter_mut() {
-            *byte = 0;
-        }
-        dbg!(max_order);
-        dbg!(nbr_buddies);
-
-        let mut new = Self { addr, size, max_order, buddies, nbr_buddies, _phantom: core::marker::PhantomData };
-
+        // Otim needed: reserve only one buddy if > size
         for page_offset in unavailable_range {
             new.reserve((addr + page_offset * PAGE_SIZE).into(), Order(0)).expect("exess memory reserved failed");
         }
@@ -124,34 +133,45 @@ impl<'a, T: Address> BuddyAllocator<'a, T> {
     }
 
     /// size in bytes
-    pub fn alloc(&mut self, order: Order) -> Option<T> {
+    pub fn alloc(&mut self, order: Order) -> Result<T, MemoryError> {
         if order > self.max_order {
-            return None;
+            return Err(MemoryError::OutOfBound);
         }
 
-        self.find_allocable_buddy(order).map(|buddy_index| {
-            // dbg!(buddy_index);
-            self.set_occupied(buddy_index, true);
-            let layer_index = self.first_layer_index(order);
-            // dbg!(layer_index);
-            assert!(layer_index <= buddy_index);
-            let buddy_layer_index: usize = buddy_index - layer_index;
-            // dbg!(buddy_layer_index);
+        match self.find_allocable_buddy(order) {
+            Some(buddy_index) => {
+                // dbg!(buddy_index);
+                self.set_occupied(buddy_index, true);
+                let layer_index = self.first_layer_index(order);
+                // dbg!(layer_index);
+                assert!(layer_index <= buddy_index);
+                let buddy_layer_index: usize = buddy_index - layer_index;
+                // dbg!(buddy_layer_index);
 
-            (order.nbr_pages() * PAGE_SIZE * buddy_layer_index + self.addr).into()
-        })
+                Ok((order.nbr_pages() * PAGE_SIZE * buddy_layer_index + self.addr).into())
+            }
+            None => Err(MemoryError::OutOfMem),
+        }
     }
 
-    pub fn free(&mut self, addr: T, order: Order) {
+    pub fn free(&mut self, addr: T, order: Order) -> Result<(), MemoryError> {
         let addr: usize = addr.into();
         assert!((addr - self.addr) % PAGE_SIZE == 0);
         assert!((addr - self.addr) / PAGE_SIZE < self.size);
 
-        self.set_occupied(self.buddy_index(addr, order), false)
+        let buddy_index = self.buddy_index(addr, order);
+
+        if !self.get_buddy(buddy_index).occupied() || self.get_buddy(buddy_index).splitted() {
+            Err(MemoryError::CannotFree)
+        } else {
+            self.set_occupied(buddy_index, false);
+            Ok(())
+        }
     }
 
     /// Reserves a buddy of order `order` starting at address `addr`.
-    /// addr must be
+    /// # Panic
+    /// panic if addr is not a multiple of order.nbr_pages() * PAGE_SIZE
     pub fn reserve(&mut self, addr: T, order: Order) -> Result<(), MemoryError> {
         let addr: usize = addr.into();
         if order > self.max_order
@@ -182,6 +202,18 @@ impl<'a, T: Address> BuddyAllocator<'a, T> {
         Ok(())
     }
 
+    // pub fn reserve_range(&mut self, range: PageIter<T>) -> Result<(), MemoryError> {
+    //     let start = range.current;
+    //     for page in range {
+    //         if let Err(_) = self.reserve(page.into_addr(), Order(0)) {
+    //             for p in Page::exclusive_range(start, page) {
+    //                 self.free(p.into(), Order(0));
+    //             }
+    //             return Err(MemoryError::AlreadyOccupied);
+    //         }
+    //     }
+    //     Ok(())
+    // }
     fn left_child_index(i: usize) -> usize {
         i * 2 + 1
     }
@@ -210,8 +242,6 @@ impl<'a, T: Address> BuddyAllocator<'a, T> {
     }
 
     fn _find_allocable_buddy(&mut self, target_depth: usize, current_depth: usize, index: usize) -> Option<usize> {
-        //dbg!(index);
-        //dbg!(current_depth);
         if target_depth == current_depth {
             if self.get_buddy(index).occupied() || self.get_buddy(index).splitted() {
                 return None;
@@ -262,7 +292,6 @@ impl<'a, T: Address> BuddyAllocator<'a, T> {
                 }
             }
 
-            // I think this should be like this...
             // if buddy is orphelin, set parent splitted recusivly
             if value == true {
                 self.get_buddy(parent_index).set_splitted(true);
@@ -286,11 +315,6 @@ impl<'a, T: Address> BuddyAllocator<'a, T> {
         Self::nbr_buddies(self.depth_buddy_from_order(order) - 1)
     }
 
-    /// Returns the size in bytes taken by the metadata taken by a BuddyAllocator of order `order`.
-    pub fn metadata_size(max_order: Order) -> usize {
-        Self::nbr_buddies(max_order.0) / 4 + 1
-    }
-
     /// Returns the number of buddies of a BuddyAllocator of max order `order`.
     pub fn nbr_buddies(depth: usize) -> usize {
         2_usize.pow(depth as u32) * 2 - 1
@@ -307,7 +331,7 @@ mod test {
         use rand::prelude::*;
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 1000;
+        const NB_ALLOC: usize = 100;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x10000;
@@ -315,10 +339,8 @@ mod test {
             unsafe { allocator.alloc(Layout::from_size_align(NB_BLOCK * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
         const MAX_ORDER: usize = NB_BLOCK.trailing_zeros() as usize;
 
-        static mut BUDDIES: [u8; (NB_BLOCK * 2 - 1) / 4 + 1] = [0u8; (NB_BLOCK * 2 - 1) / 4 + 1];
-
         let mut buddy_allocator: BuddyAllocator<VirtualAddr> =
-            unsafe { BuddyAllocator::new(address_space.as_ptr() as usize, NB_BLOCK, &mut BUDDIES) };
+            unsafe { BuddyAllocator::new(address_space.as_ptr() as usize, NbrPages(NB_BLOCK)) };
 
         #[derive(Debug)]
         struct Allocation<'a> {
@@ -366,8 +388,8 @@ mod test {
                     //     )
                     // };
                     match mem {
-                        None => eprintln!("Failed to allocate"),
-                        Some(VirtualAddr(mem)) => {
+                        Err(e) => eprintln!("Failed to allocate {:?}", e),
+                        Ok(VirtualAddr(mem)) => {
                             let mem = unsafe { core::slice::from_raw_parts_mut(mem as *mut u8, nb_page * PAGE_SIZE) };
                             let random_u8 = rng.gen::<u8>();
                             for c in mem.iter_mut() {
@@ -457,19 +479,16 @@ mod test {
     #[test]
     fn test_allocator() {
         const NB_BLOCK: usize = 4;
-        static mut BUDDIES: [u8; (((1024 * 1024 * 1024) / 4096) * 2 - 1) / 8] =
-            [0u8; ((1024 * 1024 * 1024 / 4096) * 2 - 1) / 8];
-
         let map_location = 0x00010000 as *const u8;
 
         let mut buddy_allocator: BuddyAllocator<VirtualAddr> =
-            unsafe { BuddyAllocator::new(map_location as usize, NB_BLOCK, &mut BUDDIES) };
+            unsafe { BuddyAllocator::new(map_location as usize, NbrPages(NB_BLOCK)) };
 
         let alloc_size = 1;
         for i in 0..(NB_BLOCK) {
             let addr = buddy_allocator.alloc(alloc_size.into());
             dbg!(i);
-            assert_eq!(addr, Some(VirtualAddr(map_location as usize + PAGE_SIZE * i)));
+            assert_eq!(addr, Ok(VirtualAddr(map_location as usize + PAGE_SIZE * i)));
         }
         for i in 0..(NB_BLOCK) {
             buddy_allocator.free(VirtualAddr(map_location as usize + PAGE_SIZE * i), alloc_size.into());

@@ -25,4 +25,5 @@ rand = "0.6.5"
 qemu-graphical= []
 #test-succeed= []
 #test-failed= []
+test-sodo-allocator= []
 test = []

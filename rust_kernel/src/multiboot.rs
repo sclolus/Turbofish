@@ -1,3 +1,5 @@
+use crate::mm::NbrPages;
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
@@ -53,6 +55,10 @@ pub fn save_multiboot_info(multiboot_info: *const MultibootInfo) {
 }
 
 impl MultibootInfo {
+    // add 1Mo because mem upper start after 1Mo
+    pub fn get_memory_amount_nb_pages(&self) -> NbrPages {
+        NbrPages((self.mem_upper as usize + 1024) / 4)
+    }
     pub fn get_system_memory_amount(&self) -> usize {
         (self.mem_upper as usize + 1024) * 1024
     }

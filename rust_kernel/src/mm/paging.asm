@@ -17,7 +17,7 @@ _enable_paging_with_cr:
 	mov cr3, eax
 
 	mov eax, cr0
-	or eax, 0x80000000
+	or eax, 0x80000001
 	mov cr0, eax
 	leave
 	ret
@@ -27,7 +27,7 @@ _enable_paging:
 	mov ebp, esp
 
 	mov eax, cr0
-	or eax, 0x80000000
+	or eax, 0x80000001
 	mov cr0, eax
 	leave
 	ret

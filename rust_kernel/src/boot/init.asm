@@ -76,6 +76,11 @@ _init:
 	pop eax
 	ret
 
+global _get_esp
+_get_esp:
+	mov eax, esp
+	ret
+
 segment .bss
 
 ; 4kb for temporary stack
@@ -83,5 +88,5 @@ resb 1 << 12
 temporary_stack:
 
 ; 1mo for the main kernel stack
-resb 1 << 20
+resb 1 << 22
 kernel_stack:

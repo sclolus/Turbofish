@@ -24,7 +24,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     unsafe {
         interrupts::init();
-        mm::init_paging().unwrap();
 
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
@@ -125,6 +124,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     let date = rtc.read_date();
     println!("{}", date);
 
+    //TODO: we should init paging at the begin of code
+    unsafe {
+        mm::init_memory_system().unwrap();
+    }
     use alloc::vec::Vec;
     let mut vec: Vec<u8> = Vec::new();
     for index in 0..100 {

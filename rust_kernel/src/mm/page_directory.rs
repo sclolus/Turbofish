@@ -259,50 +259,53 @@ impl PageDirectory {
         Some(&page_table[ptindex])
     }
 
-    pub unsafe fn remap_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
-        assert_eq!(virt_addr % PAGE_SIZE, 0);
-        assert_eq!(phys_addr % PAGE_SIZE, 0);
+    #[inline(always)]
+    pub unsafe fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
+        //        assert_eq!(virt_addr % PAGE_SIZE, 0);
+        //        assert_eq!(phys_addr % PAGE_SIZE, 0);
 
         let page_dir_index = virt_addr.get_bits(22..32);
 
         // Do not uncomment.
         // self[page_dir_index] = *PageDirectoryEntry::new().set_present(true).set_read_write(true);
 
-        if page_dir_index == 1023 {
-            println!("{:x}", virt_addr);
-            println!("{:x}", phys_addr);
-        }
+        // if page_dir_index == 1023 {
+        //     println!("{:x}", virt_addr);
+        //     println!("{:x}", phys_addr);
+        // }
         let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
 
-        assert_eq!(
-            page_table as *const PageTable as usize,
-            self[page_dir_index].entry_addr() as *const PageTable as usize
-        );
+        /*
+                assert_eq!(
+                    page_table as *const PageTable as usize,
+                    self[page_dir_index].entry_addr() as *const PageTable as usize
+                );
+        */
 
-        use super::PAGE_TABLES;
-        if PAGE_TABLES.iter().any(|iter_table| {
+        // use super::PAGE_TABLES;
+        // if PAGE_TABLES.iter().any(|iter_table| {
+        //     // println!("{:p} != {:p}", iter_table, page_table);
+        //     iter_table as *const _ == page_table as *const _
+        // }) == false
+        // {
+        //     for (_, _table) in PAGE_TABLES.iter().enumerate() {
+        //         // println!(
+        //         //     "{} -> {:p} != {:p} is not found in PAGE_TABLES",
+        //         //     index, table as *const _, page_table as *const _
+        //         // );
+        //     }
+        // }
+        /*      assert!(PAGE_TABLES.iter().any(|iter_table| {
             // println!("{:p} != {:p}", iter_table, page_table);
             iter_table as *const _ == page_table as *const _
-        }) == false
-        {
-            for (_, _table) in PAGE_TABLES.iter().enumerate() {
-                // println!(
-                //     "{} -> {:p} != {:p} is not found in PAGE_TABLES",
-                //     index, table as *const _, page_table as *const _
-                // );
-            }
-        }
-        assert!(PAGE_TABLES.iter().any(|iter_table| {
-            // println!("{:p} != {:p}", iter_table, page_table);
-            iter_table as *const _ == page_table as *const _
-        }));
+        }));*/
 
         page_table.map_addr(virt_addr, phys_addr)?;
         Ok(())
     }
 
     //TODO: check overflow
-    pub unsafe fn remap_range_addr(
+    pub unsafe fn map_range_addr(
         &mut self,
         virt_addr: VirtualAddr,
         phys_addr: PhysicalAddr,
@@ -311,7 +314,7 @@ impl PageDirectory {
         assert_eq!(virt_addr.0 % PAGE_SIZE, 0);
         assert_eq!(phys_addr.0 % PAGE_SIZE, 0);
         for offset in (0..nb_pages).map(|offset| offset * PAGE_SIZE) {
-            self.remap_addr(virt_addr.0 + offset, phys_addr.0 + offset)?;
+            self.map_addr(virt_addr.0 + offset, phys_addr.0 + offset)?;
         }
         Ok(())
     }

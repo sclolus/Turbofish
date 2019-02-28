@@ -258,18 +258,6 @@ impl<'a> DummyAllocator<'a> {
     }
 }
 
-// struct Allocator<T>
-// where
-//     T: From<usize>;
-
-// impl<T> Allocator<T>
-// where T: From<usize> {
-//     fn alloc(nbr_pages: usize) -> Option<T> {
-//         let addr = 0x0;
-
-//         Some(addr.into())
-//     }
-// }
 #[cfg(test)]
 mod test {
     use super::*;
@@ -279,7 +267,7 @@ mod test {
         use rand::prelude::*;
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 10000;
+        const NB_ALLOC: usize = 1000;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x1000;

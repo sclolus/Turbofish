@@ -4,3 +4,5 @@ pub mod failed_test;
 pub mod succeed_test;
 
 pub mod helpers;
+#[cfg(feature = "test-sodo-allocator")]
+pub mod sodo_allocator;
