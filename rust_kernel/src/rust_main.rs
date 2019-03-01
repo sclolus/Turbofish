@@ -124,16 +124,24 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     let date = rtc.read_date();
     println!("{}", date);
 
+    use alloc::vec;
+    use alloc::vec::Vec;
     //TODO: we should init paging at the begin of code
+    //test Bootstrap allocator
+    //let mut vec: Vec<u32> = vec![0; 100];
+
+    //println!("{:?}", vec);
     unsafe {
         mm::init_memory_system().unwrap();
     }
-    use alloc::vec::Vec;
     let mut vec: Vec<u8> = Vec::new();
     for index in 0..100 {
         vec.push(index)
     }
 
+    let vec2 = vec![42_u8; 42];
+    println!("{:?}", vec2);
     println!("{:?}", vec);
+    //loop {}
     0
 }

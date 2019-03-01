@@ -1,5 +1,6 @@
 //! This module contains the code for the Memory Management Unit and (probably) the Current Implementation of the Memory Manager
 //! See https://wiki.osdev.org/Paging for relevant documentation.
+//! usize for a memory quantity is interpreted as a number a bytes
 pub mod address;
 pub use address::*;
 pub mod buddy_allocator;
@@ -10,7 +11,8 @@ pub mod page_directory;
 pub mod page_table;
 pub mod physical_allocator;
 pub use nbr_pages::*;
-use physical_allocator::{init_physical_allocator, PHYSICAL_ALLOCATOR};
+use physical_allocator::init_physical_allocator;
+use physical_allocator::{Allocator, ALLOCATOR};
 
 //use bit_field::BitField;
 #[allow(unused_imports)]
@@ -75,14 +77,19 @@ pub struct MemoryManager;
 
 unsafe impl GlobalAlloc for MemoryManager {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let page_allocator = PHYSICAL_ALLOCATOR.as_mut().unwrap();
+        //core::ptr::null::<u8>() as *mut u8
 
-        page_allocator.alloc_kernel(layout.size()).unwrap().0 as *mut u8 //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+        match &mut ALLOCATOR {
+            Allocator::Physical(physical) => physical.alloc_kernel(layout.size()).unwrap().0 as *mut u8, //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Bootstrap(bootstrap) => bootstrap.alloc_bootstrap(layout.size(), layout).unwrap().0 as *mut u8,
+        }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        let page_allocator = PHYSICAL_ALLOCATOR.as_mut().unwrap();
-        page_allocator.free_kernel(PhysicalAddr(ptr as usize), layout.size()).unwrap(); //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+        match &mut ALLOCATOR {
+            Allocator::Physical(physical) => physical.free_kernel(PhysicalAddr(ptr as usize), layout.size()).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
+        }
     }
 }
 
@@ -106,11 +113,13 @@ pub unsafe fn init_memory_system() -> Result<(), ()> {
     //     debug_assert!(dir_entry.present() == true);
     // }
 
+    init_physical_allocator();
     println!("before enable paging");
+    dbg!(&ALLOCATOR);
     _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 
     println!("after enable paging");
-    init_physical_allocator();
+    dbg!(&ALLOCATOR);
     /*
     let toto: *mut u8;
     toto = 0x60000000 as *mut u8;

@@ -3,6 +3,7 @@ use super::MemoryError;
 use super::NbrPages;
 use super::Order;
 use super::PhysicalAddr;
+use alloc::vec;
 
 /// 64 MB for the kernel memory
 const KERNEL_PHYSIC_MEMORY: NbrPages = NbrPages::_32MB;
@@ -11,25 +12,70 @@ const KERNEL_PHYSIC_MEMORY: NbrPages = NbrPages::_32MB;
 //TODO: change that for the linker offset
 const KERNEL_PHYSIC_OFFSET: usize = 0x4_000_000;
 
-pub struct PhysicalAllocator {
-    kernel_allocator: BuddyAllocator<PhysicalAddr>,
-    _user_allocator: BuddyAllocator<PhysicalAddr>,
+/// 4 MB for the bootstrap
+const MEMORY_BOOTSTRAP_ALLOCATOR: usize = 0x400_000;
+
+pub static mut ALLOCATOR: Allocator = Allocator::Bootstrap(BootstrapAllocator::new());
+
+pub enum Allocator {
+    Bootstrap(BootstrapAllocator),
+    Physical(PhysicalAllocator),
 }
 
-pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalAllocator> = None;
+static mut BSS_MEMORY: [u8; MEMORY_BOOTSTRAP_ALLOCATOR] = [0; MEMORY_BOOTSTRAP_ALLOCATOR];
+// TODO: align that
+
+#[derive(Debug)]
+pub struct BootstrapAllocator {
+    current_offset: usize,
+}
+
+use core::fmt;
+
+impl fmt::Debug for Allocator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Allocator::Bootstrap(b) => write!(f, "bootstrap allocator {:?}", b),
+            Allocator::Physical(_p) => write!(f, "physical allocator"),
+        }
+    }
+}
+
+use core::alloc::Layout;
+
+impl BootstrapAllocator {
+    pub const fn new() -> Self {
+        BootstrapAllocator { current_offset: 0 }
+    }
+    pub unsafe fn alloc_bootstrap(&mut self, size: usize, layout: Layout) -> Result<PhysicalAddr, MemoryError> {
+        println!("{:?}", layout);
+        println!("{:x?}", &BSS_MEMORY[0] as *const u8 as usize);
+        println!("{:x?}", &BSS_MEMORY[self.current_offset] as *const u8 as usize);
+
+        let address = &BSS_MEMORY[self.current_offset] as *const u8 as usize;
+        self.current_offset += size;
+        if self.current_offset > BSS_MEMORY.len() {
+            panic!("No more bootstrap memory");
+        }
+        Ok(PhysicalAddr(address))
+    }
+}
+
+#[derive(Debug)]
+pub struct PhysicalAllocator {
+    kernel_allocator: BuddyAllocator<PhysicalAddr>,
+}
+
+// pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalAllocator> = None;
 
 impl PhysicalAllocator {
     pub fn new() -> Self {
         unsafe {
             Self {
-                kernel_allocator: BuddyAllocator::new(KERNEL_PHYSIC_OFFSET, KERNEL_PHYSIC_MEMORY),
-                _user_allocator: BuddyAllocator::new(
-                    // offset in bytes
-                    KERNEL_PHYSIC_OFFSET + Into::<usize>::into(KERNEL_PHYSIC_MEMORY),
-                    // size in page
-                    crate::multiboot::MULTIBOOT_INFO.unwrap().get_memory_amount_nb_pages()
-                        - KERNEL_PHYSIC_OFFSET.into()
-                        - KERNEL_PHYSIC_MEMORY,
+                kernel_allocator: BuddyAllocator::new(
+                    KERNEL_PHYSIC_OFFSET,
+                    KERNEL_PHYSIC_MEMORY,
+                    vec![0; BuddyAllocator::<PhysicalAddr>::metadata_from_nb_pages(KERNEL_PHYSIC_MEMORY)],
                 ),
             }
         }
@@ -45,10 +91,9 @@ impl PhysicalAllocator {
 }
 
 pub fn init_physical_allocator() {
+    let physical = PhysicalAllocator::new();
     unsafe {
-        PHYSICAL_ALLOCATOR = match PHYSICAL_ALLOCATOR {
-            Some(_) => panic!("double init physical allocator"),
-            None => Some(PhysicalAllocator::new()),
-        }
+        ALLOCATOR = Allocator::Physical(physical);
+        dbg!(&ALLOCATOR as *const Allocator as *const u8);
     }
 }
