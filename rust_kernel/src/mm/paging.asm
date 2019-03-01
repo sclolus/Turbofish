@@ -37,7 +37,7 @@ _disable_paging:
 	mov ebp, esp
 
 	mov eax, cr0
-	and eax, ~0x80000000
+	and eax, 0x7fffffff
 	mov cr0, eax
 
 	leave

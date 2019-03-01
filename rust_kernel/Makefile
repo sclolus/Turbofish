@@ -150,7 +150,7 @@ build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
 test:
-	cargo test --target i686-unknown-linux-gnu -- --nocapture
+	cargo test --target i686-unknown-linux-gnu
 
 $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
