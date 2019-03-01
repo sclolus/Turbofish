@@ -1,14 +1,24 @@
 use super::PAGE_DIRECTORY;
 use super::PAGE_SIZE;
 use bit_field::BitField;
-use core::ops::{Range, RangeInclusive};
+use core::ops::{Add, Range, RangeInclusive};
 
-pub trait Address: From<usize> + Into<usize> + Copy + Clone + Ord + Eq {
+pub trait Address: From<usize> + Into<usize> + Add<usize> + Copy + Clone + Ord + Eq {
     #[inline(always)]
-    fn page_is_aligned(&self) -> bool {
+    fn is_aligned_on(&self, size: usize) -> bool {
         let addr: usize = (*self).into();
 
-        (addr & (PAGE_SIZE - 1)) == 0
+        (addr & (size - 1)) == 0
+    }
+    #[inline(always)]
+    /// Align the address on a multiple of size
+    /// size must be a power of two
+    fn align_on(self, size: usize) -> <Self as Add<usize>>::Output {
+        debug_assert!(size.is_power_of_two());
+
+        let addr: usize = self.into();
+
+        self + (!self.is_aligned_on(size)) as usize * (size - (addr & (size - 1)))
     }
 }
 
@@ -61,6 +71,13 @@ impl From<usize> for VirtualAddr {
     }
 }
 
+impl Add<usize> for VirtualAddr {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output {
+        From::<usize>::from(Into::<usize>::into(self) + rhs)
+    }
+}
+
 impl Address for VirtualAddr {}
 
 #[repr(transparent)]
@@ -78,6 +95,13 @@ impl From<usize> for PhysicalAddr {
     #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
+    }
+}
+
+impl Add<usize> for PhysicalAddr {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output {
+        From::<usize>::from(Into::<usize>::into(self) + rhs)
     }
 }
 
@@ -187,5 +211,15 @@ mod test {
         }
         let all_page: Vec<Page<PhysicalAddr>> = page_iter.collect();
         assert_eq!(all_page.len(), 10);
+    }
+    #[test]
+    fn test_align() {
+        for i in 0..1000 {
+            dbg!(i);
+            dbg!(PhysicalAddr(i).align_on(4));
+            assert!(PhysicalAddr(i).align_on(4).is_aligned_on(4));
+            assert!(PhysicalAddr(i).align_on(4) >= PhysicalAddr(i));
+        }
+        assert_eq!(PhysicalAddr(1).align_on(4), PhysicalAddr(4));
     }
 }
