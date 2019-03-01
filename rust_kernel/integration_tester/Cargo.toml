@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 toml = "0.4.8"
 wait-timeout = "0.1.5"
-colorful = "0.2.1"
 getopts = "0.2.18"
+colored = "1.7.0"
