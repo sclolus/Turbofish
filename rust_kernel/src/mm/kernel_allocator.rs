@@ -88,7 +88,7 @@ impl KernelAllocator {
     }
     /// size in bytes
     pub fn alloc(&mut self, size: usize) -> Result<VirtualAddr, MemoryError> {
-        println!("alloc size: {:?}", size);
+        //println!("alloc size: {:?}", size);
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
         let paddr = self.phys.alloc(order).map_err(|e| {
@@ -107,7 +107,7 @@ impl KernelAllocator {
 
     /// size in bytes
     pub fn free(&mut self, addr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
-        println!("free size: {:?}", size);
+        //println!("free size: {:?}", size);
         let order = size.into();
         self.virt.free(addr, order)?;
         if let Some(phys_addr) = addr.physical_addr() {
