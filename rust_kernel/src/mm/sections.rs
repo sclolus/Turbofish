@@ -1,3 +1,23 @@
+extern "C" {
+    static __start_text: u8;
+    static __end_text: u8;
+
+    static __start_boot: u8;
+    static __end_boot: u8;
+
+    static __start_rodata: u8;
+    static __end_rodata: u8;
+
+    static __start_data: u8;
+    static __end_data: u8;
+
+    static __start_debug: u8;
+    static __end_debug: u8;
+
+    static __start_bss: u8;
+    static __end_bss: u8;
+}
+
 #[macro_use]
 macro_rules! print_section {
     ($ident: ident) => {

@@ -1,7 +1,7 @@
+//! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
+//! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::PAGE_SIZE;
 use super::{PhysicalAddr, VirtualAddr};
-/// This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
-/// See https://wiki.osdev.org/Paging for relevant documentation.
 use bit_field::BitField;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;

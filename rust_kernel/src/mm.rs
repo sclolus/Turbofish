@@ -6,13 +6,12 @@ pub use address::*;
 pub mod buddy_allocator;
 //pub mod page_alloc;
 //use page_alloc::{AllocFlags, PageAllocator, PhysicalAllocatorType, VirtualAllocatorType, ALLOC_NORMAL};
+pub mod kernel_allocator;
 pub mod nbr_pages;
 pub mod page_directory;
 pub mod page_table;
-pub mod physical_allocator;
+use kernel_allocator::{init_physical_allocator, Allocator, ALLOCATOR};
 pub use nbr_pages::*;
-use physical_allocator::init_physical_allocator;
-use physical_allocator::{Allocator, ALLOCATOR};
 
 //use bit_field::BitField;
 #[allow(unused_imports)]
@@ -35,26 +34,6 @@ extern "C" {
     fn _enable_pse();
 }
 
-extern "C" {
-    static __start_text: u8;
-    static __end_text: u8;
-
-    static __start_boot: u8;
-    static __end_boot: u8;
-
-    static __start_rodata: u8;
-    static __end_rodata: u8;
-
-    static __start_data: u8;
-    static __end_data: u8;
-
-    static __start_debug: u8;
-    static __end_debug: u8;
-
-    static __start_bss: u8;
-    static __end_bss: u8;
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryError {
     /// This might also significate that the allocator has no memory for internal storage of metadatas left.
@@ -69,6 +48,7 @@ pub enum MemoryError {
 #[allow(dead_code)]
 static mut PAGE_TABLES: [PageTable; PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE] = // should be renamed to INIT_PAGE_TABLES
     [PageTable::new(); PageDirectory::DEFAULT_PAGE_DIRECTORY_SIZE];
+
 static mut PAGE_DIRECTORY: PageDirectory = PageDirectory::new(); // Should be renamed to INIT_PAGE_DIRECTORY
 
 use core::alloc::{GlobalAlloc, Layout};
@@ -80,14 +60,14 @@ unsafe impl GlobalAlloc for MemoryManager {
         //core::ptr::null::<u8>() as *mut u8
 
         match &mut ALLOCATOR {
-            Allocator::Physical(physical) => physical.alloc_kernel(layout.size()).unwrap().0 as *mut u8, //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
-            Allocator::Bootstrap(bootstrap) => bootstrap.alloc_bootstrap(layout.size(), layout).unwrap().0 as *mut u8,
+            Allocator::Kernel(a) => a.alloc(layout.size()).unwrap().0 as *mut u8, //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Bootstrap(b) => b.alloc_bootstrap(layout.size(), layout).unwrap().0 as *mut u8,
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         match &mut ALLOCATOR {
-            Allocator::Physical(physical) => physical.free_kernel(PhysicalAddr(ptr as usize), layout.size()).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Kernel(a) => a.free(VirtualAddr(ptr as usize), layout.size()).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
             Allocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
         }
     }
@@ -103,9 +83,8 @@ pub unsafe fn init_memory_system() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
     PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
     println!("step 1");
-    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0), PhysicalAddr(0), ((1 << 20) * 128) >> 12).unwrap();
+    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0), PhysicalAddr(0), ((1 << 20) * 64) >> 12).unwrap();
     println!("step 2");
-
     PAGE_DIRECTORY.map_range_addr(VirtualAddr(0xc0000000), PhysicalAddr(0xc0000000), ((1 << 20) * 1024) >> 12).unwrap();
 
     // for dir_entry in PAGE_DIRECTORY.as_mut().iter_mut() {
@@ -113,13 +92,11 @@ pub unsafe fn init_memory_system() -> Result<(), ()> {
     //     debug_assert!(dir_entry.present() == true);
     // }
 
-    init_physical_allocator();
     println!("before enable paging");
-    dbg!(&ALLOCATOR);
     _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 
+    init_physical_allocator();
     println!("after enable paging");
-    dbg!(&ALLOCATOR);
     /*
     let toto: *mut u8;
     toto = 0x60000000 as *mut u8;

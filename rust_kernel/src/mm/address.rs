@@ -1,4 +1,4 @@
-use super::page_directory::PageDirectory;
+use super::PAGE_DIRECTORY;
 use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::ops::{Range, RangeInclusive};
@@ -20,9 +20,9 @@ impl VirtualAddr {
     pub fn physical_addr(&self) -> Option<PhysicalAddr> {
         let page_directory_index = self.pd_index();
         let page_table_index = self.pt_index();
-        let page_directory = unsafe { &*PageDirectory::get_current_page_directory() };
+        //     let page_directory = unsafe { &*PageDirectory::get_current_page_directory() };
 
-        let page_table = unsafe { &*page_directory[page_directory_index].get_page_table()? };
+        let page_table = unsafe { &*PAGE_DIRECTORY[page_directory_index].get_page_table()? };
 
         if page_table[page_table_index].present() {
             Some(page_table[page_table_index].physical_address().into())
