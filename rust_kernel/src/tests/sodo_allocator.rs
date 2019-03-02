@@ -1,7 +1,7 @@
 use crate::interrupts;
 use crate::io::UART_16550;
 use crate::memory;
-use crate::multiboot::{save_multiboot_info, MultibootInfo};
+use crate::multiboot::MultibootInfo;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]
@@ -9,12 +9,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     unsafe {
         UART_16550.init();
     }
-    save_multiboot_info(multiboot_info);
+    let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        interrupts::init();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
     }
     unsafe {
-        memory::init_memory_system().unwrap();
+        interrupts::init();
     }
 
     use crate::math::random::rand;

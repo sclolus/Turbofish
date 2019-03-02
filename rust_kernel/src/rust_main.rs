@@ -5,7 +5,7 @@ use crate::interrupts::{pic_8259, PIC_8259};
 use crate::memory;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
-use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
+use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
 use core::time::Duration;
 
@@ -16,16 +16,17 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
-    save_multiboot_info(multiboot_info);
+    let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
-        println!("base memory: {:?} {:?}", MULTIBOOT_INFO.unwrap().mem_lower, MULTIBOOT_INFO.unwrap().mem_upper);
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
     }
 
     unsafe {
+        println!("multiboot_infos {:#?}", multiboot_info);
+        println!("base memory: {:?} {:?}", multiboot_info.mem_lower, multiboot_info.mem_upper);
+    }
+    unsafe {
         interrupts::init();
-
-        memory::init_memory_system().unwrap();
 
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
@@ -43,9 +44,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
-    }
-    unsafe {
-        println!("multiboot_infos {:#?}", MULTIBOOT_INFO);
     }
     debug::bench_start();
     // fucking_big_string(3);

@@ -1,9 +1,7 @@
 use crate::memory::NbrPages;
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C)]
 #[repr(packed)]
-#[derive(Default)]
 pub struct MultibootInfo {
     /*0        |*/ pub flags: u32, // required
     /*         +*/
@@ -44,14 +42,6 @@ pub struct MultibootInfo {
     /* 108     |*/ pub framebuffer_bpp: u8,
     /* 109     |*/ pub framebuffer_typ: u8,
     /* 110-115 |*/ pub color_info: [u8; 5],
-}
-
-pub static mut MULTIBOOT_INFO: Option<MultibootInfo> = None;
-
-pub fn save_multiboot_info(multiboot_info: *const MultibootInfo) {
-    unsafe {
-        MULTIBOOT_INFO = Some(*multiboot_info);
-    }
 }
 
 impl MultibootInfo {
