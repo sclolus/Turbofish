@@ -460,7 +460,7 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
                     mode_info.x_resolution as usize
                         * mode_info.y_resolution as usize
                         * mode_info.bits_per_pixel as usize
-                        / 3,
+                        / 8,
                 )
             },
             mode_info.x_resolution as usize,

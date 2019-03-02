@@ -25,18 +25,21 @@ SECTIONS
 	.text BLOCK(4K) : AT(ADDR(.text) - virtual_offset) ALIGN(4K)
 	{
 		*(.text)
+		*(.text.*)
 	}
 
 	/* Read-only data. */
 	.rodata BLOCK(4K) : AT(ADDR(.rodata) - virtual_offset) ALIGN(4K)
 	{
 		*(.rodata)
+		*(.rodata.*)
 	}
 
 	/* Read-write data (initialized) */
 	.data BLOCK(4K) : AT(ADDR(.data) - virtual_offset) ALIGN(4K)
 	{
 		*(.data)
+		*(.data.*)
 	}
 
 	/* For special rust debug section: got mysterious N symbols */
@@ -53,7 +56,7 @@ SECTIONS
 	.bss BLOCK(4K) : AT(ADDR(.bss) - virtual_offset) ALIGN(4K)
 	{
 		*(.bss)
-		*(.bss._*)
+		*(.bss.*)
 		*(COMMON)
 	}
 	/* The compiler may produce other sections, by default it will put them in

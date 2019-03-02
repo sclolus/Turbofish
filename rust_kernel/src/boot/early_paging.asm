@@ -58,7 +58,7 @@ extern kernel_physical_end
 ; %3 Len of Physical area in mo (BE CAREFULL: MUST BE MULTIPLE OF 2^2)
 
 %macro PAGINATE_ADDR 3
-	; EDI = (page_directory_alpha_area - virtual_offset) + (%2 * 4)
+	; EDI = (page_directory_alpha_area - virtual_offset) + (%1 * 4)
 	mov edx, %1 * 4
 	TRANSLATE_ADDR page_directory_alpha_area
 	add eax, edx

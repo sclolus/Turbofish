@@ -73,7 +73,6 @@ _init:
 
 	; Active paging
 	TRANSLATE_ADDR page_directory_alpha_area
-	mov edx, eax
 	mov cr3, eax 				; fill CR3 with physic mem pointer to page directory
 
 	mov eax, cr0
