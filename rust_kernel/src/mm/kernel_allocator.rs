@@ -96,24 +96,26 @@ impl KernelAllocator {
             e
         })?;
         unsafe {
-            PAGE_DIRECTORY.map_range_addr(vaddr, paddr, size.into()).map_err(|_e| {
+            PAGE_DIRECTORY.map_range_addr(vaddr, paddr, size.into()).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
                 self.phys.free(paddr, order).unwrap();
-                MemoryError::AlreadyOccupied
+                e
             })?;
         }
         Ok(vaddr)
     }
 
     /// size in bytes
-    pub fn free(&mut self, addr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
+    pub fn free(&mut self, vaddr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
         //println!("free size: {:?}", size);
         let order = size.into();
-        self.virt.free(addr, order)?;
-        if let Some(phys_addr) = addr.physical_addr() {
-            self.phys.free(phys_addr, size.into())?;
+        self.virt.free(vaddr, order)?;
+        if let Some(paddr) = vaddr.physical_addr() {
+            self.phys.free(paddr, size.into())?;
+            unsafe { PAGE_DIRECTORY.unmap_range_addr(vaddr, size.into()) }
+        } else {
+            Err(MemoryError::NotPhysicalyMapped)
         }
-        Ok(())
     }
 }
 

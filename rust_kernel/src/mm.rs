@@ -42,7 +42,9 @@ pub enum MemoryError {
     AlreadyOccupied,
     NotSatifiableFlags,
     AlreadyMapped,
+    AlreadyUnMapped,
     CannotFree,
+    NotPhysicalyMapped,
 }
 
 #[allow(dead_code)]
@@ -83,9 +85,9 @@ pub unsafe fn init_memory_system() -> Result<(), ()> {
     println!("pointeur to page_directory: {:p}", PAGE_DIRECTORY.as_ref().as_ptr());
     PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
     println!("step 1");
-    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0), PhysicalAddr(0), ((1 << 20) * 64) >> 12).unwrap();
+    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0), PhysicalAddr(0), NbrPages::_64MB).unwrap();
     println!("step 2");
-    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0xc0000000), PhysicalAddr(0xc0000000), ((1 << 20) * 1024) >> 12).unwrap();
+    PAGE_DIRECTORY.map_range_addr(VirtualAddr(0xc0000000), PhysicalAddr(0xc0000000), NbrPages::_1GB).unwrap();
 
     // for dir_entry in PAGE_DIRECTORY.as_mut().iter_mut() {
     //     dir_entry.set_present(true);

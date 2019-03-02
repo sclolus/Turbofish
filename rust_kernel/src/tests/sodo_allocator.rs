@@ -13,11 +13,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         mm::init_memory_system().unwrap();
     }
 
-    use crate::math::random::{rand};
+    use crate::math::random::rand;
 
-    fn make_somization<T: Fn() -> usize>(nb_tests: usize, max_alloc: usize, alloc_size_fn: T) -> core::result::Result<(), ()> {
-        use alloc::vec::Vec;
+    fn make_somization<T: Fn() -> usize>(
+        nb_tests: usize,
+        max_alloc: usize,
+        alloc_size_fn: T,
+    ) -> core::result::Result<(), ()> {
         use alloc::vec;
+        use alloc::vec::Vec;
 
         const MAX_ALLOCATION_ARRAY_SIZE: usize = 1 << 16;
         if max_alloc > MAX_ALLOCATION_ARRAY_SIZE {
@@ -31,9 +35,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             v: Vec<u8>,
         }
 
-        let mut s: [Option<Allocation>; MAX_ALLOCATION_ARRAY_SIZE] = unsafe {
-            core::mem::zeroed()
-        };
+        let mut s: [Option<Allocation>; MAX_ALLOCATION_ARRAY_SIZE] = unsafe { core::mem::zeroed() };
 
         // this is a default for Rust to initialize as None when zeroed. but we cannot ensure that it will be always true in future
         for i in s.iter_mut() {
@@ -53,42 +55,35 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
                     if max_alloc != nb_allocations {
                         let n: u8 = rand(core::u8::MAX);
                         let size = alloc_size_fn();
-                        s[nb_allocations] = Some(Allocation {
-                            size: size,
-                            random_u8: n,
-                            v: vec![n; size],
-                        });
+                        s[nb_allocations] = Some(Allocation { size: size, random_u8: n, v: vec![n; size] });
                         nb_allocations += 1;
                     }
-                },
-                false => {
-                    match nb_allocations {
-                        0 => {
-                        },
-                        _ => {
-                            let elmt_number = rand((nb_allocations - 1) as u32) as usize;
-                            let elmt = s[elmt_number].take().unwrap();
-                            for i in 0..elmt.size {
-                                if elmt.random_u8 != elmt.v[i] {
-                                    return Err(());
-                                }
+                }
+                false => match nb_allocations {
+                    0 => {}
+                    _ => {
+                        let elmt_number = rand((nb_allocations - 1) as u32) as usize;
+                        let elmt = s[elmt_number].take().unwrap();
+                        for i in 0..elmt.size {
+                            if elmt.random_u8 != elmt.v[i] {
+                                return Err(());
                             }
-                            drop(elmt);
-                            if elmt_number != nb_allocations - 1 {
-                                s[elmt_number] = s[nb_allocations - 1].take();
-                            }
-                            nb_allocations -= 1;
-                        },
+                        }
+                        drop(elmt);
+                        if elmt_number != nb_allocations - 1 {
+                            s[elmt_number] = s[nb_allocations - 1].take();
+                        }
+                        nb_allocations -= 1;
                     }
                 },
             }
         }
         Ok(())
     }
-    make_somization(4096, 1000, || {4096}).unwrap();
-    make_somization(4096, 1000, || {rand::<u32>(32) as usize * 4096}).unwrap();
-    make_somization(4096, 1000, || {rand::<u32>(64) as usize * 4096}).unwrap();
-    make_somization(4096, 1000, || {rand::<u32>(128) as usize * 4096}).unwrap();
+    make_somization(4096, 1000, || 4096).unwrap();
+    make_somization(4096, 1000, || rand::<u32>(32) as usize * 4096).unwrap();
+    make_somization(4096, 1000, || rand::<u32>(64) as usize * 4096).unwrap();
+    make_somization(4096, 1000, || rand::<u32>(128) as usize * 4096).unwrap();
 
     exit_qemu(0);
     0

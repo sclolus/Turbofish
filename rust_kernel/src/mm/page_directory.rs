@@ -1,7 +1,7 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
-use super::PAGE_SIZE;
-use super::{PhysicalAddr, VirtualAddr};
+use super::{MemoryError, PhysicalAddr, VirtualAddr};
+use super::{NbrPages, PAGE_SIZE};
 use bit_field::BitField;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
@@ -260,47 +260,31 @@ impl PageDirectory {
     }
 
     #[inline(always)]
-    pub unsafe fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), ()> {
+    pub unsafe fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), MemoryError> {
         //        assert_eq!(virt_addr % PAGE_SIZE, 0);
         //        assert_eq!(phys_addr % PAGE_SIZE, 0);
 
         let page_dir_index = virt_addr.get_bits(22..32);
 
-        // Do not uncomment.
-        // self[page_dir_index] = *PageDirectoryEntry::new().set_present(true).set_read_write(true);
-
-        // if page_dir_index == 1023 {
-        //     println!("{:x}", virt_addr);
-        //     println!("{:x}", phys_addr);
-        // }
         let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
 
-        /*
-                assert_eq!(
-                    page_table as *const PageTable as usize,
-                    self[page_dir_index].entry_addr() as *const PageTable as usize
-                );
-        */
+        page_table.map_addr(virt_addr, phys_addr)
+    }
 
-        // use super::PAGE_TABLES;
-        // if PAGE_TABLES.iter().any(|iter_table| {
-        //     // println!("{:p} != {:p}", iter_table, page_table);
-        //     iter_table as *const _ == page_table as *const _
-        // }) == false
-        // {
-        //     for (_, _table) in PAGE_TABLES.iter().enumerate() {
-        //         // println!(
-        //         //     "{} -> {:p} != {:p} is not found in PAGE_TABLES",
-        //         //     index, table as *const _, page_table as *const _
-        //         // );
-        //     }
-        // }
-        /*      assert!(PAGE_TABLES.iter().any(|iter_table| {
-            // println!("{:p} != {:p}", iter_table, page_table);
-            iter_table as *const _ == page_table as *const _
-        }));*/
+    pub unsafe fn unmap_addr(&mut self, virt_addr: usize) -> Result<(), MemoryError> {
+        let page_dir_index = virt_addr.get_bits(22..32);
 
-        page_table.map_addr(virt_addr, phys_addr)?;
+        let page_table = &mut *(self[page_dir_index].entry_addr() as *mut PageTable);
+
+        page_table.unmap_addr(virt_addr)
+    }
+
+    //TODO: check overflow
+    pub unsafe fn unmap_range_addr(&mut self, virt_addr: VirtualAddr, nb_pages: NbrPages) -> Result<(), MemoryError> {
+        assert_eq!(virt_addr.0 % PAGE_SIZE, 0);
+        for offset in (0..nb_pages.0).map(|offset| offset * PAGE_SIZE) {
+            self.unmap_addr(virt_addr.0 + offset)?;
+        }
         Ok(())
     }
 
@@ -309,12 +293,17 @@ impl PageDirectory {
         &mut self,
         virt_addr: VirtualAddr,
         phys_addr: PhysicalAddr,
-        nb_pages: usize,
-    ) -> Result<(), ()> {
+        nb_pages: NbrPages,
+    ) -> Result<(), MemoryError> {
         assert_eq!(virt_addr.0 % PAGE_SIZE, 0);
         assert_eq!(phys_addr.0 % PAGE_SIZE, 0);
-        for offset in (0..nb_pages).map(|offset| offset * PAGE_SIZE) {
-            self.map_addr(virt_addr.0 + offset, phys_addr.0 + offset)?;
+        for offset in (0..nb_pages.0).map(|offset| offset * PAGE_SIZE) {
+            self.map_addr(virt_addr.0 + offset, phys_addr.0 + offset).map_err(|e| {
+                for offset in (0..offset).map(|offset| offset * PAGE_SIZE) {
+                    self.unmap_addr(virt_addr.0 + offset).expect("should not failed");
+                }
+                e
+            })?;
         }
         Ok(())
     }
