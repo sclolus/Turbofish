@@ -1,10 +1,14 @@
 use crate::interrupts;
+use crate::io::UART_16550;
 use crate::mm;
 use crate::multiboot::{save_multiboot_info, MultibootInfo};
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
+    unsafe {
+        UART_16550.init();
+    }
     save_multiboot_info(multiboot_info);
     unsafe {
         interrupts::init();
@@ -15,11 +19,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     use crate::math::random::rand;
 
-    fn make_somization<T: Fn() -> usize>(
-        nb_tests: usize,
-        max_alloc: usize,
-        alloc_size_fn: T,
-    ) -> core::result::Result<(), ()> {
+    fn make_somization<T: Fn() -> usize>(nb_tests: usize, max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
         use alloc::vec;
         use alloc::vec::Vec;
 
@@ -80,10 +80,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         }
         Ok(())
     }
-    make_somization(4096, 1000, || 4096).unwrap();
-    make_somization(4096, 1000, || rand::<u32>(32) as usize * 4096).unwrap();
-    make_somization(4096, 1000, || rand::<u32>(64) as usize * 4096).unwrap();
-    make_somization(4096, 1000, || rand::<u32>(128) as usize * 4096).unwrap();
+    make_somization(1024, 1000, || 4096).unwrap();
+    make_somization(1024, 1000, || rand::<u32>(16) as usize * 4096).unwrap();
+    make_somization(1024, 1000, || rand::<u32>(32) as usize * 4096).unwrap();
+    make_somization(1024, 1000, || rand::<u32>(64) as usize * 4096).unwrap();
 
     exit_qemu(0);
     0
