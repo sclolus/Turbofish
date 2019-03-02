@@ -333,10 +333,11 @@ impl<T: Address> BuddyAllocator<T> {
 mod test {
     use super::*;
     use crate::mm::VirtualAddr;
+    use crate::math::random::srand;
+    use crate::math::random::srand_init;
     use core::ffi::c_void;
     #[test]
     fn sodo_allocator() {
-        use rand::prelude::*;
         use std::alloc::{Alloc, Global, Layout, System};
 
         const NB_ALLOC: usize = 10000;
@@ -379,15 +380,15 @@ mod test {
             }
         }
 
-        let mut rng: StdRng = StdRng::seed_from_u64(4);
+        srand_init(0xDEAD).unwrap();
 
         let mut allocations: Vec<Allocation> = vec![];
 
         for _nth_alloc in 0..NB_ALLOC {
-            let type_alloc = rng.gen::<u32>() % 3;
+            let type_alloc = srand::<u32>(3 - 1);
             match type_alloc {
                 0 => {
-                    let order = Order(rng.gen::<usize>() % (MAX_ORDER / 2));
+                    let order = Order(srand::<usize>(MAX_ORDER / 2 - 1));
                     let nb_page = 1 << order.0;
 
                     //                        eprintln!("Attempting to allocate a region of order {} (nbr_pages: {})", order.0, order.nbr_pages());
@@ -404,7 +405,7 @@ mod test {
                         Err(e) => eprintln!("Failed to allocate {:?}", e),
                         Ok(VirtualAddr(mem)) => {
                             let mem = unsafe { core::slice::from_raw_parts_mut(mem as *mut u8, nb_page * PAGE_SIZE) };
-                            let random_u8 = rng.gen::<u8>();
+                            let random_u8 = srand(core::u8::MAX);
                             for c in mem.iter_mut() {
                                 *c = random_u8;
                             }
@@ -421,7 +422,7 @@ mod test {
                 }
                 1 => {
                     if allocations.len() != 0 {
-                        let index = rng.gen::<usize>() % allocations.len();
+                        let index = srand::<usize>(allocations.len() - 1);
                         let elem = allocations.remove(index);
                         //                            eprintln!("Attempting to free {}", elem);
                         assert_eq!(
@@ -455,10 +456,9 @@ mod test {
                     }
                 }
                 2 => {
-                    let order = Order(rng.gen::<usize>() % (MAX_ORDER / 2));
+                    let order = Order(srand::<usize>(MAX_ORDER / 2 - 1));
                     let rand_max = (NB_BLOCK * PAGE_SIZE) / (order.nbr_pages() * PAGE_SIZE);
-                    let addr = address_space.as_ptr() as usize
-                        + (rng.gen::<usize>() % rand_max) * order.nbr_pages() * PAGE_SIZE;
+                    let addr = address_space.as_ptr() as usize + srand::<usize>(rand_max - 1) * order.nbr_pages() * PAGE_SIZE;
 
                     let nb_page = 1 << order.0;
 
@@ -469,7 +469,7 @@ mod test {
                         Ok(_) => {
                             let mem = addr;
                             let mem = unsafe { core::slice::from_raw_parts_mut(mem as *mut u8, nb_page * PAGE_SIZE) };
-                            let random_u8 = rng.gen::<u8>();
+                            let random_u8 = srand::<u8>(core::u8::MAX);
                             for c in mem.iter_mut() {
                                 *c = random_u8;
                             }

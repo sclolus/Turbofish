@@ -262,12 +262,12 @@ impl<'a> DummyAllocator<'a> {
 mod test {
     use super::*;
     use core::ffi::c_void;
+    use crate::math::random::rand;
     #[test]
     fn sodo_allocator() {
-        use rand::prelude::*;
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 1000;
+        const NB_ALLOC: usize = 100;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x1000;
@@ -287,15 +287,13 @@ mod test {
             ptr: &'a mut [u8],
         }
 
-        let mut rng: StdRng = StdRng::seed_from_u64(4);
-
         let mut allocations: Vec<Allocation> = vec![];
 
         for _nth_alloc in 0..NB_ALLOC {
-            let type_alloc = rng.gen::<u32>() % 2;
+            let type_alloc = rand::<bool>(true);
             match type_alloc {
-                0 => {
-                    let order = rng.gen::<u32>() % (MAX_ORDER / 2);
+                false => {
+                    let order = rand::<u32>(MAX_ORDER / 2 - 1);
                     let nb_page = 1 << order;
                     let mem = dummy_allocator.alloc(nb_page);
                     // dbg!(order);
@@ -318,7 +316,7 @@ mod test {
                         Some(mem) => {
                             //                            eprintln!("mem: {:x}", mem);
                             let mem = unsafe { core::slice::from_raw_parts_mut(mem as *mut u8, nb_page * PAGE_SIZE) };
-                            let random_u8 = rng.gen::<u8>();
+                            let random_u8 = rand(core::u8::MAX);
                             for c in mem.iter_mut() {
                                 *c = random_u8;
                             }
@@ -326,10 +324,10 @@ mod test {
                         }
                     }
                 }
-                1 => {
+                true => {
                     if allocations.len() != 0 {
                         //                        println!("desaloc");
-                        let index = rng.gen::<usize>() % allocations.len();
+                        let index = rand::<usize>(allocations.len() -1);
                         let elem = allocations.remove(index);
                         for (_i, c) in elem.ptr.iter().enumerate() {
                             if *c != elem.random_u8 {
@@ -357,9 +355,6 @@ mod test {
                         //     )
                         // }
                     }
-                }
-                _ => {
-                    panic!("WTF");
                 }
             }
         }
