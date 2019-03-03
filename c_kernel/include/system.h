@@ -60,6 +60,6 @@ void		panic(const char *s, struct extended_registers reg);
 void		bios_shutdown_computer(void);
 void		bios_wait(u32 sec);
 
-extern void	int8086(u8 interupt, struct base_registers reg);
+extern void	int8086(struct base_registers reg, u16 interupt);
 
 #endif
