@@ -18,8 +18,8 @@ pub enum IoError {
 }
 
 trait Drawer {
-    fn draw_character(&self, c: char, y: usize, x: usize);
-    fn scroll_screen(&self);
+    fn draw_character(&mut self, c: char, y: usize, x: usize);
+    fn scroll_screen(&mut self);
     fn clear_screen(&mut self);
     fn set_text_color(&mut self, color: Color) -> IoResult;
 }
@@ -77,8 +77,8 @@ impl ScreenMonad {
     /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
-        self.drawing_mode = DrawingMode::Vbe(vbe);
         let (lines, columns) = vbe.query_window_size();
+        self.drawing_mode = DrawingMode::Vbe(vbe);
         self.cursor = Cursor { x: 0, y: 0, columns, lines };
         Ok(())
     }
@@ -138,15 +138,15 @@ impl ScreenMonad {
 /// private
 impl Drawer for ScreenMonad {
     /// put a character into the screen
-    fn draw_character(&self, c: char, y: usize, x: usize) {
-        match &self.drawing_mode {
+    fn draw_character(&mut self, c: char, y: usize, x: usize) {
+        match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.draw_character(c, y, x),
             DrawingMode::Vbe(vbe) => vbe.draw_character(c, y, x),
         }
     }
     /// just scroll a bit
-    fn scroll_screen(&self) {
-        match &self.drawing_mode {
+    fn scroll_screen(&mut self) {
+        match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.scroll_screen(),
             DrawingMode::Vbe(vbe) => vbe.scroll_screen(),
         }

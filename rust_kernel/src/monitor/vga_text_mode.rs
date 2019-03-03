@@ -25,7 +25,7 @@ impl VgaTextMode {
 }
 
 impl Drawer for VgaTextMode {
-    fn draw_character(&self, c: char, y: usize, x: usize) {
+    fn draw_character(&mut self, c: char, y: usize, x: usize) {
         let ptr = self.memory_location;
         let pos = x + y * WIDTH;
 
@@ -34,7 +34,7 @@ impl Drawer for VgaTextMode {
             *ptr.add(pos * 2 + 1) = self.color;
         }
     }
-    fn scroll_screen(&self) {
+    fn scroll_screen(&mut self) {
         let ptr = self.memory_location;
         unsafe {
             ft_memmove(ptr, ptr.add(WIDTH * 2), WIDTH * (HEIGHT - 1) * 2);

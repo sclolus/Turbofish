@@ -7,6 +7,7 @@
 #![allow(unused_unsafe)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
+#![feature(copy_within)]
 #![cfg_attr(test, feature(allocator_api))]
 #![feature(alloc)]
 #![feature(alloc_error_handler)]

@@ -2,18 +2,13 @@ use super::{AdvancedGraphic, Color, Drawer, IoResult};
 use crate::ffi::c_char;
 use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{PhysicalAddr, VirtualAddr};
-use crate::memory::VIRTUAL_OFFSET;
 use crate::registers::{real_mode_op, BaseRegisters};
+use alloc::vec;
+use alloc::vec::Vec;
 use core::result::Result;
 use core::slice;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
-
-// TODO Cannot allocated dynamiquely for the moment
-const DB_FRAMEBUFFER_LOCATION: *mut u8 = (0x3_00_00_00 + VIRTUAL_OFFSET) as *mut u8;
-
-// TODO Cannot allocated dynamiquely for the moment
-const GRAPHIC_BUFFER_LOCATION: *mut u8 = (0x3_80_00_00 + VIRTUAL_OFFSET) as *mut u8;
 
 const LINEAR_FRAMEBUFFER_VIRTUAL_ADDR: *mut u8 = 0xf0000000 as *mut u8;
 
@@ -209,17 +204,16 @@ impl From<Color> for RGB {
     }
 }
 
-// TODO With allocator, this array will be dynamiquely allocated and be part of VbeMode structure
-static mut CHARACTERS_BUFFER: [Option<(u8, RGB)>; 128 * 48] = [None; 128 * 48];
-
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct VbeMode {
     /// linear frame buffer address
     linear_frame_buffer: *mut u8,
     /// double framebuffer location
-    db_frame_buffer: *mut u8,
+    db_frame_buffer: Vec<u8>,
     /// graphic buffer location
-    graphic_buffer: *mut u8,
+    graphic_buffer: Vec<u8>,
+    /// character buffer
+    characters_buffer: Vec<Option<(u8, RGB)>>,
     /// in pixel
     width: usize,
     /// in pixel
@@ -243,21 +237,22 @@ pub struct VbeMode {
 impl VbeMode {
     pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
-        unsafe {
-            _sse2_memzero(GRAPHIC_BUFFER_LOCATION, bytes_per_pixel * width * height);
-        }
+        let screen_size: usize = bytes_per_pixel * width * height;
+        let columns: usize = unsafe { width / _font_width };
+        let lines: usize = unsafe { height / _font_height };
         Self {
             linear_frame_buffer,
-            db_frame_buffer: DB_FRAMEBUFFER_LOCATION,
-            graphic_buffer: GRAPHIC_BUFFER_LOCATION,
+            db_frame_buffer: vec![0; screen_size],
+            graphic_buffer: vec![0; screen_size],
+            characters_buffer: vec![None; columns * lines],
             width,
             height,
             bytes_per_pixel,
             pitch: width * bytes_per_pixel,
             char_width: unsafe { _font_width },
             char_height: unsafe { _font_height },
-            columns: unsafe { width / _font_width },
-            lines: unsafe { height / _font_height },
+            columns: columns,
+            lines: lines,
             text_color: Color::White.into(),
         }
     }
@@ -267,9 +262,9 @@ impl VbeMode {
     }
     /// put pixel at position y, x in pixel unit
     #[inline(always)]
-    fn put_pixel(&self, y: usize, x: usize, color: RGB) {
+    fn put_pixel(db_fb: &mut Vec<u8>, loc: usize, color: RGB) {
         unsafe {
-            *((self.db_frame_buffer.add(y * self.pitch + x * self.bytes_per_pixel)) as *mut u32) = color.0;
+            *((&mut db_fb[loc]) as *mut u8 as *mut u32) = color.0;
         }
     }
     /*
@@ -291,9 +286,9 @@ impl VbeMode {
     }
      */
     /// Copy characters from characters_buffer to double buffer
-    fn render_text_buffer(&self, x1: usize, x2: usize) {
+    fn render_text_buffer(&mut self, x1: usize, x2: usize) {
         unsafe {
-            for (i, elem) in CHARACTERS_BUFFER[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
+            for (i, elem) in self.characters_buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
                 Some(x) => Some((i, x)),
                 None => None,
             }) {
@@ -307,7 +302,11 @@ impl VbeMode {
                     x = cursor_x * self.char_width;
                     for shift in (0..8).rev() {
                         if *l & 1 << shift != 0 {
-                            self.put_pixel(y, x, (*elem).1);
+                            Self::put_pixel(
+                                &mut self.db_frame_buffer,
+                                y * self.pitch + x * self.bytes_per_pixel,
+                                (*elem).1,
+                            );
                         }
                         x += 1;
                     }
@@ -317,42 +316,39 @@ impl VbeMode {
         }
     }
     /// refresh framebuffer
-    pub fn refresh_screen(&self) {
+    pub fn refresh_screen(&mut self) {
         // Copy graphic buffer to double buffer
         unsafe {
-            _sse2_memcpy(self.db_frame_buffer, self.graphic_buffer as *const u8, self.pitch * self.height);
+            _sse2_memcpy(self.db_frame_buffer.as_mut_ptr(), self.graphic_buffer.as_ptr(), self.pitch * self.height);
         }
         // Rend all character from character_buffer to db_buffer
         self.render_text_buffer(0, self.columns * self.lines);
         // copy double buffer to linear frame buffer
         unsafe {
-            _sse2_memcpy(self.linear_frame_buffer, self.db_frame_buffer as *const u8, self.pitch * self.height);
+            _sse2_memcpy(self.linear_frame_buffer, self.db_frame_buffer.as_ptr(), self.pitch * self.height);
         }
     }
 }
 
 impl Drawer for VbeMode {
-    fn draw_character(&self, c: char, cursor_y: usize, cursor_x: usize) {
+    fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
         unsafe {
-            CHARACTERS_BUFFER[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
+            self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
         }
     }
-    fn scroll_screen(&self) {
+    fn scroll_screen(&mut self) {
         // scroll left the character_buffer
         let m = self.columns * (self.lines - 1);
-        unsafe {
-            CHARACTERS_BUFFER[0..m].copy_from_slice(&CHARACTERS_BUFFER[self.columns..]);
-            for elem in CHARACTERS_BUFFER[m..].iter_mut() {
-                *elem = None;
-            }
+        self.characters_buffer.copy_within(self.columns.., 0);
+        for elem in self.characters_buffer[m..].iter_mut() {
+            *elem = None;
         }
         self.refresh_screen();
     }
     fn clear_screen(&mut self) {
         // clean the character buffer
-        unsafe {
-            // TODO remove magic when dynamicely allocated
-            CHARACTERS_BUFFER = [None; 128 * 48];
+        for elem in self.characters_buffer.iter_mut() {
+            *elem = None;
         }
         self.refresh_screen();
     }
@@ -365,14 +361,12 @@ impl Drawer for VbeMode {
 impl AdvancedGraphic for VbeMode {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
         let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
-        let db_frame_buffer = unsafe { slice::from_raw_parts_mut(self.db_frame_buffer, self.pitch * self.height) };
-        let graphic_buffer = unsafe { slice::from_raw_parts_mut(self.graphic_buffer, self.pitch * self.height) };
 
         // Copy selected area from graphic buffer to double frame buffer
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            db_frame_buffer[o1..o2].copy_from_slice(&graphic_buffer[o1..o2]);
+            self.db_frame_buffer[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
         }
         // get characters from character buffer and pixelize it in db_buffer
         self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
@@ -380,11 +374,11 @@ impl AdvancedGraphic for VbeMode {
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            lfb[o1..o2].copy_from_slice(&db_frame_buffer[o1..o2]);
+            lfb[o1..o2].copy_from_slice(&self.db_frame_buffer[o1..o2]);
         }
     }
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
-        closure(self.graphic_buffer, self.width, self.height, self.bytes_per_pixel * 8)?;
+        closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
         self.refresh_screen();
         Ok(())
     }
