@@ -88,5 +88,5 @@ resb 1 << 12
 temporary_stack:
 
 ; 1mo for the main kernel stack
-resb 1 << 20 
+resb 1 << 23 
 kernel_stack:

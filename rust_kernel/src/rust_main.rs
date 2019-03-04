@@ -2,7 +2,7 @@ use crate::debug;
 use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
-use crate::mm;
+use crate::memory;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::{save_multiboot_info, MultibootInfo, MULTIBOOT_INFO};
@@ -24,8 +24,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     unsafe {
         interrupts::init();
-
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+
+        memory::init_memory_system().unwrap();
+
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
 
         SCREEN_MONAD.clear_screen();
@@ -128,10 +131,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     //TODO: we should init paging at the begin of code
     //test Bootstrap allocator
 
-    unsafe {
-        mm::init_memory_system().unwrap();
-    }
-
     println!("begin test 1");
     debug::bench_start();
     let mut sum: u32 = 0;
@@ -144,8 +143,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     println!("{:?} ms ellapsed", t);
 
     /*
-    use crate::mm::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};
-    use crate::mm::{MemoryError, VirtualAddr};
+    use crate::memory::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};
+    use crate::memory::{MemoryError, VirtualAddr};
 
     extern "C" {
         fn ft_memset(v: VirtualAddr, u: u8, s: usize) -> VirtualAddr;

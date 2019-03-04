@@ -46,16 +46,16 @@ pub mod rust_main;
 pub mod tests;
 pub mod timer;
 #[macro_use]
-pub mod mm;
+pub mod memory;
 
 // ///As a matter of fact, we can't declare the MemoryManager inside a submodule.
-// use crate::mm::MemoryManager;
+// use crate::memory::MemoryManager;
 
 // #[cfg(not(test))]
 // #[global_allocator]
 // static MEMORY_MANAGER: MemoryManager = MemoryManager;
 //
-use crate::mm::MemoryManager;
+use crate::memory::MemoryManager;
 #[cfg(not(test))]
 #[global_allocator]
 static MEMORY_MANAGER: MemoryManager = MemoryManager;

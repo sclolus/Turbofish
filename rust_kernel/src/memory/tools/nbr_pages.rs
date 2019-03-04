@@ -27,6 +27,12 @@ impl NbrPages {
     pub const _4GB: NbrPages = NbrPages(1 << 20);
 }
 
+impl NbrPages {
+    pub fn to_bytes(self) -> usize {
+        self.into()
+    }
+}
+
 impl From<usize> for NbrPages {
     #[inline(always)]
     fn from(nb_bytes: usize) -> Self {

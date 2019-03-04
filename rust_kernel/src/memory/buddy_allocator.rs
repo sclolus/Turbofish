@@ -332,9 +332,9 @@ impl<T: Address> BuddyAllocator<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::mm::VirtualAddr;
     use crate::math::random::srand;
     use crate::math::random::srand_init;
+    use crate::memory::VirtualAddr;
     use core::ffi::c_void;
     #[test]
     fn sodo_allocator() {
@@ -458,7 +458,8 @@ mod test {
                 2 => {
                     let order = Order(srand::<usize>(MAX_ORDER / 2 - 1));
                     let rand_max = (NB_BLOCK * PAGE_SIZE) / (order.nbr_pages() * PAGE_SIZE);
-                    let addr = address_space.as_ptr() as usize + srand::<usize>(rand_max - 1) * order.nbr_pages() * PAGE_SIZE;
+                    let addr =
+                        address_space.as_ptr() as usize + srand::<usize>(rand_max - 1) * order.nbr_pages() * PAGE_SIZE;
 
                     let nb_page = 1 << order.0;
 

@@ -1,5 +1,5 @@
-use super::PAGE_DIRECTORY;
 use super::PAGE_SIZE;
+use crate::memory::mmu::PAGE_DIRECTORY;
 use bit_field::BitField;
 use core::ops::{Add, Range, RangeInclusive};
 
@@ -52,6 +52,7 @@ impl VirtualAddr {
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn offset(&self) -> usize {
         self.0.get_bits(0..12)
     }
@@ -68,6 +69,13 @@ impl From<usize> for VirtualAddr {
     #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
+    }
+}
+
+impl From<Page<VirtualAddr>> for VirtualAddr {
+    #[inline(always)]
+    fn from(page: Page<VirtualAddr>) -> Self {
+        Self(page.number * PAGE_SIZE)
     }
 }
 
@@ -98,6 +106,13 @@ impl From<usize> for PhysicalAddr {
     }
 }
 
+impl From<Page<PhysicalAddr>> for PhysicalAddr {
+    #[inline(always)]
+    fn from(page: Page<PhysicalAddr>) -> Self {
+        Self(page.number * PAGE_SIZE)
+    }
+}
+
 impl Add<usize> for PhysicalAddr {
     type Output = Self;
     fn add(self, rhs: usize) -> Self::Output {
@@ -116,7 +131,7 @@ pub struct Page<T: Address> {
 
 // impl<T: Address> Into<T> for Page<T> {
 //     fn into(self) -> T {
-//         let number: usize = self.number.into();
+//         let number: usize = self.number;
 //         (number * PAGE_SIZE).into()
 //     }
 // }
@@ -130,11 +145,6 @@ impl<T: Address> From<T> for Page<T> {
 impl<T: Address> Page<T> {
     pub fn new(number: usize) -> Self {
         Self { number, _phantom: core::marker::PhantomData }
-    }
-
-    pub fn into_addr(self) -> T {
-        let number: usize = self.number.into();
-        (number * PAGE_SIZE).into()
     }
 
     pub fn inclusive_range(from: Self, to: Self) -> PageIter<T> {
@@ -194,7 +204,7 @@ mod test {
         let addr = PhysicalAddr(PAGE_SIZE);
         let page: Page<PhysicalAddr> = addr.into();
         assert_eq!(page, Page::new(1));
-        let convert_addr: PhysicalAddr = page.into_addr();
+        let convert_addr: PhysicalAddr = page.into();
         assert_eq!(convert_addr, addr);
     }
     #[test]

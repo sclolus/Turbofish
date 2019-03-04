@@ -173,7 +173,7 @@ pub struct Cr3;
 
 impl Cr3 {
     pub unsafe fn write(value: usize) {
-        asm!("mov cr3, $0" : "=*m"(value):: "memory" : "volatile")
+        asm!("mov cr3, $0" :: "r"(value): "memory" : "volatile","intel")
     }
 
     pub unsafe fn read() -> usize {

@@ -1,4 +1,4 @@
-use crate::mm::NbrPages;
+use crate::memory::NbrPages;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]

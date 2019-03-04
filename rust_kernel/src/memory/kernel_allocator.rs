@@ -1,9 +1,9 @@
-use super::buddy_allocator::BuddyAllocator;
-use super::MemoryError;
-use super::NbrPages;
-use super::PAGE_DIRECTORY;
-use super::{PhysicalAddr, VirtualAddr};
+use crate::memory::mmu::PAGE_DIRECTORY;
+use crate::memory::tools::*;
+use crate::memory::BuddyAllocator;
 use alloc::vec;
+use core::alloc::{GlobalAlloc, Layout};
+use core::fmt;
 
 /// 64 MB for the kernel memory
 const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
@@ -25,14 +25,11 @@ pub enum Allocator {
 }
 
 static mut BSS_MEMORY: [u8; MEMORY_BOOTSTRAP_ALLOCATOR] = [0; MEMORY_BOOTSTRAP_ALLOCATOR];
-// TODO: align that
 
 #[derive(Debug)]
 pub struct BootstrapAllocator {
     current_offset: usize,
 }
-
-use core::fmt;
 
 impl fmt::Debug for Allocator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -42,8 +39,6 @@ impl fmt::Debug for Allocator {
         }
     }
 }
-
-use core::alloc::Layout;
 
 impl BootstrapAllocator {
     pub const fn new() -> Self {
@@ -125,4 +120,30 @@ pub fn init_physical_allocator() {
         ALLOCATOR = Allocator::Kernel(physical);
         dbg!(&ALLOCATOR as *const Allocator as *const u8);
     }
+}
+
+pub struct MemoryManager;
+
+unsafe impl GlobalAlloc for MemoryManager {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        //core::ptr::null::<u8>() as *mut u8
+
+        match &mut ALLOCATOR {
+            Allocator::Kernel(a) => a.alloc(layout.size()).unwrap().0 as *mut u8, //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Bootstrap(b) => b.alloc_bootstrap(layout.size(), layout).unwrap().0 as *mut u8,
+        }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        match &mut ALLOCATOR {
+            Allocator::Kernel(a) => a.free(VirtualAddr(ptr as usize), layout.size()).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
+        }
+    }
+}
+
+#[alloc_error_handler]
+#[cfg(not(test))]
+fn out_of_memory(_: core::alloc::Layout) -> ! {
+    panic!("Out of memory: Failed to allocate a rust data structure");
 }
