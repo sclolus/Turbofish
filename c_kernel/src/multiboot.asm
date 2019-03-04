@@ -39,7 +39,7 @@ align 4
 	dd FLAGS
 	dd CHECKSUM
 
-extern init
+extern _init
 GLOBAL _start
 _start:
-	jmp init
+	jmp _init

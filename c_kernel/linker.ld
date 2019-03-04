@@ -8,7 +8,7 @@ SECTIONS
 {
 	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
 	   loaded at by the bootloader. */
-	virtual_offset = 0x00000000;
+	virtual_offset = 0xc0000000;
 	. = virtual_offset + 0x00100000;
 
 	kernel_virtual_start = .;

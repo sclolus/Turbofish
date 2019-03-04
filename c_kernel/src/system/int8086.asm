@@ -95,6 +95,7 @@ int8086:
     mov ecx, eax
     mov esi, begin_sub_sequence
     mov edi, BASE_LOCATION
+    cld
     rep movsb
 
     ; initialise temporary GDT
@@ -240,12 +241,12 @@ begin_sub_sequence:
     mov ss, [REBASE(_ss)]
 
     ; restore Paging
-    ;mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
-    ;mov cr3, ebx
+    mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
+    mov cr3, ebx
 
-    ;mov ebx, cr0
-    ;or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
-    ;mov cr0, ebx
+    mov ebx, cr0
+    or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
+    mov cr0, ebx
 
     ; return to base function
     ret

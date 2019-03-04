@@ -9,7 +9,7 @@
 
 #ifndef NO_STACK_TRACE
 
-struct function_entry {
+struct symbol_entry {
 	u32 eip;
 	char symbol;
 	const char *function_name;

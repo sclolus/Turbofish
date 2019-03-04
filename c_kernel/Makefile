@@ -49,9 +49,9 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # main
 SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = init multiboot
+SRC_ASM_KERNEL = init multiboot cpu_features
 VPATH = include src
-HEADERS = grub.h i386_type.h
+HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm
 
 # system
 SRC_C_KERNEL += bios_services idt panic
@@ -160,7 +160,7 @@ $(KERNEL): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a libasm_i386/libasm_i3
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 extract_kernel_symbols = nm -n $@ > nm.res
-gen_symbol_map = ./nm_map_gen src/system/nm.map && sync
+gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(LDSCRIPT) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)

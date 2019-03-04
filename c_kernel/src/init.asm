@@ -1,80 +1,165 @@
 [BITS 32]
-section .text
 
 extern kmain
-extern init_gdt
-extern g_multiboot_info
-%define MULTIBOOT_INFO_LENGTH 116
 
-global init
-init:
-    cli                             ; block interrupts
+extern _set_sse
+extern _set_avx
+extern _set_fpu
 
-    push ebp
-    mov ebp, esp
+%include "src/early_gdt.asm"
+%include "src/early_paging.asm"
 
-    ; set EIP of caller GRUB on stack at 0, prevent infinite loop for backtrace
-    mov [ebp + 4], dword 0
+segment .text
 
-    mov esp, stack_space            ; set stack pointer for a temporary stack
+%define KERNEL_MAX_SIZE 64
 
-    push 0x0
-    call init_gdt
+global _init
+_init:
+	; block interrupts
+	cli
 
-    mov ax, 0x20                    ; create the main kernel stack
-    mov ss, ax
-    mov esp, 0x700000
+.low_memory_area:
+	; set temporary stack
+	; set up the stack pointer for a temporary stack
 
-    call set_sse2
-    call enable_avx
+	TRANSLATE_ADDR temporary_stack
+	mov esp, eax
+	mov ebp, esp
 
-    ; EBX contain pointer to GRUB multiboot information (preserved register)
-    push ebx
-    call kmain                      ; kmain is called with this param
-    add esp, 4
+; INITIALIZE GDT
+.init_gdt:
+	TRANSLATE_ADDR gdt_start
+	mov esi, eax
 
-    jmp $
+	mov edi, GDT_DESTINATION
+	mov ecx, gdt_end - gdt_start
 
-set_sse2:
-    push ebp
-    mov ebp, esp
-    pushad
+	cld
+	rep movsb
 
-    mov eax, 0x1
-    cpuid
-    test edx, 1 << 26   ; test if SSE2 feature exist
-    jz .end_set_sse2
+	TRANSLATE_ADDR gdt_info
+	lgdt [eax]
 
-    mov eax, cr0
-    and ax, 0xFFFB		; clear coprocessor emulation CR0.EM
-    or ax, 0x2			; set coprocessor monitoring  CR0.MP
-    mov cr0, eax
-    mov eax, cr4
-    or eax, 3 << 9      ; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
-    or eax, 1 << 18     ; Active OSXSAVE generation
-    mov cr4, eax
+	; DS, ES, FS and GS ARE DATA SEGMENT REGISTER
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
 
-.end_set_sse2:
-    popad
-    pop ebp
-    ret
+	; SS IS STACK SEGMENT REGISTER
+	mov ax, 0x18
+	mov ss, ax
 
-enable_avx:
-    push eax
-    push ecx
+	; Paginate kernel in half high memory (do also identity mapping)
+	INIT_PAGING_ENV
 
-    xor ecx, ecx
+	; 0x00000000 -> 0x04000000 mapped to phy 0x00000000 -> 0x04000000
 
-    xgetbv              ;Load XCR0 register
+%define l0_virt_offset 0
+%define l0_physic_addr 0
+%define l0_len KERNEL_MAX_SIZE
 
-    or eax, 7           ;Set AVX, SSE, X87 bits
-    xsetbv              ;Save back to XCR0
+	PAGINATE_ADDR l0_virt_offset, l0_physic_addr, l0_len
 
-    pop ecx
-    pop eax
+	; 0xC0000000 -> 0xC4000000 mapped to phy 0x00000000 -> 0x04000000
 
-    ret
+%define l1_virt_offset 768
+%define l1_physic_addr 0
+%define l1_len KERNEL_MAX_SIZE
 
-section .bss
-resb 8192                           ; 8KB for temporary stack
-stack_space:
+	PAGINATE_ADDR l1_virt_offset, l1_physic_addr, l1_len
+
+	; Active paging
+	TRANSLATE_ADDR page_directory_alpha_area
+	mov cr3, eax 				; fill CR3 with physic mem pointer to page directory
+
+	mov eax, cr0
+	or eax, 0x80000001          ; enable Paging bit (PG). Protection bit must be also recall here
+	mov cr0, eax
+
+	; Jump to high memory, init code segment
+	jmp 0x8: .high_memory_area
+
+.high_memory_area:
+	call .disable_cursor
+
+	; set the base EIP on stack at 0x0, prevent infinite loop for backtrace
+
+	; set up the main kernel stack
+	;      stack frame 2             | stack frame 1             | stack frame 0
+	; <--- (EBP EIP ARGx ... VARx ...) (EBP EIP ARGx ... VARx ...) ((ptr - 8) 0x0) | *** kernel_stack SYMBOL *** |
+	;                                  <----     ESP EXPANSION   |    *ebp
+
+	; This mechanism is for Panic handler. See details on 'panic.rs' file
+	; dont worry about overflow for stack, the first push will be at [temporary_stack - 4], not in [temporary_stack]
+	mov [kernel_stack - 4], dword 0x0
+	mov esp, kernel_stack - 8
+	mov ebp, esp
+
+	call _set_sse
+	call _set_avx
+	call _set_fpu
+
+	; EBX contain pointer to GRUB multiboot information (preserved register)
+	push ebx
+	; kmain is called with EBX param
+	call kmain
+
+	add esp, 4
+
+.idle:
+	hlt
+	jmp .idle
+
+.disable_cursor:
+	push eax
+	push edx
+
+	mov dx, 0x3D4
+	; low cursor shape register
+	mov al, 0xA
+	out dx, al
+
+	inc dx
+	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
+	mov al, 0x20
+	out dx, al
+
+	pop edx
+	pop eax
+	ret
+
+%define VIRTUAL_LINEAR_FB_LOCATION 0xF0000000
+
+; 0xF0000000 -> ... mapped to phy ??? -> ??? + LFB_SIZE
+; hack for LFB allocation
+; CAUTION: Usable only when high memory is initialized
+GLOBAL _allocate_linear_frame_buffer
+_allocate_linear_frame_buffer:
+	push ebp
+	mov ebp, esp
+
+	push dword [ebp + 12]               ; len
+	push dword [ebp + 8]                ; physical address
+	push (1024 - 64)                    ; virt addr offset. eq 0xF0000000
+
+	call _dynamic_map
+
+	add esp, 12
+
+	mov eax, VIRTUAL_LINEAR_FB_LOCATION
+
+	pop ebp
+	ret
+
+segment .bss
+align 16
+
+; 1mo for the main kernel stack
+resb 1 << 20
+kernel_stack:
+
+; 4kb for temporary stack
+resb 1 << 12
+temporary_stack:
