@@ -21,6 +21,12 @@ SECTIONS
 		*(.multiboot)
 	}
 
+	.low_memory BLOCK(4K) : AT(ADDR(.low_memory) - virtual_offset) ALIGN(4K)
+	{
+		*(.low_memory)
+		*(.low_memory.*)
+	}
+
 	/* Base code section */
 	.text BLOCK(4K) : AT(ADDR(.text) - virtual_offset) ALIGN(4K)
 	{

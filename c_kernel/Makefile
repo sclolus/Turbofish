@@ -48,8 +48,8 @@ endif
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # main
-SRC_C_KERNEL = kmain watchdog
-SRC_ASM_KERNEL = init multiboot cpu_features
+SRC_C_KERNEL = kmain watchdog low_memory_c
+SRC_ASM_KERNEL = init multiboot cpu_features low_memory_assembly
 VPATH = include src
 HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h
 
