@@ -1,8 +1,11 @@
 
 #include "i386_type.h"
 
+/*
+ * IDT region: 0x1000 -> 0x1800 (IDT_SIZE * SIZE(IDT_SEGMENT) = 256 * 8 = 2000 = 0x800)
+ */
 #define IDT_SIZE 256
-#define IDT_ADDRESS 0xC00
+#define IDT_ADDRESS 0x1000
 #define INTGATE 0x8E00
 
 struct __attribute__ ((packed)) idt_seg {
