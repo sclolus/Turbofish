@@ -48,10 +48,10 @@ endif
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # main
-SRC_C_KERNEL = kmain
+SRC_C_KERNEL = kmain watchdog
 SRC_ASM_KERNEL = init multiboot cpu_features
 VPATH = include src
-HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm
+HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic

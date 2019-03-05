@@ -1,7 +1,9 @@
 
 #include "vesa.h"
 #include "system.h"
+#include "kernel_io.h"
 #include "libft.h"
+#include "watchdog.h"
 
 /*
 GRUB MEMORY OCCUPATION
@@ -30,6 +32,8 @@ s32		set_vbe(u16 selected_mode)
 	struct vesa_graphic_mode_list	*vgml;
 	u16				*ptr;
 	u32				i;
+
+	dog_guard(gdt);
 
 	// get global VBE info
 	reg.eax = 0x4F00;
@@ -80,10 +84,14 @@ s32		set_vbe(u16 selected_mode)
 	// re initialize GDT with Linear Frame Buffer address
 	init_gdt(vesa_ctx.mode.framebuffer);
 
+	dog_guard(gdt);
+
 	// switch to selected graphic mode
 	reg.eax = 0x4F02;
 	reg.ebx = selected_mode | LFB_BIT;
 	int8086(reg, 0x10);
+
+	dog_bark(gdt);
 
 	return 0;
 }

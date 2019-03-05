@@ -8,6 +8,7 @@
 #include "libft.h"
 #include "grub.h"
 #include "tests.h"
+#include "watchdog.h"
 
 /*
  * This benchmark use the PIT on IRQ0 to work
@@ -71,6 +72,9 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 	 * Initialize Interrupt Descriptor Table
 	 */
 	init_idt();
+
+	dog_guard(idt);
+
 	/*
 	 * Set VBE mode
 	 */
@@ -81,9 +85,12 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
-	fill_window(0xFF, 0x00, 0x00);
 	kernel_io_ctx.term_mode = panic_screen;
 	set_cursor_location(1, 1);
+
+	dog_bark(idt);
+
+	fill_window(0x00, 0xB0, 0x00);
 	eprintk("{white}High memory mode active\n");
 	refresh_screen();
 
