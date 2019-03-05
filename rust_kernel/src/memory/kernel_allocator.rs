@@ -105,7 +105,8 @@ impl KernelAllocator {
         //println!("free size: {:?}", size);
         let order = size.into();
         self.virt.free(vaddr, order)?;
-        if let Some(paddr) = vaddr.physical_addr() {
+
+        if let Some(paddr) = unsafe { PAGE_DIRECTORY.physical_addr(vaddr) } {
             self.phys.free(paddr, size.into())?;
             unsafe { PAGE_DIRECTORY.unmap_range_addr(vaddr, size.into()) }
         } else {

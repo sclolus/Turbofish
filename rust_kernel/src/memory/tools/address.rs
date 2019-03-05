@@ -1,5 +1,4 @@
 use super::PAGE_SIZE;
-use crate::memory::mmu::PAGE_DIRECTORY;
 use bit_field::BitField;
 use core::ops::{Add, Range, RangeInclusive};
 
@@ -27,20 +26,6 @@ pub trait Address: From<usize> + Into<usize> + Add<usize> + Copy + Clone + Ord +
 pub struct VirtualAddr(pub usize);
 
 impl VirtualAddr {
-    pub fn physical_addr(&self) -> Option<PhysicalAddr> {
-        let page_directory_index = self.pd_index();
-        let page_table_index = self.pt_index();
-        //     let page_directory = unsafe { &*PageDirectory::get_current_page_directory() };
-
-        let page_table = unsafe { &*PAGE_DIRECTORY[page_directory_index].get_page_table()? };
-
-        if page_table[page_table_index].present() {
-            Some(page_table[page_table_index].physical_address().into())
-        } else {
-            None
-        }
-    }
-
     #[inline]
     pub fn pd_index(&self) -> usize {
         self.0.get_bits(22..32)

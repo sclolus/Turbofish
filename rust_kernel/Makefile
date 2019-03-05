@@ -67,7 +67,7 @@ SRC_ASM_KERNEL += asterix wanggle
 VPATH += medias
 
 SRC_ASM_KERNEL += paging
-VPATH += src/mm
+VPATH += src/memory/mmu
 
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
