@@ -35,7 +35,7 @@ ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
 	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer -fno-pie
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
@@ -48,7 +48,7 @@ endif
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # main
-SRC_C_KERNEL = kmain watchdog low_memory_c
+SRC_C_KERNEL = kmain watchdog low_memory_c low_memory_tool
 SRC_ASM_KERNEL = init multiboot cpu_features low_memory_assembly
 VPATH = include src
 HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h

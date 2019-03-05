@@ -8,24 +8,28 @@ SECTIONS
 {
 	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
 	   loaded at by the bootloader. */
-	virtual_offset = 0xc0000000;
-	. = virtual_offset + 0x00100000;
 
-	kernel_virtual_start = .;
-	kernel_physical_start = . - virtual_offset;
+	. = 0x100000;
+	kernel_physical_start = .;
+
 	/* First put the multiboot header, as it is required to be put very early
 	   early in the image or the bootloader won't recognize the file format.
 	   Next we'll put the .text section. */
-	.boot BLOCK(4K) : AT(ADDR(.boot) - virtual_offset) ALIGN(4K)
+
+	.boot BLOCK(4K) : ALIGN(4K)
 	{
 		*(.multiboot)
 	}
 
-	.low_memory BLOCK(4K) : AT(ADDR(.low_memory) - virtual_offset) ALIGN(4K)
+	.low_memory BLOCK(4K) : ALIGN(4K)
 	{
-		*(.low_memory)
-		*(.low_memory.*)
+		*(.low_memory.text)
+		*(.low_memory.data)
+		objs/low_memory_tool.o
 	}
+
+	virtual_offset = 0xc0000000;
+	. += virtual_offset;
 
 	/* Base code section */
 	.text BLOCK(4K) : AT(ADDR(.text) - virtual_offset) ALIGN(4K)

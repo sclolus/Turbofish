@@ -69,6 +69,8 @@ _init:
 	mov esp, eax
 	mov ebp, esp
 
+	;TRANSLATE_ADDR $
+	;jmp eax
 ; INITIALIZE GDT
 .init_gdt:
 	TRANSLATE_ADDR gdt_start
