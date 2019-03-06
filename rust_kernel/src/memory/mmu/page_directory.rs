@@ -4,7 +4,6 @@ use super::page_entry::Entry;
 use super::page_table::PageTable;
 use super::PAGE_TABLES;
 use crate::memory::tools::*;
-use bit_field::BitField;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
@@ -23,6 +22,15 @@ impl PageDirectory {
     pub const fn new() -> Self {
         Self { entries: [Entry::new(); 1024] }
     }
+
+    /// trick to always map the pages tables from address 0xFFC...
+    /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)
+    #[allow(dead_code)]
+    pub unsafe fn self_map_tricks(&mut self, cr3: PhysicalAddr) {
+        self[1023] = Entry::PRESENT | Entry::READ_WRITE;
+        self[1023].set_entry_addr(cr3);
+    }
+
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             // TODO: set physical addr
@@ -31,49 +39,38 @@ impl PageDirectory {
         }
     }
 
+    #[inline(always)]
+    pub unsafe fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
+        let pd_index = virtp.pd_index();
+        let page_table = &mut PAGE_TABLES[pd_index];
+        page_table.map_page(virtp, physp)
+    }
+
     //TODO: check overflow
-    pub unsafe fn map_range_addr(
+    pub unsafe fn map_range_page(
         &mut self,
-        virt_addr: VirtualAddr,
-        phys_addr: PhysicalAddr,
+        virtp: Page<VirtualAddr>,
+        physp: Page<PhysicalAddr>,
         nb_pages: NbrPages,
     ) -> Result<(), MemoryError> {
-        for offset in (0..nb_pages.0).map(|offset| offset * PAGE_SIZE) {
-            self.map_addr(virt_addr.0 + offset, phys_addr.0 + offset)?;
-            //.map_err(|e| {
-            // for offset in (0..offset).map(|offset| offset * PAGE_SIZE) {
-            //     self.unmap_addr(virt_addr.0 + offset).expect("should not failed");
-            // }
-            // e
-            // })?;
+        for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
+            self.map_page(virtp, physp)?;
         }
         Ok(())
     }
 
-    #[inline(always)]
-    pub unsafe fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), MemoryError> {
-        let page_dir_index = virt_addr.get_bits(22..32);
-
-        let page_table = &mut *(self[page_dir_index].entry_addr().0 as *mut PageTable);
-
-        page_table.map_addr(virt_addr, phys_addr)
+    pub unsafe fn unmap_page(&mut self, virtp: Page<VirtualAddr>) -> Result<(), MemoryError> {
+        let pd_index = virtp.pd_index();
+        let page_table = &mut PAGE_TABLES[pd_index];
+        page_table.unmap_page(virtp)
     }
 
     //TODO: check overflow
-    pub unsafe fn unmap_range_addr(&mut self, virt_addr: VirtualAddr, nb_pages: NbrPages) -> Result<(), MemoryError> {
-        assert_eq!(virt_addr.0 % PAGE_SIZE, 0);
-        for offset in (0..nb_pages.0).map(|offset| offset * PAGE_SIZE) {
-            self.unmap_addr(virt_addr.0 + offset)?;
+    pub unsafe fn unmap_range_page(&mut self, virtp: Page<VirtualAddr>, nb_pages: NbrPages) -> Result<(), MemoryError> {
+        for p in (virtp..virtp + nb_pages).iter() {
+            self.unmap_page(p)?;
         }
         Ok(())
-    }
-
-    pub unsafe fn unmap_addr(&mut self, virt_addr: usize) -> Result<(), MemoryError> {
-        let page_dir_index = virt_addr.get_bits(22..32);
-
-        let page_table = &mut *(self[page_dir_index].entry_addr().0 as *mut PageTable);
-
-        page_table.unmap_addr(virt_addr)
     }
 
     pub unsafe fn physical_addr(&self, vaddr: VirtualAddr) -> Option<PhysicalAddr> {
@@ -102,14 +99,6 @@ impl PageDirectory {
     // /// It means that the Virtual Addresses of the PageTables have their 10-higher bits set.
     // /// The range of bits [12..22] then describes the index inside the PageDirectory, that is the index of the PageTable itself.
     // /// Then the range of bits [0..12] describes the offset inside the PageTable, which is fine since a PageTable is exactly 4096 bytes.
-    // #[allow(dead_code)]
-    // pub fn self_map_tables(&mut self) {
-    //     //TODO: Warn we mut give physical addr of self
-    //     let entry =
-    //         *Entry::new().set_present(true).set_read_write(true).set_entry_addr(self as *const _ as usize);
-
-    //     self[1023] = entry;
-    // }
 
     // pub fn get_page_from_vaddr(&self, vaddr: u32) -> Option<&PageTableEntry> {
     //     let pdindex = (vaddr >> 22) as usize;

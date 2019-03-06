@@ -1,7 +1,6 @@
 //! This module contains code related to the Page Tables in the MMU.
 use super::page_entry::Entry;
 use crate::memory::tools::*;
-use bit_field::BitField;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
@@ -21,28 +20,28 @@ impl PageTable {
     }
 
     #[inline(always)]
-    pub fn map_addr(&mut self, virt_addr: usize, phys_addr: usize) -> Result<(), MemoryError> {
-        let page_table_index = virt_addr.get_bits(12..22);
+    pub fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
+        let pt_index = virtp.pt_index();
 
-        if self[page_table_index].contains(Entry::PRESENT) {
+        if self[pt_index].contains(Entry::PRESENT) {
             return Err(MemoryError::AlreadyMapped);
         }
 
         //TODO: take custom flags
-        self[page_table_index] = Entry::READ_WRITE | Entry::PRESENT;
-        self[page_table_index].set_entry_addr(PhysicalAddr(phys_addr));
+        self[pt_index] = Entry::READ_WRITE | Entry::PRESENT;
+        self[pt_index].set_page(physp);
         Ok(())
     }
 
     #[inline(always)]
-    pub fn unmap_addr(&mut self, virt_addr: usize) -> Result<(), MemoryError> {
-        let page_table_index = virt_addr.get_bits(12..22);
-        if !self[page_table_index].contains(Entry::PRESENT) {
+    pub fn unmap_page(&mut self, virtp: Page<VirtualAddr>) -> Result<(), MemoryError> {
+        let pt_index = virtp.pt_index();
+        if !self[pt_index].contains(Entry::PRESENT) {
             return Err(MemoryError::AlreadyUnMapped);
         }
 
         //TODO: take custom flags
-        self[page_table_index].set(Entry::PRESENT, false);
+        self[pt_index].set(Entry::PRESENT, false);
         Ok(())
     }
 }

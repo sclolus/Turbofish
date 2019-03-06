@@ -1,17 +1,21 @@
+use super::NbrPages;
 use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::ops::{Add, Range, RangeInclusive};
 
 pub trait Address: From<usize> + Into<usize> + Add<usize> + Copy + Clone + Ord + Eq {
+    /// size must be a power of two
     #[inline(always)]
     fn is_aligned_on(&self, size: usize) -> bool {
+        debug_assert!(size.is_power_of_two());
+
         let addr: usize = (*self).into();
 
         (addr & (size - 1)) == 0
     }
-    #[inline(always)]
     /// Align the address on a multiple of size
     /// size must be a power of two
+    #[inline(always)]
     fn align_on(self, size: usize) -> <Self as Add<usize>>::Output {
         debug_assert!(size.is_power_of_two());
 
@@ -26,17 +30,17 @@ pub trait Address: From<usize> + Into<usize> + Add<usize> + Copy + Clone + Ord +
 pub struct VirtualAddr(pub usize);
 
 impl VirtualAddr {
-    #[inline]
+    #[inline(always)]
     pub fn pd_index(&self) -> usize {
         self.0.get_bits(22..32)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn pt_index(&self) -> usize {
         self.0.get_bits(12..22)
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(dead_code)]
     pub fn offset(&self) -> usize {
         self.0.get_bits(0..12)
@@ -66,6 +70,7 @@ impl From<Page<VirtualAddr>> for VirtualAddr {
 
 impl Add<usize> for VirtualAddr {
     type Output = Self;
+    #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
         From::<usize>::from(Into::<usize>::into(self) + rhs)
     }
@@ -100,6 +105,7 @@ impl From<Page<PhysicalAddr>> for PhysicalAddr {
 
 impl Add<usize> for PhysicalAddr {
     type Output = Self;
+    #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
         From::<usize>::from(Into::<usize>::into(self) + rhs)
     }
@@ -114,31 +120,54 @@ pub struct Page<T: Address> {
     _phantom: core::marker::PhantomData<T>,
 }
 
-// impl<T: Address> Into<T> for Page<T> {
-//     fn into(self) -> T {
-//         let number: usize = self.number;
-//         (number * PAGE_SIZE).into()
-//     }
-// }
-
-impl<T: Address> From<T> for Page<T> {
-    fn from(addr: T) -> Self {
-        Self::new(addr.into() / PAGE_SIZE)
-    }
-}
-
 impl<T: Address> Page<T> {
+    #[inline(always)]
     pub fn new(number: usize) -> Self {
         Self { number, _phantom: core::marker::PhantomData }
     }
 
+    #[inline(always)]
+    pub fn containing(addr: T) -> Self {
+        From::from(addr)
+    }
+
+    #[inline(always)]
     pub fn inclusive_range(from: Self, to: Self) -> PageIter<T> {
         PageIter { current: from, end: to }
     }
 
+    #[inline(always)]
     pub fn exclusive_range(from: Self, to: Self) -> PageIter<T> {
         let end = Self::new(to.number - 1);
         PageIter { current: from, end }
+    }
+}
+
+impl Page<VirtualAddr> {
+    #[inline(always)]
+    pub fn pd_index(&self) -> usize {
+        self.number.get_bits(10..20)
+    }
+
+    #[inline(always)]
+    pub fn pt_index(&self) -> usize {
+        self.number.get_bits(0..10)
+    }
+}
+
+impl<T: Address> Add<NbrPages> for Page<T> {
+    type Output = Self;
+    #[inline(always)]
+    fn add(mut self, rhs: NbrPages) -> Self::Output {
+        self.number += rhs.0;
+        self
+    }
+}
+
+impl<T: Address> From<T> for Page<T> {
+    #[inline(always)]
+    fn from(addr: T) -> Self {
+        Self::new(addr.into() / PAGE_SIZE)
     }
 }
 
@@ -149,6 +178,7 @@ pub trait IntoPageIter {
 
 impl<T: Address> IntoPageIter for Range<Page<T>> {
     type PageType = T;
+    #[inline(always)]
     fn iter(self) -> PageIter<Self::PageType> {
         Page::exclusive_range(self.start, self.end)
     }
@@ -156,6 +186,7 @@ impl<T: Address> IntoPageIter for Range<Page<T>> {
 
 impl<T: Address> IntoPageIter for RangeInclusive<Page<T>> {
     type PageType = T;
+    #[inline(always)]
     fn iter(self) -> PageIter<Self::PageType> {
         Page::inclusive_range(*self.start(), *self.end())
     }
@@ -170,6 +201,7 @@ pub struct PageIter<T: Address> {
 impl<T: Address> Iterator for PageIter<T> {
     type Item = Page<T>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.current > self.end {
             None
@@ -191,6 +223,11 @@ mod test {
         assert_eq!(page, Page::new(1));
         let convert_addr: PhysicalAddr = page.into();
         assert_eq!(convert_addr, addr);
+    }
+    #[test]
+    fn test_page() {
+        let page: Page<PhysicalAddr> = Page::new(1);
+        assert_eq!(page + NbrPages(1), Page::<PhysicalAddr>::new(2));
     }
     #[test]
     fn test_page_iter() {

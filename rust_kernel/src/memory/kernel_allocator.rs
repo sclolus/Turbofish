@@ -91,11 +91,13 @@ impl KernelAllocator {
             e
         })?;
         unsafe {
-            PAGE_DIRECTORY.map_range_addr(vaddr, paddr, size.into()).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
-                self.phys.free(paddr, order).unwrap();
-                e
-            })?;
+            PAGE_DIRECTORY.map_range_page(Page::containing(vaddr), Page::containing(paddr), size.into()).map_err(
+                |e| {
+                    self.virt.free(vaddr, order).unwrap();
+                    self.phys.free(paddr, order).unwrap();
+                    e
+                },
+            )?;
         }
         Ok(vaddr)
     }
@@ -108,7 +110,7 @@ impl KernelAllocator {
 
         if let Some(paddr) = unsafe { PAGE_DIRECTORY.physical_addr(vaddr) } {
             self.phys.free(paddr, size.into())?;
-            unsafe { PAGE_DIRECTORY.unmap_range_addr(vaddr, size.into()) }
+            unsafe { PAGE_DIRECTORY.unmap_range_page(Page::containing(vaddr), size.into()) }
         } else {
             Err(MemoryError::NotPhysicalyMapped)
         }
