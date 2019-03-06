@@ -49,17 +49,17 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # bootstrap
 # ---------------------------------------------------------------------------------------------------------------
-SRC_C_BOOTSTRAP += bootstrap_main
+SRC_C_BOOTSTRAP += bootstrap_main vga_text
 SRC_ASM_BOOTSTRAP +=
 VPATH += src/bootstrap
-BOOTSTRAP_HEADERS +=
+BOOTSTRAP_HEADERS += vga_text.h
 
 OBJ_BOOTSTRAP_DIR := objs_bootstrap
 OBJ_C_BOOTSTRAP	= $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_BOOTSTRAP)))))
 OBJ_ASM_BOOTSTRAP = $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_BOOTSTRAP)))))
 
 $(OBJ_BOOTSTRAP_DIR)/%.o: %.c Makefile $(BOOTSTRAP_HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $< $(BOOTSTRAP_HEADERS) $(IFLAGS)
+	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 	objcopy --prefix-symbols=alt_ $@
 
 $(OBJ_BOOTSTRAP_DIR)/%.o: %.asm Makefile $(BOOTSTRAP_HEADERS)
