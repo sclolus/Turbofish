@@ -1,7 +1,9 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
+use super::_enable_paging_with_cr;
 use super::page_entry::Entry;
 use super::page_table::PageTable;
+use super::PAGE_DIRECTORY;
 use super::PAGE_TABLES;
 use crate::memory::tools::*;
 use core::ops::{Index, IndexMut};
@@ -40,9 +42,10 @@ impl PageDirectory {
     }
 
     #[inline(always)]
+    /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     pub unsafe fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
         let pd_index = virtp.pd_index();
-        let page_table = &mut PAGE_TABLES[pd_index];
+        let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
         page_table.map_page(virtp, physp)
     }
 
@@ -59,9 +62,23 @@ impl PageDirectory {
         Ok(())
     }
 
+    unsafe fn map_range_page_init(
+        &mut self,
+        virtp: Page<VirtualAddr>,
+        physp: Page<PhysicalAddr>,
+        nb_pages: NbrPages,
+    ) -> Result<(), MemoryError> {
+        for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
+            let pd_index = virtp.pd_index();
+            let page_table = &mut PAGE_TABLES[pd_index];
+            page_table.map_page(virtp, physp)?;
+        }
+        Ok(())
+    }
+
     pub unsafe fn unmap_page(&mut self, virtp: Page<VirtualAddr>) -> Result<(), MemoryError> {
         let pd_index = virtp.pd_index();
-        let page_table = &mut PAGE_TABLES[pd_index];
+        let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
         page_table.unmap_page(virtp)
     }
 
@@ -74,14 +91,14 @@ impl PageDirectory {
     }
 
     pub unsafe fn physical_addr(&self, vaddr: VirtualAddr) -> Option<PhysicalAddr> {
-        let page_directory_index = vaddr.pd_index();
-        let page_table_index = vaddr.pt_index();
+        let pd_index = vaddr.pd_index();
+        let pt_index = vaddr.pt_index();
 
         // TODO: Change that with the trick
-        let page_table = unsafe { &PAGE_TABLES[page_directory_index] };
+        let page_table = &*((0xFFC00000 + pd_index * 4096) as *mut PageTable);
 
-        if page_table[page_table_index].contains(Entry::PRESENT) {
-            Some(page_table[page_table_index].entry_addr())
+        if page_table[pt_index].contains(Entry::PRESENT) {
+            Some(page_table[pt_index].entry_addr())
         } else {
             None
         }
@@ -112,6 +129,19 @@ impl PageDirectory {
 
     //     Some(&page_table[ptindex])
     // }
+}
+
+pub unsafe fn init_mmu() {
+    PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
+    PAGE_DIRECTORY.map_range_page_init(VirtualAddr(0).into(), PhysicalAddr(0).into(), NbrPages::_64MB).unwrap();
+    PAGE_DIRECTORY
+        .map_range_page_init(VirtualAddr(0xc0000000).into(), PhysicalAddr(0xc0000000).into(), NbrPages::_1GB)
+        .unwrap();
+    PAGE_DIRECTORY
+        .map_range_page_init(VirtualAddr(0x90000000).into(), PhysicalAddr(0x90000000).into(), NbrPages::_8MB)
+        .unwrap();
+    PAGE_DIRECTORY.self_map_tricks(PhysicalAddr(&PAGE_DIRECTORY as *const _ as usize));
+    _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 }
 
 /// The PageDirectory implements Index which enables us to use the syntax: `pd[index]`,
