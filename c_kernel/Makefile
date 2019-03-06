@@ -35,23 +35,43 @@ ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 else ifeq ($(OPTIM),yes)
 	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer -fno-pie
+	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
 else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-CFLAGS += -nostdinc
+CFLAGS += -nostdinc -fno-pie
 endif
 
 ### SOURCES ###
 
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
+# bootstrap
+# ---------------------------------------------------------------------------------------------------------------
+SRC_C_BOOTSTRAP += bootstrap_main
+SRC_ASM_BOOTSTRAP +=
+VPATH += src/bootstrap
+BOOTSTRAP_HEADERS +=
+
+OBJ_BOOTSTRAP_DIR := objs_bootstrap
+OBJ_C_BOOTSTRAP	= $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_BOOTSTRAP)))))
+OBJ_ASM_BOOTSTRAP = $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_BOOTSTRAP)))))
+
+$(OBJ_BOOTSTRAP_DIR)/%.o: %.c Makefile $(BOOTSTRAP_HEADERS)
+	$(CC) -c $(CFLAGS) -o $@ $< $(BOOTSTRAP_HEADERS) $(IFLAGS)
+	objcopy --prefix-symbols=alt_ $@
+
+$(OBJ_BOOTSTRAP_DIR)/%.o: %.asm Makefile $(BOOTSTRAP_HEADERS)
+	$(ASM) $(ASMFLAGS) -o $@ $<
+	objcopy --prefix-symbols=alt_ $@
+# ---------------------------------------------------------------------------------------------------------------
+
 # main
-SRC_C_KERNEL = kmain watchdog low_memory_c low_memory_tool
-SRC_ASM_KERNEL = init multiboot cpu_features low_memory_assembly
-VPATH = include src
-HEADERS = grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h
+SRC_C_KERNEL += kmain watchdog
+SRC_ASM_KERNEL += init multiboot cpu_features bootstrap
+VPATH += include src
+HEADERS += grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic
@@ -140,7 +160,9 @@ symbol_gen_exe:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-$(KERNEL): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) libft/libft.a libasm_i386/libasm_i386.a
+LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
+
+$(KERNEL): $(OBJ_C_BOOTSTRAP) $(OBJ_ASM_BOOTSTRAP) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
@@ -173,10 +195,11 @@ build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
 
 common_clean:
 	rm -rvf $(OBJ_DIR)*/**
+	rm -rvf $(OBJ_BOOTSTRAP_DIR)*/**
 	rm -f nm.res
 	rm -f nm_map_gen
 	rm -f src/system/nm.map

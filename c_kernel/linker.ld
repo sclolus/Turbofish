@@ -21,11 +21,13 @@ SECTIONS
 		*(.multiboot)
 	}
 
-	.low_memory BLOCK(4K) : ALIGN(4K)
+	.bootstrap BLOCK(4K) : ALIGN(4K)
 	{
-		*(.low_memory.text)
-		*(.low_memory.data)
-		objs/low_memory_tool.o
+		*(.bootstrap)
+		*(.bootstrap.*)
+		objs_bootstrap/bootstrap_main.o
+		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
+		libft/alt_libft.a
 	}
 
 	virtual_offset = 0xc0000000;
