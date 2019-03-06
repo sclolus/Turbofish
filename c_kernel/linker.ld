@@ -27,6 +27,8 @@ SECTIONS
 		*(.bootstrap.*)
 		objs_bootstrap/bootstrap_main.o
 		objs_bootstrap/vga_text.o
+		objs_bootstrap/8086_payload.o
+		objs_bootstrap/payload_get_mem_map.o
 		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
 		libft/alt_libft.a
 	}
