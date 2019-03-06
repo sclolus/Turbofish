@@ -1,4 +1,4 @@
-use super::{Address, MemoryError, NbrPages, PAGE_SIZE};
+use crate::memory::tools::*;
 use alloc::vec::Vec;
 use bit_field::BitField;
 use core::fmt::Debug;

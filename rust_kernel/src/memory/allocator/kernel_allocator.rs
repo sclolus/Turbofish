@@ -1,18 +1,11 @@
+use super::physical_allocator::{AllocFlags, PHYSICAL_ALLOCATOR};
+use super::{KERNEL_VIRTUAL_MEMORY, KERNEL_VIRTUAL_OFFSET};
 use crate::memory::mmu::PAGE_DIRECTORY;
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;
 use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
 use core::fmt;
-
-/// 64 MB for the kernel memory
-const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
-const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_64MB;
-
-/// kernel memory start a 64 MB
-//TODO: change that for the linker offset
-const KERNEL_PHYSICAL_OFFSET: usize = 0x4_000_000;
-const KERNEL_VIRTUAL_OFFSET: usize = 0x4_000_000;
 
 /// 4 MB for the bootstrap
 const MEMORY_BOOTSTRAP_ALLOCATOR: usize = 0x400_000;
@@ -59,8 +52,8 @@ impl BootstrapAllocator {
 }
 
 #[derive(Debug)]
+/// A Physical Allocator must be registered to work
 pub struct KernelAllocator {
-    phys: BuddyAllocator<PhysicalAddr>,
     virt: BuddyAllocator<VirtualAddr>,
 }
 
@@ -68,11 +61,6 @@ impl KernelAllocator {
     pub fn new() -> Self {
         unsafe {
             Self {
-                phys: BuddyAllocator::new(
-                    KERNEL_PHYSICAL_OFFSET,
-                    KERNEL_PHYSICAL_MEMORY,
-                    vec![0; BuddyAllocator::<PhysicalAddr>::metadata_size(KERNEL_PHYSICAL_MEMORY)],
-                ),
                 virt: BuddyAllocator::new(
                     KERNEL_VIRTUAL_OFFSET,
                     KERNEL_VIRTUAL_MEMORY,
@@ -86,15 +74,15 @@ impl KernelAllocator {
         //println!("alloc size: {:?}", size);
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
-        let paddr = self.phys.alloc(order).map_err(|e| {
-            self.virt.free(vaddr, order).unwrap();
-            e
-        })?;
         unsafe {
+            let paddr = PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
+                self.virt.free(vaddr, order).unwrap();
+                e
+            })?;
             PAGE_DIRECTORY.map_range_page(Page::containing(vaddr), Page::containing(paddr), size.into()).map_err(
                 |e| {
                     self.virt.free(vaddr, order).unwrap();
-                    self.phys.free(paddr, order).unwrap();
+                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size).unwrap();
                     e
                 },
             )?;
@@ -109,20 +97,20 @@ impl KernelAllocator {
         self.virt.free(vaddr, order)?;
 
         if let Some(paddr) = unsafe { PAGE_DIRECTORY.physical_addr(vaddr) } {
-            self.phys.free(paddr, size.into())?;
-            unsafe { PAGE_DIRECTORY.unmap_range_page(Page::containing(vaddr), size.into()) }
+            unsafe {
+                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size)?;
+                PAGE_DIRECTORY.unmap_range_page(Page::containing(vaddr), size.into())
+            }
         } else {
             Err(MemoryError::NotPhysicalyMapped)
         }
     }
 }
 
-pub fn init_physical_allocator() {
-    let physical = KernelAllocator::new();
-    unsafe {
-        ALLOCATOR = Allocator::Kernel(physical);
-        dbg!(&ALLOCATOR as *const Allocator as *const u8);
-    }
+pub unsafe fn init_virtual_allocator() {
+    let virt = KernelAllocator::new();
+    ALLOCATOR = Allocator::Kernel(virt);
+    dbg!(&ALLOCATOR as *const Allocator as *const u8);
 }
 
 pub struct MemoryManager;
