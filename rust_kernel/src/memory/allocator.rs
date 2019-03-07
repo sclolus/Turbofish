@@ -1,5 +1,5 @@
 pub mod kernel_allocator;
-pub use kernel_allocator::init_virtual_allocator;
+pub use kernel_allocator::init_kernel_virtual_allocator;
 pub use kernel_allocator::MemoryManager;
 
 pub mod physical_allocator;

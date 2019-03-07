@@ -1,9 +1,7 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
-use super::_enable_paging_with_cr;
 use super::page_entry::Entry;
 use super::page_table::PageTable;
-use super::PAGE_DIRECTORY;
 use super::PAGE_TABLES;
 use crate::memory::tools::*;
 use core::ops::{Index, IndexMut};
@@ -62,7 +60,7 @@ impl PageDirectory {
         Ok(())
     }
 
-    unsafe fn map_range_page_init(
+    pub unsafe fn map_range_page_init(
         &mut self,
         virtp: Page<VirtualAddr>,
         physp: Page<PhysicalAddr>,
@@ -103,7 +101,6 @@ impl PageDirectory {
             None
         }
     }
-
     // pub unsafe fn load_current_page_directory(ptr: *mut PageDirectory) {
     //     Cr3::write(ptr as usize);
     // }
@@ -129,19 +126,6 @@ impl PageDirectory {
 
     //     Some(&page_table[ptindex])
     // }
-}
-
-pub unsafe fn init_mmu() {
-    PAGE_DIRECTORY.set_page_tables(0, &PAGE_TABLES);
-    PAGE_DIRECTORY.map_range_page_init(VirtualAddr(0).into(), PhysicalAddr(0).into(), NbrPages::_64MB).unwrap();
-    PAGE_DIRECTORY
-        .map_range_page_init(VirtualAddr(0xc0000000).into(), PhysicalAddr(0xc0000000).into(), NbrPages::_1GB)
-        .unwrap();
-    PAGE_DIRECTORY
-        .map_range_page_init(VirtualAddr(0x90000000).into(), PhysicalAddr(0x90000000).into(), NbrPages::_8MB)
-        .unwrap();
-    PAGE_DIRECTORY.self_map_tricks(PhysicalAddr(&PAGE_DIRECTORY as *const _ as usize));
-    _enable_paging_with_cr(PAGE_DIRECTORY.as_mut().as_mut_ptr());
 }
 
 /// The PageDirectory implements Index which enables us to use the syntax: `pd[index]`,

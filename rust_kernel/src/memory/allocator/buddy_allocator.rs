@@ -334,13 +334,13 @@ mod test {
     use super::*;
     use crate::math::random::srand;
     use crate::math::random::srand_init;
-    use crate::memory::VirtualAddr;
+    use crate::memory::tools::VirtualAddr;
     use core::ffi::c_void;
     #[test]
     fn sodo_allocator() {
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 10000;
+        const NB_ALLOC: usize = 500;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x10000;
