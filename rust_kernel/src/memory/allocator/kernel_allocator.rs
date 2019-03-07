@@ -7,7 +7,6 @@ use crate::memory::BuddyAllocator;
 use alloc::boxed::Box;
 use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
-use core::fmt;
 
 /// 4 MB for the bootstrap
 const MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR: usize = 0x400_000;
@@ -26,29 +25,15 @@ pub struct BootstrapKernelAllocator {
     current_offset: usize,
 }
 
-impl fmt::Debug for KernelAllocator {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            KernelAllocator::Bootstrap(b) => write!(f, "bootstrap allocator {:?}", b),
-            KernelAllocator::Kernel(_p) => write!(f, "physical allocator"),
-        }
-    }
-}
-
 impl BootstrapKernelAllocator {
     pub const fn new() -> Self {
         BootstrapKernelAllocator { current_offset: 0 }
     }
-    pub unsafe fn alloc_bootstrap(&mut self, size: usize, layout: Layout) -> Result<PhysicalAddr, MemoryError> {
-        println!("{:?}", layout);
-        println!("{:x?}", &BSS_MEMORY[0] as *const u8 as usize);
-        println!("{:x?}", &BSS_MEMORY[self.current_offset] as *const u8 as usize);
+    pub unsafe fn alloc_bootstrap(&mut self, layout: Layout) -> Result<VirtualAddr, MemoryError> {
         let base_address = &BSS_MEMORY[0] as *const u8 as usize;
-
-        let mut address = PhysicalAddr(&BSS_MEMORY[self.current_offset] as *const u8 as usize);
+        let mut address = VirtualAddr(&BSS_MEMORY[self.current_offset] as *const u8 as usize);
         address = address.align_on(layout.align());
-        assert!(address.is_aligned_on(layout.align()));
-        self.current_offset = address.0 - base_address + size;
+        self.current_offset = address.0 - base_address + layout.size();
         if self.current_offset > BSS_MEMORY.len() {
             panic!("No more bootstrap memory");
         }
@@ -69,21 +54,19 @@ impl SlabAllocator {
     }
 }
 
-pub struct MemoryManager;
+pub struct RustGlobalAlloc;
 
-unsafe impl GlobalAlloc for MemoryManager {
+unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        //core::ptr::null::<u8>() as *mut u8
-
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.alloc(layout.size()).unwrap().0 as *mut u8, //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
-            KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout.size(), layout).unwrap().0 as *mut u8,
+            KernelAllocator::Kernel(a) => a.alloc(layout.size()).unwrap_or(VirtualAddr(0x0)).0 as *mut u8,
+            KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout).unwrap_or(VirtualAddr(0x0)).0 as *mut u8,
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.free(VirtualAddr(ptr as usize), layout.size()).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            KernelAllocator::Kernel(a) => a.free(VirtualAddr(ptr as usize), layout.size()).unwrap(),
             KernelAllocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
         }
     }
@@ -97,7 +80,7 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
-        KERNEL_VIRTUAL_OFFSET,
+        VirtualAddr(KERNEL_VIRTUAL_OFFSET),
         KERNEL_VIRTUAL_MEMORY,
         vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
@@ -107,13 +90,11 @@ pub unsafe fn init_kernel_virtual_allocator() {
     pd.map_range_page_init(VirtualAddr(0xc0000000).into(), PhysicalAddr(0xc0000000).into(), NbrPages::_1GB).unwrap();
     pd.map_range_page_init(VirtualAddr(0x90000000).into(), PhysicalAddr(0x90000000).into(), NbrPages::_8MB).unwrap();
     // TODO: find physical addr, Change that when high meme
-
     let raw_pd = Box::into_raw(pd);
     _enable_paging(PhysicalAddr(raw_pd as usize));
     pd = Box::from_raw(raw_pd);
     pd.self_map_tricks(PhysicalAddr(raw_pd as usize));
     let virt = VirtualPageAllocator::new(buddy, pd);
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
-
     KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator);
 }

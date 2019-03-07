@@ -1,6 +1,6 @@
 pub mod kernel_allocator;
 pub use kernel_allocator::init_kernel_virtual_allocator;
-pub use kernel_allocator::MemoryManager;
+pub use kernel_allocator::RustGlobalAlloc;
 
 pub mod physical_page_allocator;
 pub use physical_page_allocator::init_physical_allocator;

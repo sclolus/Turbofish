@@ -1,6 +1,7 @@
+use super::PAGE_SIZE;
 use core::ops::{Add, Sub};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrPages(pub usize);
 
 impl NbrPages {
@@ -36,14 +37,14 @@ impl NbrPages {
 impl From<usize> for NbrPages {
     #[inline(always)]
     fn from(nb_bytes: usize) -> Self {
-        Self(nb_bytes / 4096 + (nb_bytes % 4096 != 0) as usize)
+        Self(nb_bytes / PAGE_SIZE + (nb_bytes % PAGE_SIZE != 0) as usize)
     }
 }
 
 impl Into<usize> for NbrPages {
     #[inline(always)]
     fn into(self) -> usize {
-        self.0 * 4096 as usize
+        self.0 * PAGE_SIZE as usize
     }
 }
 

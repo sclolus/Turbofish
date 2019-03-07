@@ -28,8 +28,9 @@ impl PageTable {
         }
 
         //TODO: take custom flags
-        self[pt_index] = Entry::READ_WRITE | Entry::PRESENT;
+        self[pt_index] = Default::default();
         self[pt_index].set_page(physp);
+        self[pt_index] |= Entry::READ_WRITE | Entry::PRESENT;
         Ok(())
     }
 

@@ -16,8 +16,6 @@ pub struct PageDirectory {
 }
 
 impl PageDirectory {
-    pub const DEFAULT_PAGE_DIRECTORY_SIZE: usize = 1024;
-
     /// This fonction creates a PageDirectory at addr `page_directory_addr` of size (in elements) of `size`.
     pub const fn new() -> Self {
         Self { entries: [Entry::new(); 1024] }
@@ -25,22 +23,23 @@ impl PageDirectory {
 
     /// trick to always map the pages tables from address 0xFFC...
     /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)
-    #[allow(dead_code)]
     pub unsafe fn self_map_tricks(&mut self, cr3: PhysicalAddr) {
-        self[1023] = Entry::PRESENT | Entry::READ_WRITE;
+        self[1023] = Default::default();
         self[1023].set_entry_addr(cr3);
+        self[1023] |= Entry::PRESENT | Entry::READ_WRITE;
     }
 
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             // TODO: set physical addr
+            self[offset + i] = Default::default();
             self[offset + i].set_entry_addr(PhysicalAddr(pt.as_ref().as_ptr() as usize));
             self[offset + i] |= Entry::PRESENT | Entry::READ_WRITE;
         }
     }
 
-    #[inline(always)]
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
+    #[inline(always)]
     pub unsafe fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
         let pd_index = virtp.pd_index();
         let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);

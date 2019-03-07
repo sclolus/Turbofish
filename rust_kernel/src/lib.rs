@@ -7,11 +7,6 @@
 #![allow(unused_unsafe)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
-#![feature(concat_idents)]
-#![feature(range_contains)]
-#![feature(trace_macros)]
-#![feature(log_syntax)]
-#![feature(fixed_size_array)]
 #![cfg_attr(test, feature(allocator_api))]
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
@@ -48,15 +43,10 @@ pub mod timer;
 #[macro_use]
 pub mod memory;
 
-// ///As a matter of fact, we can't declare the MemoryManager inside a submodule.
-// use crate::memory::MemoryManager;
+use crate::memory::RustGlobalAlloc;
 
-// #[cfg(not(test))]
-// #[global_allocator]
-// static MEMORY_MANAGER: MemoryManager = MemoryManager;
-//
-use crate::memory::MemoryManager;
+/// As a matter of fact, we can't declare the MemoryManager inside a submodule.
 #[cfg(not(test))]
 #[global_allocator]
-static MEMORY_MANAGER: MemoryManager = MemoryManager;
+static MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc;
 pub mod test_helpers;

@@ -1,9 +1,19 @@
 use super::NbrPages;
 use super::PAGE_SIZE;
 use bit_field::BitField;
-use core::ops::{Add, Range, RangeInclusive};
+use core::ops::{Add, Range, RangeInclusive, Sub};
 
-pub trait Address: From<usize> + Into<usize> + Add<usize> + Copy + Clone + Ord + Eq {
+pub trait Address:
+    From<usize>
+    + Into<usize>
+    + Sub<Self, Output = usize>
+    + Sub<usize, Output = Self>
+    + Add<usize, Output = Self>
+    + Copy
+    + Clone
+    + Ord
+    + Eq
+{
     /// size must be a power of two
     #[inline(always)]
     fn is_aligned_on(&self, size: usize) -> bool {
@@ -68,6 +78,22 @@ impl From<Page<VirtualAddr>> for VirtualAddr {
     }
 }
 
+impl Sub<VirtualAddr> for VirtualAddr {
+    type Output = usize;
+    #[inline(always)]
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
+
+impl Sub<usize> for VirtualAddr {
+    type Output = Self;
+    #[inline(always)]
+    fn sub(self, rhs: usize) -> Self::Output {
+        From::<usize>::from(Into::<usize>::into(self) - rhs)
+    }
+}
+
 impl Add<usize> for VirtualAddr {
     type Output = Self;
     #[inline(always)]
@@ -100,6 +126,22 @@ impl From<Page<PhysicalAddr>> for PhysicalAddr {
     #[inline(always)]
     fn from(page: Page<PhysicalAddr>) -> Self {
         Self(page.number * PAGE_SIZE)
+    }
+}
+
+impl Sub<usize> for PhysicalAddr {
+    type Output = Self;
+    #[inline(always)]
+    fn sub(self, rhs: usize) -> Self::Output {
+        From::<usize>::from(Into::<usize>::into(self) - rhs)
+    }
+}
+
+impl Sub<PhysicalAddr> for PhysicalAddr {
+    type Output = usize;
+    #[inline(always)]
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
     }
 }
 
