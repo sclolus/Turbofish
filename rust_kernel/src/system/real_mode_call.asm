@@ -33,12 +33,51 @@
 	; |  EBP  | (After pushing EBP by first instruction of ASM function)
 	; +-------+
 
+	; 32 bits protected to real 16 bits steps by steps
+	; ----------------------------------------------------------------------------------------------------------------------------------------
+	; Disable the interrupts:
+	;     Turn off maskable interrupts using CLI.
+	;     Disable NMI (optional).
+	; Turn off paging: IMPORTANT: In this below impementation Paging is shut down at the same moment of protected mode. CR3 fflush is juste before it.
+	;     Transfer control to a 1:1 page.
+	;     Ensure that the GDT and IDT are in a 1:1 page.
+	;     Clear the PG-flag in the zeroth control register.
+	;     Set the third control register to 0.
+	; Use GDT with 16-bit tables (skip this step if one is already available):
+	; Create a new GDT with a 16-bit data and code segment:
+	;     Limit: 0xFFFFF
+	;     Base: 0x0
+	;     16-bit
+	;     Privilege level: 0
+	;     Granularity: 0
+	;     Read and Write: 1
+	; Load new GDT ensuring that the currently used selectors will remain the same (index in cs/ds/ss will be copy of original segment in new GDT)
+	; Far jump to 16-bit protected mode:
+	;     Far jump to 16-bit protected mode with a 16-bit segment index.
+	;     Load data segment selectors with 16-bit indexes:
+	;     Load ds, es, fs, gs, ss with a 16-bit data segment.
+	; Load real mode IDT:
+	;     Limit: 0x3FF
+	;     Base 0x0
+	;     Use lidt
+	; Disable protected mode: IMPORTANT: In this below implementation, paging is deactivate with Protected mode, in the same moment.
+	;     Set PE bit in CR0 to false.
+	;     Far jump to real mode:
+	;     Far jump to real mode with real mode segment selector (usually 0).
+	;     Reload data segment registers with real mode values:
+	;     Load ds, es, fs, gs, ss with appropriate real mode values (usually 0).
+	; Set stack pointer to appropriate value:
+	;     Set sp to stack value that will not interfere with real mode program.
+	; Enable interrupts:
+	;     Enable maskable interrupts with STI.
+	;     Continue on in real mode with all bios interrupts.
+
 [BITS 32]
 segment .text
 
 %define ALL_REGISTERS_OFFSET 32 ; popad and pushas modufication offset for esp
 
-	; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
+; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
 
 %define BASE_LOCATION 0x7C00    ; Payload will be copied at that address
 %define REBASE(x)     (BASE_LOCATION + x - begin_sub_sequence)
@@ -57,6 +96,7 @@ _real_mode_op:
 	mov ecx, eax
 	mov esi, begin_sub_sequence
 	mov edi, BASE_LOCATION
+	cld
 	rep movsb
 
 	; initialise temporary GDT
@@ -116,6 +156,10 @@ begin_sub_sequence:
 	; store AX parameter
 	mov [REBASE(_eax)], eax
 
+	; store CR3 parameter
+	mov eax, cr3
+	mov [REBASE(_cr3)], eax
+
 	; store caller idt and load BIOS idt
 	sidt [REBASE(saved_idtptr)]
 	lidt [REBASE(bios_idt)]
@@ -138,10 +182,14 @@ begin_sub_sequence:
 	mov  gs, ax
 	mov  ss, ax
 
-	; disable protected bit
+	; disable paging (PG) && protected bit
 	mov eax, cr0
-	and ax, 0xfffe
+	and eax, 0x7ffffffe
 	mov cr0, eax
+
+	; fflush CR3 register
+	xor eax, eax
+	mov cr3, eax
 
 	; configure CS in real mode
 	jmp 0x0:REBASE(.real_16)
@@ -194,6 +242,14 @@ begin_sub_sequence:
 	mov gs, [REBASE(_gs)]
 	mov ss, [REBASE(_ss)]
 
+	; restore Paging
+	mov ebx, [REBASE(_cr3)] 	; restore CR3 Page directory Phy address location
+	mov cr3, ebx
+
+	mov ebx, cr0
+	or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
+	mov cr0, ebx
+
 	; return to base function
 	ret
 
@@ -207,6 +263,7 @@ saved_gdtptr:
 	dw 0     ; limit
 	dd 0     ; base
 
+_cr3: dd 0
 _eax: dd 0
 _ds: dw 0
 _es: dw 0

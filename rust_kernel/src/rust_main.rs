@@ -24,10 +24,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     unsafe {
         interrupts::init();
-        SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
 
         memory::init_memory_system().unwrap();
+
+        SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
+        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
 
         SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
 
