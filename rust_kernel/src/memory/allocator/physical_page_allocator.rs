@@ -5,7 +5,7 @@ use alloc::vec;
 use bitflags::bitflags;
 
 #[derive(Debug)]
-pub struct PhysicalAllocator {
+pub struct PhysicalPageAllocator {
     allocator: BuddyAllocator<PhysicalAddr>,
 }
 
@@ -16,7 +16,7 @@ bitflags! {
     }
 }
 
-impl PhysicalAllocator {
+impl PhysicalPageAllocator {
     pub fn new() -> Self {
         unsafe {
             Self {
@@ -47,8 +47,8 @@ impl PhysicalAllocator {
     }
 }
 
-pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalAllocator> = None;
+pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
 pub unsafe fn init_physical_allocator() {
-    PHYSICAL_ALLOCATOR = Some(PhysicalAllocator::new());
+    PHYSICAL_ALLOCATOR = Some(PhysicalPageAllocator::new());
 }
