@@ -20,7 +20,7 @@ $(IMG_DISK):
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	echo "(hd0) " $(LOOP_DEVICE) > loopdevice.map
 	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loopdevice.map --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt $(LOOP_DEVICE) -v
-	sudo cp -vf grub/grub.cfg /mnt/grub 
+	sudo cp -vf grub/grub.cfg /mnt/grub
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 
@@ -44,4 +44,4 @@ copy: $(IMG_DISK)
 	sync
 
 exec:
-	qemu-system-x86_64 -m 64 -vga std -hda $(IMG_DISK) -enable-kvm -cpu IvyBridge
+	qemu-system-x86_64 -m 128 -vga std -hda $(IMG_DISK) -enable-kvm -cpu IvyBridge
