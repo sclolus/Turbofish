@@ -25,12 +25,13 @@ afficher:
     ret
 
 start:
-    mov si, msgDebut
-    call afficher
-
+    sti                ; normally STI es already activated by bios boot
     mov ax, 0x8000  ; stack en 0xFFFF
     mov ss, ax
     mov sp, 0xf000
+
+    mov si, msgDebut
+    call afficher
 
 ; initialisation du pointeur sur la GDT
     mov ax, gdtend    ; calcule la limite de GDT
@@ -68,6 +69,70 @@ next:
 end:
 
 [BITS 32]
+    jmp .icw_1
+
+; |0|0|0|1|x|0|x|x|
+;        |   | +--- with ICW4 (1) or without (0)
+;        |   +----- one controller (1), or cascade (0)
+;        +--------- triggering by level (level) (1) or by edge (edge) (0)
+.icw_1: ; ICW1 (port 0x20 / port 0xA0)
+    mov al, 0x11
+    out 0x20, al  ; master
+    out 0xA0, al  ; slave
+    jmp .icw_2
+
+; |x|x|x|x|x|0|0|0|
+;  | | | | |
+; +----------------- base address for interrupts vectors
+.icw_2: ; ICW2 (port 0x21 / port 0xA1) Set vector offset. IRQ below 32 are processor reserved IRQ
+    mov al, 0x08
+    out 0x21, al  ; master, begin at 32 (to 39)
+    mov al, 0x70
+    out 0xA1, al  ; slave, begin at 112 (to 119)
+    jmp .icw_3
+
+.icw_3: ; ICW3 (port 0x21 / port 0xA1) set how are connected pic master and slave
+; |x|x|x|x|x|x|x|x|  for master
+;  | | | | | | | |
+;  +------------------ slave controller connected to the port yes (1), or no (0)
+    mov al, 0x04  ; master is connector 3 of slave
+    out 0x21, al
+
+; |0|0|0|0|0|x|x|x|  for slave
+;            | | |
+;            +-+-+----- Slave ID which is equal to the master port
+    mov al, 0x02  ; slave is connector 2 of master
+    out 0xA1, al
+    jmp .icw_4
+
+; |0|0|0|x|x|x|x|1|
+;        | | | +------ mode "automatic end of interrupt" AEOI (1)
+;        | | +-------- mode buffered slave (0) or master (1)
+;        | +---------- mode buffered (1)
+;        +------------ mode "fully nested" (1)
+.icw_4: ; ICW4 (port 0x21 / port 0xA1)
+    mov al, 0x01
+    out 0x21, al
+    out 0xA1, al
+    jmp .ocw_1
+
+; |x|x|x|x|x|x|x|x|
+;  | | | | | | | |
+;  +-+-+-+-+-+-+-+---- for each IRQ : interrupt mask actif (1) or not (0)
+
+.ocw_1:           ; Interrupt mask
+;   in al, 0x21   ; get Interrupt Mask Register (IMR)
+    mov al, 0x0  ; 0xF9 => 11111000b. IRQ0(PIT channel 0 (clock)) IRQ1(keyboard) and IRQ2(slave connexion)
+    out 0x21, al  ; store IMR
+
+
+;   in al, 0xA1   ; get Interrupt Mask Register (IMR)
+    mov al, 0x0  ; 0xFF => 11111111b. All slave interrupt are masked
+    out 0xA1, al  ; store IMR
+
+    jmp .end_init_pic
+.end_init_pic:
+
 ; initialise temporary GDT
     mov eax, gdt_16_end
     sub eax, gdt_16
@@ -111,9 +176,11 @@ end:
     xor ax, ax
     mov ds, ax
     mov es, ax
-    mov ss, ax
 
-; enable interupts
+    mov ax, 0x8000  ; stack en 0xFFFF
+    mov ss, ax
+    mov sp, 0xf000
+
     sti
 
     mov si, return_16bits_real_msg
