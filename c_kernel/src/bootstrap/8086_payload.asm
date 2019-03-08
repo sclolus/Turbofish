@@ -78,9 +78,9 @@ segment .text
 
 ; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
 
-%define BASE_LOCATION 0x7C00    ; Payload will be copied at that address
-%define REBASE(x)     (BASE_LOCATION + x - begin_low_sequence)
-%define PAYLOAD_MAX_LEN 8192
+%define BASE_LOCATION       0x7C00    ; Payload will be copied at that address
+%define PAYLOAD_MAX_LEN     8192
+%define REBASE(x)           (BASE_LOCATION + x - begin_sub_sequence)
 
 ; int i8086_payload(Base_registers reg, void *payload, size_t payload_len);
 GLOBAL i8086_payload
@@ -92,10 +92,10 @@ i8086_payload:
     pushad
 
     ; copy of content at BASE_LOCATION
-    mov eax, end_low_sequence
-    sub eax, begin_low_sequence
+    mov eax, end_sub_sequence
+    sub eax, begin_sub_sequence
     mov ecx, eax
-    mov esi, begin_low_sequence
+    mov esi, begin_sub_sequence
     mov edi, BASE_LOCATION
     cld
     rep movsb
@@ -105,7 +105,7 @@ i8086_payload:
     ; 32 = ALL_REGISTERS_OFFSET
     mov eax, [ebp + 8 + ALL_REGISTERS_OFFSET]
     mov esi, eax
-    mov eax, REBASE(begin_low_sequence.payload)
+    mov eax, REBASE(begin_sub_sequence.payload)
     mov edi, eax
     mov ecx, [ebp + 12 + ALL_REGISTERS_OFFSET]
     ; test if payload is to big
@@ -154,7 +154,7 @@ ret
     ; -------------------------------------------------
     ; *** This part is copied in BASE_LOCATION area ***
     ; -------------------------------------------------
-begin_low_sequence:
+begin_sub_sequence:
     ; saving of all data segments register
     mov [REBASE(_ds)], ds
     mov [REBASE(_es)], es
@@ -167,6 +167,10 @@ begin_low_sequence:
 
     ; store AX parameter
     mov [REBASE(_eax)], eax
+
+    ; store ESP and EBP because 16bit payload could change SP and BP value
+    mov [REBASE(_esp)], esp
+    mov [REBASE(_ebp)], ebp
 
     ; store CR3 parameter
     ; mov eax, cr3
@@ -211,7 +215,6 @@ begin_low_sequence:
     ; configure CS in real mode
     jmp 0x0:REBASE(.real_16)
 .real_16:
-
     ; configure DS, ES and SS in real mode
     xor ax, ax
     mov ds, ax
@@ -221,8 +224,13 @@ begin_low_sequence:
     ; take saved eax
     mov eax, [REBASE(_eax)]
 
+    ; enable interupts
+    sti
+
 .payload:
     times PAYLOAD_MAX_LEN nop
+    ; disable interupt
+    cli
 
     ; load caller idt and caller gdt
     lidt [REBASE(saved_idtptr)]
@@ -239,7 +247,7 @@ begin_low_sequence:
     db 0xEA
     dw REBASE(.protected_32)
 .cs_value_location:
-    dw 0xFFFF
+    dw 0xBEEF
 .protected_32:
 
     ; code is now in 16bits
@@ -251,6 +259,10 @@ begin_low_sequence:
     mov gs, [REBASE(_gs)]
     mov ss, [REBASE(_ss)]
 
+    ; recover saved esp and ebp
+    mov esp, [REBASE(_esp)]
+    mov ebp, [REBASE(_ebp)]
+
     ; restore Paging
     ; mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
     ; mov cr3, ebx
@@ -261,7 +273,6 @@ begin_low_sequence:
 
     ; return to base function
     ret
-end_low_sequence:
 
 bios_idt:
     dw 0x3ff ; limit
@@ -273,13 +284,17 @@ saved_gdtptr:
     dw 0     ; limit
     dd 0     ; base
 
-; _cr3: dd 0
-_eax: dd 0
-_ds: dw 0
-_es: dw 0
-_fs: dw 0
-_gs: dw 0
-_ss: dw 0
+; _cr3: dd 0xFEEDBABE
+
+_esp: dd 0xDEADBEEF
+_ebp: dd 0xDEADBEEF
+
+_eax: dd 0xDEADBEEF
+_ds: dw 0xBEEF
+_es: dw 0xBEEF
+_fs: dw 0xBEEF
+_gs: dw 0xBEEF
+_ss: dw 0xBEEF
 
 gdt_16:
     db 0, 0, 0, 0, 0, 0, 0, 0
@@ -292,7 +307,7 @@ gdt_16:
 gdt_16_end:
 
 gdt_16_ptr:
-    dw 0     ; limit
-    dd 0     ; base
+    dw 0xBEEF      ; limit
+    dd 0xFEEDBABE  ; base
 
 end_sub_sequence:

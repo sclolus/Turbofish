@@ -11,4 +11,6 @@ struct base_registers {
 
 int i8086_payload(struct base_registers regs, void *payload, size_t payload_len);
 
+#define DEVICE_MAP_PTR_ADDR 0x40000
+
 #endif
