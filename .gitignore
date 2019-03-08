@@ -3,6 +3,7 @@
 *.o
 *.img
 *.elf
+test-*
 loopdevice.map
 !.gitignore
 *~

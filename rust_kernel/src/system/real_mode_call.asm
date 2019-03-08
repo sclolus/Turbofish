@@ -202,16 +202,10 @@ begin_sub_sequence:
 	; take saved eax
 	mov eax, [REBASE(_eax)]
 
-	; enable interupts
-	sti
-
 	; launch interupt 0xCD is the opcode of INT
 	db 0xCD
 .int_nb_location:
 	db 0x0
-
-	; disable interupt
-	cli
 
 	; load caller idt and caller gdt
 	lidt [REBASE(saved_idtptr)]

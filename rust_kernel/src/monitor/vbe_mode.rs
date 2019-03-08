@@ -1,5 +1,8 @@
 use super::{AdvancedGraphic, Color, Drawer, IoResult};
 use crate::ffi::c_char;
+use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::tools::{PhysicalAddr, VirtualAddr};
+use crate::memory::VIRTUAL_OFFSET;
 use crate::registers::{real_mode_op, BaseRegisters};
 use core::result::Result;
 use core::slice;
@@ -7,10 +10,12 @@ use core::slice;
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x3000000 as *mut u8;
+const DB_FRAMEBUFFER_LOCATION: *mut u8 = (0x3_00_00_00 + VIRTUAL_OFFSET) as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x3800000 as *mut u8;
+const GRAPHIC_BUFFER_LOCATION: *mut u8 = (0x3_80_00_00 + VIRTUAL_OFFSET) as *mut u8;
+
+const LINEAR_FRAMEBUFFER_VIRTUAL_ADDR: *mut u8 = 0xf0000000 as *mut u8;
 
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
@@ -453,16 +458,23 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
         }
         let mode_info: &ModeInfo = &MODE_INFO.unwrap();
 
-        Ok(VbeMode::new(
-            unsafe {
-                _allocate_linear_frame_buffer(
-                    mode_info.phys_base_ptr as *mut u8,
-                    mode_info.x_resolution as usize
+        unsafe {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .reserve(
+                    VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize),
+                    PhysicalAddr(mode_info.phys_base_ptr as usize),
+                    (mode_info.x_resolution as usize
                         * mode_info.y_resolution as usize
                         * mode_info.bits_per_pixel as usize
-                        / 8,
+                        / 8)
+                    .into(),
                 )
-            },
+                .unwrap();
+        }
+        Ok(VbeMode::new(
+            LINEAR_FRAMEBUFFER_VIRTUAL_ADDR,
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,

@@ -2,7 +2,9 @@
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 //! usize for a memory quantity is interpreted as a number a bytes
 
-mod tools;
+pub const VIRTUAL_OFFSET: usize = 0xc0000000;
+
+pub mod tools;
 pub use tools::nbr_pages::NbrPages;
 
 pub mod allocator;

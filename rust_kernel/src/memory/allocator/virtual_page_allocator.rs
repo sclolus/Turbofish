@@ -14,6 +14,16 @@ impl VirtualPageAllocator {
         unsafe { Self { virt, mmu } }
     }
     /// size in bytes
+    pub fn reserve(&mut self, vaddr: VirtualAddr, paddr: PhysicalAddr, size: usize) -> Result<(), MemoryError> {
+        //TODO: reserve the buddys
+        unsafe {
+            self.mmu.map_range_page(Page::containing(vaddr), Page::containing(paddr), size.into())?;
+        }
+        // }
+        Ok(())
+    }
+
+    /// size in bytes
     pub fn alloc(&mut self, size: usize) -> Result<VirtualAddr, MemoryError> {
         //println!("alloc size: {:?}", size);
         let order = size.into();

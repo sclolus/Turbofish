@@ -4,6 +4,7 @@ use crate::memory::mmu::_enable_paging;
 use crate::memory::mmu::{PageDirectory, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;
+use crate::memory::VIRTUAL_OFFSET;
 use alloc::boxed::Box;
 use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
@@ -87,13 +88,12 @@ pub unsafe fn init_kernel_virtual_allocator() {
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
     pd.map_range_page_init(VirtualAddr(0).into(), PhysicalAddr(0).into(), NbrPages::_64MB).unwrap();
-    pd.map_range_page_init(VirtualAddr(0xc0000000).into(), PhysicalAddr(0xc0000000).into(), NbrPages::_1GB).unwrap();
-    pd.map_range_page_init(VirtualAddr(0x90000000).into(), PhysicalAddr(0x90000000).into(), NbrPages::_8MB).unwrap();
-    // TODO: find physical addr, Change that when high meme
+    pd.map_range_page_init(VirtualAddr(0xc0000000).into(), PhysicalAddr(0x00000000).into(), NbrPages::_64MB).unwrap();
     let raw_pd = Box::into_raw(pd);
-    _enable_paging(PhysicalAddr(raw_pd as usize));
+    let real_pd = PhysicalAddr(raw_pd as usize - VIRTUAL_OFFSET);
+    _enable_paging(real_pd);
     pd = Box::from_raw(raw_pd);
-    pd.self_map_tricks(PhysicalAddr(raw_pd as usize));
+    pd.self_map_tricks(real_pd);
     let virt = VirtualPageAllocator::new(buddy, pd);
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
     KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator);

@@ -5,6 +5,7 @@ use core::ops::{Add, Range, RangeInclusive, Sub};
 
 pub trait Address:
     From<usize>
+    + From<Page<Self>>
     + Into<usize>
     + Sub<Self, Output = usize>
     + Sub<usize, Output = Self>
