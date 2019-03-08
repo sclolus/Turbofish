@@ -16,8 +16,6 @@ extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
     fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
     fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
-    /* Depanage LFB */
-    fn _allocate_linear_frame_buffer(phy_addr: *mut u8, len: usize) -> *mut u8;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -161,12 +159,6 @@ pub struct CrtcInfo {
 
 define_raw_data!(CrtcInfoReserved, 40);
 
-static mut VBE_INFO: Option<VbeInfo> = None;
-
-static mut MODE_INFO: Option<ModeInfo> = None;
-
-static mut CRTC_INFO: Option<CrtcInfo> = None;
-
 extern "C" {
     static _font: Font;
     static _font_width: usize;
@@ -232,10 +224,21 @@ pub struct VbeMode {
     lines: usize,
     /// current text color
     text_color: RGB,
+    // Some informations about graphic mode
+    mode_info: ModeInfo,
+    // Some informations about how the screen manage display
+    crtc_info: CrtcInfo,
 }
 
 impl VbeMode {
-    pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize) -> Self {
+    pub fn new(
+        linear_frame_buffer: *mut u8,
+        width: usize,
+        height: usize,
+        bpp: usize,
+        mode_info: ModeInfo,
+        crtc_info: CrtcInfo,
+    ) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
         let screen_size: usize = bytes_per_pixel * width * height;
         let columns: usize = unsafe { width / _font_width };
@@ -254,6 +257,8 @@ impl VbeMode {
             columns: columns,
             lines: lines,
             text_color: Color::White.into(),
+            crtc_info,
+            mode_info,
         }
     }
     /// return window size in nb char
@@ -399,7 +404,7 @@ fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(
     }
 }
 
-fn save_vbe_info() -> core::result::Result<(), VbeError> {
+unsafe fn save_vbe_info() -> Result<VbeInfo, VbeError> {
     unsafe {
         // VBE 3.0 specification says to put 'VBE2' in vbe_signature field to have pointers
         // points to reserved field instead of far pointer. So in practice it doesn't work
@@ -407,8 +412,7 @@ fn save_vbe_info() -> core::result::Result<(), VbeError> {
     }
     let reg: BaseRegisters = BaseRegisters { edi: TEMPORARY_PTR_LOCATION as u32, eax: 0x4f00, ..Default::default() };
     vbe_real_mode_op(reg, 0x10)?;
-    unsafe { VBE_INFO = Some(VbeInfo::new(TEMPORARY_PTR_LOCATION as *const VbeInfo)) }
-    Ok(())
+    Ok(VbeInfo::new(TEMPORARY_PTR_LOCATION as *const VbeInfo))
 }
 
 fn query_mode_info(mode_number: u16) -> Result<ModeInfo, VbeError> {
@@ -421,7 +425,7 @@ fn query_mode_info(mode_number: u16) -> Result<ModeInfo, VbeError> {
     unsafe { vbe_real_mode_op(reg, 0x10).map(|_| *(TEMPORARY_PTR_LOCATION as *const ModeInfo)) }
 }
 
-fn set_vbe_mode(mode_number: u16) -> Result<(), VbeError> {
+unsafe fn set_vbe_mode(mode_number: u16) -> Result<CrtcInfo, VbeError> {
     let reg: BaseRegisters = BaseRegisters {
         edi: TEMPORARY_PTR_LOCATION as u32,
         eax: 0x4f02,
@@ -429,29 +433,26 @@ fn set_vbe_mode(mode_number: u16) -> Result<(), VbeError> {
         ..Default::default()
     };
     vbe_real_mode_op(reg, 0x10)?;
-    unsafe {
-        CRTC_INFO = Some(*(TEMPORARY_PTR_LOCATION as *const CrtcInfo));
-    }
-    Ok(())
+    Ok(*(TEMPORARY_PTR_LOCATION as *const CrtcInfo))
 }
 
 /// do all nessesary initialisation and switch to vbe mode 'mode' if given, if not swith to the best resolution mode
 pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
     unsafe {
-        save_vbe_info()?;
+        let vbe_info = save_vbe_info()?;
+        let mode_info: ModeInfo;
+        let crtc_info: CrtcInfo;
         match mode {
             Some(m) => {
-                MODE_INFO = Some(query_mode_info(m)?);
-                set_vbe_mode(m)?;
+                mode_info = query_mode_info(m)?;
+                crtc_info = set_vbe_mode(m)?;
             }
             None => {
-                let (m, mode_info) = VBE_INFO.unwrap().find_best_resolution_mode();
-                MODE_INFO = Some(mode_info);
-                set_vbe_mode(m)?;
+                let result = vbe_info.find_best_resolution_mode();
+                mode_info = result.1;
+                crtc_info = set_vbe_mode(result.0)?;
             }
         }
-        let mode_info: &ModeInfo = &MODE_INFO.unwrap();
-
         unsafe {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
@@ -472,6 +473,8 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,
+            mode_info,
+            crtc_info,
         ))
     }
 }
