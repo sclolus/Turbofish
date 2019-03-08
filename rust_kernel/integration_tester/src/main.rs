@@ -1,4 +1,4 @@
-use colorful::Colorful;
+use colored::*;
 use getopts::Options;
 use std::env;
 use std::fs::File;
@@ -25,6 +25,7 @@ fn main() {
     let program = args[0].clone();
     let mut opts = Options::new();
     opts.optflag("g", "graphical", "launch qemu with console");
+    opts.optflag("", "nocapture", "show output even if test succeed");
     opts.optflag("h", "help", "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -54,47 +55,61 @@ fn main() {
     let all_result: Vec<Result<(), TestError>> = all_tests
         .iter()
         .map(|feature| {
-            println!("test: {}", (*feature).clone().blue());
-            let compilation_output = Command::new("make")
-                .args(&[
+            println!("test: {}", (*feature).clone().magenta().bold());
+            let compilation_output = {
+                let mut cmd = Command::new("make");
+                cmd.args(&[
                     "DEBUG=yes",
                     &format!(
                         "cargo_flags=--features {},test,{}",
                         feature,
                         if matches.opt_present("g") { "qemu-graphical" } else { "" }
                     ),
-                ])
-                .output()
-                .expect("failed to execute process");
+                ]);
+
+                println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
+                cmd.output().expect("failed to execute process")
+            };
             println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
             println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
             let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
-            let mut child = Command::new("qemu-system-x86_64")
-                .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "64M", "-kernel", "build/kernel.elf"])
-                .args(&["-serial", &format!("file:{}", output_file)])
-                .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
-                .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() })
-                .spawn()
-                .expect("failed to execute process");
+            let mut child = {
+                let mut qemu_command = Command::new("qemu-system-x86_64");
+                qemu_command
+                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M", "-kernel", "build/kernel.elf"])
+                    .args(&["-serial", &format!("file:{}", output_file)])
+                    .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
+                    .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() });
+                println!("{}: {:?}", "EXECUTING".blue().bold(), qemu_command);
+                qemu_command.spawn().expect("failed to execute process")
+            };
+
+            let show_output = || {
+                let mut output = String::new();
+                File::open(output_file).unwrap().read_to_string(&mut output).unwrap();
+                println!("{}: {}", "OUTPUT".blue().bold(), output);
+            };
 
             match child.wait_timeout(TIMEOUT) {
                 Err(e) => panic!("Internal error: {}", e),
                 Ok(Some(exit_status)) => {
                     let exit_status = exit_status.code().unwrap() >> 1;
                     if exit_status != 0 {
-                        let mut output = String::new();
-                        File::open(output_file).unwrap().read_to_string(&mut output).unwrap();
-                        println!("OUTPUT: {}", output);
-                        println!("{}", "Failed".red());
+                        show_output();
+                        println!("{}", "Failed".red().bold());
                         Err(TestError::Failed)
                     } else {
-                        println!("{}", "Ok".green());
+                        if matches.opt_present("nocapture") {
+                            show_output();
+                        }
+                        println!("{}", "Ok".green().bold());
                         Ok(())
                     }
                 }
                 Ok(None) => {
                     child.kill().expect("cant kill");
-                    println!("{}", "TIMEOUT".red());
+                    show_output();
+                    println!("{}", "TIMEOUT".red().bold());
                     Err(TestError::Timeout)
                 }
             }
@@ -104,7 +119,7 @@ fn main() {
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(
         "test result: {} {} passed; {} failed",
-        if total_succeed == all_tests.len() { "SUCCEED".green() } else { "FAILED".red() },
+        if total_succeed == all_tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
         total_succeed,
         total_failed
     );

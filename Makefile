@@ -20,7 +20,7 @@ $(IMG_DISK):
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	echo "(hd0) " $(LOOP_DEVICE) > loopdevice.map
 	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loopdevice.map --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt $(LOOP_DEVICE) -v
-	sudo cp -vf grub/grub.cfg /mnt/grub 
+	sudo cp -vf grub/grub.cfg /mnt/grub
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 

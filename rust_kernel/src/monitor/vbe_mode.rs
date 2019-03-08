@@ -7,10 +7,10 @@ use core::slice;
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x2000000 as *mut u8;
+const DB_FRAMEBUFFER_LOCATION: *mut u8 = 0x3000000 as *mut u8;
 
 // TODO Cannot allocated dynamiquely for the moment
-const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x2800000 as *mut u8;
+const GRAPHIC_BUFFER_LOCATION: *mut u8 = 0x3800000 as *mut u8;
 
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */

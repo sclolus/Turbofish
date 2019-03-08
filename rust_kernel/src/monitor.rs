@@ -83,12 +83,14 @@ struct Cursor {
     pub lines: usize,
 }
 
+#[derive(Debug)]
 enum DrawingMode {
     Vga(VgaTextMode),
     Vbe(VbeMode),
 }
 
 /// Control the cursor and can put text on screen thanks to its drawer slave
+#[derive(Debug)]
 pub struct ScreenMonad {
     drawing_mode: DrawingMode,
     cursor: Cursor,

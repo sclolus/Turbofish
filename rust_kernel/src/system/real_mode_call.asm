@@ -67,7 +67,6 @@
 	; Enable interrupts:
 	;     Enable maskable interrupts with STI.
 	;     Continue on in real mode with all bios interrupts.
-
 	; CAUTION
 	; If enabled, The PIC must be disabled before calling this code
 
@@ -95,6 +94,7 @@ _real_mode_op:
 	mov ecx, eax
 	mov esi, begin_sub_sequence
 	mov edi, BASE_LOCATION
+	cld
 	rep movsb
 
 	; initialise temporary GDT
