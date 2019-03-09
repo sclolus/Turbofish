@@ -69,12 +69,17 @@ _init:
 	rep movsb
 
 	; Set up a early GDT
-	; reserve 8 bytes for structure return (need ASM high skill to understand that ...)
+	; reserve 8 bytes for structure pointer (need six bytes)
 	sub esp, 8
+	mov ebx, esp
+	push ebx
+
 	; this function returns a structure on stack and pop four bytes
 	call alt_gdt_new
-	lgdt [eax]
-	add esp, 4
+
+	lgdt [ebx]
+
+	add esp, 8 + 4
 
 	; Set up the Data descriptor segments
 	mov ax, 0x10
@@ -118,4 +123,4 @@ temporary_stack:
 
 ; Early backup of multiboot info structure
 multiboot_infos:
-times 128 db 0xff
+times MULTIBOOT_INFOS_LEN db 0xff

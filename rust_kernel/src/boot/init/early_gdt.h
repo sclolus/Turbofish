@@ -37,7 +37,7 @@ struct __attribute__ ((packed)) gdt_segment {
 };
 
 struct __attribute__ ((packed)) gdt {
-	struct gdt_segment segments[128];
+	struct gdt_segment segments[MAX_GDT_ENTRIES];
 };
 
 struct __attribute__ ((packed)) gdt_info {
@@ -45,8 +45,8 @@ struct __attribute__ ((packed)) gdt_info {
 	struct gdt *gdt_location;
 };
 
-struct gdt_info gdt_new(void);
+void gdt_new(struct gdt_info *gdt_info);
 
-void create_gdt_segment(struct gdt_info gdt_info, u8 idx, u32 base, u32 limit, u8 access, u8 flags);
+void create_gdt_segment(struct gdt_info *gdt_info, u8 idx, u32 base, u32 limit, u8 access, u8 flags);
 
 #endif

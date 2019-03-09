@@ -5,10 +5,10 @@
  * Create a new GDT segment and put it int the right place
  */
 void create_gdt_segment(
-	struct gdt_info gdt_info,
+	struct gdt_info *gdt_info,
 	u8 idx, u32 base, u32 limit, u8 access, u8 flags)
 {
-	struct gdt_segment *seg = &(gdt_info.gdt_location->segments[idx]);
+	struct gdt_segment *seg = &(gdt_info->gdt_location->segments[idx]);
 
 	seg->limit_0_15 = limit & 0xffff;
 	seg->limit_16_19 = (limit >> 16) & 0xf;
@@ -20,35 +20,38 @@ void create_gdt_segment(
 }
 
 /*
- * Make a basic GDT for you
+ * Fill your GDT with a simple and basic template for you
  */
-struct gdt_info	gdt_new(void)
+void gdt_new(struct gdt_info *gdt_info)
 {
-	struct gdt_info gdt_info;
+	// Fill the given GDT info structure
+	gdt_info->gdt_size = MAX_GDT_ENTRIES;
+	gdt_info->gdt_location = (struct gdt *)GDT_LOCATION;
 
-	gdt_info.gdt_size = MAX_GDT_ENTRIES;
-	gdt_info.gdt_location = (struct gdt *)GDT_LOCATION;
-
+	// Trash Selector
 	create_gdt_segment(gdt_info, 0, 0, 0, 0, 0);
-
+	// Code Selector Kernel
 	create_gdt_segment(gdt_info, 1, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | EXECUTABLE,
 			SIZE | GRANULARITY);
+	// Data Selector Kernel
 	create_gdt_segment(gdt_info, 2, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | READ_WRITE,
 			SIZE | GRANULARITY);
+	// Stack Selector Kernel
 	create_gdt_segment(gdt_info, 3, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | READ_WRITE,
 			SIZE | GRANULARITY);
+	// Code Selector User
 	create_gdt_segment(gdt_info, 4, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | EXECUTABLE | DPL,
 			SIZE | GRANULARITY);
+	// Data Selector User
 	create_gdt_segment(gdt_info, 5, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | READ_WRITE | DPL,
 			SIZE | GRANULARITY);
+	// Stack Selector User
 	create_gdt_segment(gdt_info, 6, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | READ_WRITE | DPL,
 			SIZE | GRANULARITY);
-
-	return gdt_info;
 }
