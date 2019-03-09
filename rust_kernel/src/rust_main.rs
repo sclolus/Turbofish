@@ -1,4 +1,5 @@
 use crate::debug;
+use crate::ffi::c_char;
 use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
@@ -43,6 +44,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
                 draw_image(&_asterix_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+        SCREEN_MONAD.write_fixed_characters(115, 46, "Turbo Fish !\0" as *const _ as *const c_char).unwrap();
 
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();

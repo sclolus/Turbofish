@@ -5,8 +5,8 @@ mod vga_text_mode;
 use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
-
 pub mod bmp_loader;
+use crate::ffi::c_char;
 
 pub type IoResult = core::result::Result<(), IoError>;
 
@@ -28,6 +28,7 @@ trait Drawer {
 trait AdvancedGraphic {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
+    fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -94,6 +95,10 @@ impl ScreenMonad {
     /// fill the graphic buffer with a custom fn
     pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         AdvancedGraphic::draw_graphic_buffer(self, closure)
+    }
+    /// Write fixed characters into the screen
+    pub fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult {
+        AdvancedGraphic::write_fixed_characters(self, x, y, string)
     }
     /// set manualy position of cursor
     pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
@@ -183,6 +188,12 @@ impl AdvancedGraphic for ScreenMonad {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
+        }
+    }
+    fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
+            DrawingMode::Vbe(vbe) => vbe.write_fixed_characters(x, y, string),
         }
     }
 }
