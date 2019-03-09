@@ -55,14 +55,6 @@ $(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
 	objcopy --prefix-symbols=alt_ $@
 # ---------------------------------------------------------------------------------------------------------------
 
-# C debuging Rust
-ifeq ($(DEV), C)
-	SRC_C_KERNEL += debug_center vga_text
-	SRC_ASM_KERNEL += cpuid
-	HEADERS += vga_text.h cpuid.h
-	VPATH += src/debug
-endif
-
 SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=
 VPATH += src/boot
