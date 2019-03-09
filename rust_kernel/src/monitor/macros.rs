@@ -10,6 +10,30 @@ macro_rules! print {
 }
 
 #[macro_export]
+#[cfg(not(test))]
+macro_rules! printfixed {
+    ($x:expr, $y:expr, $($arg:tt)*) => ({
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    use crate::monitor::SCREEN_MONAD;
+
+                    let cursor = SCREEN_MONAD.get_cursor_position();
+                    SCREEN_MONAD.set_cursor_position($x, $y).unwrap();
+                    SCREEN_MONAD.set_write_mode(WriteMode::Fixed).unwrap();
+
+                    core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, a).unwrap();
+
+                    SCREEN_MONAD.set_cursor_position(cursor.0, cursor.1).unwrap();
+                    SCREEN_MONAD.set_write_mode(WriteMode::Dynamic).unwrap();
+                }
+            }
+        }
+    })
+}
+
+#[macro_export]
+#[cfg(not(test))]
 macro_rules! println {
     () => (print!("\n"));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
