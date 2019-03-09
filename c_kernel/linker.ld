@@ -21,15 +21,16 @@ SECTIONS
 		*(.multiboot)
 	}
 
-	.bootstrap BLOCK(4K) : ALIGN(4K)
+	.init BLOCK(4K) : ALIGN(4K)
 	{
-		*(.bootstrap)
-		*(.bootstrap.*)
-		objs_bootstrap/bootstrap_main.o
-		objs_bootstrap/vga_text.o
-		objs_bootstrap/8086_payload.o
-		objs_bootstrap/payload_get_mem_map.o
-		objs_bootstrap/early_gdt.o
+		*(.init)
+		*(.init.*)
+		objs_init/get_device_mem_map.o
+		objs_init/vga_text.o
+		objs_init/8086_payload.o
+		objs_init/payload_get_mem_map.o
+		objs_init/early_gdt.o
+		objs_init/init_paging.o
 		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
 		libft/alt_libft.a
 	}

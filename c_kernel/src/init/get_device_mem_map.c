@@ -1,11 +1,14 @@
 
 #include "libft.h"
 
-#include "bootstrap.h"
-#include "vga_text.h"
+struct base_registers {
+	u32 edi, esi, ebp, esp;
+	u32 ebx, edx, ecx, eax;
+} __attribute__ ((packed));
 
-extern void bootstrap_end(void);
+#define DEVICE_MAP_PTR_ADDR 0x40000
 
+extern int i8086_payload(struct base_registers regs, void *payload, size_t payload_len);
 extern void payload_get_mem_map(void);
 extern size_t payload_get_mem_map_len;
 
@@ -20,17 +23,7 @@ struct __attribute__ ((packed)) device {
 	u32 reserved_b;
 };
 
-struct bootstrap_result {
-	void *grub_multiboot_structure;
-	struct device *device_map;
-};
-
-struct bootstrap_result bootstrap_main(void *grub_multiboot_structure) {
-	struct bootstrap_result res;
-
-	res.grub_multiboot_structure = grub_multiboot_structure;
-
-	clear_screen();
+struct device *get_device_mem_map(void) {
 	struct base_registers regs = {0};
 	int nb_dev = i8086_payload(regs, &payload_get_mem_map, payload_get_mem_map_len);
 	if (nb_dev == -1) {
@@ -39,8 +32,7 @@ struct bootstrap_result bootstrap_main(void *grub_multiboot_structure) {
 	}
 	printk("device map detected: %i\n", nb_dev);
 
-	res.device_map = (struct device *)DEVICE_MAP_PTR_ADDR;
-	struct device *ptr_device = res.device_map;
+	struct device *ptr_device = (struct device *)DEVICE_MAP_PTR_ADDR;
 
 	for (int i = 0; i < nb_dev; i++) {
 		printk("addr: %.8p len %u ko type: %u acpi: %.8x\n",
@@ -52,5 +44,5 @@ struct bootstrap_result bootstrap_main(void *grub_multiboot_structure) {
 	}
 	// Mark zero on the last entry
 	ft_memset(ptr_device, 0, sizeof(struct device));
-	return res;
+	return (struct device *)DEVICE_MAP_PTR_ADDR;
 }

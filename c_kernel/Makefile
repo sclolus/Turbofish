@@ -47,31 +47,31 @@ endif
 
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
-# bootstrap
+# init
 # ---------------------------------------------------------------------------------------------------------------
-SRC_C_BOOTSTRAP += bootstrap_main vga_text early_gdt
-SRC_ASM_BOOTSTRAP += 8086_payload payload_get_mem_map
-VPATH += src/bootstrap
-BOOTSTRAP_HEADERS += vga_text.h bootstrap.h early_gdt.h
+SRC_C_INIT += get_device_mem_map vga_text early_gdt
+SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging
+VPATH += src/init
+INIT_HEADERS += vga_text.h early_gdt.h early_paging.asm
 
-OBJ_BOOTSTRAP_DIR := objs_bootstrap
-OBJ_C_BOOTSTRAP	= $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_BOOTSTRAP)))))
-OBJ_ASM_BOOTSTRAP = $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_BOOTSTRAP)))))
+OBJ_INIT_DIR := objs_init
+OBJ_C_INIT	= $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
+OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
 
-$(OBJ_BOOTSTRAP_DIR)/%.o: %.c Makefile $(BOOTSTRAP_HEADERS)
+$(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 	objcopy --prefix-symbols=alt_ $@
 
-$(OBJ_BOOTSTRAP_DIR)/%.o: %.asm Makefile $(BOOTSTRAP_HEADERS)
+$(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
 # ---------------------------------------------------------------------------------------------------------------
 
 # main
 SRC_C_KERNEL += kmain watchdog
-SRC_ASM_KERNEL += init multiboot cpu_features bootstrap
+SRC_ASM_KERNEL += start init_kernel cpu_features
 VPATH += include src
-HEADERS += grub.h i386_type.h early_paging.asm watchdog.h
+HEADERS += grub.h i386_type.h watchdog.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic
@@ -162,7 +162,7 @@ symbol_gen_exe:
 
 LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
 
-$(KERNEL): $(OBJ_C_BOOTSTRAP) $(OBJ_ASM_BOOTSTRAP) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
+$(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
@@ -199,7 +199,7 @@ build_libft:
 
 common_clean:
 	rm -rvf $(OBJ_DIR)*/**
-	rm -rvf $(OBJ_BOOTSTRAP_DIR)*/**
+	rm -rvf $(OBJ_INIT_DIR)*/**
 	rm -f nm.res
 	rm -f nm_map_gen
 	rm -f src/system/nm.map

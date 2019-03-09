@@ -43,6 +43,6 @@ struct __attribute__ ((packed)) gdt_info {
 
 struct gdt_info gdt_new(void);
 
-struct gdt_info create_gdt_segment(struct gdt_info gdt_info, u8 idx, u32 base, u32 limit, u8 access, u8 flags);
+void create_gdt_segment(struct gdt_info gdt_info, u8 idx, u32 base, u32 limit, u8 access, u8 flags);
 
 #endif

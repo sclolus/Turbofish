@@ -1,12 +1,6 @@
 [BITS 32]
 
-extern kmain
-
-extern _set_sse
-extern _set_avx
-extern _set_fpu
-
-%include "src/early_paging.asm"
+%include "src/init/early_paging.asm"
 
 segment .text
 
@@ -55,12 +49,11 @@ segment .text
 
 ; The grub bootloader let the kernel in 32 bits protected mode here:
 
-global _init
-_init:
+global init_paging
+init_paging:
+	push ebp
+	mov ebp, esp
 	; block interrupts
-	cli
-
-.low_memory_area:
 
 	; Paginate kernel in half high memory (do also identity mapping)
 	INIT_PAGING_ENV
@@ -82,63 +75,14 @@ _init:
 	PAGINATE_ADDR l1_virt_offset, l1_physic_addr, l1_len
 
 	; Active paging
-	TRANSLATE_ADDR page_directory_alpha_area
-	mov cr3, eax 				; fill CR3 with physic mem pointer to page directory
+	mov eax, page_directory_alpha_area
+	mov cr3, eax ; fill CR3 with physic mem pointer to page directory
 
 	mov eax, cr0
 	or eax, 0x80000001          ; enable Paging bit (PG). Protection bit must be also recall here
 	mov cr0, eax
 
-	; Jump to high memory, init code segment
-	jmp 0x8: .high_memory_area
-
-.high_memory_area:
-	call .disable_cursor
-
-	; set the base EIP on stack at 0x0, prevent infinite loop for backtrace
-
-	; set up the main kernel stack
-	;      stack frame 2             | stack frame 1             | stack frame 0
-	; <--- (EBP EIP ARGx ... VARx ...) (EBP EIP ARGx ... VARx ...) ((ptr - 8) 0x0) | *** kernel_stack SYMBOL *** |
-	;                                  <----     ESP EXPANSION   |    *ebp
-
-	; This mechanism is for Panic handler. See details on 'panic.rs' file
-	; dont worry about overflow for stack, the first push will be at [temporary_stack - 4], not in [temporary_stack]
-	mov [kernel_stack - 4], dword 0x0
-	mov esp, kernel_stack - 8
-	mov ebp, esp
-
-	call _set_sse
-	call _set_avx
-	call _set_fpu
-
-	; EBX contain pointer to GRUB multiboot information (preserved register)
-	push ebx
-	; kmain is called with EBX param
-	call kmain
-
-	add esp, 4
-
-.idle:
-	hlt
-	jmp .idle
-
-.disable_cursor:
-	push eax
-	push edx
-
-	mov dx, 0x3D4
-	; low cursor shape register
-	mov al, 0xA
-	out dx, al
-
-	inc dx
-	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
-	mov al, 0x20
-	out dx, al
-
-	pop edx
-	pop eax
+	pop ebp
 	ret
 
 %define VIRTUAL_LINEAR_FB_LOCATION 0xF0000000
@@ -146,7 +90,7 @@ _init:
 ; 0xF0000000 -> ... mapped to phy ??? -> ??? + LFB_SIZE
 ; hack for LFB allocation
 ; CAUTION: Usable only when high memory is initialized
-GLOBAL _allocate_linear_frame_buffer
+global _allocate_linear_frame_buffer
 _allocate_linear_frame_buffer:
 	push ebp
 	mov ebp, esp
@@ -163,10 +107,3 @@ _allocate_linear_frame_buffer:
 
 	pop ebp
 	ret
-
-segment .bss
-align 16
-
-; 1mo for the main kernel stack
-resb 1 << 20
-kernel_stack:

@@ -78,7 +78,7 @@ segment .text
 
 ; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
 
-%define BASE_LOCATION 0x7C00    ; Payload will be copied at that address
+%define BASE_LOCATION 0x7c00    ; Payload will be copied at that address
 %define REBASE(x)     (BASE_LOCATION + x - begin_sub_sequence)
 
 GLOBAL int8086

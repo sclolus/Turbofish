@@ -1,7 +1,8 @@
 
+#include "vga_text.h"
+
 #include "libft.h"
 
-#include "vga_text.h"
 
 static struct vga_mode vga =
 	{memory_location: (u8 *)0xb8000, width: 80, height: 25, x: 0, y: 0, color: 3};

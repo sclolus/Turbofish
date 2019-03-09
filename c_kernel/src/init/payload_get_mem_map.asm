@@ -1,4 +1,5 @@
 [BITS 16]
+
 segment .text
 
 ; Detect the memory device physical map:
@@ -22,60 +23,59 @@ segment .text
 
 GLOBAL payload_get_mem_map
 payload_get_mem_map:
-    ; stack on 0x84000
-    mov ax, 0x8000
-    mov ss, ax
-    mov bp, 0x4000
-    mov sp, bp
+	; stack on 0x84000
+	mov ax, 0x8000
+	mov ss, ax
+	mov bp, 0x4000
+	mov sp, bp
 
-    ; initial ES:DI at 0x40000 (segment 5. 256ko -> 320ko)
-    mov ax, DEVICE_MAP_PTR_SEG
-    mov es, ax
-    xor di, di
+	; initial ES:DI at 0x40000 (segment 5. 256ko -> 320ko)
+	mov ax, DEVICE_MAP_PTR_SEG
+	mov es, ax
+	xor di, di
 
-    ; assign values for the first call
-    mov edx, BIOS_MAGIC_A
-    mov eax, BIOS_MAGIC_B
-    mov ecx, 24
-    xor ebx, ebx
+	; assign values for the first call
+	mov edx, BIOS_MAGIC_A
+	mov eax, BIOS_MAGIC_B
+	mov ecx, 24
+	xor ebx, ebx
 
 .first_calling:
+	int 15h
+	; check if Carry Flag is Clear and EAX
+	jc .l_error
+	cmp eax, BIOS_MAGIC_A
+	jne .l_error
 
-    int 15h
-    ; check if Carry Flag is Clear and EAX
-    jc .l_error
-    cmp eax, BIOS_MAGIC_A
-    jne .l_error
-
-    ; set the result length to 1 and push it
-    mov eax, 1
-    push eax
+	; set the result length to 1 and push it
+	mov eax, 1
+	push eax
 
 .next_calling:
-    mov eax, BIOS_MAGIC_B
-    mov ecx, 24
-    add edi, 32
+	mov eax, BIOS_MAGIC_B
+	mov ecx, 24
+	add edi, 32
 
-    int 15h
+	int 15h
 
 	; add result by 1
-    pop eax
-    inc eax
-    push eax
+	pop eax
+	inc eax
+	push eax
 
-    ; check if Carry Flag is Clear and EAX
-    jc .l_success
-    cmp ebx, 0
-    jne .next_calling
+	; check if Carry Flag is Clear and EAX
+	jc .l_success
+	cmp ebx, 0
+	jne .next_calling
 
 .l_success:
-    pop eax
-    jmp .end
+	pop eax
+	jmp .end
 .l_error:
-    mov eax, -1
+	mov eax, -1
 .end:
 
-[BITS 32]
 segment .data
+
 GLOBAL payload_get_mem_map_len
 payload_get_mem_map_len: dd (payload_get_mem_map.end - payload_get_mem_map)

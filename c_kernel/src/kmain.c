@@ -63,8 +63,9 @@ extern u32 _align_stack(u32(*f)(), u32 args_len, ...);
 /*
  * Main Kernel
  */
-void 		kmain(struct multiboot_info *multiboot_info_addr)
+void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 {
+	(void)dev_map;
 /*
  * Initialization sequence
  */
@@ -85,6 +86,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr)
 		bios_shutdown_computer();
 		return ;
 	}
+
 	kernel_io_ctx.term_mode = panic_screen;
 	set_cursor_location(1, 1);
 
