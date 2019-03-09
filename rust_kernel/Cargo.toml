@@ -22,8 +22,9 @@ bitflags = "1.0.4"
 [dev-dependencies]
 
 [features]
-qemu-graphical= []
-#test-succeed= []
-#test-failed= []
+exit-on-panic = []
+serial-eprintln = []
+test-succeed= []
+test-failed= []
 test-sodo-allocator= []
 test = []

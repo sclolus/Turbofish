@@ -2,7 +2,7 @@ arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := undefined_behavior
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
-
+QEMU_ARGS = --enable-kvm -cpu IvyBridge -m 128M -kernel $(kernel)
 # These rustc flags are defined in json xbuild file.
 # rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
@@ -78,6 +78,10 @@ target := $(arch)
 custom_target := $(arch).json
 # $ come from this output: rustc -Z unstable-options --print target-spec-json --target i686-unknown-linux-gnu
 # doc about this flags: https://github.com/rust-lang/rust/blob/256e497fe63bf4b13f7c0b58fa17360ca849c54d/src/librustc_back/target/mod.rs#L228-L409
+
+ifeq ($(serial-eprintln), yes)
+cargo_flags += --features serial-eprintln
+endif
 
 ifeq ($(DEBUG),yes)
 	rust_os := target/$(target)/debug/lib$(name).a
@@ -160,10 +164,13 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 exec:
-	qemu-system-x86_64 --enable-kvm -cpu IvyBridge -m 128M -kernel build/kernel.elf
+	qemu-system-x86_64 $(QEMU_ARGS)
+
+exec_serial_port:
+	qemu-system-x86_64 -device isa-debug-exit,iobase=0xf4,iosize=0x04 --serial /dev/tty $(QEMU_ARGS)
 
 exec_gdb:
-	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) --enable-kvm -cpu IvyBridge -m 128M -kernel build/kernel.elf
+	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) $(QEMU_ARGS)
 
 tests:
 	cargo test

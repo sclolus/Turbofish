@@ -114,7 +114,7 @@ fn panic_sa_mere(info: &PanicInfo) {
 }
 
 #[panic_handler]
-#[cfg(any(all(not(test), not(feature = "test")), feature = "qemu-graphical"))]
+#[cfg(not(feature = "exit-on-panic"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     panic_sa_mere(info);
@@ -122,7 +122,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[panic_handler]
-#[cfg(all(not(feature = "qemu-graphical"), feature = "test"))] //for integration test when not in graphical
+#[cfg(feature = "exit-on-panic")] //for integration test when not in graphical
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     panic_sa_mere(info);

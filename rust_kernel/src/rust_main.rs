@@ -16,6 +16,10 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
+    #[cfg(feature = "serial-eprintln")]
+    unsafe {
+        crate::io::UART_16550.init();
+    }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
