@@ -2,6 +2,10 @@
 #ifndef __VGA_TEXT_H__
 # define __VGA_TEXT_H__
 
+/*
+ * This file contain a minimal set of VGA_TEXT functions
+ */
+
 #include "i386_type.h"
 
 enum text_color {

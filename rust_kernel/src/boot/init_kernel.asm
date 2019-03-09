@@ -23,7 +23,7 @@ _init_kernel:
 	; Get the pointer to the device memory map
 	mov ebx, [ebp + 12]
 
-	; Set the base EIP on stack at 0x0, prevent infinite loop for backtrace
+	; Set up the base EIP on stack at 0x0, prevent infinite loop for backtrace
 
 	; set up the main kernel stack
 	;      stack frame 2             | stack frame 1             | stack frame 0
@@ -45,7 +45,7 @@ _init_kernel:
 	call _set_avx
 	call _set_fpu
 
-	; Finally call the RUST kernel
+	; And finally go into the RUST kernel !
 	push 8
 	push kmain
 
@@ -53,6 +53,7 @@ _init_kernel:
 
 	add esp, 16
 
+; Kernel fallback
 .idle:
 	hlt
 	jmp .idle

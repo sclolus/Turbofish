@@ -6,6 +6,9 @@ struct base_registers {
 	u32 ebx, edx, ecx, eax;
 } __attribute__ ((packed));
 
+/*
+ * By default, device memory map will be stored on the 0x40000 address
+ */
 #define DEVICE_MAP_PTR_ADDR 0x40000
 
 extern int i8086_payload(struct base_registers regs, void *payload, size_t payload_len);
@@ -23,6 +26,9 @@ struct __attribute__ ((packed)) device {
 	u32 reserved_b;
 };
 
+/*
+ * Return the memory map device
+ */
 struct device *get_device_mem_map(void) {
 	struct base_registers regs = {0};
 	int nb_dev = i8086_payload(regs, &payload_get_mem_map, payload_get_mem_map_len);

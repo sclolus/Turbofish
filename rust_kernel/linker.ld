@@ -23,6 +23,7 @@ SECTIONS
 		__end_boot = .;
 	}
 
+	/* This section will be in low memory, it prepares MMU for the high half kernel style */
 	.init BLOCK(4K) : ALIGN(4K)
 	{
 		__start_init = .;
@@ -39,6 +40,7 @@ SECTIONS
 		__end_init = .;
 	}
 
+	/* Now, we gone in high memory */
 	virtual_offset = 0xc0000000;
 	. += virtual_offset;
 

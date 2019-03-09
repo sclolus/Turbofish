@@ -2,6 +2,10 @@
 #ifndef __EARLY_GDT_H__
 # define __EARLY_GDT_H__
 
+/*
+ * This file provide minimal GDT set of functions
+ */
+
 #include "i386_type.h"
 
 #define GDT_LOCATION 0x800

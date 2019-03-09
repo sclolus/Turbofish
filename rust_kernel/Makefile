@@ -35,15 +35,16 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
 
-# init
-# ---------------------------------------------------------------------------------------------------------------
+
+# init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
+
 SRC_C_INIT += get_device_mem_map vga_text early_gdt
 SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging
 VPATH += src/boot/init
 INIT_HEADERS += vga_text.h early_gdt.h early_paging.asm
 
 OBJ_INIT_DIR := objs/init
-OBJ_C_INIT	= $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
+OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
 OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
 
 $(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
@@ -53,7 +54,7 @@ $(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
 $(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
-# ---------------------------------------------------------------------------------------------------------------
+
 
 SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=

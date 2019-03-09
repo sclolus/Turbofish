@@ -9,6 +9,7 @@ use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
 
 /// Show how devices are mapped in physical memory and also available space
+/// For reading all structures map, just run away with offset 32 until a zeroed structure
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct DeviceMap {

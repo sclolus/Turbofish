@@ -55,39 +55,39 @@ _start:
 
 segment .init
 _init:
-	; Set the first stack
+	; Set up the first stack
 	; Dont worry about overflow for stack, the first push will be at [temporary_stack - 4], not in [temporary_stack]
 	mov [temporary_stack - 4], dword 0x0
 	mov esp, temporary_stack - 8
 	mov ebp, esp
 
-	; Store the multiboot info structure pointed by EBX (may be erased later)
+	; Store the multiboot info structure pointed by EBX (avoid accidental erasing)
 	mov edi, multiboot_infos
 	mov esi, ebx
 	mov ecx, MULTIBOOT_INFOS_LEN
 	cld
 	rep movsb
 
-	; Set a early GDT
-	; reserve 8 bytes for structure return
+	; Set up a early GDT
+	; reserve 8 bytes for structure return (need ASM high skill to understand that ...)
 	sub esp, 8
-	; this function return a structure on stack and pop four bytes
+	; this function returns a structure on stack and pop four bytes
 	call alt_gdt_new
 	lgdt [eax]
 	add esp, 4
 
-	; Set the Data descriptor segments
+	; Set up the Data descriptor segments
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
 
-	; Set the stack segment
+	; Set up the stack segment
 	mov ax, 0x18
 	mov ss, ax
 
-	; Set the code segment
+	; Set up the code segment
 	jmp 0x8: .set_protected_cs
 .set_protected_cs:
 
@@ -99,13 +99,13 @@ _init:
 	call alt_get_device_mem_map
 	push eax
 
-	; Set the MMU to prepare switching to high half memory
+	; Set up the MMU, prepare switching to high half memory
 	call alt_init_paging
 
 	; Push the grub multiboot header
 	push multiboot_infos
 
-	; Call _init_kernel stored in high memory
+	; Call _init_kernel located in high memory !
 	call _init_kernel
 
 	; A long jump can give a adrenaline boost, i dont understand why ...
@@ -116,5 +116,6 @@ align 16
 times 1 << 12 db 0
 temporary_stack:
 
+; Early backup of multiboot info structure
 multiboot_infos:
 times 128 db 0xff

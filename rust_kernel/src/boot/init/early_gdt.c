@@ -1,6 +1,9 @@
 
 #include "early_gdt.h"
 
+/*
+ * Create a new GDT segment and put it int the right place
+ */
 void create_gdt_segment(
 	struct gdt_info gdt_info,
 	u8 idx, u32 base, u32 limit, u8 access, u8 flags)
@@ -16,6 +19,9 @@ void create_gdt_segment(
 	seg->flags = flags;
 }
 
+/*
+ * Make a basic GDT for you
+ */
 struct gdt_info	gdt_new(void)
 {
 	struct gdt_info gdt_info;
