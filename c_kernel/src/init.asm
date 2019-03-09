@@ -6,7 +6,6 @@ extern _set_sse
 extern _set_avx
 extern _set_fpu
 
-%include "src/early_gdt.asm"
 %include "src/early_paging.asm"
 
 segment .text
@@ -62,39 +61,6 @@ _init:
 	cli
 
 .low_memory_area:
-	; set temporary stack
-	; set up the stack pointer for a temporary stack
-
-	TRANSLATE_ADDR temporary_stack
-	mov esp, eax
-	mov ebp, esp
-
-	;TRANSLATE_ADDR $
-	;jmp eax
-; INITIALIZE GDT
-.init_gdt:
-	TRANSLATE_ADDR gdt_start
-	mov esi, eax
-
-	mov edi, GDT_DESTINATION
-	mov ecx, gdt_end - gdt_start
-
-	cld
-	rep movsb
-
-	TRANSLATE_ADDR gdt_info
-	lgdt [eax]
-
-	; DS, ES, FS and GS ARE DATA SEGMENT REGISTER
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	; SS IS STACK SEGMENT REGISTER
-	mov ax, 0x18
-	mov ss, ax
 
 	; Paginate kernel in half high memory (do also identity mapping)
 	INIT_PAGING_ENV
@@ -204,7 +170,3 @@ align 16
 ; 1mo for the main kernel stack
 resb 1 << 20
 kernel_stack:
-
-; 4kb for temporary stack
-resb 1 << 12
-temporary_stack:

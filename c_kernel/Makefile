@@ -49,10 +49,10 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # bootstrap
 # ---------------------------------------------------------------------------------------------------------------
-SRC_C_BOOTSTRAP += bootstrap_main vga_text
+SRC_C_BOOTSTRAP += bootstrap_main vga_text early_gdt
 SRC_ASM_BOOTSTRAP += 8086_payload payload_get_mem_map
 VPATH += src/bootstrap
-BOOTSTRAP_HEADERS += vga_text.h bootstrap.h
+BOOTSTRAP_HEADERS += vga_text.h bootstrap.h early_gdt.h
 
 OBJ_BOOTSTRAP_DIR := objs_bootstrap
 OBJ_C_BOOTSTRAP	= $(addprefix $(OBJ_BOOTSTRAP_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_BOOTSTRAP)))))
@@ -71,7 +71,7 @@ $(OBJ_BOOTSTRAP_DIR)/%.o: %.asm Makefile $(BOOTSTRAP_HEADERS)
 SRC_C_KERNEL += kmain watchdog
 SRC_ASM_KERNEL += init multiboot cpu_features bootstrap
 VPATH += include src
-HEADERS += grub.h i386_type.h early_paging.asm early_gdt.asm watchdog.h
+HEADERS += grub.h i386_type.h early_paging.asm watchdog.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic
