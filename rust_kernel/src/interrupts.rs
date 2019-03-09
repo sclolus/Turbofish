@@ -23,7 +23,7 @@ pub unsafe fn disable() {
 pub fn get_interrupts_state() -> bool {
     use crate::registers::Eflags;
 
-    unsafe { Eflags::get_eflags().interrupt_flag() }
+    Eflags::get_eflags().interrupt_flag()
 }
 
 /// Restore the interrupts state
