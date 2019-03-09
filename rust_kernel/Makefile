@@ -31,9 +31,29 @@ else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 
-CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
+CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc -fno-pie
 
 IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
+
+# init
+# ---------------------------------------------------------------------------------------------------------------
+SRC_C_INIT += get_device_mem_map vga_text early_gdt
+SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging
+VPATH += src/boot/init
+INIT_HEADERS += vga_text.h early_gdt.h early_paging.asm
+
+OBJ_INIT_DIR := objs/init
+OBJ_C_INIT	= $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
+OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
+
+$(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
+	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
+	objcopy --prefix-symbols=alt_ $@
+
+$(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
+	$(ASM) $(ASMFLAGS) -o $@ $<
+	objcopy --prefix-symbols=alt_ $@
+# ---------------------------------------------------------------------------------------------------------------
 
 # C debuging Rust
 ifeq ($(DEV), C)
@@ -43,8 +63,8 @@ ifeq ($(DEV), C)
 	VPATH += src/debug
 endif
 
-SRC_ASM_KERNEL += init multiboot cpu_features
-HEADERS += early_gdt.asm early_paging.asm
+SRC_ASM_KERNEL += init_kernel start cpu_features
+HEADERS +=
 VPATH += src/boot
 
 SRC_ASM_KERNEL += vbe_font
@@ -104,7 +124,7 @@ all: .rust_toolchain .xbuild_toolchain symbol_gen_exe build_rust build_libasm_i3
 	echo "Updated" > .xbuild_toolchain
 
 common_clean:
-	rm -rvf $(OBJ_DIR)*/**
+	find $(OBJ_DIR) -type f -name '*.o' -delete
 	rm -f nm.res
 	rm -f nm_map_gen
 	rm -f $(kernel)
@@ -129,7 +149,9 @@ symbol_gen_exe:
 	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-$(kernel): $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) libft/libft.a libasm_i386/libasm_i386.a
+LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
+
+$(kernel): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(LIBS)
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
@@ -152,7 +174,7 @@ build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
 
 test:
 	cargo test --target i686-unknown-linux-gnu
