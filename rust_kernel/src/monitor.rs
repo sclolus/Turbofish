@@ -6,7 +6,6 @@ use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
 pub mod bmp_loader;
-use crate::ffi::c_char;
 
 pub type IoResult = core::result::Result<(), IoError>;
 
@@ -16,6 +15,12 @@ pub enum IoError {
     CursorOutOfBound,
     GraphicModeNotFounded,
     NotSupported,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum WriteMode {
+    Dynamic,
+    Fixed,
 }
 
 trait Drawer {
@@ -28,7 +33,7 @@ trait Drawer {
 trait AdvancedGraphic {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
-    fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult;
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -96,9 +101,8 @@ impl ScreenMonad {
     pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         AdvancedGraphic::draw_graphic_buffer(self, closure)
     }
-    /// Write fixed characters into the screen
-    pub fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult {
-        AdvancedGraphic::write_fixed_characters(self, x, y, string)
+    pub fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
+        AdvancedGraphic::set_write_mode(self, write_mode)
     }
     /// set manualy position of cursor
     pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
@@ -110,7 +114,10 @@ impl ScreenMonad {
             Ok(())
         }
     }
-
+    /// get the cursor position
+    pub fn get_cursor_position(&mut self) -> (usize, usize) {
+        (self.cursor.x, self.cursor.y)
+    }
     // private methods
     /// check if cursor has moved
     fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
@@ -190,10 +197,10 @@ impl AdvancedGraphic for ScreenMonad {
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
         }
     }
-    fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult {
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
-            DrawingMode::Vbe(vbe) => vbe.write_fixed_characters(x, y, string),
+            DrawingMode::Vbe(vbe) => vbe.set_write_mode(write_mode),
         }
     }
 }

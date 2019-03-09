@@ -1,5 +1,5 @@
-use super::{AdvancedGraphic, Color, Drawer, IoError, IoResult};
-use crate::ffi::{c_char, strlen};
+use super::{AdvancedGraphic, Color, Drawer, IoResult, WriteMode};
+use crate::ffi::c_char;
 use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{PhysicalAddr, VirtualAddr};
 use crate::registers::{real_mode_op, BaseRegisters};
@@ -208,6 +208,8 @@ pub struct VbeMode {
     characters_buffer: Vec<Option<(u8, RGB)>>,
     /// fixed characters buffer
     fixed_characters_buffer: Vec<Option<(u8, RGB)>>,
+    /// set write mode
+    write_mode: WriteMode,
     /// in pixel
     width: usize,
     /// in pixel
@@ -251,6 +253,7 @@ impl VbeMode {
             graphic_buffer: vec![0; screen_size],
             characters_buffer: vec![None; columns * lines],
             fixed_characters_buffer: vec![None; columns * lines],
+            write_mode: WriteMode::Dynamic,
             width,
             height,
             bytes_per_pixel,
@@ -343,7 +346,16 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
-        self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
+        unsafe {
+            match self.write_mode {
+                WriteMode::Dynamic => {
+                    self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color))
+                }
+                WriteMode::Fixed => {
+                    self.fixed_characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color))
+                }
+            }
+        }
     }
     fn scroll_screen(&mut self) {
         // scroll left the character_buffer
@@ -395,18 +407,9 @@ impl AdvancedGraphic for VbeMode {
         self.refresh_screen();
         Ok(())
     }
-    fn write_fixed_characters(&mut self, x: usize, y: usize, string: *const c_char) -> IoResult {
-        let pos = y * self.columns + x;
-        let len = unsafe { strlen(string) };
-        if pos + len > self.columns * self.lines {
-            Err(IoError::CursorOutOfBound)
-        } else {
-            for (i, elem) in self.fixed_characters_buffer[pos..pos + len].iter_mut().enumerate() {
-                *elem = Some((unsafe { (*string.add(i)).0 } as u8, self.text_color));
-            }
-            self.fixed_characters_buffer[50] = Some(('L' as u8, self.text_color));
-            Ok(())
-        }
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
+        self.write_mode = write_mode;
+        Ok(())
     }
 }
 
