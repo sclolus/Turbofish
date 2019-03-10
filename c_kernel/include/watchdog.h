@@ -5,6 +5,7 @@
 enum dog {
 	gdt,
 	idt,
+	idt_bios,
 };
 
 void	dog_guard(enum dog dog);

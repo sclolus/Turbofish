@@ -5,6 +5,7 @@ segment .text
 extern alt_check_all
 
 extern kmain
+extern tests
 
 extern _set_sse
 extern _set_avx

@@ -52,8 +52,8 @@ HEADERS +=
 VPATH += src/boot
 
 # main
-SRC_C_KERNEL += kmain watchdog
-SRC_ASM_KERNEL +=
+SRC_C_KERNEL += kmain watchdog tests
+SRC_ASM_KERNEL += real_mode_call
 VPATH += include src
 HEADERS += grub.h i386_type.h watchdog.h
 
