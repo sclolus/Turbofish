@@ -53,5 +53,7 @@ struct device *get_device_mem_map(void) {
 	}
 	// Mark zero on the last entry
 	ft_memset(ptr_device, 0, sizeof(struct device));
+	float i = 5 / 0;
+	printk("%u", i);
 	return (struct device *)DEVICE_MAP_PTR_ADDR;
 }

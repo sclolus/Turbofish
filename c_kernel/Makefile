@@ -173,12 +173,14 @@ $(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIB
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo POSTBUILD
 	$(link_kernel)
@@ -186,6 +188,7 @@ $(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIB
 	chmod -x $@
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/init/early_panic.o src/boot/init/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/init/early_panic.o
 extract_kernel_symbols = nm -n $@ > nm.res
 gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(LDSCRIPT) $^ -o $@
