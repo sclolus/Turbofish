@@ -18,21 +18,26 @@ SECTIONS
 
 	.boot BLOCK(4K) : ALIGN(4K)
 	{
+		__start_boot = .;
 		*(.multiboot)
+		__end_boot = .;
 	}
 
+	/* This section will be in low memory, it prepares MMU for the high half kernel style */
 	.init BLOCK(4K) : ALIGN(4K)
 	{
+		__start_init = .;
 		*(.init)
 		*(.init.*)
-		objs_init/get_device_mem_map.o
-		objs_init/vga_text.o
-		objs_init/8086_payload.o
-		objs_init/payload_get_mem_map.o
-		objs_init/early_gdt.o
-		objs_init/init_paging.o
+		objs/init/get_device_mem_map.o
+		objs/init/vga_text.o
+		objs/init/8086_payload.o
+		objs/init/payload_get_mem_map.o
+		objs/init/early_gdt.o
+		objs/init/init_paging.o
 		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
 		libft/alt_libft.a
+		__end_init = .;
 	}
 
 	virtual_offset = 0xc0000000;

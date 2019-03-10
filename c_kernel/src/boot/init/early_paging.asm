@@ -2,14 +2,14 @@
 ; This file defines constants and methods to set kernel in half high memory
 ; It must be include in all boot/init sources files before switch to half high memory
 
-; early paging
+; Early paging
 extern virtual_offset
 
 ; Some usefull paging const
 %define READ_WRITE (1 << 1)
 %define PRESENT (1 << 0)
 
-; only the first 20 bits is signifiant for pages
+; Only the first 20 bits is signifiant for pages
 %define PAGE_MASK 0xfffff000
 %define PAGE_SIZE 4096
 %define PAGE_TABLE_PER_DIRECTORY 1024

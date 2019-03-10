@@ -23,18 +23,18 @@ segment .text
 
 GLOBAL payload_get_mem_map
 payload_get_mem_map:
-	; stack on 0x84000
+	; Put stack on 0x84000
 	mov ax, 0x8000
 	mov ss, ax
 	mov bp, 0x4000
 	mov sp, bp
 
-	; initial ES:DI at 0x40000 (segment 5. 256ko -> 320ko)
+	; Initial ES:DI at 0x40000 (segment 5. 256ko -> 320ko)
 	mov ax, DEVICE_MAP_PTR_SEG
 	mov es, ax
 	xor di, di
 
-	; assign values for the first call
+	; Assign values for the first call
 	mov edx, BIOS_MAGIC_A
 	mov eax, BIOS_MAGIC_B
 	mov ecx, 24
@@ -42,12 +42,12 @@ payload_get_mem_map:
 
 .first_calling:
 	int 15h
-	; check if Carry Flag is Clear and EAX
+	; Check if Carry Flag is Clear and EAX
 	jc .l_error
 	cmp eax, BIOS_MAGIC_A
 	jne .l_error
 
-	; set the result length to 1 and push it
+	; Set up the result length to 1 and push it
 	mov eax, 1
 	push eax
 
@@ -58,12 +58,12 @@ payload_get_mem_map:
 
 	int 15h
 
-	; add result by 1
+	; Add result by 1
 	pop eax
 	inc eax
 	push eax
 
-	; check if Carry Flag is Clear and EAX
+	; Check if Carry Flag is Clear and EAX
 	jc .l_success
 	cmp ebx, 0
 	jne .next_calling

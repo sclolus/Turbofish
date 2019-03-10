@@ -108,6 +108,9 @@ static u32	extract_modifier(const char *buf)
 	return 0;
 }
 
+/*
+ * Need to be binded with the printk method
+ */
 int write(int fd, char *buf, size_t len) {
 	(void)fd;
 	for (size_t i = 0; i < len; i++) {

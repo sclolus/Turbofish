@@ -1,6 +1,6 @@
 [BITS 32]
 
-%include "src/init/early_paging.asm"
+%include "src/boot/init/early_paging.asm"
 
 segment .text
 

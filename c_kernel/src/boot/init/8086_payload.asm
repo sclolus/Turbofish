@@ -89,10 +89,10 @@ i8086_payload:
 	push ebp
 	mov ebp, esp
 
-	; preserve all caller registers
+	; Preserve all caller registers
 	pushad
 
-	; copy of content at BASE_LOCATION
+	; Copy of content at BASE_LOCATION
 	mov eax, end_sub_sequence
 	sub eax, begin_sub_sequence
 	mov ecx, eax
@@ -101,7 +101,7 @@ i8086_payload:
 	cld
 	rep movsb
 
-	; copy the payload
+	; Copy the payload
 	; args [ebp + 8 + 32] -> payload * et [ebp + 12 + 32] -> len
 	; 32 = ALL_REGISTERS_OFFSET
 	mov eax, [ebp + 8 + ALL_REGISTERS_OFFSET]
@@ -115,38 +115,38 @@ i8086_payload:
 	ja .end
 	rep movsb
 
-	; initialise temporary GDT
+	; Initialise temporary GDT
 	mov eax, gdt_16_end
 	sub eax, gdt_16
 	mov word [REBASE(gdt_16_ptr)], ax
 
-	; store linear address of GDT
+	; Store linear address of GDT
 	mov eax, gdt_16
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
-	; put ESP on the first argument
+	; Put ESP on the first argument
 	add esp, 8 + ALL_REGISTERS_OFFSET
 
 	; Get all arguments registers
 	popad
 
-	; realign ESP on current level, popad has incremented esp by 32
+	; Realign ESP on current level, popad has incremented esp by 32
 	sub esp, 8 + ALL_REGISTERS_OFFSET + ALL_REGISTERS_OFFSET
 
-	; recovery of current EBP : (esp is preserved by popad operation)
+	; Recovery of current EBP : (esp is preserved by popad operation)
 	push eax
 	mov eax, [esp + 12]
 	mov ebp, eax
 	pop eax
 
-	; push a address to join after execution with instruction ret
+	; Push a address to join after execution with instruction ret
 	call BASE_LOCATION
 
 .end:
-	; store return EAX
+	; Store return EAX
 	mov [esp + 28], eax
 
-	; restore all registers values
+	; Restore all registers values
 	popad
 
 	pop ebp
@@ -156,42 +156,42 @@ ret
 	; *** This part is copied in BASE_LOCATION area ***
 	; -------------------------------------------------
 begin_sub_sequence:
-	; saving of all data segments register
+	; Saving of all data segments register
 	mov [REBASE(_ds)], ds
 	mov [REBASE(_es)], es
 	mov [REBASE(_fs)], fs
 	mov [REBASE(_gs)], gs
 	mov [REBASE(_ss)], ss
 
-	; saving of current CS segment
+	; Saving of current CS segment
 	mov [REBASE(.cs_value_location)], cs
 
-	; store AX parameter
+	; Store AX parameter
 	mov [REBASE(_eax)], eax
 
-	; store ESP and EBP because 16bit payload could change SP and BP value
+	; Store ESP and EBP because 16bit payload could change SP and BP value
 	mov [REBASE(_esp)], esp
 	mov [REBASE(_ebp)], ebp
 
-	; store CR3 parameter
+	; Store CR3 parameter
 	; mov eax, cr3
 	; mov [REBASE(_cr3)], eax
 
-	; store caller idt and load BIOS idt
+	; Store caller idt and load BIOS idt
 	sidt [REBASE(saved_idtptr)]
 	lidt [REBASE(bios_idt)]
 
-	; store caller gdt and load custom 16 bits gdt
+	; Store caller gdt and load custom 16 bits gdt
 	sgdt [REBASE(saved_gdtptr)]
 	lgdt [REBASE(gdt_16_ptr)]
 
-	; jump to CS of 16 bits selector
+	; Jump to CS of 16 bits selector
 	jmp 0x8:REBASE(.protected_16)
 .protected_16:
-	; code is now in 16bits, because we are in 16 bits mode
+	; Code is now in 16bits, because we are in 16 bits mode
 [BITS 16]
 
-	; set 16 bits protected mode data selector
+	; Set up the 16 bits protected mode data selector
 	mov  ax, 0x10
 	mov  ds, ax
 	mov  es, ax
@@ -199,50 +199,50 @@ begin_sub_sequence:
 	mov  gs, ax
 	mov  ss, ax
 
-	; disable protected bit
+	; Disable protected bit
 	mov eax, cr0
 	and eax, 0xfffffffe
 	mov cr0, eax
 
-	; disable paging (PG) && protected bit
+	; Disable paging (PG) && protected bit
 	; mov eax, cr0
 	; and eax, 0x7ffffffe
 	; mov cr0, eax
 
-	; fflush CR3 register
+	; Fflush CR3 register
 	; xor eax, eax
 	; mov cr3, eax
 
-	; configure CS in real mode
+	; Configure CS in real mode
 	jmp 0x0:REBASE(.real_16)
 .real_16:
-	; configure DS, ES and SS in real mode
+	; Configure DS, ES and SS in real mode
 	xor ax, ax
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
 
-	; take saved eax
+	; Take saved eax
 	mov eax, [REBASE(_eax)]
 
-	; enable interupts
+	; Enable interupts
 	sti
 
 .payload:
 	times PAYLOAD_MAX_LEN nop
-	; disable interupt
+	; Disable interupt
 	cli
 
-	; load caller idt and caller gdt
+	; Load caller idt and caller gdt
 	lidt [REBASE(saved_idtptr)]
 	lgdt [REBASE(saved_gdtptr)]
 
-	; entering in protected mode
+	; Entering in protected mode
 	mov ebx, cr0
 	or  bx, 1
 	mov cr0, ebx     ; PE set to 1 (CR0)
 
-	; configure CS in protected mode
+	; Configure CS in protected mode
 	; Eq: jmp 0x8:REBASE(.protected_32) with CS value as 0x8
 	; 0xEA is the opcode of long jump -> jmp ptr16:u16
 	db 0xEA
@@ -251,20 +251,20 @@ begin_sub_sequence:
 	dw 0xBEEF
 .protected_32:
 
-	; code is now in 16bits
+	; Code is now in 16bits
 [BITS 32]
-	; restore all segments registers
+	; Restore all segments registers
 	mov ds, [REBASE(_ds)]
 	mov es, [REBASE(_es)]
 	mov fs, [REBASE(_fs)]
 	mov gs, [REBASE(_gs)]
 	mov ss, [REBASE(_ss)]
 
-	; recover saved esp and ebp
+	; Recover saved esp and ebp
 	mov esp, [REBASE(_esp)]
 	mov ebp, [REBASE(_ebp)]
 
-	; restore Paging
+	; Restore Paging
 	; mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
 	; mov cr3, ebx
 
@@ -272,7 +272,7 @@ begin_sub_sequence:
 	; or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
 	; mov cr0, ebx
 
-	; return to base function
+	; Return to base function
 	ret
 
 bios_idt:
