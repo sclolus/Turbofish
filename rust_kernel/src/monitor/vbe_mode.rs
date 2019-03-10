@@ -346,16 +346,11 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
-        unsafe {
-            match self.write_mode {
-                WriteMode::Dynamic => {
-                    self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color))
-                }
-                WriteMode::Fixed => {
-                    self.fixed_characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color))
-                }
-            }
-        }
+        let dest = match self.write_mode {
+            WriteMode::Dynamic => &mut self.characters_buffer,
+            WriteMode::Fixed => &mut self.fixed_characters_buffer,
+        };
+        dest[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
     }
     fn scroll_screen(&mut self) {
         // scroll left the character_buffer
