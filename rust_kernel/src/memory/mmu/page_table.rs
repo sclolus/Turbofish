@@ -1,5 +1,5 @@
 //! This module contains code related to the Page Tables in the MMU.
-use super::page_entry::Entry;
+use super::Entry;
 use crate::memory::tools::*;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
@@ -20,17 +20,20 @@ impl PageTable {
     }
 
     #[inline(always)]
-    pub fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
+    pub fn map_page(
+        &mut self,
+        virtp: Page<VirtualAddr>,
+        physp: Page<PhysicalAddr>,
+        entry: Entry,
+    ) -> Result<(), MemoryError> {
         let pt_index = virtp.pt_index();
 
         if self[pt_index].contains(Entry::PRESENT) {
             return Err(MemoryError::AlreadyMapped);
         }
 
-        //TODO: take custom flags
-        self[pt_index] = Default::default();
+        self[pt_index] = entry;
         self[pt_index].set_page(physp);
-        self[pt_index] |= Entry::READ_WRITE | Entry::PRESENT;
         Ok(())
     }
 

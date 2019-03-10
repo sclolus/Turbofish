@@ -1,4 +1,5 @@
 use super::physical_page_allocator::{AllocFlags, PHYSICAL_ALLOCATOR};
+use crate::memory::mmu::Entry;
 use crate::memory::mmu::PageDirectory;
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;
@@ -17,7 +18,12 @@ impl VirtualPageAllocator {
     pub fn reserve(&mut self, vaddr: VirtualAddr, paddr: PhysicalAddr, size: usize) -> Result<(), MemoryError> {
         //TODO: reserve the buddys
         unsafe {
-            self.mmu.map_range_page(Page::containing(vaddr), Page::containing(paddr), size.into())?;
+            self.mmu.map_range_page(
+                Page::containing(vaddr),
+                Page::containing(paddr),
+                size.into(),
+                Entry::READ_WRITE | Entry::PRESENT,
+            )?;
         }
         // }
         Ok(())
@@ -33,11 +39,18 @@ impl VirtualPageAllocator {
                 self.virt.free(vaddr, order).unwrap();
                 e
             })?;
-            self.mmu.map_range_page(Page::containing(vaddr), Page::containing(paddr), size.into()).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size).unwrap();
-                e
-            })?;
+            self.mmu
+                .map_range_page(
+                    Page::containing(vaddr),
+                    Page::containing(paddr),
+                    size.into(),
+                    Entry::READ_WRITE | Entry::PRESENT,
+                )
+                .map_err(|e| {
+                    self.virt.free(vaddr, order).unwrap();
+                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size).unwrap();
+                    e
+                })?;
         }
         Ok(vaddr)
     }

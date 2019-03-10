@@ -1,7 +1,7 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
-use super::page_entry::Entry;
 use super::page_table::PageTable;
+use super::Entry;
 use super::PAGE_TABLES;
 use crate::memory::tools::*;
 use crate::memory::VIRTUAL_OFFSET;
@@ -40,10 +40,15 @@ impl PageDirectory {
 
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
-    pub unsafe fn map_page(&mut self, virtp: Page<VirtualAddr>, physp: Page<PhysicalAddr>) -> Result<(), MemoryError> {
+    pub unsafe fn map_page(
+        &mut self,
+        virtp: Page<VirtualAddr>,
+        physp: Page<PhysicalAddr>,
+        entry: Entry,
+    ) -> Result<(), MemoryError> {
         let pd_index = virtp.pd_index();
         let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
-        page_table.map_page(virtp, physp)
+        page_table.map_page(virtp, physp, entry)
     }
 
     //TODO: check overflow
@@ -52,9 +57,10 @@ impl PageDirectory {
         virtp: Page<VirtualAddr>,
         physp: Page<PhysicalAddr>,
         nb_pages: NbrPages,
+        entry: Entry,
     ) -> Result<(), MemoryError> {
         for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
-            self.map_page(virtp, physp)?;
+            self.map_page(virtp, physp, entry)?;
         }
         Ok(())
     }
@@ -64,11 +70,12 @@ impl PageDirectory {
         virtp: Page<VirtualAddr>,
         physp: Page<PhysicalAddr>,
         nb_pages: NbrPages,
+        entry: Entry,
     ) -> Result<(), MemoryError> {
         for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
             let pd_index = virtp.pd_index();
             let page_table = &mut PAGE_TABLES[pd_index];
-            page_table.map_page(virtp, physp)?;
+            page_table.map_page(virtp, physp, entry)?;
         }
         Ok(())
     }
