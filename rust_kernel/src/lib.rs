@@ -35,6 +35,7 @@ pub mod io;
 pub mod keyboard;
 pub mod math;
 pub mod multiboot;
+#[cfg(not(test))]
 pub mod panic;
 pub mod registers;
 #[cfg(not(feature = "test"))]

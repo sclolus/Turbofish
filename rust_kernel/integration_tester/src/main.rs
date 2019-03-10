@@ -63,7 +63,7 @@ fn main() {
                     &format!(
                         "cargo_flags=--features {},test,{}",
                         feature,
-                        if matches.opt_present("g") { "qemu-graphical" } else { "" }
+                        if matches.opt_present("g") { "" } else { "serial-eprintln,exit-on-panic" }
                     ),
                 ]);
 
