@@ -50,10 +50,10 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
 
 # init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
 
-SRC_C_INIT += get_device_mem_map vga_text early_gdt
-SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging
+SRC_C_INIT += get_device_mem_map vga_text early_gdt early_panic early_idt
+SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
 VPATH += src/boot/init
-INIT_HEADERS += vga_text.h early_gdt.h early_paging.asm
+INIT_HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm
 
 OBJ_INIT_DIR := objs/init
 OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))

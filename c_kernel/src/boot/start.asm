@@ -3,6 +3,7 @@
 ; Initialisation methods prefixed by alt_
 extern alt_clear_screen
 extern alt_gdt_new
+extern alt_init_early_idt
 extern alt_get_device_mem_map
 extern alt_init_paging
 
@@ -74,7 +75,6 @@ _init:
 	mov ebx, esp
 	push ebx
 
-	; this function returns a structure on stack and pop four bytes
 	call alt_gdt_new
 
 	lgdt [ebx]
@@ -96,9 +96,26 @@ _init:
 	jmp 0x8: .set_protected_cs
 .set_protected_cs:
 
-	; TODO SET A EARLY IDT HERE (IT COULD BE A GOOD IDEA !)
+	; Set up a early IDT
+	; reserve 8 bytes for structure pointer (need six bytes)
+	sub esp, 8
+	mov ebx, esp
+	push ebx
+
+	call alt_init_early_idt
+
+	lidt [ebx]
+
+	add esp, 8 + 4
 
 	call alt_clear_screen
+
+	; asm division by 0
+	xor eax, eax
+	xor ebx, ebx
+	xor ecx, ecx
+	xor edx, edx
+	div eax
 
 	; Get device map in memory and push a pointer to a generated structure
 	call alt_get_device_mem_map

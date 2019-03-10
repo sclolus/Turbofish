@@ -34,6 +34,9 @@ SECTIONS
 		objs/init/8086_payload.o
 		objs/init/payload_get_mem_map.o
 		objs/init/early_gdt.o
+		objs/init/early_idt.o
+		objs/init/idt_cpu_handler.o
+		objs/init/early_panic.o
 		objs/init/init_paging.o
 		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
 		libft/alt_libft.a
