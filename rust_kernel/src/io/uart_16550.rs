@@ -32,27 +32,23 @@ impl Uart16550 {
     }
 
     pub fn init(&mut self) {
-        unsafe {
-            self.int_en.write(0x00); // disable all interrupts
-            self.line_ctrl.write(0x80); // enable DLAB (set baud rate divisor
-            self.data.write(0x03); // Set divisor to 3 (lo byte) 38400 baud
-            self.int_en.write(0x00); //                (hi byte)
-            self.line_ctrl.write(0x03); // 8 bits, no parity, one stop bit
-            self.fifo_ctrl.write(0xC7);
-            self.modem_ctrl.write(0x0B); // Enable FIFO, clear them, with 14-byte threshold
-            self.int_en.write(0x01); // IRQs enabled, RTS/DSR set
-        }
+        self.int_en.write(0x00); // disable all interrupts
+        self.line_ctrl.write(0x80); // enable DLAB (set baud rate divisor
+        self.data.write(0x03); // Set divisor to 3 (lo byte) 38400 baud
+        self.int_en.write(0x00); //                (hi byte)
+        self.line_ctrl.write(0x03); // 8 bits, no parity, one stop bit
+        self.fifo_ctrl.write(0xC7);
+        self.modem_ctrl.write(0x0B); // Enable FIFO, clear them, with 14-byte threshold
+        self.int_en.write(0x01); // IRQs enabled, RTS/DSR set
     }
 
     fn line_sts(&self) -> LineStsFlags {
-        unsafe { LineStsFlags { data: self.line_sts.read() } }
+        LineStsFlags { data: self.line_sts.read() }
     }
 
     pub fn send(&mut self, byte: u8) {
-        unsafe {
-            while !self.line_sts().output_empty() {}
-            self.data.write(byte);
-        }
+        while !self.line_sts().output_empty() {}
+        self.data.write(byte);
     }
 }
 

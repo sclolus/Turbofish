@@ -3,9 +3,7 @@ macro_rules! print {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
-                unsafe {
-                    core::fmt::write(&mut $crate::monitor::SCREEN_MONAD, a).unwrap();
-                }
+                core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
             }
         }
     })

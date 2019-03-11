@@ -337,9 +337,7 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
-        unsafe {
-            self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
-        }
+        self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
     }
     fn scroll_screen(&mut self) {
         // scroll left the character_buffer
@@ -405,11 +403,9 @@ fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(
 }
 
 unsafe fn save_vbe_info() -> Result<VbeInfo, VbeError> {
-    unsafe {
-        // VBE 3.0 specification says to put 'VBE2' in vbe_signature field to have pointers
-        // points to reserved field instead of far pointer. So in practice it doesn't work
-        TEMPORARY_PTR_LOCATION.copy_from("VBE2".as_ptr(), 4);
-    }
+    // VBE 3.0 specification says to put 'VBE2' in vbe_signature field to have pointers
+    // points to reserved field instead of far pointer. So in practice it doesn't work
+    TEMPORARY_PTR_LOCATION.copy_from("VBE2".as_ptr(), 4);
     let reg: BaseRegisters = BaseRegisters { edi: TEMPORARY_PTR_LOCATION as u32, eax: 0x4f00, ..Default::default() };
     vbe_real_mode_op(reg, 0x10)?;
     Ok(VbeInfo::new(TEMPORARY_PTR_LOCATION as *const VbeInfo))
@@ -453,21 +449,17 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
                 crtc_info = set_vbe_mode(result.0)?;
             }
         }
-        unsafe {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .reserve(
-                    VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize),
-                    PhysicalAddr(mode_info.phys_base_ptr as usize),
-                    (mode_info.x_resolution as usize
-                        * mode_info.y_resolution as usize
-                        * mode_info.bits_per_pixel as usize
-                        / 8)
-                    .into(),
-                )
-                .unwrap();
-        }
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .reserve(
+                VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize),
+                PhysicalAddr(mode_info.phys_base_ptr as usize),
+                (mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
+                    / 8)
+                .into(),
+            )
+            .unwrap();
         Ok(VbeMode::new(
             LINEAR_FRAMEBUFFER_VIRTUAL_ADDR,
             mode_info.x_resolution as usize,

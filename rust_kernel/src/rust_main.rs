@@ -7,7 +7,6 @@ use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
-use core::time::Duration;
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -25,10 +24,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
     }
 
-    unsafe {
-        println!("multiboot_infos {:#?}", multiboot_info);
-        println!("base memory: {:?} {:?}", multiboot_info.mem_lower, multiboot_info.mem_upper);
-    }
+    println!("multiboot_infos {:#?}", multiboot_info);
+    dbg!(multiboot_info.mem_lower);
+    dbg!(multiboot_info.mem_upper);
+
     unsafe {
         interrupts::init();
 
@@ -50,7 +49,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
     }
     debug::bench_start();
-    // fucking_big_string(3);
+    //    crate::test_helpers::fucking_big_string(3);
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
 
@@ -58,9 +57,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     println!("irqs state: {}", interrupts::get_interrupts_state());
 
-    unsafe {
-        println!("irq mask: {:b}", PIC_8259.get_masks());
-    }
+    println!("irq mask: {:b}", unsafe { PIC_8259.get_masks() });
 
     let eflags = crate::registers::Eflags::get_eflags();
     println!("{:x?}", eflags);
@@ -77,54 +74,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
     debug::bench_start();
-    unsafe {
-        println!("pit: {:?}", PIT0);
-    }
-    unsafe {
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
-        print!("H");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
-        print!("E");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
-        print!("L");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
-        print!("L");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        print!("O");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Brown).unwrap();
-        print!(" ");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Magenta).unwrap();
-        print!("W");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::White).unwrap();
-        print!("O");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
-        print!("R");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Red).unwrap();
-        print!("L");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
-        print!("D");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Yellow).unwrap();
-        print!(" ");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        println!("!");
-        PIT0.sleep(Duration::from_millis(200));
-        SCREEN_MONAD.set_text_color(Color::White).unwrap();
-    }
+
+    println!("pit: {:?}", unsafe { &PIT0 });
+
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
+
+    crate::test_helpers::really_lazy_hello_world();
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);

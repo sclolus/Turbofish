@@ -230,12 +230,10 @@ impl Pic8259 {
     pub fn send_eoi(&mut self, irq: Irq) {
         let nirq = irq as u16;
         assert!(nirq < 16);
-        unsafe {
-            if nirq >= 8 {
-                self.slave.command.write(Pic::EOI);
-            }
-            self.master.command.write(Pic::EOI);
+        if nirq >= 8 {
+            self.slave.command.write(Pic::EOI);
         }
+        self.master.command.write(Pic::EOI);
     }
 
     /// Reset the PICs to the defaults IMR and irq vector offsets

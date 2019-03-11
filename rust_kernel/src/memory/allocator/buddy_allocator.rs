@@ -358,13 +358,11 @@ mod test {
             unsafe { allocator.alloc(Layout::from_size_align(NB_BLOCK * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
         const MAX_ORDER: usize = NB_BLOCK.trailing_zeros() as usize;
 
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = unsafe {
-            BuddyAllocator::new(
-                VirtualAddr(address_space.as_ptr() as usize),
-                NbrPages(NB_BLOCK),
-                vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
-            )
-        };
+        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
+            VirtualAddr(address_space.as_ptr() as usize),
+            NbrPages(NB_BLOCK),
+            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+        );
 
         #[derive(Debug)]
         struct Allocation<'a> {
@@ -506,13 +504,11 @@ mod test {
         const NB_BLOCK: usize = 4;
         let map_location = 0x00010000 as *const u8;
 
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = unsafe {
-            BuddyAllocator::new(
-                VirtualAddr(map_location as usize),
-                NbrPages(NB_BLOCK),
-                vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
-            )
-        };
+        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
+            VirtualAddr(map_location as usize),
+            NbrPages(NB_BLOCK),
+            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+        );
 
         let alloc_size = NbrPages(1);
         for i in 0..(NB_BLOCK) {

@@ -18,14 +18,12 @@ bitflags! {
 
 impl PhysicalPageAllocator {
     pub fn new() -> Self {
-        unsafe {
-            Self {
-                allocator: BuddyAllocator::new(
-                    PhysicalAddr(KERNEL_PHYSICAL_OFFSET),
-                    KERNEL_PHYSICAL_MEMORY,
-                    vec![0; BuddyAllocator::<PhysicalAddr>::metadata_size(KERNEL_PHYSICAL_MEMORY)],
-                ),
-            }
+        Self {
+            allocator: BuddyAllocator::new(
+                PhysicalAddr(KERNEL_PHYSICAL_OFFSET),
+                KERNEL_PHYSICAL_MEMORY,
+                vec![0; BuddyAllocator::<PhysicalAddr>::metadata_size(KERNEL_PHYSICAL_MEMORY)],
+            ),
         }
     }
     /// size in bytes

@@ -11,7 +11,7 @@ pub struct VirtualPageAllocator {
 
 impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<VirtualAddr>, mmu: Box<PageDirectory>) -> Self {
-        unsafe { Self { virt, mmu } }
+        Self { virt, mmu }
     }
     /// size in bytes
     pub fn reserve(&mut self, vaddr: VirtualAddr, paddr: PhysicalAddr, size: usize) -> Result<(), MemoryError> {
