@@ -48,6 +48,8 @@ _init_kernel:
 	call _set_avx
 	call _set_fpu
 
+	call tests
+
 	; Ask watchdog if all is okay
 	call alt_check_all
 

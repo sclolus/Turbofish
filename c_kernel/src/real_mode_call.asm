@@ -103,7 +103,7 @@ _real_mode_op:
 	mov word [REBASE(gdt_16_ptr)], ax
 
 	; store linear address of GDT
-	mov eax, gdt_16
+	mov eax, REBASE(gdt_16)
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
 	; fill the number of the interupt to launch
