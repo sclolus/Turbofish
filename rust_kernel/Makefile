@@ -38,10 +38,10 @@ IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
 
 # init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
 
-SRC_C_INIT += get_device_mem_map vga_text early_gdt
-SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging
+SRC_C_INIT += get_device_mem_map vga_text early_gdt early_panic early_idt
+SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
 VPATH += src/boot/init
-INIT_HEADERS += vga_text.h early_gdt.h early_paging.asm
+INIT_HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm
 
 OBJ_INIT_DIR := objs/init
 OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
@@ -54,7 +54,6 @@ $(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
 $(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
-
 
 SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=
@@ -134,6 +133,7 @@ fclean: common_clean
 re: fclean all
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/init/early_panic.o src/boot/init/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/init/early_panic.o
 extract_kernel_symbols = nm -n $@ > nm.res
 gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
@@ -150,12 +150,14 @@ $(kernel): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rus
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo POSTBUILD
 	$(link_kernel)
