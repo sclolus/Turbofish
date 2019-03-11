@@ -1,4 +1,3 @@
-#[cfg(not(test))]
 #[macro_use]
 pub mod macros;
 mod vga_text_mode;

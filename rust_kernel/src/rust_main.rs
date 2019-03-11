@@ -16,8 +16,9 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     #[cfg(feature = "serial-eprintln")]
-    unsafe {
-        crate::io::UART_16550.init();
+    {
+        unsafe { crate::io::UART_16550.init() };
+        eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {

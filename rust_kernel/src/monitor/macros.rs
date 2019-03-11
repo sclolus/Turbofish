@@ -1,4 +1,5 @@
 #[macro_export]
+#[cfg(not(test))]
 macro_rules! print {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
@@ -32,6 +33,7 @@ macro_rules! printfixed {
 }
 
 #[macro_export]
+#[cfg(not(test))]
 macro_rules! println {
     () => (print!("\n"));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
@@ -39,12 +41,14 @@ macro_rules! println {
 }
 
 #[cfg(not(feature = "serial-eprintln"))]
+#[cfg(not(test))]
 #[macro_export]
 macro_rules! eprintln {
     ($($arg:tt)*) => ($crate::println!($($arg)*));
 }
 
 #[cfg(feature = "serial-eprintln")]
+#[cfg(not(test))]
 #[macro_export]
 macro_rules! eprintln {
     ($($arg:tt)*) => ($crate::serial_println!($($arg)*));
