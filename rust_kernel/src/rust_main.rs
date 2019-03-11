@@ -44,8 +44,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
             })
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
+    }
 
+    printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
+
+    unsafe {
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);

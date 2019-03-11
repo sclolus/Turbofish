@@ -10,7 +10,6 @@ macro_rules! print {
 }
 
 #[macro_export]
-#[cfg(not(test))]
 macro_rules! printfixed {
     ($x:expr, $y:expr, $($arg:tt)*) => ({
         match format_args!($($arg)*) {
@@ -33,7 +32,6 @@ macro_rules! printfixed {
 }
 
 #[macro_export]
-#[cfg(not(test))]
 macro_rules! println {
     () => (print!("\n"));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
