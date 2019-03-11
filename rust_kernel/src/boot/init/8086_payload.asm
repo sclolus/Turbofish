@@ -34,7 +34,7 @@
 	; Disable the interrupts:
 	;     Turn off maskable interrupts using CLI.
 	;     Disable NMI (optional).
-	; Turn off paging: IMPORTANT: In this below impementation Paging is shut down at the same moment of protected mode. CR3 fflush is juste before it.
+	; Turn off paging:
 	;     Transfer control to a 1:1 page.
 	;     Ensure that the GDT and IDT are in a 1:1 page.
 	;     Clear the PG-flag in the zeroth control register.
@@ -56,7 +56,7 @@
 	;     Limit: 0x3FF
 	;     Base 0x0
 	;     Use lidt
-	; Disable protected mode: IMPORTANT: In this below implementation, paging is deactivate with Protected mode, in the same moment.
+	; Disable protected mode:
 	;     Set PE bit in CR0 to false.
 	;     Far jump to real mode:
 	;     Far jump to real mode with real mode segment selector (usually 0).
@@ -80,6 +80,7 @@ segment .text
 ; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
 
 %define BASE_LOCATION       0x7C00    ; Payload will be copied at that address
+%define REAL_MODE_STACK     0xF000
 %define PAYLOAD_MAX_LEN     8192
 %define REBASE(x)           (BASE_LOCATION + x - begin_sub_sequence)
 
@@ -121,7 +122,7 @@ i8086_payload:
 	mov word [REBASE(gdt_16_ptr)], ax
 
 	; Store linear address of GDT
-	mov eax, gdt_16
+	mov eax, REBASE(gdt_16)
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
 	; Put ESP on the first argument
@@ -156,6 +157,13 @@ ret
 	; *** This part is copied in BASE_LOCATION area ***
 	; -------------------------------------------------
 begin_sub_sequence:
+	push ebp
+	mov ebp, esp
+
+	; Save Stack values
+	mov [REBASE(_esp)], esp
+	mov [REBASE(_ebp)], ebp
+
 	; Saving of all data segments register
 	mov [REBASE(_ds)], ds
 	mov [REBASE(_es)], es
@@ -169,20 +177,25 @@ begin_sub_sequence:
 	; Store AX parameter
 	mov [REBASE(_eax)], eax
 
-	; Store ESP and EBP because 16bit payload could change SP and BP value
-	mov [REBASE(_esp)], esp
-	mov [REBASE(_ebp)], ebp
-
 	; Store CR3 parameter
 	; mov eax, cr3
 	; mov [REBASE(_cr3)], eax
 
-	; Store caller idt and load BIOS idt
-	sidt [REBASE(saved_idtptr)]
-	lidt [REBASE(bios_idt)]
+	; disable paging (PG)
+	;mov eax, cr0
+	;and eax, 0x7fffffff
+	;mov cr0, eax
 
-	; Store caller gdt and load custom 16 bits gdt
+	; store caller gdt and load custom 16 bits gdt
+	; fflush CR3 register
+	;xor eax, eax
+	;mov cr3, eax
+
+	; store GDT and IDT
 	sgdt [REBASE(saved_gdtptr)]
+	sidt [REBASE(saved_idtptr)]
+
+	; load 16 bits GDT
 	lgdt [REBASE(gdt_16_ptr)]
 
 	; Jump to CS of 16 bits selector
@@ -199,19 +212,13 @@ begin_sub_sequence:
 	mov  gs, ax
 	mov  ss, ax
 
-	; Disable protected bit
+	; load the real mode bios IVT
+	lidt [REBASE(bios_idt)]
+
+	; Disable protected mode
 	mov eax, cr0
 	and eax, 0xfffffffe
 	mov cr0, eax
-
-	; Disable paging (PG) && protected bit
-	; mov eax, cr0
-	; and eax, 0x7ffffffe
-	; mov cr0, eax
-
-	; Fflush CR3 register
-	; xor eax, eax
-	; mov cr3, eax
 
 	; Configure CS in real mode
 	jmp 0x0:REBASE(.real_16)
@@ -221,6 +228,10 @@ begin_sub_sequence:
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
+
+	; create a little real mode stack
+	mov sp, REAL_MODE_STACK
+	mov bp, sp
 
 	; Take saved eax
 	mov eax, [REBASE(_eax)]
@@ -260,7 +271,7 @@ begin_sub_sequence:
 	mov gs, [REBASE(_gs)]
 	mov ss, [REBASE(_ss)]
 
-	; Recover saved esp and ebp
+	; Restore Stack values
 	mov esp, [REBASE(_esp)]
 	mov ebp, [REBASE(_ebp)]
 
@@ -272,30 +283,9 @@ begin_sub_sequence:
 	; or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
 	; mov cr0, ebx
 
-	; Return to base function
+	; return to base function
+	pop ebp
 	ret
-
-bios_idt:
-	dw 0x3ff ; limit
-	dd 0     ; base
-saved_idtptr:
-	dw 0
-	dd 0
-saved_gdtptr:
-	dw 0     ; limit
-	dd 0     ; base
-
-; _cr3: dd 0xFEEDBABE
-
-_esp: dd 0xDEADBEEF
-_ebp: dd 0xDEADBEEF
-
-_eax: dd 0xDEADBEEF
-_ds: dw 0xBEEF
-_es: dw 0xBEEF
-_fs: dw 0xBEEF
-_gs: dw 0xBEEF
-_ss: dw 0xBEEF
 
 gdt_16:
 	db 0, 0, 0, 0, 0, 0, 0, 0
@@ -307,8 +297,29 @@ gdt_16:
 	db 0x00, 0x92, 0x0, 0x0
 gdt_16_end:
 
+bios_idt:
+	dw 0x3ff ; limit
+	dd 0     ; base
+
+end_sub_sequence:
+
 gdt_16_ptr:
 	dw 0xBEEF      ; limit
 	dd 0xFEEDBABE  ; base
 
-end_sub_sequence:
+saved_idtptr:
+	dw 0
+	dd 0
+saved_gdtptr:
+	dw 0     ; limit
+	dd 0     ; base
+
+_esp: dd 0xDEADBEEF
+_ebp: dd 0xDEADBEEF
+; _cr3: dd 0xFEEDBABE
+_eax: dd 0xDEADBEEF
+_ds: dw 0xBEEF
+_es: dw 0xBEEF
+_fs: dw 0xBEEF
+_gs: dw 0xBEEF
+_ss: dw 0xBEEF
