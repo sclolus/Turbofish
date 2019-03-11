@@ -110,13 +110,6 @@ _init:
 
 	call alt_clear_screen
 
-	; asm division by 0
-	;xor eax, eax
-	;xor ebx, ebx
-	;xor ecx, ecx
-	;xor edx, edx
-	;div eax
-
 	; Get device map in memory and push a pointer to a generated structure
 	call alt_get_device_mem_map
 	push eax
