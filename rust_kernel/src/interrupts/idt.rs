@@ -1,4 +1,5 @@
-/// See https://wiki.osdev.org/IDT and https://wiki.osdev.org/Interrupts
+//! See [IDT](https://wiki.osdev.org/IDT)
+//! and [Interrupts](https://wiki.osdev.org/Interrupts)
 mod cpu_exceptions_isr;
 mod pic_8259_isr;
 use crate::interrupts::pic_8259;

@@ -1,4 +1,4 @@
-/// See https://wiki.osdev.org/ISR
+//! See [ISR](https://wiki.osdev.org/ISR)
 use crate::ffi::*;
 
 extern "C" {

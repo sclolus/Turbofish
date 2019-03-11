@@ -2,13 +2,13 @@ use crate::interrupts::pit::*;
 
 pub const POISON_SLAB: u32 = 0x5a5a5a5a;
 
-// Returns a &[str] containing the full namespace specified name of the function
-
+///Returns a &str containing the full namespace specified name of the function
 // This works by declaring a dummy function f() nested in the current function.
 // Then by the type_name instrinsics, get the slice of the full specified name of the function f()
 // we then truncate the slice by the range notation to the name of the current function.
 // That is the slice with 5 characters removed.
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! function {
     () => {{
         fn f() {}
@@ -21,7 +21,9 @@ macro_rules! function {
     }};
 }
 
+/// copy of std dbg! macro
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! dbg {
     ($val: expr) => {
         match $val {
@@ -39,6 +41,11 @@ extern "C" {
 
 static mut BENCH_START_TIME: u32 = 0;
 
+/// start benchmark
+/// # Warning
+/// - the Interupts must be enabled
+/// - the Pit irq must be enabled on the Pic
+/// - the Pit must be initialized
 pub fn bench_start() {
     unsafe {
         BENCH_START_TIME = _get_pic_time();

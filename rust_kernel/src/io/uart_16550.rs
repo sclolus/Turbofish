@@ -1,3 +1,4 @@
+//! impl write on the [Serial Ports](https://wiki.osdev.org/Serial_ports)
 use crate::io::{Io, Pio};
 use core::fmt;
 
