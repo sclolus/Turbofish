@@ -43,7 +43,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
                 draw_image(&_asterix_bmp_start, buffer, width, height, bpp)
             })
             .unwrap();
+        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
+    }
 
+    printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
+
+    unsafe {
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();
         PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);

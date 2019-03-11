@@ -1,4 +1,4 @@
-use super::{AdvancedGraphic, Color, Drawer, IoResult};
+use super::{AdvancedGraphic, Color, Drawer, IoResult, WriteMode};
 use crate::ffi::c_char;
 use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{PhysicalAddr, VirtualAddr};
@@ -206,6 +206,10 @@ pub struct VbeMode {
     graphic_buffer: Vec<u8>,
     /// character buffer
     characters_buffer: Vec<Option<(u8, RGB)>>,
+    /// fixed characters buffer
+    fixed_characters_buffer: Vec<Option<(u8, RGB)>>,
+    /// set write mode
+    write_mode: WriteMode,
     /// in pixel
     width: usize,
     /// in pixel
@@ -248,6 +252,8 @@ impl VbeMode {
             db_frame_buffer: vec![0; screen_size],
             graphic_buffer: vec![0; screen_size],
             characters_buffer: vec![None; columns * lines],
+            fixed_characters_buffer: vec![None; columns * lines],
+            write_mode: WriteMode::Dynamic,
             width,
             height,
             bytes_per_pixel,
@@ -290,32 +296,35 @@ impl VbeMode {
         }
     }
      */
-    /// Copy characters from characters_buffer to double buffer
+    /// Copy characters from both characters_buffer to double buffer
     fn render_text_buffer(&mut self, x1: usize, x2: usize) {
         unsafe {
-            for (i, elem) in self.characters_buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
-                Some(x) => Some((i, x)),
-                None => None,
-            }) {
-                let char_font = _font.get_char((*elem).0 as u8);
-                let cursor_x = (i + x1) % self.columns;
-                let cursor_y = (i + x1) / self.columns;
+            let buffers = [&self.characters_buffer, &self.fixed_characters_buffer];
+            for buffer in buffers.iter() {
+                for (i, elem) in buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
+                    Some(x) => Some((i, x)),
+                    None => None,
+                }) {
+                    let char_font = _font.get_char((*elem).0 as u8);
+                    let cursor_x = (i + x1) % self.columns;
+                    let cursor_y = (i + x1) / self.columns;
 
-                let mut y = cursor_y * self.char_height;
-                let mut x;
-                for l in char_font {
-                    x = cursor_x * self.char_width;
-                    for shift in (0..8).rev() {
-                        if *l & 1 << shift != 0 {
-                            Self::put_pixel(
-                                &mut self.db_frame_buffer,
-                                y * self.pitch + x * self.bytes_per_pixel,
-                                (*elem).1,
-                            );
+                    let mut y = cursor_y * self.char_height;
+                    let mut x;
+                    for l in char_font {
+                        x = cursor_x * self.char_width;
+                        for shift in (0..8).rev() {
+                            if *l & 1 << shift != 0 {
+                                Self::put_pixel(
+                                    &mut self.db_frame_buffer,
+                                    y * self.pitch + x * self.bytes_per_pixel,
+                                    (*elem).1,
+                                );
+                            }
+                            x += 1;
                         }
-                        x += 1;
+                        y += 1;
                     }
-                    y += 1;
                 }
             }
         }
@@ -337,7 +346,11 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
-        self.characters_buffer[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
+        let dest = match self.write_mode {
+            WriteMode::Dynamic => &mut self.characters_buffer,
+            WriteMode::Fixed => &mut self.fixed_characters_buffer,
+        };
+        dest[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
     }
     fn scroll_screen(&mut self) {
         // scroll left the character_buffer
@@ -351,6 +364,10 @@ impl Drawer for VbeMode {
     fn clear_screen(&mut self) {
         // clean the character buffer
         for elem in self.characters_buffer.iter_mut() {
+            *elem = None;
+        }
+        // clean the fixed character buffer
+        for elem in self.fixed_characters_buffer.iter_mut() {
             *elem = None;
         }
         self.refresh_screen();
@@ -383,6 +400,10 @@ impl AdvancedGraphic for VbeMode {
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
         self.refresh_screen();
+        Ok(())
+    }
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
+        self.write_mode = write_mode;
         Ok(())
     }
 }

@@ -5,7 +5,6 @@ mod vga_text_mode;
 use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
-
 pub mod bmp_loader;
 
 pub type IoResult = core::result::Result<(), IoError>;
@@ -18,6 +17,12 @@ pub enum IoError {
     NotSupported,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum WriteMode {
+    Dynamic,
+    Fixed,
+}
+
 trait Drawer {
     fn draw_character(&mut self, c: char, y: usize, x: usize);
     fn scroll_screen(&mut self);
@@ -28,6 +33,7 @@ trait Drawer {
 trait AdvancedGraphic {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -95,6 +101,9 @@ impl ScreenMonad {
     pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         AdvancedGraphic::draw_graphic_buffer(self, closure)
     }
+    pub fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
+        AdvancedGraphic::set_write_mode(self, write_mode)
+    }
     /// set manualy position of cursor
     pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
         if x >= self.cursor.columns || y >= self.cursor.lines {
@@ -105,7 +114,10 @@ impl ScreenMonad {
             Ok(())
         }
     }
-
+    /// get the cursor position
+    pub fn get_cursor_position(&mut self) -> (usize, usize) {
+        (self.cursor.x, self.cursor.y)
+    }
     // private methods
     /// check if cursor has moved
     fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
@@ -183,6 +195,12 @@ impl AdvancedGraphic for ScreenMonad {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
+        }
+    }
+    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
+            DrawingMode::Vbe(vbe) => vbe.set_write_mode(write_mode),
         }
     }
 }
