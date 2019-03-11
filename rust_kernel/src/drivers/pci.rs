@@ -195,7 +195,7 @@ enum PciDeviceRegisters {
 }
 
 /// Global structure representing a PCI device
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[allow(dead_code)]
 struct PciDevice {
     header_l0: PciDeviceHeaderL0,
@@ -208,7 +208,7 @@ struct PciDevice {
 }
 
 /// Custom debug definition for PCI device
-impl core::fmt::Debug for PciDevice {
+impl core::fmt::Display for PciDevice {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let device_type = match self.registers {
             PciDeviceRegisters::PciType0(_) => "Simple and basic device",
@@ -312,7 +312,7 @@ impl Pci {
     /// List and enumerate all devices
     pub fn list_pci_devices(&mut self) {
         for (i, elem) in self.devices_list.iter().enumerate() {
-            println!("{:?} {:?}", i, elem);
+            println!("{} {}", i, elem);
         }
     }
 
