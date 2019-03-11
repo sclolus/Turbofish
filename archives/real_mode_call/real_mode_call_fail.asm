@@ -104,7 +104,7 @@ _real_mode_op:
 	mov word [REBASE(gdt_16_ptr)], ax
 
 	; store linear address of GDT
-	mov eax, REBASE(gdt_16)
+	mov eax, gdt_16
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
 	; fill the number of the interupt to launch
@@ -142,12 +142,14 @@ ret
 	; *** This part is copied in BASE_LOCATION area ***
 	; -------------------------------------------------
 begin_sub_sequence:
-	push ebp
-	mov ebp, esp
+	;push ebp
+	;mov ebp, esp
+	times 3 nop
 
 	; Save Stack values
-	mov [REBASE(_esp)], esp
-	mov [REBASE(_ebp)], ebp
+	;mov [REBASE(_esp)], esp
+	;mov [REBASE(_ebp)], ebp
+	times 12 nop
 
 	; saving of all data segments register
 	mov [REBASE(_ds)], ds
@@ -166,18 +168,22 @@ begin_sub_sequence:
 	mov eax, cr3
 	mov [REBASE(_cr3)], eax
 
+	sidt [REBASE(saved_idtptr)]
+	lidt [REBASE(bios_idt)]
+
 	; disable paging (PG)
-	mov eax, cr0
-	and eax, 0x7fffffff
-	mov cr0, eax
+	;mov eax, cr0
+	;and eax, 0x7fffffff
+	;mov cr0, eax
 
 	; fflush CR3 register
-	xor eax, eax
-	mov cr3, eax
+	;xor eax, eax
+	;mov cr3, eax
+	times 9 nop
 
 	; store GDT and IDT
 	sgdt [REBASE(saved_gdtptr)]
-	sidt [REBASE(saved_idtptr)]
+	;sidt [REBASE(saved_idtptr)]
 
 	; load 16 bits GDT
 	lgdt [REBASE(gdt_16_ptr)]
@@ -192,18 +198,23 @@ begin_sub_sequence:
 	mov  ax, 0x10
 	mov  ds, ax
 	mov  es, ax
-	mov  fs, ax
-	mov  gs, ax
+	;mov  fs, ax
+	;mov  gs, ax
 	mov  ss, ax
 
 	; load the real mode bios IVT
-	lidt [REBASE(bios_idt)]
+	;lidt [REBASE(bios_idt)]
 
-	; Disable protected mode
+	; Disable protected mode and paging
 	mov eax, cr0
-	and eax, 0xfffffffe
+	and eax, 0x7ffffffe
 	mov cr0, eax
 
+	; fflush CR3 register
+	xor eax, eax
+	mov cr3, eax
+
+	nop
 	; configure CS in real mode
 	jmp 0x0:REBASE(.real_16)
 .real_16:
@@ -214,8 +225,9 @@ begin_sub_sequence:
 	mov ss, ax
 
 	; create a little real mode stack
-	mov sp, REAL_MODE_STACK
-	mov bp, sp
+	;mov sp, REAL_MODE_STACK
+	;mov bp, sp
+	times 5 nop
 
 	; take saved eax
 	mov eax, [REBASE(_eax)]
@@ -253,8 +265,9 @@ begin_sub_sequence:
 	mov ss, [REBASE(_ss)]
 
 	; Restore Stack values
-	mov esp, [REBASE(_esp)]
-	mov ebp, [REBASE(_ebp)]
+	;mov esp, [REBASE(_esp)]
+	;mov ebp, [REBASE(_ebp)]
+	times 12 nop
 
 	; restore Paging
 	mov ebx, [REBASE(_cr3)] 	; restore CR3 Page directory Phy address location
@@ -265,7 +278,8 @@ begin_sub_sequence:
 	mov cr0, ebx
 
 	; return to base function
-	pop ebp
+	;pop ebp
+	nop
 	ret
 
 gdt_16:
