@@ -56,8 +56,28 @@ _start:
 
 segment .init
 _init:
+	; IMPORTANT RULES:
+	; - 'Previous EBP' = *'current EBP' -> each EBP's stack frame are pushed into the stack
+	; - EIP is always at *(EBP + 4) -> Function name discovery with symbol table
+	; - When discovered EIP is 0x0 -> backtracing stopped
+	; OPTIONAL:
+	; - For backtracking, it is useless to push EBP value at 0xFC
+	;
+	; 0x100 +----------+----------------------------------------------------------> Temporary stack PTR
+	;       |   0x0    | <= mov [temporary_stack - 4], dword 0x0
+	; 0xFC  +----------+
+	;       | (.ebp..) | Here EBP = 0xF8, so EIP is *(EBP + 4) = *(0xFC) = 0x0
+	; 0xF8  +----------+----------------------------------------------------------> ESP / EBP (temporary_stack - 8)
+	;       |  ARG 1   |                                  |
+	; 0xF4  +----------+         OTHER FUNCTION           |
+	;       |   EIP    |            STACK                 |
+	; 0xF0  +----------+            FRAME                 |
+	;       |   EBP    |                                  |
+	; 0xEC  +----------+----------------------------------+
+	;       |          |                                  |
+	; 0xE8  v          v                                  v
+
 	; Set up the first stack
-	; Dont worry about overflow for stack, the first push will be at [temporary_stack - 4], not in [temporary_stack]
 	mov [temporary_stack - 4], dword 0x0
 	mov esp, temporary_stack - 8
 	mov ebp, esp
