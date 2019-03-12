@@ -69,6 +69,17 @@ int set_text_color(enum text_color color) {
 	return 0;
 }
 
+static inline void outb(uint16_t port, uint8_t val) {
+	asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
+}
+
+void disable_cursor(void) {
+	// low cursor shape register
+	outb(0x3D4, 0xA);
+	// bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
+	outb(0x3D5, 0x20);
+}
+
 #define MODIFIER_QUANTITY 13
 
 struct modifier_list {
