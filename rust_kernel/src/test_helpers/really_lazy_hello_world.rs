@@ -1,4 +1,4 @@
-use crate::interrupts::pit::PIT0;
+use crate::drivers::pit_8253::PIT0;
 use crate::monitor::{Color, SCREEN_MONAD};
 use core::time::Duration;
 

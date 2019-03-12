@@ -2,7 +2,6 @@
 pub mod macros;
 pub mod idt;
 pub mod pic_8259;
-pub mod pit;
 
 pub use self::idt::{Idtr, InterruptTable};
 pub use self::pic_8259::PIC_8259;

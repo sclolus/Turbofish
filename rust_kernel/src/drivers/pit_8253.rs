@@ -1,10 +1,10 @@
 //! This files contains the code related to the Programmable Interval Timer
 //! ([PIT](https://wiki.osdev.org/Programmable_Interval_Timer)) chip (also called an 8253/8254 chip)
 use crate::interrupts;
+use crate::interrupts::{pic_8259, PIC_8259};
 use crate::io::{Io, Pio};
 use bit_field::BitField;
 use core::time::Duration;
-use core::u16;
 
 #[derive(Debug)]
 pub struct Pit {
@@ -125,11 +125,11 @@ impl Pit {
             return Err(PitError::BadFrequency);
         }
         unsafe {
-            interrupts::disable();
+            PIC_8259.disable_irq(pic_8259::Irq::SystemTimer);
         }
         let mut divisor = (Self::BASE_FREQUENCY / freq) as u32;
-        if divisor > u16::MAX as u32 {
-            divisor = u16::MAX as u32;
+        if divisor > core::u16::MAX as u32 {
+            divisor = core::u16::MAX as u32;
         } else if divisor == 0 {
             divisor = 1;
         }
@@ -137,7 +137,7 @@ impl Pit {
         self.data.write(divisor.get_bits(0..8) as u8);
         self.data.write(divisor.get_bits(8..16) as u8);
         unsafe {
-            interrupts::enable();
+            PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
         }
         Ok(())
     }

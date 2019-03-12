@@ -1,7 +1,7 @@
 use crate::debug;
-use crate::drivers::pci::*;
+use crate::drivers::pci::PCI;
+use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::interrupts;
-use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
