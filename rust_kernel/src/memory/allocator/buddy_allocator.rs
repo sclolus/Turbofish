@@ -586,32 +586,6 @@ mod test {
         }
     }
     #[test]
-    fn test_allocator() {
-        const NB_BLOCK: usize = 16;
-        let map_location = 0x00010000 as *const u8;
-
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
-            VirtualAddr(map_location as usize),
-            NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
-        );
-
-        let alloc_size = NbrPages(1);
-        for i in 0..(NB_BLOCK) {
-            let addr = buddy_allocator.alloc(alloc_size.into());
-            dbg!(i);
-            println!("{}", &buddy_allocator);
-            assert_eq!(addr, Ok(VirtualAddr(map_location as usize + PAGE_SIZE * i)));
-        }
-        for i in 0..(NB_BLOCK) {
-            buddy_allocator
-                .free(VirtualAddr(map_location as usize + PAGE_SIZE * i), alloc_size.into())
-                .expect("failed to free");
-
-            println!("{}", &buddy_allocator);
-        }
-    }
-    #[test]
     fn test_reserve_exact() {
         const NB_BLOCK: usize = 16;
         let map_location = 0x00010000 as *const u8;
@@ -642,5 +616,64 @@ mod test {
         buddy_allocator
             .free_reserve(VirtualAddr(map_location as usize + PAGE_SIZE), NbrPages(2))
             .expect("failed to free");
+    }
+    #[test]
+    fn sodo_buddy_fill() {
+        use crate::math::random::rand;
+
+        const NB_TESTS: usize = 10000;
+
+        const NB_BLOCK: usize = 128;
+        const PAGE_ORDER: usize = 4;
+
+        let max_alloc = NB_BLOCK / PAGE_ORDER;
+        let mut s: Vec<VirtualAddr> = vec![VirtualAddr(0); max_alloc];
+
+        // First allocate a Buddy of NB_BLOCK
+        let map_location = 0x100000 as *const u8;
+        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
+            VirtualAddr(map_location as usize),
+            NbrPages(NB_BLOCK),
+            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+        );
+
+        let mut nb_allocations: usize = 0;
+
+        // Multiple Sodo Alloc / Dealloc of same NbrPages
+        for _i in 0..NB_TESTS {
+            match rand::<bool>(true) {
+                true => {
+                    if max_alloc != nb_allocations {
+                        let addr = buddy_allocator.alloc(NbrPages(PAGE_ORDER).into()).unwrap();
+                        s[nb_allocations] = addr;
+                        nb_allocations += 1;
+                    }
+                }
+                false => match nb_allocations {
+                    0 => {}
+                    _ => {
+                        let elmt_number = rand((nb_allocations - 1) as u32) as usize;
+                        let virt_addr = s[elmt_number];
+                        buddy_allocator.free(virt_addr, NbrPages(PAGE_ORDER).into()).unwrap();
+                        if elmt_number != nb_allocations - 1 {
+                            s[elmt_number] = s[nb_allocations - 1];
+                        }
+                        nb_allocations -= 1;
+                    }
+                },
+            }
+        }
+
+        // Fill the buddy until is full
+        let empty_alloc = max_alloc - nb_allocations;
+        for _i in 0..empty_alloc {
+            buddy_allocator.alloc(NbrPages(PAGE_ORDER).into()).unwrap();
+        }
+
+        // Overflow the buddy, must return ERROR
+        match buddy_allocator.alloc(NbrPages(PAGE_ORDER).into()) {
+            Ok(_) => panic!("Must be overflowed"),
+            Err(_e) => {}
+        }
     }
 }
