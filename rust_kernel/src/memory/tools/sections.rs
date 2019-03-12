@@ -1,23 +1,35 @@
-// extern "C" {
-//     static __start_text: u8;
-//     static __end_text: u8;
+extern "C" {
+    pub static __start_text: u8;
+    pub static __end_text: u8;
 
-//     static __start_boot: u8;
-//     static __end_boot: u8;
+    pub static __start_boot: u8;
+    pub static __end_boot: u8;
 
-//     static __start_rodata: u8;
-//     static __end_rodata: u8;
+    pub static __start_rodata: u8;
+    pub static __end_rodata: u8;
 
-//     static __start_data: u8;
-//     static __end_data: u8;
+    pub static __start_data: u8;
+    pub static __end_data: u8;
 
-//     static __start_debug: u8;
-//     static __end_debug: u8;
+    pub static __start_debug: u8;
+    pub static __end_debug: u8;
 
-//     static __start_bss: u8;
-//     static __end_bss: u8;
-// }
+    pub static __start_bss: u8;
+    pub static __end_bss: u8;
+    pub static virtual_offset: u8;
+    pub static kernel_virtual_start: u8;
+    pub static kernel_virtual_end: u8;
+    pub static kernel_physical_start: u8;
+    pub static kernel_physical_end: u8;
+}
 
+/// get the symbol addr
+#[macro_use]
+macro_rules! symbol_addr {
+    ($ident: ident) => {
+        unsafe { &$ident as *const _ as usize }
+    };
+}
 // #[macro_use]
 // macro_rules! print_section {
 //     ($ident: ident) => {

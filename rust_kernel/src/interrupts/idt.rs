@@ -305,7 +305,7 @@ impl DerefMut for InterruptTable<'_> {
 impl InterruptTable<'_> {
     /// This is the default size (in bytes) of the IDT, and also the maximum size of the IDT on x86.
     /// As an IdtGateEntry has a size of 8 bytes, there are 256 entries in the table.
-    const DEFAULT_IDT_SIZE: u16 = 256 * 8;
+    pub const DEFAULT_IDT_SIZE: u16 = 256 * 8;
 
     /// This is the default address of the IDT.
     const DEFAULT_IDT_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;

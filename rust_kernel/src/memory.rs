@@ -4,6 +4,7 @@
 
 pub const VIRTUAL_OFFSET: usize = 0xc0000000;
 
+#[macro_use]
 pub mod tools;
 pub use tools::nbr_pages::NbrPages;
 
