@@ -1,7 +1,7 @@
 use super::NbrPages;
 use super::PAGE_SIZE;
 use bit_field::BitField;
-use core::ops::{Add, Range, RangeInclusive, Sub};
+use core::ops::{Add, AddAssign, Range, RangeInclusive, Sub, SubAssign};
 
 pub trait Address:
     From<usize>
@@ -10,6 +10,8 @@ pub trait Address:
     + Sub<Self, Output = usize>
     + Sub<usize, Output = Self>
     + Add<usize, Output = Self>
+    + AddAssign<usize>
+    + SubAssign<usize>
     + Copy
     + Clone
     + Ord
@@ -103,6 +105,18 @@ impl Add<usize> for VirtualAddr {
     }
 }
 
+impl AddAssign<usize> for VirtualAddr {
+    fn add_assign(&mut self, other: usize) {
+        *self = *self + other
+    }
+}
+
+impl SubAssign<usize> for VirtualAddr {
+    fn sub_assign(&mut self, other: usize) {
+        *self = *self - other
+    }
+}
+
 impl Address for VirtualAddr {}
 
 #[repr(transparent)]
@@ -151,6 +165,18 @@ impl Add<usize> for PhysicalAddr {
     #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
         From::<usize>::from(Into::<usize>::into(self) + rhs)
+    }
+}
+
+impl AddAssign<usize> for PhysicalAddr {
+    fn add_assign(&mut self, other: usize) {
+        *self = *self + other
+    }
+}
+
+impl SubAssign<usize> for PhysicalAddr {
+    fn sub_assign(&mut self, other: usize) {
+        *self = *self - other
     }
 }
 
