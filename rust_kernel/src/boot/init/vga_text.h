@@ -34,5 +34,6 @@ int set_text_color(enum text_color color);
 int set_cursor_position(size_t x, size_t y);
 void scroll_screen();
 void clear_screen();
+void disable_cursor(void);
 
 #endif

@@ -2,6 +2,7 @@
 
 ; Initialisation methods prefixed by alt_
 extern alt_clear_screen
+extern alt_disable_cursor
 extern alt_gdt_new
 extern alt_init_early_idt
 extern alt_get_device_mem_map
@@ -128,6 +129,7 @@ _init:
 
 	add esp, 8 + 4
 
+	call alt_disable_cursor
 	call alt_clear_screen
 
 	; Get device map in memory and push a pointer to a generated structure
