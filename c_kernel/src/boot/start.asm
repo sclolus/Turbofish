@@ -1,6 +1,7 @@
 [BITS 32]
 
 ; Initialisation methods prefixed by alt_
+extern alt_guard_all
 extern alt_clear_screen
 extern alt_disable_cursor
 extern alt_gdt_new
@@ -128,6 +129,9 @@ _init:
 	lidt [ebx]
 
 	add esp, 8 + 4
+
+	; set watchdog
+	call alt_guard_all
 
 	call alt_disable_cursor
 	call alt_clear_screen

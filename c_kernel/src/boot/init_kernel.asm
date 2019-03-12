@@ -2,6 +2,8 @@
 
 segment .text
 
+extern alt_check_all
+
 extern kmain
 
 extern _set_sse
@@ -44,6 +46,9 @@ _init_kernel:
 	call _set_sse
 	call _set_avx
 	call _set_fpu
+
+	; Ask watchdog if all is okay
+	call alt_check_all
 
 	; And finally go into the kernel !
 	push 8
