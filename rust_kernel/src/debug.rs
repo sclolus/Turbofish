@@ -1,4 +1,4 @@
-use crate::interrupts::pit::*;
+use crate::drivers::pit_8253::*;
 
 pub const POISON_SLAB: u32 = 0x5a5a5a5a;
 
