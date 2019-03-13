@@ -52,31 +52,64 @@ void	dog_bark(enum dog dog) {
 	}
 }
 
-static u32 ro_sum = 0;
+static u32 ro_checksum = 0;
 
 extern u8 start_kernel_watched_data;
 extern u8 end_kernel_watched_data;
+
+/*
+ * Fletcher's checksum: 8-bit implementation (32-bit checksum)
+ * See https://en.wikipedia.org/wiki/Fletcher%27s_checksum
+ */
+u32 fletcher32(const u8 *data, size_t len)
+{
+	u32 c0, c1;
+
+	for (c0 = c1 = 0; len >= 720; len -= 720) {
+		for (u32 i = 0; i < 360; ++i) {
+			c0 = c0 + *data++;
+			c0 += *data++ << 8;
+			c1 = c1 + c0;
+		}
+		c0 = c0 & 0xffff;
+		c1 = c1 & 0xffff;
+	}
+	for (u32 i = 0; i < (len >> 1); ++i) {
+		c0 = c0 + *data++;
+		c0 += *data++ << 8;
+		c1 = c1 + c0;
+	}
+	// If len is ODD
+	if ((len & 1) == 1) {
+		c0 = c0 + *data++;
+		c1 = c1 + c0;
+	}
+	c0 = c0 & 0xffff;
+	c1 = c1 & 0xffff;
+	return (c1 << 16) | c0;
+}
 
 void	guard_all(void) {
 	dog_guard(gdt);
 	dog_guard(idt);
 	dog_guard(ivt);
-	// sum all data in Kernel and store result
-	for (u8 *ptr = &start_kernel_watched_data; ptr < &end_kernel_watched_data; ptr++)
-		ro_sum += (u32)*ptr;
+	// checksum all data in Kernel and store result
+	ro_checksum = fletcher32(
+		&start_kernel_watched_data,
+		&end_kernel_watched_data - &start_kernel_watched_data);
 }
 
 void	check_all(void) {
 	dog_bark(gdt);
 	dog_bark(idt);
 	dog_bark(ivt);
-	u32 new_ro_sum = 0;
-	// sum all data in Kernel and check if same result
-	for (u8 *ptr = &start_kernel_watched_data; ptr < &end_kernel_watched_data; ptr++)
-		new_ro_sum += (u32)*ptr;
-	if (new_ro_sum != ro_sum) {
-		eprintk("Kernel Read Only Data has changed ! Got %u instead of %u\n",
-			new_ro_sum, ro_sum);
+	// checksum all data in Kernel and check if same result
+	u32 new_ro_checksum = fletcher32(
+		&start_kernel_watched_data,
+		&end_kernel_watched_data - &start_kernel_watched_data);
+	if (new_ro_checksum != ro_checksum) {
+		eprintk("Kernel Read Only Data has changed ! Got %#.8x instead of %#.8x\n",
+			new_ro_checksum, ro_checksum);
 		while (1) {}
 	}
 }
