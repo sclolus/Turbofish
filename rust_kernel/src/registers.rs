@@ -189,7 +189,8 @@ pub struct Cr0;
 
 #[no_mangle]
 extern "C" {
-    fn _real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16;
+    /// reg is the input parameter and the output
+    fn _real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16;
 }
 
 /// This is a wrapper of the _real_mode_op fonction.
@@ -197,14 +198,14 @@ extern "C" {
 /// as it disable the interrupts and resets the PICs to there default
 /// values before calling _real_mode_op.
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
-pub unsafe fn real_mode_op(reg: BaseRegisters, bios_int: u16) -> u16 {
+pub unsafe fn real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> u16 {
     use crate::interrupts::pic_8259;
     //    use crate::mm;
 
     without_interrupts!({
         let imrs = PIC_8259.reset_to_default();
 
-        let ret = _real_mode_op(reg, bios_int);
+        let ret = _real_mode_op(&mut reg as *mut BaseRegisters, bios_int);
 
         PIC_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
         PIC_8259.set_masks(imrs);

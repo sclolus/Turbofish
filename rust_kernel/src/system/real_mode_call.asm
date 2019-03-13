@@ -108,18 +108,15 @@ _real_mode_op:
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
 	; fill the number of the interupt to launch
-	mov al, [ebp + 8 + ALL_REGISTERS_OFFSET]
+	mov al, [ebp + 12]
 	mov byte [REBASE(begin_sub_sequence.int_nb_location)], al
 
-	; put ESP on the first argument
-	add esp, 8 + ALL_REGISTERS_OFFSET
-
-	; Get all arguments registers
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
 	popad
+	mov esp, [REBASE(_esp)]
 
-	sub esp, 8 + ALL_REGISTERS_OFFSET + ALL_REGISTERS_OFFSET
-
-	; recovery of current EBP : (esp is preserved by popad operation)
+	; recovery of current EBP
 	push eax
 	mov eax, [esp + 12]
 	mov ebp, eax
@@ -131,8 +128,11 @@ _real_mode_op:
 end_real_mode_op:
 	; store return EAX
 	mov [esp + 28], eax
-
-	; restore all registers values
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
+	add esp, ALL_REGISTERS_OFFSET
+	pushad
+	mov esp, [REBASE(_esp)]
 	popad
 
 	pop ebp
@@ -244,6 +244,7 @@ begin_sub_sequence:
 	lidt [REBASE(saved_idtptr)]
 	lgdt [REBASE(saved_gdtptr)]
 
+	mov [REBASE(_ebx)], ebx
 	; entering in protected mode
 	mov ebx, cr0
 	or  bx, 1
@@ -287,6 +288,7 @@ begin_sub_sequence:
 	mov cr0, ebx
 
 .after_renable_paging:
+	mov ebx, [REBASE(_ebx)]
 	; return to base function
 	pop ebp
 	ret
@@ -329,3 +331,4 @@ _es: dw 0xBEEF
 _fs: dw 0xBEEF
 _gs: dw 0xBEEF
 _ss: dw 0xBEEF
+_ebx: dd 0xDEADBEEF
