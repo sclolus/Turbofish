@@ -4,7 +4,7 @@ use crate::io::{Io, Pio};
 use bit_field::BitField;
 
 pub struct Pci {
-    devices_list: CustomPciDeviceAllocator,
+    pub devices_list: CustomPciDeviceAllocator,
 }
 
 pub static mut PCI: Pci = Pci::new();
@@ -197,7 +197,7 @@ enum PciDeviceRegisters {
 /// Global structure representing a PCI device
 #[derive(Copy, Clone, Debug)]
 #[allow(dead_code)]
-struct PciDevice {
+pub struct PciDevice {
     header_l0: PciDeviceHeaderL0,
     header_body: PciDeviceHeaderBody,
     registers: PciDeviceRegisters,
@@ -220,7 +220,7 @@ impl core::fmt::Display for PciDevice {
 }
 
 /// static  allocator for Self::CAPACITY devices max
-struct CustomPciDeviceAllocator {
+pub struct CustomPciDeviceAllocator {
     devices_array: [Option<PciDevice>; Self::CAPACITY],
     len: usize,
 }
@@ -252,7 +252,7 @@ impl CustomPciDeviceAllocator {
 }
 
 /// Iterator structure definition for CustomPciAllocator
-struct CustomPciDeviceAllocatorIterator<'a> {
+pub struct CustomPciDeviceAllocatorIterator<'a> {
     parent_reference: &'a CustomPciDeviceAllocator,
     current_iter: usize,
 }
