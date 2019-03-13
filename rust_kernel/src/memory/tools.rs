@@ -5,8 +5,6 @@ pub use nbr_pages::*;
 #[macro_use]
 pub mod sections;
 pub use sections::*;
-pub mod watch_dog;
-pub use watch_dog::*;
 
 pub const PAGE_SIZE: usize = 4096;
 

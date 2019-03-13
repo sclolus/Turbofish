@@ -30,7 +30,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
 
     unsafe {
         interrupts::init();
-        crate::memory::tools::watch_dog();
+        crate::watch_dog();
 
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
@@ -137,6 +137,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     let t = debug::bench_end();
     println!("{:?} ms ellapsed {:?}", t, sum);
     */
-    crate::memory::tools::watch_dog();
+    crate::watch_dog();
     sum
 }
