@@ -8,19 +8,36 @@ use crate::monitor::*;
 use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
 
+/// Show how devices are mapped in physical memory and also available space
+/// For reading all structures map, just run away with offset 32 until a zeroed structure
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct DeviceMap {
+    pub low_addr: u32,
+    pub high_addr: u32,
+    pub low_length: u32,
+    pub high_length: u32,
+    pub r#type: u32,
+    pub acpi_reserved: u32,
+    trashes: Trash,
+}
+
+define_raw_data!(Trash, 8);
+
 extern "C" {
     static _asterix_bmp_start: BmpImage;
     static _wanggle_bmp_start: BmpImage;
 }
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::io::UART_16550.init() };
         eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
+    // TODO Like multigrub structure, it could be cool to save the entire device map here !
     unsafe {
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
     }
@@ -106,6 +123,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
     }
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
+    println!("multiboot_infos {:#?}", multiboot_info);
+    println!("device map ptr: {:#?}", device_map_ptr);
+    println!("first structure: {:?}", unsafe { *device_map_ptr });
 
     /*
     use crate::memory::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};

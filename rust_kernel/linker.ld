@@ -8,20 +8,44 @@ SECTIONS
 {
 	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
 	   loaded at by the bootloader. */
-	virtual_offset = 0xC0000000;
-	. = virtual_offset + 0x00100000;
 
-	kernel_virtual_start = .;
-	kernel_physical_start = . - virtual_offset;
+	. = 0x100000;
+	kernel_physical_start = .;
+
 	/* First put the multiboot header, as it is required to be put very early
 	   early in the image or the bootloader won't recognize the file format.
 	   Next we'll put the .text section. */
-	.boot BLOCK(4K) : AT(ADDR(.boot) - virtual_offset) ALIGN(4K)
+
+	.boot BLOCK(4K) : ALIGN(4K)
 	{
 		__start_boot = .;
 		*(.multiboot)
 		__end_boot = .;
 	}
+
+	/* This section will be in low memory, it prepares MMU for the high half kernel style */
+	.init BLOCK(4K) : ALIGN(4K)
+	{
+		__start_init = .;
+		*(.init)
+		*(.init.*)
+		objs/init/get_device_mem_map.o
+		objs/init/vga_text.o
+		objs/init/8086_payload.o
+		objs/init/payload_get_mem_map.o
+		objs/init/early_gdt.o
+		objs/init/early_idt.o
+		objs/init/idt_cpu_handler.o
+		objs/init/early_panic.o
+		objs/init/init_paging.o
+		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
+		libft/alt_libft.a
+		__end_init = .;
+	}
+
+	/* Now, we gone in high memory */
+	virtual_offset = 0xc0000000;
+	. += virtual_offset;
 
 	/* Base code section */
 	.text BLOCK(4K) : AT(ADDR(.text) - virtual_offset) ALIGN(4K)

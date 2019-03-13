@@ -1,7 +1,8 @@
 
+#include "vga_text.h"
+
 #include "libft.h"
 
-#include "vga_text.h"
 
 static struct vga_mode vga =
 	{memory_location: (u8 *)0xb8000, width: 80, height: 25, x: 0, y: 0, color: 3};
@@ -68,6 +69,17 @@ int set_text_color(enum text_color color) {
 	return 0;
 }
 
+static inline void outb(uint16_t port, uint8_t val) {
+	asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
+}
+
+void disable_cursor(void) {
+	// low cursor shape register
+	outb(0x3D4, 0xA);
+	// bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
+	outb(0x3D5, 0x20);
+}
+
 #define MODIFIER_QUANTITY 13
 
 struct modifier_list {
@@ -107,6 +119,9 @@ static u32	extract_modifier(const char *buf)
 	return 0;
 }
 
+/*
+ * Need to be binded with the printk method
+ */
 int write(int fd, char *buf, size_t len) {
 	(void)fd;
 	for (size_t i = 0; i < len; i++) {
