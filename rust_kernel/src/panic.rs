@@ -107,7 +107,7 @@ use core::panic::PanicInfo;
 
 #[allow(dead_code)]
 fn panic_sa_mere(info: &PanicInfo) {
-    eprintln!("Rust is on panic but it is not a segmentation fault !\n{:#?}", info);
+    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;
     unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
     trace_back(ebp);

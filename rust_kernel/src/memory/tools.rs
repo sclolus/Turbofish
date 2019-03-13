@@ -2,6 +2,7 @@ pub mod address;
 pub use address::*;
 pub mod nbr_pages;
 pub use nbr_pages::*;
+#[macro_use]
 pub mod sections;
 pub use sections::*;
 
