@@ -50,8 +50,11 @@ VPATH += src/system
 SRC_ASM_KERNEL += io
 VPATH += src/io
 
-SRC_ASM_KERNEL += cpu_exceptions_isr pic_8259_isr default_isr
+SRC_ASM_KERNEL += cpu_exceptions_isr default_isr
 VPATH += src/interrupts/idt
+
+SRC_ASM_KERNEL += pic_8259_isr
+VPATH += src/drivers/pic_8259
 
 SRC_ASM_KERNEL += 8087
 VPATH += src/math

@@ -1,14 +1,16 @@
 //! See [IDT](https://wiki.osdev.org/IDT)
 //! and [Interrupts](https://wiki.osdev.org/Interrupts)
 mod cpu_exceptions_isr;
-mod pic_8259_isr;
-use crate::interrupts::pic_8259;
+use cpu_exceptions_isr::*;
+
 use bit_field::BitField;
 use core::ffi::c_void;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::slice::SliceIndex;
-use cpu_exceptions_isr::*;
-use pic_8259_isr::*;
+
+extern "C" {
+    fn _default_isr();
+}
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
@@ -199,14 +201,14 @@ impl Default for Idtr {
 
 impl Idtr {
     /// Consumes the Idtr, returning the corresponding InterruptTable.
-    pub unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
+    unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
         InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
     }
 
     /// Returns the current Interrupt Descriptor Table Register
     #[no_mangle]
     #[inline(never)]
-    pub unsafe extern "C" fn get_idtr() -> Idtr {
+    unsafe extern "C" fn get_idtr() -> Idtr {
         // Temporary struct Idtr to be filled by the asm routine
         let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
 
@@ -217,7 +219,7 @@ impl Idtr {
     /// Loads the contents of `idtr` into the Interrupt Descriptor Table Register.
     #[no_mangle]
     #[inline(never)]
-    pub unsafe extern "C" fn load_idtr(&self) {
+    unsafe extern "C" fn load_idtr(&self) {
         asm!("lidt ($0)" :: "r" (self as *const _) : "memory" : "volatile");
     }
 
@@ -231,7 +233,9 @@ impl Idtr {
 
             let mut idt = self.interrupt_table();
 
-            idt.init_default();
+            idt.init_default_exceptions();
+            idt.init_cpu_exceptions();
+            INITIALIZED = true;
             idt
         })
     }
@@ -302,6 +306,8 @@ impl DerefMut for InterruptTable<'_> {
     }
 }
 
+static mut INITIALIZED: bool = false;
+
 impl InterruptTable<'_> {
     /// This is the default size (in bytes) of the IDT, and also the maximum size of the IDT on x86.
     /// As an IdtGateEntry has a size of 8 bytes, there are 256 entries in the table.
@@ -311,8 +317,8 @@ impl InterruptTable<'_> {
     const DEFAULT_IDT_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
 
     /// The list of the default exception handlers.
-    /// They are loaded by the `init_default` method.
-    const DEFAULT_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
+    /// They are loaded by the `init_cpu_exceptions` method.
+    const CPU_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
         (_isr_divide_by_zero, InterruptGate32),
         (_isr_debug, TrapGate32),
         (_isr_non_maskable_interrupt, InterruptGate32),
@@ -347,28 +353,29 @@ impl InterruptTable<'_> {
         (reserved_exception, InterruptGate32),
     ];
 
-    /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
-    /// They are mapped from 0x20 to 0x27
-    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] =
-        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _default_isr];
-
-    /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
-    /// They are mapped from 0x28 to 0x30
-    const DEFAULT_IRQS_SLAVE: [unsafe extern "C" fn(); 8] = [
-        _isr_cmos,
-        _isr_acpi,
-        reserved_interruption,
-        reserved_interruption,
-        _isr_ps2_mouse,
-        _isr_fpu_coproc,
-        _isr_primary_hard_disk,
-        _isr_secondary_hard_disk,
-    ];
-
-    /// Loads the default configuration of the InterruptTable.
+    /// Set the CPYU exceptions vectors on the first 32 entries.
     /// # Panics
     /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
-    pub unsafe fn init_default(&mut self) {
+    unsafe fn init_cpu_exceptions(&mut self) {
+        assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
+
+        let mut gate_entry = *IdtGateEntry::new()
+            .set_storage_segment(false)
+            .set_privilege_level(0)
+            .set_selector(1 << 3)
+            .set_gate_type(InterruptGate32);
+
+        for (index, &(exception, gate_type)) in Self::CPU_EXCEPTIONS.iter().enumerate() {
+            gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
+
+            self[index] = gate_entry;
+        }
+    }
+
+    /// Set the basic defauly exception handler in all the IDT table
+    /// # Panics
+    /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
+    unsafe fn init_default_exceptions(&mut self) {
         assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
 
         let mut gate_entry = *IdtGateEntry::new()
@@ -380,34 +387,14 @@ impl InterruptTable<'_> {
         for entry in self.iter_mut() {
             *entry = *gate_entry.set_handler(_default_isr as *const c_void as u32);
         }
-
-        for (index, &(exception, gate_type)) in Self::DEFAULT_EXCEPTIONS.iter().enumerate() {
-            gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
-
-            self[index] = gate_entry;
-        }
-
-        gate_entry.set_gate_type(InterruptGate32);
-
-        let offset = pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR as usize;
-        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
-            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
-
-            self[index + offset] = gate_entry;
-        }
-
-        let offset = pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR as usize;
-        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_SLAVE.iter().enumerate() {
-            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
-
-            self[index + offset] = gate_entry;
-        }
     }
 
     /// Gets the current InterruptTable as specified by the current IDTR.
     /// This method is basically just a shorthand.
-    pub unsafe fn current_interrupt_table<'a>() -> InterruptTable<'a> {
-        // Do we keep this function ? It seems handy ?
-        Idtr::get_idtr().interrupt_table()
+    pub unsafe fn current_interrupt_table<'a>() -> Option<InterruptTable<'a>> {
+        match INITIALIZED {
+            false => None,
+            true => Some(Idtr::get_idtr().interrupt_table()),
+        }
     }
 }

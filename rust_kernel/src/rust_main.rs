@@ -1,8 +1,9 @@
 use crate::debug;
 use crate::drivers::pci::PCI;
+use crate::drivers::pic_8259;
+use crate::drivers::pic_8259::PIC_8259;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::interrupts;
-use crate::interrupts::{pic_8259, PIC_8259};
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::*;
@@ -24,16 +25,28 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     // TODO Like multigrub structure, it could be cool to save the entire device map here !
+    unsafe {
+        interrupts::init();
+
+        PIC_8259.init();
+        PIC_8259.disable_all_irqs();
+
+        crate::watch_dog();
+
+        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+
+        PIT0.configure(OperatingMode::RateGenerator);
+        PIT0.start_at_frequency(1000.).unwrap();
+
+        interrupts::enable();
+
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
+    }
     println!("multiboot_infos {:#?}", multiboot_info);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
     unsafe {
-        interrupts::init();
-        crate::watch_dog();
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
-        crate::watch_dog();
-        eprintln!("bonjour");
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
 
@@ -50,12 +63,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         eprintln!("bonjour");
     }
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
-
-    unsafe {
-        PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(1000.).unwrap();
-        PIC_8259.enable_irq(pic_8259::Irq::SystemTimer);
-    }
     debug::bench_start();
     //    crate::test_helpers::fucking_big_string(3);
     let t = debug::bench_end();
