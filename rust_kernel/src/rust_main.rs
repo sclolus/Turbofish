@@ -1,13 +1,12 @@
 use crate::debug;
 use crate::drivers::pci::PCI;
-use crate::drivers::pic_8259;
-use crate::drivers::pic_8259::PIC_8259;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
+use crate::drivers::{pic_8259, PIC_8259};
 use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
-use crate::monitor::bmp_loader::*;
-use crate::monitor::*;
+use crate::monitor::bmp_loader::{draw_image, BmpImage};
+use crate::monitor::{Color, WriteMode, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
 

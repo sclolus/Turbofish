@@ -199,8 +199,7 @@ extern "C" {
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
 
 pub unsafe fn real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> u16 {
-    use crate::drivers::pic_8259;
-    use crate::drivers::pic_8259::PIC_8259;
+    use crate::drivers::{pic_8259, PIC_8259};
 
     without_interrupts!({
         let ret;
