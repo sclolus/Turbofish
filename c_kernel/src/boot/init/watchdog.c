@@ -1,5 +1,6 @@
 
 #include "libft.h"
+#include "vga_text.h"
 
 #include "watchdog.h"
 
@@ -22,7 +23,8 @@ static struct params params[LEN] = {
 };
 
 _Noreturn static void critical_error(void) {
-	eprintk("DOG CRITICAL ERROR !\n");
+	set_text_color(yellow);
+	eprintk("WATCHDOG CRITICAL ERROR: Init sequence halted\n");
 	while(1) {}
 }
 
@@ -46,13 +48,15 @@ void	dog_bark(enum dog dog) {
 
 	for (size_t i = 0; i < p.size; i++) {
 		if (p.circle[i] != (u8)((u8 *)p.location)[i]) {
+			set_text_color(yellow);
 			eprintk("%s has changed at offset %x !\n", p.msg, i);
-			while (1) {}
+			critical_error();
 		}
 	}
 }
 
 static u32 ro_checksum = 0;
+static u32 ro_sum = 0;
 
 extern u8 start_kernel_watched_data;
 extern u8 end_kernel_watched_data;
@@ -90,26 +94,49 @@ u32 fletcher32(const u8 *data, size_t len)
 }
 
 void	guard_all(void) {
+	// Save the current GDT, IDT and IVT BIOS
 	dog_guard(gdt);
 	dog_guard(idt);
 	dog_guard(ivt);
-	// checksum all data in Kernel and store result
+
+	// Checksum all data in Kernel and store result
 	ro_checksum = fletcher32(
 		&start_kernel_watched_data,
 		&end_kernel_watched_data - &start_kernel_watched_data);
+
+	// Sum all data in Kernel
+	for (u8 *p = &start_kernel_watched_data; p < &end_kernel_watched_data; p++)
+		ro_sum += *p;
 }
 
 void	check_all(void) {
+	// Check if GDT, IDT, and IVT BIOS are the same as previous
 	dog_bark(gdt);
 	dog_bark(idt);
 	dog_bark(ivt);
-	// checksum all data in Kernel and check if same result
+
+	// Checksum all data in Kernel, then check if same result as previous
 	u32 new_ro_checksum = fletcher32(
 		&start_kernel_watched_data,
 		&end_kernel_watched_data - &start_kernel_watched_data);
+
 	if (new_ro_checksum != ro_checksum) {
-		eprintk("Kernel Read Only Data has changed ! Got %#.8x instead of %#.8x\n",
+		set_text_color(yellow);
+		eprintk("Kernel Read Only Data has changed !\n");
+		eprintk("Checksum: Got %#.8x instead of %#.8x\n",
 			new_ro_checksum, ro_checksum);
-		while (1) {}
+		critical_error();
+	}
+
+	// Sum all data in Kernel, then check if same result as previous
+	u32 new_ro_sum = 0;
+	for (u8 *p = &start_kernel_watched_data; p < &end_kernel_watched_data; p++)
+		new_ro_sum += *p;
+
+	if (new_ro_sum != ro_sum) {
+		set_text_color(yellow);
+		eprintk("Kernel Read Only Data has changed !\n");
+		eprintk("Sum: Got %u instead of %u\n", new_ro_sum, ro_sum);
+		critical_error();
 	}
 }
