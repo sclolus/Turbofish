@@ -6,7 +6,7 @@
 
 // Early GDT
 #define GDT_AREA 0x800
-#define GDT_SIZE 0x800
+#define GDT_SIZE 0x400
 
 // Early IDT
 #define IDT_AREA 0x1000
