@@ -1,5 +1,5 @@
 //! See [ISR](https://wiki.osdev.org/ISR)
-use crate::ffi::*;
+use crate::ffi::{c_char, strlen};
 
 extern "C" {
     pub(super) fn _isr_timer();
