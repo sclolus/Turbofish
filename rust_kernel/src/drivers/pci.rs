@@ -261,7 +261,7 @@ struct CustomPciDeviceAllocatorIterator<'a> {
 impl<'a> Iterator for CustomPciDeviceAllocatorIterator<'a> {
     type Item = PciDevice;
 
-    /// Iterator must have just a next method
+    /// Iterator must have at least a next method
     fn next(&mut self) -> Option<PciDevice> {
         if self.current_iter == self.parent_reference.len {
             None
@@ -316,6 +316,9 @@ impl Pci {
         }
     }
 
+    /// Bit 31 is the 'enable bit', for configuring cycles, it is necessary
+    /// to read the device space through IO port and to configure it !
+    /// ---> 0x80_00_00_00 (must be confirmed by Sclolus)
     ///                         |  |      PCI BUS       |  |                  32 bits
     ///                    __________________________________________
     ///                   | |||| |||| |||| |||| |||| |||| |||| |||| |
@@ -326,12 +329,15 @@ impl Pci {
     /// function << 8 -> 0x ---- ---- ---- ---- ---- -BBB ---- ----   ->   7 values   0x00 -> 0x08
     /// register << 2 -> 0x ---- ---- ---- ---- ---- ---- BBBB BB--   ->  64 values   0x00 -> 0x40
 
-    /// Take a device location as argument and check is device exists here
+    /// Take a device location as argument and check if a device exists here
     /// return PciDevice on success
     fn check_device(&self, bus: u8, slot: u8, function: u8) -> Option<PciDevice> {
         use core::mem::{size_of, transmute_copy};
 
-        let mut location: u32 = 0x80000000 + ((bus as u32) << 16) + ((slot as u32) << 11) + ((function as u32) << 8);
+        let mut location: u32 = 0x80000000;
+        location += (bus as u32) << 16;
+        location += (slot as u32) << 11;
+        location += (function as u32) << 8;
 
         let header_l0 =
             unsafe { transmute_copy::<PciDeviceHeaderL0Raw, PciDeviceHeaderL0>(&PciDeviceHeaderL0Raw::fill(location)) };
