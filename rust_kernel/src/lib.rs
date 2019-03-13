@@ -34,7 +34,6 @@ pub mod interrupts;
 #[macro_use]
 pub mod io;
 pub mod drivers;
-pub mod keyboard;
 pub mod math;
 pub mod multiboot;
 #[cfg(not(test))]

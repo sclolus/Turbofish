@@ -2,8 +2,8 @@
 use crate::io::{Io, Pio};
 pub mod keysymb;
 //use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP;
-use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
-use crate::keyboard::keysymb::{CapsLockSensitive, KeySymb};
+use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
+use super::keyboard::keysymb::{CapsLockSensitive, KeySymb};
 
 #[allow(dead_code)]
 struct Ps2Controler {
