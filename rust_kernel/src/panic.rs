@@ -81,15 +81,15 @@ fn get_eip(ebp: *const u32) -> (u32, *const u32) {
     }
 }
 
-fn trace_back(ebp_origin: *const u32) {
-    let mut s: (u32, *const u32) = (0, ebp_origin);
+/// Take the first eip and epb as parameter and trace back up.
+fn trace_back(mut s: (u32, *const u32)) {
     loop {
+        let symbol = unsafe { _get_symbol(s.0) };
+        eprintln!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
         s = get_eip(s.1);
         if s.0 == 0 {
             break;
         }
-        let symbol = unsafe { _get_symbol(s.0) };
-        eprintln!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
     }
 }
 
@@ -99,7 +99,7 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
     println!("reason {:?}", s);
     println!("{:#X?}\n", ext_reg);
 
-    trace_back(ext_reg.new_ebp as *const u32);
+    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
     loop {}
 }
 
@@ -110,7 +110,8 @@ fn panic_sa_mere(info: &PanicInfo) {
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;
     unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
-    trace_back(ebp);
+    // As we don't have eip in a panic, the first eip is put at ebp
+    trace_back((ebp as u32, ebp));
 }
 
 #[panic_handler]

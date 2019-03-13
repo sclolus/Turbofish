@@ -40,7 +40,7 @@ _isr_%1:
 	mov ebp, esp
 	%3
 	push isr_%1_str
-	push 68
+	push 72
 	push cpu_panic_handler
 	call _align_stack
 %endmacro
