@@ -1,4 +1,5 @@
 use crate::debug;
+use crate::drivers::keyboard::init_keyboard_driver;
 use crate::drivers::pci::PCI;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::drivers::{pic_8259, PIC_8259};
@@ -8,6 +9,7 @@ use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::{draw_image, BmpImage};
 use crate::monitor::{Color, WriteMode, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
+use crate::terminal::init_terminal;
 use crate::timer::Rtc;
 
 extern "C" {
@@ -29,8 +31,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         PIC_8259.init();
         PIC_8259.disable_all_irqs();
-
         crate::watch_dog();
+        init_keyboard_driver();
+        init_terminal();
 
         PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
 

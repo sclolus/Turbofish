@@ -49,6 +49,8 @@ pub mod memory;
 pub mod watch_dog;
 pub use watch_dog::*;
 
+pub mod terminal;
+
 use crate::memory::RustGlobalAlloc;
 
 /// As a matter of fact, we can't declare the MemoryManager inside a submodule.
