@@ -38,10 +38,13 @@ SECTIONS
 		objs/init/idt_cpu_handler.o
 		objs/init/early_panic.o
 		objs/init/init_paging.o
+		objs/init/watchdog.o
 		/* I dont know why but the lib must be at the end of section, if else symbols will be in high mem area */
 		libft/alt_libft.a
 		__end_init = .;
 	}
+
+	alt_start_kernel_watched_data = .;
 
 	virtual_offset = 0xc0000000;
 	. += virtual_offset;
@@ -76,6 +79,8 @@ SECTIONS
 		*(.stab)
 		*(.stabstr)
 	}
+
+	alt_end_kernel_watched_data = . - virtual_offset;
 
 	/* Read-write data (uninitialized) */
 	.bss BLOCK(4K) : AT(ADDR(.bss) - virtual_offset) ALIGN(4K)
