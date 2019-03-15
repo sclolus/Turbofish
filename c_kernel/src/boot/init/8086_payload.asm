@@ -177,14 +177,29 @@ begin_sub_sequence:
 	; Store AX parameter
 	mov [REBASE(_eax)], eax
 
+	; Store CR0 parameter
+	mov eax, cr0
+	mov [REBASE(_cr0)], eax
+	and eax, 0x80000000
+
+	; if paging was not enable don't disable it
+	cmp eax, 0x0
+	je .after_disable_paging
+
 	; Store CR3 parameter
-	; mov eax, cr3
-	; mov [REBASE(_cr3)], eax
+	mov eax, cr3
+	mov [REBASE(_cr3)], eax
 
 	; disable paging (PG)
-	;mov eax, cr0
-	;and eax, 0x7fffffff
-	;mov cr0, eax
+	mov eax, cr0
+	and eax, 0x7fffffff
+	mov cr0, eax
+
+	; fflush CR3 register
+	xor eax, eax
+	mov cr3, eax
+
+.after_disable_paging:
 
 	; store caller gdt and load custom 16 bits gdt
 	; fflush CR3 register
@@ -275,14 +290,22 @@ begin_sub_sequence:
 	mov esp, [REBASE(_esp)]
 	mov ebp, [REBASE(_ebp)]
 
+	mov ebx, [REBASE(_cr0)]
+	and ebx, 0x80000000
+
+	; if paging was not enable don't reenable it
+	cmp ebx, 0
+	je .after_renable_paging
+
 	; Restore Paging
-	; mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
-	; mov cr3, ebx
+	mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
+	mov cr3, ebx
 
-	; mov ebx, cr0
-	; or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
-	; mov cr0, ebx
+	mov ebx, cr0
+	mov ebx, [REBASE(_cr0)]
+	mov cr0, ebx
 
+.after_renable_paging:
 	; return to base function
 	pop ebp
 	ret
@@ -314,9 +337,11 @@ saved_gdtptr:
 	dw 0     ; limit
 	dd 0     ; base
 
+
 _esp: dd 0xDEADBEEF
 _ebp: dd 0xDEADBEEF
-; _cr3: dd 0xFEEDBABE
+_cr0: dd 0xFEEDBABE
+_cr3: dd 0xFEEDBABE
 _eax: dd 0xDEADBEEF
 _ds: dw 0xBEEF
 _es: dw 0xBEEF

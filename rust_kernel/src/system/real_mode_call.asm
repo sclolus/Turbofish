@@ -108,18 +108,15 @@ _real_mode_op:
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
 	; fill the number of the interupt to launch
-	mov al, [ebp + 8 + ALL_REGISTERS_OFFSET]
+	mov al, [ebp + 12]
 	mov byte [REBASE(begin_sub_sequence.int_nb_location)], al
 
-	; put ESP on the first argument
-	add esp, 8 + ALL_REGISTERS_OFFSET
-
-	; Get all arguments registers
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
 	popad
+	mov esp, [REBASE(_esp)]
 
-	sub esp, 8 + ALL_REGISTERS_OFFSET + ALL_REGISTERS_OFFSET
-
-	; recovery of current EBP : (esp is preserved by popad operation)
+	; recovery of current EBP
 	push eax
 	mov eax, [esp + 12]
 	mov ebp, eax
@@ -131,8 +128,11 @@ _real_mode_op:
 end_real_mode_op:
 	; store return EAX
 	mov [esp + 28], eax
-
-	; restore all registers values
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
+	add esp, ALL_REGISTERS_OFFSET
+	pushad
+	mov esp, [REBASE(_esp)]
 	popad
 
 	pop ebp
@@ -166,6 +166,19 @@ begin_sub_sequence:
 	mov eax, cr3
 	mov [REBASE(_cr3)], eax
 
+	; Store CR0 parameter
+	mov eax, cr0
+	mov [REBASE(_cr0)], eax
+	and eax, 0x80000000
+
+	; if paging was not enable don't disable it
+	cmp eax, 0x0
+	je .after_disable_paging
+
+	; Store CR3 parameter
+	mov eax, cr3
+	mov [REBASE(_cr3)], eax
+
 	; disable paging (PG)
 	mov eax, cr0
 	and eax, 0x7fffffff
@@ -174,6 +187,8 @@ begin_sub_sequence:
 	; fflush CR3 register
 	xor eax, eax
 	mov cr3, eax
+
+.after_disable_paging:
 
 	; store GDT and IDT
 	sgdt [REBASE(saved_gdtptr)]
@@ -229,6 +244,7 @@ begin_sub_sequence:
 	lidt [REBASE(saved_idtptr)]
 	lgdt [REBASE(saved_gdtptr)]
 
+	mov [REBASE(_ebx)], ebx
 	; entering in protected mode
 	mov ebx, cr0
 	or  bx, 1
@@ -256,14 +272,23 @@ begin_sub_sequence:
 	mov esp, [REBASE(_esp)]
 	mov ebp, [REBASE(_ebp)]
 
-	; restore Paging
-	mov ebx, [REBASE(_cr3)] 	; restore CR3 Page directory Phy address location
+	mov ebx, [REBASE(_cr0)]
+	and ebx, 0x80000000
+
+	; if paging was not enable don't reenable it
+	cmp ebx, 0
+	je .after_renable_paging
+
+	; Restore Paging
+	mov ebx, [REBASE(_cr3)]     ; restore CR3 Page directory Phy address location
 	mov cr3, ebx
 
 	mov ebx, cr0
-	or ebx, 0x80000001          ; restore PG bit (Protected bit must be enable with it)
+	mov ebx, [REBASE(_cr0)]
 	mov cr0, ebx
 
+.after_renable_paging:
+	mov ebx, [REBASE(_ebx)]
 	; return to base function
 	pop ebp
 	ret
@@ -285,8 +310,8 @@ bios_idt:
 end_sub_sequence:
 
 gdt_16_ptr:
-	dw 0     ; limit
-	dd 0     ; base
+	dw 0xBEEF      ; limit
+	dd 0xFEEDBABE  ; base
 
 saved_idtptr:
 	dw 0
@@ -295,12 +320,15 @@ saved_gdtptr:
 	dw 0     ; limit
 	dd 0     ; base
 
-_esp: dd 0
-_ebp: dd 0
-_cr3: dd 0
-_eax: dd 0
-_ds: dw 0
-_es: dw 0
-_fs: dw 0
-_gs: dw 0
-_ss: dw 0
+
+_esp: dd 0xDEADBEEF
+_ebp: dd 0xDEADBEEF
+_cr0: dd 0xFEEDBABE
+_cr3: dd 0xFEEDBABE
+_eax: dd 0xDEADBEEF
+_ds: dw 0xBEEF
+_es: dw 0xBEEF
+_fs: dw 0xBEEF
+_gs: dw 0xBEEF
+_ss: dw 0xBEEF
+_ebx: dd 0xDEADBEEF
