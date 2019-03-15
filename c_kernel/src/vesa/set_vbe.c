@@ -35,7 +35,7 @@ s32		set_vbe(u16 selected_mode)
 	// get global VBE info
 	reg.eax = 0x4F00;
 	reg.edi = VESA_GLOBAL_INFO_PTR;
-	int8086(reg, 0x10);
+	_int8086(&reg, 0x10);
 
 	ft_memcpy(
 		&vesa_ctx.global_info,
@@ -65,7 +65,7 @@ s32		set_vbe(u16 selected_mode)
 	reg.eax = 0x4F01;
 	reg.ecx = selected_mode | LFB_BIT;	// CX 1 << 14 => LFB
 	reg.edi = VESA_MODE_INFO_PTR;
-	int8086(reg, 0x10);
+	_int8086(&reg, 0x10);
 
 	ft_memcpy(
 		&vesa_ctx.mode,
@@ -84,7 +84,7 @@ s32		set_vbe(u16 selected_mode)
 	// switch to selected graphic mode
 	reg.eax = 0x4F02;
 	reg.ebx = selected_mode | LFB_BIT;
-	int8086(reg, 0x10);
+	_int8086(&reg, 0x10);
 
 	return 0;
 }
