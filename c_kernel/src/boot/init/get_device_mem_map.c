@@ -11,7 +11,7 @@ struct base_registers {
  */
 #define DEVICE_MAP_PTR_ADDR 0x40000
 
-extern int i8086_payload(struct base_registers regs, void *payload, size_t payload_len);
+extern int i8086_payload(struct base_registers *regs, void *payload, size_t payload_len);
 extern void payload_get_mem_map(void);
 extern size_t payload_get_mem_map_len;
 
@@ -31,7 +31,7 @@ struct __attribute__ ((packed)) device {
  */
 struct device *get_device_mem_map(void) {
 	struct base_registers regs = {0};
-	int nb_dev = i8086_payload(regs, &payload_get_mem_map, payload_get_mem_map_len);
+	int nb_dev = i8086_payload(&regs, &payload_get_mem_map, payload_get_mem_map_len);
 	if (nb_dev == -1) {
 		printk("Cannot map devices !\n");
 		while (1) {}

@@ -75,7 +75,7 @@
 [BITS 32]
 segment .text
 
-%define ALL_REGISTERS_OFFSET 32 ; popad and pushas modufication offset for esp
+%define ALL_REGISTERS_OFFSET 32 ; popad and pushad modification offset for esp
 
 ; POPAD and PUSHAD operations conerned ALL registers except ESP, which is normal behav +32, -32
 
@@ -84,7 +84,7 @@ segment .text
 %define PAYLOAD_MAX_LEN     8192
 %define REBASE(x)           (BASE_LOCATION + x - begin_sub_sequence)
 
-; int i8086_payload(Base_registers reg, void *payload, size_t payload_len);
+; int i8086_payload(Base_registers *reg, void *payload, size_t payload_len);
 GLOBAL i8086_payload
 i8086_payload:
 	push ebp
@@ -103,13 +103,12 @@ i8086_payload:
 	rep movsb
 
 	; Copy the payload
-	; args [ebp + 8 + 32] -> payload * et [ebp + 12 + 32] -> len
-	; 32 = ALL_REGISTERS_OFFSET
-	mov eax, [ebp + 8 + ALL_REGISTERS_OFFSET]
+	mov eax, [ebp + 12]
 	mov esi, eax
 	mov eax, REBASE(begin_sub_sequence.payload)
 	mov edi, eax
-	mov ecx, [ebp + 12 + ALL_REGISTERS_OFFSET]
+	mov ecx, [ebp + 16]
+
 	; test if payload is to big
 	mov eax, -1
 	cmp ecx, PAYLOAD_MAX_LEN
@@ -125,14 +124,11 @@ i8086_payload:
 	mov eax, REBASE(gdt_16)
 	mov dword [REBASE(gdt_16_ptr + 2)], eax
 
-	; Put ESP on the first argument
-	add esp, 8 + ALL_REGISTERS_OFFSET
-
 	; Get all arguments registers
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
 	popad
-
-	; Realign ESP on current level, popad has incremented esp by 32
-	sub esp, 8 + ALL_REGISTERS_OFFSET + ALL_REGISTERS_OFFSET
+	mov esp, [REBASE(_esp)]
 
 	; Recovery of current EBP : (esp is preserved by popad operation)
 	push eax
@@ -146,6 +142,13 @@ i8086_payload:
 .end:
 	; Store return EAX
 	mov [esp + 28], eax
+
+	; Save registers on exit
+	mov [REBASE(_esp)], esp
+	mov esp, [ebp + 8]
+	add esp, ALL_REGISTERS_OFFSET
+	pushad
+	mov esp, [REBASE(_esp)]
 
 	; Restore all registers values
 	popad
@@ -257,6 +260,9 @@ begin_sub_sequence:
 	lidt [REBASE(saved_idtptr)]
 	lgdt [REBASE(saved_gdtptr)]
 
+	; Saving of ebx
+	mov [REBASE(_ebx)], ebx
+
 	; Entering in protected mode
 	mov ebx, cr0
 	or  bx, 1
@@ -300,6 +306,9 @@ begin_sub_sequence:
 	mov cr0, ebx
 
 .after_renable_paging:
+	; Recovering of ebx
+	mov ebx, [REBASE(_ebx)]
+
 	; return to base function
 	pop ebp
 	ret
@@ -342,3 +351,4 @@ _es: dw 0xBEEF
 _fs: dw 0xBEEF
 _gs: dw 0xBEEF
 _ss: dw 0xBEEF
+_ebx: dd 0xDEADBEEF
