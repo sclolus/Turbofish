@@ -200,12 +200,6 @@ begin_sub_sequence:
 	mov cr3, eax
 
 .after_disable_paging:
-
-	; store caller gdt and load custom 16 bits gdt
-	; fflush CR3 register
-	;xor eax, eax
-	;mov cr3, eax
-
 	; store GDT and IDT
 	sgdt [REBASE(saved_gdtptr)]
 	sidt [REBASE(saved_idtptr)]
