@@ -17,11 +17,7 @@ struct Node<T> {
 
 impl<T> Node<T> {
     fn new(content: T) -> Self {
-        Self {
-            prev: None,
-            next: None,
-            content,
-        }
+        Self { prev: None, next: None, content }
     }
 
     fn prev(&self) -> Option<&Self> {
@@ -62,11 +58,7 @@ struct LinkedList<T> {
 
 impl<T> LinkedList<T> {
     fn new() -> Self {
-        Self {
-            head: None,
-            tail: None,
-            len: 0,
-        }
+        Self { head: None, tail: None, len: 0 }
     }
 
     fn push_front(&mut self, node: *mut Node<T>) {
@@ -141,15 +133,11 @@ impl<T> LinkedList<T> {
     }
 
     pub fn iter<'a>(&self) -> Iter<'a, T> {
-        Iter {
-            current: unsafe { self.head.map(|x| &*x) },
-        }
+        Iter { current: unsafe { self.head.map(|x| &*x) } }
     }
 
     pub fn iter_mut<'a>(&mut self) -> IterMut<'a, T> {
-        IterMut {
-            current: unsafe { self.head.map(|x| &mut *x) },
-        }
+        IterMut { current: unsafe { self.head.map(|x| &mut *x) } }
     }
 
     pub unsafe fn in_place_construction(nodes: &mut [Node<T>]) -> Self {
@@ -187,10 +175,7 @@ impl<'a, T: 'a> Iterator for IterMut<'a, T> {
     type Item = &'a mut Node<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self
-            .current
-            .as_mut()
-            .and_then(|x| x.next.map(|x| unsafe { &mut *x }));
+        let next = self.current.as_mut().and_then(|x| x.next.map(|x| unsafe { &mut *x }));
         let current = self.current.take();
         self.current = next;
 
@@ -268,9 +253,7 @@ impl Slab {
 
         // This is how you satisfy the borrow checker. damn it.
         let elem_size = self.elem_size;
-        for ptr in
-            (1..self.elem_count).map(|x| (first_slot as usize + x * elem_size) as *mut FreeSlot)
-        {
+        for ptr in (1..self.elem_count).map(|x| (first_slot as usize + x * elem_size) as *mut FreeSlot) {
             self.free_list.push_back(ptr)
         }
     }
@@ -367,23 +350,38 @@ impl Cache {
         dbg!(nbr_slabs);
 
         let new = if current_page_number < new_page_number {
-            mmap(new_page_number)
-                .map(|addr| addr as *mut Node<Option<Slab>>)
-                .ok_or(())?
+            mmap(new_page_number).map(|addr| addr as *mut Node<Option<Slab>>).ok_or(())?
         } else {
             self.data.unwrap()
         };
-
-        let slice = unsafe { core::slice::from_raw_parts_mut(new, nbr_slabs) };
+        let mut slice = unsafe { core::slice::from_raw_parts_mut(new, nbr_slabs) };
         let mut new_list = unsafe { LinkedList::in_place_construction(slice) };
 
-        for new in new_list.iter_mut() {
-            mem::forget(mem::replace(&mut new.content, None));
+        if let Some(addr) = self.data {
+            if addr == new {
+                let old_slice = unsafe { core::slice::from_raw_parts_mut(addr, nbr_slabs) };
+
+                for new in &mut old_slice[self.nbr_slabs..nbr_slabs] {
+                    mem::forget(mem::replace(&mut new.content, None));
+                }
+            } else {
+                for new in &mut slice[self.nbr_slabs..nbr_slabs] {
+                    mem::forget(mem::replace(&mut new.content, None));
+                }
+                for (new, old) in slice[0..self.nbr_slabs].iter_mut().zip(self.slabs.iter_mut()) {
+                    mem::swap(&mut new.content, &mut old.content);
+                    mem::forget(mem::replace(&mut old.content, None));
+                }
+            }
+        } else {
+            for new in new_list.iter_mut() {
+                mem::forget(mem::replace(&mut new.content, None));
+            }
         }
 
-        for (new, old) in new_list.iter_mut().zip(self.slabs.iter_mut()) {
-            new.content = mem::replace(&mut old.content, None);
-        }
+        // for (new, old) in new_list.iter_mut().zip(self.slabs.iter_mut()) {
+        //     new.content = mem::replace(&mut old.content, None);
+        // }
 
         if let Some(data) = self.data {
             if data != new {
@@ -415,12 +413,7 @@ impl Cache {
     }
 
     pub fn new(elem_size: usize) -> Self {
-        let mut new = Cache {
-            elem_size,
-            nbr_slabs: 0,
-            slabs: LinkedList::new(),
-            data: None,
-        };
+        let mut new = Cache { elem_size, nbr_slabs: 0, slabs: LinkedList::new(), data: None };
 
         new.allocate_metadata(Self::BASE_NBR_SLABS).unwrap();
         new
@@ -441,11 +434,8 @@ impl Cache {
     }
 
     pub fn free(&mut self, addr: *mut u8) {
-        if let Some(slab) = self
-            .slabs
-            .iter_mut()
-            .filter_map(|node| node.content.as_mut())
-            .find(|slab| slab.contains(addr))
+        if let Some(slab) =
+            self.slabs.iter_mut().filter_map(|node| node.content.as_mut()).find(|slab| slab.contains(addr))
         {
             slab.free(addr)
         } else {
@@ -455,6 +445,9 @@ impl Cache {
 }
 
 fn main() {
+    use rand::Rng;
+    use rand::{rngs::SmallRng, SeedableRng};
+    let mut rng: SmallRng = SmallRng::seed_from_u64(0xDEADBEAF);
     const ALLOC_NBR: usize = 128;
     let mut slab = Slab::new(16, ALLOC_NBR).unwrap();
     let mut addrs: [Option<*mut u8>; ALLOC_NBR] = [None; ALLOC_NBR];
@@ -487,21 +480,39 @@ fn main() {
         break;
     }
 
-    let mut cache = Cache::new(16);
-    let mut addrs = Vec::new();
+    const ALLOC_SIZE: usize = 13;
+    let mut cache = Cache::new(ALLOC_SIZE);
+    let mut addrs: Vec<(*mut u8, u8)> = Vec::new();
 
     for index in 0..32728 {
-        let addr = cache.alloc().unwrap();
-        if (index % 10 == 0) {
-            println!("{}:{:?}", index, addr);
+        match rng.gen::<u8>() {
+            0...200 => {
+                let addr = cache.alloc().unwrap();
+                let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, ALLOC_SIZE) };
+                let random_byte = rng.gen::<u8>();
+
+                for b in object.iter_mut() {
+                    *b = random_byte;
+                }
+
+                assert!(addrs.iter().all(|&(x, _)| x != addr));
+                // println!("Allocated object at: {:p}, filled with: {:x}", addr, random_byte);
+                addrs.push((addr, random_byte));
+            }
+            _ => {
+                if addrs.len() == 0 {
+                    continue;
+                }
+                let (addr, byte) = addrs.swap_remove(rng.gen::<usize>() % addrs.len());
+
+                // println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
+                let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, ALLOC_SIZE) };
+
+                for b in object.iter() {
+                    assert!(*b == byte);
+                }
+                cache.free(addr);
+            }
         }
-
-        assert!(addrs.iter().all(|&x| x != addr));
-        addrs.push(addr);
-    }
-
-    for (index, addr) in addrs.drain(..).enumerate() {
-        println!("Freeing {} -> {:p}", index, addr);
-        cache.free(addr);
     }
 }
