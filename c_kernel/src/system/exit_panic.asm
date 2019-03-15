@@ -1,6 +1,7 @@
 [BITS 32]
 %define BASE_LOCATION 0x7C00
 %define REBASE(x) BASE_LOCATION + x - exit_panic_begin_sub_sequence
+%define REAL_MODE_STACK 0xF000
 
 segment .text
 GLOBAL exit_panic
@@ -30,15 +31,28 @@ exit_panic:
     mov word [REBASE(exit_panic_gdt_16_ptr)], ax
 
 ; store linear address of GDT
-    mov eax, exit_panic_gdt_16
+    mov eax, REBASE(exit_panic_gdt_16)
     mov dword [REBASE(exit_panic_gdt_16_ptr + 2)], eax
 
 ; go to jump location, no return is possible know
     jmp BASE_LOCATION
 
 exit_panic_begin_sub_sequence:
-; load bios IDT
-    lidt [REBASE(exit_panic_bios_idt)]
+    mov eax, cr0
+    test eax, 0x80000000
+    jz .skip_disable_paging
+
+; disable paging (PG)
+    mov eax, cr0
+    and eax, 0x7fffffff
+    mov cr0, eax
+
+; fflush CR3 register
+    xor eax, eax
+    mov cr3, eax
+
+.skip_disable_paging:
+
 ; load protected mode 16 GDT
     lgdt [REBASE(exit_panic_gdt_16_ptr)]
 
@@ -49,7 +63,6 @@ exit_panic_begin_sub_sequence:
 ; code is now in 16bits, because we are in 16 bits mode
 ;------------------------------------------------------
 [BITS 16]
-
 ; set 16 bits protected mode data selector
     mov  ax, 0x10
     mov  ds, ax
@@ -57,6 +70,9 @@ exit_panic_begin_sub_sequence:
     mov  fs, ax
     mov  gs, ax
     mov  ss, ax
+
+; load bios IDT
+    lidt [REBASE(exit_panic_bios_idt)]
 
 ; disable protected bit
     mov eax, cr0
@@ -72,6 +88,10 @@ exit_panic_begin_sub_sequence:
     mov ds, ax
     mov es, ax
     mov ss, ax
+
+; create a little real mode stack
+    mov sp, REAL_MODE_STACK
+    mov bp, sp
 
 ; PIC reinitialisation for BIOS 16bits real mode
 ; see bios vector table at http://www.bioscentral.com/misc/interrupts.htm

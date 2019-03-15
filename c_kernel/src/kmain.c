@@ -55,7 +55,7 @@ extern char _asterix_bmp_start;
 
 extern int _mmx_test(void);
 extern int _sse1_sse2_test(void);
-extern int _avx_test(void);
+//extern int _avx_test(void);
 
 extern u32 _align_stack(u32(*f)(), u32 args_len, ...);
 
@@ -84,14 +84,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 		return ;
 	}
 
-	kernel_io_ctx.term_mode = panic_screen;
-	set_cursor_location(1, 1);
-
-	fill_window(0x00, 0xB0, 0x00);
-	eprintk("{white}High memory mode active\n");
-	refresh_screen();
-
-	while (1) {}
 	/*
 	 * Initialize paging
 	 */
@@ -199,11 +191,13 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	else
 		printk("{red}FAIL\n{eoc}");
 
+	/*
 	printk("avx test: ");
 	if (_avx_test() == 0)
 		printk("{green}OK\n{eoc}");
 	else
 		printk("{red}FAIL\n{eoc}");
+	*/
 
 	printk("Initialize Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);

@@ -168,7 +168,5 @@ void	panic(const char *s, struct extended_registers reg)
 
 	refresh_screen();
 
-	asm_paging_disable();
-
 	exit_panic();
 }

@@ -81,7 +81,7 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
 
 	phy_addr = pt->physical_address4_20 & 0xFFFF;
 	phy_addr <<= 4;
@@ -158,7 +158,7 @@ int			map_address(
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
 
 	for (u32 i = 0; i < page_req; i++) {
 		pt->type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
@@ -201,7 +201,6 @@ void			*kmmap(size_t size)
 				eprintk("%s: Unexpected error\n", __func__);
 			return (void *)MAP_FAILED;
 		}
-
 		map_address(
 			res,
 			page_req,
@@ -254,7 +253,7 @@ int			kmunmap(void *virt_addr)
 	if (drop_physical_addr(phy_addr) == 0)
 		eprintk("%s: Unexpected error\n", __func__);
 
-	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
 
 	/*
 	 * UNMAP page table
@@ -302,7 +301,7 @@ int			vmunmap(void *virt_addr, size_t size)
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR);
+	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
 
 	size >>= 12;
 	for (size_t i = 0; i < size; i++) {
@@ -354,17 +353,23 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	}
 
 	/*
-	 * creation of kernel page directory
+	 * Creation of first mo page directory (4mo will be assigned)
 	 */
 	i = 0;
-	for (; i < MAX_DIRECTORY_SEG / 4; i++)
+	for (; i < 1; i++)
 		create_directory(i, kernel_space);
 
 	/*
 	 * creation of user page directory
 	 */
-	for (; i < MAX_DIRECTORY_SEG; i++)
+	for (; i < 3 * MAX_DIRECTORY_SEG / 4; i++)
 		create_directory(i, user_space);
+
+	/*
+	 * creation of kernel page directory
+	 */
+	for (; i < MAX_DIRECTORY_SEG; i++)
+		create_directory(i, kernel_space);
 
 	/*
 	 * clean all pages tables
@@ -380,6 +385,13 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	 * initialize physical memory map
 	 */
 	init_physical_map((void *)available_memory);
+
+
+	/*
+	 * Map the first 1mo on identity mapping
+	 */
+	res = get_pages(256, first_mo);
+	map_address(res, 256, 0x0, kernel_space);
 
 	/*
 	 * mapping of first 4mo, GDT, IDT, page directory, kernel, stack
@@ -406,9 +418,9 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	map_address(
 			res,
 			MAX_PAGE_TABLE_SEG,
-			PAGE_TABLE_0_ADDR,
+			0x800000,
 			kernel_space);
-	mark_physical_area((void *)PAGE_TABLE_0_ADDR, MAX_PAGE_TABLE_SEG);
+	mark_physical_area((void *)0x800000, MAX_PAGE_TABLE_SEG);
 
 	if (vesa_framebuffer != NULL) {
 		/*
@@ -418,10 +430,10 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 		map_address(
 				res,
 				MAX_PAGE_TABLE_SEG,
-				DB_FRAMEBUFFER_ADDR,
+				DB_FRAMEBUFFER_ADDR - 0xc0000000,
 				kernel_space);
 		mark_physical_area(
-				(void *)DB_FRAMEBUFFER_ADDR,
+				(void *)DB_FRAMEBUFFER_ADDR - 0xc0000000,
 				MAX_PAGE_TABLE_SEG);
 
 		/*
@@ -447,10 +459,9 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 			(ptr_32 *)PAGE_DIRECTORY_0_ADDR);
 
 	/*
-	 * launch paging
+	 * launch paging: Already launched
 	 */
-	asm_paging_enable();
-
+	//asm_paging_enable();
 	return 0;
 }
 

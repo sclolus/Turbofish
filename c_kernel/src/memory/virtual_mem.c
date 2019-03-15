@@ -3,75 +3,94 @@
 
 #include "libft.h"
 
-#define VIRT_MAP_LOCATION	0x700000
+#define VIRT_MAP_LOCATION	0xC0700000
 
 static u8 *virt_map;
 
 /*
- * Buddy IDX Organization
+ * Buddy IDX Organisation
  * 4g   2g      1g            512m           256m      128m     64m
  * 1   2,3   4,5,6,7   8,9,10,11,12,13,14,15   16..... 32....   64
  *
- *
+ * Placed in High Half Memory 0xC0000000
  * First virtual G byte: Reserved for Kernel Usage Only
  * |       |        |        |        |        |        |        |        |
  * 0       128      256               512                                 1024
  *         |        |                                                     |
  *  XXXXXX |VHEAP-->|KHEAP ---------------------------------------------->|
  */
-#define SHL_LIMIT_128M_BLOCK	17
-#define SHL_LIMIT_256M_BLOCK	18
-#define SHL_LIMIT_512M_BLOCK	19
-#define SHL_LIMIT_1G_BLOCK	20
-#define SHL_LIMIT_2G_BLOCK	21
+#define SHL_LIMIT_128M_BLOCK   17
+#define SHL_LIMIT_256M_BLOCK   18
+#define SHL_LIMIT_512M_BLOCK   19
+#define SHL_LIMIT_1G_BLOCK     20
+#define SHL_LIMIT_2G_BLOCK     21
 
 /*
  * This chunk is reserved for kernel CS and other important stuff
- * 32 is the first chunk of 128mo
+ * 56 is the first chunk of 128mo in high half 0xc0000000
  */
-#define RESERVED_IDX		32
-#define RESERVED_DEEP		5
+#define RESERVED_IDX           56
+#define RESERVED_DEEP          5
 
 /*
- * 17 is index of the second 256mo chunk
- * 9 is the index of the second 512mo chunk
+ * 29 is index of the second 256mo chunk in high half 0xc0000000
+ * 15 is the index of the last 512mo chunk
  */
-#define KHEAP_FIRST_IDX		17
-#define KHEAP_FIRST_DEEP	4
-#define KHEAP_SECOND_IDX	9
-#define KHEAP_SECOND_DEEP	3
+#define KHEAP_FIRST_IDX        29
+#define KHEAP_FIRST_DEEP       4
+#define KHEAP_SECOND_IDX       15
+#define KHEAP_SECOND_DEEP      3
 
 /*
- * 33 is index of the second 128mo chunk
+ * 57 is index of the second 128mo chunk in high half 0xc0000000
  */
-#define VHEAP_IDX		33
-#define VHEAP_DEEP		5
+#define VHEAP_IDX              57  // 0xc8000000
+#define VHEAP_DEEP             5
 
 /*
- * 5 is the index of the second 1go chunk
- * 3 is the index of the second 2go chunk
+ * 2 is the index of the first 2go chunk
+ * 6 is the index of the third 1go chunk
  */
-#define USER_FIRST_IDX		5
-#define USER_FIRST_DEEP		2
-#define USER_SECOND_IDX		3
-#define USER_SECOND_DEEP	1
+#define USER_FIRST_IDX         2
+#define USER_FIRST_DEEP        1
+#define USER_SECOND_IDX        6
+#define USER_SECOND_DEEP       2
+
+
+#define FIRST_MO_IDX           4096
+#define FIRST_MO_DEEP          12
 
 /*
  * XXX VIRTUAL MEMORY ORGANISATION XXX
  *             ^ ------------------------------
  *             |
- *             | 2 Go block
- *          7  |
- *         /   |  USER_SPACE Last Virtual 3GO
- *        /    |  0x40000000 -> 0xFFFFFFFF
+ *             | 1go Block KERNEL SPACE
+ *          7  |-------------------------------
+ *         /   |  USER_SPACE First Virtual 3GO
+ *        /    |  0x0 -> 0xBFFFFFFF
  *       3--6  |
- *      /      | 1Go block
+ *      /      |  3Go block
  *     /       |
- *    /     5  v -------- ^ ---------------------
- *   /     /              | 0x0 -> 0x3FFFFFFF
- *  /     /   KERN_SPACE  | First Virtual 1GO
- * 1-----2--4 ----------- v ---------------------
+ *    /     5  |
+ *   /     /   |
+ *  /     /    |
+ * 1-----2--4 -v---------------------------------
  * Index number
+ *                         high_half 0xC0000000   deep
+ * 1 => 4go                       X                0
+ * 2 --> 3 => 2go                 X                1
+ * 4 --> 7 => 1go                 7                2
+ * 8 --> 15 => 512mo              14               3
+ * 16 --> 31 => 256mo             28               4
+ * 32 --> 63 => 128mo             56               5
+ *
+ * 64 --> 127 => 64mo                              6
+ * 128 --> 255 => 32mo                             7
+ * 256 --> 511 => 16mo                             8
+ * 512 --> 1023 => 8mo                             9
+ * 1024 --> 2047 => 4mo                           10
+ * 2048 --> 4095 => 2mo                           11
+ * 4096 --> 8191 => 1mo                           12
  */
 u32	get_pages(u32 page_request, enum mem_type type)
 {
@@ -83,6 +102,13 @@ u32	get_pages(u32 page_request, enum mem_type type)
 	addr = MAP_FAILED;
 
 	switch (type) {
+	case first_mo:
+		addr = get_mem_area(
+				virt_map,
+				page_request,
+				FIRST_MO_IDX,
+				FIRST_MO_DEEP);
+		break;
 	case reserved:
 		if (page_request <= (1 << SHL_LIMIT_128M_BLOCK) &&
 				IS_USABLE(virt_map, RESERVED_IDX))

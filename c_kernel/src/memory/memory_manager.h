@@ -12,7 +12,8 @@ enum mem_type {
 	reserved = 0,
 	kheap,
 	vheap,
-	usermem
+	usermem,
+	first_mo,
 };
 
 enum mem_space {
@@ -20,7 +21,7 @@ enum mem_space {
 	user_space
 };
 
-#define VALLOC_SPACE	 0x8000000
+#define VALLOC_SPACE	0xC8000000
 #define VALLOC_MASK	0xF8000000
 
 int			page_fault_handler(u32 err_reg, u32 fault_addr);

@@ -4,7 +4,7 @@
 
 #include "i386_type.h"
 
-#define DB_FRAMEBUFFER_ADDR	0xC00000
+#define DB_FRAMEBUFFER_ADDR	0xC0C00000
 
 void		refresh_screen(void);
 
