@@ -136,6 +136,9 @@ init_gdt:
     mov fs, ax
     mov gs, ax
 
+    mov ax, 0x20
+    mov ss, ax
+
     pop edi
     pop esi
 

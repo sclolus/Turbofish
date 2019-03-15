@@ -17,7 +17,7 @@ void		reset_text_screen(void)
 	reg.edx = 0;
 	reg.ebx = 0;
 	reg.eax = 0x02;
-	int8086(0x10, reg);
+	int8086(reg, 0x10);
 
 	j = 0;
 	screensize =  80 * 25 * 2;

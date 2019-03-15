@@ -1,6 +1,7 @@
 
 #include "vesa.h"
 #include "system.h"
+#include "kernel_io.h"
 #include "libft.h"
 
 /*
@@ -17,6 +18,8 @@ GRUB MEMORY OCCUPATION
 
 #define LFB_BIT (1 << 14)
 
+extern int alt__allocate_linear_frame_buffer(void *phy_addr, size_t len);
+
 static ptr_32	*convert_to_linear_address(u16 segment, u16 offset)
 {
 	return (ptr_32 *)((segment << 4) + offset);
@@ -32,7 +35,7 @@ s32		set_vbe(u16 selected_mode)
 	// get global VBE info
 	reg.eax = 0x4F00;
 	reg.edi = VESA_GLOBAL_INFO_PTR;
-	int8086(0x10, reg);
+	int8086(reg, 0x10);
 
 	ft_memcpy(
 		&vesa_ctx.global_info,
@@ -62,7 +65,7 @@ s32		set_vbe(u16 selected_mode)
 	reg.eax = 0x4F01;
 	reg.ecx = selected_mode | LFB_BIT;	// CX 1 << 14 => LFB
 	reg.edi = VESA_MODE_INFO_PTR;
-	int8086(0x10, reg);
+	int8086(reg, 0x10);
 
 	ft_memcpy(
 		&vesa_ctx.mode,
@@ -72,13 +75,16 @@ s32		set_vbe(u16 selected_mode)
 	// needed by ASM PUTCHAR
 	vesa_ctx.edi_offset = vesa_ctx.mode.pitch - vesa_ctx.mode.bpp;
 
+	alt__allocate_linear_frame_buffer((void *)vesa_ctx.mode.framebuffer, vesa_ctx.mode.pitch * vesa_ctx.mode.height);
+	vesa_ctx.mode.framebuffer = 0xf0000000;
+
 	// re initialize GDT with Linear Frame Buffer address
 	init_gdt(vesa_ctx.mode.framebuffer);
 
 	// switch to selected graphic mode
 	reg.eax = 0x4F02;
 	reg.ebx = selected_mode | LFB_BIT;
-	int8086(0x10, reg);
+	int8086(reg, 0x10);
 
 	return 0;
 }

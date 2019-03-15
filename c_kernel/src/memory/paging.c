@@ -7,7 +7,7 @@
 #include "vesa.h"
 
 #define MAX_DIRECTORY_SEG		1024
-#define PAGE_DIRECTORY_0_ADDR		0x1000
+#define PAGE_DIRECTORY_0_ADDR		0x10000
 #define PAGE_TABLE_0_ADDR		0x800000
 
 #define MAX_PAGE_TABLE_SEG		1024

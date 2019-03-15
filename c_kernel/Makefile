@@ -1,9 +1,18 @@
-KERNEL = kernel.elf
-KERNEL_PATHNAME = build/$(KERNEL) 
+KERNEL = build/kernel.elf
+NAME = c_kernel
 
 CC = gcc
 ASM = nasm
 LD = ld
+
+LD = ld
+LDSCRIPT = linker.ld
+LDFLAGS = -m elf_i386 -n --gc-sections
+ifeq ($(LDMAP),yes)
+	LDFLAGS += -M
+endif
+
+ASMFLAGS = -f elf
 
 ### MAIN FLAGS ###
 
@@ -31,41 +40,50 @@ else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions
-CFLAGS += -nostdinc
+CFLAGS += -nostdinc -fno-pie
 endif
-
-ASMFLAGS = -f elf
-
-LDFLAGS = -m elf_i386
-LDSCRIPT = linker.ld
-
-### LIBRAIRIES ###
-
-LIB_DIR = .
-_LIBFT = libft
-LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
-
-LIBASM_I386_DIR = .
-_LIBASM_I386 = libasm_i386
-LIBASM_I386 = $(addprefix $(LIBASM_I386_DIR)/, $(_LIBASM_I386))
 
 ### SOURCES ###
 
-IFLAGS = -Iinclude -I$(LIBFT)/includes -I$(LIBFT)/srcs -I$(LIBASM_I386)/includes
+IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
+
+
+# init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
+
+SRC_C_INIT += get_device_mem_map vga_text early_gdt early_panic early_idt
+SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
+VPATH += src/boot/init
+INIT_HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm
+
+OBJ_INIT_DIR := objs/init
+OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
+OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
+
+$(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
+	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
+	objcopy --prefix-symbols=alt_ $@
+
+$(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
+	$(ASM) $(ASMFLAGS) -o $@ $<
+	objcopy --prefix-symbols=alt_ $@
+
+SRC_ASM_KERNEL += init_kernel start cpu_features
+HEADERS +=
+VPATH += src/boot
 
 
 # main
-SRC_C_KERNEL = kmain
-SRC_ASM_KERNEL = init multiboot
-VPATH = include src
-HEADERS = grub i386_type
+SRC_C_KERNEL += kmain watchdog
+SRC_ASM_KERNEL +=
+VPATH += include src
+HEADERS += grub.h i386_type.h watchdog.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic
 SRC_ASM_KERNEL += gdt int8086 irq_cpu exit_panic
 SRC_ASM_KERNEL += init_pic 8254_pit 8042_keyboard default_pic_isr align_stack
 VPATH += src/system src/system/pic
-HEADERS += system
+HEADERS += system.h
 
 # keyboard
 SRC_C_KERNEL += process_keyboard
@@ -75,13 +93,13 @@ VPATH += src/keyboard
 # text_user_interface
 SRC_C_KERNEL += text_core
 VPATH += src/text_user_interface
-HEADERS += text_user_interface
+HEADERS += text_user_interface.h
 
 # graphic
 SRC_C_KERNEL += set_vbe graphic_putchar graphic_tools bmp_load
 SRC_ASM_KERNEL += draw_line alpha
 VPATH += src/vesa
-HEADERS += vesa
+HEADERS += vesa.h
 
 # memory
 MEM_PAGING_C = paging virtual_mem physical_mem buddy page_fault
@@ -111,102 +129,96 @@ MEM_VALLOC = v_main_prototypes
 SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC) $(MEM_VALLOC)
 SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
 VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
-HEADERS += memory_manager main_headers alloc_btree dynamic_allocator
+HEADERS += memory_manager.h main_headers.h alloc_btree.h dynamic_allocator.h
 
 # tests
 SRC_C_KERNEL += mem_test rand_test
 SRC_ASM_KERNEL += mmx sse1_sse2 avx
 VPATH += src/tests
-HEADER += tests
+HEADER += tests.h
 
 # math
 SRC_C_KERNEL += rand
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
-HEADERS += math
+HEADERS += math.h
 
 # kernel_io
 SRC_C_KERNEL += write k_tty
 SRC_ASM_KERNEL +=
 VPATH += src/kernel_io
-HEADERS += kernel_io
+HEADERS += kernel_io.h
 
-OBJ_DIR = objs
+# images
+SRC_ASM_KERNEL += asterix univers
+VPATH += medias
 
-__OBJ_ASM_KERNEL__ = $(basename $(notdir $(SRC_ASM_KERNEL)))
-OBJ_ASM_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_ASM_KERNEL__)))
+OBJ_DIR := objs
+OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
+OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_KERNEL)))))
 
-__OBJ_C_KERNEL__ = $(basename $(notdir $(SRC_C_KERNEL)))
-OBJ_C_KERNEL = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(__OBJ_C_KERNEL__)))
+.PHONY: all clean fclean common_clean re help exec $(KERNEL)
 
-__H__ = $(basename $(notdir $(HEADERS)))
-_HEADERS = $(addsuffix .h, $(__H__))
+all: symbol_gen_exe build_libasm_i386 build_libft $(KERNEL)
 
-.PHONY: all clean fclean re help
+symbol_gen_exe:
+	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
+	$(gen_symbol_map)
 
-all: pre-build target
+LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
 
-target: $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(OBJ_DIR)/univers.o $(OBJ_DIR)/asterix.o libft/libft.a libasm_i386/libasm_i386.a
+$(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
 	@echo PREBUILD
-	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
-	nm -n $(KERNEL_PATHNAME) > nm.res
-	./nm_map_gen src/system/nm.map nm.res
-	sync
-	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+	$(link_kernel)
+	$(extract_kernel_symbols)
+	$(gen_symbol_map)
+	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo MAINBUILD
-	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
-	nm -n $(KERNEL_PATHNAME) > nm.res
-	./nm_map_gen src/system/nm.map nm.res
-	sync
-	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+	$(link_kernel)
+	$(extract_kernel_symbols)
+	$(gen_symbol_map)
+	$(compile_panic)
+	$(compile_early_panic)
 
 	@echo POSTBUILD
-	ld $(LDFLAGS) -T $(LDSCRIPT) $^ -o $(KERNEL_PATHNAME)
+	$(link_kernel)
 
-	chmod -x $(KERNEL_PATHNAME)
+	chmod -x $@
 
-pre-build:
-	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
-	./nm_map_gen src/system/nm.map
-	sync
+compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
+compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/init/early_panic.o src/boot/init/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/init/early_panic.o
+extract_kernel_symbols = nm -n $@ > nm.res
+gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
+link_kernel = $(LD) $(LDFLAGS) -T $(LDSCRIPT) $^ -o $@
 
-$(OBJ_DIR)/%.o: %.c Makefile $(_HEADERS)
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(_HEADERS)
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
-libft/libft.a:
-	make -C $(LIBFT)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+build_libasm_i386:
+	make -C libasm_i386 all
 
-libasm_i386/libasm_i386.a:
-	make -C $(LIBASM_I386)/ all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+build_libft:
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
 
-$(OBJ_DIR)/univers.o: medias/univers.bmp
-	ld $(LDFLAGS) -r -b binary $< -o $@
+common_clean:
+	find $(OBJ_DIR) -type f -name '*.o' -delete
+	rm -f nm.res
+	rm -f nm_map_gen
+	rm -f src/system/nm.map
+	rm -f $(KERNEL)
 
-$(OBJ_DIR)/asterix.o: medias/asterix.bmp
-	ld $(LDFLAGS) -r -b binary $< -o $@
+clean: common_clean
+	make -C libft/ clean
+	make -C libasm_i386/ clean
 
-clean:
-	make -C $(LIBFT)/ clean
-	make -C $(LIBASM_I386)/ clean
-	rm -f $(OBJ_C_KERNEL)
-	rm -f $(OBJ_ASM_KERNEL)
-	rm -f $(OBJ_DIR)/univers.o
-	rm -f $(OBJ_DIR)/asterix.o
-	rm -f nm_map_gen nm.res src/system/nm.map
-
-fclean:
-	make -C $(LIBFT)/ fclean
-	make -C $(LIBASM_I386)/ fclean
-	rm -f $(OBJ_C_KERNEL)
-	rm -f $(OBJ_ASM_KERNEL)
-	rm -f $(OBJ_DIR)/univers.o
-	rm -f $(OBJ_DIR)/asterix.o
-	rm -f nm_map_gen nm.res src/system/nm.map
-	rm -f $(KERNEL_PATHNAME)
+fclean: common_clean
+	make -C libft/ fclean
+	make -C libasm_i386/ fclean
 
 re: fclean all
 
@@ -225,4 +237,4 @@ help:
 	@echo "--------------------------------------------------------------------------"
 
 exec:
-	qemu-system-x86_64 -kernel $(KERNEL_PATHNAME) --enable-kvm -cpu IvyBridge
+	qemu-system-x86_64 -kernel $(KERNEL) -m 128M --enable-kvm -cpu IvyBridge
