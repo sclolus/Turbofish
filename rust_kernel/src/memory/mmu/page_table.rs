@@ -33,7 +33,7 @@ impl PageTable {
         }
 
         self[pt_index] = entry;
-        self[pt_index].set_page(physp);
+        self[pt_index].set_entry_page(physp);
         Ok(())
     }
 

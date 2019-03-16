@@ -76,10 +76,16 @@ impl Entry {
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[inline(always)]
-    pub fn set_page(&mut self, page: Page<PhysicalAddr>) -> &mut Self {
+    pub fn set_entry_page(&mut self, page: Page<PhysicalAddr>) -> &mut Self {
         self.bits.set_bits(12..32, page.number as u32);
         self
     }
+
+    #[inline(always)]
+    pub fn entry_page(&self) -> Page<PhysicalAddr> {
+        Page::new(self.bits.get_bits(12..32) as usize)
+    }
+
     /// Gets the address field of the entry.
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.

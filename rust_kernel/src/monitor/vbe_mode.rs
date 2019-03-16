@@ -474,8 +474,8 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
             .as_mut()
             .unwrap()
             .reserve(
-                VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize),
-                PhysicalAddr(mode_info.phys_base_ptr as usize),
+                VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize).into(),
+                PhysicalAddr(mode_info.phys_base_ptr as usize).into(),
                 (mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
                     / 8)
                 .into(),

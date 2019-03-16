@@ -27,25 +27,24 @@ impl PhysicalPageAllocator {
         }
     }
     /// size in bytes
-    pub fn alloc(&mut self, size: usize, flags: AllocFlags) -> Result<PhysicalAddr, MemoryError> {
+    pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<PhysicalAddr>, MemoryError> {
         //println!("alloc size: {:?}", size);
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
-            let vaddr: PhysicalAddr = self.allocator.alloc(order)?.into();
-            Ok(vaddr)
+            self.allocator.alloc(order)
         } else {
             unimplemented!()
         }
     }
 
-    pub fn reserve(&mut self, addr: PhysicalAddr, size: usize) -> Result<(), MemoryError> {
-        self.allocator.reserve_exact(Page::containing(addr), size.into())
+    pub fn reserve(&mut self, addr: Page<PhysicalAddr>, size: NbrPages) -> Result<(), MemoryError> {
+        self.allocator.reserve_exact(addr, size)
     }
     /// size in bytes
-    pub fn free(&mut self, paddr: PhysicalAddr, size: usize) -> Result<(), MemoryError> {
+    pub fn free(&mut self, paddr: Page<PhysicalAddr>, size: NbrPages) -> Result<(), MemoryError> {
         //println!("free size: {:?}", size);
         let order = size.into();
-        Ok(self.allocator.free(Page::containing(paddr), order)?)
+        Ok(self.allocator.free(paddr, order)?)
     }
 }
 
@@ -84,11 +83,11 @@ pub unsafe fn init_physical_allocator(device_map_ptr: *const DeviceMap) {
         println!("len: {}ko", d.low_length >> 10);
         match d.region_type {
             RegionType::Usable => {}
-            _ =>
-            #[allow(unused_must_use)]
-            #[allow(unused_must_use)]
-            {
-                pallocator.reserve(PhysicalAddr(d.low_addr as usize), d.low_length as usize);
+            _ => {
+                //TODO: see that
+                pallocator
+                    .reserve(Page::containing(PhysicalAddr(d.low_addr as usize)), (d.low_length as usize).into())
+                    .unwrap();
             }
         }
     }

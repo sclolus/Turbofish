@@ -47,12 +47,12 @@ pub struct SlabAllocator;
 
 impl SlabAllocator {
     pub unsafe fn alloc(&mut self, size: usize) -> Result<VirtualAddr, MemoryError> {
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc(size)
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc(size.into()).map(|x| x.into())
     }
 
     /// size in bytes
     pub unsafe fn free(&mut self, vaddr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(vaddr, size)
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(vaddr.into(), size.into())
     }
 }
 

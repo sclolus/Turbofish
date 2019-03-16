@@ -94,7 +94,7 @@ impl PageDirectory {
         Ok(())
     }
 
-    pub unsafe fn physical_addr(&self, vaddr: VirtualAddr) -> Option<PhysicalAddr> {
+    pub unsafe fn physical_page(&self, vaddr: Page<VirtualAddr>) -> Option<Page<PhysicalAddr>> {
         let pd_index = vaddr.pd_index();
         let pt_index = vaddr.pt_index();
 
@@ -102,10 +102,13 @@ impl PageDirectory {
         let page_table = &*((0xFFC00000 + pd_index * 4096) as *mut PageTable);
 
         if page_table[pt_index].contains(Entry::PRESENT) {
-            Some(page_table[pt_index].entry_addr())
+            Some(page_table[pt_index].entry_page())
         } else {
             None
         }
+    }
+    pub unsafe fn physical_addr(&self, vaddr: VirtualAddr) -> Option<PhysicalAddr> {
+        self.physical_page(vaddr.into()).map(|v| v.into())
     }
     // pub unsafe fn load_current_page_directory(ptr: *mut PageDirectory) {
     //     Cr3::write(ptr as usize);
