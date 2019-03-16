@@ -41,7 +41,7 @@ impl<T: Address> BuddyAllocator<T> {
         self.first_layer_index(order) + (addr - self.addr).0 / (order.nbr_pages().0)
     }
 
-    pub fn alloc(&mut self, order: Order) -> Result<Page<T>, MemoryError> {
+    pub fn alloc(&mut self, order: Order) -> Result<Page<T>> {
         if order > self.max_order {
             return Err(MemoryError::OutOfBound);
         }
@@ -58,7 +58,7 @@ impl<T: Address> BuddyAllocator<T> {
             None => Err(MemoryError::OutOfMem),
         }
     }
-    pub fn free(&mut self, addr: Page<T>, order: Order) -> Result<(), MemoryError> {
+    pub fn free(&mut self, addr: Page<T>, order: Order) -> Result<()> {
         let buddy_index = self.buddy_index(addr, order);
 
         if !self.get_buddy(buddy_index).occupied() || self.get_buddy(buddy_index).splitted() {
@@ -73,7 +73,7 @@ impl<T: Address> BuddyAllocator<T> {
     /// address reserved can be free the same way as an address returned by alloc
     /// # Panic
     /// panic if addr is not a multiple of order.nbr_pages() * PAGE_SIZE
-    fn reserve(&mut self, addr: Page<T>, order: Order) -> Result<(), MemoryError> {
+    fn reserve(&mut self, addr: Page<T>, order: Order) -> Result<()> {
         if order > self.max_order
             || addr < self.addr
             || (addr - self.addr) + order.nbr_pages() > self.max_order.nbr_pages()
@@ -103,7 +103,7 @@ impl<T: Address> BuddyAllocator<T> {
         Ok(())
     }
 
-    pub fn reserve_exact(&mut self, page: Page<T>, nbr_pages: NbrPages) -> Result<(), MemoryError> {
+    pub fn reserve_exact(&mut self, page: Page<T>, nbr_pages: NbrPages) -> Result<()> {
         // TODO: check if addr - self.addr = 0
         // TODO: handle errors
         for p in (page..page + nbr_pages).iter() {
@@ -133,7 +133,7 @@ impl<T: Address> BuddyAllocator<T> {
         Ok(())
     }
 
-    pub fn free_reserve(&mut self, addr: Page<T>, nbr_pages: NbrPages) -> Result<(), MemoryError> {
+    pub fn free_reserve(&mut self, addr: Page<T>, nbr_pages: NbrPages) -> Result<()> {
         for p in (addr..addr + nbr_pages).iter() {
             self.free(p, Order(0))?;
         }
@@ -396,7 +396,7 @@ mod test {
     use super::*;
     use crate::math::random::srand;
     use crate::math::random::srand_init;
-    use crate::memory::tools::VirtualAddr;
+    use crate::memory::tools::Virt;
     use core::ffi::c_void;
     #[test]
     fn sodo_allocator() {
@@ -410,27 +410,27 @@ mod test {
             unsafe { allocator.alloc(Layout::from_size_align(NB_BLOCK * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
         const MAX_ORDER: usize = NB_BLOCK.trailing_zeros() as usize;
 
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
-            VirtualAddr(address_space.as_ptr() as usize).into(),
+        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
+            Virt(address_space.as_ptr() as usize).into(),
             NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
         );
 
-        // buddy_allocator.reserve_exact(VirtualAddr(address_space.as_ptr() as usize).into(), NbrPages(12));
+        // buddy_allocator.reserve_exact(Virt(address_space.as_ptr() as usize).into(), NbrPages(12));
 
         #[derive(Debug)]
         struct Allocation {
             order: Order,
             buddy_index: usize,
             random_u8: u8,
-            ptr: Page<VirtualAddr>,
+            ptr: Page<Virt>,
         }
         use core::fmt;
         use fmt::{Display, Formatter};
 
         impl Display for Allocation {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
-                let ptr: VirtualAddr = self.ptr.into();
+                let ptr: Virt = self.ptr.into();
                 write!(
                     f,
                     "[{:x?}:{:x?}[, order: {}, random_byte: {:x}",
@@ -458,7 +458,7 @@ mod test {
                     match mem {
                         Err(e) => eprintln!("Failed to allocate {:?}", e),
                         Ok(p) => {
-                            let mem: VirtualAddr = p.into();
+                            let mem: Virt = p.into();
                             let mem = unsafe { core::slice::from_raw_parts_mut(mem.0 as *mut u8, nb_page * PAGE_SIZE) };
                             let random_u8 = srand(core::u8::MAX);
                             for c in mem.iter_mut() {
@@ -482,7 +482,7 @@ mod test {
                         //                            eprintln!("Attempting to free {}", elem);
                         assert_eq!(elem.buddy_index, buddy_allocator.buddy_index(elem.ptr, elem.order));
                         buddy_allocator.free(elem.ptr, elem.order).expect("failed to free");
-                        let ptr: VirtualAddr = elem.ptr.into();
+                        let ptr: Virt = elem.ptr.into();
                         let mem = unsafe { core::slice::from_raw_parts_mut(ptr.0 as *mut u8, elem.order.into()) };
                         for (_i, c) in mem.iter().enumerate() {
                             if *c != elem.random_u8 {
@@ -506,7 +506,7 @@ mod test {
                     let nb_page = 1 << order.0;
 
                     //                        eprintln!("Attempting to reserve a region [{:x}:{:x}[ of order {} (nbr_pages: {})", addr, addr + order.nbr_pages() * PAGE_SIZE, order.0, order.nbr_pages());
-                    let p = VirtualAddr(addr).into();
+                    let p = Virt(addr).into();
                     let mem = buddy_allocator.reserve(p, order);
                     match mem {
                         Err(err) => eprintln!("Failed to reserve: {:?}", err),
@@ -540,10 +540,10 @@ mod test {
         const NB_BLOCK: usize = 16;
         let map_location = 0x00010000 as *const u8;
 
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
-            VirtualAddr(map_location as usize).into(),
+        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
+            Virt(map_location as usize).into(),
             NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
         );
 
         let alloc_size = NbrPages(1);
@@ -551,15 +551,15 @@ mod test {
             let addr = buddy_allocator.alloc(alloc_size.into());
             dbg!(i);
             println!("{}", &buddy_allocator);
-            assert_eq!(addr, Ok(VirtualAddr(map_location as usize + PAGE_SIZE * i).into()));
+            assert_eq!(addr, Ok(Virt(map_location as usize + PAGE_SIZE * i).into()));
         }
 
-        buddy_allocator.free(VirtualAddr(map_location as usize).into(), alloc_size.into()).expect("failed to free");
+        buddy_allocator.free(Virt(map_location as usize).into(), alloc_size.into()).expect("failed to free");
         for _ in 0..(NB_BLOCK) {
             let addr = buddy_allocator.alloc(alloc_size.into());
             println!("{}", &buddy_allocator);
-            assert_eq!(addr, Ok(VirtualAddr(map_location as usize).into()));
-            buddy_allocator.free(VirtualAddr(map_location as usize).into(), alloc_size.into()).expect("failed to free");
+            assert_eq!(addr, Ok(Virt(map_location as usize).into()));
+            buddy_allocator.free(Virt(map_location as usize).into(), alloc_size.into()).expect("failed to free");
 
             println!("{}", &buddy_allocator);
         }
@@ -569,31 +569,31 @@ mod test {
         const NB_BLOCK: usize = 16;
         let map_location = 0x00010000 as *const u8;
 
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
-            VirtualAddr(map_location as usize).into(),
+        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
+            Virt(map_location as usize).into(),
             NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
         );
-        buddy_allocator.reserve_exact(VirtualAddr(map_location as usize + PAGE_SIZE).into(), NbrPages(2)).unwrap();
+        buddy_allocator.reserve_exact(Virt(map_location as usize + PAGE_SIZE).into(), NbrPages(2)).unwrap();
         let buddy_before = buddy_allocator.clone();
         let alloc_size = NbrPages(1);
         for i in (0..NB_BLOCK).filter(|&i| !(i == 1 || i == 2)) {
             let addr = buddy_allocator.alloc(alloc_size.into());
             dbg!(i);
-            assert_eq!(addr, Ok(VirtualAddr(map_location as usize + PAGE_SIZE * i).into()));
+            assert_eq!(addr, Ok(Virt(map_location as usize + PAGE_SIZE * i).into()));
         }
         dbg!(&buddy_allocator);
         for i in (0..NB_BLOCK).filter(|&i| !(i == 1 || i == 2)) {
             dbg!(i);
             buddy_allocator
-                .free(VirtualAddr(map_location as usize + PAGE_SIZE * i).into(), alloc_size.into())
+                .free(Virt(map_location as usize + PAGE_SIZE * i).into(), alloc_size.into())
                 .expect("failed to free");
         }
         println!("{}", &buddy_before);
         println!("{}", &buddy_allocator);
         assert_eq!(buddy_before, buddy_allocator);
         buddy_allocator
-            .free_reserve(VirtualAddr(map_location as usize + PAGE_SIZE).into(), NbrPages(2))
+            .free_reserve(Virt(map_location as usize + PAGE_SIZE).into(), NbrPages(2))
             .expect("failed to free");
     }
     #[test]
@@ -606,14 +606,14 @@ mod test {
         const PAGE_ORDER: usize = 4;
 
         let max_alloc = NB_BLOCK / PAGE_ORDER;
-        let mut s: Vec<VirtualAddr> = vec![VirtualAddr(0); max_alloc];
+        let mut s: Vec<Virt> = vec![Virt(0); max_alloc];
 
         // First allocate a Buddy of NB_BLOCK
         let map_location = 0x100000 as *const u8;
-        let mut buddy_allocator: BuddyAllocator<VirtualAddr> = BuddyAllocator::new(
-            VirtualAddr(map_location as usize).into(),
+        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
+            Virt(map_location as usize).into(),
             NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(NbrPages(NB_BLOCK))],
+            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
         );
 
         let mut nb_allocations: usize = 0;

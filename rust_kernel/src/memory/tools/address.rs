@@ -42,9 +42,9 @@ pub trait Address:
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct VirtualAddr(pub usize);
+pub struct Virt(pub usize);
 
-impl VirtualAddr {
+impl Virt {
     #[inline(always)]
     pub fn pd_index(&self) -> usize {
         self.0.get_bits(22..32)
@@ -62,28 +62,28 @@ impl VirtualAddr {
     }
 }
 
-impl Into<usize> for VirtualAddr {
+impl Into<usize> for Virt {
     #[inline(always)]
     fn into(self) -> usize {
         self.0
     }
 }
 
-impl From<usize> for VirtualAddr {
+impl From<usize> for Virt {
     #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
     }
 }
 
-impl From<Page<VirtualAddr>> for VirtualAddr {
+impl From<Page<Virt>> for Virt {
     #[inline(always)]
-    fn from(page: Page<VirtualAddr>) -> Self {
+    fn from(page: Page<Virt>) -> Self {
         Self(page.number * PAGE_SIZE)
     }
 }
 
-impl Sub<VirtualAddr> for VirtualAddr {
+impl Sub<Virt> for Virt {
     type Output = usize;
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
@@ -91,7 +91,7 @@ impl Sub<VirtualAddr> for VirtualAddr {
     }
 }
 
-impl Sub<usize> for VirtualAddr {
+impl Sub<usize> for Virt {
     type Output = Self;
     #[inline(always)]
     fn sub(self, rhs: usize) -> Self::Output {
@@ -99,7 +99,7 @@ impl Sub<usize> for VirtualAddr {
     }
 }
 
-impl Add<usize> for VirtualAddr {
+impl Add<usize> for Virt {
     type Output = Self;
     #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
@@ -107,46 +107,46 @@ impl Add<usize> for VirtualAddr {
     }
 }
 
-impl AddAssign<usize> for VirtualAddr {
+impl AddAssign<usize> for Virt {
     fn add_assign(&mut self, other: usize) {
         *self = *self + other
     }
 }
 
-impl SubAssign<usize> for VirtualAddr {
+impl SubAssign<usize> for Virt {
     fn sub_assign(&mut self, other: usize) {
         *self = *self - other
     }
 }
 
-impl Address for VirtualAddr {}
+impl Address for Virt {}
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct PhysicalAddr(pub usize);
+pub struct Phys(pub usize);
 
-impl Into<usize> for PhysicalAddr {
+impl Into<usize> for Phys {
     #[inline(always)]
     fn into(self) -> usize {
         self.0
     }
 }
 
-impl From<usize> for PhysicalAddr {
+impl From<usize> for Phys {
     #[inline(always)]
     fn from(addr: usize) -> Self {
         Self(addr)
     }
 }
 
-impl From<Page<PhysicalAddr>> for PhysicalAddr {
+impl From<Page<Phys>> for Phys {
     #[inline(always)]
-    fn from(page: Page<PhysicalAddr>) -> Self {
+    fn from(page: Page<Phys>) -> Self {
         Self(page.number * PAGE_SIZE)
     }
 }
 
-impl Sub<usize> for PhysicalAddr {
+impl Sub<usize> for Phys {
     type Output = Self;
     #[inline(always)]
     fn sub(self, rhs: usize) -> Self::Output {
@@ -154,7 +154,7 @@ impl Sub<usize> for PhysicalAddr {
     }
 }
 
-impl Sub<PhysicalAddr> for PhysicalAddr {
+impl Sub<Phys> for Phys {
     type Output = usize;
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
@@ -162,7 +162,7 @@ impl Sub<PhysicalAddr> for PhysicalAddr {
     }
 }
 
-impl Add<usize> for PhysicalAddr {
+impl Add<usize> for Phys {
     type Output = Self;
     #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
@@ -170,19 +170,19 @@ impl Add<usize> for PhysicalAddr {
     }
 }
 
-impl AddAssign<usize> for PhysicalAddr {
+impl AddAssign<usize> for Phys {
     fn add_assign(&mut self, other: usize) {
         *self = *self + other
     }
 }
 
-impl SubAssign<usize> for PhysicalAddr {
+impl SubAssign<usize> for Phys {
     fn sub_assign(&mut self, other: usize) {
         *self = *self - other
     }
 }
 
-impl Address for PhysicalAddr {}
+impl Address for Phys {}
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -214,7 +214,7 @@ impl<T: Address> Page<T> {
     }
 }
 
-impl Page<VirtualAddr> {
+impl Page<Virt> {
     #[inline(always)]
     pub fn pd_index(&self) -> usize {
         self.number.get_bits(10..20)
@@ -311,40 +311,40 @@ mod test {
     use super::*;
     #[test]
     fn test_conversion_address() {
-        let addr = PhysicalAddr(PAGE_SIZE);
-        let page: Page<PhysicalAddr> = addr.into();
+        let addr = Phys(PAGE_SIZE);
+        let page: Page<Phys> = addr.into();
         assert_eq!(page, Page::new(1));
-        let convert_addr: PhysicalAddr = page.into();
+        let convert_addr: Phys = page.into();
         assert_eq!(convert_addr, addr);
     }
     #[test]
     fn test_page() {
-        let page: Page<PhysicalAddr> = Page::new(1);
-        assert_eq!(page + NbrPages(1), Page::<PhysicalAddr>::new(2));
+        let page: Page<Phys> = Page::new(1);
+        assert_eq!(page + NbrPages(1), Page::<Phys>::new(2));
     }
     #[test]
     fn test_page_iter() {
-        let page_iter: PageIter<PhysicalAddr> = (Page::new(0)..=Page::new(10)).iter();
+        let page_iter: PageIter<Phys> = (Page::new(0)..=Page::new(10)).iter();
         for (i, page_frame) in page_iter.enumerate() {
             assert_eq!(Page::new(i), page_frame);
         }
-        let all_page: Vec<Page<PhysicalAddr>> = page_iter.collect();
+        let all_page: Vec<Page<Phys>> = page_iter.collect();
         assert_eq!(all_page.len(), 11);
-        let page_iter: PageIter<PhysicalAddr> = (Page::new(0)..Page::new(10)).iter();
+        let page_iter: PageIter<Phys> = (Page::new(0)..Page::new(10)).iter();
         for (i, page_frame) in page_iter.enumerate() {
             assert_eq!(Page::new(i), page_frame);
         }
-        let all_page: Vec<Page<PhysicalAddr>> = page_iter.collect();
+        let all_page: Vec<Page<Phys>> = page_iter.collect();
         assert_eq!(all_page.len(), 10);
     }
     #[test]
     fn test_align() {
         for i in 0..1000 {
             dbg!(i);
-            dbg!(PhysicalAddr(i).align_on(4));
-            assert!(PhysicalAddr(i).align_on(4).is_aligned_on(4));
-            assert!(PhysicalAddr(i).align_on(4) >= PhysicalAddr(i));
+            dbg!(Phys(i).align_on(4));
+            assert!(Phys(i).align_on(4).is_aligned_on(4));
+            assert!(Phys(i).align_on(4) >= Phys(i));
         }
-        assert_eq!(PhysicalAddr(1).align_on(4), PhysicalAddr(4));
+        assert_eq!(Phys(1).align_on(4), Phys(4));
     }
 }

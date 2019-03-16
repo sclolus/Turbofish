@@ -120,10 +120,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     /*
     use crate::memory::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};
-    use crate::memory::{MemoryError, VirtualAddr};
+    use crate::memory::{MemoryError, Virt};
 
     extern "C" {
-        fn ft_memset(v: VirtualAddr, u: u8, s: usize) -> VirtualAddr;
+        fn ft_memset(v: Virt, u: u8, s: usize) -> Virt;
     }
 
     use core::alloc::Layout;
@@ -131,11 +131,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("begin test 2");
     debug::bench_start();
     for i in 0..4096 {
-        let v: VirtualAddr =
+        let v: Virt =
 
         unsafe {
         match &mut ALLOCATOR {
-            Allocator::Kernel(a) => a.alloc(4096 * 16).unwrap(), //.unwrap_or(PhysicalAddr(0x0)).0 as *mut u8
+            Allocator::Kernel(a) => a.alloc(4096 * 16).unwrap(), //.unwrap_or(Phys(0x0)).0 as *mut u8
             Allocator::Bootstrap(_) => panic!("panic sa mere"),
         }
         };

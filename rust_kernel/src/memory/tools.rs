@@ -21,4 +21,4 @@ pub enum MemoryError {
     NotPhysicalyMapped,
 }
 
-// pub type Result<T> = core::result::Result<T, MemoryError>;
+pub type Result<T> = core::result::Result<T, MemoryError>;

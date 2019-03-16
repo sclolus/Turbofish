@@ -20,12 +20,7 @@ impl PageTable {
     }
 
     #[inline(always)]
-    pub fn map_page(
-        &mut self,
-        virtp: Page<VirtualAddr>,
-        physp: Page<PhysicalAddr>,
-        entry: Entry,
-    ) -> Result<(), MemoryError> {
+    pub fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
         let pt_index = virtp.pt_index();
 
         if self[pt_index].contains(Entry::PRESENT) {
@@ -38,7 +33,7 @@ impl PageTable {
     }
 
     #[inline(always)]
-    pub fn unmap_page(&mut self, virtp: Page<VirtualAddr>) -> Result<(), MemoryError> {
+    pub fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {
         let pt_index = virtp.pt_index();
         if !self[pt_index].contains(Entry::PRESENT) {
             return Err(MemoryError::AlreadyUnMapped);

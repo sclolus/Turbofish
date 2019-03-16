@@ -61,7 +61,7 @@ impl Entry {
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[allow(dead_code)]
-    pub fn set_entry_addr(&mut self, addr: PhysicalAddr) -> &mut Self {
+    pub fn set_entry_addr(&mut self, addr: Phys) -> &mut Self {
         // asserts that if the page_size bit is set for this entry, the set addr is 4-MiB aligned.
         assert!(if self.contains(Entry::PAGE_SIZE) {
             addr.0.get_bits(0..22) == 0
@@ -76,13 +76,13 @@ impl Entry {
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[inline(always)]
-    pub fn set_entry_page(&mut self, page: Page<PhysicalAddr>) -> &mut Self {
+    pub fn set_entry_page(&mut self, page: Page<Phys>) -> &mut Self {
         self.bits.set_bits(12..32, page.number as u32);
         self
     }
 
     #[inline(always)]
-    pub fn entry_page(&self) -> Page<PhysicalAddr> {
+    pub fn entry_page(&self) -> Page<Phys> {
         Page::new(self.bits.get_bits(12..32) as usize)
     }
 
@@ -90,8 +90,8 @@ impl Entry {
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
     #[allow(dead_code)]
-    pub fn entry_addr(&self) -> PhysicalAddr {
-        PhysicalAddr((self.bits.get_bits(12..32) as usize) << 12)
+    pub fn entry_addr(&self) -> Phys {
+        Phys((self.bits.get_bits(12..32) as usize) << 12)
     }
 
     /// This sets the 3 available bits() of the entry.
@@ -115,7 +115,7 @@ mod test {
     fn test_entry() {
         let mut entry = Entry::PRESENT | Entry::READ_WRITE;
         assert!(entry.contains(Entry::PRESENT));
-        entry.set_entry_addr(PhysicalAddr(0x1000));
+        entry.set_entry_addr(Phys(0x1000));
         assert!(entry.contains(Entry::PRESENT));
     }
 }

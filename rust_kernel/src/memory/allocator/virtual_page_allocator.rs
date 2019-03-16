@@ -6,21 +6,16 @@ use crate::memory::BuddyAllocator;
 use alloc::boxed::Box;
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
-    virt: BuddyAllocator<VirtualAddr>,
+    virt: BuddyAllocator<Virt>,
     mmu: Box<PageDirectory>,
 }
 
 impl VirtualPageAllocator {
-    pub fn new(virt: BuddyAllocator<VirtualAddr>, mmu: Box<PageDirectory>) -> Self {
+    pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
     }
     /// size in bytes
-    pub fn reserve(
-        &mut self,
-        vaddr: Page<VirtualAddr>,
-        paddr: Page<PhysicalAddr>,
-        size: NbrPages,
-    ) -> Result<(), MemoryError> {
+    pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
         //TODO: reserve the buddys
         unsafe {
             self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT)?;
@@ -29,7 +24,7 @@ impl VirtualPageAllocator {
     }
 
     /// size in bytes
-    pub fn alloc(&mut self, size: NbrPages) -> Result<Page<VirtualAddr>, MemoryError> {
+    pub fn alloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
         //println!("alloc size: {:?}", size);
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
@@ -48,7 +43,7 @@ impl VirtualPageAllocator {
     }
 
     /// size in bytes
-    pub fn free(&mut self, vaddr: Page<VirtualAddr>, size: NbrPages) -> Result<(), MemoryError> {
+    pub fn free(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
         //println!("free size: {:?}", size);
         let order = size.into();
         self.virt.free(vaddr, order)?;

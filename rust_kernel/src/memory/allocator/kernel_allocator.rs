@@ -31,9 +31,9 @@ impl BootstrapKernelAllocator {
     pub const fn new() -> Self {
         BootstrapKernelAllocator { current_offset: 0 }
     }
-    pub unsafe fn alloc_bootstrap(&mut self, layout: Layout) -> Result<VirtualAddr, MemoryError> {
+    pub unsafe fn alloc_bootstrap(&mut self, layout: Layout) -> Result<Virt> {
         let base_address = &BSS_MEMORY[0] as *const u8 as usize;
-        let mut address = VirtualAddr(&BSS_MEMORY[self.current_offset] as *const u8 as usize);
+        let mut address = Virt(&BSS_MEMORY[self.current_offset] as *const u8 as usize);
         address = address.align_on(layout.align());
         self.current_offset = address.0 - base_address + layout.size();
         if self.current_offset > BSS_MEMORY.len() {
@@ -46,12 +46,12 @@ impl BootstrapKernelAllocator {
 pub struct SlabAllocator;
 
 impl SlabAllocator {
-    pub unsafe fn alloc(&mut self, size: usize) -> Result<VirtualAddr, MemoryError> {
+    pub unsafe fn alloc(&mut self, size: usize) -> Result<Virt> {
         KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc(size.into()).map(|x| x.into())
     }
 
     /// size in bytes
-    pub unsafe fn free(&mut self, vaddr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
+    pub unsafe fn free(&mut self, vaddr: Virt, size: usize) -> Result<()> {
         KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(vaddr.into(), size.into())
     }
 }
@@ -61,14 +61,14 @@ pub struct RustGlobalAlloc;
 unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.alloc(layout.size()).unwrap_or(VirtualAddr(0x0)).0 as *mut u8,
-            KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout).unwrap_or(VirtualAddr(0x0)).0 as *mut u8,
+            KernelAllocator::Kernel(a) => a.alloc(layout.size()).unwrap_or(Virt(0x0)).0 as *mut u8,
+            KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout).unwrap_or(Virt(0x0)).0 as *mut u8,
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.free(VirtualAddr(ptr as usize), layout.size()).unwrap(),
+            KernelAllocator::Kernel(a) => a.free(Virt(ptr as usize), layout.size()).unwrap(),
             KernelAllocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
         }
     }
@@ -82,28 +82,23 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
-        Page::containing(VirtualAddr(KERNEL_VIRTUAL_OFFSET)),
+        Page::containing(Virt(KERNEL_VIRTUAL_OFFSET)),
         KERNEL_VIRTUAL_MEMORY,
-        vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
+        vec![0; BuddyAllocator::<Virt>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
+    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_64MB, Entry::READ_WRITE | Entry::PRESENT)
+        .unwrap();
     pd.map_range_page_init(
-        VirtualAddr(0).into(),
-        PhysicalAddr(0).into(),
-        NbrPages::_64MB,
-        Entry::READ_WRITE | Entry::PRESENT,
-    )
-    .unwrap();
-    pd.map_range_page_init(
-        VirtualAddr(0xc0000000).into(),
-        PhysicalAddr(0x00000000).into(),
+        Virt(0xc0000000).into(),
+        Phys(0x00000000).into(),
         NbrPages::_64MB,
         Entry::READ_WRITE | Entry::PRESENT,
     )
     .unwrap();
     let raw_pd = Box::into_raw(pd);
-    let real_pd = PhysicalAddr(raw_pd as usize - VIRTUAL_OFFSET);
+    let real_pd = Phys(raw_pd as usize - VIRTUAL_OFFSET);
     _enable_paging(real_pd);
     pd = Box::from_raw(raw_pd);
     pd.self_map_tricks(real_pd);

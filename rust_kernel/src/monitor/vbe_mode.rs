@@ -1,7 +1,7 @@
 use super::{AdvancedGraphic, Color, Drawer, IoResult, WriteMode};
 use crate::ffi::c_char;
 use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
-use crate::memory::tools::{PhysicalAddr, VirtualAddr};
+use crate::memory::tools::{Phys, Virt};
 use crate::registers::{real_mode_op, BaseRegisters};
 use alloc::vec;
 use alloc::vec::Vec;
@@ -474,8 +474,8 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
             .as_mut()
             .unwrap()
             .reserve(
-                VirtualAddr(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize).into(),
-                PhysicalAddr(mode_info.phys_base_ptr as usize).into(),
+                Virt(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize).into(),
+                Phys(mode_info.phys_base_ptr as usize).into(),
                 (mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
                     / 8)
                 .into(),

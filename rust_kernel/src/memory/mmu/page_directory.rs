@@ -24,7 +24,7 @@ impl PageDirectory {
 
     /// trick to always map the pages tables from address 0xFFC...
     /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)
-    pub unsafe fn self_map_tricks(&mut self, cr3: PhysicalAddr) {
+    pub unsafe fn self_map_tricks(&mut self, cr3: Phys) {
         self[1023] = Default::default();
         self[1023].set_entry_addr(cr3);
         self[1023] |= Entry::PRESENT | Entry::READ_WRITE;
@@ -33,19 +33,14 @@ impl PageDirectory {
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             self[offset + i] = Default::default();
-            self[offset + i].set_entry_addr(PhysicalAddr(pt.as_ref().as_ptr() as usize - VIRTUAL_OFFSET));
+            self[offset + i].set_entry_addr(Phys(pt.as_ref().as_ptr() as usize - VIRTUAL_OFFSET));
             self[offset + i] |= Entry::PRESENT | Entry::READ_WRITE;
         }
     }
 
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
-    pub unsafe fn map_page(
-        &mut self,
-        virtp: Page<VirtualAddr>,
-        physp: Page<PhysicalAddr>,
-        entry: Entry,
-    ) -> Result<(), MemoryError> {
+    pub unsafe fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
         let pd_index = virtp.pd_index();
         let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
         page_table.map_page(virtp, physp, entry)
@@ -54,11 +49,11 @@ impl PageDirectory {
     //TODO: check overflow
     pub unsafe fn map_range_page(
         &mut self,
-        virtp: Page<VirtualAddr>,
-        physp: Page<PhysicalAddr>,
+        virtp: Page<Virt>,
+        physp: Page<Phys>,
         nb_pages: NbrPages,
         entry: Entry,
-    ) -> Result<(), MemoryError> {
+    ) -> Result<()> {
         for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
             self.map_page(virtp, physp, entry)?;
         }
@@ -67,11 +62,11 @@ impl PageDirectory {
 
     pub unsafe fn map_range_page_init(
         &mut self,
-        virtp: Page<VirtualAddr>,
-        physp: Page<PhysicalAddr>,
+        virtp: Page<Virt>,
+        physp: Page<Phys>,
         nb_pages: NbrPages,
         entry: Entry,
-    ) -> Result<(), MemoryError> {
+    ) -> Result<()> {
         for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
             let pd_index = virtp.pd_index();
             let page_table = &mut PAGE_TABLES[pd_index];
@@ -80,21 +75,21 @@ impl PageDirectory {
         Ok(())
     }
 
-    pub unsafe fn unmap_page(&mut self, virtp: Page<VirtualAddr>) -> Result<(), MemoryError> {
+    pub unsafe fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {
         let pd_index = virtp.pd_index();
         let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
         page_table.unmap_page(virtp)
     }
 
     //TODO: check overflow
-    pub unsafe fn unmap_range_page(&mut self, virtp: Page<VirtualAddr>, nb_pages: NbrPages) -> Result<(), MemoryError> {
+    pub unsafe fn unmap_range_page(&mut self, virtp: Page<Virt>, nb_pages: NbrPages) -> Result<()> {
         for p in (virtp..virtp + nb_pages).iter() {
             self.unmap_page(p)?;
         }
         Ok(())
     }
 
-    pub unsafe fn physical_page(&self, vaddr: Page<VirtualAddr>) -> Option<Page<PhysicalAddr>> {
+    pub unsafe fn physical_page(&self, vaddr: Page<Virt>) -> Option<Page<Phys>> {
         let pd_index = vaddr.pd_index();
         let pt_index = vaddr.pt_index();
 
@@ -107,7 +102,7 @@ impl PageDirectory {
             None
         }
     }
-    pub unsafe fn physical_addr(&self, vaddr: VirtualAddr) -> Option<PhysicalAddr> {
+    pub unsafe fn physical_addr(&self, vaddr: Virt) -> Option<Phys> {
         self.physical_page(vaddr.into()).map(|v| v.into())
     }
     // pub unsafe fn load_current_page_directory(ptr: *mut PageDirectory) {

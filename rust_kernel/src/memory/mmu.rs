@@ -12,6 +12,6 @@ pub use entry::Entry;
 pub static mut PAGE_TABLES: [PageTable; 1024] = [PageTable::new(); 1024];
 
 extern "C" {
-    pub fn _enable_paging(addr: PhysicalAddr);
+    pub fn _enable_paging(addr: Phys);
     fn _enable_pse();
 }
