@@ -14,7 +14,7 @@ static u32 page_mask[21] = {
 /*
  * According to Buddy algorithm; this function return a free chunk witch
  * can contain the desired number of pages.
- * @initialization: for a search in all the map
+ * @initialisation: for a search in all the map
  * get_mem_area(map, pages_req, 1, 0);
  * caution, never set 0 as index.
  * @return: Address of pages in the chunk
@@ -30,7 +30,7 @@ u32	get_mem_area(u8 *map, u32 pages_req, u32 idx, u32 lvl)
 			return MAP_FAILED;
 		} else {
 			if (idx > (MAP_LENGTH * GRANULARITY_NEG))
-				eprintk("%s: ERROR idx, got %u\n",
+				eprintk("%s: ERROR index, got %u\n",
 						__func__, idx);
 			SET(map, idx, ALLOCATED);
 			u32 segment = (idx & page_mask[lvl])
@@ -113,7 +113,7 @@ u32	free_mem_area(u8 *map, u32 addr, u32 idx, u32 lvl)
  * This function make a border between addressable area and not
  * physical memory is not unlimited
  * @parameters
- * 	map: memory map to utilize
+ * 	map: memory map to utilise
  * 	limit_addr: area to make the border
  * 	index: current index on map in recursive scheme
  * 	level: current level on map in recursive scheme

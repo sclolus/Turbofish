@@ -126,7 +126,7 @@ static int		create_directory(u32 directory, enum mem_space space)
 }
 
 /*
-* clobber memory to avoid optimizer re-ordering access before INVLPG,
+* clobber memory to avoid optimiser re-ordering access before INVLPG,
 * which may cause nasty bugs.
 */
 static inline void	invlpg(void *m)
@@ -336,7 +336,7 @@ int			vmunmap(void *virt_addr, size_t size)
 }
 
 /*
- * initialize all the paging system
+ * initialise all the paging system
  */
 int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 {
@@ -377,12 +377,12 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
 
 	/*
-	 * initialize virtual memory map
+	 * initialise virtual memory map
 	 */
 	init_virtual_map();
 
 	/*
-	 * initialize physical memory map
+	 * initialise physical memory map
 	 */
 	init_physical_map((void *)available_memory);
 

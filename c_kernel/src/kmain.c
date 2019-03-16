@@ -9,6 +9,9 @@
 #include "grub.h"
 #include "tests.h"
 
+#define cbrt(X) _Generic((X), long double: cbrtl, \
+                              default: cbrt, \
+                              float: cbrtf)(X)
 /*
  * This benchmark use the PIT on IRQ0 to work
  */
@@ -55,7 +58,7 @@ extern char _asterix_bmp_start;
 
 extern int _mmx_test(void);
 extern int _sse1_sse2_test(void);
-//extern int _avx_test(void);
+// extern int _avx_test(void);
 
 extern u32 _align_stack(u32(*f)(), u32 args_len, ...);
 
@@ -66,10 +69,10 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 {
 	(void)dev_map;
 /*
- * Initialization sequence
+ * Initialisation sequence
  */
 	/*
-	 * Initialize Interrupt Descriptor Table
+	 * Initialise Interrupt Descriptor Table
 	 */
 	init_idt();
 
@@ -85,7 +88,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	}
 
 	/*
-	 * Initialize paging
+	 * Initialise paging
 	 */
 	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
 	if (init_paging(avalaible_mem, &vesa_ctx.mode.framebuffer) == -1) {
@@ -95,12 +98,12 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	}
 
 	/*
-	 * Initialize 8254 PIT, clock on IRQ0
+	 * Initialise 8254 PIT, clock on IRQ0
 	 */
 	asm_pit_init(PIT_FREQUENCY);
 
 	/*
-	 * Initialize PIC, Hardware interrupt chip
+	 * Initialise PIC, Hardware interrupt chip
 	 */
 	init_pic();
 
@@ -134,7 +137,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	asm("sti");
 
 	printk("Kernel loaded: {green}OK{eoc}\n");
-	printk("VBE initialized: {green}OK\n{eoc}");
+	printk("VBE initialised: {green}OK\n{eoc}");
 
 	printk("GDT loaded: {green}OK\n{eoc}");
 
@@ -173,10 +176,10 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	printk("linear frame buffer location: {green}%#x{eoc}\n",
 			vesa_ctx.mode.framebuffer);
 
-	printk("Initialize IDT: ");
+	printk("Initialise IDT: ");
 	printk("{green}OK\n{eoc}");
 
-	printk("Initialize PIC: ");
+	printk("Initialise PIC: ");
 	printk("{green}OK\n{eoc}");
 
 	printk("mmx test: ");
@@ -199,7 +202,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 		printk("{red}FAIL\n{eoc}");
 	*/
 
-	printk("Initialize Paging with %u ko of available memory: ",
+	printk("Initialise Paging with %u ko of available memory: ",
 			avalaible_mem >> 10);
 	printk("{green}OK\n{eoc}");
 
@@ -209,7 +212,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 
 	printk("%u page fault has triggered\n", get_nb_page_fault());
 
-	printk("Enable interupt: {green}OK{eoc}\n");
+	printk("Enable interrupt: {green}OK{eoc}\n");
 
 	printk("{yellow}H{green}E{cyan}L{red}L{magenta}O ");
 	printk("{orange}W{white}O{yellow}R{deepblue}L{lightgreen}D{eoc}\n");

@@ -178,7 +178,7 @@ u32	get_pages(u32 page_request, enum mem_type type)
 		break;
 
 	default:
-		eprintk("%s: Unexpected default status\n");
+		eprintk("%s: Unexpected default status\n", __func__);
 		break;
 	}
 	return addr;
@@ -189,8 +189,9 @@ u32	free_pages(void *addr, enum mem_type type)
 	int ret;
 
 	switch (type) {
+	case first_mo:
 	case reserved:
-		eprintk("%s: Cannot FREE reserved pages\n");
+		eprintk("%s: Cannot FREE reserved or first mo pages\n", __func__);
 		ret = 0;
 		break;
 	case kheap:
@@ -231,7 +232,7 @@ u32	free_pages(void *addr, enum mem_type type)
 				USER_SECOND_DEEP);
 		break;
 	default:
-		eprintk("%s: Unexpected default status\n");
+		eprintk("%s: Unexpected default status\n", __func__);
 		ret = 0;
 		break;
 	}

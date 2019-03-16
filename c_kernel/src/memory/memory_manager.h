@@ -26,8 +26,6 @@ enum mem_space {
 
 int			page_fault_handler(u32 err_reg, u32 fault_addr);
 
-extern void		asm_paging_enable(void);
-extern void		asm_paging_disable(void);
 extern void		asm_paging_set_page_directory_address(
 				ptr_32 *page_directory_address);
 

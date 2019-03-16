@@ -63,6 +63,7 @@ _init_kernel:
 	hlt
 	jmp .idle
 
+global kernel_stack
 segment .bss
 align 16
 
