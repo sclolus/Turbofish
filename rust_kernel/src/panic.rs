@@ -93,11 +93,42 @@ fn trace_back(mut s: (u32, *const u32)) {
     }
 }
 
+extern "C" {
+    fn _read_cr2() -> u32;
+}
+
+#[no_mangle]
+pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -> () {
+    eprintln!("PAGE FAULT !");
+    eprintln!("{:X?}\n", ext_reg);
+    use bit_field::BitField;
+    let page_fault_cause = unsafe {
+        match ext_reg.eflags.get_bits(0..3) {
+            0b000 => "Supervisory process tried to read a non-present page entry",
+            0b001 => "Supervisory process tried to read a page and caused a protection fault",
+            0b010 => "Supervisory process tried to write to a non-present page entry",
+            0b011 => "Supervisory process tried to write a page and caused a protection fault",
+            0b100 => "User process tried to read a non-present page entry",
+            0b101 => "User process tried to read a page and caused a protection fault",
+            0b110 => "User process tried to write to a non-present page entry",
+            0b111 => "User process tried to write a page and caused a protection fault",
+            _ => "WTF",
+        }
+    };
+
+    eprintln!("{}", page_fault_cause);
+
+    eprintln!("cr2: 0x{:x}", cr2);
+
+    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    loop {}
+}
+
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
-    println!("KERNEL PANIC !");
-    println!("reason {:?}", s);
-    println!("{:#X?}\n", ext_reg);
+    eprintln!("KERNEL PANIC !");
+    eprintln!("reason {:?}", s);
+    eprintln!("{:X?}\n", ext_reg);
 
     trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
     loop {}

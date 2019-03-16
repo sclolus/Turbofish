@@ -45,6 +45,20 @@ _isr_%1:
 	call _align_stack
 %endmacro
 
+extern cpu_page_fault_handler
+
+segment .text
+	GLOBAL _isr_page_fault
+_isr_page_fault:
+	push ebp
+	mov ebp, esp
+	PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+	mov eax, cr2
+	push eax
+	push 72
+	push cpu_page_fault_handler
+	call _align_stack
+
 ; After expansion of macro (for cpu_default_interrupt)
 ; segment .data
 ; isr_cpu_default_interrupt_str:
@@ -87,7 +101,6 @@ CREATE_ISR simd_fpu_fp_exception, "simd fpu fp exception", PUSH_ALL_REGISTERS_WI
 CREATE_ISR virtualize_exception, "virtualize exception", PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET
 
 ; CPU ISR with err_code
-CREATE_ISR page_fault, "page fault", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 CREATE_ISR double_fault, "double fault", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 CREATE_ISR invalid_tss, "invalid tss", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 CREATE_ISR seg_no_present, "segment no present", PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET

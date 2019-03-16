@@ -3,6 +3,7 @@
 
 section .text
 global _enable_paging
+global _read_cr2
 ;; global _enable_paging
 ;; global _disable_paging
 
@@ -17,11 +18,19 @@ _enable_paging:
 	mov cr3, eax
 
 	mov eax, cr0
-	or eax, 0x80000001
+	or eax, 0x80010001
 	mov cr0, eax
 	leave
 	ret
 
+_read_cr2:
+	push ebp
+	mov ebp, esp
+
+	mov eax, cr2
+
+	pop ebp
+	ret
 
 ;; ;; Enables the Page Size Extension (PSE)
 ;; _enable_pse:
