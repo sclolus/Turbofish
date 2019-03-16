@@ -82,7 +82,7 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
-        VirtualAddr(KERNEL_VIRTUAL_OFFSET),
+        Page::containing(VirtualAddr(KERNEL_VIRTUAL_OFFSET)),
         KERNEL_VIRTUAL_MEMORY,
         vec![0; BuddyAllocator::<VirtualAddr>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );

@@ -1,5 +1,5 @@
 use super::PAGE_SIZE;
-use core::ops::{Add, AddAssign, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrPages(pub usize);
@@ -52,6 +52,13 @@ impl Add<NbrPages> for NbrPages {
     type Output = Self;
     fn add(self, rhs: NbrPages) -> Self {
         NbrPages(self.0 + rhs.0)
+    }
+}
+
+impl Mul<usize> for NbrPages {
+    type Output = Self;
+    fn mul(self, rhs: usize) -> Self {
+        NbrPages(self.0 * rhs)
     }
 }
 

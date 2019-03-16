@@ -1,23 +1,24 @@
 use crate::interrupts;
 use crate::io::UART_16550;
 use crate::memory;
+use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
     unsafe {
         UART_16550.init();
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
     }
     unsafe {
         interrupts::init();
     }
 
-    use crate::math::random::rand;
+    use crate::math::random::srand;
 
     fn make_somization<T: Fn() -> usize>(nb_tests: usize, max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
         use alloc::vec;
@@ -50,21 +51,23 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         let mut nb_allocations: usize = 0;
 
         for _i in 0..nb_tests {
-            match rand::<bool>(true) {
+            match srand::<bool>(true) {
                 true => {
                     if max_alloc != nb_allocations {
-                        let n: u8 = rand(core::u8::MAX);
+                        let n: u8 = srand(core::u8::MAX);
                         let size = alloc_size_fn();
-                        s[nb_allocations] = Some(Allocation { size: size, random_u8: n, v: vec![n; size] });
+                        let new_alloc = Allocation { size: size, random_u8: n, v: vec![n; size] };
+                        s[nb_allocations] = Some(new_alloc);
                         nb_allocations += 1;
                     }
                 }
                 false => match nb_allocations {
                     0 => {}
                     _ => {
-                        let elmt_number = rand((nb_allocations - 1) as u32) as usize;
+                        let elmt_number = srand((nb_allocations - 1) as u32) as usize;
                         let elmt = s[elmt_number].take().unwrap();
                         for i in 0..elmt.size {
+                            assert_eq!(elmt.random_u8, elmt.v[i], "i: {}", _i);
                             if elmt.random_u8 != elmt.v[i] {
                                 return Err(());
                             }
@@ -80,10 +83,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo) -> u32 {
         }
         Ok(())
     }
-    make_somization(1024, 1000, || 4096).unwrap();
-    make_somization(1024, 1000, || rand::<u32>(16) as usize * 4096).unwrap();
-    make_somization(1024, 1000, || rand::<u32>(32) as usize * 4096).unwrap();
-    make_somization(1024, 1000, || rand::<u32>(64) as usize * 4096).unwrap();
+    crate::math::random::srand_init(42).unwrap();
+    make_somization(1024, 1000, || 4096).expect("failed sodo 0");
+    make_somization(1024, 1000, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
+    make_somization(1024, 1000, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
+    make_somization(1024, 1000, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
 
     exit_qemu(0);
     0

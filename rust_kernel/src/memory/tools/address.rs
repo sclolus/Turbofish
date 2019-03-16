@@ -1,6 +1,7 @@
 use super::NbrPages;
 use super::PAGE_SIZE;
 use bit_field::BitField;
+use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Range, RangeInclusive, Sub, SubAssign};
 
 pub trait Address:
@@ -12,6 +13,7 @@ pub trait Address:
     + Add<usize, Output = Self>
     + AddAssign<usize>
     + SubAssign<usize>
+    + Debug
     + Copy
     + Clone
     + Ord
@@ -233,10 +235,32 @@ impl<T: Address> Add<NbrPages> for Page<T> {
     }
 }
 
+impl<T: Address> AddAssign<NbrPages> for Page<T> {
+    #[inline(always)]
+    fn add_assign(&mut self, other: NbrPages) {
+        *self = *self + other
+    }
+}
+
+impl<T: Address> Sub<Self> for Page<T> {
+    type Output = NbrPages;
+    #[inline(always)]
+    fn sub(self, rhs: Self) -> Self::Output {
+        NbrPages(self.number - rhs.number)
+    }
+}
+
 impl<T: Address> From<T> for Page<T> {
     #[inline(always)]
     fn from(addr: T) -> Self {
         Self::new(addr.into() / PAGE_SIZE)
+    }
+}
+
+impl<T: Address> From<usize> for Page<T> {
+    #[inline(always)]
+    fn from(addr: usize) -> Self {
+        Self::new(addr / PAGE_SIZE)
     }
 }
 

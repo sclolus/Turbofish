@@ -4,6 +4,7 @@ macro_rules! print {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
+                #[allow(unused_unsafe)]
                 core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
             }
         }
@@ -15,6 +16,7 @@ macro_rules! printfixed {
     ($x:expr, $y:expr, $($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
+                #[allow(unused_unsafe)]
                 unsafe {
                     use crate::monitor::SCREEN_MONAD;
 

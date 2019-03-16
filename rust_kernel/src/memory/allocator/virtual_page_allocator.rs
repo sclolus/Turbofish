@@ -40,26 +40,21 @@ impl VirtualPageAllocator {
                 e
             })?;
             self.mmu
-                .map_range_page(
-                    Page::containing(vaddr),
-                    Page::containing(paddr),
-                    size.into(),
-                    Entry::READ_WRITE | Entry::PRESENT,
-                )
+                .map_range_page(vaddr, Page::containing(paddr), size.into(), Entry::READ_WRITE | Entry::PRESENT)
                 .map_err(|e| {
                     self.virt.free(vaddr, order).unwrap();
                     PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size).unwrap();
                     e
                 })?;
         }
-        Ok(vaddr)
+        Ok(vaddr.into())
     }
 
     /// size in bytes
     pub fn free(&mut self, vaddr: VirtualAddr, size: usize) -> Result<(), MemoryError> {
         //println!("free size: {:?}", size);
         let order = size.into();
-        self.virt.free(vaddr, order)?;
+        self.virt.free(Page::containing(vaddr), order)?;
 
         if let Some(paddr) = unsafe { self.mmu.physical_addr(vaddr) } {
             unsafe {

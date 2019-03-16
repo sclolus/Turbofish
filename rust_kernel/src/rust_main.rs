@@ -4,26 +4,11 @@ use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
 use crate::memory;
+use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::MultibootInfo;
 use crate::timer::Rtc;
-
-/// Show how devices are mapped in physical memory and also available space
-/// For reading all structures map, just run away with offset 32 until a zeroed structure
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct DeviceMap {
-    pub low_addr: u32,
-    pub high_addr: u32,
-    pub low_length: u32,
-    pub high_length: u32,
-    pub r#type: u32,
-    pub acpi_reserved: u32,
-    trashes: Trash,
-}
-
-define_raw_data!(Trash, 8);
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -39,16 +24,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     // TODO Like multigrub structure, it could be cool to save the entire device map here !
-    unsafe {
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages()).unwrap();
-    }
     println!("multiboot_infos {:#?}", multiboot_info);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
     unsafe {
         interrupts::init();
-        crate::watch_dog();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
 
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();

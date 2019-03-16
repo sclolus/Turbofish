@@ -27,7 +27,10 @@ extern "C" {
 #[macro_use]
 macro_rules! symbol_addr {
     ($ident: ident) => {
-        unsafe { &$ident as *const _ as usize }
+        #[allow(unused_unsafe)]
+        unsafe {
+            &$ident as *const _ as usize
+        }
     };
 }
 // #[macro_use]

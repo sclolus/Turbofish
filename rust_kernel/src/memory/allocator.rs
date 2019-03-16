@@ -4,7 +4,7 @@ pub use kernel_allocator::init_kernel_virtual_allocator;
 pub use kernel_allocator::RustGlobalAlloc;
 
 pub mod physical_page_allocator;
-pub use physical_page_allocator::init_physical_allocator;
+pub use physical_page_allocator::{init_physical_allocator, DeviceMap};
 
 pub mod virtual_page_allocator;
 
@@ -20,6 +20,4 @@ const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
 const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_64MB;
 
 /// kernel memory start a 64 MB
-//TODO: change that for the linker offset
-const KERNEL_PHYSICAL_OFFSET: usize = 0x4_000_000;
 const KERNEL_VIRTUAL_OFFSET: usize = VIRTUAL_OFFSET + 0x4_000_000;
