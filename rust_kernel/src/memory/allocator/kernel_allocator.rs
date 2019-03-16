@@ -1,17 +1,13 @@
 use super::virtual_page_allocator::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
-use super::{KERNEL_VIRTUAL_MEMORY, KERNEL_VIRTUAL_OFFSET};
+use super::KERNEL_VIRTUAL_MEMORY;
 use crate::memory::mmu::Entry;
 use crate::memory::mmu::_enable_paging;
 use crate::memory::mmu::{PageDirectory, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;
-use crate::memory::VIRTUAL_OFFSET;
 use alloc::boxed::Box;
 use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
-
-/// 4 MB for the bootstrap
-const MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR: usize = 0x400_000;
 
 pub static mut KERNEL_ALLOCATOR: KernelAllocator = KernelAllocator::Bootstrap(BootstrapKernelAllocator::new());
 
@@ -19,6 +15,9 @@ pub enum KernelAllocator {
     Bootstrap(BootstrapKernelAllocator),
     Kernel(SlabAllocator),
 }
+
+/// 4 MB for the bootstrap
+const MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR: usize = 0x400_000;
 
 static mut BSS_MEMORY: [u8; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR] = [0; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR];
 
@@ -82,23 +81,25 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
-        Page::containing(Virt(KERNEL_VIRTUAL_OFFSET)),
+        Virt(symbol_addr!(kernel_virtual_end)).align_on(PAGE_SIZE).into(),
         KERNEL_VIRTUAL_MEMORY,
         vec![0; BuddyAllocator::<Virt>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
-    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_64MB, Entry::READ_WRITE | Entry::PRESENT)
+    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_16MB, Entry::READ_WRITE | Entry::PRESENT)
         .unwrap();
     pd.map_range_page_init(
-        Virt(0xc0000000).into(),
-        Phys(0x00000000).into(),
-        NbrPages::_64MB,
+        Virt(symbol_addr!(virtual_offset)).into(),
+        Phys(0x0).into(),
+        (symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset)).into(),
         Entry::READ_WRITE | Entry::PRESENT,
     )
     .unwrap();
+    eprintln!("{:x?}", symbol_addr!(kernel_virtual_end));
+    eprintln!("{:x?}", symbol_addr!(virtual_offset));
     let raw_pd = Box::into_raw(pd);
-    let real_pd = Phys(raw_pd as usize - VIRTUAL_OFFSET);
+    let real_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
     _enable_paging(real_pd);
     pd = Box::from_raw(raw_pd);
     pd.self_map_tricks(real_pd);

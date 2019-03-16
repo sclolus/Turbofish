@@ -12,11 +12,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
-    }
-    unsafe {
         interrupts::init();
     }
+    crate::watch_dog();
+    unsafe {
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
+    }
+    crate::watch_dog();
 
     use crate::math::random::srand;
 

@@ -257,13 +257,6 @@ impl<T: Address> From<T> for Page<T> {
     }
 }
 
-impl<T: Address> From<usize> for Page<T> {
-    #[inline(always)]
-    fn from(addr: usize) -> Self {
-        Self::new(addr / PAGE_SIZE)
-    }
-}
-
 pub trait IntoPageIter {
     type PageType: Address;
     fn iter(self) -> PageIter<Self::PageType>;

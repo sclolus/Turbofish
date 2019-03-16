@@ -4,7 +4,6 @@ use super::page_table::PageTable;
 use super::Entry;
 use super::PAGE_TABLES;
 use crate::memory::tools::*;
-use crate::memory::VIRTUAL_OFFSET;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
@@ -33,7 +32,7 @@ impl PageDirectory {
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             self[offset + i] = Default::default();
-            self[offset + i].set_entry_addr(Phys(pt.as_ref().as_ptr() as usize - VIRTUAL_OFFSET));
+            self[offset + i].set_entry_addr(Phys(pt.as_ref().as_ptr() as usize - symbol_addr!(virtual_offset)));
             self[offset + i] |= Entry::PRESENT | Entry::READ_WRITE;
         }
     }

@@ -1,5 +1,4 @@
 pub mod kernel_allocator;
-use crate::memory::VIRTUAL_OFFSET;
 pub use kernel_allocator::init_kernel_virtual_allocator;
 pub use kernel_allocator::RustGlobalAlloc;
 
@@ -18,6 +17,3 @@ use crate::memory::tools::*;
 /// 64 MB for the kernel memory
 const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
 const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_64MB;
-
-/// kernel memory start a 64 MB
-const KERNEL_VIRTUAL_OFFSET: usize = VIRTUAL_OFFSET + 0x4_000_000;

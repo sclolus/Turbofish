@@ -42,24 +42,24 @@ impl PhysicalPageAllocator {
 
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
-pub unsafe fn init_physical_allocator(device_map_ptr: *const DeviceMap) {
-    let mut pallocator = PhysicalPageAllocator::new(
+pub unsafe fn init_physical_allocator(_device_map_ptr: *const DeviceMap) {
+    let pallocator = PhysicalPageAllocator::new(
         Phys(symbol_addr!(kernel_physical_end)).align_on(PAGE_SIZE).into(),
         KERNEL_PHYSICAL_MEMORY,
     );
 
-    let device_map_len = {
-        let mut i: usize = 0;
-        use core::mem::size_of;
-        loop {
-            if *(device_map_ptr.offset(i as isize) as *const [u8; size_of::<DeviceMap>()])
-                == [0; size_of::<DeviceMap>()]
-            {
-                break i;
-            }
-            i += 1;
-        }
-    };
+    // let device_map_len = {
+    //     let mut i: usize = 0;
+    //     use core::mem::size_of;
+    //     loop {
+    //         if *(device_map_ptr.offset(i as isize) as *const [u8; size_of::<DeviceMap>()])
+    //             == [0; size_of::<DeviceMap>()]
+    //         {
+    //             break i;
+    //         }
+    //         i += 1;
+    //     }
+    // };
     //DOESNT WORK I DONT KNOW WHY
     // pallocator.reserve(Phys(0), NbrPages::_1MB.into()).unwrap();
     // pallocator
@@ -68,21 +68,19 @@ pub unsafe fn init_physical_allocator(device_map_ptr: *const DeviceMap) {
     //         symbol_addr!(kernel_physical_end) - symbol_addr!(kernel_physical_start),
     //     )
     //     .unwrap();
-    let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
-    for d in device_map_slice {
-        println!("{:x?}", d);
-        println!("addr: {:x?}", d.low_addr);
-        println!("len: {}ko", d.low_length >> 10);
-        match d.region_type {
-            RegionType::Usable => {}
-            _ => {
-                //TODO: see that
-                pallocator
-                    .reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into())
-                    .unwrap();
-            }
-        }
-    }
+    // let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
+    // for d in device_map_slice {
+    //     println!("{:x?}", d);
+    //     println!("addr: {:x?}", d.low_addr);
+    //     println!("len: {}ko", d.low_length >> 10);
+    //     match d.region_type {
+    //         RegionType::Usable => {}
+    //         _ => {
+    //             //TODO: see that
+    //             pallocator.reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into());
+    //         }
+    //     }
+    // }
     PHYSICAL_ALLOCATOR = Some(pallocator);
 }
 
