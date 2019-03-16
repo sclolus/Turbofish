@@ -1,11 +1,9 @@
 
-#include "memory_manager.h"
+#include "buddy.h"
 
 #include "libft.h"
 
-#define VIRT_MAP_LOCATION	0xC0700000
-
-static u8 *virt_map;
+static u8 kernel_virtual_buddy[1024 * 512] __attribute__((aligned(32))) = {0};
 
 /*
  * Buddy IDX Organisation
@@ -104,16 +102,16 @@ u32	get_pages(u32 page_request, enum mem_type type)
 	switch (type) {
 	case first_mo:
 		addr = get_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				page_request,
 				FIRST_MO_IDX,
 				FIRST_MO_DEEP);
 		break;
 	case reserved:
 		if (page_request <= (1 << SHL_LIMIT_128M_BLOCK) &&
-				IS_USABLE(virt_map, RESERVED_IDX))
+				IS_USABLE(kernel_virtual_buddy, RESERVED_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					RESERVED_IDX,
 					RESERVED_DEEP);
@@ -123,9 +121,9 @@ u32	get_pages(u32 page_request, enum mem_type type)
 
 	case kheap:
 		if (page_request <= (1 << SHL_LIMIT_256M_BLOCK) &&
-				IS_USABLE(virt_map, KHEAP_FIRST_IDX))
+				IS_USABLE(kernel_virtual_buddy, KHEAP_FIRST_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					KHEAP_FIRST_IDX,
 					KHEAP_FIRST_DEEP);
@@ -133,9 +131,9 @@ u32	get_pages(u32 page_request, enum mem_type type)
 			break;
 
 		if (page_request <= (1 << SHL_LIMIT_512M_BLOCK) &&
-				IS_USABLE(virt_map, KHEAP_SECOND_IDX))
+				IS_USABLE(kernel_virtual_buddy, KHEAP_SECOND_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					KHEAP_SECOND_IDX,
 					KHEAP_SECOND_DEEP);
@@ -145,9 +143,9 @@ u32	get_pages(u32 page_request, enum mem_type type)
 
 	case vheap:
 		if (page_request <= (1 << SHL_LIMIT_128M_BLOCK) &&
-				IS_USABLE(virt_map, VHEAP_IDX))
+				IS_USABLE(kernel_virtual_buddy, VHEAP_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					VHEAP_IDX,
 					VHEAP_DEEP);
@@ -157,9 +155,9 @@ u32	get_pages(u32 page_request, enum mem_type type)
 
 	case usermem:
 		if (page_request <= (1 << SHL_LIMIT_1G_BLOCK) &&
-				IS_USABLE(virt_map, USER_FIRST_IDX))
+				IS_USABLE(kernel_virtual_buddy, USER_FIRST_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					USER_FIRST_IDX,
 					USER_FIRST_DEEP);
@@ -167,9 +165,9 @@ u32	get_pages(u32 page_request, enum mem_type type)
 			break;
 
 		if (page_request <= (1 << SHL_LIMIT_2G_BLOCK) &&
-				IS_USABLE(virt_map, USER_SECOND_IDX))
+				IS_USABLE(kernel_virtual_buddy, USER_SECOND_IDX))
 			addr = get_mem_area(
-					virt_map,
+					kernel_virtual_buddy,
 					page_request,
 					USER_SECOND_IDX,
 					USER_SECOND_DEEP);
@@ -196,7 +194,7 @@ u32	free_pages(void *addr, enum mem_type type)
 		break;
 	case kheap:
 		ret = free_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				(u32)addr,
 				KHEAP_FIRST_IDX,
 				KHEAP_FIRST_DEEP);
@@ -204,21 +202,21 @@ u32	free_pages(void *addr, enum mem_type type)
 			break;
 
 		ret = free_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				(u32)addr,
 				KHEAP_SECOND_IDX,
 				KHEAP_SECOND_DEEP);
 		break;
 	case vheap:
 		ret = free_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				(u32)addr,
 				VHEAP_IDX,
 				VHEAP_DEEP);
 		break;
 	case usermem:
 		ret = free_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				(u32)addr,
 				USER_FIRST_IDX,
 				USER_FIRST_DEEP);
@@ -226,7 +224,7 @@ u32	free_pages(void *addr, enum mem_type type)
 			break;
 
 		ret = free_mem_area(
-				virt_map,
+				kernel_virtual_buddy,
 				(u32)addr,
 				USER_SECOND_IDX,
 				USER_SECOND_DEEP);
@@ -239,8 +237,8 @@ u32	free_pages(void *addr, enum mem_type type)
 	return ret;
 }
 
-void	init_virtual_map(void)
+int	mark_virtual_area(void *virt_addr, u32 page_request)
 {
-	virt_map = (u8 *)VIRT_MAP_LOCATION;
-	ft_memset(virt_map, 0, MAP_LENGTH);
+	return mark_area(kernel_virtual_buddy, virt_addr, page_request);
 }
+

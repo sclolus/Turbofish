@@ -8,7 +8,11 @@
 
 #define MAX_DIRECTORY_SEG		1024
 #define PAGE_DIRECTORY_0_ADDR		0x10000
-#define PAGE_TABLE_0_ADDR		0x800000
+//#define PAGE_TABLE_0_ADDR		0x800000
+
+
+//static u8 global_page_table[1024 * 1024 * 4] __attribute__((aligned(32))) = {0};
+// #define PAGE_TABLE_0_ADDR		0x800000
 
 #define MAX_PAGE_TABLE_SEG		1024
 #define OFFSET				4096
@@ -35,11 +39,19 @@
 #define PS_IS_4MO_SIZE_DIRECTORY	(1 << 7)
 
 struct __attribute__ ((packed)) page_directory_seg {
+
 	u8 type;
 	u8 size			:1;
 	u8 available		:3;
 	u8 physical_address0_3	:4;
 	u16 physical_address4_20;
+};
+
+struct __attribute__ ((packed)) page_directory_seg_a {
+	union {
+		struct page_directory_seg seg;
+		u32 addr;
+	};
 };
 
 struct __attribute__ ((packed)) page_table_seg {
@@ -50,6 +62,13 @@ struct __attribute__ ((packed)) page_table_seg {
 	u16 physical_address4_20;
 };
 
+struct __attribute__ ((packed)) page_table_seg_a {
+	union {
+		struct page_table_seg seg;
+		u32 addr;
+	};
+};
+
 struct __attribute__ ((packed)) page_table {
 	struct page_table_seg seg[MAX_PAGE_TABLE_SEG];
 };
@@ -58,9 +77,13 @@ struct __attribute__ ((packed)) page_table_area {
 	struct page_table page_table[MAX_DIRECTORY_SEG];
 };
 
+struct page_table_area global_page_table __attribute__((aligned(32))) = {0};
+
 struct __attribute__ ((packed)) page_directory {
 	struct page_directory_seg seg[MAX_DIRECTORY_SEG];
 };
+
+struct page_directory *page_directory = (struct page_directory *)PAGE_DIRECTORY_0_ADDR;
 
 /*
  * get the physical page address associated with a virtual address
@@ -81,7 +104,12 @@ static void		*virt_to_physical_addr(u32 virt_addr)
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	//pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	struct page_directory_seg_a pd_entry;
+	pd_entry.seg = page_directory->seg[virt_addr >> 22];
+	pt = (pd_entry.addr & 0xfffff000) + ((virt_addr >> 12) & 0x3ff) * 4 + 0xc0000000;
+
+	//Virt addr -> PD -> PT phy -> PT virt
 
 	phy_addr = pt->physical_address4_20 & 0xFFFF;
 	phy_addr <<= 4;
@@ -112,8 +140,17 @@ static int		create_directory(u32 directory, enum mem_space space)
 	struct page_table	*pt;
 
 	pd = (struct page_directory *)PAGE_DIRECTORY_0_ADDR;
-	pt = (struct page_table *)(PAGE_TABLE_0_ADDR
-			+ (directory * sizeof(struct page_table)));
+
+
+	//pt = (struct page_table *)(PAGE_TABLE_0_ADDR
+	//		+ (directory * sizeof(struct page_table)));
+
+	u32 i = (u32)&global_page_table;
+	i -= 0xc0000000;
+	i += directory * sizeof(struct page_table);
+	pt = (struct page_table *)i;
+
+
 
 	pd->seg[directory].type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
 	if (space == user_space)
@@ -158,7 +195,10 @@ int			map_address(
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	//pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	struct page_directory_seg_a pd_entry;
+	pd_entry.seg = page_directory->seg[virt_addr >> 22];
+	pt = (pd_entry.addr & 0xfffff000) + ((virt_addr >> 12) & 0x3ff) * 4 + 0xc0000000;
 
 	for (u32 i = 0; i < page_req; i++) {
 		pt->type = P_IS_PHYSIC_MEMORY | RW_IS_READ_AND_WRITE;
@@ -253,7 +293,10 @@ int			kmunmap(void *virt_addr)
 	if (drop_physical_addr(phy_addr) == 0)
 		eprintk("%s: Unexpected error\n", __func__);
 
-	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	//pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	struct page_directory_seg_a pd_entry;
+	pd_entry.seg = page_directory->seg[(u32)virt_addr >> 22];
+	pt = (pd_entry.addr & 0xfffff000) + (((u32)virt_addr >> 12) & 0x3ff) * 4 + 0xc0000000;
 
 	/*
 	 * UNMAP page table
@@ -301,7 +344,10 @@ int			vmunmap(void *virt_addr, size_t size)
 	/*
 	 * conversion from virt_add 0 -> 4go to table pages 4mo -> 8mo
 	 */
-	pt = (u32 *)(((u32)virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	//pt = (struct page_table_seg *)((virt_addr >> 10) + PAGE_TABLE_0_ADDR + 0xc0000000);
+	struct page_directory_seg_a pd_entry;
+	pd_entry.seg = page_directory->seg[(u32)virt_addr >> 22];
+	pt = (pd_entry.addr & 0xfffff000) + (((u32)virt_addr >> 12) & 0x3ff) * 4 + 0xc0000000;
 
 	size >>= 12;
 	for (size_t i = 0; i < size; i++) {
@@ -374,12 +420,12 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	/*
 	 * clean all pages tables
 	 */
-	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
+//	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
 
 	/*
 	 * initialise virtual memory map
 	 */
-	init_virtual_map();
+//	init_virtual_map();
 
 	/*
 	 * initialise physical memory map

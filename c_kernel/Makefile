@@ -81,7 +81,7 @@ VPATH += src/vesa
 HEADERS += vesa.h
 
 # memory
-MEM_PAGING_C = paging virtual_mem physical_mem buddy page_fault
+MEM_PAGING_C = paging buddy/kernel_virtual_mem buddy/physical_mem buddy/buddy buddy/common page_fault
 MEM_PAGING_ASM = set_paging
 
 MEM_KALLOC = ctor mem_syscall \
@@ -107,8 +107,8 @@ MEM_VALLOC = v_main_prototypes
 
 SRC_C_KERNEL += $(MEM_PAGING_C) $(MEM_KALLOC) $(MEM_VALLOC)
 SRC_ASM_KERNEL += $(MEM_PAGING_ASM)
-VPATH += src/memory src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
-HEADERS += memory_manager.h main_headers.h alloc_btree.h dynamic_allocator.h
+VPATH += src/memory src/memory/buddy src/memory/k_helpers src/memory/k_helpers/alloc_btree src/memory/v_helpers
+HEADERS += memory_manager.h main_headers.h alloc_btree.h dynamic_allocator.h buddy.h
 
 # tests
 SRC_C_KERNEL += mem_test rand_test
