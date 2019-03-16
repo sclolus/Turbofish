@@ -103,7 +103,7 @@ u32	get_pages(u32 page_request, enum mem_type type)
 	case first_mo:
 		addr = get_mem_area(
 				kernel_virtual_buddy,
-				page_request,
+				256,
 				FIRST_MO_IDX,
 				FIRST_MO_DEEP);
 		break;

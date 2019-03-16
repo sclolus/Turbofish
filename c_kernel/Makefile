@@ -52,10 +52,10 @@ HEADERS +=
 VPATH += src/boot
 
 # main
-SRC_C_KERNEL += kmain watchdog
+SRC_C_KERNEL += kmain
 SRC_ASM_KERNEL +=
 VPATH += include src
-HEADERS += grub.h i386_type.h watchdog.h
+HEADERS += grub.h i386_type.h
 
 # system
 SRC_C_KERNEL += bios_services idt panic

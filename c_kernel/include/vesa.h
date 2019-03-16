@@ -4,8 +4,6 @@
 
 #include "i386_type.h"
 
-#define DB_FRAMEBUFFER_ADDR	0xC0C00000
-
 void		refresh_screen(void);
 
 s32		set_vbe(u16 selected_mode);
@@ -90,10 +88,11 @@ struct vesa_graphic_mode_list {
 };
 
 struct graphic_ctx {
-	struct vesa_global_info		global_info;
-	struct vesa_mode_info		mode;
-	struct vesa_graphic_mode_list	mode_list;
-	u32 edi_offset;
+	struct vesa_global_info         global_info;
+	struct vesa_mode_info           mode;
+	struct vesa_graphic_mode_list   mode_list;
+	u32                             edi_offset;
+	u8                              *db_framebuffer;
 } vesa_ctx;
 
 #endif

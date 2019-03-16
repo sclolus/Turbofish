@@ -8,7 +8,7 @@
 extern const struct modifier_list modifier_list[MODIFIER_QUANTITY];
 
 /*
- * Kernel IO initialization
+ * Kernel IO initialisation
  */
 void		init_kernel_io(void)
 {
@@ -106,7 +106,7 @@ void		copy_tty_content(struct k_tty *tty)
 void		fill_tty_background(struct k_tty *tty)
 {
 	_sse2_memcpy(
-			(u32 *)DB_FRAMEBUFFER_ADDR,
+			(u32 *)vesa_ctx.db_framebuffer,
 			(void *)tty->background_img,
 			vesa_ctx.mode.pitch
 			* vesa_ctx.mode.height);

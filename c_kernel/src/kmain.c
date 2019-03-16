@@ -77,6 +77,16 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	init_idt();
 
 	/*
+	 * Initialise paging
+	 */
+	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
+	if (init_paging(avalaible_mem) == -1) {
+		eprintk("KERNEL_FATAL_ERROR: Cannot set PAGING\n");
+		refresh_screen();
+		return ;
+	}
+
+	/*
 	 * Set VBE mode
 	 */
 	if (set_vbe(VBE_MODE) < 0) {
@@ -84,16 +94,6 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 		text_putstr("KERNEL_FATAL_ERROR: Cannot set VBE mode");
 		bios_wait(5);
 		bios_shutdown_computer();
-		return ;
-	}
-
-	/*
-	 * Initialise paging
-	 */
-	u32 avalaible_mem = (multiboot_info_addr->mem_upper + 1024) << 10;
-	if (init_paging(avalaible_mem, &vesa_ctx.mode.framebuffer) == -1) {
-		eprintk("KERNEL_FATAL_ERROR: Cannot set PAGING\n");
-		refresh_screen();
 		return ;
 	}
 

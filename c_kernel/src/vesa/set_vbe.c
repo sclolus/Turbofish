@@ -3,6 +3,8 @@
 #include "system.h"
 #include "kernel_io.h"
 #include "libft.h"
+#include "dynamic_allocator.h"
+#include "../memory/memory_manager.h"
 
 /*
 GRUB MEMORY OCCUPATION
@@ -82,6 +84,21 @@ s32		set_vbe(u16 selected_mode)
 	 * vesa_ctx.mode.framebuffer = 0xf0000000;
 	 */
 
+	vesa_ctx.db_framebuffer = kmalloc(vesa_ctx.mode.pitch * vesa_ctx.mode.height);
+	if (vesa_ctx.db_framebuffer == NULL)
+		return -1;
+
+	map_address(
+			0xf0000000,
+			1024,
+			vesa_ctx.mode.framebuffer,
+			kernel_space);
+
+	// NEED MARK VIRTUAL AREA
+
+
+	vesa_ctx.mode.framebuffer = 0xf0000000;
+
 	// re initialise GDT with Linear Frame Buffer address
 	init_gdt(vesa_ctx.mode.framebuffer);
 
@@ -89,6 +106,5 @@ s32		set_vbe(u16 selected_mode)
 	reg.eax = 0x4F02;
 	reg.ebx = selected_mode | LFB_BIT;
 	_int8086(&reg, 0x10);
-
 	return 0;
 }

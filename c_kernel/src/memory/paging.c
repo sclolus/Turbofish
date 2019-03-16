@@ -384,7 +384,7 @@ int			vmunmap(void *virt_addr, size_t size)
 /*
  * initialise all the paging system
  */
-int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
+int	init_paging(u32 available_memory)
 {
 	u32 res;
 	int i;
@@ -416,16 +416,6 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 	 */
 	for (; i < MAX_DIRECTORY_SEG; i++)
 		create_directory(i, kernel_space);
-
-	/*
-	 * clean all pages tables
-	 */
-//	bzero((void *)PAGE_TABLE_0_ADDR, sizeof(struct page_table_area));
-
-	/*
-	 * initialise virtual memory map
-	 */
-//	init_virtual_map();
 
 	/*
 	 * initialise physical memory map
@@ -467,36 +457,6 @@ int	init_paging(u32 available_memory, u32 *vesa_framebuffer)
 			0x800000,
 			kernel_space);
 	mark_physical_area((void *)0x800000, MAX_PAGE_TABLE_SEG);
-
-	if (vesa_framebuffer != NULL) {
-		/*
-		 * mapping of next 4mo, double frame buffer
-		 */
-		res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
-		map_address(
-				res,
-				MAX_PAGE_TABLE_SEG,
-				DB_FRAMEBUFFER_ADDR - 0xc0000000,
-				kernel_space);
-		mark_physical_area(
-				(void *)DB_FRAMEBUFFER_ADDR - 0xc0000000,
-				MAX_PAGE_TABLE_SEG);
-
-		/*
-		 * mapping of LFB VBE
-		 */
-		res = get_pages(MAX_PAGE_TABLE_SEG, reserved);
-		map_address(
-				res,
-				MAX_PAGE_TABLE_SEG,
-				*vesa_framebuffer,
-				kernel_space);
-		mark_physical_area(
-				(void *)*vesa_framebuffer,
-				MAX_PAGE_TABLE_SEG);
-		*vesa_framebuffer = res;
-		init_gdt(*vesa_framebuffer);
-	}
 
 	/*
 	 * store page directory address in CR3 register

@@ -25,7 +25,7 @@ void	fill_window(u8 red, u8 green, u8 blue)
 	u32 *dst;
 	u32 size;
 
-	dst = (uint32_t *)DB_FRAMEBUFFER_ADDR;
+	dst = (uint32_t *)vesa_ctx.db_framebuffer;
 	size = vesa_ctx.mode.width * vesa_ctx.mode.height;
 
 	if (vesa_ctx.mode.bpp == 32)
@@ -39,6 +39,6 @@ void	fill_window(u8 red, u8 green, u8 blue)
 void refresh_screen(void) {
 	_sse2_memcpy(
 			(u32 *)vesa_ctx.mode.framebuffer,
-			(void *)DB_FRAMEBUFFER_ADDR,
+			(void *)vesa_ctx.db_framebuffer,
 			vesa_ctx.mode.pitch * vesa_ctx.mode.height);
 }

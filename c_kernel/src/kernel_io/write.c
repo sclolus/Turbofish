@@ -52,7 +52,7 @@ static void	update_line(u32 location)
 {
 	_sse2_memcpy(
 			(void *)location + vesa_ctx.mode.framebuffer,
-			(void *)location + DB_FRAMEBUFFER_ADDR,
+			(void *)vesa_ctx.db_framebuffer + location,
 			vesa_ctx.mode.pitch * CHAR_HEIGHT);
 }
 
@@ -96,7 +96,7 @@ static void	write_char(u8 c, int direct)
 	if (direct == 0)
 		test_scroll();
 
-	graphic_putchar(c, (u8 *)(DB_FRAMEBUFFER_ADDR + g_cur_loc));
+	graphic_putchar(c, (u8 *)(vesa_ctx.db_framebuffer + g_cur_loc));
 
 	g_cur_loc += vesa_ctx.mode.bpp;
 	if (g_cur_loc % vesa_ctx.mode.pitch == 0) {
