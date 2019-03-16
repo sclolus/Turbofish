@@ -63,7 +63,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
     }
-
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
 
     unsafe {
@@ -126,6 +125,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("multiboot_infos {:#?}", multiboot_info);
     println!("device map ptr: {:#?}", device_map_ptr);
     println!("first structure: {:?}", unsafe { *device_map_ptr });
+
+    //crate::test_helpers::trash_test::sa_va_castagner();
+    //crate::test_helpers::trash_test::kpanic();
 
     /*
     use crate::memory::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};
