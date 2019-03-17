@@ -25,8 +25,7 @@ impl PhysicalPageAllocator {
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
             let res = self.allocator.alloc(order)?;
-            // let addr: Phys = res.into();
-            // eprintln!("physical alloc: {:x?}", addr);
+            // eprintln!("{:x?}", res.to_addr());
             Ok(res)
         } else {
             unimplemented!()
@@ -39,6 +38,7 @@ impl PhysicalPageAllocator {
     /// size in bytes
     pub fn free(&mut self, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
         let order = size.into();
+        // eprintln!("{:x?}", paddr.to_addr());
         Ok(self.allocator.free(paddr, order)?)
     }
 }

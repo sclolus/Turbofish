@@ -222,10 +222,10 @@ impl<T: Address> Page<T> {
         PageIter { current: from, end }
     }
 
-    // #[inline(always)]
-    // pub fn to_addr(self) -> T {
-    //     From::<Page<T>>::from(self)
-    // }
+    #[inline(always)]
+    pub fn to_addr(self) -> T {
+        From::<Page<T>>::from(self)
+    }
 }
 
 impl Page<Virt> {

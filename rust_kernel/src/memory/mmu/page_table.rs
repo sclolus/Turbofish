@@ -1,4 +1,5 @@
 //! This module contains code related to the Page Tables in the MMU.
+use super::invalidate_page;
 use super::Entry;
 use crate::memory::tools::*;
 use core::ops::{Index, IndexMut};
@@ -32,6 +33,7 @@ impl PageTable {
         Ok(())
     }
 
+    /// set the page to 0 and invalidate the tlb
     #[inline(always)]
     pub fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {
         let pt_index = virtp.pt_index();
@@ -39,8 +41,9 @@ impl PageTable {
             return Err(MemoryError::AlreadyUnMapped);
         }
 
-        //TODO: take custom flags
-        self[pt_index].set(Entry::PRESENT, false);
+        invalidate_page(virtp);
+
+        self[pt_index] = Default::default();
         Ok(())
     }
 }

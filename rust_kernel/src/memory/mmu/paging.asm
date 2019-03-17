@@ -4,6 +4,7 @@
 section .text
 global _enable_paging
 global _read_cr2
+global _invlpg
 ;; global _enable_paging
 ;; global _disable_paging
 
@@ -21,6 +22,14 @@ _enable_paging:
 	or eax, 0x80000001
 	mov cr0, eax
 	leave
+	ret
+
+_invlpg:
+	push ebp
+	mov ebp, esp
+	mov eax, [ebp + 8]
+	invlpg [eax]
+	pop ebp
 	ret
 
 _read_cr2:

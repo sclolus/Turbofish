@@ -37,12 +37,32 @@ impl PageDirectory {
         }
     }
 
+    #[inline(always)]
+    fn get_page_table_trick(&self, virtp: Page<Virt>) -> Option<&mut PageTable> {
+        let pd_index = virtp.pd_index();
+        if !self[pd_index].contains(Entry::PRESENT) {
+            return None;
+        }
+
+        Some(unsafe { &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable) })
+    }
+
+    #[inline(always)]
+    pub fn get_entry_mut(&mut self, virtp: Page<Virt>) -> Option<&mut Entry> {
+        self.get_page_table_trick(virtp).map(|page_table| &mut page_table[virtp.pt_index()])
+    }
+
+    #[inline(always)]
+    pub fn get_entry(&self, virtp: Page<Virt>) -> Option<Entry> {
+        self.get_page_table_trick(virtp).map(|page_table| page_table[virtp.pt_index()])
+    }
+
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
     pub unsafe fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
-        let pd_index = virtp.pd_index();
-        let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
-        page_table.map_page(virtp, physp, entry)
+        self.get_page_table_trick(virtp)
+            .ok_or(MemoryError::PageTableNotPresent)
+            .and_then(|page_table| page_table.map_page(virtp, physp, entry))
     }
 
     //TODO: check overflow
@@ -75,9 +95,9 @@ impl PageDirectory {
     }
 
     pub unsafe fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {
-        let pd_index = virtp.pd_index();
-        let page_table = &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable);
-        page_table.unmap_page(virtp)
+        self.get_page_table_trick(virtp)
+            .ok_or(MemoryError::PageTableNotPresent)
+            .and_then(|page_table| page_table.unmap_page(virtp))
     }
 
     //TODO: check overflow
@@ -89,18 +109,9 @@ impl PageDirectory {
     }
 
     pub unsafe fn physical_page(&self, vaddr: Page<Virt>) -> Option<Page<Phys>> {
-        let pd_index = vaddr.pd_index();
-        let pt_index = vaddr.pt_index();
-
-        // TODO: Change that with the trick
-        let page_table = &*((0xFFC00000 + pd_index * 4096) as *mut PageTable);
-
-        if page_table[pt_index].contains(Entry::PRESENT) {
-            Some(page_table[pt_index].entry_page())
-        } else {
-            None
-        }
+        self.get_entry(vaddr).map(|entry| entry.entry_page())
     }
+
     pub unsafe fn physical_addr(&self, vaddr: Virt) -> Option<Phys> {
         self.physical_page(vaddr.into()).map(|v| v.into())
     }

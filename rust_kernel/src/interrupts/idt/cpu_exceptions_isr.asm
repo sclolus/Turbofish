@@ -58,6 +58,11 @@ _isr_page_fault:
 	push 72
 	push cpu_page_fault_handler
 	call _align_stack
+	add esp, 32 + 12 ; to be on the pushad
+	popad
+	pop ebp
+	add esp, 4 ; to be on the eip
+	iret
 
 ; After expansion of macro (for cpu_default_interrupt)
 ; segment .data

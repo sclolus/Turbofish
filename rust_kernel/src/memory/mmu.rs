@@ -14,4 +14,12 @@ pub static mut PAGE_TABLES: [PageTable; 1024] = [PageTable::new(); 1024];
 extern "C" {
     pub fn _enable_paging(addr: Phys);
     fn _enable_pse();
+    fn _invlpg(addr: Virt);
+}
+
+#[inline(always)]
+pub fn invalidate_page(page: Page<Virt>) {
+    unsafe {
+        _invlpg(page.into());
+    }
 }

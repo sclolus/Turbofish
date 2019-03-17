@@ -50,6 +50,7 @@ bitflags! {
         /// WARN: Page Table specific, ignored in Page Directory
         /// if set, prevents the TLB from updating the address in its cache if CR3 is reset. Note, that the page global enable bit in CR4 must be set to enable this feature.
         const GLOBAL = 1 << 8;
+        const VALLOC = 1 << 9;
     }
 }
 

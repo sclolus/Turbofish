@@ -19,6 +19,8 @@ pub enum MemoryError {
     AlreadyUnMapped,
     CannotFree,
     NotPhysicalyMapped,
+    PageFault,
+    PageTableNotPresent,
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;

@@ -1,4 +1,5 @@
 use super::physical_page_allocator::{AllocFlags, PHYSICAL_ALLOCATOR};
+use crate::memory::mmu::invalidate_page;
 use crate::memory::mmu::Entry;
 use crate::memory::mmu::PageDirectory;
 use crate::memory::tools::*;
@@ -14,7 +15,6 @@ impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
     }
-    /// size in bytes
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
         //TODO: reserve the buddys
         unsafe {
@@ -23,7 +23,6 @@ impl VirtualPageAllocator {
         Ok(())
     }
 
-    /// size in bytes
     pub fn alloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
         //println!("alloc size: {:?}", size);
         let order = size.into();
@@ -44,16 +43,60 @@ impl VirtualPageAllocator {
         Ok(vaddr.into())
     }
 
-    /// size in bytes
+    pub fn valloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
+        //println!("alloc size: {:?}", size);
+        let order = size.into();
+        let vaddr = self.virt.alloc(order)?;
+        // eprintln!("{:x?}", v.to_addr());
+        unsafe {
+            self.mmu.map_range_page(vaddr, Page::new(0), size, Entry::READ_WRITE | Entry::VALLOC).map_err(|e| {
+                self.virt.free(vaddr, order).unwrap();
+                e
+            })?;
+        }
+        Ok(vaddr)
+    }
+
+    pub fn valloc_handle_page_fault(&mut self, cr2: u32) -> Result<()> {
+        let p = Page::containing(Virt(cr2 as usize));
+        // TODO: remove this unwrap
+        let entry = self.mmu.get_entry_mut(p).unwrap();
+        if entry.contains(Entry::VALLOC) {
+            let paddr = unsafe {
+                PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(NbrPages(1), AllocFlags::KERNEL_MEMORY).map_err(|e| e)
+            }?;
+            entry.set_entry_page(paddr);
+            *entry |= Entry::PRESENT;
+            Ok(())
+        } else {
+            Err(MemoryError::PageFault)
+        }
+    }
+
     pub fn free(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
         //println!("free size: {:?}", size);
+        // eprintln!("{:x?}", vaddr.to_addr());
         let order = size.into();
         self.virt.free(vaddr, order)?;
 
-        if let Some(paddr) = unsafe { self.mmu.physical_page(vaddr) } {
-            unsafe {
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size)?;
-                self.mmu.unmap_range_page(vaddr, size.into())
+        if let Some(entry) = self.mmu.get_entry(vaddr) {
+            if entry.contains(Entry::VALLOC) {
+                // Free of Valloced memory
+                for virtp in (vaddr..vaddr + size).iter() {
+                    let entry = self.mmu.get_entry_mut(virtp).unwrap();
+                    if entry.contains(Entry::PRESENT) {
+                        unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap().free(entry.entry_page(), NbrPages(1)) }?;
+                        invalidate_page(virtp);
+                    }
+                    *entry = Default::default();
+                }
+                Ok(())
+            } else {
+                // Free of Alloced memory
+                unsafe {
+                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(entry.entry_page(), size)?;
+                    self.mmu.unmap_range_page(vaddr, size.into())
+                }
             }
         } else {
             Err(MemoryError::NotPhysicalyMapped)
