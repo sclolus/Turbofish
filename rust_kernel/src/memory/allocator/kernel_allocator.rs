@@ -87,22 +87,23 @@ pub unsafe fn init_kernel_virtual_allocator() {
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
-    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_16MB, Entry::READ_WRITE | Entry::PRESENT)
-        .unwrap();
+    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT).unwrap();
+    // eprintln!("{:x?}", symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset));
+    eprintln!("virtual offset + 1Mb: {:x?}", symbol_addr!(virtual_offset) + 0x100000);
     pd.map_range_page_init(
-        Virt(symbol_addr!(virtual_offset)).into(),
-        Phys(0x0).into(),
-        (symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset)).into(),
+        Virt(symbol_addr!(virtual_offset) + 0x100000).into(),
+        Phys(0x100000).into(),
+        (symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset) - 0x100000).into(),
         Entry::READ_WRITE | Entry::PRESENT,
     )
     .unwrap();
-    eprintln!("{:x?}", symbol_addr!(kernel_virtual_end));
-    eprintln!("{:x?}", symbol_addr!(virtual_offset));
     let raw_pd = Box::into_raw(pd);
     let real_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
+
     _enable_paging(real_pd);
     pd = Box::from_raw(raw_pd);
     pd.self_map_tricks(real_pd);
+
     let virt = VirtualPageAllocator::new(buddy, pd);
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
     KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator);

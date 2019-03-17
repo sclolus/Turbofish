@@ -68,6 +68,7 @@ pub static mut UART_16550: Uart16550 = Uart16550::new(0x3F8);
 #[macro_export]
 macro_rules! serial_print {
     ($($arg:tt)*) => {
+        #[allow(unused_unsafe)]
         unsafe {
             core::fmt::write(&mut $crate::io::uart_16550::UART_16550, format_args!($($arg)*)).unwrap();
         }

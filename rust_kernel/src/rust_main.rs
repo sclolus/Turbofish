@@ -107,7 +107,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("begin test 1");
     debug::bench_start();
     let mut sum: u32 = 0;
-    for i in 0..4096 {
+    for i in 0..2 {
         let v: Vec<u8> = vec![(i & 0xff) as u8; 4096 * 16];
         sum += v[0] as u32;
         drop(v);
@@ -120,37 +120,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
-
-    /*
-    use crate::memory::kernel_allocator::{Allocator, KernelAllocator, ALLOCATOR};
-    use crate::memory::{MemoryError, Virt};
-
-    extern "C" {
-        fn ft_memset(v: Virt, u: u8, s: usize) -> Virt;
-    }
-
-    use core::alloc::Layout;
-
-    println!("begin test 2");
-    debug::bench_start();
-    for i in 0..4096 {
-        let v: Virt =
-
-        unsafe {
-        match &mut ALLOCATOR {
-            Allocator::Kernel(a) => a.alloc(4096 * 16).unwrap(), //.unwrap_or(Phys(0x0)).0 as *mut u8
-            Allocator::Bootstrap(_) => panic!("panic sa mere"),
-        }
-        };
-
-        unsafe {
-            ft_memset(v, (i & 0xff) as u8, 4096 * 16);
-            sum += *(v.0 as *const u8) as u32;
-        }
-    }
-    let t = debug::bench_end();
-    println!("{:?} ms ellapsed {:?}", t, sum);
-    */
     crate::watch_dog();
     sum
 }

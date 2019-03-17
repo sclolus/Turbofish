@@ -24,7 +24,10 @@ impl PhysicalPageAllocator {
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Phys>> {
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
-            self.allocator.alloc(order)
+            let res = self.allocator.alloc(order)?;
+            // let addr: Phys = res.into();
+            // eprintln!("physical alloc: {:x?}", addr);
+            Ok(res)
         } else {
             unimplemented!()
         }
@@ -43,6 +46,8 @@ impl PhysicalPageAllocator {
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
 pub unsafe fn init_physical_allocator(_device_map_ptr: *const DeviceMap) {
+    eprintln!("kernel physical end: {:x?}", symbol_addr!(kernel_physical_end));
+    eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_on(PAGE_SIZE));
     let pallocator = PhysicalPageAllocator::new(
         Phys(symbol_addr!(kernel_physical_end)).align_on(PAGE_SIZE).into(),
         KERNEL_PHYSICAL_MEMORY,

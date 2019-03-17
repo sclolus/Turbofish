@@ -19,8 +19,12 @@ extern "C" {
     pub static virtual_offset: u8;
     pub static kernel_virtual_start: u8;
     pub static kernel_virtual_end: u8;
+    pub static high_kernel_virtual_start: u8;
+    pub static high_kernel_virtual_end: u8;
     pub static kernel_physical_start: u8;
     pub static kernel_physical_end: u8;
+    pub static high_kernel_physical_start: u8;
+    pub static high_kernel_physical_end: u8;
 }
 
 /// get the symbol addr

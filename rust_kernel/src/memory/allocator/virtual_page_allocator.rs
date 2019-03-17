@@ -28,6 +28,8 @@ impl VirtualPageAllocator {
         //println!("alloc size: {:?}", size);
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
+        // let v: Virt = vaddr.into();
+        // eprintln!("virtual alloc: {:x?}", v);
         unsafe {
             let paddr = PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
