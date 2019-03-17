@@ -33,7 +33,7 @@ impl BootstrapKernelAllocator {
     pub unsafe fn alloc_bootstrap(&mut self, layout: Layout) -> Result<Virt> {
         let base_address = &BSS_MEMORY[0] as *const u8 as usize;
         let mut address = Virt(&BSS_MEMORY[self.current_offset] as *const u8 as usize);
-        address = address.align_on(layout.align());
+        address = address.align_next(layout.align());
         self.current_offset = address.0 - base_address + layout.size();
         if self.current_offset > BSS_MEMORY.len() {
             panic!("No more bootstrap memory");
@@ -81,19 +81,19 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
-        Virt(symbol_addr!(kernel_virtual_end)).align_on(PAGE_SIZE).into(),
+        Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE).into(),
         KERNEL_VIRTUAL_MEMORY,
         vec![0; BuddyAllocator::<Virt>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
     pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT).unwrap();
-    // eprintln!("{:x?}", symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset));
-    eprintln!("virtual offset + 1Mb: {:x?}", symbol_addr!(virtual_offset) + 0x100000);
     pd.map_range_page_init(
-        Virt(symbol_addr!(virtual_offset) + 0x100000).into(),
-        Phys(0x100000).into(),
-        (symbol_addr!(kernel_virtual_end) - symbol_addr!(virtual_offset) - 0x100000).into(),
+        Page::containing(Virt(symbol_addr!(high_kernel_virtual_start))),
+        Page::containing(Phys(symbol_addr!(high_kernel_physical_start))),
+        (Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE)
+            - Virt(symbol_addr!(high_kernel_virtual_start)).align_prev(PAGE_SIZE))
+        .into(),
         Entry::READ_WRITE | Entry::PRESENT,
     )
     .unwrap();

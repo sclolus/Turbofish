@@ -46,10 +46,13 @@ impl PhysicalPageAllocator {
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
 pub unsafe fn init_physical_allocator(_device_map_ptr: *const DeviceMap) {
-    eprintln!("kernel physical end: {:x?}", symbol_addr!(kernel_physical_end));
-    eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_on(PAGE_SIZE));
+    eprintln!("kernel physical end: {:x?}", symbol_addr!(high_kernel_physical_end));
+    eprintln!(
+        "kernel physical end alligned: {:x?}",
+        Phys(symbol_addr!(high_kernel_physical_end)).align_next(PAGE_SIZE)
+    );
     let pallocator = PhysicalPageAllocator::new(
-        Phys(symbol_addr!(kernel_physical_end)).align_on(PAGE_SIZE).into(),
+        Phys(symbol_addr!(high_kernel_physical_end)).align_next(PAGE_SIZE).into(),
         KERNEL_PHYSICAL_MEMORY,
     );
 

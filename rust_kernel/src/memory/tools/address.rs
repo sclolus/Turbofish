@@ -31,12 +31,21 @@ pub trait Address:
     /// Align the address on a multiple of size
     /// size must be a power of two
     #[inline(always)]
-    fn align_on(self, size: usize) -> <Self as Add<usize>>::Output {
+    fn align_next(self, size: usize) -> <Self as Add<usize>>::Output {
         debug_assert!(size.is_power_of_two());
 
         let addr: usize = self.into();
 
         self + (!self.is_aligned_on(size)) as usize * (size - (addr & (size - 1)))
+    }
+
+    #[inline(always)]
+    fn align_prev(self, size: usize) -> <Self as Sub<usize>>::Output {
+        debug_assert!(size.is_power_of_two());
+
+        let addr: usize = self.into();
+
+        self - (addr & size - 1)
     }
 }
 
@@ -212,6 +221,11 @@ impl<T: Address> Page<T> {
         let end = Self::new(to.number - 1);
         PageIter { current: from, end }
     }
+
+    // #[inline(always)]
+    // pub fn to_addr(self) -> T {
+    //     From::<Page<T>>::from(self)
+    // }
 }
 
 impl Page<Virt> {
@@ -334,10 +348,10 @@ mod test {
     fn test_align() {
         for i in 0..1000 {
             dbg!(i);
-            dbg!(Phys(i).align_on(4));
-            assert!(Phys(i).align_on(4).is_aligned_on(4));
-            assert!(Phys(i).align_on(4) >= Phys(i));
+            dbg!(Phys(i).align_next(4));
+            assert!(Phys(i).align_next(4).is_aligned_on(4));
+            assert!(Phys(i).align_next(4) >= Phys(i));
         }
-        assert_eq!(Phys(1).align_on(4), Phys(4));
+        assert_eq!(Phys(1).align_next(4), Phys(4));
     }
 }
