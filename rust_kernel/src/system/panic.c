@@ -7,7 +7,7 @@ struct symbol_entry {
 	const char *name;
 };
 
-#include "nm.map"
+#include "autobuild/nm.map"
 
 struct symbol {
 	u32 offset;

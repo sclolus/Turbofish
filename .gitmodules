@@ -1,6 +1,6 @@
-[submodule "c_kernel/libft"]
-	path = c_kernel/libft
+[submodule "common/libft"]
+	path = common/libft
 	url = https://gitlab.com/mordaklavache/libft_ng.git
-[submodule "c_kernel/libasm_i386"]
-	path = c_kernel/libasm_i386
+[submodule "common/libasm_i386"]
+	path = common/libasm_i386
 	url = https://gitlab.com/mordaklavache/libasm_i386.git

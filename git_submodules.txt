@@ -1,0 +1,2 @@
+git add .gitmodules
+git submodule update

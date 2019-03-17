@@ -1,1 +1,1 @@
-../../../c_kernel/src/system/align_stack.asm
+../../../common/src/align_stack.asm

@@ -33,27 +33,7 @@ endif
 
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc -fno-pie
 
-IFLAGS = -Iinclude -Ilibft/includes -Ilibftasm_i386/includes
-
-
-# init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
-
-SRC_C_INIT += get_device_mem_map vga_text early_gdt early_panic early_idt watchdog
-SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
-VPATH += src/boot/init
-INIT_HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm watchdog.h
-
-OBJ_INIT_DIR := objs/init
-OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
-OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
-
-$(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
-	objcopy --prefix-symbols=alt_ $@
-
-$(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
-	$(ASM) $(ASMFLAGS) -o $@ $<
-	objcopy --prefix-symbols=alt_ $@
+IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes -I./
 
 SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=
@@ -104,7 +84,7 @@ endif
 
 .PHONY: all clean fclean common_clean re exec $(kernel)
 
-all: .rust_toolchain .xbuild_toolchain symbol_gen_exe build_rust build_libasm_i386 build_libft $(kernel)
+all: .rust_toolchain .xbuild_toolchain autobuild/nm_map_gen build_rust build_libasm_i386 build_libft $(kernel)
 
 .rust_toolchain: rust-toolchain
 	rustup component add rust-src
@@ -117,47 +97,50 @@ all: .rust_toolchain .xbuild_toolchain symbol_gen_exe build_rust build_libasm_i3
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
-	rm -f nm.res
-	rm -f nm_map_gen
+	rm -f autobuild/nm.res
+	rm -f autobuild/nm.map
+	rm -f autobuild/nm_map_gen
 	rm -f $(kernel)
 	cargo clean
 
 clean: common_clean
 	make -C libft clean
 	make -C libasm_i386 clean
+	make -C src/boot/bootstrap clean
 
 fclean: common_clean
 	make -C libft fclean
 	make -C libasm_i386 fclean
+	make -C src/boot/bootstrap fclean
 
 re: fclean all
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/init/early_panic.o src/boot/init/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/init/early_panic.o
-extract_kernel_symbols = nm -n $@ > nm.res
-gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
+compile_bootstrap = make -C src/boot/bootstrap
+extract_kernel_symbols = nm -n $@ > autobuild/nm.res
+gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
-symbol_gen_exe:
-	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
+autobuild/nm_map_gen: autobuild/nm_map_gen.c
+	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
+LIBS = libft/libft.a libasm_i386/libasm_i386.a
 
-$(kernel): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(LIBS)
+$(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rust_os) $(LIBS)
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
-	$(compile_early_panic)
+	$(compile_bootstrap)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
-	$(compile_early_panic)
+	$(compile_bootstrap)
 
 	@echo POSTBUILD
 	$(link_kernel)
@@ -165,11 +148,14 @@ $(kernel): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL) $(rus
 build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
 
+src/boot/bootstrap/build/bootstrap.o:
+	$(compile_bootstrap)
+
 build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
 test:
 	cargo test --target i686-unknown-linux-gnu
