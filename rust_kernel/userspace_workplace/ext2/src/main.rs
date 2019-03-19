@@ -1,41 +1,6 @@
 use core::mem::size_of;
-use std::fs::File;
+use std::fs::File as StdFile;
 use std::io::{Read, Seek, SeekFrom};
-
-#[derive(Copy, Clone)]
-#[repr(transparent)]
-#[allow(non_camel_case_types)]
-pub struct c_char(pub u8);
-
-impl fmt::Debug for c_char {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0 as char)
-    }
-}
-
-pub unsafe extern "C" fn strlen(ptr: *const c_char) -> usize {
-    let mut i = 0;
-    while (*ptr.offset(i as isize)).0 != 0 {
-        i += 1;
-    }
-    i
-}
-
-#[derive(Copy, Clone)]
-#[repr(C)]
-#[allow(non_camel_case_types)]
-pub struct c_str {
-    pub ptr: *const c_char,
-}
-
-impl fmt::Debug for c_str {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(self.ptr as *const u8, strlen(self.ptr)); // Make slice of u8 (&[u8])
-            write!(f, "{}", core::str::from_utf8_unchecked(slice)) // Make str slice (&[str]) with &[u8]
-        }
-    }
-}
 
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
@@ -292,9 +257,29 @@ struct DirectoryEntryHeader {
     /// Type indicator (only if the feature bit for "directory entries have file type byte" is set, else this is the most-significant 8 bits of the Name Length)
     /*7 	7 	1*/
     type_indicator: u8,
+    /// N 	Name characters
+    /*8 	8+N-1*/
+    filename: Filename,
 }
-/// N 	Name characters
-/*8 	8+N-1*/
+
+impl DirectoryEntryHeader {
+    pub fn get_filename(&self) -> &str {
+        unsafe {
+            let slice: &[u8] = core::slice::from_raw_parts(&self.filename.0 as *const u8, self.name_length as usize);
+            core::str::from_utf8_unchecked(slice)
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+#[repr(transparent)]
+pub struct Filename(pub [u8; 256]);
+
+impl fmt::Debug for Filename {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", "Filename")
+    }
+}
 
 fn div_rounded_up(a: u32, b: u32) -> u32 {
     (a + b - 1) / b
@@ -304,13 +289,13 @@ struct Ext2Filesystem {
     superblock: SuperBlock,
     nbr_block_grp: u32,
     block_size: u32,
-    f: File,
+    f: StdFile,
     buf: [u8; 4096],
 }
 
 struct EntryIter<'a> {
     filesystem: &'a mut Ext2Filesystem,
-    inode: Inode,
+    inode: &'a Inode,
     cur_offset: u32,
     cur_dir_index: u16,
 }
@@ -322,16 +307,27 @@ impl<'a> Iterator for EntryIter<'a> {
             let d = self.filesystem.find_entry(&self.inode, self.cur_offset);
             self.cur_dir_index += 1;
             self.cur_offset += d.entry_size as u32;
-            if d.inode == 0 {}
-            Some(d)
+            if d.inode == 0 {
+                self.next()
+            } else {
+                Some(d)
+            }
         } else {
             None
         }
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct File {
+    inode: Inode,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct IoError;
+
 impl Ext2Filesystem {
-    pub fn new(mut f: File) -> Self {
+    pub fn new(mut f: StdFile) -> Self {
         let mut buf = [0; 4096];
 
         // the base superblock start at byte 1024
@@ -366,7 +362,7 @@ impl Ext2Filesystem {
         let offset = if self.block_size == 1024 { 2 * 1024 } else { self.block_size };
 
         let block_group_descriptr_addr = offset + (n - 1) * self.block_size;
-        self.read_struct(block_group_descriptr_addr)
+        self.disk_read_struct(block_group_descriptr_addr)
     }
 
     pub fn to_addr(&self, block_number: BlockNumber) -> u32 {
@@ -382,12 +378,12 @@ impl Ext2Filesystem {
 
         let block_grp_descriptor = self.find_block_grp(block_grp);
         // dbg!(block_grp_descriptor);
-        let inode_usage: [u8; 10] = self.read_struct(self.to_addr(block_grp_descriptor.inode_usage_bitmap));
+        let inode_usage: [u8; 10] = self.disk_read_struct(self.to_addr(block_grp_descriptor.inode_usage_bitmap));
         dbg!(inode_usage);
         let inode_addr = self.to_addr(block_grp_descriptor.inode_table) + inode_offset;
         // dbg!(inode_addr);
 
-        self.read_struct(inode_addr)
+        self.disk_read_struct(inode_addr)
     }
 
     pub fn find_entry(&mut self, inode: &Inode, offset_entry: u32) -> DirectoryEntryHeader {
@@ -395,52 +391,58 @@ impl Ext2Filesystem {
         // assert!(offset_entry < self.block_size);
         let base_addr = self.to_addr(inode.direct_block_pointers[(offset_entry / self.block_size) as usize])
             + offset_entry % self.block_size;
-        let dir_header: DirectoryEntryHeader = self.read_struct(base_addr);
-        let ptr = self.read_exact(base_addr + size_of::<DirectoryEntryHeader>() as u32, dir_header.name_length as u32);
-        let name = unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(ptr, dir_header.name_length as usize);
-            core::str::from_utf8_unchecked(slice)
-        };
-        if dir_header.inode != 0 {
-            dbg!(name);
-        }
+        let dir_header: DirectoryEntryHeader = self.disk_read_struct(base_addr);
+        // let ptr = self.disk_read_exact(base_addr + size_of::<DirectoryEntryHeader>() as u32, dir_header.name_length as u32);
         dir_header
     }
 
-    pub fn iter_entries(&mut self, inode: Inode) -> EntryIter {
+    pub fn iter_entries<'a>(&'a mut self, inode: &'a Inode) -> EntryIter<'a> {
         EntryIter { filesystem: self, inode, cur_dir_index: 0, cur_offset: 0 }
     }
 
-    pub fn read_struct<T: Copy>(&mut self, offset: u32) -> T {
+    pub fn disk_read_struct<T: Copy>(&mut self, offset: u32) -> T {
         self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
         self.f.read(&mut self.buf[0..core::mem::size_of::<T>()]).unwrap();
         unsafe { core::mem::transmute_copy(&self.buf) }
     }
 
-    pub fn read_exact(&mut self, offset: u32, length: u32) -> *const u8 {
+    pub fn disk_read_exact(&mut self, offset: u32, length: u32) -> *const u8 {
         assert!((length as usize) < self.buf.len());
         self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
         self.f.read(&mut self.buf[0..length as usize]).unwrap();
         &self.buf as *const u8
     }
+
+    pub fn open(&mut self, filename: &str) -> Result<File, IoError> {
+        let mut inode = self.find_inode(2);
+        for p in filename.split('/') {
+            let entry = self.iter_entries(&inode).find(|x| x.get_filename() == p).ok_or(IoError)?;
+            inode = self.find_inode(entry.inode);
+        }
+        Ok(File { inode })
+    }
 }
 
 fn main() {
-    let f = File::open("simple_diskp1").unwrap();
+    let f = StdFile::open("simple_diskp1").unwrap();
     let mut ext2 = Ext2Filesystem::new(f);
     let inode = ext2.find_inode(2);
     // dbg!(inode);
     // let dir_entry = ext2.find_entry(&inode, 0);
     // dbg!(dir_entry);
-    for e in ext2.try_clone().unwrap().iter_entries(inode).skip(2) {
-        // dbg!(e);
+    for e in ext2.try_clone().unwrap().iter_entries(&inode).skip(2) {
+        dbg!(e.get_filename());
         let inode = ext2.find_inode(e.inode);
         println!("{:?}", inode);
         println!("inner");
-        for _e in ext2.iter_entries(inode).skip(2) {
-            // dbg!("INNER");
+        for e in ext2.iter_entries(&inode).skip(2) {
             // dbg!(e);
+            dbg!(e.get_filename());
         }
         println!("end inner");
     }
+    let file = ext2.open("dir/chameau_poilu");
+    println!("{:#?}", file);
+    let file = ext2.open("dir/artichaud");
+    println!("{:#?}", file);
 }
