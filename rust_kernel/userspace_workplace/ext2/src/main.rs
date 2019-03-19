@@ -87,14 +87,59 @@ struct BaseSuperBlock {
     group_id_reserved_blocks: u16,
 }
 
+#[derive(Debug, Copy, Clone)]
+#[repr(packed)]
+struct BlockGroupDescriptor {
+    /// Block address of block usage bitmap
+    /*0 	3 	4*/
+    block_usage_bitmap: BlockNumber,
+    /// Block address of inode usage bitmap
+    /*4 	7 	4*/
+    inode_usage_bitmap: BlockNumber,
+    /// Starting block address of inode table
+    /*8 	11 	4*/
+    inode_table: BlockNumber,
+    /// Number of unallocated blocks in group
+    /*12 	13 	2*/
+    nbr_unallocated_blocks: u16,
+    /// Number of unallocated inodes in group
+    /*14 	15 	2*/
+    nbr_unallocated_inodes: u16,
+    /// Number of directories in group
+    /*16 	17 	2*/
+    nbr_directories: u16,
+}
+
+fn div_rounded_up(a: u32, b: u32) -> u32 {
+    (a + b - 1) / b
+}
+
 fn main() {
     let mut f = File::open("simple_diskp1").unwrap();
     let mut buf = [0; 4096];
 
+    // the base superblock start at byte 1024
     f.seek(SeekFrom::Start(1024)).unwrap();
     f.read(&mut buf[0..core::mem::size_of::<BaseSuperBlock>()]).unwrap();
     let base_superblock: BaseSuperBlock = unsafe { core::mem::transmute_copy(&buf) };
-    println!("{:#x?}", base_superblock);
+    println!("{:#?}", base_superblock);
 
     assert_eq!(base_superblock.ext2_signature, EXT2_SIGNATURE_MAGIC);
+
+    let nbr_of_block_grp = div_rounded_up(base_superblock.nbr_blocks, base_superblock.block_per_block_grp);
+    let nbr_of_block_grp2 = div_rounded_up(base_superblock.nbr_inode, base_superblock.inodes_per_block_grp);
+
+    // consistency check
+    assert_eq!(nbr_of_block_grp, nbr_of_block_grp2);
+
+    let block_size = 1024 << base_superblock.log2_block_size;
+    dbg!(block_size);
+
+    // The table is located in the block immediately following the Superblock. So if the block size (determined from a field in the superblock) is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. For any other block size, it will begin at block 1. Remember that blocks are numbered starting at 0, and that block numbers don't usually correspond to physical block addresses.
+    let block_group_descriptr_addr = if block_size == 1024 { 2 * 1024 } else { block_size };
+
+    f.seek(SeekFrom::Start(block_group_descriptr_addr)).unwrap();
+    f.read(&mut buf[0..core::mem::size_of::<BlockGroupDescriptor>()]).unwrap();
+    let first_block_group_descriptor: BlockGroupDescriptor = unsafe { core::mem::transmute_copy(&buf) };
+    dbg!(first_block_group_descriptor);
 }
