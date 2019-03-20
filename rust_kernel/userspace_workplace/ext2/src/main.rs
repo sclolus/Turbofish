@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use core::mem::size_of;
 use std::fs::File as StdFile;
 use std::io::{Read, Seek, SeekFrom};
@@ -61,10 +62,10 @@ struct SuperBlock {
     ext2_signature: u16,
     /// File system state (see below)
     /*58 	59 	2*/
-    file_system_state: u16,
+    file_system_state: FileSystemState,
     /// What to do when an error is detected (see below)
     /*60 	61 	2*/
-    error_case: u16,
+    error_handling_methods: ErrorHandlingMethods,
     /// Minor portion of version (combine with Major portion below to construct full version field)
     /*62 	63 	2*/
     minor_version: u16,
@@ -76,7 +77,7 @@ struct SuperBlock {
     interval_between_forced_consistency_checks: u32,
     /// Operating system ID from which the filesystem on this volume was created (see below)
     /*72 	75 	4*/
-    operating_system_id: u32,
+    creator_operating_system: CreatorOperatingSystem,
     /// Major portion of version (combine with Minor portion above to construct full version field)
     /*76 	79 	4*/
     major_version: u32,
@@ -97,13 +98,13 @@ struct SuperBlock {
     block_group_of_superblock: u16,
     /// Optional features present (features that are not required to read or write, but usually result in a performance increase. see below)
     /*92   95   4 */
-    optional_features_present: u32,
+    optional_features_flag: OptionalFeaturesFlag,
     /// Required features present (features that are required to be supported to read or write. see below)
     /*96   99   4 */
-    required_features_present: u32,
+    required_features_flag: RequiredFeaturesFlag,
     /// Features that if not supported, the volume must be mounted read-only see below)
     /*100  103  4 */
-    feature_must_read_only: u32,
+    feature_must_read_only: ReadOnlyFeaturesFlag,
     /// File system ID (what is output by blkid)
     /*104  119  16*/
     file_system_id: u16,
@@ -137,6 +138,64 @@ struct SuperBlock {
     /// Head of orphan inode list
     /*232  235  4 */
     head_of_orphan_inode_list: u32,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+#[repr(u16)]
+enum FileSystemState {
+    IsClean = 1,
+    HasErrors = 2,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+#[repr(u16)]
+enum ErrorHandlingMethods {
+    IgnoreTheError = 1,
+    RemountFileSystemAsReadOnly = 2,
+    KernelPanic = 3,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+#[repr(u32)]
+enum CreatorOperatingSystem {
+    Linux = 0,
+    HURD,
+    /// (an operating system developed by Rémy Card, one of the developers of ext2)
+    MASIX,
+    FreeBSD,
+    /// "Lites" (BSD4.4-Lite derivatives such as NetBSD, OpenBSD, XNU/Darwin, etc.)
+    Other,
+}
+
+bitflags! {
+    struct RequiredFeaturesFlag: u32 {
+        const COMPRESSION_IS_USED = 0x1;
+        const DIRECTORY_ENTRIES_CONTAIN_A_TYPE_FIELD = 0x2;
+        const FILE_SYSTEM_NEEDS_TO_REPLAY_ITS_JOURNAL = 0x4;
+        const FILE_SYSTEM_USES_A_JOURNAL_DEVICE = 0x8;
+    }
+}
+
+bitflags! {
+    struct OptionalFeaturesFlag: u32 {
+        const PREALLOCATE_SOME_NUMBER_OF_BLOCKS_A_DIRECTORY_WHEN_CREATING_A_NEW_ONE = 0x0001;
+        const AFS_SERVER_INODES_EXIST = 0x0002;
+        const FILE_SYSTEM_HAS_A_JOURNAL = 0x0004;
+        const INODES_HAVE_EXTENDED_ATTRIBUTES = 0x0008;
+        const FILE_SYSTEM_CAN_RESIZE_ITSELF_FOR_LARGER_PARTITIONS = 0x0010;
+        const DIRECTORIES_USE_HASH_INDEX = 0x0020;
+    }
+}
+
+bitflags! {
+    struct ReadOnlyFeaturesFlag: u32 {
+        const SPARSE_SUPERBLOCKS_AND_GROUP_DESCRIPTOR_TABLES = 0x1;
+        const FILE_SYSTEM_USES_A_64_BIT_FILE_SIZE = 0x2;
+        const DIRECTORY_CONTENTS_ARE_STORED_IN_THE_FORM_OF_A_BINARY_TREE = 0x3;
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -179,7 +238,7 @@ struct BlockGroupDescriptor {
 struct Inode {
     /// Type and Permissions (see below)
     /*0 	1       2*/
-    type_and_permissions: u16,
+    type_and_permissions: TypeAndPerm,
     /// User ID
     /*2 	3       2*/
     user_id: u16,
@@ -209,7 +268,7 @@ struct Inode {
     nbr_disk_sectors: u32,
     /// Flags (see below)
     /*32 	35      4*/
-    flags: u32,
+    flags: InodeFlags,
     /// Operating System Specific value #1
     /*36 	39      4*/
     operating_system_specific_value_1: u32,
@@ -242,6 +301,46 @@ struct Inode {
     operating_system_specific_value_2: u32,
 }
 
+bitflags! {
+    struct TypeAndPerm: u16 {
+        const FIFO = 0x1000;
+        const CHARACTER_DEVICE = 0x2000;
+        const DIRECTORY = 0x4000;
+        const BLOCK_DEVICE = 0x6000;
+        const REGULAR_FILE = 0x8000;
+        const SYMBOLIC_LINK = 0xA000;
+        const UNIX_SOCKET = 0xC000;
+        const OTHER_EXECUTE_PERMISSION = 0o0001;
+        const OTHER_WRITE_PERMISSION = 0o0002;
+        const OTHER_READ_PERMISSION = 0o0004;
+        const GROUP_EXECUTE_PERMISSION = 0o0010;
+        const GROUP_WRITE_PERMISSION = 0o0020;
+        const GROUP_READ_PERMISSION = 0o0040;
+        const USER_EXECUTE_PERMISSION = 0o0100;
+        const USER_WRITE_PERMISSION = 0o0200;
+        const USER_READ_PERMISSION = 0o0400;
+        const STICKY_BIT = 0o1000;
+        const SET_GROUP_ID = 0o2000;
+        const SET_USER_ID = 0o4000;
+    }
+}
+
+bitflags! {
+    struct InodeFlags: u32 {
+        const SECURE_DELETION = 0x00000001;
+        const KEEP_A_COPY_OF_DATA_WHEN_DELETED = 0x00000002;
+        const FILE_COMPRESSION = 0x00000004;
+        const SYNCHRONOUS_UPDATES_NEW_DATA_IS_WRITTEN_IMMEDIATELY_TO_DISK = 0x00000008;
+        const IMMUTABLE_FILE = 0x00000010;
+        const APPEND_ONLY = 0x00000020;
+        const FILE_IS_NOT_INCLUDED_IN_DUMP_COMMAND = 0x00000040;
+        const LAST_ACCESSED_TIME_SHOULD_NOT_UPDATED = 0x00000080;
+        const HASH_INDEXED_DIRECTORY = 0x00010000;
+        const AFS_DIRECTORY = 0x00020000;
+        const JOURNAL_FILE_DATA = 0x00040000;
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 struct DirectoryEntryHeader {
@@ -256,10 +355,24 @@ struct DirectoryEntryHeader {
     name_length: u8,
     /// Type indicator (only if the feature bit for "directory entries have file type byte" is set, else this is the most-significant 8 bits of the Name Length)
     /*7 	7 	1*/
-    type_indicator: u8,
+    type_indicator: DirectoryEntryType,
     /// N 	Name characters
     /*8 	8+N-1*/
     filename: Filename,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+#[repr(u8)]
+enum DirectoryEntryType {
+    UnknownType,
+    RegularFile,
+    Directory,
+    CharacterDevice,
+    BlockDevice,
+    Fifo,
+    Socket,
+    SymbolicLink,
 }
 
 impl DirectoryEntryHeader {
@@ -283,14 +396,6 @@ impl fmt::Debug for Filename {
 
 fn div_rounded_up(a: u32, b: u32) -> u32 {
     (a + b - 1) / b
-}
-
-struct Ext2Filesystem {
-    superblock: SuperBlock,
-    nbr_block_grp: u32,
-    block_size: u32,
-    f: StdFile,
-    buf: [u8; 4096],
 }
 
 struct EntryIter<'a> {
@@ -326,6 +431,14 @@ pub struct File {
 
 #[derive(Debug, Copy, Clone)]
 pub struct IoError;
+
+struct Ext2Filesystem {
+    superblock: SuperBlock,
+    nbr_block_grp: u32,
+    block_size: u32,
+    f: StdFile,
+    buf: [u8; 4096],
+}
 
 impl Ext2Filesystem {
     pub fn new(mut f: StdFile) -> Self {
