@@ -321,6 +321,7 @@ impl<'a> Iterator for EntryIter<'a> {
 #[derive(Debug, Copy, Clone)]
 pub struct File {
     inode: Inode,
+    curr_offset: u32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -378,8 +379,6 @@ impl Ext2Filesystem {
 
         let block_grp_descriptor = self.find_block_grp(block_grp);
         // dbg!(block_grp_descriptor);
-        let inode_usage: [u8; 10] = self.disk_read_struct(self.to_addr(block_grp_descriptor.inode_usage_bitmap));
-        dbg!(inode_usage);
         let inode_addr = self.to_addr(block_grp_descriptor.inode_table) + inode_offset;
         // dbg!(inode_addr);
 
@@ -413,19 +412,47 @@ impl Ext2Filesystem {
         &self.buf as *const u8
     }
 
+    pub fn disk_read_buffer(&mut self, offset: u32, buf: &mut [u8]) -> usize {
+        self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
+        self.f.read(buf).unwrap()
+    }
+
     pub fn open(&mut self, filename: &str) -> Result<File, IoError> {
         let mut inode = self.find_inode(2);
         for p in filename.split('/') {
             let entry = self.iter_entries(&inode).find(|x| x.get_filename() == p).ok_or(IoError)?;
+            dbg!(entry.get_filename());
             inode = self.find_inode(entry.inode);
         }
-        Ok(File { inode })
+        Ok(File { inode, curr_offset: 0 })
+    }
+
+    pub fn read(&mut self, file: File, buf: &mut [u8]) -> Result<usize, IoError> {
+        // TODO: do indirect
+        let len = buf.len();
+        Ok(self.disk_read_buffer(
+            self.to_addr(file.inode.direct_block_pointers[(file.curr_offset / self.block_size) as usize])
+                + file.curr_offset,
+            &mut buf[0..core::cmp::min(len, (self.block_size - file.curr_offset % self.block_size) as usize)],
+        ))
+    }
+}
+
+fn find_string(path: &str, patern: &[u8]) {
+    let data = std::fs::read(path).unwrap();
+    for i in 0..data.len() - patern.len() {
+        if &data[i..i + patern.len()] == patern {
+            println!("match");
+            dbg!(i);
+        }
     }
 }
 
 fn main() {
-    let f = StdFile::open("simple_diskp1").unwrap();
+    let args: Vec<String> = std::env::args().collect();
+    let f = StdFile::open(&args[1]).unwrap();
     let mut ext2 = Ext2Filesystem::new(f);
+    dbg!(ext2.superblock);
     let inode = ext2.find_inode(2);
     // dbg!(inode);
     // let dir_entry = ext2.find_entry(&inode, 0);
@@ -436,13 +463,21 @@ fn main() {
         println!("{:?}", inode);
         println!("inner");
         for e in ext2.iter_entries(&inode).skip(2) {
-            // dbg!(e);
+            dbg!(e);
             dbg!(e.get_filename());
         }
         println!("end inner");
     }
-    let file = ext2.open("dir/chameau_poilu");
+    let file = ext2.open("dir/banane").unwrap();
     println!("{:#?}", file);
+    let mut buf = [42; 1024];
+    let count = ext2.read(file, &mut buf).unwrap();
+    dbg!(count);
+
+    unsafe {
+        println!("string: {}", core::str::from_utf8_unchecked(&buf));
+    }
     let file = ext2.open("dir/artichaud");
     println!("{:#?}", file);
+    find_string("simple_diskp1", "lescarotessontcuites".as_bytes());
 }
