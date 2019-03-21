@@ -1,7 +1,8 @@
 use bitflags::bitflags;
+use core::cmp::min;
 use core::mem::size_of;
 use std::fs::File as StdFile;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
@@ -440,12 +441,14 @@ struct Ext2Filesystem {
     buf: [u8; 4096],
 }
 
+const START_OF_PARTITION: u64 = 2048 * 512;
+
 impl Ext2Filesystem {
     pub fn new(mut f: StdFile) -> Self {
         let mut buf = [0; 4096];
 
         // the base superblock start at byte 1024
-        f.seek(SeekFrom::Start(1024)).unwrap();
+        f.seek(SeekFrom::Start(1024 + START_OF_PARTITION)).unwrap();
         f.read(&mut buf[0..size_of::<SuperBlock>()]).unwrap();
         let superblock: SuperBlock = unsafe { core::mem::transmute_copy(&buf) };
 
@@ -513,20 +516,20 @@ impl Ext2Filesystem {
     }
 
     pub fn disk_read_struct<T: Copy>(&mut self, offset: u32) -> T {
-        self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
+        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
         self.f.read(&mut self.buf[0..core::mem::size_of::<T>()]).unwrap();
         unsafe { core::mem::transmute_copy(&self.buf) }
     }
 
     pub fn disk_read_exact(&mut self, offset: u32, length: u32) -> *const u8 {
         assert!((length as usize) < self.buf.len());
-        self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
+        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
         self.f.read(&mut self.buf[0..length as usize]).unwrap();
         &self.buf as *const u8
     }
 
     pub fn disk_read_buffer(&mut self, offset: u32, buf: &mut [u8]) -> usize {
-        self.f.seek(SeekFrom::Start(offset as u64)).unwrap();
+        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
         self.f.read(buf).unwrap()
     }
 
@@ -534,20 +537,101 @@ impl Ext2Filesystem {
         let mut inode = self.find_inode(2);
         for p in filename.split('/') {
             let entry = self.iter_entries(&inode).find(|x| x.get_filename() == p).ok_or(IoError)?;
-            dbg!(entry.get_filename());
+            // dbg!(entry.get_filename());
             inode = self.find_inode(entry.inode);
         }
         Ok(File { inode, curr_offset: 0 })
     }
 
-    pub fn read(&mut self, file: File, buf: &mut [u8]) -> Result<usize, IoError> {
+    pub fn inode_data_address_at_offset(&mut self, inode: &Inode, offset: u32) -> Option<u32> {
+        let block_off = offset / self.block_size;
+        let blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
+        // let none_if_zero = |x| if x == 0 { None } else { Some(x) };
+        dbg!(offset);
+
+        // Simple Addressing
+        let mut offset_start = 0;
+        let mut offset_end = 12;
+        if block_off >= offset_start && block_off < offset_end {
+            return Some(self.to_addr(inode.direct_block_pointers[block_off as usize]) + offset % self.block_size);
+        }
+
+        // Singly Indirect Addressing
+        // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
+        offset_start = offset_end;
+        offset_end += blocknumber_per_block as u32;
+        if block_off >= offset_start && block_off < offset_end {
+            dbg!("singly indirect addressing");
+            let off = block_off - offset_start;
+            // let pointer_table = vec![BlockNumber(0); blocknumber_per_block];
+            let pointer: BlockNumber = self.disk_read_struct(
+                self.to_addr(inode.singly_indirect_block_pointers) + off * size_of::<BlockNumber>() as u32,
+            );
+            dbg!(pointer);
+
+            return Some((self.to_addr(pointer) + offset % self.block_size));
+        }
+
+        // Doubly Indirect Addressing
+        offset_start = offset_end;
+        offset_end += (blocknumber_per_block * blocknumber_per_block) as u32;
+        if block_off >= offset_start && block_off < offset_end {
+            dbg!("doubly indirect addressing");
+            let off = (block_off - offset_start) / blocknumber_per_block as u32;
+            let pointer_to_pointer: BlockNumber = self.disk_read_struct(
+                self.to_addr(inode.doubly_indirect_block_pointers) + off * size_of::<BlockNumber>() as u32,
+            );
+
+            let pointer: BlockNumber = self.disk_read_struct(
+                self.to_addr(pointer_to_pointer)
+                    + ((block_off - offset_start) % blocknumber_per_block as u32) * size_of::<BlockNumber>() as u32,
+            );
+
+            return Some(self.to_addr(pointer) + offset % self.block_size);
+        }
+
+        // Triply Indirect Addressing
+        offset_start = offset_end;
+        offset_end += blocknumber_per_block as u32;
+        if block_off >= offset_start && block_off < offset_end {
+            return None;
+        } else {
+            panic!("out of file bound");
+        }
+    }
+
+    pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> Result<usize, IoError> {
         // TODO: do indirect
+        let file_curr_offset_start = file.curr_offset;
         let len = buf.len();
-        Ok(self.disk_read_buffer(
-            self.to_addr(file.inode.direct_block_pointers[(file.curr_offset / self.block_size) as usize])
-                + file.curr_offset,
-            &mut buf[0..core::cmp::min(len, (self.block_size - file.curr_offset % self.block_size) as usize)],
-        ))
+        if dbg!(file.curr_offset) > dbg!(file.inode.low_size) {
+            return Err(IoError);
+        }
+        if file.curr_offset == file.inode.low_size {
+            return Ok(0);
+        }
+
+        let data_address = self.inode_data_address_at_offset(&file.inode, file.curr_offset).unwrap();
+        let offset = min(
+            (file.inode.low_size - file.curr_offset) as usize,
+            min((self.block_size - file.curr_offset % self.block_size) as usize, buf.len()),
+        );
+        let data_read = self.disk_read_buffer(data_address, &mut buf[0..offset]);
+        file.curr_offset += data_read as u32;
+        if data_read < offset {
+            return Ok((file.curr_offset - file_curr_offset_start) as usize);
+        }
+
+        for chunk in buf[offset..].chunks_mut(self.block_size as usize) {
+            let data_address = self.inode_data_address_at_offset(&file.inode, file.curr_offset).unwrap();
+            let offset = min((file.inode.low_size - file.curr_offset) as usize, chunk.len());
+            let data_read = self.disk_read_buffer(data_address, &mut chunk[0..offset]);
+            file.curr_offset += data_read as u32;
+            if data_read < chunk.len() {
+                return Ok((file.curr_offset - file_curr_offset_start) as usize);
+            }
+        }
+        Ok((file.curr_offset - file_curr_offset_start) as usize)
     }
 }
 
@@ -556,7 +640,7 @@ fn find_string(path: &str, patern: &[u8]) {
     for i in 0..data.len() - patern.len() {
         if &data[i..i + patern.len()] == patern {
             println!("match");
-            dbg!(i);
+            // dbg!(i);
         }
     }
 }
@@ -565,10 +649,10 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let f = StdFile::open(&args[1]).unwrap();
     let mut ext2 = Ext2Filesystem::new(f);
-    dbg!(ext2.superblock);
+    // dbg!(ext2.superblock);
     let inode = ext2.find_inode(2);
-    // dbg!(inode);
-    // let dir_entry = ext2.find_entry(&inode, 0);
+    dbg!(inode);
+    let dir_entry = ext2.find_entry(&inode, 0);
     // dbg!(dir_entry);
     for e in ext2.try_clone().unwrap().iter_entries(&inode).skip(2) {
         dbg!(e.get_filename());
@@ -576,21 +660,39 @@ fn main() {
         println!("{:?}", inode);
         println!("inner");
         for e in ext2.iter_entries(&inode).skip(2) {
-            dbg!(e);
             dbg!(e.get_filename());
+            dbg!(e);
         }
         println!("end inner");
     }
-    let file = ext2.open("dir/banane").unwrap();
+    let mut file = ext2.open("dir/banane").unwrap();
     println!("{:#?}", file);
-    let mut buf = [42; 1024];
-    let count = ext2.read(file, &mut buf).unwrap();
-    dbg!(count);
-
+    let mut buf = [42; 10];
+    let count = ext2.read(&mut file, &mut buf).unwrap();
     unsafe {
         println!("string: {}", core::str::from_utf8_unchecked(&buf));
     }
-    let file = ext2.open("dir/artichaud");
+
+    let mut file = ext2.open("dir/doubly_indirect").unwrap();
     println!("{:#?}", file);
-    find_string("simple_diskp1", "lescarotessontcuites".as_bytes());
+    let mut buf = [42; 10];
+    let mut indirect_dump = StdFile::create("doubly_indirect_dump").unwrap();
+    while {
+        let x = ext2.read(&mut file, &mut buf).unwrap();
+        indirect_dump.write(&buf[0..x]).unwrap();
+        x > 0
+    } {}
+    let mut file = ext2.open("dir/indirect").unwrap();
+    println!("{:#?}", file);
+    let mut buf = [42; 1024];
+    let mut indirect_dump = StdFile::create("indirect_dump").unwrap();
+    while {
+        let x = ext2.read(&mut file, &mut buf).unwrap();
+        indirect_dump.write(&buf[0..x]).unwrap();
+        x > 0
+    } {}
+    // dbg!(count);
+
+    // assert!(ext2.open("dir/artichaud").is_err());
+    // find_string("simple_diskp1", "lescarotessontcuites".as_bytes());
 }
