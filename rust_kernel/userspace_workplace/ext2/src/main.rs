@@ -569,7 +569,7 @@ impl Ext2Filesystem {
             );
             dbg!(pointer);
 
-            return Some((self.to_addr(pointer) + offset % self.block_size));
+            return Some(self.to_addr(pointer) + offset % self.block_size);
         }
 
         // Doubly Indirect Addressing
@@ -582,22 +582,40 @@ impl Ext2Filesystem {
                 self.to_addr(inode.doubly_indirect_block_pointers) + off * size_of::<BlockNumber>() as u32,
             );
 
-            let pointer: BlockNumber = self.disk_read_struct(
-                self.to_addr(pointer_to_pointer)
-                    + ((block_off - offset_start) % blocknumber_per_block as u32) * size_of::<BlockNumber>() as u32,
-            );
+            let off = (block_off - offset_start) % blocknumber_per_block as u32;
+            let pointer: BlockNumber =
+                self.disk_read_struct(self.to_addr(pointer_to_pointer) + off * size_of::<BlockNumber>() as u32);
 
             return Some(self.to_addr(pointer) + offset % self.block_size);
         }
 
         // Triply Indirect Addressing
         offset_start = offset_end;
-        offset_end += blocknumber_per_block as u32;
+        offset_end += (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u32;
         if block_off >= offset_start && block_off < offset_end {
-            return None;
-        } else {
-            panic!("out of file bound");
+            dbg!("triply indirect addressing");
+            let off = dbg!((block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u32);
+            let pointer_to_pointer_to_pointer: BlockNumber = self.disk_read_struct(
+                self.to_addr(inode.triply_indirect_block_pointers) + off * size_of::<BlockNumber>() as u32,
+            );
+
+            let off = dbg!(
+                (((block_off - offset_start) % (blocknumber_per_block * blocknumber_per_block) as u32)
+                    / blocknumber_per_block as u32) as u32
+            );
+            let pointer_to_pointer: BlockNumber = self
+                .disk_read_struct(self.to_addr(pointer_to_pointer_to_pointer) + off * size_of::<BlockNumber>() as u32);
+
+            let off = dbg!(
+                (((block_off - offset_start) % (blocknumber_per_block * blocknumber_per_block) as u32)
+                    % blocknumber_per_block as u32) as u32
+            );
+            let pointer: BlockNumber =
+                self.disk_read_struct(self.to_addr(pointer_to_pointer) + off * size_of::<BlockNumber>() as u32);
+
+            return Some(self.to_addr(pointer) + offset % self.block_size);
         }
+        panic!("out of file bound");
     }
 
     pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> Result<usize, IoError> {
@@ -673,19 +691,28 @@ fn main() {
         println!("string: {}", core::str::from_utf8_unchecked(&buf));
     }
 
-    let mut file = ext2.open("dir/doubly_indirect").unwrap();
-    println!("{:#?}", file);
-    let mut buf = [42; 10];
-    let mut indirect_dump = StdFile::create("doubly_indirect_dump").unwrap();
-    while {
-        let x = ext2.read(&mut file, &mut buf).unwrap();
-        indirect_dump.write(&buf[0..x]).unwrap();
-        x > 0
-    } {}
-    let mut file = ext2.open("dir/indirect").unwrap();
+    // let mut file = ext2.open("dir/indirect").unwrap();
+    // println!("{:#?}", file);
+    // let mut buf = [42; 1024];
+    // let mut indirect_dump = StdFile::create("indirect_dump").unwrap();
+    // while {
+    //     let x = ext2.read(&mut file, &mut buf).unwrap();
+    //     indirect_dump.write(&buf[0..x]).unwrap();
+    //     x > 0
+    // } {}
+    // let mut file = ext2.open("dir/doubly_indirect").unwrap();
+    // println!("{:#?}", file);
+    // let mut buf = [42; 10];
+    // let mut indirect_dump = StdFile::create("doubly_indirect_dump").unwrap();
+    // while {
+    //     let x = ext2.read(&mut file, &mut buf).unwrap();
+    //     indirect_dump.write(&buf[0..x]).unwrap();
+    //     x > 0
+    // } {}
+    let mut file = ext2.open("dir/triply_indirect").unwrap();
     println!("{:#?}", file);
     let mut buf = [42; 1024];
-    let mut indirect_dump = StdFile::create("indirect_dump").unwrap();
+    let mut indirect_dump = StdFile::create("triply_indirect_dump").unwrap();
     while {
         let x = ext2.read(&mut file, &mut buf).unwrap();
         indirect_dump.write(&buf[0..x]).unwrap();
