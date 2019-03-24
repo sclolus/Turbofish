@@ -9,6 +9,7 @@ use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::{draw_image, BmpImage};
 use crate::monitor::{Color, WriteMode, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
+use crate::shell::shell;
 use crate::terminal::init_terminal;
 use crate::timer::Rtc;
 
@@ -103,7 +104,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
 
-    crate::test_helpers::really_lazy_hello_world();
+    // crate::test_helpers::really_lazy_hello_world();
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);
@@ -130,5 +131,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
+    shell();
     sum
 }

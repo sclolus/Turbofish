@@ -106,7 +106,7 @@ enum EscapeKeyMask {
 type ScanCode = u32;
 
 #[derive(Copy, Clone, Debug)]
-pub enum CharType {
+pub enum CallbackKeyboard {
     RequestScanCode(fn(ScanCode)),
     RequestKeyCode(fn(KeyCode)),
     RequestKeySymb(fn(KeySymb)),
@@ -115,17 +115,17 @@ pub enum CharType {
 pub struct KeyboardDriver {
     escape_key_mask: u8,
     capslock: bool,
-    io_term: Option<CharType>,
+    io_term: Option<CallbackKeyboard>,
 }
 
 pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
 
 impl KeyboardDriver {
-    pub fn new(f: Option<CharType>) -> Self {
+    pub fn new(f: Option<CallbackKeyboard>) -> Self {
         Self { escape_key_mask: 0, capslock: false, io_term: f }
     }
 
-    pub fn bind(&mut self, f: CharType) {
+    pub fn bind(&mut self, f: CallbackKeyboard) {
         self.io_term = Some(f);
     }
 
@@ -185,11 +185,11 @@ impl KeyboardDriver {
         }
     }
 
-    pub fn get_char(&mut self, scancode: u32) {
+    pub fn interrupt_handler(&mut self, scancode: u32) {
         match self.io_term {
             None => eprintln!("no consumer registered !"),
             Some(arg) => {
-                use CharType::*;
+                use CallbackKeyboard::*;
                 match arg {
                     RequestScanCode(u) => u(scancode),
                     RequestKeyCode(u) => {
@@ -215,7 +215,7 @@ extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
         unsafe {
-            KEYBOARD_DRIVER.as_mut().unwrap().get_char(scancode);
+            KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode);
         }
     }
 }
