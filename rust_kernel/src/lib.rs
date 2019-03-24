@@ -49,6 +49,7 @@ pub mod memory;
 pub mod watch_dog;
 pub use watch_dog::*;
 
+pub mod shell;
 pub mod terminal;
 
 use crate::memory::RustGlobalAlloc;
