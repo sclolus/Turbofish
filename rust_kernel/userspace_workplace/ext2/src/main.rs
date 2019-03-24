@@ -1,14 +1,24 @@
 //! this module contains a ext2 driver
 //! see [osdev](https://wiki.osdev.org/Ext2)
+use bit_field::BitArray;
 use bitflags::bitflags;
 use core::cmp::min;
 use core::mem::size_of;
+use core::ops::Add;
 use std::fs::File as StdFile;
+use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(transparent)]
 struct BlockNumber(u32);
+
+impl Add<Self> for BlockNumber {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
 
 const EXT2_SIGNATURE_MAGIC: u16 = 0xef53;
 
@@ -147,6 +157,7 @@ struct SuperBlock {
 #[allow(dead_code)]
 #[repr(u16)]
 enum FileSystemState {
+    Unknown = 0,
     IsClean = 1,
     HasErrors = 2,
 }
@@ -428,7 +439,19 @@ impl<'a> Iterator for EntryIter<'a> {
 #[derive(Debug, Copy, Clone)]
 pub struct File {
     inode: Inode,
+    inode_addr: u32,
     curr_offset: u32,
+}
+
+impl File {
+    pub fn seek(&mut self, s: SeekFrom) {
+        match s {
+            SeekFrom::Start(n) => {
+                self.curr_offset = n as u32;
+            }
+            _ => unimplemented!(),
+        }
+    }
 }
 
 struct ReaderDisk {
@@ -441,6 +464,13 @@ impl ReaderDisk {
         self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
         self.f.read(&mut self.buf[0..core::mem::size_of::<T>()]).unwrap();
         unsafe { core::mem::transmute_copy(&self.buf) }
+    }
+
+    pub fn disk_write_struct<T: Copy>(&mut self, offset: u32, t: &T) {
+        self.f.seek(SeekFrom::Start(dbg!(offset) as u64 + START_OF_PARTITION)).unwrap();
+        let s = unsafe { core::slice::from_raw_parts(t as *const _ as *const u8, size_of::<T>()) };
+        self.f.write(s).expect("WRITE FAILED");
+        self.f.flush().expect("flush failed");
     }
 
     #[allow(dead_code)]
@@ -456,6 +486,11 @@ impl ReaderDisk {
         self.f.read(buf).unwrap()
     }
 
+    pub fn disk_write_buffer(&mut self, offset: u32, buf: &[u8]) -> usize {
+        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
+        self.f.write(buf).unwrap()
+    }
+
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self { f: self.f.try_clone()?, ..*self })
     }
@@ -466,6 +501,7 @@ pub enum IoError {
     NoSuchFileOrDirectory,
     FileOffsetOutOfFile,
     NotADirectory,
+    NoSpaceLeftOnDevice,
 }
 
 struct Ext2Filesystem {
@@ -506,20 +542,24 @@ impl Ext2Filesystem {
     }
 
     /// read the block group descriptor from the block group number starting at 0
-    pub fn find_block_grp(&mut self, n: u32) -> BlockGroupDescriptor {
+    pub fn block_grp_addr(&mut self, n: u32) -> BlockNumber {
         // The table is located in the block immediately following the Superblock. So if the block size (determined from a field in the superblock) is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. For any other block size, it will begin at block 1. Remember that blocks are numbered starting at 0, and that block numbers don't usually correspond to physical block addresses.
         assert!(n <= self.nbr_block_grp);
-        let offset = if self.block_size == 1024 { 2 * 1024 } else { self.block_size };
+        let offset = if self.block_size == 1024 { 2 } else { 1 };
 
-        let block_group_descriptr_addr = offset + n * self.block_size;
-        self.reader_disk.disk_read_struct(block_group_descriptr_addr)
+        BlockNumber(offset + n * self.superblock.block_per_block_grp)
+    }
+    pub fn find_block_grp(&mut self, n: u32) -> BlockGroupDescriptor {
+        let block_grp_block_number = self.block_grp_addr(n);
+        let block_grp_addr = self.to_addr(block_grp_block_number);
+        self.reader_disk.disk_read_struct(block_grp_addr)
     }
 
     pub fn to_addr(&self, block_number: BlockNumber) -> u32 {
         self.block_size * block_number.0
     }
 
-    pub fn find_inode(&mut self, inode: u32) -> Inode {
+    pub fn find_inode(&mut self, inode: u32) -> (Inode, u32) {
         println!("ENTERING_FIND_INODE {}", inode);
         assert!(inode >= 1);
         let block_grp = (inode - 1) / self.superblock.inodes_per_block_grp;
@@ -531,7 +571,7 @@ impl Ext2Filesystem {
         let inode_addr = self.to_addr(block_grp_descriptor.inode_table) + inode_offset;
         // dbg!(inode_addr);
 
-        self.reader_disk.disk_read_struct(inode_addr)
+        (self.reader_disk.disk_read_struct(inode_addr), inode_addr)
     }
 
     pub fn find_entry(&mut self, inode: &Inode, offset_entry: u32) -> Option<DirectoryEntryHeader> {
@@ -556,14 +596,49 @@ impl Ext2Filesystem {
         let mut inode = self.find_inode(2);
         for p in path.split('/') {
             let entry =
-                self.iter_entries(&inode)?.find(|x| x.get_filename() == p).ok_or(IoError::NoSuchFileOrDirectory)?;
+                self.iter_entries(&inode.0)?.find(|x| x.get_filename() == p).ok_or(IoError::NoSuchFileOrDirectory)?;
             // dbg!(entry.get_path());
             inode = self.find_inode(entry.inode);
         }
-        Ok(File { inode, curr_offset: 0 })
+        Ok(File { inode: inode.0, inode_addr: inode.1, curr_offset: 0 })
     }
 
-    pub fn inode_data_address_at_offset(&mut self, inode: &Inode, offset: u32) -> Option<u32> {
+    fn alloc_block_on_grp(&mut self, n: u32) -> Option<BlockNumber> {
+        let block_grp_addr = self.block_grp_addr(n);
+        let mut block_grp = self.find_block_grp(n);
+        if block_grp.nbr_unallocated_blocks == 0 {
+            return None;
+        }
+        // TODO: dynamic alloc ?
+        let bitmap_addr = self.to_addr(block_grp.block_usage_bitmap);
+        let mut bitmap: [u8; 1024] = self.reader_disk.disk_read_struct(bitmap_addr);
+        for i in 0..self.superblock.block_per_block_grp {
+            if bitmap.get_bit(i as usize) {
+                bitmap.set_bit(i as usize, true);
+                self.reader_disk.disk_write_struct(bitmap_addr + i / 8, &bitmap[(i / 8) as usize]);
+                block_grp.nbr_unallocated_blocks -= 1;
+                self.reader_disk.disk_write_struct(self.to_addr(block_grp_addr), &block_grp);
+                return Some(block_grp_addr + BlockNumber(i));
+            }
+        }
+        None
+    }
+
+    fn alloc_block(&mut self) -> Option<BlockNumber> {
+        for n in 0..self.nbr_block_grp {
+            if let Some(addr) = self.alloc_block_on_grp(n) {
+                return Some(addr);
+            }
+        }
+        None
+    }
+
+    fn alloc_inode_data_address_at_offset(
+        &mut self,
+        inode: &mut Inode,
+        inode_addr: u32,
+        offset: u32,
+    ) -> Result<u32, IoError> {
         let block_off = offset / self.block_size;
         let blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
         // let none_if_zero = |x| if x == 0 { None } else { Some(x) };
@@ -573,7 +648,40 @@ impl Ext2Filesystem {
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
-            return Some(self.to_addr(inode.direct_block_pointers[block_off as usize]) + offset % self.block_size);
+            if unsafe { inode.direct_block_pointers[block_off as usize] == BlockNumber(0) } {
+                inode.direct_block_pointers[block_off as usize] =
+                    self.alloc_block().ok_or(IoError::NoSpaceLeftOnDevice)?;
+            }
+            return Ok(self.to_addr(inode.direct_block_pointers[block_off as usize]) + offset % self.block_size);
+            //return Some(self.to_addr(inode.direct_block_pointers[block_off as usize]) + offset % self.block_size);
+        }
+        unimplemented!();
+    }
+
+    fn inode_data_address_at_offset(&mut self, inode: &Inode, offset: u32) -> Option<u32> {
+        let block_off = offset / self.block_size;
+        let blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
+        let none_if_zero = |x| if x == BlockNumber(0) { None } else { Some(x) };
+        dbg!(offset);
+
+        // let create_or_return = |addr| {
+        //     if addr == 0 {
+        //         if creat {
+        //             self.allocate_block();
+        //         } else {
+        //             None
+        //         }
+        //     }
+        //     Some(addr)
+        // }
+
+        // Simple Addressing
+        let mut offset_start = 0;
+        let mut offset_end = 12;
+        if block_off >= offset_start && block_off < offset_end {
+            return Some(
+                self.to_addr(none_if_zero(inode.direct_block_pointers[block_off as usize])?) + offset % self.block_size,
+            );
         }
 
         // Singly Indirect Addressing
@@ -673,6 +781,49 @@ impl Ext2Filesystem {
         }
         Ok((file.curr_offset - file_curr_offset_start) as usize)
     }
+
+    pub fn write(&mut self, file: &mut File, buf: &[u8]) -> Result<usize, IoError> {
+        // TODO: do indirect
+        let file_curr_offset_start = file.curr_offset;
+        if dbg!(file.curr_offset) > dbg!(file.inode.low_size) {
+            return Err(IoError::FileOffsetOutOfFile);
+        }
+        if file.curr_offset == file.inode.low_size {
+            return Ok(0);
+        }
+
+        let data_address = self
+            .inode_data_address_at_offset(&file.inode, file.curr_offset)
+            .ok_or(IoError::NoSpaceLeftOnDevice)
+            .or_else(|_e| {
+                self.alloc_inode_data_address_at_offset(&mut file.inode, file.inode_addr, file.curr_offset)
+            })?;
+        let offset = min((self.block_size - file.curr_offset % self.block_size) as usize, buf.len());
+        let data_read = self.reader_disk.disk_write_buffer(data_address, &buf[0..offset]);
+        file.curr_offset += data_read as u32;
+        if data_read < offset {
+            return Ok((file.curr_offset - file_curr_offset_start) as usize);
+        }
+
+        for chunk in buf[offset..].chunks(self.block_size as usize) {
+            let data_address = self
+                .inode_data_address_at_offset(&file.inode, file.curr_offset)
+                .ok_or(IoError::NoSpaceLeftOnDevice)
+                .or_else(|_e| {
+                    self.alloc_inode_data_address_at_offset(&mut file.inode, file.inode_addr, file.curr_offset)
+                })?;
+            let data_read = self.reader_disk.disk_write_buffer(data_address, &chunk);
+            file.curr_offset += data_read as u32;
+            if file.inode.low_size < file.curr_offset {
+                file.inode.low_size = file.curr_offset;
+                self.reader_disk.disk_write_struct(file.inode_addr, &file.inode);
+            }
+            if data_read < chunk.len() {
+                return Ok((file.curr_offset - file_curr_offset_start) as usize);
+            }
+        }
+        Ok((file.curr_offset - file_curr_offset_start) as usize)
+    }
 }
 
 #[allow(dead_code)]
@@ -688,16 +839,16 @@ fn find_string(path: &str, patern: &[u8]) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let f = StdFile::open(&args[1]).unwrap();
+    let f = OpenOptions::new().write(true).read(true).open(&args[1]).unwrap();
     let mut ext2 = Ext2Filesystem::new(f);
     dbg!(ext2.superblock);
-    let inode = ext2.find_inode(2);
+    let (inode, _) = ext2.find_inode(2);
     dbg!(inode);
     let dir_entry = ext2.find_entry(&inode, 0);
     dbg!(dir_entry);
     for e in ext2.try_clone().unwrap().iter_entries(&inode).unwrap().skip(2) {
         dbg!(e.get_filename());
-        let inode = ext2.find_inode(e.inode);
+        let (inode, _) = ext2.find_inode(e.inode);
         println!("{:?}", inode);
         println!("inner");
         for e in ext2.iter_entries(&inode).unwrap().skip(2) {
@@ -708,10 +859,25 @@ fn main() {
     }
     let mut file = ext2.open("dir/banane").unwrap();
     println!("{:#?}", file);
+
+    println!("READ");
     let mut buf = [42; 10];
-    ext2.read(&mut file, &mut buf).unwrap();
+    let count = ext2.read(&mut file, &mut buf).unwrap();
     unsafe {
-        println!("string: {}", core::str::from_utf8_unchecked(&buf));
+        println!("string: {}", core::str::from_utf8_unchecked(&buf[0..count]));
+    }
+
+    file.seek(SeekFrom::Start(0));
+    println!("WRITE");
+    let s = "123456789a".repeat(1000);
+    ext2.write(&mut file, &s.as_bytes()).expect("write failed");
+
+    file.seek(SeekFrom::Start(0));
+    println!("READ");
+    let mut buf = [42; 10000];
+    let count = ext2.read(&mut file, &mut buf).unwrap();
+    unsafe {
+        println!("string: {}", core::str::from_utf8_unchecked(&buf[0..count]));
     }
 
     // let mut file = ext2.open("dir/indirect").unwrap();
@@ -732,15 +898,18 @@ fn main() {
     //     indirect_dump.write(&buf[0..x]).unwrap();
     //     x > 0
     // } {}
-    let mut file = ext2.open("dir/triply_indirect").unwrap();
-    println!("{:#?}", file);
-    let mut buf = [42; 1024];
-    let mut indirect_dump = StdFile::create("triply_indirect_dump").unwrap();
-    while {
-        let x = ext2.read(&mut file, &mut buf).unwrap();
-        indirect_dump.write(&buf[0..x]).unwrap();
-        x > 0
-    } {}
+    // let mut file = ext2.open("dir/triply_indirect").unwrap();
+    // println!("{:#?}", file);
+    // let mut buf = [42; 1024];
+    // let mut indirect_dump = StdFile::create("triply_indirect_dump").unwrap();
+    // while {
+    //     let x = ext2.read(&mut file, &mut buf).unwrap();
+    //     indirect_dump.write(&buf[0..x]).unwrap();
+    //     x > 0
+    // } {}
+    // while let Some(x) = ext2.alloc_block() {
+    //     dbg!(x);
+    // }
     // dbg!(count);
 
     // assert!(ext2.open("dir/artichaud").is_err());
