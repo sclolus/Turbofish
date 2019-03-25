@@ -15,7 +15,7 @@ struct symbol_entry {
 	const char *function_name;
 };
 
-#include "nm.map"
+#include "autobuild/nm.map"
 
 struct function_result {
 	const char *s;

@@ -1,1 +1,1 @@
-../../../c_kernel/src/system/int8086.asm
+../../../common/src/int8086.asm

@@ -45,32 +45,11 @@ endif
 
 ### SOURCES ###
 
-IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes
-
-
-# init sequence: include GDT DESIGN, DEVICE MAPPING, HIGH HALF MEMORY and BASICS DEBUG FN
-
-SRC_C_INIT += get_device_mem_map vga_text early_gdt early_panic early_idt watchdog
-SRC_ASM_INIT += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
-VPATH += src/boot/init
-INIT_HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm watchdog.h
-
-OBJ_INIT_DIR := objs/init
-OBJ_C_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_INIT)))))
-OBJ_ASM_INIT = $(addprefix $(OBJ_INIT_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_INIT)))))
-
-$(OBJ_INIT_DIR)/%.o: %.c Makefile $(INIT_HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
-	objcopy --prefix-symbols=alt_ $@
-
-$(OBJ_INIT_DIR)/%.o: %.asm Makefile $(INIT_HEADERS)
-	$(ASM) $(ASMFLAGS) -o $@ $<
-	objcopy --prefix-symbols=alt_ $@
+IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes -I./
 
 SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=
 VPATH += src/boot
-
 
 # main
 SRC_C_KERNEL += kmain watchdog
@@ -159,28 +138,28 @@ OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SR
 
 .PHONY: all clean fclean common_clean re help exec $(KERNEL)
 
-all: symbol_gen_exe build_libasm_i386 build_libft $(KERNEL)
+all: autobuild/nm_map_gen build_libasm_i386 build_libft $(KERNEL)
 
-symbol_gen_exe:
-	gcc -Wextra -Wall autobuild/nm_map_gen.c -o nm_map_gen -g -O0 -fsanitize=address
+autobuild/nm_map_gen: autobuild/nm_map_gen.c
+	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
 	$(gen_symbol_map)
 
-LIBS = libft/libft.a libft/alt_libft.a libasm_i386/libasm_i386.a
+LIBS = libft/libft.a libasm_i386/libasm_i386.a
 
-$(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
+$(KERNEL): src/boot/bootstrap/build/bootstrap.o $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIBS)
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
-	$(compile_early_panic)
+	$(compile_bootstrap)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
 	$(gen_symbol_map)
 	$(compile_panic)
-	$(compile_early_panic)
+	$(compile_bootstrap)
 
 	@echo POSTBUILD
 	$(link_kernel)
@@ -188,9 +167,9 @@ $(KERNEL): $(OBJ_C_INIT) $(OBJ_ASM_INIT) $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL) $(LIB
 	chmod -x $@
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/init/early_panic.o src/boot/init/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/init/early_panic.o
-extract_kernel_symbols = nm -n $@ > nm.res
-gen_symbol_map = ./nm_map_gen src/system/nm.map nm.res && sync
+compile_bootstrap = make -C src/boot/bootstrap
+extract_kernel_symbols = nm -n $@ > autobuild/nm.res
+gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(LDSCRIPT) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
@@ -199,26 +178,31 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 
+src/boot/bootstrap/build/bootstrap.o:
+	$(compile_bootstrap)
+
 build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
+	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
-	rm -f nm.res
-	rm -f nm_map_gen
-	rm -f src/system/nm.map
+	rm -f autobuild/nm.res
+	rm -f autobuild/nm.map
+	rm -f autobuild/nm_map_gen
 	rm -f $(KERNEL)
 
 clean: common_clean
 	make -C libft/ clean
 	make -C libasm_i386/ clean
+	make -C src/boot/bootstrap/ clean
 
 fclean: common_clean
 	make -C libft/ fclean
 	make -C libasm_i386/ fclean
+	make -C src/boot/bootstrap/ fclean
 
 re: fclean all
 
