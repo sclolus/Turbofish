@@ -1,4 +1,5 @@
 use crate::debug;
+use crate::drivers::pci::*;
 use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
@@ -95,6 +96,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
     }
+
+    unsafe {
+        PCI.scan_pci_buses();
+        PCI.list_pci_devices();
+    }
+
     debug::bench_start();
 
     println!("pit: {:?}", unsafe { &PIT0 });
