@@ -28,28 +28,18 @@ impl Terminal {
         }
         self.buf[self.curr_offset] = key_symb;
         self.curr_offset += 1;
-        // println!("stock");
-        // dbg!(key_symb);
-        // match key_symb {
-        //     KeySymb::Return => println!(""),
-        //     _ => {
-        //         if (key_symb >= KeySymb::space) && (key_symb <= KeySymb::asciitilde) {
-        //             print!("{}", key_symb as u32 as u8 as char);
-        //         }
-        //     }
-        // }
     }
     pub fn read(&mut self, buf: &mut [KeySymb]) -> usize {
         // println!("read");
         let amt = core::cmp::min(buf.len(), self.curr_offset);
         let (a, _b) = self.buf.split_at(amt);
 
-        // First check if the amount of bytes we want to read is small:
-        // `copy_from_slice` will generally expand to a call to `memcpy`, and
-        // for a single byte the overhead is significant.
         if amt == 0 {
             return 0;
         }
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
         if amt == 1 {
             buf[0] = a[0];
         } else {
