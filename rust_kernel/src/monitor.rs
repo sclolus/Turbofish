@@ -57,39 +57,11 @@ struct Cursor {
     pub lines: usize,
 }
 
-impl Cursor {
-    pub fn move_right(&mut self) {
-        if self.x == self.columns - 1 {
-            if self.y == self.lines - 1 {
-                return;
-            }
-            self.x = 0;
-            self.y += 1;
-        } else {
-            self.x += 1
-        }
-    }
-    pub fn move_left(&mut self) {
-        if self.x == 0 {
-            if self.y == 0 {
-                return;
-            }
-            self.x = self.columns - 1;
-            self.y -= 1;
-        } else {
-            self.x -= 1
-        }
-    }
-    pub fn move_nright(&mut self, n: usize) {
-        for _i in 0..n {
-            self.move_right();
-        }
-    }
-    pub fn move_nleft(&mut self, n: usize) {
-        for _i in 0..n {
-            self.move_left();
-        }
-    }
+/// Enum exported for cursor special API
+#[derive(Debug)]
+pub enum CursorDirection {
+    Left,
+    Right,
 }
 
 #[derive(Debug)]
@@ -148,6 +120,16 @@ impl ScreenMonad {
             Ok(())
         }
     }
+    /// Erase and Replace graphical cursor
+    pub fn move_graphical_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
+        // Erase Old cursor
+        match direction {
+            CursorDirection::Right => self.cursor_move_right(q)?,
+            CursorDirection::Left => self.cursor_move_left(q)?,
+        }
+        // create new cursor
+        Ok(())
+    }
     /// get the cursor position
     pub fn get_cursor_position(&mut self) -> (usize, usize) {
         (self.cursor.x, self.cursor.y)
@@ -180,17 +162,36 @@ impl ScreenMonad {
         self.cursor.x = 0;
         0
     }
-    pub fn cursor_move_right(&mut self) {
-        self.cursor.move_right();
+    /// move cursor to the right
+    fn cursor_move_right(&mut self, q: usize) -> IoResult {
+        if q == 0 {
+            Ok(())
+        } else if self.cursor.y == self.cursor.lines {
+            Err(IoError::CursorOutOfBound)
+        } else {
+            self.cursor.x += 1;
+            if self.cursor.x == self.cursor.columns {
+                self.cursor.x = 0;
+                self.cursor.y += 1;
+            }
+            self.cursor_move_right(q - 1)
+        }
     }
-    pub fn cursor_move_left(&mut self) {
-        self.cursor.move_left();
-    }
-    pub fn cursor_move_nright(&mut self, n: usize) {
-        self.cursor.move_nright(n);
-    }
-    pub fn cursor_move_nleft(&mut self, n: usize) {
-        self.cursor.move_nleft(n);
+    /// move cursor to the left
+    fn cursor_move_left(&mut self, q: usize) -> IoResult {
+        if q == 0 {
+            Ok(())
+        } else if self.cursor.x == 0 && self.cursor.y == 0 {
+            Err(IoError::CursorOutOfBound)
+        } else {
+            if self.cursor.x == 0 {
+                self.cursor.x = self.cursor.columns - 1;
+                self.cursor.y -= 1;
+            } else {
+                self.cursor.x -= 1;
+            }
+            self.cursor_move_left(q - 1)
+        }
     }
 }
 
