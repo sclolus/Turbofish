@@ -1,6 +1,7 @@
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::terminal::TERMINAL;
 mod builtin;
+use crate::monitor::SCREEN_MONAD;
 use alloc::prelude::*;
 use builtin::echo;
 
@@ -21,6 +22,9 @@ fn exec_builtin(line: &str) {
 
     let mut split = line.split_whitespace();
     let command = split.next().unwrap_or("");
+    if command == "" {
+        return;
+    }
     let args: Vec<&str> = split.collect();
     match BUILTINS.iter().find(|(c, _)| c == &command) {
         None => println!("{}: command not found", command),
@@ -28,21 +32,52 @@ fn exec_builtin(line: &str) {
     };
 }
 
-fn read_line() -> Vec<KeySymb> {
-    let mut line = Vec::new();
-    // let cursor_pos = 0;
+fn read_line() -> String {
+    let mut line = String::new();
+    let mut cursor_pos = 0;
     let mut buf: [KeySymb; 1] = [KeySymb::nul; 1];
 
     loop {
         block_read(&mut buf);
         let keysymb = buf[0];
-        if keysymb == KeySymb::Return {
-            return line;
-        }
-        if (keysymb >= KeySymb::space) && (keysymb <= KeySymb::asciitilde) {
-            line.push(keysymb);
-            print!("{}", keysymb as u32 as u8 as char);
-        }
+        match keysymb {
+            KeySymb::Return => {
+                return line;
+            }
+            key if (key >= KeySymb::space) && (key <= KeySymb::asciitilde) => {
+                line.insert(cursor_pos, key as u8 as char);
+                print!("{}", &line[cursor_pos..]);
+                cursor_pos += 1;
+                unsafe { SCREEN_MONAD.cursor_move_nleft(line.len() - cursor_pos) };
+            }
+            KeySymb::Left => {
+                if cursor_pos > 0 {
+                    unsafe { SCREEN_MONAD.cursor_move_left() };
+                    cursor_pos -= 1;
+                }
+            }
+            KeySymb::Right => {
+                if cursor_pos < line.len() {
+                    cursor_pos += 1;
+                    unsafe { SCREEN_MONAD.cursor_move_right() };
+                }
+            }
+            KeySymb::Delete => {
+                if cursor_pos > 0 {
+                    line.remove(cursor_pos - 1);
+                    cursor_pos -= 1;
+                    unsafe { SCREEN_MONAD.cursor_move_left() };
+                    if cursor_pos == line.len() {
+                        print!("{}", " ");
+                    } else {
+                        print!("{}", &line[cursor_pos..]);
+                        print!("{}", " ");
+                    }
+                    unsafe { SCREEN_MONAD.cursor_move_nleft(line.len() - cursor_pos + 1) };
+                }
+            }
+            _ => {}
+        };
     }
 }
 
@@ -50,8 +85,7 @@ pub fn shell() {
     loop {
         print!("{}", PROMPT);
         let line = read_line();
-        let line_str: String = line.into_iter().map(|x| x as u8 as char).collect();
         print!("\n");
-        exec_builtin(&line_str);
+        exec_builtin(&line);
     }
 }

@@ -57,6 +57,41 @@ struct Cursor {
     pub lines: usize,
 }
 
+impl Cursor {
+    pub fn move_right(&mut self) {
+        if self.x == self.columns - 1 {
+            if self.y == self.lines - 1 {
+                return;
+            }
+            self.x = 0;
+            self.y += 1;
+        } else {
+            self.x += 1
+        }
+    }
+    pub fn move_left(&mut self) {
+        if self.x == 0 {
+            if self.y == 0 {
+                return;
+            }
+            self.x = self.columns - 1;
+            self.y -= 1;
+        } else {
+            self.x -= 1
+        }
+    }
+    pub fn move_nright(&mut self, n: usize) {
+        for _i in 0..n {
+            self.move_right();
+        }
+    }
+    pub fn move_nleft(&mut self, n: usize) {
+        for _i in 0..n {
+            self.move_left();
+        }
+    }
+}
+
 #[derive(Debug)]
 enum DrawingMode {
     Vga(VgaTextMode),
@@ -144,6 +179,18 @@ impl ScreenMonad {
         }
         self.cursor.x = 0;
         0
+    }
+    pub fn cursor_move_right(&mut self) {
+        self.cursor.move_right();
+    }
+    pub fn cursor_move_left(&mut self) {
+        self.cursor.move_left();
+    }
+    pub fn cursor_move_nright(&mut self, n: usize) {
+        self.cursor.move_nright(n);
+    }
+    pub fn cursor_move_nleft(&mut self, n: usize) {
+        self.cursor.move_nleft(n);
     }
 }
 
