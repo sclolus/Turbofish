@@ -34,9 +34,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.disable_all_irqs();
         crate::watch_dog();
         init_keyboard_driver();
-        init_terminal();
-
-        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
 
         PIT0.configure(OperatingMode::RateGenerator);
         PIT0.start_at_frequency(1000.).unwrap();
@@ -65,6 +62,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
         eprintln!("bonjour");
     }
+    init_terminal();
+    unsafe {
+        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+    }
+
+    println!("bonjour");
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
     //    crate::test_helpers::fucking_big_string(3);
@@ -131,6 +134,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
+    use log::warn;
+    crate::log::init();
+    warn!("a warning");
     shell();
     sum
 }

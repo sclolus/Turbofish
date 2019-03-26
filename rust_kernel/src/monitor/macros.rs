@@ -6,6 +6,18 @@ macro_rules! print {
             a => {
                 #[allow(unused_unsafe)]
                 core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
+                // core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(1)}, a).unwrap();
+            }
+        }
+    })
+}
+
+#[macro_export]
+macro_rules! print_tty {
+    ($($arg:tt)*) => ({
+        match format_args!($($arg)*) {
+            a => {
+                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
             }
         }
     })

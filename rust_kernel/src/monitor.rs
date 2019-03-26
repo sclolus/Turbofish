@@ -52,7 +52,7 @@ pub enum Color {
 
 /// x,y,lines,columns are in unit of char
 #[derive(Debug, Copy, Clone)]
-struct Cursor {
+pub struct Cursor {
     pub x: usize,
     pub y: usize,
     pub columns: usize,
@@ -76,7 +76,7 @@ enum DrawingMode {
 #[derive(Debug)]
 pub struct ScreenMonad {
     drawing_mode: DrawingMode,
-    cursor: Cursor,
+    pub cursor: Cursor,
 }
 
 pub static mut SCREEN_MONAD: ScreenMonad = ScreenMonad::new();
