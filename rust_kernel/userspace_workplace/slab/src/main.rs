@@ -438,18 +438,52 @@ impl Cache {
         new
     }
 
-    pub fn alloc(&mut self) -> Option<*mut u8> {
-        if let Some(slab) = self
+    pub fn take_slab<F: Fn(&Slab) -> bool>(&mut self, predicate: F) -> Option<*mut Node<Option<Slab>>> {
+        let found = self
             .slabs
             .iter_mut()
-            .filter_map(|node| node.content.as_mut())
-            .find(|slab| slab.status() != SlabStatus::Full)
-        {
-            slab.alloc()
+            .filter(|node| node.content.is_some())
+            .find(|node| predicate(node.content.as_ref().unwrap()));
+
+        found.map(|node| {
+            let node_addr = node as *mut Node<Option<Slab>>;
+
+            self.slabs.remove_node(node_addr);
+            node_addr
+        })
+    }
+
+    pub fn alloc(&mut self) -> Option<*mut u8> {
+        let node = self.take_slab(|slab| slab.status != SlabStatus::Full);
+
+        if let Some(node) = node {
+            let slab = unsafe { (*node).content.as_mut().unwrap() }; // Can't fail.
+            let addr = slab.alloc();
+            let node = node as *mut Node<Option<Slab>>;
+
+            if slab.status != SlabStatus::Full {
+                self.slabs.push_front(node);
+            } else {
+                self.slabs.push_back(node);
+            }
+            addr
         } else {
             self.allocate_new_slab()?;
             self.alloc()
         }
+
+        // This code is more elegant but slower, however, surprisingly, this is not the bottleneck. where the eck is it.
+        // if let Some(slab) = self
+        //     .slabs
+        //     .iter_mut()
+        //     .filter_map(|node| node.content.as_mut())
+        //     .find(|slab| slab.status() != SlabStatus::Full)
+        // {
+        //     slab.alloc()
+        // } else {
+        //     self.allocate_new_slab()?;
+        //     self.alloc()
+        // }
     }
 
     pub fn free(&mut self, addr: *mut u8) {
@@ -490,39 +524,46 @@ impl core::ops::Drop for Cache {
 
 #[derive(Debug)]
 struct SlabAllocator {
-    caches: [Cache; 16],
+    caches: [Cache; 18],
 }
 
 impl SlabAllocator {
     fn new() -> Self {
         let caches = [
-            Cache::new(16),
-            Cache::new(24),
             Cache::new(32),
-            Cache::new(48),
             Cache::new(64),
-            Cache::new(80),
-            Cache::new(92),
             Cache::new(128),
             Cache::new(256),
-            Cache::new(400),
             Cache::new(512),
             Cache::new(1024),
-            Cache::new(1500),
-            Cache::new(2000),
             Cache::new(2048),
             Cache::new(4096),
+            Cache::new(1 << 13),
+            Cache::new(1 << 14),
+            Cache::new(1 << 15),
+            Cache::new(1 << 16),
+            Cache::new(1 << 17),
+            Cache::new(1 << 18),
+            Cache::new(1 << 19),
+            Cache::new(1 << 20),
+            Cache::new(1 << 21),
+            Cache::new(1 << 22),
         ];
 
         Self { caches }
     }
 
-    fn alloc(&mut self, size: usize) -> Option<*mut u8> {
-        for cache in self.caches.iter_mut().filter(|cache| cache.elem_size >= size) {
-            //            println!("Using cache of elem_size: {} to allocate object of size {}", cache.elem_size, size);
-            return cache.alloc();
+    fn alloc(&mut self, mut size: usize) -> Option<*mut u8> {
+        // for cache in self.caches.iter_mut().filter(|cache| cache.elem_size >= size) {
+        //     //            println!("Using cache of elem_size: {} to allocate object of size {}", cache.elem_size, size);
+        //     return cache.alloc();
+        // }
+        // None
+        if size < 32 {
+            size = 32;
         }
-        None
+
+        self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize].alloc()
     }
 
     fn free(&mut self, addr: *mut u8) {
@@ -540,8 +581,8 @@ fn main() {
     let mut rng: SmallRng = SmallRng::seed_from_u64(0xDEADBEEF);
 
     let mut slab_allocator = SlabAllocator::new();
-    const ALLOC_SIZE: usize = 4097;
-    let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::new();
+    const ALLOC_SIZE: usize = 2 << 17;
+    let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
 
     for _index in 0..32728 * 8 {
         match rng.gen::<u8>() {
@@ -551,9 +592,9 @@ fn main() {
                 let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, alloc_size) };
                 let random_byte = rng.gen::<u8>();
 
-                for b in object.iter_mut() {
-                    *b = random_byte;
-                }
+                // for b in object.iter_mut() {
+                //     *b = random_byte;
+                // }
 
                 assert!(addrs.iter().all(|&(x, _, _)| x != addr));
                 //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
@@ -568,16 +609,16 @@ fn main() {
                 //                println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
                 let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
 
-                for b in object.iter() {
-                    if *b != byte {
-                        //                        println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
-                        //                        println!("Zones which match incorrect byte: {}", byte);
-                        for (_addr, _, _size) in addrs.iter().filter(|(_, pbyte, _)| byte == *pbyte) {
-                            //                            println!("\t{:p} of size: {}", addr, size);
-                        }
-                    }
-                    assert!(*b == byte);
-                }
+                // for b in object.iter() {
+                //     if *b != byte {
+                //         //                        println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+                //         //                        println!("Zones which match incorrect byte: {}", byte);
+                //         for (_addr, _, _size) in addrs.iter().filter(|(_, pbyte, _)| byte == *pbyte) {
+                //             //                            println!("\t{:p} of size: {}", addr, size);
+                //         }
+                //     }
+                //     assert!(*b == byte);
+                // }
                 slab_allocator.free(addr);
                 //                println!("Free'd {:p}", addr);
             }
@@ -587,12 +628,12 @@ fn main() {
         //        println!("Freeing -> {:p} filled with byte: {:x}", addr, byte);
         let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
 
-        for b in object.iter() {
-            if *b != byte {
-                //                println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
-            }
-            assert!(*b == byte);
-        }
+        // for b in object.iter() {
+        //     if *b != byte {
+        //         //                println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+        //     }
+        //     assert!(*b == byte);
+        // }
 
         //        println!("freeing: {:p}", addr);
         slab_allocator.free(addr);
