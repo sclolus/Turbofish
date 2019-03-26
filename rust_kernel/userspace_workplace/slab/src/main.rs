@@ -512,7 +512,7 @@ impl Cache {
 
 impl core::ops::Drop for Cache {
     fn drop(&mut self) {
-        assert!(self.slabs.iter().all(|node| node.content.is_none()));
+        // assert!(self.slabs.iter().all(|node| node.content.is_none()));
         let mut current_slabs_size = self.nbr_slabs * mem::size_of::<Node<Option<Slab>>>();
         current_slabs_size = NbrPages::from(current_slabs_size).to_bytes();
 
@@ -549,6 +549,12 @@ impl SlabAllocator {
             Cache::new(1 << 21),
             Cache::new(1 << 22),
         ];
+        // let mut caches = unsafe { mem::uninitialized() };
+        // let mut base_size = 32;
+        // for cache in caches.iter_mut() {
+        //     mem::forget(mem::replace(cache, Cache::new(base_size)));
+        //     base_size +=
+        // }
 
         Self { caches }
     }
@@ -566,12 +572,17 @@ impl SlabAllocator {
         self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize].alloc()
     }
 
-    fn free(&mut self, addr: *mut u8) {
-        if let Some(cache) = self.caches.iter_mut().find(|cache| cache.contains(addr)) {
-            cache.free(addr)
-        } else {
-            panic!("Tried to free non-allocated object: {:p}", addr);
+    fn free(&mut self, addr: *mut u8, mut size: usize) {
+        if size < 32 {
+            size = 32;
         }
+        let cache = &mut self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize];
+        cache.free(addr);
+        // if let Some(cache) = self.caches.iter_mut().find(|cache| cache.contains(addr)) {
+        //     cache.free(addr)
+        // } else {
+        //     panic!("Tried to free non-allocated object: {:p}", addr);
+        // }
     }
 }
 
@@ -584,7 +595,7 @@ fn main() {
     const ALLOC_SIZE: usize = 2 << 17;
     let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
 
-    for _index in 0..32728 * 8 {
+    for _index in 0..32728 * 6 {
         match rng.gen::<u8>() {
             0...200 => {
                 let alloc_size = rng.gen::<usize>() % ALLOC_SIZE;
@@ -596,7 +607,7 @@ fn main() {
                 //     *b = random_byte;
                 // }
 
-                assert!(addrs.iter().all(|&(x, _, _)| x != addr));
+                // assert!(addrs.iter().all(|&(x, _, _)| x != addr));
                 //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
                 addrs.push((addr, random_byte, alloc_size));
             }
@@ -619,7 +630,7 @@ fn main() {
                 //     }
                 //     assert!(*b == byte);
                 // }
-                slab_allocator.free(addr);
+                slab_allocator.free(addr, alloc_size);
                 //                println!("Free'd {:p}", addr);
             }
         }
@@ -636,7 +647,7 @@ fn main() {
         // }
 
         //        println!("freeing: {:p}", addr);
-        slab_allocator.free(addr);
+        slab_allocator.free(addr, alloc_size);
         //        println!("free'd: {:p}", addr);
     }
 }
