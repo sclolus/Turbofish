@@ -27,8 +27,8 @@ pub trait Drawer {
     fn scroll_screen(&mut self);
     fn clear_screen(&mut self);
     fn set_text_color(&mut self, color: Color) -> IoResult;
-    fn clear_cursor(&mut self);
-    fn draw_cursor(&mut self);
+    fn clear_cursor(&mut self, x: usize, y: usize);
+    fn draw_cursor(&mut self, x: usize, y: usize);
 }
 
 trait AdvancedGraphic {
@@ -125,13 +125,13 @@ impl ScreenMonad {
     /// Erase and Replace graphical cursor
     pub fn move_graphical_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
         // Erase Old cursor
-        Drawer::clear_cursor(self);
+        Drawer::clear_cursor(self, self.cursor.x, self.cursor.y);
         match direction {
             CursorDirection::Right => self.cursor_move_right(q)?,
             CursorDirection::Left => self.cursor_move_left(q)?,
         }
         // create new cursor
-        Drawer::draw_cursor(self);
+        Drawer::draw_cursor(self, self.cursor.x, self.cursor.y);
         Ok(())
     }
     /// get the cursor position
@@ -232,17 +232,17 @@ impl Drawer for ScreenMonad {
     }
 
     /// basic, simple
-    fn clear_cursor(&mut self) {
+    fn clear_cursor(&mut self, x: usize, y: usize) {
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.clear_cursor(),
-            DrawingMode::Vbe(vbe) => vbe.clear_cursor(),
+            DrawingMode::Vga(vga) => vga.clear_cursor(x, y),
+            DrawingMode::Vbe(vbe) => vbe.clear_cursor(x, y),
         }
     }
     /// basic, simple
-    fn draw_cursor(&mut self) {
+    fn draw_cursor(&mut self, x: usize, y: usize) {
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.draw_cursor(),
-            DrawingMode::Vbe(vbe) => vbe.draw_cursor(),
+            DrawingMode::Vga(vga) => vga.draw_cursor(x, y),
+            DrawingMode::Vbe(vbe) => vbe.draw_cursor(x, y),
         }
     }
 }
