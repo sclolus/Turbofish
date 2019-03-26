@@ -294,9 +294,15 @@ impl Drawer for VbeMode {
 }
 
 impl AdvancedGraphic for VbeMode {
+    /// Display an entire line in the screen: Be carefull, all characters after end are cleared !
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
         // Copy selected area from graphic buffer to double frame buffer
         self.copy_graphic_buffer_line_area(x1, x2, y);
+
+        // fflush characters after refreshed area
+        for elem in self.characters_buffer[x2 + y * self.columns..(y + 1) * self.columns].iter_mut() {
+            *elem = None;
+        }
 
         // get characters from character buffer and pixelize it in db_buffer
         self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
