@@ -151,6 +151,22 @@ impl VbeMode {
             y += 1;
         }
     }
+    /// write a cursor with common rules
+    #[inline(always)]
+    fn write_cursor(&self, char_font: &[u8], cursor_x: usize, cursor_y: usize, color: RGB) {
+        let mut y = cursor_y * self.char_height;
+        let mut x;
+        for l in char_font {
+            x = cursor_x * self.char_width;
+            for shift in (0..8).rev() {
+                if *l & 1 << shift == 0 {
+                    self.put_pixel(x, y, color);
+                }
+                x += 1;
+            }
+            y += 1;
+        }
+    }
     /// Copy characters from both characters_buffer to double buffer
     fn render_text_buffer(&self, x1: usize, x2: usize) {
         let buffers = [&self.characters_buffer, &self.fixed_characters_buffer];
@@ -168,7 +184,7 @@ impl VbeMode {
         }
     }
     /// refresh framebuffer
-    pub fn refresh_screen(&mut self) {
+    fn refresh_screen(&mut self) {
         // Copy graphic buffer to double buffer
         unsafe {
             _sse2_memcpy(
@@ -186,6 +202,32 @@ impl VbeMode {
                 (*self.db_frame_buffer.borrow_mut()).as_ptr(),
                 self.pitch * self.height,
             );
+        }
+    }
+    /// copy one bounded area line from graphic buffer to db frame buffer
+    fn copy_graphic_buffer_line_area(&self, x1: usize, x2: usize, y: usize) {
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
+        }
+    }
+    /// copy one bounded area line from double frame buffer to linear frame buffer
+    fn copy_double_frame_buffer_line_area(&self, x1: usize, x2: usize, y: usize) {
+        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
+
+        for i in 0..self.char_height {
+            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
+            lfb[o1..o2].copy_from_slice(&(*self.db_frame_buffer.borrow_mut())[o1..o2]);
+        }
+    }
+    /// get the specified character at location x:y or a default character if none
+    fn get_character(&self, cursor_x: usize, cursor_y: usize) -> (u8, RGB) {
+        let c = self.characters_buffer[cursor_y * self.columns + cursor_x];
+        match c {
+            None => (' ' as u8, self.text_color),
+            Some(c) => c,
         }
     }
 }
@@ -222,32 +264,38 @@ impl Drawer for VbeMode {
         self.text_color = color.into();
         Ok(())
     }
-    fn clear_cursor(&mut self) {
-        // wanted fallback
+    fn clear_cursor(&mut self, cursor_x: usize, cursor_y: usize) {
+        self.copy_graphic_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
+
+        let (character, color) = self.get_character(cursor_x, cursor_y);
+        let font = unsafe { _font.get_char(character) };
+
+        self.write_char(font, cursor_x, cursor_y, color);
+
+        self.copy_double_frame_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
     }
-    fn draw_cursor(&mut self) {
-        // wanted fallback
+    fn draw_cursor(&mut self, cursor_x: usize, cursor_y: usize) {
+        self.copy_graphic_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
+
+        let (character, color) = self.get_character(cursor_x, cursor_y);
+        let font = unsafe { _font.get_char(character) };
+
+        self.write_cursor(font, cursor_x, cursor_y, color);
+
+        self.copy_double_frame_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
     }
 }
 
 impl AdvancedGraphic for VbeMode {
     fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
-        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
-
         // Copy selected area from graphic buffer to double frame buffer
-        for i in 0..self.char_height {
-            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
-            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
-        }
+        self.copy_graphic_buffer_line_area(x1, x2, y);
+
         // get characters from character buffer and pixelize it in db_buffer
         self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
+
         // Copy selected area from double buffer to linear frame buffer
-        for i in 0..self.char_height {
-            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
-            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            lfb[o1..o2].copy_from_slice(&(*self.db_frame_buffer.borrow_mut())[o1..o2]);
-        }
+        self.copy_double_frame_buffer_line_area(x1, x2, y);
     }
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
