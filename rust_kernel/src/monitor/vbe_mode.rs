@@ -212,6 +212,12 @@ impl Drawer for VbeMode {
         self.text_color = color.into();
         Ok(())
     }
+    fn clear_cursor(&mut self) {
+        // wanted fallback
+    }
+    fn draw_cursor(&mut self) {
+        // wanted fallback
+    }
 }
 
 impl AdvancedGraphic for VbeMode {

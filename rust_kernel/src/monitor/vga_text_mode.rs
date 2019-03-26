@@ -60,4 +60,10 @@ impl Drawer for VgaTextMode {
         self.color = u8color;
         Ok(())
     }
+    fn clear_cursor(&mut self) {
+        // wanted fallback
+    }
+    fn draw_cursor(&mut self) {
+        // wanted fallback
+    }
 }
