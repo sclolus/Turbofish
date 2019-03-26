@@ -3,6 +3,7 @@ pub use init::*;
 
 use alloc::vec;
 use alloc::vec::Vec;
+use core::cell::RefCell;
 use core::slice;
 
 use super::{AdvancedGraphic, Color, Drawer, IoResult, WriteMode};
@@ -55,7 +56,7 @@ pub struct VbeMode {
     /// linear frame buffer address
     linear_frame_buffer: *mut u8,
     /// double framebuffer location
-    db_frame_buffer: Vec<u8>,
+    db_frame_buffer: RefCell<Vec<u8>>,
     /// graphic buffer location
     graphic_buffer: Vec<u8>,
     /// character buffer
@@ -103,7 +104,8 @@ impl VbeMode {
         let lines: usize = unsafe { height / _font_height };
         Self {
             linear_frame_buffer,
-            db_frame_buffer: vec![0; screen_size],
+            // Never trust the borrow checker !
+            db_frame_buffer: RefCell::new(vec![0; screen_size]),
             graphic_buffer: vec![0; screen_size],
             characters_buffer: vec![None; columns * lines],
             fixed_characters_buffer: vec![None; columns * lines],
@@ -127,41 +129,41 @@ impl VbeMode {
     }
     /// put pixel at position y, x in pixel unit
     #[inline(always)]
-    fn put_pixel(db_fb: &mut Vec<u8>, loc: usize, color: RGB) {
+    fn put_pixel(&self, x: usize, y: usize, color: RGB) {
+        let loc = y * self.pitch + x * self.bytes_per_pixel;
         unsafe {
-            *((&mut db_fb[loc]) as *mut u8 as *mut u32) = color.0;
+            *((*self.db_frame_buffer.borrow_mut()).as_mut_ptr().add(loc) as *mut u32) = color.0;
+        }
+    }
+    /// write a single character with common rules
+    #[inline(always)]
+    fn write_char(&self, char_font: &[u8], cursor_x: usize, cursor_y: usize, color: RGB) {
+        let mut y = cursor_y * self.char_height;
+        let mut x;
+        for l in char_font {
+            x = cursor_x * self.char_width;
+            for shift in (0..8).rev() {
+                if *l & 1 << shift != 0 {
+                    self.put_pixel(x, y, color);
+                }
+                x += 1;
+            }
+            y += 1;
         }
     }
     /// Copy characters from both characters_buffer to double buffer
-    fn render_text_buffer(&mut self, x1: usize, x2: usize) {
-        unsafe {
-            let buffers = [&self.characters_buffer, &self.fixed_characters_buffer];
-            for buffer in buffers.iter() {
-                for (i, elem) in buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
-                    Some(x) => Some((i, x)),
-                    None => None,
-                }) {
-                    let char_font = _font.get_char((*elem).0 as u8);
-                    let cursor_x = (i + x1) % self.columns;
-                    let cursor_y = (i + x1) / self.columns;
+    fn render_text_buffer(&self, x1: usize, x2: usize) {
+        let buffers = [&self.characters_buffer, &self.fixed_characters_buffer];
+        for buffer in buffers.iter() {
+            for (i, elem) in buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
+                Some(x) => Some((i, x)),
+                None => None,
+            }) {
+                let char_font = unsafe { _font.get_char((*elem).0 as u8) };
+                let cursor_x = (i + x1) % self.columns;
+                let cursor_y = (i + x1) / self.columns;
 
-                    let mut y = cursor_y * self.char_height;
-                    let mut x;
-                    for l in char_font {
-                        x = cursor_x * self.char_width;
-                        for shift in (0..8).rev() {
-                            if *l & 1 << shift != 0 {
-                                Self::put_pixel(
-                                    &mut self.db_frame_buffer,
-                                    y * self.pitch + x * self.bytes_per_pixel,
-                                    (*elem).1,
-                                );
-                            }
-                            x += 1;
-                        }
-                        y += 1;
-                    }
-                }
+                self.write_char(char_font, cursor_x, cursor_y, (*elem).1);
             }
         }
     }
@@ -169,13 +171,21 @@ impl VbeMode {
     pub fn refresh_screen(&mut self) {
         // Copy graphic buffer to double buffer
         unsafe {
-            _sse2_memcpy(self.db_frame_buffer.as_mut_ptr(), self.graphic_buffer.as_ptr(), self.pitch * self.height);
+            _sse2_memcpy(
+                (*self.db_frame_buffer.borrow_mut()).as_mut_ptr(),
+                self.graphic_buffer.as_ptr(),
+                self.pitch * self.height,
+            );
         }
         // Rend all character from character_buffer to db_buffer
         self.render_text_buffer(0, self.columns * self.lines);
         // copy double buffer to linear frame buffer
         unsafe {
-            _sse2_memcpy(self.linear_frame_buffer, self.db_frame_buffer.as_ptr(), self.pitch * self.height);
+            _sse2_memcpy(
+                self.linear_frame_buffer,
+                (*self.db_frame_buffer.borrow_mut()).as_ptr(),
+                self.pitch * self.height,
+            );
         }
     }
 }
@@ -228,7 +238,7 @@ impl AdvancedGraphic for VbeMode {
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            self.db_frame_buffer[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
+            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
         }
         // get characters from character buffer and pixelize it in db_buffer
         self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
@@ -236,7 +246,7 @@ impl AdvancedGraphic for VbeMode {
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            lfb[o1..o2].copy_from_slice(&self.db_frame_buffer[o1..o2]);
+            lfb[o1..o2].copy_from_slice(&(*self.db_frame_buffer.borrow_mut())[o1..o2]);
         }
     }
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
