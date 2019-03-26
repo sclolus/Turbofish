@@ -148,10 +148,11 @@ impl ScreenMonad {
     }
     /// advance cursor by 1
     fn cursor_forward(&mut self, x_origin: usize) -> usize {
-        if self.cursor.x + 1 == self.cursor.columns {
+        // increnent x by 1 until it is on the right of screen
+        self.cursor.x += 1;
+        if self.cursor.x == self.cursor.columns {
             self.cursor_cariage_return(x_origin)
         } else {
-            self.cursor.x += 1;
             x_origin
         }
     }
