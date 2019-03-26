@@ -3,6 +3,7 @@ extern crate libc;
 mod nbr_pages;
 use core::convert::{AsMut, AsRef};
 use core::ffi::c_void;
+use core::fmt::Debug;
 use core::mem;
 use nbr_pages::*;
 
@@ -207,6 +208,7 @@ struct Slab {
 
 impl core::ops::Drop for Slab {
     fn drop(&mut self) {
+        println!("Dropping slab: {:p}", self);
         if self.free_list.len() != self.elem_count {
             println!(
                 "Attempting to drop Slab: ({:p}, {}) while {} allocation are still active",
@@ -219,6 +221,7 @@ impl core::ops::Drop for Slab {
             // Should add this later
         }
         munmap(self.data, self.nbr_pages * PAGE_SIZE);
+        println!("End of drop");
     }
 }
 
@@ -237,9 +240,11 @@ fn mmap(size: usize) -> Option<*mut u8> {
 
 fn munmap(addr: *mut u8, size: usize) {
     unsafe {
+        println!("Munmapping: {:p}", addr);
         if libc::munmap(addr as *mut c_void, size) == -1 {
             panic!("Munmap failed for addr: {:p} size: {}", addr, size);
         }
+        println!("end of munmap");
     }
 }
 
@@ -259,7 +264,7 @@ impl Slab {
     }
 
     pub fn new(mut elem_size: usize, elem_count: usize) -> Option<Self> {
-        elem_size = elem_size.max(mem::size_of::<LinkedList<Vacant>>());
+        elem_size = elem_size.max(mem::size_of::<Node<Vacant>>());
         let mut mmap_size = (elem_size * elem_count).max(PAGE_SIZE);
         // This clearly doesn't care if mmap_size is already a PAGE_SIZE multiple.
         mmap_size += PAGE_SIZE - mmap_size % PAGE_SIZE;
@@ -270,7 +275,7 @@ impl Slab {
         // dbg!(elem_count);
         let mut new = Self {
             status: SlabStatus::Empty,
-            nbr_pages: 1,
+            nbr_pages: NbrPages::from(mmap_size).0,
             elem_size,
             elem_count,
             free_list: LinkedList::new(),
@@ -279,6 +284,7 @@ impl Slab {
         unsafe {
             new.init_free_list();
         }
+
         Some(new)
     }
 
@@ -291,6 +297,7 @@ impl Slab {
     }
 
     pub fn alloc(&mut self) -> Option<*mut u8> {
+        // println!("Allocating inside slab: {:p}", self);
         if self.free_list.empty() {
             return None;
         }
@@ -312,7 +319,6 @@ impl Slab {
         unsafe {
             *vacant = Node::new(Vacant);
         }
-
         self.free_list.push_front(vacant);
         self.update_status();
     }
@@ -333,6 +339,15 @@ struct Cache {
     nbr_slabs: usize,
     slabs: LinkedList<Option<Slab>>,
     data: Option<*mut Node<Option<Slab>>>,
+}
+
+impl Debug for Cache {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        write!(f, "elem_size: {}\nnbr_slabs: {}\nslab: \n", self.elem_size, self.nbr_slabs);
+        Ok(for (index, slab) in self.slabs.iter().enumerate() {
+            writeln!(f, "slab {}:\n {:#?}", index, slab)?
+        })
+    }
 }
 
 impl Cache {
@@ -379,13 +394,8 @@ impl Cache {
             }
         }
 
-        // for (new, old) in new_list.iter_mut().zip(self.slabs.iter_mut()) {
-        //     new.content = mem::replace(&mut old.content, None);
-        // }
-
         if let Some(data) = self.data {
             if data != new {
-                println!("munmaping {:p}", data);
                 munmap(data as *mut u8, NbrPages::from(self.nbr_slabs).into())
             }
         }
@@ -406,10 +416,16 @@ impl Cache {
             None => {
                 self.allocate_metadata(self.nbr_slabs * 2).ok()?;
                 assert!(self.slabs.iter_mut().any(|x| x.content.is_none()));
-
                 self.allocate_new_slab()
             }
         }
+    }
+
+    pub fn free_slab(&mut self, node: &mut Node<Option<Slab>>) {
+        assert!(node.content.is_some());
+        dbg!(self.elem_size);
+        dbg!(node.content.as_mut().unwrap().elem_size);
+        node.content = None;
     }
 
     pub fn new(elem_size: usize) -> Self {
@@ -434,12 +450,88 @@ impl Cache {
     }
 
     pub fn free(&mut self, addr: *mut u8) {
-        if let Some(slab) =
-            self.slabs.iter_mut().filter_map(|node| node.content.as_mut()).find(|slab| slab.contains(addr))
+        if let Some((index, node)) = self
+            .slabs
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, node)| node.content.is_some())
+            .find(|(_, node)| node.content.as_ref().unwrap().contains(addr))
         {
-            slab.free(addr)
+            let mut slab = node.content.as_mut().unwrap();
+
+            slab.free(addr);
+            if slab.status() == SlabStatus::Empty {
+                self.free_slab(node);
+            }
         } else {
             panic!("This cache does not contain this addr: {:p}", addr);
+        }
+    }
+
+    pub fn contains(&self, addr: *mut u8) -> bool {
+        self.slabs.iter().filter_map(|node| node.content.as_ref()).any(|slab| slab.contains(addr))
+    }
+}
+
+impl core::ops::Drop for Cache {
+    fn drop(&mut self) {
+        assert!(self.slabs.iter().all(|node| node.content.is_none()));
+        let current_slabs_size = self.nbr_slabs * mem::size_of::<Node<Option<Slab>>>();
+        let current_page_number = NbrPages::from(current_slabs_size).to_bytes();
+
+        if let Some(data) = self.data {
+            munmap(data as *mut u8, current_page_number);
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SlabAllocator {
+    caches: [Cache; 16],
+}
+
+impl SlabAllocator {
+    fn new() -> Self {
+        let caches = [
+            Cache::new(16),
+            Cache::new(24),
+            Cache::new(32),
+            Cache::new(48),
+            Cache::new(64),
+            Cache::new(80),
+            Cache::new(92),
+            Cache::new(128),
+            Cache::new(256),
+            Cache::new(400),
+            Cache::new(512),
+            Cache::new(1024),
+            Cache::new(1500),
+            Cache::new(2000),
+            Cache::new(2048),
+            Cache::new(4096),
+        ];
+
+        Self { caches }
+    }
+
+    fn alloc(&mut self, size: usize) -> Option<*mut u8> {
+        for cache in self.caches.iter_mut().filter(|cache| cache.elem_size >= size) {
+            //            println!("Using cache of elem_size: {} to allocate object of size {}", cache.elem_size, size);
+            if let Some(addr) = cache.alloc() {
+                return Some(addr);
+            } else {
+                panic!("Dafuq");
+            }
+        }
+        panic!("No cache for size found");
+        None
+    }
+
+    fn free(&mut self, addr: *mut u8) {
+        if let Some(cache) = self.caches.iter_mut().find(|cache| cache.contains(addr)) {
+            cache.free(addr)
+        } else {
+            panic!("Tried to free non-allocated object: {:p}", addr);
         }
     }
 }
@@ -452,67 +544,138 @@ fn main() {
     let mut slab = Slab::new(16, ALLOC_NBR).unwrap();
     let mut addrs: [Option<*mut u8>; ALLOC_NBR] = [None; ALLOC_NBR];
 
-    for _ in 0..ALLOC_NBR {
-        for (iteration, index) in (0..ALLOC_NBR).enumerate() {
-            let addr = slab.alloc().unwrap();
+    // for _ in 0..ALLOC_NBR {
+    //     for (iteration, index) in (0..ALLOC_NBR).enumerate() {
+    //         let addr = slab.alloc().unwrap();
 
-            if let Some(addr) = addrs.iter().filter_map(|x| *x).find(|&x| x == addr) {
-                panic!("{}: Addr: {:p} is already registered", iteration, addr);
-            }
+    //         if let Some(addr) = addrs.iter().filter_map(|x| *x).find(|&x| x == addr) {
+    //             panic!("{}: Addr: {:p} is already registered", iteration, addr);
+    //         }
 
-            addrs[index] = Some(addr);
+    //         addrs[index] = Some(addr);
 
-            println!("{}: Allocated addr: {:p}", iteration, addr);
-        }
+    //         println!("{}: Allocated addr: {:p}", iteration, addr);
+    //     }
 
-        for (iteration, addr) in addrs.iter_mut().filter(|x| x.is_some()).enumerate() {
-            println!("{}: Freeing {:p}", iteration, addr);
-            slab.free((*addr).unwrap());
-            *addr = None;
-        }
-        for free in slab.free_list.iter_mut() {
-            println!("{:?}Yo dog", free);
-        }
-        for free in slab.free_list.iter() {
-            println!("{:?}Yo", free);
-        }
+    //     for (iteration, addr) in addrs.iter_mut().filter(|x| x.is_some()).enumerate() {
+    //         println!("{}: Freeing {:p}", iteration, addr);
+    //         slab.free((*addr).unwrap());
+    //         *addr = None;
+    //     }
+    //     for free in slab.free_list.iter_mut() {
+    //         println!("{:?}Yo dog", free);
+    //     }
+    //     for free in slab.free_list.iter() {
+    //         println!("{:?}Yo", free);
+    //     }
 
-        break;
-    }
+    //     break;
+    // }
 
-    const ALLOC_SIZE: usize = 13;
-    let mut cache = Cache::new(ALLOC_SIZE);
-    let mut addrs: Vec<(*mut u8, u8)> = Vec::new();
+    // const ALLOC_SIZE: usize = 143;
+    // let mut cache = Cache::new(ALLOC_SIZE);
+    // let mut addrs: Vec<(*mut u8, u8)> = Vec::new();
 
-    for index in 0..32728 {
+    // for index in 0..32728 * 16 {
+    //     match rng.gen::<u8>() {
+    //         0...200 => {
+    //             let addr = cache.alloc().unwrap();
+    //             let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, ALLOC_SIZE) };
+    //             let random_byte = rng.gen::<u8>();
+
+    //             for b in object.iter_mut() {
+    //                 *b = random_byte;
+    //             }
+
+    //             assert!(addrs.iter().all(|&(x, _)| x != addr));
+    //             // println!("Allocated object at: {:p}, filled with: {:x}", addr, random_byte);
+    //             addrs.push((addr, random_byte));
+    //         }
+    //         _ => {
+    //             if addrs.len() == 0 {
+    //                 continue;
+    //             }
+    //             let (addr, byte) = addrs.swap_remove(rng.gen::<usize>() % addrs.len());
+
+    //             // println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
+    //             let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, ALLOC_SIZE) };
+
+    //             for b in object.iter() {
+    //                 assert!(*b == byte);
+    //             }
+    //             cache.free(addr);
+    //         }
+    //     }
+    // }
+
+    // for (addr, byte) in addrs.drain(..) {
+    //     // println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
+    //     let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, ALLOC_SIZE) };
+
+    //     for b in object.iter() {
+    //         assert!(*b == byte);
+    //     }
+    //     cache.free(addr);
+    // }
+    // assert!(cache.slabs.iter().all(|x| x.content.is_none()));
+
+    let mut slab_allocator = SlabAllocator::new();
+    const ALLOC_SIZE: usize = 4097;
+    let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::new();
+
+    for index in 0..32728 * 8 {
         match rng.gen::<u8>() {
             0...200 => {
-                let addr = cache.alloc().unwrap();
-                let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, ALLOC_SIZE) };
+                let alloc_size = rng.gen::<usize>() % ALLOC_SIZE;
+                let addr = slab_allocator.alloc(alloc_size).unwrap();
+                let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, alloc_size) };
                 let random_byte = rng.gen::<u8>();
 
                 for b in object.iter_mut() {
                     *b = random_byte;
                 }
 
-                assert!(addrs.iter().all(|&(x, _)| x != addr));
-                // println!("Allocated object at: {:p}, filled with: {:x}", addr, random_byte);
-                addrs.push((addr, random_byte));
+                assert!(addrs.iter().all(|&(x, _, _)| x != addr));
+                //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
+                addrs.push((addr, random_byte, alloc_size));
             }
             _ => {
                 if addrs.len() == 0 {
                     continue;
                 }
-                let (addr, byte) = addrs.swap_remove(rng.gen::<usize>() % addrs.len());
+                let (addr, byte, alloc_size) = addrs.swap_remove(rng.gen::<usize>() % addrs.len());
 
-                // println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
-                let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, ALLOC_SIZE) };
+                //                println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
+                let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
 
                 for b in object.iter() {
+                    if *b != byte {
+                        //                        println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+                        //                        println!("Zones which match incorrect byte: {}", byte);
+                        for (addr, _, size) in addrs.iter().filter(|(_, pbyte, _)| byte == *pbyte) {
+                            //                            println!("\t{:p} of size: {}", addr, size);
+                        }
+                    }
                     assert!(*b == byte);
                 }
-                cache.free(addr);
+                slab_allocator.free(addr);
+                //                println!("Free'd {:p}", addr);
             }
         }
+    }
+    for (addr, byte, alloc_size) in addrs.drain(..) {
+        //        println!("Freeing -> {:p} filled with byte: {:x}", addr, byte);
+        let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
+
+        for b in object.iter() {
+            if *b != byte {
+                //                println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+            }
+            assert!(*b == byte);
+        }
+
+        //        println!("freeing: {:p}", addr);
+        slab_allocator.free(addr);
+        //        println!("free'd: {:p}", addr);
     }
 }
