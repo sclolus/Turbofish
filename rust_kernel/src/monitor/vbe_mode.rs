@@ -224,9 +224,16 @@ impl VbeMode {
     }
     /// get the specified character at location x:y or a default character if none
     fn get_character(&self, cursor_x: usize, cursor_y: usize) -> (u8, RGB) {
-        let c = self.characters_buffer[cursor_y * self.columns + cursor_x];
+        // Fixed character buffer has the priority
+        let c = self.fixed_characters_buffer[cursor_y * self.columns + cursor_x];
         match c {
-            None => (' ' as u8, self.text_color),
+            None => {
+                let c = self.characters_buffer[cursor_y * self.columns + cursor_x];
+                match c {
+                    None => (' ' as u8, self.text_color),
+                    Some(c) => c,
+                }
+            }
             Some(c) => c,
         }
     }
