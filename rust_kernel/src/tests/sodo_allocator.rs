@@ -90,6 +90,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     make_somization(1024, 1000, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
     make_somization(1024, 1000, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
     make_somization(1024, 1000, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
+    make_somization(1024 * 4, 1000 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
     exit_qemu(0);
     0
