@@ -104,9 +104,9 @@ impl VbeMode {
         let lines: usize = unsafe { height / _font_height };
         Self {
             linear_frame_buffer,
-            // Never trust the borrow checker !
-            db_frame_buffer: RefCell::new(vec![0; screen_size]),
-            graphic_buffer: vec![0; screen_size],
+            // Never trust the borrow checker ! Adding 1 for 24bpp mode
+            db_frame_buffer: RefCell::new(vec![0; screen_size + 1]),
+            graphic_buffer: vec![0; screen_size + 1],
             characters_buffer: vec![None; columns * lines],
             fixed_characters_buffer: vec![None; columns * lines],
             write_mode: WriteMode::Dynamic,
@@ -132,7 +132,8 @@ impl VbeMode {
     fn put_pixel(&self, x: usize, y: usize, color: RGB) {
         let loc = y * self.pitch + x * self.bytes_per_pixel;
         unsafe {
-            *((*self.db_frame_buffer.borrow_mut()).as_mut_ptr().add(loc) as *mut u32) = color.0;
+            // Be carefull, in 24 bpp mode, the last pixel overflow by one byte !
+            *((*self.db_frame_buffer.borrow_mut()).as_mut_ptr().add(loc) as *mut u32) = color.0 as u32;
         }
     }
     /// write a single character with common rules
