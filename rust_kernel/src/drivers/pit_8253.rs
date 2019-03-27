@@ -3,8 +3,10 @@
 use super::{pic_8259, PIC_8259};
 use crate::interrupts;
 use crate::io::{Io, Pio};
+use crate::Spinlock;
 use bit_field::BitField;
 use core::time::Duration;
+use lazy_static::lazy_static;
 
 #[derive(Debug)]
 pub struct Pit {
@@ -23,7 +25,9 @@ pub struct Pit {
     pub period: f32,
 }
 
-pub static mut PIT0: Pit = Pit::new(Channel::Channel0);
+lazy_static! {
+    pub static ref PIT0: Spinlock<Pit> = Spinlock::new(Pit::new(Channel::Channel0));
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Channel {

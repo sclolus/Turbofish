@@ -5,7 +5,8 @@ use vga_text_mode::*;
 mod vbe_mode;
 use vbe_mode::*;
 pub mod bmp_loader;
-use lock_api::Mutex;
+use crate::Spinlock;
+use lazy_static::lazy_static;
 
 pub type IoResult = core::result::Result<(), IoError>;
 
@@ -80,10 +81,8 @@ pub struct ScreenMonad {
     pub cursor: Cursor,
 }
 
-use lazy_static::lazy_static;
-
 lazy_static! {
-    pub static ref SCREEN_MONAD: crate::Spinlock<ScreenMonad> = Mutex::new(ScreenMonad::new());
+    pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
 }
 
 impl ScreenMonad {

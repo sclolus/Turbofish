@@ -36,8 +36,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::watch_dog();
         init_keyboard_driver();
 
-        PIT0.configure(OperatingMode::RateGenerator);
-        PIT0.start_at_frequency(1000.).unwrap();
+        PIT0.lock().configure(OperatingMode::RateGenerator);
+        PIT0.lock().start_at_frequency(1000.).unwrap();
 
         interrupts::enable();
 
@@ -84,9 +84,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let eflags = crate::registers::Eflags::get_eflags();
     println!("{:x?}", eflags);
 
-    unsafe {
-        PIT0.start_at_frequency(1000.).unwrap();
-    }
+    PIT0.lock().start_at_frequency(1000.).unwrap();
 
     SCREEN_MONAD
         .lock()
@@ -103,12 +101,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     debug::bench_start();
 
-    println!("pit: {:?}", unsafe { &PIT0 });
-
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
 
-    // crate::test_helpers::really_lazy_hello_world();
+    crate::test_helpers::really_lazy_hello_world();
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);
