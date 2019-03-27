@@ -15,8 +15,14 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 use builtin::*;
-const BUILTINS: [(&str, fn(&[&str])); 4] =
-    [("echo", echo), ("ls", ls), ("yes", yes), ("fucking_big_string", fucking_big_string)];
+const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 6] = [
+    ("echo", echo),
+    ("ls", ls),
+    ("yes", yes),
+    ("fucking_big_string", fucking_big_string),
+    ("page_fault", page_fault),
+    ("division_by_zero", division_by_zero),
+];
 
 fn exec_builtin(line: &str) {
     // println!("\nexec builtin {}", line);
@@ -28,8 +34,12 @@ fn exec_builtin(line: &str) {
     }
     let args: Vec<&str> = split.collect();
     match BUILTINS.iter().find(|(c, _)| c == &command) {
-        None => println!("{}: command not found", command),
-        Some((_c, f)) => f(args.as_slice()),
+        None => {
+            println!("{}: command not found", command);
+        }
+        Some((_c, f)) => {
+            f(args.as_slice()).unwrap();
+        }
     };
 }
 
