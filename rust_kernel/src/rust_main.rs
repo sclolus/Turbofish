@@ -31,8 +31,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         interrupts::init();
 
-        PIC_8259.init();
-        PIC_8259.disable_all_irqs();
+        PIC_8259.lock().init();
+        PIC_8259.lock().disable_all_irqs();
         crate::watch_dog();
         init_keyboard_driver();
 
@@ -66,7 +66,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     crate::log::init().unwrap();
 
     unsafe {
-        PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+        PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
 
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
@@ -79,7 +79,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     println!("irqs state: {}", interrupts::get_interrupts_state());
 
-    println!("irq mask: {:b}", unsafe { PIC_8259.get_masks() });
+    println!("irq mask: {:b}", PIC_8259.lock().get_masks());
 
     let eflags = crate::registers::Eflags::get_eflags();
     println!("{:x?}", eflags);

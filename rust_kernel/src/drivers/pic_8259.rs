@@ -1,6 +1,8 @@
 //! This files contains the code related to the 8259 Programmable interrupt controller.
 //! See [PIC](https://wiki.osdev.org/PIC)
 mod pic_8259_isr;
+use crate::Spinlock;
+use lazy_static::lazy_static;
 use pic_8259_isr::*;
 
 use crate::io::{Io, Pio};
@@ -65,7 +67,9 @@ pub struct Pic8259 {
     bios_imr: Option<u16>,
 }
 
-pub static mut PIC_8259: Pic8259 = Pic8259::new();
+lazy_static! {
+    pub static ref PIC_8259: Spinlock<Pic8259> = Spinlock::new(Pic8259::new());
+}
 
 pub enum Irq {
     /// The System timer, (PIT: Programmable Interval Timer) IRQ.
