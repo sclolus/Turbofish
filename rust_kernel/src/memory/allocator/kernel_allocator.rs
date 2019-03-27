@@ -4,7 +4,7 @@ use crate::memory::mmu::Entry;
 use crate::memory::mmu::_enable_paging;
 use crate::memory::mmu::{PageDirectory, PAGE_TABLES};
 use crate::memory::tools::*;
-use crate::memory::BuddyAllocator;
+use crate::memory::{BuddyAllocator, SlabAllocator};
 use alloc::boxed::Box;
 use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
@@ -42,32 +42,41 @@ impl BootstrapKernelAllocator {
     }
 }
 
-pub struct SlabAllocator;
-
-impl SlabAllocator {
-    pub unsafe fn alloc(&mut self, size: usize) -> Result<Virt> {
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc(size.into()).map(|x| x.into())
-    }
-
-    /// size in bytes
-    pub unsafe fn free(&mut self, vaddr: Virt, size: usize) -> Result<()> {
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(vaddr.into(), size.into())
-    }
-}
-
 pub struct RustGlobalAlloc;
 
 unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.alloc(layout.size()).unwrap_or(Virt(0x0)).0 as *mut u8,
+            KernelAllocator::Kernel(a) => {
+                if layout.size() <= PAGE_SIZE {
+                    a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
+                } else {
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .alloc(layout.size().into())
+                        .unwrap_or(Page::containing(Virt(0x0)))
+                        .to_addr()
+                        .0 as *mut u8
+                }
+            }
             KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout).unwrap_or(Virt(0x0)).0 as *mut u8,
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(a) => a.free(Virt(ptr as usize), layout.size()).unwrap(),
+            KernelAllocator::Kernel(a) => {
+                if layout.size() <= PAGE_SIZE {
+                    a.free(Virt(ptr as usize), layout.size());
+                } else {
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .free(Page::containing(Virt(ptr as usize)), layout.size().into())
+                        .unwrap()
+                }
+            }
             KernelAllocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
         }
     }
@@ -106,5 +115,5 @@ pub unsafe fn init_kernel_virtual_allocator() {
 
     let virt = VirtualPageAllocator::new(buddy, pd);
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
-    KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator);
+    KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator::new());
 }

@@ -8,6 +8,7 @@ pub use physical_page_allocator::{init_physical_allocator, DeviceMap};
 pub mod virtual_page_allocator;
 
 pub mod slab_allocator;
+pub use slab_allocator::SlabAllocator;
 
 pub mod buddy_allocator;
 pub use buddy_allocator::BuddyAllocator;
