@@ -1,11 +1,30 @@
 #[macro_export]
 #[cfg(not(test))]
+macro_rules! print_screen {
+    ($($arg:tt)*) => ({
+        #[allow(unused_unsafe)]
+        match format_args!($($arg)*) {
+            a => {
+                #[allow(unused_unsafe)]
+                core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
+                // core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(1)}, a).unwrap();
+            }
+        }
+    })
+}
+
+#[macro_export]
+#[cfg(not(test))]
 macro_rules! print {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
                 #[allow(unused_unsafe)]
-                core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
+                match unsafe {$crate::terminal::TERMINAL.as_mut()} {
+                    Some(term) => core::fmt::write(unsafe {term.get_tty(1)}, a).unwrap(),
+                    None => core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap(),
+                }
+                // core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
                 // core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(1)}, a).unwrap();
             }
         }

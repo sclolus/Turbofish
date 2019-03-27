@@ -4,3 +4,9 @@ pub fn echo(args: &[&str]) {
     }
     print!("\n");
 }
+
+pub fn yes(_args: &[&str]) {
+    loop {
+        println!("y");
+    }
+}
