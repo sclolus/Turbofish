@@ -42,6 +42,7 @@ impl TerminalBuffer {
     pub fn print_screen(&self, offset: isize) {
         SCREEN_MONAD.lock().clear_screen();
         SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
+        let mut pos_last_char_writen = self.write_pos;
         let start_pos = if offset > 0 {
             self.draw_start_pos + offset as usize
         } else {
@@ -49,22 +50,35 @@ impl TerminalBuffer {
         };
         for j in (start_pos..start_pos + self.nb_columns * self.nb_lines).step_by(self.nb_columns) {
             for i in j..j + self.nb_columns {
-                if i >= self.write_pos {
+                if i >= start_pos + self.nb_columns * self.nb_lines {
                     break;
                 }
                 match self.get_char(i) {
                     None => {
                         break;
                     }
+                    Some(n) if n == 0 => {
+                        break;
+                    }
                     Some(n) if n == '\n' as u8 => {
                         print_screen!("{}", "\n");
+                        pos_last_char_writen = i + (self.nb_columns - (i % self.nb_columns));
                         break;
                     }
                     Some(other) => {
                         print_screen!("{}", other as char);
+                        pos_last_char_writen = i + 1;
                     }
                 }
             }
+        }
+        eprintln!("{}", (pos_last_char_writen as isize));
+        eprintln!("{}", (self.write_pos as isize));
+        eprintln!("{}", (pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
+        let res =
+            SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, pos_last_char_writen - self.write_pos);
+        if offset == 0 {
+            res.unwrap();
         }
     }
 
@@ -116,7 +130,9 @@ impl Tty {
     }
 
     fn refresh(&mut self) {
-        self.buf.print_screen(self.scroll_offset)
+        self.buf.print_screen(self.scroll_offset);
+        // use crate::monitor::Drawer;
+        // SCREEN_MONAD.lock().draw_cursor();
     }
 
     fn scroll(&mut self, scroll: Scroll) {
@@ -140,7 +156,11 @@ impl Tty {
             CursorDirection::Right => self.buf.write_pos += q,
             CursorDirection::Left => self.buf.write_pos -= q,
         }
-        SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
+        if self.echo {
+            SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
+        } else {
+            Ok(())
+        }
     }
 }
 

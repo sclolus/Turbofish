@@ -15,7 +15,8 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 use builtin::*;
-const BUILTINS: [(&str, fn(&[&str])); 3] = [("echo", echo), ("yes", yes), ("fucking_big_string", fucking_big_string)];
+const BUILTINS: [(&str, fn(&[&str])); 4] =
+    [("echo", echo), ("ls", ls), ("yes", yes), ("fucking_big_string", fucking_big_string)];
 
 fn exec_builtin(line: &str) {
     // println!("\nexec builtin {}", line);
@@ -92,6 +93,9 @@ fn read_line() -> String {
 pub fn shell() {
     loop {
         print!("{}", PROMPT);
+        unsafe {
+            TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 0).unwrap();
+        }
         let line = read_line();
         print!("\n");
         exec_builtin(&line);
