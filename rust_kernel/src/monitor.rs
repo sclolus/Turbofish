@@ -1,12 +1,15 @@
 #[macro_use]
 pub mod macros;
-mod vga_text_mode;
-use vga_text_mode::*;
-mod vbe_mode;
-use vbe_mode::*;
 pub mod bmp_loader;
+mod vbe_mode;
+mod vga_text_mode;
+
 use crate::Spinlock;
 use lazy_static::lazy_static;
+use bitflags::bitflags;
+use lock_api::Mutex;
+use vbe_mode::*;
+use vga_text_mode::*;
 
 pub type IoResult = core::result::Result<(), IoError>;
 
@@ -27,7 +30,7 @@ pub enum WriteMode {
 pub trait Drawer {
     fn draw_character(&mut self, c: char, y: usize, x: usize);
     fn scroll_screen(&mut self);
-    fn clear_screen(&mut self);
+    fn clear_screen(&mut self, buffers: Buffer);
     fn set_text_color(&mut self, color: Color) -> IoResult;
     fn clear_cursor(&mut self, x: usize, y: usize);
     fn draw_cursor(&mut self, x: usize, y: usize);
@@ -59,6 +62,17 @@ pub struct Cursor {
     pub y: usize,
     pub columns: usize,
     pub lines: usize,
+}
+
+/// specific buffer enum C
+bitflags! {
+    #[derive(Default)]
+    #[repr(C)]
+    pub struct Buffer: u32 {
+        const CHARACTERS_BUFFER = 1 << 0;
+        const FIXED_CHARACTERS_BUFFER = 1 << 1;
+        const GRAPHIC_BUFFER = 1 << 2;
+    }
 }
 
 /// Enum exported for cursor special API
@@ -106,8 +120,8 @@ impl ScreenMonad {
         Drawer::set_text_color(self, color)
     }
     /// void the screen
-    pub fn clear_screen(&mut self) {
-        Drawer::clear_screen(self);
+    pub fn clear_screen(&mut self, buffers: Buffer) {
+        Drawer::clear_screen(self, buffers);
     }
     /// fill the graphic buffer with a custom fn
     pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
@@ -221,10 +235,10 @@ impl Drawer for ScreenMonad {
         }
     }
     /// void the screen
-    fn clear_screen(&mut self) {
+    fn clear_screen(&mut self, buffers: Buffer) {
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.clear_screen(),
-            DrawingMode::Vbe(vbe) => vbe.clear_screen(),
+            DrawingMode::Vga(vga) => vga.clear_screen(buffers),
+            DrawingMode::Vbe(vbe) => vbe.clear_screen(buffers),
         }
         self.set_cursor_position(0, 0).unwrap();
     }
