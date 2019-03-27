@@ -134,8 +134,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
-    use log::warn;
+    use log::{error, trace, warn};
     crate::log::init();
+    warn!("a warning");
+    error!("a error");
+    warn!("a warning");
+    warn!("a warning");
     warn!("a warning");
     shell();
     sum

@@ -1,9 +1,8 @@
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::terminal::TERMINAL;
 mod builtin;
-use crate::monitor::{CursorDirection, SCREEN_MONAD};
+use crate::monitor::CursorDirection;
 use alloc::prelude::*;
-use builtin::echo;
 
 const PROMPT: &str = "$>";
 
@@ -15,7 +14,8 @@ fn block_read(buf: &mut [KeySymb]) {
     }
 }
 
-const BUILTINS: [(&str, fn(&[&str])); 1] = [("echo", echo)];
+use builtin::*;
+const BUILTINS: [(&str, fn(&[&str])); 2] = [("echo", echo), ("yes", yes)];
 
 fn exec_builtin(line: &str) {
     // println!("\nexec builtin {}", line);
@@ -48,25 +48,27 @@ fn read_line() -> String {
                 line.insert(cursor_pos, key as u8 as char);
                 print!("{}", &line[cursor_pos..]);
                 cursor_pos += 1;
-                unsafe { SCREEN_MONAD.move_graphical_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap() };
+                unsafe {
+                    TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap()
+                };
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
                     cursor_pos -= 1;
-                    unsafe { SCREEN_MONAD.move_graphical_cursor(CursorDirection::Left, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                 }
             }
             KeySymb::Right => {
                 if cursor_pos < line.len() {
                     cursor_pos += 1;
-                    unsafe { SCREEN_MONAD.move_graphical_cursor(CursorDirection::Right, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Right, 1).unwrap() };
                 }
             }
             KeySymb::Delete => {
                 if cursor_pos > 0 {
                     line.remove(cursor_pos - 1);
                     cursor_pos -= 1;
-                    unsafe { SCREEN_MONAD.move_graphical_cursor(CursorDirection::Left, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                     if cursor_pos == line.len() {
                         print!("{}", " ");
                     } else {
@@ -74,7 +76,11 @@ fn read_line() -> String {
                         print!("{}", " ");
                     }
                     unsafe {
-                        SCREEN_MONAD.move_graphical_cursor(CursorDirection::Left, line.len() - cursor_pos + 1).unwrap()
+                        TERMINAL
+                            .as_mut()
+                            .unwrap()
+                            .move_cursor(CursorDirection::Left, line.len() - cursor_pos + 1)
+                            .unwrap()
                     };
                 }
             }
