@@ -1,3 +1,31 @@
+/// This structure is made for bypassing the SCREEN_MONAD mutex, it guaranted the chain to be displayed
+pub struct WriterBypassMutex;
+
+impl core::fmt::Write for WriterBypassMutex {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        unsafe {
+            crate::monitor::SCREEN_MONAD.force_unlock();
+        }
+        crate::monitor::SCREEN_MONAD.lock().write_str(s)
+    }
+}
+
+/// Print_screen allow to write directly into the SCREEN_MONAD and bypass his mutex,
+/// Use only when Panic or some fatal error occured !
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! print_screen {
+    ($($arg:tt)*) => ({
+        #[allow(unused_unsafe)]
+        match format_args!($($arg)*) {
+            a => {
+                core::fmt::write(&mut $crate::monitor::macros::WriterBypassMutex, a).unwrap();
+            }
+        }
+    })
+}
+
+/// Common structure of printer
 pub struct Writer;
 
 impl core::fmt::Write for Writer {
@@ -6,20 +34,19 @@ impl core::fmt::Write for Writer {
     }
 }
 
+/// dump lines in syslog
 #[macro_export]
-#[cfg(not(test))]
-macro_rules! print_screen {
+macro_rules! print_syslog {
     ($($arg:tt)*) => ({
-        #[allow(unused_unsafe)]
         match format_args!($($arg)*) {
             a => {
-                core::fmt::write(&mut $crate::monitor::macros::Writer, a).unwrap();
-                // core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(1)}, a).unwrap();
+                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
             }
         }
     })
 }
 
+/// common print method
 #[macro_export]
 #[cfg(not(test))]
 macro_rules! print {
@@ -31,24 +58,12 @@ macro_rules! print {
                     Some(term) => core::fmt::write(unsafe {term.get_tty(1)}, a).unwrap(),
                     None => core::fmt::write(&mut $crate::monitor::macros::Writer, a).unwrap(),
                 }
-                // core::fmt::write(unsafe {&mut $crate::monitor::SCREEN_MONAD}, a).unwrap();
-                // core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(1)}, a).unwrap();
             }
         }
     })
 }
 
-#[macro_export]
-macro_rules! print_tty {
-    ($($arg:tt)*) => ({
-        match format_args!($($arg)*) {
-            a => {
-                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
-            }
-        }
-    })
-}
-
+/// common print fixed method
 #[macro_export]
 macro_rules! printfixed {
     ($x:expr, $y:expr, $($arg:tt)*) => ({
@@ -81,7 +96,9 @@ macro_rules! println {
 #[cfg(not(test))]
 #[macro_export]
 macro_rules! eprintln {
-    ($($arg:tt)*) => ($crate::println!($($arg)*));
+    () => (print_screen!("\n"));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print_screen!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ($crate::print_screen!(concat!($fmt, "\n")));
 }
 
 #[cfg(feature = "serial-eprintln")]

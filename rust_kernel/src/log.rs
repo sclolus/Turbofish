@@ -10,7 +10,7 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            print_tty!("{} - {}\n", record.level(), record.args());
+            print_syslog!("{} - {}\n", record.level(), record.args());
         }
     }
 
