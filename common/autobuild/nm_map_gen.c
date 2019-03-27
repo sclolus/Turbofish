@@ -256,7 +256,7 @@ int			main(int argc, char *argv[])
 	char			*buf;
 	struct s_custom_memory_fn mem;
 	char			**tab;
-	char			final_buf[256];
+	char			final_buf[256 * 2];
 	struct s_list		*lst;
 	int			size;
 	size_t			nb_lines;
