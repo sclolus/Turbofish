@@ -1,5 +1,8 @@
+use crate::drivers::pci::PCI;
+
 pub type BuiltinResult = core::result::Result<usize, ()>;
 
+/// simple, basic
 pub fn echo(args: &[&str]) -> BuiltinResult {
     for s in args {
         print!("{} ", s);
@@ -8,6 +11,7 @@ pub fn echo(args: &[&str]) -> BuiltinResult {
     Ok(0)
 }
 
+/// a posix system without the yes command isn't a posix system (vcombey)
 pub fn yes(args: &[&str]) -> BuiltinResult {
     loop {
         if args.len() == 0 {
@@ -18,17 +22,34 @@ pub fn yes(args: &[&str]) -> BuiltinResult {
     }
 }
 
+/// list all files
 pub fn ls(_args: &[&str]) -> BuiltinResult {
     println!("fuck you !");
     Ok(0)
 }
 
+/// enumerate all pci devices
+pub fn lspci(_args: &[&str]) -> BuiltinResult {
+    PCI.lock().list_pci_devices();
+    Ok(0)
+}
+
+/// display a big fucking string n times
 pub fn fucking_big_string(args: &[&str]) -> BuiltinResult {
-    let nb = args[0].parse();
+    let nb = match args.len() {
+        0 => Ok(1),
+        _ => args[0].parse(),
+    };
     match nb {
         Err(e) => println!("{}", e),
         Ok(n) => crate::test_helpers::fucking_big_string(n),
     }
+    Ok(0)
+}
+
+/// display a very lazy hello world
+pub fn hello_world(_args: &[&str]) -> BuiltinResult {
+    crate::test_helpers::really_lazy_hello_world();
     Ok(0)
 }
 

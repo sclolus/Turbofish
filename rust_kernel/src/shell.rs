@@ -1,10 +1,13 @@
-use crate::drivers::keyboard::keysymb::KeySymb;
-use crate::terminal::TERMINAL;
 mod builtin;
-use crate::monitor::CursorDirection;
-use alloc::prelude::*;
 
-const PROMPT: &str = "$>";
+use crate::drivers::keyboard::keysymb::KeySymb;
+use crate::monitor::CursorDirection;
+use crate::terminal::TERMINAL;
+use alloc::prelude::*;
+use builtin::*;
+
+// ASCII mouse
+const PROMPT: &str = "----{,_,\"> $ ";
 
 fn block_read(buf: &mut [KeySymb]) {
     unsafe {
@@ -14,14 +17,16 @@ fn block_read(buf: &mut [KeySymb]) {
     }
 }
 
-use builtin::*;
-const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 6] = [
+/// List of some builtins
+const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 8] = [
     ("echo", echo),
     ("ls", ls),
     ("yes", yes),
     ("fucking_big_string", fucking_big_string),
     ("page_fault", page_fault),
     ("division_by_zero", division_by_zero),
+    ("lspci", lspci),
+    ("hello_world", hello_world),
 ];
 
 fn exec_builtin(line: &str) {

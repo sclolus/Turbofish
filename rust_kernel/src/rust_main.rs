@@ -27,7 +27,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
-    // TODO Like multigrub structure, it could be cool to save the entire device map here !
+
     unsafe {
         interrupts::init();
 
@@ -73,7 +73,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
-    //    crate::test_helpers::fucking_big_string(3);
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
 
@@ -99,22 +98,16 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     PCI.lock().scan_pci_buses();
     PCI.lock().list_pci_devices();
 
-    debug::bench_start();
-
-    let t = debug::bench_end();
-    println!("{:?} ms ellapsed", t);
-
     crate::test_helpers::really_lazy_hello_world();
+
     let mut rtc = Rtc::new();
     let date = rtc.read_date();
     println!("{}", date);
 
     use alloc::vec;
     use alloc::vec::Vec;
-    //TODO: we should init paging at the begin of code
-    //test Bootstrap allocator
 
-    println!("begin test 1");
+    println!("begin alloc test...");
     debug::bench_start();
     let mut sum: u32 = 0;
     for i in 0..2 {
@@ -123,10 +116,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         drop(v);
     }
     let t = debug::bench_end();
-    println!("{:?} ms ellapsed", t);
-    println!("multiboot_infos {:#?}", multiboot_info);
-    println!("device map ptr: {:#?}", device_map_ptr);
-    println!("first structure: {:?}", unsafe { *device_map_ptr });
+    println!("{:?} ms ellapsed !", t);
+
+    println!("{:?}", device_map_ptr);
 
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
