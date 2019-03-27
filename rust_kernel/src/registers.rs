@@ -204,15 +204,16 @@ pub unsafe fn real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> u16 {
     without_interrupts!({
         let ret;
         // check if PIC is initialized
-        match PIC_8259.is_initialized() {
+        let mut pic_8259 = PIC_8259.lock();
+        match pic_8259.is_initialized() {
             false => ret = _int8086(&mut reg as *mut BaseRegisters, bios_int),
             true => {
-                let imrs = PIC_8259.reset_to_default();
+                let imrs = pic_8259.reset_to_default();
 
                 ret = _int8086(&mut reg as *mut BaseRegisters, bios_int);
 
-                PIC_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
-                PIC_8259.set_masks(imrs);
+                pic_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
+                pic_8259.set_masks(imrs);
             }
         }
         ret
