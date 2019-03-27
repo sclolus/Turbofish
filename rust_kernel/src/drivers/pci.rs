@@ -1,5 +1,7 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
 use crate::io::{Io, Pio};
+use crate::Spinlock;
+use lazy_static::lazy_static;
 
 use bit_field::BitField;
 
@@ -7,7 +9,9 @@ pub struct Pci {
     pub devices_list: CustomPciDeviceAllocator,
 }
 
-pub static mut PCI: Pci = Pci::new();
+lazy_static! {
+    pub static ref PCI: Spinlock<Pci> = Spinlock::new(Pci::new());
+}
 
 /// That Rust macro extend code of lot of PIO calls
 macro_rules! fill_struct_with_io {
