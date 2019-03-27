@@ -15,7 +15,7 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 use builtin::*;
-const BUILTINS: [(&str, fn(&[&str])); 2] = [("echo", echo), ("yes", yes)];
+const BUILTINS: [(&str, fn(&[&str])); 3] = [("echo", echo), ("yes", yes), ("fucking_big_string", fucking_big_string)];
 
 fn exec_builtin(line: &str) {
     // println!("\nexec builtin {}", line);
