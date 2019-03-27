@@ -5,9 +5,8 @@ mod vbe_mode;
 mod vga_text_mode;
 
 use crate::Spinlock;
-use lazy_static::lazy_static;
 use bitflags::bitflags;
-use lock_api::Mutex;
+use lazy_static::lazy_static;
 use vbe_mode::*;
 use vga_text_mode::*;
 
