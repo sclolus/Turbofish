@@ -5,10 +5,18 @@ pub fn echo(args: &[&str]) {
     print!("\n");
 }
 
-pub fn yes(_args: &[&str]) {
+pub fn yes(args: &[&str]) {
     loop {
-        println!("y");
+        if args[0] == "" {
+            println!("y");
+        } else {
+            println!("{}", args[0]);
+        }
     }
+}
+
+pub fn ls(_args: &[&str]) {
+    println!("fuck you !");
 }
 
 pub fn fucking_big_string(args: &[&str]) {
