@@ -7,7 +7,7 @@ use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::{draw_image, BmpImage};
-use crate::monitor::{Color, WriteMode, SCREEN_MONAD};
+use crate::monitor::{Buffer, Color, WriteMode, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
@@ -52,7 +52,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     SCREEN_MONAD.lock().set_text_color(Color::Blue).unwrap();
 
-    SCREEN_MONAD.lock().clear_screen();
+    SCREEN_MONAD
+        .lock()
+        .clear_screen(Buffer::CHARACTERS_BUFFER | Buffer::FIXED_CHARACTERS_BUFFER | Buffer::GRAPHIC_BUFFER);
 
     SCREEN_MONAD
         .lock()

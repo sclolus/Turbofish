@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::slice;
 
-use super::{AdvancedGraphic, Color, Drawer, IoResult, WriteMode};
+use super::{AdvancedGraphic, Buffer, Color, Drawer, IoResult, WriteMode};
 
 extern "C" {
     /* Fast and Furious ASM SSE2 method to copy entire buffers */
@@ -262,14 +262,24 @@ impl Drawer for VbeMode {
         }
         self.refresh_screen();
     }
-    fn clear_screen(&mut self) {
+    fn clear_screen(&mut self, buffers: Buffer) {
         // clean the character buffer
-        for elem in self.characters_buffer.iter_mut() {
-            *elem = None;
+        if buffers.contains(Buffer::CHARACTERS_BUFFER) {
+            for elem in self.characters_buffer.iter_mut() {
+                *elem = None;
+            }
         }
         // clean the fixed character buffer
-        for elem in self.fixed_characters_buffer.iter_mut() {
-            *elem = None;
+        if buffers.contains(Buffer::FIXED_CHARACTERS_BUFFER) {
+            for elem in self.fixed_characters_buffer.iter_mut() {
+                *elem = None;
+            }
+        }
+        // clean the graphic buffer
+        if buffers.contains(Buffer::GRAPHIC_BUFFER) {
+            unsafe {
+                _sse2_memzero((*self.db_frame_buffer.borrow_mut()).as_mut_ptr(), self.pitch * self.height);
+            }
         }
         self.refresh_screen();
     }

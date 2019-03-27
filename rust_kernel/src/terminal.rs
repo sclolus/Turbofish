@@ -1,6 +1,6 @@
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use crate::monitor::{CursorDirection, IoResult, SCREEN_MONAD};
+use crate::monitor::{Buffer, CursorDirection, IoResult, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::prelude::*;
 use alloc::vec;
@@ -40,7 +40,7 @@ impl TerminalBuffer {
     }
 
     pub fn print_screen(&self, offset: isize) {
-        SCREEN_MONAD.lock().clear_screen();
+        SCREEN_MONAD.lock().clear_screen(Buffer::CHARACTERS_BUFFER);
         SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
         let mut pos_last_char_writen = self.write_pos;
         let start_pos = if offset > 0 {
@@ -72,9 +72,9 @@ impl TerminalBuffer {
                 }
             }
         }
-        eprintln!("{}", (pos_last_char_writen as isize));
-        eprintln!("{}", (self.write_pos as isize));
-        eprintln!("{}", (pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
+        //        eprintln!("{}", (pos_last_char_writen as isize));
+        //        eprintln!("{}", (self.write_pos as isize));
+        //        eprintln!("{}", (pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
         let res =
             SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, pos_last_char_writen - self.write_pos);
         if offset == 0 {
@@ -275,13 +275,3 @@ pub fn init_terminal() {
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
 }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     #[test]
-//     fn big_write() {
-//         let mut tty = Tty::new(false, TerminalBuffer::new(100, 100, 3));
-//         tty.write_str(&"lala  ".repeat(100));
-//     }
-// }

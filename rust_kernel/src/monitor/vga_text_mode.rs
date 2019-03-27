@@ -1,4 +1,4 @@
-use super::{Color, Drawer, IoError, IoResult};
+use super::{Buffer, Color, Drawer, IoError, IoResult};
 
 extern "C" {
     pub fn ft_memset(p: *mut u8, val: i32, len: usize) -> *mut u8;
@@ -46,7 +46,7 @@ impl Drawer for VgaTextMode {
             ft_memset(ptr.add(WIDTH * (HEIGHT - 1) * 2), 0, WIDTH * 2);
         }
     }
-    fn clear_screen(&mut self) {
+    fn clear_screen(&mut self, _buffers: Buffer) {
         unsafe {
             ft_memset(self.memory_location.0, 0, WIDTH * HEIGHT * 2);
         }
