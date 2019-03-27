@@ -472,7 +472,7 @@ impl Cache {
             self.alloc()
         }
 
-        // This code is more elegant but slower, however, surprisingly, this is not the bottleneck. where the eck is it.
+        // This code is more elegant but slower, however, this is not the bottleneck.
         // if let Some(slab) = self
         //     .slabs
         //     .iter_mut()
@@ -560,11 +560,6 @@ impl SlabAllocator {
     }
 
     fn alloc(&mut self, mut size: usize) -> Option<*mut u8> {
-        // for cache in self.caches.iter_mut().filter(|cache| cache.elem_size >= size) {
-        //     //            println!("Using cache of elem_size: {} to allocate object of size {}", cache.elem_size, size);
-        //     return cache.alloc();
-        // }
-        // None
         if size < 32 {
             size = 32;
         }
@@ -595,7 +590,7 @@ fn main() {
     const ALLOC_SIZE: usize = 2 << 17;
     let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
 
-    for _index in 0..32728 * 6 {
+    for _index in 0..32728 * 32 {
         match rng.gen::<u8>() {
             0...200 => {
                 let alloc_size = rng.gen::<usize>() % ALLOC_SIZE;
