@@ -12,6 +12,7 @@ use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
 use crate::timer::Rtc;
+use log::{error, trace, warn};
 
 extern "C" {
     static _asterix_bmp_start: BmpImage;
@@ -46,28 +47,28 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
-    unsafe {
-        SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
+    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
+    SCREEN_MONAD.lock().set_text_color(Color::Green).unwrap();
 
-        SCREEN_MONAD.set_text_color(Color::Blue).unwrap();
+    SCREEN_MONAD.lock().set_text_color(Color::Blue).unwrap();
 
-        SCREEN_MONAD.clear_screen();
+    SCREEN_MONAD.lock().clear_screen();
 
-        SCREEN_MONAD
-            .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-                draw_image(&_asterix_bmp_start, buffer, width, height, bpp)
-            })
-            .unwrap();
-        SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        eprintln!("bonjour");
-    }
+    SCREEN_MONAD
+        .lock()
+        .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+            draw_image(unsafe { &_asterix_bmp_start }, buffer, width, height, bpp)
+        })
+        .unwrap();
+    SCREEN_MONAD.lock().set_text_color(Color::Cyan).unwrap();
+
     init_terminal();
+    crate::log::init().unwrap();
+
     unsafe {
         PIC_8259.enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
 
-    println!("bonjour");
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
     //    crate::test_helpers::fucking_big_string(3);
@@ -86,14 +87,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         PIT0.start_at_frequency(1000.).unwrap();
     }
-    unsafe {
-        SCREEN_MONAD
-            .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-                draw_image(&_wanggle_bmp_start, buffer, width, height, bpp)
-            })
-            .unwrap();
-        SCREEN_MONAD.set_text_color(Color::Green).unwrap();
-    }
+
+    SCREEN_MONAD
+        .lock()
+        .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+            draw_image(unsafe { &_wanggle_bmp_start }, buffer, width, height, bpp)
+        })
+        .unwrap();
+    SCREEN_MONAD.lock().set_text_color(Color::Green).unwrap();
 
     unsafe {
         PCI.scan_pci_buses();
@@ -134,13 +135,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     //crate::test_helpers::trash_test::sa_va_castagner();
     //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
-    use log::{error, trace, warn};
-    crate::log::init();
+    trace!("a trace");
     warn!("a warning");
     error!("a error");
-    warn!("a warning");
-    warn!("a warning");
-    warn!("a warning");
     shell();
     sum
 }

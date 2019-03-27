@@ -12,17 +12,17 @@ struct TerminalBuffer {
     draw_start_pos: usize,
     write_pos: usize,
     nb_lines: usize,
-    nb_colons: usize,
+    nb_columns: usize,
 }
 
 impl TerminalBuffer {
-    pub fn new(nb_lines: usize, nb_colons: usize, buf_max_capacity: usize) -> Self {
-        Self { buf: VecDeque::with_capacity(buf_max_capacity), write_pos: 0, nb_lines, nb_colons, draw_start_pos: 0 }
+    pub fn new(nb_lines: usize, nb_columns: usize, buf_max_capacity: usize) -> Self {
+        Self { buf: VecDeque::with_capacity(buf_max_capacity), write_pos: 0, nb_lines, nb_columns, draw_start_pos: 0 }
     }
 
     pub fn make_place(&mut self) {
         if self.buf.len() < self.buf.capacity() {
-            self.buf.push_back(vec![0; self.nb_lines * self.nb_colons]);
+            self.buf.push_back(vec![0; self.nb_lines * self.nb_columns]);
         } else {
             let mut first = self.buf.pop_front().unwrap();
             // fresh the vec for reuse as last elem
@@ -30,40 +30,38 @@ impl TerminalBuffer {
                 *c = 0;
             }
             self.buf.push_back(first);
-            self.draw_start_pos -= self.nb_lines * self.nb_colons;
-            self.write_pos -= self.nb_lines * self.nb_colons;
+            self.draw_start_pos -= self.nb_lines * self.nb_columns;
+            self.write_pos -= self.nb_lines * self.nb_columns;
         }
     }
 
     fn get_char(&self, i: usize) -> Option<u8> {
-        self.buf.get(i / (self.nb_lines * self.nb_colons)).map(|screen| screen[i % (self.nb_lines * self.nb_colons)])
+        self.buf.get(i / (self.nb_lines * self.nb_columns)).map(|screen| screen[i % (self.nb_lines * self.nb_columns)])
     }
 
     pub fn print_screen(&self, offset: isize) {
-        unsafe {
-            SCREEN_MONAD.clear_screen();
-            SCREEN_MONAD.set_cursor_position(0, 0);
-            let start_pos = if offset > 0 {
-                self.draw_start_pos + offset as usize
-            } else {
-                self.draw_start_pos.checked_sub((-offset) as usize).unwrap_or(0)
-            };
-            for j in (start_pos..start_pos + self.nb_colons * self.nb_lines).step_by(self.nb_colons) {
-                for i in j..j + self.nb_colons {
-                    if i >= self.write_pos {
+        SCREEN_MONAD.lock().clear_screen();
+        SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
+        let start_pos = if offset > 0 {
+            self.draw_start_pos + offset as usize
+        } else {
+            self.draw_start_pos.checked_sub((-offset) as usize).unwrap_or(0)
+        };
+        for j in (start_pos..start_pos + self.nb_columns * self.nb_lines).step_by(self.nb_columns) {
+            for i in j..j + self.nb_columns {
+                if i >= self.write_pos {
+                    break;
+                }
+                match self.get_char(i) {
+                    None => {
                         break;
                     }
-                    match self.get_char(i) {
-                        None => {
-                            break;
-                        }
-                        Some(n) if n == '\n' as u8 => {
-                            print_screen!("{}", "\n");
-                            break;
-                        }
-                        Some(other) => {
-                            print_screen!("{}", other as char);
-                        }
+                    Some(n) if n == '\n' as u8 => {
+                        print_screen!("{}", "\n");
+                        break;
+                    }
+                    Some(other) => {
+                        print_screen!("{}", other as char);
                     }
                 }
             }
@@ -71,16 +69,16 @@ impl TerminalBuffer {
     }
 
     pub fn write_char(&mut self, c: char) {
-        match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_colons)) {
+        match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_columns)) {
             Some(screen) => {
-                let pos = self.write_pos % (self.nb_lines * self.nb_colons);
+                let pos = self.write_pos % (self.nb_lines * self.nb_columns);
                 screen[pos] = c as u8;
                 self.write_pos += match c {
-                    '\n' => self.nb_colons - pos % self.nb_colons,
+                    '\n' => self.nb_columns - pos % self.nb_columns,
                     _ => 1,
                 };
-                if self.write_pos > self.draw_start_pos + self.nb_colons * self.nb_lines {
-                    self.draw_start_pos += self.nb_colons;
+                if self.write_pos > self.draw_start_pos + self.nb_columns * self.nb_lines {
+                    self.draw_start_pos += self.nb_columns;
                 }
                 // TODO: write if actif
             }
@@ -118,17 +116,16 @@ impl Tty {
     }
 
     fn refresh(&mut self) {
-        eprintln!("refresh");
         self.buf.print_screen(self.scroll_offset)
     }
 
     fn scroll(&mut self, scroll: Scroll) {
         use Scroll::*;
         let add_scroll = match scroll {
-            Up => -(self.buf.nb_colons as isize),
-            Down => self.buf.nb_colons as isize,
-            HalfScreenUp => -(((self.buf.nb_lines * self.buf.nb_colons) / 2) as isize),
-            HalfScreenDown => ((self.buf.nb_lines * self.buf.nb_colons) / 2) as isize,
+            Up => -(self.buf.nb_columns as isize),
+            Down => self.buf.nb_columns as isize,
+            HalfScreenUp => -(((self.buf.nb_lines * self.buf.nb_columns) / 2) as isize),
+            HalfScreenDown => ((self.buf.nb_lines * self.buf.nb_columns) / 2) as isize,
         };
         self.scroll_offset = if (self.scroll_offset + add_scroll + self.buf.draw_start_pos as isize) < 0 {
             -(self.buf.draw_start_pos as isize)
@@ -143,7 +140,7 @@ impl Tty {
             CursorDirection::Right => self.buf.write_pos += q,
             CursorDirection::Left => self.buf.write_pos -= q,
         }
-        unsafe { SCREEN_MONAD.move_graphical_cursor(direction, q) }
+        SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
     }
 }
 
@@ -155,15 +152,15 @@ impl core::fmt::Write for Tty {
         }
         self.buf.write_str(s);
         if self.echo {
-            unsafe { SCREEN_MONAD.write_str(s) }
+            SCREEN_MONAD.lock().write_str(s)
         } else {
             Ok(())
         }
     }
 }
+
 pub struct Terminal {
-    buf: [KeySymb; 10],
-    curr_offset: usize,
+    buf: Option<KeySymb>,
     ttys: Vec<Tty>,
 }
 
@@ -173,36 +170,22 @@ const MAX_SCREEN_BUFFER: usize = 10;
 
 impl Terminal {
     pub fn new() -> Self {
-        unsafe {
-            Self {
-                buf: [KeySymb::nul; 10],
-                curr_offset: 0,
-                ttys: vec![
-                    Tty::new(
-                        false,
-                        TerminalBuffer::new(SCREEN_MONAD.cursor.lines, SCREEN_MONAD.cursor.columns, MAX_SCREEN_BUFFER)
-                    );
-                    2
-                ],
-            }
-        }
-    }
-
-    fn _display_char(key_symb: KeySymb) {
-        match key_symb {
-            KeySymb::Return => println!(""),
-            _ => {
-                if (key_symb >= KeySymb::space) && (key_symb <= KeySymb::asciitilde) {
-                    print!("{}", key_symb as u32 as u8 as char);
-                }
-            }
+        let screen_monad = SCREEN_MONAD.lock();
+        Self {
+            buf: None,
+            ttys: vec![
+                Tty::new(
+                    false,
+                    TerminalBuffer::new(screen_monad.cursor.lines, screen_monad.cursor.columns, MAX_SCREEN_BUFFER)
+                );
+                2
+            ],
         }
     }
 
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
         self.ttys.iter_mut().find(|tty| tty.echo).map(|t| t.echo = false);
         self.ttys[new_foreground_tty].echo = true;
-        eprintln!("switch");
         self.ttys[new_foreground_tty].refresh();
     }
 
@@ -210,67 +193,35 @@ impl Terminal {
         self.ttys.iter_mut().find(|tty| tty.echo)
     }
 
-    fn handle_macros(&mut self, keysymb: KeySymb) -> Option<KeySymb> {
-        match keysymb {
-            KeySymb::o => {
-                self.switch_foreground_tty(0);
-                None
-            }
-            KeySymb::p => {
-                self.switch_foreground_tty(1);
-                None
-            }
-            KeySymb::Control_p => {
-                self.get_foreground_tty().unwrap().scroll(Scroll::Up);
-                None
-            }
-            KeySymb::Control_n => {
-                self.get_foreground_tty().unwrap().scroll(Scroll::Down);
-                None
-            }
-            KeySymb::Control_b => {
-                self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenUp);
-                None
-            }
-            KeySymb::Control_d => {
-                self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenDown);
-                None
-            }
-            other => Some(other),
-        }
-    }
-
-    fn stock_keysymb(&mut self, key_symb: KeySymb) {
-        eprintln!("{:?}", key_symb);
-        if let Some(key) = self.handle_macros(key_symb) {
-            if self.curr_offset >= self.buf.len() {
+    fn handle_macros(&mut self) {
+        match self.buf {
+            Some(KeySymb::F1) => self.switch_foreground_tty(0),
+            Some(KeySymb::F2) => self.switch_foreground_tty(1),
+            Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().scroll(Scroll::Up),
+            Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().scroll(Scroll::Down),
+            Some(KeySymb::Control_b) => self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenUp),
+            Some(KeySymb::Control_d) => self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenDown),
+            _ => {
                 return;
             }
-            self.buf[self.curr_offset] = key;
-            self.curr_offset += 1;
+        };
+        self.buf = None;
+    }
+
+    fn stock_keysymb(&mut self, keysymb: KeySymb) {
+        if self.buf.is_none() {
+            self.buf = Some(keysymb);
         }
     }
 
     pub fn read(&mut self, buf: &mut [KeySymb]) -> usize {
-        // println!("read");
-        let amt = core::cmp::min(buf.len(), self.curr_offset);
-        let (a, _b) = self.buf.split_at(amt);
-
-        if amt == 0 {
-            return 0;
+        self.handle_macros();
+        if let Some(key) = self.buf {
+            buf[0] = key;
+            self.buf = None;
+            return 1;
         }
-        // First check if the amount of bytes we want to read is small:
-        // `copy_from_slice` will generally expand to a call to `memcpy`, and
-        // for a single byte the overhead is significant.
-        if amt == 1 {
-            buf[0] = a[0];
-        } else {
-            buf[..amt].copy_from_slice(a);
-        }
-
-        self.buf.copy_within(amt..self.curr_offset, 0);
-        self.curr_offset = 0;
-        amt
+        return 0;
     }
 
     pub fn write_str(&mut self, fd: usize, s: &str) {
@@ -286,7 +237,6 @@ impl Terminal {
     }
 
     pub fn get_tty(&mut self, fd: usize) -> &mut Tty {
-        eprintln!("get_tty");
         &mut self.ttys[fd]
     }
 }

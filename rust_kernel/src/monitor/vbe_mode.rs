@@ -54,7 +54,7 @@ impl From<Color> for RGB {
 #[derive(Debug, Clone)]
 pub struct VbeMode {
     /// linear frame buffer address
-    linear_frame_buffer: *mut u8,
+    linear_frame_buffer: LinearFrameBuffer,
     /// double framebuffer location
     db_frame_buffer: RefCell<Vec<u8>>,
     /// graphic buffer location
@@ -89,6 +89,11 @@ pub struct VbeMode {
     crtc_info: CrtcInfo,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct LinearFrameBuffer(pub *mut u8);
+
+unsafe impl Send for LinearFrameBuffer {}
+
 impl VbeMode {
     pub fn new(
         linear_frame_buffer: *mut u8,
@@ -103,7 +108,7 @@ impl VbeMode {
         let columns: usize = unsafe { width / _font_width };
         let lines: usize = unsafe { height / _font_height };
         Self {
-            linear_frame_buffer,
+            linear_frame_buffer: LinearFrameBuffer(linear_frame_buffer),
             // Never trust the borrow checker ! Adding 1 for 24bpp mode
             db_frame_buffer: RefCell::new(vec![0; screen_size + 1]),
             graphic_buffer: vec![0; screen_size + 1],
@@ -199,7 +204,7 @@ impl VbeMode {
         // copy double buffer to linear frame buffer
         unsafe {
             _sse2_memcpy(
-                self.linear_frame_buffer,
+                self.linear_frame_buffer.0,
                 (*self.db_frame_buffer.borrow_mut()).as_ptr(),
                 self.pitch * self.height,
             );
@@ -215,7 +220,7 @@ impl VbeMode {
     }
     /// copy one bounded area line from double frame buffer to linear frame buffer
     fn copy_double_frame_buffer_line_area(&self, x1: usize, x2: usize, y: usize) {
-        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer, self.pitch * self.height) };
+        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer.0, self.pitch * self.height) };
 
         for i in 0..self.char_height {
             let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;

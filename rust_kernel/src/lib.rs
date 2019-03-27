@@ -54,6 +54,9 @@ pub mod terminal;
 
 pub mod log;
 
+pub mod spinlock;
+pub use spinlock::{Spinlock, SpinlockGuard};
+
 use crate::memory::RustGlobalAlloc;
 
 /// As a matter of fact, we can't declare the MemoryManager inside a submodule.
