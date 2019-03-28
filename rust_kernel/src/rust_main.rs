@@ -7,7 +7,8 @@ use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::{draw_image, BmpImage};
-use crate::monitor::{Buffer, Color, WriteMode, SCREEN_MONAD};
+use crate::monitor::{AdvancedGraphic, Drawer};
+use crate::monitor::{Color, Pos, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
@@ -30,10 +31,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     unsafe {
         interrupts::init();
+        crate::watch_dog();
 
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
-        crate::watch_dog();
         init_keyboard_driver();
 
         PIT0.lock().configure(OperatingMode::RateGenerator);
@@ -43,18 +44,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
     }
+    println!("device map ptr {:#?}", device_map_ptr);
     println!("multiboot_infos {:#?}", multiboot_info);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
     SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
-    SCREEN_MONAD.lock().set_text_color(Color::Green).unwrap();
-
-    SCREEN_MONAD.lock().set_text_color(Color::Blue).unwrap();
-
-    SCREEN_MONAD
-        .lock()
-        .clear_screen(Buffer::CHARACTERS_BUFFER | Buffer::FIXED_CHARACTERS_BUFFER | Buffer::GRAPHIC_BUFFER);
 
     SCREEN_MONAD
         .lock()
@@ -62,7 +57,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
             draw_image(unsafe { &_asterix_bmp_start }, buffer, width, height, bpp)
         })
         .unwrap();
-    SCREEN_MONAD.lock().set_text_color(Color::Cyan).unwrap();
+
+    SCREEN_MONAD.lock().draw_character('c', Pos { line: 0, column: 0 }, Color::Red).unwrap();
+    SCREEN_MONAD.lock().draw_character('c', Pos { line: 1, column: 0 }, Color::Red).unwrap();
+    SCREEN_MONAD.lock().draw_character('c', Pos { line: 24, column: 0 }, Color::Red).unwrap();
+    SCREEN_MONAD.lock().refresh_screen();
 
     init_terminal();
     crate::log::init().unwrap();
@@ -71,7 +70,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
 
-    printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
+    //printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
@@ -93,7 +92,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
             draw_image(unsafe { &_wanggle_bmp_start }, buffer, width, height, bpp)
         })
         .unwrap();
-    SCREEN_MONAD.lock().set_text_color(Color::Green).unwrap();
 
     PCI.lock().scan_pci_buses();
     PCI.lock().list_pci_devices();

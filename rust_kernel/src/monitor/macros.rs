@@ -2,11 +2,12 @@
 pub struct WriterBypassMutex;
 
 impl core::fmt::Write for WriterBypassMutex {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+    fn write_str(&mut self, _s: &str) -> core::fmt::Result {
         unsafe {
             crate::monitor::SCREEN_MONAD.force_unlock();
+            Ok(())
         }
-        crate::monitor::SCREEN_MONAD.lock().write_str(s)
+        //        crate::monitor::SCREEN_MONAD.lock().write_str(s)
     }
 }
 
@@ -29,8 +30,9 @@ macro_rules! print_screen {
 pub struct Writer;
 
 impl core::fmt::Write for Writer {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        crate::monitor::SCREEN_MONAD.lock().write_str(s)
+    fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+        // crate::monitor::SCREEN_MONAD.lock().write_str(s)
+        Ok(())
     }
 }
 
@@ -63,6 +65,7 @@ macro_rules! print {
     })
 }
 
+/*
 /// common print fixed method
 #[macro_export]
 macro_rules! printfixed {
@@ -83,6 +86,7 @@ macro_rules! printfixed {
         }
     })
 }
+*/
 
 #[macro_export]
 #[cfg(not(test))]

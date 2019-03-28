@@ -5,42 +5,30 @@ mod vbe_mode;
 mod vga_text_mode;
 
 use crate::Spinlock;
-use bitflags::bitflags;
 use lazy_static::lazy_static;
 use vbe_mode::*;
 use vga_text_mode::*;
 
+/// IoResult is just made to handle module errors
 pub type IoResult = core::result::Result<(), IoError>;
 
+/// Common errors for this module
 #[derive(Debug, Copy, Clone)]
 pub enum IoError {
+    OutOfBound,
     ColorNotSupported,
-    CursorOutOfBound,
     GraphicModeNotFounded,
     NotSupported,
 }
 
+/// Usable to select write position for characters
 #[derive(Debug, Copy, Clone)]
-pub enum WriteMode {
-    Dynamic,
-    Fixed,
+pub struct Pos {
+    pub line: usize,
+    pub column: usize,
 }
 
-pub trait Drawer {
-    fn draw_character(&mut self, c: char, y: usize, x: usize);
-    fn scroll_screen(&mut self);
-    fn clear_screen(&mut self, buffers: Buffer);
-    fn set_text_color(&mut self, color: Color) -> IoResult;
-    fn clear_cursor(&mut self, x: usize, y: usize);
-    fn draw_cursor(&mut self, x: usize, y: usize);
-}
-
-trait AdvancedGraphic {
-    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize);
-    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
-    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult;
-}
-
+/// Human readable colors
 #[derive(Debug, Copy, Clone)]
 pub enum Color {
     Red,
@@ -54,255 +42,119 @@ pub enum Color {
     Black,
 }
 
-/// x,y,lines,columns are in unit of char
-#[derive(Debug, Copy, Clone)]
-pub struct Cursor {
-    pub x: usize,
-    pub y: usize,
-    pub columns: usize,
-    pub lines: usize,
+/// Drawer is a common trait between VGA and VBE interfaces
+pub trait Drawer {
+    fn draw_character(&mut self, c: char, position: Pos, color: Color) -> IoResult;
+    fn clear_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult;
+    fn draw_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult;
+    fn clear_screen(&mut self);
 }
 
-/// specific buffer enum C
-bitflags! {
-    #[derive(Default)]
-    #[repr(C)]
-    pub struct Buffer: u32 {
-        const CHARACTERS_BUFFER = 1 << 0;
-        const FIXED_CHARACTERS_BUFFER = 1 << 1;
-        const GRAPHIC_BUFFER = 1 << 2;
-    }
+/// AdvancedGraphic is only VBE compatible functions
+pub trait AdvancedGraphic {
+    fn refresh_screen(&mut self);
+    fn refresh_text_line(&mut self, line: usize) -> IoResult;
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
 }
 
-/// Enum exported for cursor special API
-#[derive(Debug)]
-pub enum CursorDirection {
-    Left,
-    Right,
+/// Manage interaction between monitor/graphic_card and software
+pub struct ScreenMonad {
+    drawing_mode: DrawingMode,
+    nb_lines: usize,
+    nb_columns: usize,
 }
 
-#[derive(Debug)]
 enum DrawingMode {
     Vga(VgaTextMode),
     Vbe(VbeMode),
 }
 
-/// Control the cursor and can put text on screen thanks to its drawer slave
-#[derive(Debug)]
-pub struct ScreenMonad {
-    drawing_mode: DrawingMode,
-    pub cursor: Cursor,
-}
-
 lazy_static! {
+    /// Output monad
     pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
 }
 
 impl ScreenMonad {
-    // public methods
-    /// default VGA_TEXT_MODE
-    const fn new() -> Self {
+    /// default is vga
+    fn new() -> Self {
         let vga = VgaTextMode::new();
         let (lines, columns) = vga.query_window_size();
-        Self { drawing_mode: DrawingMode::Vga(vga), cursor: Cursor { x: 0, y: 0, columns, lines } }
+        Self { drawing_mode: DrawingMode::Vga(vga), nb_lines: lines, nb_columns: columns }
     }
     /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
         let (lines, columns) = vbe.query_window_size();
         self.drawing_mode = DrawingMode::Vbe(vbe);
-        self.cursor = Cursor { x: 0, y: 0, columns, lines };
+        self.nb_lines = lines;
+        self.nb_columns = columns;
         Ok(())
     }
-    /// basic, simple
-    pub fn set_text_color(&mut self, color: Color) -> IoResult {
-        Drawer::set_text_color(self, color)
-    }
-    /// void the screen
-    pub fn clear_screen(&mut self, buffers: Buffer) {
-        Drawer::clear_screen(self, buffers);
-    }
-    /// fill the graphic buffer with a custom fn
-    pub fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
-        AdvancedGraphic::draw_graphic_buffer(self, closure)
-    }
-    pub fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
-        AdvancedGraphic::set_write_mode(self, write_mode)
-    }
-    /// set manualy position of cursor
-    pub fn set_cursor_position(&mut self, x: usize, y: usize) -> IoResult {
-        if x >= self.cursor.columns || y >= self.cursor.lines {
-            Err(IoError::CursorOutOfBound)
+    /// Check the bounds
+    fn check_bound(&self, position: Pos) -> IoResult {
+        if position.line >= self.nb_lines || position.column >= self.nb_columns {
+            Err(IoError::OutOfBound)
         } else {
-            self.cursor.x = x;
-            self.cursor.y = y;
             Ok(())
-        }
-    }
-    /// Erase and Replace graphical cursor
-    pub fn move_graphical_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
-        // Erase Old cursor
-        Drawer::clear_cursor(self, self.cursor.x, self.cursor.y);
-        match direction {
-            CursorDirection::Right => self.cursor_move_right(q)?,
-            CursorDirection::Left => self.cursor_move_left(q)?,
-        }
-        // create new cursor
-        Drawer::draw_cursor(self, self.cursor.x, self.cursor.y);
-        Ok(())
-    }
-    /// get the cursor position
-    pub fn get_cursor_position(&mut self) -> (usize, usize) {
-        (self.cursor.x, self.cursor.y)
-    }
-    // private methods
-    /// check if cursor has moved
-    fn is_cursor_moved(&mut self, x_origin: usize) -> usize {
-        if self.cursor.x != x_origin {
-            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
-        }
-        self.cursor.x
-    }
-    /// advance cursor by 1
-    fn cursor_forward(&mut self, x_origin: usize) -> usize {
-        // increnent x by 1 until it is on the right of screen
-        self.cursor.x += 1;
-        if self.cursor.x == self.cursor.columns {
-            self.cursor_cariage_return(x_origin)
-        } else {
-            x_origin
-        }
-    }
-    /// new line
-    fn cursor_cariage_return(&mut self, x_origin: usize) -> usize {
-        if self.cursor.y + 1 == self.cursor.lines {
-            self.scroll_screen();
-        } else {
-            self.refresh_text_line(x_origin, self.cursor.x, self.cursor.y);
-            self.cursor.y += 1;
-        }
-        self.cursor.x = 0;
-        0
-    }
-    /// move cursor to the right
-    fn cursor_move_right(&mut self, q: usize) -> IoResult {
-        if q == 0 {
-            Ok(())
-        } else if self.cursor.y == self.cursor.lines {
-            Err(IoError::CursorOutOfBound)
-        } else {
-            self.cursor.x += 1;
-            if self.cursor.x == self.cursor.columns {
-                self.cursor.x = 0;
-                self.cursor.y += 1;
-            }
-            self.cursor_move_right(q - 1)
-        }
-    }
-    /// move cursor to the left
-    fn cursor_move_left(&mut self, q: usize) -> IoResult {
-        if q == 0 {
-            Ok(())
-        } else if self.cursor.x == 0 && self.cursor.y == 0 {
-            Err(IoError::CursorOutOfBound)
-        } else {
-            if self.cursor.x == 0 {
-                self.cursor.x = self.cursor.columns - 1;
-                self.cursor.y -= 1;
-            } else {
-                self.cursor.x -= 1;
-            }
-            self.cursor_move_left(q - 1)
         }
     }
 }
 
-/// private
 impl Drawer for ScreenMonad {
-    /// put a character into the screen
-    fn draw_character(&mut self, c: char, y: usize, x: usize) {
+    /// Put a character into the screen
+    fn draw_character(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.check_bound(position)?;
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.draw_character(c, y, x),
-            DrawingMode::Vbe(vbe) => vbe.draw_character(c, y, x),
+            DrawingMode::Vga(vga) => vga.draw_character(c, position, color),
+            DrawingMode::Vbe(vbe) => vbe.draw_character(c, position, color),
         }
     }
-    /// just scroll a bit
-    fn scroll_screen(&mut self) {
+    /// Fflush the screen
+    fn clear_screen(&mut self) {
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.scroll_screen(),
-            DrawingMode::Vbe(vbe) => vbe.scroll_screen(),
+            DrawingMode::Vga(vga) => vga.clear_screen(),
+            DrawingMode::Vbe(vbe) => vbe.clear_screen(),
         }
     }
-    /// void the screen
-    fn clear_screen(&mut self, buffers: Buffer) {
+    /// Clear cursor in a specified area
+    fn clear_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.check_bound(position)?;
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.clear_screen(buffers),
-            DrawingMode::Vbe(vbe) => vbe.clear_screen(buffers),
-        }
-        self.set_cursor_position(0, 0).unwrap();
-    }
-    /// basic, simple
-    fn set_text_color(&mut self, color: Color) -> IoResult {
-        match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.set_text_color(color),
-            DrawingMode::Vbe(vbe) => vbe.set_text_color(color),
+            DrawingMode::Vga(vga) => vga.clear_cursor(c, position, color),
+            DrawingMode::Vbe(vbe) => vbe.clear_cursor(c, position, color),
         }
     }
-
-    /// basic, simple
-    fn clear_cursor(&mut self, x: usize, y: usize) {
+    /// Draw cursor in a specified area
+    fn draw_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.check_bound(position)?;
         match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.clear_cursor(x, y),
-            DrawingMode::Vbe(vbe) => vbe.clear_cursor(x, y),
-        }
-    }
-    /// basic, simple
-    fn draw_cursor(&mut self, x: usize, y: usize) {
-        match &mut self.drawing_mode {
-            DrawingMode::Vga(vga) => vga.draw_cursor(x, y),
-            DrawingMode::Vbe(vbe) => vbe.draw_cursor(x, y),
+            DrawingMode::Vga(vga) => vga.draw_cursor(c, position, color),
+            DrawingMode::Vbe(vbe) => vbe.draw_cursor(c, position, color),
         }
     }
 }
 
-/// private
 impl AdvancedGraphic for ScreenMonad {
-    /// command a refresh for selected graphic area
-    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
+    /// Refresh all the screen
+    fn refresh_screen(&mut self) {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => (),
-            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(x1, x2, y),
+            DrawingMode::Vbe(vbe) => vbe.refresh_screen(),
         }
     }
-    /// fill the graphic buffer with a custom function
+    /// Command a refresh for selected graphic area
+    fn refresh_text_line(&mut self, line: usize) -> IoResult {
+        self.check_bound(Pos { line, column: 0 })?;
+        match &mut self.drawing_mode {
+            DrawingMode::Vga(_vga) => Ok(()),
+            DrawingMode::Vbe(vbe) => vbe.refresh_text_line(line),
+        }
+    }
+    /// Fill the graphic buffer with a custom function
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
         }
-    }
-    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
-        match &mut self.drawing_mode {
-            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
-            DrawingMode::Vbe(vbe) => vbe.set_write_mode(write_mode),
-        }
-    }
-}
-
-/// common Write implementation
-impl core::fmt::Write for ScreenMonad {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let mut x_origin: usize = self.cursor.x;
-        for c in s.as_bytes() {
-            match *c as char {
-                '\n' => x_origin = self.cursor_cariage_return(x_origin),
-                _ => {
-                    self.draw_character(*c as char, self.cursor.y, self.cursor.x);
-                    x_origin = self.cursor_forward(x_origin);
-                }
-            }
-        }
-        self.is_cursor_moved(x_origin);
-        Ok(())
     }
 }
