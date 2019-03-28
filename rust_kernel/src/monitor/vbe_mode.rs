@@ -1,55 +1,12 @@
+mod font;
+pub use font::*;
 mod init;
 pub use init::*;
 
+use super::{AdvancedGraphic, Color, Drawer, IoResult, Pos};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use core::slice;
-
-use super::{AdvancedGraphic, Buffer, Color, Drawer, IoResult, WriteMode};
-
-extern "C" {
-    /* Fast and Furious ASM SSE2 method to copy entire buffers */
-    fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
-    fn _sse2_memzero(dst: *mut u8, len: usize) -> ();
-}
-
-/// structure contains font for the 255 ascii char
-#[repr(C)]
-// TODO Must be declared dynamiquely and remove 16 magic
-struct Font(pub [u8; 16 * 256]);
-
-impl Font {
-    /// return the 16 * u8 slice font corresponding to the char
-    fn get_char(&self, c: u8) -> &[u8] {
-        &self.0[c as usize * 16..(c as usize + 1) * 16]
-    }
-}
-
-extern "C" {
-    static _font: Font;
-    static _font_width: usize;
-    static _font_height: usize;
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct RGB(pub u32);
-
-impl From<Color> for RGB {
-    fn from(c: Color) -> Self {
-        match c {
-            Color::Red => RGB(0xFF0000),
-            Color::Green => RGB(0x00FF00),
-            Color::Blue => RGB(0x0000FF),
-            Color::Yellow => RGB(0xFFFF00),
-            Color::Cyan => RGB(0x00FFFF),
-            Color::Brown => RGB(0xA52A2A),
-            Color::Magenta => RGB(0xFF00FF),
-            Color::White => RGB(0xFFFFFF),
-            Color::Black => RGB(0x000000),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct VbeMode {
@@ -59,12 +16,6 @@ pub struct VbeMode {
     db_frame_buffer: RefCell<Vec<u8>>,
     /// graphic buffer location
     graphic_buffer: Vec<u8>,
-    /// character buffer
-    characters_buffer: Vec<Option<(u8, RGB)>>,
-    /// fixed characters buffer
-    fixed_characters_buffer: Vec<Option<(u8, RGB)>>,
-    /// set write mode
-    write_mode: WriteMode,
     /// in pixel
     width: usize,
     /// in pixel
@@ -81,16 +32,14 @@ pub struct VbeMode {
     columns: usize,
     /// number of characters lines
     lines: usize,
-    /// current text color
-    text_color: RGB,
-    // Some informations about graphic mode
+    /// Some informations about graphic mode
     mode_info: ModeInfo,
-    // Some informations about how the screen manage display
+    /// Some informations about how the screen manage display
     crtc_info: CrtcInfo,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct LinearFrameBuffer(pub *mut u8);
+struct LinearFrameBuffer(pub *mut u8);
 
 unsafe impl Send for LinearFrameBuffer {}
 
@@ -112,9 +61,6 @@ impl VbeMode {
             // Never trust the borrow checker ! Adding 1 for 24bpp mode
             db_frame_buffer: RefCell::new(vec![0; screen_size + 1]),
             graphic_buffer: vec![0; screen_size + 1],
-            characters_buffer: vec![None; columns * lines],
-            fixed_characters_buffer: vec![None; columns * lines],
-            write_mode: WriteMode::Dynamic,
             width,
             height,
             bytes_per_pixel,
@@ -123,75 +69,82 @@ impl VbeMode {
             char_height: unsafe { _font_height },
             columns: columns,
             lines: lines,
-            text_color: Color::White.into(),
             crtc_info,
             mode_info,
         }
     }
+
     /// return window size in nb char
     pub fn query_window_size(&self) -> (usize, usize) {
         (self.height / self.char_height, self.width / self.char_width)
     }
+
     /// put pixel at position y, x in pixel unit
     #[inline(always)]
-    fn put_pixel(&self, x: usize, y: usize, color: RGB) {
+    fn put_pixel(&self, y: usize, x: usize, color: RGB) {
         let loc = y * self.pitch + x * self.bytes_per_pixel;
         unsafe {
             // Be carefull, in 24 bpp mode, the last pixel overflow by one byte !
             *((*self.db_frame_buffer.borrow_mut()).as_mut_ptr().add(loc) as *mut u32) = color.0 as u32;
         }
     }
+
     /// write a single character with common rules
     #[inline(always)]
-    fn write_char(&self, char_font: &[u8], cursor_x: usize, cursor_y: usize, color: RGB) {
-        let mut y = cursor_y * self.char_height;
+    fn write_char(&self, char_font: &[u8], line: usize, column: usize, color: RGB) {
+        let mut y = line * self.char_height;
         let mut x;
         for l in char_font {
-            x = cursor_x * self.char_width;
+            x = column * self.char_width;
             for shift in (0..8).rev() {
                 if *l & 1 << shift != 0 {
-                    self.put_pixel(x, y, color);
+                    self.put_pixel(y, x, color);
                 }
                 x += 1;
             }
             y += 1;
         }
     }
+
     /// write a cursor with common rules
     #[inline(always)]
-    fn write_cursor(&self, char_font: &[u8], cursor_x: usize, cursor_y: usize, color: RGB) {
-        let mut y = cursor_y * self.char_height;
+    fn write_cursor(&self, char_font: &[u8], line: usize, column: usize, color: RGB) {
+        let mut y = line * self.char_height;
         let mut x;
         for l in char_font {
-            x = cursor_x * self.char_width;
+            x = column * self.char_width;
             for shift in (0..8).rev() {
                 if *l & 1 << shift == 0 {
-                    self.put_pixel(x, y, color);
+                    self.put_pixel(y, x, color);
                 }
                 x += 1;
             }
             y += 1;
         }
     }
-    /// Copy characters from both characters_buffer to double buffer
-    fn render_text_buffer(&self, x1: usize, x2: usize) {
-        let buffers = [&self.characters_buffer, &self.fixed_characters_buffer];
-        for buffer in buffers.iter() {
-            for (i, elem) in buffer[x1..x2].iter().enumerate().filter_map(|(i, x)| match x {
-                Some(x) => Some((i, x)),
-                None => None,
-            }) {
-                let char_font = unsafe { _font.get_char((*elem).0 as u8) };
-                let cursor_x = (i + x1) % self.columns;
-                let cursor_y = (i + x1) / self.columns;
 
-                self.write_char(char_font, cursor_x, cursor_y, (*elem).1);
-            }
+    /// copy one bounded area line from graphic buffer to db frame buffer
+    fn copy_graphic_buffer_line_area(&self, line: usize, column_1: usize, column_2: usize) {
+        for i in 0..self.char_height {
+            let o1 = (line * self.char_height + i) * self.pitch + column_1 * self.char_width * self.bytes_per_pixel;
+            let o2 = o1 + (column_2 - column_1) * self.char_width * self.bytes_per_pixel;
+            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
         }
     }
-    /// refresh framebuffer
-    fn refresh_screen(&mut self) {
-        // Copy graphic buffer to double buffer
+}
+
+impl Drawer for VbeMode {
+    #[inline(always)]
+    fn draw_character(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.copy_graphic_buffer_line_area(position.line, position.column, position.column + 1);
+
+        let font = unsafe { _font.get_char(c as u8) };
+        self.write_char(font, position.line, position.column, color.into());
+        Ok(())
+    }
+
+    fn clear_screen(&mut self) {
+        // Copy the entire graphic buffer
         unsafe {
             _sse2_memcpy(
                 (*self.db_frame_buffer.borrow_mut()).as_mut_ptr(),
@@ -199,9 +152,24 @@ impl VbeMode {
                 self.pitch * self.height,
             );
         }
-        // Rend all character from character_buffer to db_buffer
-        self.render_text_buffer(0, self.columns * self.lines);
-        // copy double buffer to linear frame buffer
+    }
+
+    fn clear_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.draw_character(c, position, color)
+    }
+
+    fn draw_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+        self.copy_graphic_buffer_line_area(position.line, position.column, position.column + 1);
+
+        let font = unsafe { _font.get_char(c as u8) };
+        self.write_cursor(font, position.line, position.column, color.into());
+        Ok(())
+    }
+}
+
+impl AdvancedGraphic for VbeMode {
+    /// refresh framebuffer
+    fn refresh_screen(&mut self) {
         unsafe {
             _sse2_memcpy(
                 self.linear_frame_buffer.0,
@@ -210,129 +178,49 @@ impl VbeMode {
             );
         }
     }
-    /// copy one bounded area line from graphic buffer to db frame buffer
-    fn copy_graphic_buffer_line_area(&self, x1: usize, x2: usize, y: usize) {
-        for i in 0..self.char_height {
-            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
-            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
-        }
-    }
-    /// copy one bounded area line from double frame buffer to linear frame buffer
-    fn copy_double_frame_buffer_line_area(&self, x1: usize, x2: usize, y: usize) {
-        let lfb = unsafe { slice::from_raw_parts_mut(self.linear_frame_buffer.0, self.pitch * self.height) };
 
-        for i in 0..self.char_height {
-            let o1 = (y * self.char_height + i) * self.pitch + x1 * self.char_width * self.bytes_per_pixel;
-            let o2 = o1 + (x2 - x1) * self.char_width * self.bytes_per_pixel;
-            lfb[o1..o2].copy_from_slice(&(*self.db_frame_buffer.borrow_mut())[o1..o2]);
+    /// Display an entire line in the screen: Be carefull, all characters after end are cleared !
+    fn refresh_text_line(&mut self, line: usize) -> IoResult {
+        let offset = line * self.pitch * self.char_height;
+        unsafe {
+            _sse2_memcpy(
+                self.linear_frame_buffer.0.add(offset),
+                (*self.db_frame_buffer.borrow_mut()).as_ptr().add(offset),
+                self.pitch * self.char_height,
+            );
         }
-    }
-    /// get the specified character at location x:y or a default character if none
-    fn get_character(&self, cursor_x: usize, cursor_y: usize) -> (u8, RGB) {
-        // Fixed character buffer has the priority
-        let c = self.fixed_characters_buffer[cursor_y * self.columns + cursor_x];
-        match c {
-            None => {
-                let c = self.characters_buffer[cursor_y * self.columns + cursor_x];
-                match c {
-                    None => (' ' as u8, self.text_color),
-                    Some(c) => c,
-                }
-            }
-            Some(c) => c,
-        }
-    }
-}
-
-impl Drawer for VbeMode {
-    fn draw_character(&mut self, c: char, cursor_y: usize, cursor_x: usize) {
-        let dest = match self.write_mode {
-            WriteMode::Dynamic => &mut self.characters_buffer,
-            WriteMode::Fixed => &mut self.fixed_characters_buffer,
-        };
-        dest[cursor_y * self.columns + cursor_x] = Some((c as u8, self.text_color));
-    }
-    fn scroll_screen(&mut self) {
-        // scroll left the character_buffer
-        let m = self.columns * (self.lines - 1);
-        self.characters_buffer.copy_within(self.columns.., 0);
-        for elem in self.characters_buffer[m..].iter_mut() {
-            *elem = None;
-        }
-        self.refresh_screen();
-    }
-    fn clear_screen(&mut self, buffers: Buffer) {
-        // clean the character buffer
-        if buffers.contains(Buffer::CHARACTERS_BUFFER) {
-            for elem in self.characters_buffer.iter_mut() {
-                *elem = None;
-            }
-        }
-        // clean the fixed character buffer
-        if buffers.contains(Buffer::FIXED_CHARACTERS_BUFFER) {
-            for elem in self.fixed_characters_buffer.iter_mut() {
-                *elem = None;
-            }
-        }
-        // clean the graphic buffer
-        if buffers.contains(Buffer::GRAPHIC_BUFFER) {
-            unsafe {
-                _sse2_memzero((*self.db_frame_buffer.borrow_mut()).as_mut_ptr(), self.pitch * self.height);
-            }
-        }
-        self.refresh_screen();
-    }
-    fn set_text_color(&mut self, color: Color) -> IoResult {
-        self.text_color = color.into();
         Ok(())
     }
-    fn clear_cursor(&mut self, cursor_x: usize, cursor_y: usize) {
-        self.copy_graphic_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
 
-        let (character, color) = self.get_character(cursor_x, cursor_y);
-        let font = unsafe { _font.get_char(character) };
-
-        self.write_char(font, cursor_x, cursor_y, color);
-
-        self.copy_double_frame_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
-    }
-    fn draw_cursor(&mut self, cursor_x: usize, cursor_y: usize) {
-        self.copy_graphic_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
-
-        let (character, color) = self.get_character(cursor_x, cursor_y);
-        let font = unsafe { _font.get_char(character) };
-
-        self.write_cursor(font, cursor_x, cursor_y, color);
-
-        self.copy_double_frame_buffer_line_area(cursor_x, cursor_x + 1, cursor_y);
-    }
-}
-
-impl AdvancedGraphic for VbeMode {
-    /// Display an entire line in the screen: Be carefull, all characters after end are cleared !
-    fn refresh_text_line(&mut self, x1: usize, x2: usize, y: usize) {
-        // Copy selected area from graphic buffer to double frame buffer
-        self.copy_graphic_buffer_line_area(x1, x2, y);
-
-        // fflush characters after refreshed area
-        for elem in self.characters_buffer[x2 + y * self.columns..(y + 1) * self.columns].iter_mut() {
-            *elem = None;
-        }
-
-        // get characters from character buffer and pixelize it in db_buffer
-        self.render_text_buffer(y * self.columns + x1, y * self.columns + x2);
-
-        // Copy selected area from double buffer to linear frame buffer
-        self.copy_double_frame_buffer_line_area(x1, x2, y);
-    }
+    /// Expose graphic buffer
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
-        self.refresh_screen();
+        self.clear_screen();
         Ok(())
     }
-    fn set_write_mode(&mut self, write_mode: WriteMode) -> IoResult {
-        self.write_mode = write_mode;
-        Ok(())
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RGB(pub u32);
+
+impl From<Color> for RGB {
+    #[inline(always)]
+    fn from(c: Color) -> Self {
+        match c {
+            Color::Red => RGB(0xFF0000),
+            Color::Green => RGB(0x00FF00),
+            Color::Blue => RGB(0x0000FF),
+            Color::Yellow => RGB(0xFFFF00),
+            Color::Cyan => RGB(0x00FFFF),
+            Color::Brown => RGB(0xA52A2A),
+            Color::Magenta => RGB(0xFF00FF),
+            Color::White => RGB(0xFFFFFF),
+            Color::Black => RGB(0x000000),
+        }
     }
+}
+
+extern "C" {
+    /* Fast and Furious ASM SSE2 method to copy entire buffers */
+    fn _sse2_memcpy(dst: *mut u8, src: *const u8, len: usize) -> ();
 }

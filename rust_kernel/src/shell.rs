@@ -1,9 +1,8 @@
 mod builtin;
-
 use crate::drivers::keyboard::keysymb::KeySymb;
-use crate::monitor::CursorDirection;
 use crate::terminal::TERMINAL;
-use alloc::prelude::*;
+use alloc::string::String;
+use alloc::vec::Vec;
 use builtin::*;
 
 // ASCII mouse
@@ -64,40 +63,42 @@ fn read_line() -> String {
                 line.insert(cursor_pos, key as u8 as char);
                 print!("{}", &line[cursor_pos..]);
                 cursor_pos += 1;
-                unsafe {
-                    TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap()
-                };
+
+                //unsafe {
+                //    TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap()
+                //};
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
                     cursor_pos -= 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
+                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                 }
             }
             KeySymb::Right => {
                 if cursor_pos < line.len() {
                     cursor_pos += 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Right, 1).unwrap() };
+                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Right, 1).unwrap() };
                 }
             }
             KeySymb::Delete => {
                 if cursor_pos > 0 {
                     line.remove(cursor_pos - 1);
                     cursor_pos -= 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
+                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                     if cursor_pos == line.len() {
                         print!("{}", " ");
                     } else {
                         print!("{}", &line[cursor_pos..]);
                         print!("{}", " ");
                     }
-                    unsafe {
-                        TERMINAL
-                            .as_mut()
-                            .unwrap()
-                            .move_cursor(CursorDirection::Left, line.len() - cursor_pos + 1)
-                            .unwrap()
-                    };
+                    //unsafe {
+                    //    TERMINAL
+                    //        .as_mut()
+                    //        .unwrap()
+                    //        .move_cursor(CursorDirection::Left, line.len() - cursor_pos + 1)
+                    //        .unwrap()
+                    //
+                    //};
                 }
             }
             _ => {}
@@ -108,9 +109,9 @@ fn read_line() -> String {
 pub fn shell() {
     loop {
         print!("{}", PROMPT);
-        unsafe {
-            TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 0).unwrap();
-        }
+        //unsafe {
+        //TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 0).unwrap();
+        //}
         let line = read_line();
         print!("\n");
         exec_builtin(&line);

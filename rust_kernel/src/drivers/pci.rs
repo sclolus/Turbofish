@@ -38,7 +38,7 @@ macro_rules! fill_struct_with_io {
             }
 }
 
-/// Rust abstract of First line of PCI header
+// Rust abstract of First line of PCI header
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
@@ -47,7 +47,7 @@ fill_struct_with_io!(
     }
 );
 
-/// Rust Abstract of next third lines of PCI header
+// Rust Abstract of next third lines of PCI header
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
@@ -58,7 +58,7 @@ fill_struct_with_io!(
     }
 );
 
-/// Rust Abstract of Pci Registers (body)
+// Rust Abstract of Pci Registers (body)
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]

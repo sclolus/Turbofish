@@ -1,9 +1,10 @@
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use crate::monitor::{Buffer, CursorDirection, IoResult, SCREEN_MONAD};
+//use crate::monitor::{IoResult, SCREEN_MONAD};
+use crate::monitor::SCREEN_MONAD;
 use alloc::collections::vec_deque::VecDeque;
-use alloc::prelude::*;
 use alloc::vec;
+use alloc::vec::Vec;
 use core::fmt::Write;
 
 #[derive(Clone)]
@@ -40,9 +41,9 @@ impl TerminalBuffer {
     }
 
     pub fn print_screen(&self, offset: isize) {
-        SCREEN_MONAD.lock().clear_screen(Buffer::CHARACTERS_BUFFER);
-        SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
-        let mut pos_last_char_writen = self.write_pos;
+        //        SCREEN_MONAD.lock().clear_screen(Buffer::CHARACTERS_BUFFER);
+        //        SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
+        let mut _pos_last_char_writen = self.write_pos;
         let start_pos = if offset > 0 {
             self.draw_start_pos + offset as usize
         } else {
@@ -62,24 +63,24 @@ impl TerminalBuffer {
                     }
                     Some(n) if n == '\n' as u8 => {
                         print_screen!("{}", "\n");
-                        pos_last_char_writen = i + (self.nb_columns - (i % self.nb_columns));
+                        _pos_last_char_writen = i + (self.nb_columns - (i % self.nb_columns));
                         break;
                     }
                     Some(other) => {
                         print_screen!("{}", other as char);
-                        pos_last_char_writen = i + 1;
+                        _pos_last_char_writen = i + 1;
                     }
                 }
             }
         }
-        //        eprintln!("{}", (pos_last_char_writen as isize));
+        //        eprintln!("{}", (_pos_last_char_writen as isize));
         //        eprintln!("{}", (self.write_pos as isize));
-        //        eprintln!("{}", (pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
-        let res =
-            SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, pos_last_char_writen - self.write_pos);
-        if offset == 0 {
-            res.unwrap();
-        }
+        //        eprintln!("{}", (_pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
+        // let res =
+        //     SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, _pos_last_char_writen - self.write_pos);
+        // if offset == 0 {
+        //     res.unwrap();
+        // }
     }
 
     pub fn write_char(&mut self, c: char) {
@@ -151,6 +152,7 @@ impl Tty {
         self.buf.print_screen(self.scroll_offset)
     }
 
+    /*
     pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
         match direction {
             CursorDirection::Right => self.buf.write_pos += q,
@@ -162,6 +164,7 @@ impl Tty {
             Ok(())
         }
     }
+    */
 }
 
 impl core::fmt::Write for Tty {
@@ -172,7 +175,8 @@ impl core::fmt::Write for Tty {
         }
         self.buf.write_str(s);
         if self.echo {
-            SCREEN_MONAD.lock().write_str(s)
+            Ok(())
+        // SCREEN_MONAD.lock().write_str(s)
         } else {
             Ok(())
         }
@@ -190,13 +194,17 @@ const MAX_SCREEN_BUFFER: usize = 10;
 
 impl Terminal {
     pub fn new() -> Self {
-        let screen_monad = SCREEN_MONAD.lock();
+        let _screen_monad = SCREEN_MONAD.lock();
         Self {
             buf: None,
             ttys: vec![
                 Tty::new(
                     false,
-                    TerminalBuffer::new(screen_monad.cursor.lines, screen_monad.cursor.columns, MAX_SCREEN_BUFFER)
+                    TerminalBuffer::new(
+                        0,
+                        0, /*screen_monad.cursor.lines, screen_monad.cursor.columns*/
+                        MAX_SCREEN_BUFFER
+                    )
                 );
                 2
             ],
@@ -248,9 +256,9 @@ impl Terminal {
         self.ttys[fd].write_str(s).unwrap();
     }
 
-    pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
-        self.get_foreground_tty().unwrap().move_cursor(direction, q)
-    }
+    // pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
+    //     self.get_foreground_tty().unwrap().move_cursor(direction, q)
+    // }
 
     pub fn set_foreground_fd(&mut self, fd: usize) {
         self.ttys[fd].echo = true;
