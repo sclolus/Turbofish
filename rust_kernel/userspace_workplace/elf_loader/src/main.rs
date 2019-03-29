@@ -413,6 +413,7 @@ impl TryFrom<&[u8]> for ProgramHeader {
     }
 }
 
+#[derive(Debug)]
 enum SectionHeaderType {
     Null,
     ProgBits,
@@ -433,6 +434,23 @@ enum SectionHeaderType {
     SymtabShndx,
     Num,
     Loos,
+    GnuAttributes,
+    GnuHash,
+    GnuLibList,
+    Checksum,
+    Losunw,
+    SunwMove,
+    SunwComdat,
+    SunwSyminfo,
+    GnuVerdef,
+    GnuVerneed,
+    GnuVersym,
+    Hisunw,
+    Hios,
+    LoProc,
+    HiProc,
+    LoUser,
+    HiUser,
 }
 
 impl TryFrom<u32> for SectionHeaderType {
@@ -460,6 +478,23 @@ impl TryFrom<u32> for SectionHeaderType {
             0x12 => SymtabShndx,
             0x13 => Num,
             0x60000000 => Loos,
+            0x6ffffff5 => GnuAttributes,
+            0x6ffffff6 => GnuHash,
+            0x6ffffff7 => GnuLibList,
+            0x6ffffff8 => Checksum,
+            0x6ffffffa => Losunw,
+            0x6ffffffa => SunwMove,
+            0x6ffffffb => SunwComdat,
+            0x6ffffffc => SunwSyminfo,
+            0x6ffffffd => GnuVerdef,
+            0x6ffffffe => GnuVerneed,
+            0x6fffffff => GnuVersym,
+            0x6fffffff => Hisunw,
+            0x6fffffff => Hios,
+            0x70000000 => LoProc,
+            0x7fffffff => HiProc,
+            0x80000000 => LoUser,
+            0x8fffffff => HiUser,
             _ => return Err(ElfParseError::InvalidSectionHeaderType),
         })
     }
@@ -505,6 +540,7 @@ impl From<u32> for SectionHeaderFlags {
     }
 }
 
+#[derive(Debug)]
 struct SectionHeader {
     sh_name: u32,
     sh_type: SectionHeaderType,
@@ -544,7 +580,7 @@ impl TryFrom<&[u8]> for SectionHeader {
             sh_addralign: slice_to_u32(&value[0x20..0x24]),
             sh_entsize: slice_to_u32(&value[0x24..0x28]),
         };
-        if !new.sh_addralign.is_power_of_two() {
+        if !new.sh_addralign.is_power_of_two() && new.sh_addralign != 0 {
             return Err(ElfParseError::InvalidSectionAlignment);
         }
 
@@ -574,10 +610,24 @@ fn main() {
 
         let mut ph_table = Vec::new();
 
+        println!("\nProgram header table:");
         for (index, program_header) in program_header_table.iter().enumerate() {
             let pheader = ProgramHeader::from_bytes(program_header as &[u8]).unwrap();
             println!("{}: {:?}", index, pheader);
             ph_table.push(pheader);
+        }
+
+        let section_header_table: &[[u8; mem::size_of::<SectionHeader>()]] = unsafe {
+            slice::from_raw_parts(&content[header.e_shoff as usize] as *const u8 as *const _, header.e_shnum as usize)
+        };
+
+        let mut sh_table = Vec::new();
+
+        println!("\nSection header table:");
+        for (index, section_header) in section_header_table.iter().enumerate() {
+            let sheader = SectionHeader::from_bytes(section_header as &[u8]).unwrap();
+            println!("{}: {:?}", index, sheader);
+            sh_table.push(sheader);
         }
     }
 }
