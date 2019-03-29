@@ -41,25 +41,8 @@ impl core::fmt::Write for Writer {
 macro_rules! print_syslog {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
-            a => {
-                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
-            }
-        }
-    })
-}
-
-/// common print method
-#[macro_export]
-#[cfg(not(test))]
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        match format_args!($($arg)*) {
-            a => {
-                #[allow(unused_unsafe)]
-                match unsafe {$crate::terminal::TERMINAL.as_mut()} {
-                    Some(term) => core::fmt::write(unsafe {term.get_tty(1)}, a).unwrap(),
-                    None => core::fmt::write(&mut $crate::monitor::macros::Writer, a).unwrap(),
-                }
+            _a => {
+//                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
             }
         }
     })
@@ -88,14 +71,6 @@ macro_rules! printfixed {
 }
 */
 
-#[macro_export]
-#[cfg(not(test))]
-macro_rules! println {
-    () => (print!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
-    ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
-}
-
 #[cfg(not(feature = "serial-eprintln"))]
 #[cfg(not(test))]
 #[macro_export]
@@ -111,3 +86,30 @@ macro_rules! eprintln {
 macro_rules! eprintln {
     ($($arg:tt)*) => ($crate::serial_println!($($arg)*));
 }
+
+/*
+/// common print method
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        match format_args!($($arg)*) {
+            a => {
+                #[allow(unused_unsafe)]
+                match unsafe {$crate::terminal::TERMINAL.as_mut()} {
+                    Some(term) => core::fmt::write(unsafe {term.get_tty(1)}, a).unwrap(),
+                    None => core::fmt::write(&mut $crate::monitor::macros::Writer, a).unwrap(),
+                }
+            }
+        }
+    })
+}
+
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! println {
+    () => (print!("\n"));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
+}
+*/
