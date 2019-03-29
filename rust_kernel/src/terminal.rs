@@ -7,6 +7,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
+#[macro_use]
+pub mod macros;
+
 #[derive(Clone)]
 struct TerminalBuffer {
     buf: VecDeque<Vec<u8>>,
