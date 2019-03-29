@@ -1,6 +1,6 @@
 mod builtin;
 use crate::drivers::keyboard::keysymb::KeySymb;
-use crate::terminal::TERMINAL;
+use crate::terminal::{CursorDirection, TERMINAL};
 use alloc::string::String;
 use alloc::vec::Vec;
 use builtin::*;
@@ -8,6 +8,7 @@ use builtin::*;
 // ASCII mouse
 const PROMPT: &str = "----{,_,\"> $ ";
 
+/// Blocked read
 fn block_read(buf: &mut [KeySymb]) {
     unsafe {
         while TERMINAL.as_mut().unwrap().read(buf) == 0 {
@@ -28,9 +29,8 @@ const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 8] = [
     ("hello_world", hello_world),
 ];
 
+/// Exectution of builtin commands
 fn exec_builtin(line: &str) {
-    // println!("\nexec builtin {}", line);
-
     let mut split = line.split_whitespace();
     let command = split.next().unwrap_or("");
     if command == "" {
@@ -47,6 +47,7 @@ fn exec_builtin(line: &str) {
     };
 }
 
+/// Blocked read line
 fn read_line() -> String {
     let mut line = String::new();
     let mut cursor_pos = 0;
@@ -64,41 +65,40 @@ fn read_line() -> String {
                 print!("{}", &line[cursor_pos..]);
                 cursor_pos += 1;
 
-                //unsafe {
-                //    TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap()
-                //};
+                unsafe {
+                    TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, line.len() - cursor_pos).unwrap()
+                };
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
                     cursor_pos -= 1;
-                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                 }
             }
             KeySymb::Right => {
                 if cursor_pos < line.len() {
                     cursor_pos += 1;
-                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Right, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Right, 1).unwrap() };
                 }
             }
             KeySymb::Delete => {
                 if cursor_pos > 0 {
                     line.remove(cursor_pos - 1);
                     cursor_pos -= 1;
-                    //unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
+                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 1).unwrap() };
                     if cursor_pos == line.len() {
                         print!("{}", " ");
                     } else {
                         print!("{}", &line[cursor_pos..]);
                         print!("{}", " ");
                     }
-                    //unsafe {
-                    //    TERMINAL
-                    //        .as_mut()
-                    //        .unwrap()
-                    //        .move_cursor(CursorDirection::Left, line.len() - cursor_pos + 1)
-                    //        .unwrap()
-                    //
-                    //};
+                    unsafe {
+                        TERMINAL
+                            .as_mut()
+                            .unwrap()
+                            .move_cursor(CursorDirection::Left, line.len() - cursor_pos + 1)
+                            .unwrap()
+                    };
                 }
             }
             _ => {}
@@ -106,14 +106,19 @@ fn read_line() -> String {
     }
 }
 
+/// Shell is a blocked function, it display prompt and wait for a command
 pub fn shell() {
     loop {
+        // Display prompt
         print!("{}", PROMPT);
-        //unsafe {
-        //TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 0).unwrap();
-        //}
+        unsafe {
+            TERMINAL.as_mut().unwrap().move_cursor(CursorDirection::Left, 0).unwrap();
+        }
+        // Call to blocked read_line function
         let line = read_line();
+        // Make a line jump
         print!("\n");
+        // Execute command
         exec_builtin(&line);
     }
 }

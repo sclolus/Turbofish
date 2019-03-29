@@ -1,5 +1,4 @@
 use crate::drivers::pit_8253::PIT0;
-//use crate::monitor::{Color, SCREEN_MONAD};
 use crate::monitor::Color;
 use core::time::Duration;
 
@@ -20,9 +19,9 @@ pub fn really_lazy_hello_world() {
         (" ", Cyan),
         ("!", White),
     ];
-    for (c, _color) in hello_world.iter() {
+    for (c, color) in hello_world.iter() {
         PIT0.lock().sleep(Duration::from_millis(200));
-        //SCREEN_MONAD.lock().set_text_color(*color).unwrap();
+        set_text_color!(*color);
         print!("{}", c);
     }
     print!("\n");
