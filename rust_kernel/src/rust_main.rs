@@ -3,13 +3,11 @@ use crate::drivers::keyboard::init_keyboard_driver;
 use crate::drivers::pci::PCI;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::drivers::{pic_8259, PIC_8259};
-use crate::early_terminal::EARLY_TERMINAL;
 use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::monitor::bmp_loader::{draw_image, BmpImage};
-use crate::monitor::{AdvancedGraphic, Drawer};
-use crate::monitor::{Color, Pos, SCREEN_MONAD};
+use crate::monitor::{AdvancedGraphic, Color, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
@@ -32,7 +30,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     unsafe {
         interrupts::init();
-        crate::watch_dog();
 
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
@@ -41,22 +38,17 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIT0.lock().configure(OperatingMode::RateGenerator);
         PIT0.lock().start_at_frequency(1000.).unwrap();
 
+        crate::watch_dog();
         interrupts::enable();
 
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
     }
     println!("device map ptr {:#?}", device_map_ptr);
-    unsafe {
-        EARLY_TERMINAL.set_text_color(Color::Red);
-    }
+    set_text_color!(Color::Red);
     println!("multiboot_infos {:#?}", multiboot_info);
-    unsafe {
-        EARLY_TERMINAL.set_text_color(Color::Green);
-    }
+    set_text_color!(Color::Green);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
-
-    loop {}
 
     SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
 
@@ -67,9 +59,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         })
         .unwrap();
 
-    SCREEN_MONAD.lock().draw_character('c', Pos { line: 0, column: 0 }, Color::Red).unwrap();
-    SCREEN_MONAD.lock().draw_character('c', Pos { line: 1, column: 0 }, Color::Red).unwrap();
-    SCREEN_MONAD.lock().draw_character('c', Pos { line: 24, column: 0 }, Color::Red).unwrap();
     SCREEN_MONAD.lock().refresh_screen();
 
     init_terminal();
@@ -102,6 +91,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         })
         .unwrap();
 
+    SCREEN_MONAD.lock().refresh_screen();
+
     PCI.lock().scan_pci_buses();
     PCI.lock().list_pci_devices();
 
@@ -127,8 +118,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     println!("{:?}", device_map_ptr);
 
-    //crate::test_helpers::trash_test::sa_va_castagner();
-    //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
     trace!("a trace");
     warn!("a warning");

@@ -1,22 +1,27 @@
+#[macro_use]
+pub mod macros;
+
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-//use crate::monitor::{IoResult, SCREEN_MONAD};
-use crate::monitor::SCREEN_MONAD;
+use crate::monitor::{AdvancedGraphic, Color, Drawer, IoResult, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
-#[macro_use]
-pub mod macros;
-
 #[derive(Clone)]
 struct TerminalBuffer {
-    buf: VecDeque<Vec<u8>>,
+    buf: VecDeque<Vec<(u8, Color)>>,
     draw_start_pos: usize,
     write_pos: usize,
     nb_lines: usize,
     nb_columns: usize,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum CursorDirection {
+    Left,
+    Right,
 }
 
 impl TerminalBuffer {
@@ -24,14 +29,15 @@ impl TerminalBuffer {
         Self { buf: VecDeque::with_capacity(buf_max_capacity), write_pos: 0, nb_lines, nb_columns, draw_start_pos: 0 }
     }
 
+    /// Make some place for a new screen
     pub fn make_place(&mut self) {
         if self.buf.len() < self.buf.capacity() {
-            self.buf.push_back(vec![0; self.nb_lines * self.nb_columns]);
+            self.buf.push_back(vec![(0, Color::Black); self.nb_lines * self.nb_columns]);
         } else {
             let mut first = self.buf.pop_front().unwrap();
             // fresh the vec for reuse as last elem
             for c in &mut first {
-                *c = 0;
+                *c = (0, Color::Black);
             }
             self.buf.push_back(first);
             self.draw_start_pos -= self.nb_lines * self.nb_columns;
@@ -39,58 +45,17 @@ impl TerminalBuffer {
         }
     }
 
-    fn get_char(&self, i: usize) -> Option<u8> {
+    /// Get a specified character into the buffer
+    fn get_char(&self, i: usize) -> Option<(u8, Color)> {
         self.buf.get(i / (self.nb_lines * self.nb_columns)).map(|screen| screen[i % (self.nb_lines * self.nb_columns)])
     }
 
-    pub fn print_screen(&self, offset: isize) {
-        //        SCREEN_MONAD.lock().clear_screen(Buffer::CHARACTERS_BUFFER);
-        //        SCREEN_MONAD.lock().set_cursor_position(0, 0).unwrap();
-        let mut _pos_last_char_writen = self.write_pos;
-        let start_pos = if offset > 0 {
-            self.draw_start_pos + offset as usize
-        } else {
-            self.draw_start_pos.checked_sub((-offset) as usize).unwrap_or(0)
-        };
-        for j in (start_pos..start_pos + self.nb_columns * self.nb_lines).step_by(self.nb_columns) {
-            for i in j..j + self.nb_columns {
-                if i >= start_pos + self.nb_columns * self.nb_lines {
-                    break;
-                }
-                match self.get_char(i) {
-                    None => {
-                        break;
-                    }
-                    Some(n) if n == 0 => {
-                        break;
-                    }
-                    Some(n) if n == '\n' as u8 => {
-                        print_screen!("{}", "\n");
-                        _pos_last_char_writen = i + (self.nb_columns - (i % self.nb_columns));
-                        break;
-                    }
-                    Some(other) => {
-                        print_screen!("{}", other as char);
-                        _pos_last_char_writen = i + 1;
-                    }
-                }
-            }
-        }
-        //        eprintln!("{}", (_pos_last_char_writen as isize));
-        //        eprintln!("{}", (self.write_pos as isize));
-        //        eprintln!("{}", (_pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
-        // let res =
-        //     SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, _pos_last_char_writen - self.write_pos);
-        // if offset == 0 {
-        //     res.unwrap();
-        // }
-    }
-
-    pub fn write_char(&mut self, c: char) {
+    /// Write a char into the buffer
+    pub fn write_char(&mut self, c: char, color: Color) {
         match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_columns)) {
             Some(screen) => {
                 let pos = self.write_pos % (self.nb_lines * self.nb_columns);
-                screen[pos] = c as u8;
+                screen[pos] = (c as u8, color);
                 self.write_pos += match c {
                     '\n' => self.nb_columns - pos % self.nb_columns,
                     _ => 1,
@@ -98,18 +63,41 @@ impl TerminalBuffer {
                 if self.write_pos > self.draw_start_pos + self.nb_columns * self.nb_lines {
                     self.draw_start_pos += self.nb_columns;
                 }
-                // TODO: write if actif
             }
             None => {
                 self.make_place();
-                self.write_char(c)
+                self.write_char(c, color)
             }
         }
     }
 
-    pub fn write_str(&mut self, s: &str) {
+    /// Write a string into the buffer
+    pub fn write_str(&mut self, s: &str, color: Color) {
         for c in s.chars() {
-            self.write_char(c);
+            self.write_char(c, color);
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Cursor {
+    y: usize,
+    x: usize,
+    nb_lines: usize,
+    nb_columns: usize,
+}
+
+impl Cursor {
+    fn forward(&mut self) {
+        self.x += 1;
+        if self.x == self.nb_columns {
+            self.cariage_return();
+        }
+    }
+    fn cariage_return(&mut self) {
+        self.x = 0;
+        if self.y != self.nb_lines - 1 {
+            self.y += 1;
         }
     }
 }
@@ -119,6 +107,8 @@ pub struct Tty {
     echo: bool,
     buf: TerminalBuffer,
     scroll_offset: isize,
+    cursor: Cursor,
+    text_color: Color,
 }
 
 pub enum Scroll {
@@ -129,14 +119,19 @@ pub enum Scroll {
 }
 
 impl Tty {
-    fn new(echo: bool, buf: TerminalBuffer) -> Self {
-        Self { echo, buf, scroll_offset: 0 }
+    fn new(echo: bool, nb_lines: usize, nb_columns: usize, max_screen_buffer: usize) -> Self {
+        Self {
+            echo,
+            buf: TerminalBuffer::new(nb_lines, nb_columns, max_screen_buffer),
+            scroll_offset: 0,
+            cursor: Cursor { y: 0, x: 0, nb_lines, nb_columns },
+            text_color: Color::White,
+        }
     }
 
     fn refresh(&mut self) {
-        self.buf.print_screen(self.scroll_offset);
-        // use crate::monitor::Drawer;
-        // SCREEN_MONAD.lock().draw_cursor();
+        self.print_screen(self.scroll_offset);
+        //SCREEN_MONAD.lock().draw_cursor();
     }
 
     fn scroll(&mut self, scroll: Scroll) {
@@ -152,22 +147,82 @@ impl Tty {
         } else {
             self.scroll_offset + add_scroll
         };
-        self.buf.print_screen(self.scroll_offset)
+        self.print_screen(self.scroll_offset)
     }
 
-    /*
     pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
         match direction {
             CursorDirection::Right => self.buf.write_pos += q,
             CursorDirection::Left => self.buf.write_pos -= q,
         }
         if self.echo {
-            SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
+            //    SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
+            Ok(())
         } else {
             Ok(())
         }
     }
-    */
+
+    pub fn set_text_color(&mut self, color: Color) {
+        self.text_color = color;
+    }
+
+    /// re-print the entire screen
+    pub fn print_screen(&mut self, offset: isize) {
+        SCREEN_MONAD.lock().clear_screen();
+        self.cursor.y = 0;
+        self.cursor.x = 0;
+
+        let mut _pos_last_char_writen = self.buf.write_pos;
+        let start_pos = if offset > 0 {
+            self.buf.draw_start_pos + offset as usize
+        } else {
+            self.buf.draw_start_pos.checked_sub((-offset) as usize).unwrap_or(0)
+        };
+        for j in (start_pos..start_pos + self.cursor.nb_columns * self.cursor.nb_lines).step_by(self.cursor.nb_columns)
+        {
+            for i in j..j + self.cursor.nb_columns {
+                if i >= start_pos + self.cursor.nb_columns * self.cursor.nb_lines {
+                    break;
+                }
+                match self.buf.get_char(i) {
+                    None => {
+                        break;
+                    }
+                    Some(n) if n.0 == 0 => {
+                        break;
+                    }
+                    Some(n) if n.0 == '\n' as u8 => {
+                        self.cursor.cariage_return();
+                        _pos_last_char_writen = i + (self.cursor.nb_columns - (i % self.cursor.nb_columns));
+                        break;
+                    }
+                    Some(other) => {
+                        SCREEN_MONAD
+                            .lock()
+                            .draw_character(
+                                other.0 as char,
+                                Pos { line: self.cursor.y, column: self.cursor.x },
+                                other.1,
+                            )
+                            .unwrap();
+                        self.cursor.forward();
+                        _pos_last_char_writen = i + 1;
+                    }
+                }
+            }
+        }
+        SCREEN_MONAD.lock().refresh_screen();
+
+        //        eprintln!("{}", (_pos_last_char_writen as isize));
+        //        eprintln!("{}", (self.write_pos as isize));
+        //        eprintln!("{}", (_pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
+        // let res =
+        //     SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, _pos_last_char_writen - self.write_pos);
+        // if offset == 0 {
+        //     res.unwrap();
+        // }
+    }
 }
 
 impl core::fmt::Write for Tty {
@@ -176,11 +231,22 @@ impl core::fmt::Write for Tty {
             self.scroll_offset = 0;
             self.refresh();
         }
-        self.buf.write_str(s);
+        // write the string into buf
+        self.buf.write_str(s, self.text_color);
+
         if self.echo {
+            /*
+            let c = s.as_bytes();
+            if c.len() > 0 {
+                SCREEN_MONAD.lock().draw_character(c[0] as char, Pos { column: 0, line: 0 }, Color::White).unwrap();
+                SCREEN_MONAD.lock().refresh_screen();
+            }
+            */
             Ok(())
         // SCREEN_MONAD.lock().write_str(s)
         } else {
+            // SCREEN_MONAD.lock().draw_character('Z', Pos { column: 0, line: 0}, Color::White).unwrap();
+            // SCREEN_MONAD.lock().refresh_screen();
             Ok(())
         }
     }
@@ -197,20 +263,10 @@ const MAX_SCREEN_BUFFER: usize = 10;
 
 impl Terminal {
     pub fn new() -> Self {
-        let _screen_monad = SCREEN_MONAD.lock();
+        let screen_monad = SCREEN_MONAD.lock();
         Self {
             buf: None,
-            ttys: vec![
-                Tty::new(
-                    false,
-                    TerminalBuffer::new(
-                        0,
-                        0, /*screen_monad.cursor.lines, screen_monad.cursor.columns*/
-                        MAX_SCREEN_BUFFER
-                    )
-                );
-                2
-            ],
+            ttys: vec![Tty::new(false, screen_monad.nb_lines, screen_monad.nb_columns, MAX_SCREEN_BUFFER); 2],
         }
     }
 
@@ -259,9 +315,9 @@ impl Terminal {
         self.ttys[fd].write_str(s).unwrap();
     }
 
-    // pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
-    //     self.get_foreground_tty().unwrap().move_cursor(direction, q)
-    // }
+    pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
+        self.get_foreground_tty().unwrap().move_cursor(direction, q)
+    }
 
     pub fn set_foreground_fd(&mut self, fd: usize) {
         self.ttys[fd].echo = true;

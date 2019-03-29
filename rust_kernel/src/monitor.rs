@@ -60,8 +60,8 @@ pub trait AdvancedGraphic {
 /// Manage interaction between monitor/graphic_card and software
 pub struct ScreenMonad {
     drawing_mode: DrawingMode,
-    nb_lines: usize,
-    nb_columns: usize,
+    pub nb_lines: usize,
+    pub nb_columns: usize,
 }
 
 enum DrawingMode {
