@@ -365,7 +365,6 @@ impl TryFrom<u32> for SegmentType {
     }
 }
 
-#[derive(Debug)]
 struct ProgramHeader {
     p_type: SegmentType,
     p_offset: u32,
@@ -373,8 +372,6 @@ struct ProgramHeader {
     p_paddr: u32,
     p_filez: u32,
     p_memsz: u32,
-
-    //TODO create p_flags type with bitfield.
     p_flags: ProgramHeaderFlags,
     p_align: u32,
 }
@@ -401,7 +398,7 @@ impl TryFrom<&[u8]> for ProgramHeader {
             p_filez: (u32::from_ne_bytes(copy_to_array(&value[0x10..0x14]))),
             p_memsz: (u32::from_ne_bytes(copy_to_array(&value[0x14..0x18]))),
             p_flags: (ProgramHeaderFlags::from(u32::from_ne_bytes(copy_to_array(&value[0x18..0x1C])))),
-            p_align: (u32::from_ne_bytes(copy_to_array(&value[0x18..0x1C]))),
+            p_align: (u32::from_ne_bytes(copy_to_array(&value[0x1C..0x20]))),
         };
 
         // if new.p_align > 1 && (new.p_vaddr != new.p_offset % new.p_align || !new.p_align.is_power_of_two()) {
@@ -410,6 +407,21 @@ impl TryFrom<&[u8]> for ProgramHeader {
         //     return Err(ElfParseError::InvalidSegmentAlignment);
         // }
         Ok(new)
+    }
+}
+
+impl core::fmt::Debug for ProgramHeader {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        Ok(write!(fmt, "type: {:?}, offset: {:08X}, vaddr: {:08X}, paddr: {:08X}, filez: {:08x}, memsz: {:08X}, flags: {:?}, align: {:02X}",
+                  self.p_type,
+                  self.p_offset,
+                  self.p_vaddr,
+                  self.p_paddr,
+                  self.p_filez,
+                  self.p_memsz,
+                  self.p_flags,
+                  self.p_align,
+        )?)
     }
 }
 
@@ -540,7 +552,6 @@ impl From<u32> for SectionHeaderFlags {
     }
 }
 
-#[derive(Debug)]
 struct SectionHeader {
     sh_name: u32,
     sh_type: SectionHeaderType,
@@ -588,6 +599,23 @@ impl TryFrom<&[u8]> for SectionHeader {
     }
 }
 
+impl core::fmt::Debug for SectionHeader {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        Ok(write!(fmt, "name: {:04x}, addr: {:08X}, offset: {:08X}, size: {:08X}, type: {:?}, flags: {:8?}, link: {:2}, info: {}, align: {}, entsize: {:02X}",
+                  self.sh_name,
+                  self.sh_addr,
+                  self.sh_offset,
+                  self.sh_size,
+                  self.sh_type,
+                  self.sh_flags,
+                  self.sh_link,
+                  self.sh_info,
+                  self.sh_addralign,
+                  self.sh_entsize
+        )?)
+    }
+}
+
 fn main() {
     use std::env;
     use std::fs::File;
@@ -626,7 +654,7 @@ fn main() {
         println!("\nSection header table:");
         for (index, section_header) in section_header_table.iter().enumerate() {
             let sheader = SectionHeader::from_bytes(section_header as &[u8]).unwrap();
-            println!("{}: {:?}", index, sheader);
+            // println!("{:02}: {:?}", index, sheader);
             sh_table.push(sheader);
         }
     }
