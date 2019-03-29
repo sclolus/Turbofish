@@ -199,7 +199,6 @@ impl TryFrom<u16> for Architecture {
     }
 }
 
-#[derive(Debug)]
 struct ElfHeader {
     /// 32-bit 64-bit.
     format: Format,
@@ -290,6 +289,31 @@ impl TryFrom<&[u8]> for ElfHeader {
             e_shnum: u16::from_ne_bytes(TryFrom::try_from(&value[0x30..0x32])?),
             e_shstrndx: u16::from_ne_bytes(TryFrom::try_from(&value[0x32..0x34])?),
         })
+    }
+}
+
+impl core::fmt::Debug for ElfHeader {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        Ok(write!(fmt, "Class: {:?}, Format: {:?}, version: {}, ABI: {:?}, abi_version: {}, type: {:?}, machine: {:?}, entry_point_address: {:08x}, start_ph: {}, start_sh: {}, flags: {}, header_size: {}, size_of_ph: {}, nbr_ph: {}, size_sh: {}, nbr_sh: {}, section header string table index: {}",
+                  self.format,
+                  self.endian,
+                  self.e_version,
+                  self.target_abi,
+                  self.abi_version,
+                  self.e_type,
+                  self.e_machine,
+                  self.e_entry,
+                  self.e_phoff,
+                  self.e_shoff,
+                  self.e_flags,
+                  self.e_ehsize,
+                  self.e_phentsize,
+                  self.e_phnum,
+                  self.e_shentsize,
+                  self.e_shnum,
+                  self.e_shstrndx,
+
+        )?)
     }
 }
 
