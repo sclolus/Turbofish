@@ -55,7 +55,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     SCREEN_MONAD
         .lock()
         .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-            draw_image(unsafe { &_asterix_bmp_start }, buffer, width, height, bpp)
+            draw_image(unsafe { &_wanggle_bmp_start }, buffer, width, height, bpp)
         })
         .unwrap();
 
@@ -83,15 +83,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("{:x?}", eflags);
 
     PIT0.lock().start_at_frequency(1000.).unwrap();
-
-    SCREEN_MONAD
-        .lock()
-        .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-            draw_image(unsafe { &_wanggle_bmp_start }, buffer, width, height, bpp)
-        })
-        .unwrap();
-
-    SCREEN_MONAD.lock().refresh_screen();
 
     PCI.lock().scan_pci_buses();
     PCI.lock().list_pci_devices();
