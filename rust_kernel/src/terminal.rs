@@ -1,6 +1,8 @@
 #[macro_use]
 pub mod macros;
 
+pub mod color;
+
 pub mod early_terminal;
 pub use early_terminal::EARLY_TERMINAL;
 
