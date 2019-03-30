@@ -22,7 +22,7 @@ pub enum IoError {
 }
 
 /// Usable to select write position for characters
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Pos {
     pub line: usize,
     pub column: usize,

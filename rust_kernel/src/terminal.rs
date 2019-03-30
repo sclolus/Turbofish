@@ -77,10 +77,9 @@ pub enum CursorDirection {
 }
 
 /// Simple and Basic implementation of cursor
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 struct Cursor {
-    y: usize,
-    x: usize,
+    pos: Pos,
     nb_lines: usize,
     nb_columns: usize,
 }
@@ -88,8 +87,8 @@ struct Cursor {
 impl Cursor {
     /// Increment the cursor by one, return Option of line must be refreshed
     fn forward(&mut self) -> Option<usize> {
-        self.x += 1;
-        if self.x == self.nb_columns {
+        self.pos.column += 1;
+        if self.pos.column == self.nb_columns {
             self.cariage_return()
         } else {
             None
@@ -97,23 +96,23 @@ impl Cursor {
     }
     /// Do a cariage_return, return Option of line must be refreshed
     fn cariage_return(&mut self) -> Option<usize> {
-        let ret = Some(self.y);
+        let ret = Some(self.pos.line);
 
-        self.x = 0;
-        if self.y != self.nb_lines - 1 {
-            self.y += 1;
+        self.pos.column = 0;
+        if self.pos.line != self.nb_lines - 1 {
+            self.pos.line += 1;
         }
         ret
     }
     /// Decrement the cursor by one
     fn backward(&mut self) -> Option<usize> {
-        if self.x == 0 {
-            self.x = self.nb_columns - 1;
-            if self.y != 0 {
-                self.y -= 1;
+        if self.pos.column == 0 {
+            self.pos.column = self.nb_columns - 1;
+            if self.pos.line != 0 {
+                self.pos.line -= 1;
             }
         } else {
-            self.x -= 1;
+            self.pos.column -= 1;
         }
         None
     }
@@ -142,7 +141,7 @@ impl Tty {
             echo,
             buf: TerminalBuffer::new(nb_lines, nb_columns, max_screen_buffer),
             scroll_offset: 0,
-            cursor: Cursor { y: 0, x: 0, nb_lines, nb_columns },
+            cursor: Cursor { pos: Default::default(), nb_lines, nb_columns },
             text_color: Color::White,
         }
     }
@@ -170,7 +169,7 @@ impl Tty {
     pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
         // Clear the Old cursor
         self.clear_cursor();
-        SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
+        SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
 
         // Apply new cursor direction
         match direction {
@@ -191,7 +190,7 @@ impl Tty {
         // Draw the new cursor
         if self.echo {
             self.draw_cursor();
-            SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
+            SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
             Ok(())
         } else {
             Ok(())
@@ -211,7 +210,7 @@ impl Tty {
                 (_non_zero_char, _color) => elem,
             },
         };
-        SCREEN_MONAD.lock().draw_cursor(c.0 as char, Pos { line: self.cursor.y, column: self.cursor.x }, c.1).unwrap();
+        SCREEN_MONAD.lock().draw_cursor(c.0 as char, self.cursor.pos, c.1).unwrap();
     }
 
     /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
@@ -223,14 +222,13 @@ impl Tty {
                 (_non_zero_char, _color) => elem,
             },
         };
-        SCREEN_MONAD.lock().clear_cursor(c.0 as char, Pos { line: self.cursor.y, column: self.cursor.x }, c.1).unwrap();
+        SCREEN_MONAD.lock().clear_cursor(c.0 as char, self.cursor.pos, c.1).unwrap();
     }
 
     /// re-print the entire screen
     pub fn print_screen(&mut self, offset: isize) {
         SCREEN_MONAD.lock().clear_screen();
-        self.cursor.y = 0;
-        self.cursor.x = 0;
+        self.cursor.pos = Default::default();
 
         let mut _pos_last_char_writen = self.buf.write_pos;
         let start_pos = if offset > 0 {
@@ -257,14 +255,7 @@ impl Tty {
                         break;
                     }
                     Some(other) => {
-                        SCREEN_MONAD
-                            .lock()
-                            .draw_character(
-                                other.0 as char,
-                                Pos { line: self.cursor.y, column: self.cursor.x },
-                                other.1,
-                            )
-                            .unwrap();
+                        SCREEN_MONAD.lock().draw_character(other.0 as char, self.cursor.pos, other.1).unwrap();
                         self.cursor.forward();
                         _pos_last_char_writen = i + 1;
                     }
@@ -286,7 +277,7 @@ impl Tty {
 
     /// Refresh line or scroll
     fn map_line(&mut self, line: usize) {
-        if line == self.cursor.y {
+        if line == self.cursor.pos.line {
             self.scroll(Scroll::Down);
             self.scroll_offset = 0;
         } else {
@@ -306,25 +297,22 @@ impl core::fmt::Write for Tty {
         }
 
         if self.echo {
-            for c in s.as_bytes() {
-                self.buf.write_char(*c as char, self.text_color);
-                if *c != '\n' as u8 {
-                    SCREEN_MONAD
-                        .lock()
-                        .draw_character(*c as char, Pos { line: self.cursor.y, column: self.cursor.x }, self.text_color)
-                        .unwrap();
+            for c in s.chars() {
+                self.buf.write_char(c, self.text_color);
+                if c != '\n' {
+                    SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
                     self.cursor.forward().map(|line| self.map_line(line));
                 } else {
                     self.cursor.cariage_return().map(|line| self.map_line(line));
                 }
             }
-            if self.cursor.x != 0 {
-                SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
+            if self.cursor.pos.column != 0 {
+                SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
             }
             Ok(())
         } else {
-            for c in s.as_bytes() {
-                self.buf.write_char(*c as char, self.text_color);
+            for c in s.chars() {
+                self.buf.write_char(c, self.text_color);
             }
             Ok(())
         }
