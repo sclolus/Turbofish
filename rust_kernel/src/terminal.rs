@@ -9,7 +9,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
-#[derive(Clone)]
+/// Description of a TTY buffer
+#[derive(Debug, Clone)]
 struct TerminalBuffer {
     buf: VecDeque<Vec<(u8, Color)>>,
     draw_start_pos: usize,
@@ -18,12 +19,7 @@ struct TerminalBuffer {
     nb_columns: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum CursorDirection {
-    Left,
-    Right,
-}
-
+/// Here a TTY buffer
 impl TerminalBuffer {
     pub fn new(nb_lines: usize, nb_columns: usize, buf_max_capacity: usize) -> Self {
         Self { buf: VecDeque::with_capacity(buf_max_capacity), write_pos: 0, nb_lines, nb_columns, draw_start_pos: 0 }
@@ -45,12 +41,13 @@ impl TerminalBuffer {
         }
     }
 
-    /// Get a specified character into the buffer
+    /// Get a specified character from the buffer
     fn get_char(&self, i: usize) -> Option<(u8, Color)> {
         self.buf.get(i / (self.nb_lines * self.nb_columns)).map(|screen| screen[i % (self.nb_lines * self.nb_columns)])
     }
 
     /// Write a char into the buffer
+    #[inline(always)]
     pub fn write_char(&mut self, c: char, color: Color) {
         match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_columns)) {
             Some(screen) => {
@@ -70,15 +67,16 @@ impl TerminalBuffer {
             }
         }
     }
-
-    /// Write a string into the buffer
-    pub fn write_str(&mut self, s: &str, color: Color) {
-        for c in s.chars() {
-            self.write_char(c, color);
-        }
-    }
 }
 
+/// for the moment, we just handle left and right keys
+#[derive(Debug, Copy, Clone)]
+pub enum CursorDirection {
+    Left,
+    Right,
+}
+
+/// Simple and Basic implementation of cursor
 #[derive(Debug, Copy, Clone)]
 struct Cursor {
     y: usize,
@@ -88,21 +86,40 @@ struct Cursor {
 }
 
 impl Cursor {
-    fn forward(&mut self) {
+    /// Increment the cursor by one, return Option of line must be refreshed
+    fn forward(&mut self) -> Option<usize> {
         self.x += 1;
         if self.x == self.nb_columns {
-            self.cariage_return();
+            self.cariage_return()
+        } else {
+            None
         }
     }
-    fn cariage_return(&mut self) {
+    /// Do a cariage_return, return Option of line must be refreshed
+    fn cariage_return(&mut self) -> Option<usize> {
+        let ret = Some(self.y);
+
         self.x = 0;
         if self.y != self.nb_lines - 1 {
             self.y += 1;
         }
+        ret
+    }
+    /// Decrement the cursor by one
+    fn backward(&mut self) -> Option<usize> {
+        if self.x == 0 {
+            self.x = self.nb_columns - 1;
+            if self.y != 0 {
+                self.y -= 1;
+            }
+        } else {
+            self.x -= 1;
+        }
+        None
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Tty {
     echo: bool,
     buf: TerminalBuffer,
@@ -111,6 +128,7 @@ pub struct Tty {
     text_color: Color,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Scroll {
     Up,
     Down,
@@ -131,7 +149,6 @@ impl Tty {
 
     fn refresh(&mut self) {
         self.print_screen(self.scroll_offset);
-        //SCREEN_MONAD.lock().draw_cursor();
     }
 
     fn scroll(&mut self, scroll: Scroll) {
@@ -147,16 +164,34 @@ impl Tty {
         } else {
             self.scroll_offset + add_scroll
         };
-        self.print_screen(self.scroll_offset)
+        self.print_screen(self.scroll_offset);
     }
 
     pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
+        // Clear the Old cursor
+        self.clear_cursor();
+        SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
+
+        // Apply new cursor direction
         match direction {
-            CursorDirection::Right => self.buf.write_pos += q,
-            CursorDirection::Left => self.buf.write_pos -= q,
+            CursorDirection::Right => {
+                self.buf.write_pos += q;
+                for _i in 0..q {
+                    self.cursor.forward();
+                }
+            }
+            CursorDirection::Left => {
+                self.buf.write_pos -= q;
+                for _i in 0..q {
+                    self.cursor.backward();
+                }
+            }
         }
+
+        // Draw the new cursor
         if self.echo {
-            //    SCREEN_MONAD.lock().move_graphical_cursor(direction, q)
+            self.draw_cursor();
+            SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
             Ok(())
         } else {
             Ok(())
@@ -165,6 +200,30 @@ impl Tty {
 
     pub fn set_text_color(&mut self, color: Color) {
         self.text_color = color;
+    }
+
+    /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
+    fn draw_cursor(&self) {
+        let c = match self.buf.get_char(self.buf.write_pos) {
+            None => (' ' as u8, self.text_color),
+            Some(elem) => match elem {
+                (0, _) => (' ' as u8, self.text_color),
+                (_non_zero_char, _color) => elem,
+            },
+        };
+        SCREEN_MONAD.lock().draw_cursor(c.0 as char, Pos { line: self.cursor.y, column: self.cursor.x }, c.1).unwrap();
+    }
+
+    /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
+    fn clear_cursor(&self) {
+        let c = match self.buf.get_char(self.buf.write_pos) {
+            None => (' ' as u8, self.text_color),
+            Some(elem) => match elem {
+                (0, _) => (' ' as u8, self.text_color),
+                (_non_zero_char, _color) => elem,
+            },
+        };
+        SCREEN_MONAD.lock().clear_cursor(c.0 as char, Pos { line: self.cursor.y, column: self.cursor.x }, c.1).unwrap();
     }
 
     /// re-print the entire screen
@@ -212,6 +271,7 @@ impl Tty {
                 }
             }
         }
+        self.draw_cursor();
         SCREEN_MONAD.lock().refresh_screen();
 
         //        eprintln!("{}", (_pos_last_char_writen as isize));
@@ -223,35 +283,55 @@ impl Tty {
         //     res.unwrap();
         // }
     }
+
+    /// Refresh line or scroll
+    fn map_line(&mut self, line: usize) {
+        if line == self.cursor.y {
+            self.scroll(Scroll::Down);
+            self.scroll_offset = 0;
+        } else {
+            SCREEN_MONAD.lock().refresh_text_line(line).unwrap();
+        }
+    }
 }
 
 impl core::fmt::Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.clear_cursor();
+
+        // Make the scroll coherency
         if self.scroll_offset != 0 {
             self.scroll_offset = 0;
             self.refresh();
         }
-        // write the string into buf
-        self.buf.write_str(s, self.text_color);
 
         if self.echo {
-            /*
-            let c = s.as_bytes();
-            if c.len() > 0 {
-                SCREEN_MONAD.lock().draw_character(c[0] as char, Pos { column: 0, line: 0 }, Color::White).unwrap();
-                SCREEN_MONAD.lock().refresh_screen();
+            for c in s.as_bytes() {
+                self.buf.write_char(*c as char, self.text_color);
+                if *c != '\n' as u8 {
+                    SCREEN_MONAD
+                        .lock()
+                        .draw_character(*c as char, Pos { line: self.cursor.y, column: self.cursor.x }, self.text_color)
+                        .unwrap();
+                    self.cursor.forward().map(|line| self.map_line(line));
+                } else {
+                    self.cursor.cariage_return().map(|line| self.map_line(line));
+                }
             }
-            */
+            if self.cursor.x != 0 {
+                SCREEN_MONAD.lock().refresh_text_line(self.cursor.y).unwrap();
+            }
             Ok(())
-        // SCREEN_MONAD.lock().write_str(s)
         } else {
-            // SCREEN_MONAD.lock().draw_character('Z', Pos { column: 0, line: 0}, Color::White).unwrap();
-            // SCREEN_MONAD.lock().refresh_screen();
+            for c in s.as_bytes() {
+                self.buf.write_char(*c as char, self.text_color);
+            }
             Ok(())
         }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Terminal {
     buf: Option<KeySymb>,
     ttys: Vec<Tty>,
@@ -328,12 +408,14 @@ impl Terminal {
     }
 }
 
+/// Usefull method to stock the character from the keyboard
 pub fn stock_keysymb(keysymb: KeySymb) {
     unsafe {
         TERMINAL.as_mut().unwrap().stock_keysymb(keysymb);
     }
 }
 
+/// Extern function for initialisation
 pub fn init_terminal() {
     unsafe {
         let mut term = Terminal::new();

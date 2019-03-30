@@ -28,6 +28,18 @@ macro_rules! println {
     ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
 }
 
+/// dump lines in syslog
+#[macro_export]
+macro_rules! print_syslog {
+    ($($arg:tt)*) => ({
+        match format_args!($($arg)*) {
+            a => {
+                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
+            }
+        }
+    })
+}
+
 /// common set_text_color method
 #[macro_export]
 #[cfg(not(test))]
