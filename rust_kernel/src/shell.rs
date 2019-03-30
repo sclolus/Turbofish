@@ -58,6 +58,7 @@ fn read_line() -> String {
         let keysymb = buf[0];
         match keysymb {
             KeySymb::Return => {
+                print!("{}", &line[cursor_pos..]);
                 return line;
             }
             key if (key >= KeySymb::space) && (key <= KeySymb::asciitilde) => {
