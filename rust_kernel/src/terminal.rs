@@ -82,6 +82,7 @@ struct Cursor {
     pos: Pos,
     nb_lines: usize,
     nb_columns: usize,
+    visible: bool,
 }
 
 impl Cursor {
@@ -141,7 +142,7 @@ impl Tty {
             echo,
             buf: TerminalBuffer::new(nb_lines, nb_columns, max_screen_buffer),
             scroll_offset: 0,
-            cursor: Cursor { pos: Default::default(), nb_lines, nb_columns },
+            cursor: Cursor { pos: Default::default(), nb_lines, nb_columns, visible: false },
             text_color: Color::White,
         }
     }
@@ -167,33 +168,37 @@ impl Tty {
     }
 
     pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
-        // Clear the Old cursor
-        self.clear_cursor();
-        SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
-
-        // Apply new cursor direction
-        match direction {
-            CursorDirection::Right => {
-                self.buf.write_pos += q;
-                for _i in 0..q {
-                    self.cursor.forward();
-                }
-            }
-            CursorDirection::Left => {
-                self.buf.write_pos -= q;
-                for _i in 0..q {
-                    self.cursor.backward();
-                }
-            }
-        }
-
-        // Draw the new cursor
-        if self.echo {
-            self.draw_cursor();
-            SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+        if !self.cursor.visible {
             Ok(())
         } else {
-            Ok(())
+            // Clear the Old cursor
+            self.clear_cursor();
+            SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+
+            // Apply new cursor direction
+            match direction {
+                CursorDirection::Right => {
+                    self.buf.write_pos += q;
+                    for _i in 0..q {
+                        self.cursor.forward();
+                    }
+                }
+                CursorDirection::Left => {
+                    self.buf.write_pos -= q;
+                    for _i in 0..q {
+                        self.cursor.backward();
+                    }
+                }
+            }
+
+            // Draw the new cursor
+            if self.echo {
+                self.draw_cursor();
+                SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+                Ok(())
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -262,17 +267,15 @@ impl Tty {
                 }
             }
         }
-        self.draw_cursor();
-        SCREEN_MONAD.lock().refresh_screen();
 
-        //        eprintln!("{}", (_pos_last_char_writen as isize));
-        //        eprintln!("{}", (self.write_pos as isize));
-        //        eprintln!("{}", (_pos_last_char_writen as isize as isize - self.write_pos as isize) as isize);
-        // let res =
-        //     SCREEN_MONAD.lock().move_graphical_cursor(CursorDirection::Left, _pos_last_char_writen - self.write_pos);
-        // if offset == 0 {
-        //     res.unwrap();
-        // }
+        if self.cursor.visible && self.buf.write_pos <= _pos_last_char_writen {
+            for _i in 0.._pos_last_char_writen - self.buf.write_pos {
+                self.cursor.backward();
+            }
+            self.draw_cursor();
+        }
+
+        SCREEN_MONAD.lock().refresh_screen();
     }
 
     /// Refresh line or scroll
@@ -288,7 +291,9 @@ impl Tty {
 
 impl core::fmt::Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.clear_cursor();
+        if self.cursor.visible {
+            self.clear_cursor();
+        }
 
         // Make the scroll coherency
         if self.scroll_offset != 0 {
@@ -408,6 +413,7 @@ pub fn init_terminal() {
     unsafe {
         let mut term = Terminal::new();
         term.set_foreground_fd(1);
+        term.get_tty(1).cursor.visible = true;
         TERMINAL = Some(term);
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
