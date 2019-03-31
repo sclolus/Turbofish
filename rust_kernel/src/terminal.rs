@@ -13,6 +13,7 @@ use core::fmt::Write;
 #[derive(Debug, Clone)]
 struct TerminalBuffer {
     buf: VecDeque<Vec<(u8, Color)>>,
+    fixed_buf: Vec<Option<(u8, Color)>>,
     draw_start_pos: usize,
     write_pos: usize,
     nb_lines: usize,
@@ -22,7 +23,14 @@ struct TerminalBuffer {
 /// Here a TTY buffer
 impl TerminalBuffer {
     pub fn new(nb_lines: usize, nb_columns: usize, buf_max_capacity: usize) -> Self {
-        Self { buf: VecDeque::with_capacity(buf_max_capacity), write_pos: 0, nb_lines, nb_columns, draw_start_pos: 0 }
+        Self {
+            buf: VecDeque::with_capacity(buf_max_capacity),
+            fixed_buf: vec![None; nb_lines * nb_columns],
+            write_pos: 0,
+            nb_lines,
+            nb_columns,
+            draw_start_pos: 0,
+        }
     }
 
     /// Make some place for a new screen
@@ -78,7 +86,7 @@ pub enum CursorDirection {
 
 /// Simple and Basic implementation of cursor
 #[derive(Debug, Copy, Clone, Default)]
-struct Cursor {
+pub struct Cursor {
     pos: Pos,
     nb_lines: usize,
     nb_columns: usize,
@@ -119,13 +127,20 @@ impl Cursor {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum WriteMode {
+    Dynamic,
+    Fixed,
+}
+
 #[derive(Debug, Clone)]
 pub struct Tty {
     echo: bool,
     buf: TerminalBuffer,
     scroll_offset: isize,
-    cursor: Cursor,
-    text_color: Color,
+    pub cursor: Cursor,
+    pub text_color: Color,
+    pub write_mode: WriteMode,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -144,6 +159,7 @@ impl Tty {
             scroll_offset: 0,
             cursor: Cursor { pos: Default::default(), nb_lines, nb_columns, visible: false },
             text_color: Color::White,
+            write_mode: WriteMode::Dynamic,
         }
     }
 
@@ -275,6 +291,21 @@ impl Tty {
             self.draw_cursor();
         }
 
+        // Display all the fixed character buffer
+        for (i, elem) in self.buf.fixed_buf.iter().enumerate() {
+            match *elem {
+                None => {}
+                Some(e) => SCREEN_MONAD
+                    .lock()
+                    .draw_character(
+                        e.0 as char,
+                        Pos { line: i / self.cursor.nb_columns, column: i % self.cursor.nb_columns },
+                        e.1,
+                    )
+                    .unwrap(),
+            }
+        }
+
         SCREEN_MONAD.lock().refresh_screen();
     }
 
@@ -287,39 +318,69 @@ impl Tty {
             SCREEN_MONAD.lock().refresh_text_line(line).unwrap();
         }
     }
+
+    /// allow to modify globales parameters of a TTY, Usefull but very dangerous...
+    pub fn modify(&mut self, mode: WriteMode, cursor_pos: Pos, color: Color) -> (WriteMode, Pos, Color) {
+        let current_write_mode = self.write_mode;
+        let current_cursor_pos = self.cursor.pos;
+        let current_color = self.text_color;
+
+        self.write_mode = mode;
+        self.cursor.pos = cursor_pos;
+        self.text_color = color;
+
+        (current_write_mode, current_cursor_pos, current_color)
+    }
 }
 
 impl core::fmt::Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        if self.cursor.visible {
-            self.clear_cursor();
-        }
+        match self.write_mode {
+            WriteMode::Dynamic => {
+                if self.cursor.visible {
+                    self.clear_cursor();
+                }
 
-        // Make the scroll coherency
-        if self.scroll_offset != 0 {
-            self.scroll_offset = 0;
-            self.refresh();
-        }
+                // Make the scroll coherency
+                if self.scroll_offset != 0 {
+                    self.scroll_offset = 0;
+                    self.refresh();
+                }
 
-        if self.echo {
-            for c in s.chars() {
-                self.buf.write_char(c, self.text_color);
-                if c != '\n' {
-                    SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
-                    self.cursor.forward().map(|line| self.map_line(line));
+                if self.echo {
+                    for c in s.chars() {
+                        self.buf.write_char(c, self.text_color);
+                        if c != '\n' {
+                            SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
+                            self.cursor.forward().map(|line| self.map_line(line));
+                        } else {
+                            self.cursor.cariage_return().map(|line| self.map_line(line));
+                        }
+                    }
+                    if self.cursor.pos.column != 0 {
+                        SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+                    }
+                    Ok(())
                 } else {
-                    self.cursor.cariage_return().map(|line| self.map_line(line));
+                    for c in s.chars() {
+                        self.buf.write_char(c, self.text_color);
+                    }
+                    Ok(())
                 }
             }
-            if self.cursor.pos.column != 0 {
-                SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+            // Fixed character write
+            WriteMode::Fixed => {
+                for c in s.chars() {
+                    self.buf.fixed_buf[self.cursor.pos.line * self.cursor.nb_columns + self.cursor.pos.column] =
+                        Some((c as u8, self.text_color));
+                    SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
+                    self.cursor.forward().map(|line| self.map_line(line));
+                }
+                if self.cursor.pos.column != 0 {
+                    SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+                }
+                Ok(())
             }
-            Ok(())
-        } else {
-            for c in s.chars() {
-                self.buf.write_char(c, self.text_color);
-            }
-            Ok(())
         }
     }
 }

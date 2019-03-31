@@ -59,3 +59,30 @@ macro_rules! set_text_color {
         }
     }};
 }
+
+/// Common print fixed method
+#[macro_export]
+macro_rules! printfixed {
+    ($cursor_pos:expr, $color:expr, $($arg:tt)*) => ({
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    match {$crate::terminal::TERMINAL.as_mut()} {
+                        None => {},
+                        Some(term) => {
+                            use crate::terminal::WriteMode;
+                            use crate::monitor::Pos;;
+
+                            let tty = term.get_tty(1);
+                            let env = tty.modify(WriteMode::Fixed, $cursor_pos, $color);
+
+                            core::fmt::write({tty}, a).unwrap();
+
+                            tty.modify(env.0, env.1, env.2);
+                        }
+                    }
+                }
+            }
+        }
+    })
+}
