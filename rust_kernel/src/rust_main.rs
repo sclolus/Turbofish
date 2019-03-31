@@ -6,18 +6,12 @@ use crate::drivers::{pic_8259, PIC_8259};
 use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
-use crate::monitor::bmp_loader::{draw_image, BmpImage};
-use crate::monitor::{AdvancedGraphic, Color, SCREEN_MONAD};
+use crate::monitor::{Color, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
 use crate::timer::Rtc;
 use log::{error, trace, warn};
-
-extern "C" {
-    static _asterix_bmp_start: BmpImage;
-    static _wanggle_bmp_start: BmpImage;
-}
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
@@ -52,15 +46,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
 
-    SCREEN_MONAD
-        .lock()
-        .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-            draw_image(unsafe { &_wanggle_bmp_start }, buffer, width, height, bpp)
-        })
-        .unwrap();
-
-    SCREEN_MONAD.lock().refresh_screen();
-
     init_terminal();
     crate::log::init().unwrap();
 
@@ -68,7 +53,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
 
-    printfixed!(Pos { line: 46, column: 111 }, Color::Green, "Turbo Fish v{}+", 0.2);
+    printfixed!(Pos { line: 1, column: 111 }, Color::Green, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);

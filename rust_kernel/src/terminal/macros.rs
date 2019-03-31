@@ -53,7 +53,7 @@ macro_rules! set_text_color {
                     EARLY_TERMINAL.set_text_color($color);
                 }
                 Some(term) => {
-                    term.get_tty(1).set_text_color($color);
+                    term.set_text_color($color);
                 }
             }
         }
