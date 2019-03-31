@@ -1,5 +1,5 @@
 use crate::drivers::pit_8253::PIT0;
-use crate::monitor::Color;
+use crate::terminal::Color;
 use core::time::Duration;
 
 pub fn really_lazy_hello_world() {

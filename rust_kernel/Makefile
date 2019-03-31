@@ -40,7 +40,7 @@ HEADERS +=
 VPATH += src/boot
 
 SRC_ASM_KERNEL += vbe_font
-VPATH += src/monitor
+VPATH += src/terminal/monitor
 
 SRC_C_KERNEL += panic
 

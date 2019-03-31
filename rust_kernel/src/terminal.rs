@@ -4,9 +4,16 @@ pub mod macros;
 pub mod early_terminal;
 pub use early_terminal::EARLY_TERMINAL;
 
+pub mod cursor;
+pub use cursor::{Cursor, Pos};
+
+pub mod monitor;
+use self::monitor::bmp_loader::{draw_image, BmpImage};
+pub use self::monitor::Color;
+use self::monitor::{AdvancedGraphic, Drawer, IoResult, SCREEN_MONAD};
+
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use crate::monitor::{AdvancedGraphic, Color, Drawer, IoResult, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -85,49 +92,6 @@ impl TerminalBuffer {
 pub enum CursorDirection {
     Left,
     Right,
-}
-
-/// Simple and Basic implementation of cursor
-#[derive(Debug, Copy, Clone, Default)]
-struct Cursor {
-    pos: Pos,
-    nb_lines: usize,
-    nb_columns: usize,
-    visible: bool,
-}
-
-impl Cursor {
-    /// Increment the cursor by one, return Option of line must be refreshed
-    fn forward(&mut self) -> Option<usize> {
-        self.pos.column += 1;
-        if self.pos.column == self.nb_columns {
-            self.cariage_return()
-        } else {
-            None
-        }
-    }
-    /// Do a cariage_return, return Option of line must be refreshed
-    fn cariage_return(&mut self) -> Option<usize> {
-        let ret = Some(self.pos.line);
-
-        self.pos.column = 0;
-        if self.pos.line != self.nb_lines - 1 {
-            self.pos.line += 1;
-        }
-        ret
-    }
-    /// Decrement the cursor by one
-    fn backward(&mut self) -> Option<usize> {
-        if self.pos.column == 0 {
-            self.pos.column = self.nb_columns - 1;
-            if self.pos.line != 0 {
-                self.pos.line -= 1;
-            }
-        } else {
-            self.pos.column -= 1;
-        }
-        None
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -513,8 +477,6 @@ pub fn stock_keysymb(keysymb: KeySymb) {
     }
 }
 
-use crate::monitor::bmp_loader::{draw_image, BmpImage};
-
 extern "C" {
     static _wanggle_bmp_start: BmpImage;
     static _univers_bmp_start: BmpImage;
@@ -522,6 +484,7 @@ extern "C" {
 
 /// Extern function for initialisation
 pub fn init_terminal() {
+    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
     unsafe {
         let mut term = Terminal::new();
         term.get_tty(1).cursor.visible = true;

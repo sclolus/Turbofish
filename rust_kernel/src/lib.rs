@@ -24,8 +24,6 @@ pub mod debug;
 #[macro_use]
 pub mod ffi;
 
-pub mod monitor;
-
 #[macro_use]
 pub mod terminal;
 

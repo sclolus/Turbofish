@@ -1,8 +1,9 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
 
-use crate::monitor::{Color, Drawer, Pos, SCREEN_MONAD};
+use crate::terminal::monitor::{Color, Drawer, SCREEN_MONAD};
 
 use super::Cursor;
+use super::Pos;
 
 /// Classic height of default VGA screen
 const HEIGHT: usize = 25;
