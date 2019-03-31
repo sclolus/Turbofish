@@ -1,9 +1,6 @@
-//! [Ansi escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
+use super::CSI;
 use core::str::FromStr;
 use core::{fmt, fmt::Display};
-
-///Comand Sequence Introducer
-const CSI: &str = "\x1b[";
 
 /// (0 ≤ r, g, b ≤ 5)
 #[derive(Copy, Clone, Debug, PartialEq)]
