@@ -59,7 +59,7 @@ VPATH += src/drivers/pic_8259
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
 
-SRC_ASM_KERNEL += asterix wanggle
+SRC_ASM_KERNEL += univers wanggle
 VPATH += medias
 
 SRC_ASM_KERNEL += paging

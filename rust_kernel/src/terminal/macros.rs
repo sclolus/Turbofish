@@ -9,7 +9,7 @@ macro_rules! print {
                 unsafe {
                     match {$crate::terminal::TERMINAL.as_mut()} {
                         None => {
-                            use crate::early_terminal::EARLY_TERMINAL;
+                            use crate::terminal::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         Some(term) => core::fmt::write({term.get_tty(1)}, a).unwrap(),
@@ -43,13 +43,12 @@ macro_rules! print_syslog {
 
 /// common set_text_color method
 #[macro_export]
-#[cfg(not(test))]
 macro_rules! set_text_color {
     ($color:expr) => {{
         unsafe {
             match { $crate::terminal::TERMINAL.as_mut() } {
                 None => {
-                    use crate::early_terminal::EARLY_TERMINAL;
+                    use crate::terminal::EARLY_TERMINAL;
                     EARLY_TERMINAL.set_text_color($color);
                 }
                 Some(term) => {
@@ -102,7 +101,7 @@ macro_rules! print_screen {
 
                     match {$crate::terminal::TERMINAL.as_mut()} {
                         None => {
-                            use crate::early_terminal::EARLY_TERMINAL;
+                            use crate::terminal::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         // I consider it's works !

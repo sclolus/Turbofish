@@ -1,9 +1,11 @@
 #[macro_use]
 pub mod macros;
 
+pub mod early_terminal;
+pub use early_terminal::EARLY_TERMINAL;
+
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use crate::monitor::bmp_loader::{draw_image, BmpImage};
 use crate::monitor::{AdvancedGraphic, Color, Drawer, IoResult, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
@@ -142,7 +144,7 @@ pub struct Tty {
     cursor: Cursor,
     text_color: Color,
     write_mode: WriteMode,
-    background_image: Option<&'static BmpImage>,
+    background: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -156,7 +158,13 @@ enum Scroll {
 /// Implementation a a unique TTY
 impl Tty {
     /// Constructor
-    fn new(echo: bool, nb_lines: usize, nb_columns: usize, max_screen_buffer: usize) -> Self {
+    fn new(
+        echo: bool,
+        nb_lines: usize,
+        nb_columns: usize,
+        max_screen_buffer: usize,
+        background: Option<Vec<u8>>,
+    ) -> Self {
         Self {
             echo,
             buf: TerminalBuffer::new(nb_lines, nb_columns, max_screen_buffer),
@@ -164,26 +172,32 @@ impl Tty {
             cursor: Cursor { pos: Default::default(), nb_lines, nb_columns, visible: false },
             text_color: Color::White,
             write_mode: WriteMode::Dynamic,
-            background_image: None,
+            background,
         }
-    }
-
-    /// a reference on a static buffer may be dangerous
-    fn set_background_image(&mut self, image: &'static BmpImage) {
-        self.background_image = Some(image);
     }
 
     /// Display the tty, mut be called when new activation of tty or switch
     fn refresh(&mut self) {
-        self.background_image.map(|image| {
-            SCREEN_MONAD
-                .lock()
-                .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
-                    draw_image(image, buffer, width, height, bpp)
-                })
-                .unwrap();
-        });
+        SCREEN_MONAD
+            .lock()
+            .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+                if let Some(background) = &self.background {
+                    use core::slice;
+                    let buf = unsafe { slice::from_raw_parts_mut(buffer, width * height * bpp / 8) };
+
+                    for (i, elem) in buf.iter_mut().enumerate() {
+                        *elem = background[i];
+                    }
+                }
+                Ok(())
+            })
+            .unwrap();
         self.print_screen(self.scroll_offset);
+    }
+
+    /// set the background buffer
+    fn set_background_buffer(&mut self, v: Vec<u8>) {
+        self.background = Some(v);
     }
 
     /// Internal scroll
@@ -425,7 +439,7 @@ impl Terminal {
         let screen_monad = SCREEN_MONAD.lock();
         Self {
             buf: None,
-            ttys: vec![Tty::new(false, screen_monad.nb_lines, screen_monad.nb_columns, MAX_SCREEN_BUFFER); 2],
+            ttys: vec![Tty::new(false, screen_monad.nb_lines, screen_monad.nb_columns, MAX_SCREEN_BUFFER, None); 2],
         }
     }
 
@@ -499,9 +513,11 @@ pub fn stock_keysymb(keysymb: KeySymb) {
     }
 }
 
+use crate::monitor::bmp_loader::{draw_image, BmpImage};
+
 extern "C" {
-    static _asterix_bmp_start: BmpImage;
     static _wanggle_bmp_start: BmpImage;
+    static _univers_bmp_start: BmpImage;
 }
 
 /// Extern function for initialisation
@@ -509,12 +525,41 @@ pub fn init_terminal() {
     unsafe {
         let mut term = Terminal::new();
         term.get_tty(1).cursor.visible = true;
-        term.get_tty(1).set_background_image(&_wanggle_bmp_start);
-        term.get_tty(0).set_background_image(&_asterix_bmp_start);
 
         term.set_foreground_fd(1);
 
         TERMINAL = Some(term);
+
+        let screen_monad = SCREEN_MONAD.lock();
+        let size = screen_monad.width.unwrap() * screen_monad.height.unwrap() * screen_monad.bpp.unwrap() / 8;
+
+        let mut v: Vec<u8> = vec![42; size];
+        draw_image(
+            &_wanggle_bmp_start,
+            v.as_mut_ptr(),
+            screen_monad.width.unwrap(),
+            screen_monad.height.unwrap(),
+            screen_monad.bpp.unwrap(),
+        )
+        .unwrap();
+        TERMINAL.as_mut().unwrap().get_tty(1).set_background_buffer(v);
+
+        let mut v: Vec<u8> = vec![84; size];
+        draw_image(
+            &_univers_bmp_start,
+            v.as_mut_ptr(),
+            screen_monad.width.unwrap(),
+            screen_monad.height.unwrap(),
+            screen_monad.bpp.unwrap(),
+        )
+        .unwrap();
+        TERMINAL.as_mut().unwrap().get_tty(0).set_background_buffer(v);
+
+        // unlock mutex
+        drop(screen_monad);
+
+        TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().refresh();
+
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
 }

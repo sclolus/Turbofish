@@ -60,6 +60,9 @@ pub struct ScreenMonad {
     drawing_mode: DrawingMode,
     pub nb_lines: usize,
     pub nb_columns: usize,
+    pub height: Option<usize>,
+    pub width: Option<usize>,
+    pub bpp: Option<usize>,
 }
 
 enum DrawingMode {
@@ -76,16 +79,26 @@ impl ScreenMonad {
     /// default is vga
     fn new() -> Self {
         let vga = VgaTextMode::new();
-        let (lines, columns) = vga.query_window_size();
-        Self { drawing_mode: DrawingMode::Vga(vga), nb_lines: lines, nb_columns: columns }
+        let (lines, columns, _, _, _) = vga.query_window_size();
+        Self {
+            drawing_mode: DrawingMode::Vga(vga),
+            nb_lines: lines,
+            nb_columns: columns,
+            height: None,
+            width: None,
+            bpp: None,
+        }
     }
     /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
-        let (lines, columns) = vbe.query_window_size();
+        let (lines, columns, height, width, bpp) = vbe.query_window_size();
         self.drawing_mode = DrawingMode::Vbe(vbe);
         self.nb_lines = lines;
         self.nb_columns = columns;
+        self.height = height;
+        self.width = width;
+        self.bpp = bpp;
         Ok(())
     }
     /// Check the bounds

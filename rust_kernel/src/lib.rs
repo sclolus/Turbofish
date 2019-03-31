@@ -28,7 +28,6 @@ pub mod monitor;
 
 #[macro_use]
 pub mod terminal;
-pub mod early_terminal;
 
 #[macro_use]
 pub mod interrupts;

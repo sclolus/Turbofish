@@ -75,8 +75,14 @@ impl VbeMode {
     }
 
     /// return window size in nb char
-    pub fn query_window_size(&self) -> (usize, usize) {
-        (self.height / self.char_height, self.width / self.char_width)
+    pub fn query_window_size(&self) -> (usize, usize, Option<usize>, Option<usize>, Option<usize>) {
+        (
+            self.height / self.char_height,
+            self.width / self.char_width,
+            Some(self.height),
+            Some(self.width),
+            Some(self.bytes_per_pixel * 8),
+        )
     }
 
     /// put pixel at position y, x in pixel unit
