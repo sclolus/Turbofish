@@ -11,7 +11,6 @@ use crate::shell::shell;
 use crate::terminal::init_terminal;
 use crate::terminal::Color;
 use crate::timer::Rtc;
-use log::{error, trace, warn};
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
@@ -45,7 +44,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     dbg!(multiboot_info.mem_upper);
 
     init_terminal();
-    crate::log::init().unwrap();
 
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
@@ -92,9 +90,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("{:?}", device_map_ptr);
 
     crate::watch_dog();
-    trace!("a trace");
-    warn!("a warning");
-    error!("a error");
+    log::trace!("a trace");
+    log::warn!("a warning");
+    log::error!("a error");
     shell();
     sum
 }

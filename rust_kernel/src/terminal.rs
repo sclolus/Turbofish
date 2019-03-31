@@ -9,6 +9,12 @@ pub use cursor::{Cursor, Pos};
 
 pub mod monitor;
 pub use self::monitor::Color;
+
+mod tty;
+pub use tty::{CursorDirection, Scroll, Tty, WriteMode};
+
+mod log;
+
 use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
@@ -17,9 +23,6 @@ use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
-
-mod tty;
-pub use tty::{CursorDirection, Scroll, Tty, WriteMode};
 
 #[derive(Debug, Clone)]
 pub struct Terminal {
@@ -52,8 +55,8 @@ impl Terminal {
 
     fn handle_macros(&mut self) {
         match self.buf {
-            Some(KeySymb::F1) => self.switch_foreground_tty(0),
-            Some(KeySymb::F2) => self.switch_foreground_tty(1),
+            Some(KeySymb::F1) => self.switch_foreground_tty(1),
+            Some(KeySymb::F2) => self.switch_foreground_tty(0),
             Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().scroll(Scroll::Up),
             Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().scroll(Scroll::Down),
             Some(KeySymb::Control_b) => self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenUp),
@@ -159,4 +162,6 @@ pub fn init_terminal() {
         TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().refresh();
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
+    self::log::init().unwrap();
+    ::log::info!("Terminal has been initialized");
 }

@@ -6,12 +6,12 @@ macro_rules! print {
         match format_args!($($arg)*) {
             a => {
                 unsafe {
-                    match {$crate::terminal::TERMINAL.as_mut()} {
+                    match $crate::terminal::TERMINAL.as_mut() {
                         None => {
                             use crate::terminal::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
-                        Some(term) => core::fmt::write({term.get_tty(1)}, a).unwrap(),
+                        Some(term) => core::fmt::write(term.get_tty(1), a).unwrap(),
                     }
                 }
             }
@@ -23,7 +23,7 @@ macro_rules! print {
 /// Use only when Panic or some fatal error occured !
 #[macro_export]
 #[cfg(not(test))]
-macro_rules! print_screen {
+macro_rules! print_bypass_mutex {
     ($($arg:tt)*) => ({
         #[allow(unused_unsafe)]
         match format_args!($($arg)*) {
@@ -32,13 +32,13 @@ macro_rules! print_screen {
                     // For national security, force unlock this mutex
                     crate::terminal::monitor::SCREEN_MONAD.force_unlock();
 
-                    match {$crate::terminal::TERMINAL.as_mut()} {
+                    match $crate::terminal::TERMINAL.as_mut() {
                         None => {
                             use crate::terminal::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         // I consider it's works !
-                        Some(term) => core::fmt::write({term.get_foreground_tty().unwrap()}, a).unwrap(),
+                        Some(term) => core::fmt::write(term.get_foreground_tty().unwrap(), a).unwrap(),
                     }
                 }
             }
@@ -104,7 +104,7 @@ macro_rules! printfixed {
                             tty.cursor.pos = $cursor_pos;
                             tty.text_color = $color;
 
-                            core::fmt::write({tty}, a).unwrap();
+                            core::fmt::write(tty, a).unwrap();
 
                             tty.write_mode = save_write_mode;
                             tty.cursor.pos = save_cursor;
@@ -122,9 +122,9 @@ macro_rules! printfixed {
 #[cfg(not(test))]
 #[macro_export]
 macro_rules! eprintln {
-    () => (print_screen!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print_screen!(concat!($fmt, "\n"), $($arg)*));
-    ($fmt:expr) => ($crate::print_screen!(concat!($fmt, "\n")));
+    () => ($crate::print_bypass_mutex!("\n"));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print_bypass_mutex!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ($crate::print_bypass_mutex!(concat!($fmt, "\n")));
 }
 
 /// eprintln! with UART
