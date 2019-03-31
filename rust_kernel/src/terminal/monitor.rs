@@ -1,6 +1,7 @@
 pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
+use super::cursor::Pos;
 
 use crate::Spinlock;
 use lazy_static::lazy_static;
@@ -17,13 +18,6 @@ pub enum IoError {
     ColorNotSupported,
     GraphicModeNotFounded,
     NotSupported,
-}
-
-/// Usable to select write position for characters
-#[derive(Debug, Copy, Clone, Default)]
-pub struct Pos {
-    pub line: usize,
-    pub column: usize,
 }
 
 /// Human readable colors

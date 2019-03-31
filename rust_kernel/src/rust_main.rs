@@ -6,10 +6,10 @@ use crate::drivers::{pic_8259, PIC_8259};
 use crate::interrupts;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
-use crate::monitor::{Color, SCREEN_MONAD};
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::init_terminal;
+use crate::terminal::Color;
 use crate::timer::Rtc;
 use log::{error, trace, warn};
 
@@ -43,8 +43,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     set_text_color!(Color::Green);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
-
-    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
 
     init_terminal();
     crate::log::init().unwrap();

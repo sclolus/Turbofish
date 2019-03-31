@@ -20,6 +20,33 @@ macro_rules! print {
     })
 }
 
+/// Print_screen allow to write directly into the SCREEN_MONAD and bypass his mutex,
+/// Use only when Panic or some fatal error occured !
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! print_screen {
+    ($($arg:tt)*) => ({
+        #[allow(unused_unsafe)]
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    // For national security, force unlock this mutex
+                    crate::terminal::monitor::SCREEN_MONAD.force_unlock();
+
+                    match {$crate::terminal::TERMINAL.as_mut()} {
+                        None => {
+                            use crate::terminal::EARLY_TERMINAL;
+                            core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
+                        },
+                        // I consider it's works !
+                        Some(term) => core::fmt::write({term.get_foreground_tty().unwrap()}, a).unwrap(),
+                    }
+                }
+            }
+        }
+    })
+}
+
 /// common println method
 #[macro_export]
 #[cfg(not(test))]
@@ -70,7 +97,7 @@ macro_rules! printfixed {
                         None => {},
                         Some(term) => {
                             use crate::terminal::WriteMode;
-                            use crate::monitor::Pos;;
+                            use crate::terminal::Pos;;
 
                             let tty = term.get_tty(1);
                             let env = tty.modify(WriteMode::Fixed, $cursor_pos, $color);
@@ -79,33 +106,6 @@ macro_rules! printfixed {
 
                             tty.modify(env.0, env.1, env.2);
                         }
-                    }
-                }
-            }
-        }
-    })
-}
-
-/// Print_screen allow to write directly into the SCREEN_MONAD and bypass his mutex,
-/// Use only when Panic or some fatal error occured !
-#[macro_export]
-#[cfg(not(test))]
-macro_rules! print_screen {
-    ($($arg:tt)*) => ({
-        #[allow(unused_unsafe)]
-        match format_args!($($arg)*) {
-            a => {
-                unsafe {
-                    // For national security, force unlock this mutex
-                    crate::monitor::SCREEN_MONAD.force_unlock();
-
-                    match {$crate::terminal::TERMINAL.as_mut()} {
-                        None => {
-                            use crate::terminal::EARLY_TERMINAL;
-                            core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
-                        },
-                        // I consider it's works !
-                        Some(term) => core::fmt::write({term.get_foreground_tty().unwrap()}, a).unwrap(),
                     }
                 }
             }
