@@ -68,7 +68,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
 
-    //printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
+    printfixed!(Pos { line: 46, column: 111 }, Color::Green, "Turbo Fish v{}+", 0.2);
     debug::bench_start();
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
