@@ -3,6 +3,7 @@ pub mod macros;
 
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use crate::monitor::bmp_loader::{draw_image, BmpImage};
 use crate::monitor::{AdvancedGraphic, Color, Drawer, IoResult, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
@@ -22,7 +23,7 @@ struct TerminalBuffer {
 
 /// Here a TTY buffer
 impl TerminalBuffer {
-    pub fn new(nb_lines: usize, nb_columns: usize, buf_max_capacity: usize) -> Self {
+    fn new(nb_lines: usize, nb_columns: usize, buf_max_capacity: usize) -> Self {
         Self {
             buf: VecDeque::with_capacity(buf_max_capacity),
             fixed_buf: vec![None; nb_lines * nb_columns],
@@ -34,7 +35,7 @@ impl TerminalBuffer {
     }
 
     /// Make some place for a new screen
-    pub fn make_place(&mut self) {
+    fn make_place(&mut self) {
         if self.buf.len() < self.buf.capacity() {
             self.buf.push_back(vec![(0, Color::Black); self.nb_lines * self.nb_columns]);
         } else {
@@ -56,7 +57,7 @@ impl TerminalBuffer {
 
     /// Write a char into the buffer
     #[inline(always)]
-    pub fn write_char(&mut self, c: char, color: Color) {
+    fn write_char(&mut self, c: char, color: Color) {
         match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_columns)) {
             Some(screen) => {
                 let pos = self.write_pos % (self.nb_lines * self.nb_columns);
@@ -86,7 +87,7 @@ pub enum CursorDirection {
 
 /// Simple and Basic implementation of cursor
 #[derive(Debug, Copy, Clone, Default)]
-pub struct Cursor {
+struct Cursor {
     pos: Pos,
     nb_lines: usize,
     nb_columns: usize,
@@ -138,20 +139,23 @@ pub struct Tty {
     echo: bool,
     buf: TerminalBuffer,
     scroll_offset: isize,
-    pub cursor: Cursor,
-    pub text_color: Color,
-    pub write_mode: WriteMode,
+    cursor: Cursor,
+    text_color: Color,
+    write_mode: WriteMode,
+    background_image: Option<&'static BmpImage>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Scroll {
+enum Scroll {
     Up,
     Down,
     HalfScreenDown,
     HalfScreenUp,
 }
 
+/// Implementation a a unique TTY
 impl Tty {
+    /// Constructor
     fn new(echo: bool, nb_lines: usize, nb_columns: usize, max_screen_buffer: usize) -> Self {
         Self {
             echo,
@@ -160,13 +164,29 @@ impl Tty {
             cursor: Cursor { pos: Default::default(), nb_lines, nb_columns, visible: false },
             text_color: Color::White,
             write_mode: WriteMode::Dynamic,
+            background_image: None,
         }
     }
 
+    /// a reference on a static buffer may be dangerous
+    fn set_background_image(&mut self, image: &'static BmpImage) {
+        self.background_image = Some(image);
+    }
+
+    /// Display the tty, mut be called when new activation of tty or switch
     fn refresh(&mut self) {
+        self.background_image.map(|image| {
+            SCREEN_MONAD
+                .lock()
+                .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
+                    draw_image(image, buffer, width, height, bpp)
+                })
+                .unwrap();
+        });
         self.print_screen(self.scroll_offset);
     }
 
+    /// Internal scroll
     fn scroll(&mut self, scroll: Scroll) {
         use Scroll::*;
         let add_scroll = match scroll {
@@ -183,7 +203,8 @@ impl Tty {
         self.print_screen(self.scroll_offset);
     }
 
-    pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
+    /// Allow a shell for example to move cursor manually
+    fn move_cursor(&mut self, direction: CursorDirection, q: usize) -> IoResult {
         if !self.cursor.visible {
             Ok(())
         } else {
@@ -218,7 +239,8 @@ impl Tty {
         }
     }
 
-    pub fn set_text_color(&mut self, color: Color) {
+    /// Simple and basic
+    fn set_text_color(&mut self, color: Color) {
         self.text_color = color;
     }
 
@@ -247,7 +269,7 @@ impl Tty {
     }
 
     /// re-print the entire screen
-    pub fn print_screen(&mut self, offset: isize) {
+    fn print_screen(&mut self, offset: isize) {
         SCREEN_MONAD.lock().clear_screen();
         self.cursor.pos = Default::default();
 
@@ -333,6 +355,9 @@ impl Tty {
     }
 }
 
+/// TTY implement some methods of writing
+/// Dynamic: Classic behavior with buffering and scroll
+/// Fixed: The text is always printed on screen
 impl core::fmt::Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         match self.write_mode {
@@ -344,7 +369,7 @@ impl core::fmt::Write for Tty {
                 // Make the scroll coherency
                 if self.scroll_offset != 0 {
                     self.scroll_offset = 0;
-                    self.refresh();
+                    self.print_screen(self.scroll_offset);
                 }
 
                 if self.echo {
@@ -455,10 +480,15 @@ impl Terminal {
 
     pub fn set_foreground_fd(&mut self, fd: usize) {
         self.ttys[fd].echo = true;
+        self.ttys[fd].refresh();
     }
 
     pub fn get_tty(&mut self, fd: usize) -> &mut Tty {
         &mut self.ttys[fd]
+    }
+
+    pub fn set_text_color(&mut self, color: Color) {
+        self.get_foreground_tty().unwrap().set_text_color(color);
     }
 }
 
@@ -469,12 +499,21 @@ pub fn stock_keysymb(keysymb: KeySymb) {
     }
 }
 
+extern "C" {
+    static _asterix_bmp_start: BmpImage;
+    static _wanggle_bmp_start: BmpImage;
+}
+
 /// Extern function for initialisation
 pub fn init_terminal() {
     unsafe {
         let mut term = Terminal::new();
-        term.set_foreground_fd(1);
         term.get_tty(1).cursor.visible = true;
+        term.get_tty(1).set_background_image(&_wanggle_bmp_start);
+        term.get_tty(0).set_background_image(&_asterix_bmp_start);
+
+        term.set_foreground_fd(1);
+
         TERMINAL = Some(term);
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
