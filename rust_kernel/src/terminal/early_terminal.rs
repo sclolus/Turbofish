@@ -2,6 +2,8 @@
 
 use crate::monitor::{Color, Drawer, Pos, SCREEN_MONAD};
 
+use super::Cursor;
+
 /// Classic height of default VGA screen
 const HEIGHT: usize = 25;
 /// Class width of default VGA screen
@@ -22,6 +24,7 @@ impl core::fmt::Debug for EarlyTerminal {
     }
 }
 
+/*
 /// Base cursor structure
 #[derive(Debug, Copy, Clone)]
 pub struct Cursor {
@@ -30,6 +33,7 @@ pub struct Cursor {
     lines: usize,
     columns: usize,
 }
+*/
 
 /// Main globale
 pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
@@ -38,7 +42,7 @@ pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
 impl EarlyTerminal {
     pub const fn new() -> Self {
         Self {
-            cursor: Cursor { y: 0, x: 0, lines: HEIGHT, columns: WIDTH },
+            cursor: Cursor { pos: Pos { line: 0, column: 0 }, nb_lines: HEIGHT, nb_columns: WIDTH, visible: true },
             text_color: Color::White,
             buf: [None; WIDTH * HEIGHT],
         }
@@ -51,8 +55,8 @@ impl EarlyTerminal {
 
     /// Scroll screen
     fn scroll_vga_screen(&mut self) {
-        let m = self.cursor.columns * (self.cursor.lines - 1);
-        self.buf.copy_within(self.cursor.columns.., 0);
+        let m = self.cursor.nb_columns * (self.cursor.nb_lines - 1);
+        self.buf.copy_within(self.cursor.nb_columns.., 0);
         for elem in self.buf[m..].iter_mut() {
             *elem = None;
         }
@@ -64,23 +68,6 @@ impl EarlyTerminal {
             SCREEN_MONAD.lock().draw_character(c as char, Pos { line: i / WIDTH, column: i % WIDTH }, color).unwrap();
         }
     }
-    /// advance cursor by 1
-    fn cursor_forward(&mut self) {
-        self.cursor.x += 1;
-        if self.cursor.x == self.cursor.columns {
-            self.cursor_cariage_return()
-        }
-    }
-
-    /// new line
-    fn cursor_cariage_return(&mut self) {
-        if self.cursor.y + 1 == self.cursor.lines {
-            self.scroll_vga_screen();
-        } else {
-            self.cursor.y += 1;
-        }
-        self.cursor.x = 0;
-    }
 }
 
 /// Common implementation of write
@@ -88,16 +75,24 @@ impl core::fmt::Write for EarlyTerminal {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.as_bytes() {
             match *c as char {
-                '\n' => self.cursor_cariage_return(),
-                _ => {
-                    self.buf[self.cursor.y * WIDTH + self.cursor.x] = Some((*c as u8, self.text_color));
-                    SCREEN_MONAD
-                        .lock()
-                        .draw_character(*c as char, Pos { line: self.cursor.y, column: self.cursor.x }, self.text_color)
-                        .unwrap();
-                    self.cursor_forward();
+                '\n' => {
+                    if let Some(line) = self.cursor.cariage_return() {
+                        if line == self.cursor.nb_columns - 1 {
+                            self.scroll_vga_screen();
+                        }
+                    }
                 }
-            }
+                _ => {
+                    self.buf[self.cursor.pos.line * WIDTH + self.cursor.pos.column] = Some((*c as u8, self.text_color));
+                    SCREEN_MONAD.lock().draw_character(*c as char, self.cursor.pos, self.text_color).unwrap();
+
+                    if let Some(line) = self.cursor.forward() {
+                        if line == self.cursor.nb_columns - 1 {
+                            self.scroll_vga_screen();
+                        }
+                    }
+                }
+            };
         }
         Ok(())
     }

@@ -13,8 +13,8 @@ impl VgaTextMode {
     }
 
     /// return window size in nb char
-    pub const fn query_window_size(&self) -> (usize, usize) {
-        (HEIGHT, WIDTH)
+    pub const fn query_window_size(&self) -> (usize, usize, Option<usize>, Option<usize>, Option<usize>) {
+        (HEIGHT, WIDTH, None, None, None)
     }
 }
 
