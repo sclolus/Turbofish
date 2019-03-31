@@ -50,8 +50,6 @@ pub use watch_dog::*;
 
 pub mod shell;
 
-pub mod log;
-
 pub mod spinlock;
 pub use spinlock::{Spinlock, SpinlockGuard};
 
