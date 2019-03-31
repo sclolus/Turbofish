@@ -1,5 +1,3 @@
-#[macro_use]
-pub mod macros;
 pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
