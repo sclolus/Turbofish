@@ -85,3 +85,48 @@ macro_rules! printfixed {
         }
     })
 }
+
+/// Print_screen allow to write directly into the SCREEN_MONAD and bypass his mutex,
+/// Use only when Panic or some fatal error occured !
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! print_screen {
+    ($($arg:tt)*) => ({
+        #[allow(unused_unsafe)]
+        match format_args!($($arg)*) {
+            a => {
+                unsafe {
+                    // For national security, force unlock this mutex
+                    crate::monitor::SCREEN_MONAD.force_unlock();
+
+                    match {$crate::terminal::TERMINAL.as_mut()} {
+                        None => {
+                            use crate::early_terminal::EARLY_TERMINAL;
+                            core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
+                        },
+                        // I consider it's works !
+                        Some(term) => core::fmt::write({term.get_foreground_tty().unwrap()}, a).unwrap(),
+                    }
+                }
+            }
+        }
+    })
+}
+
+/// eprintln without UART, dumping data in some active TTY
+#[cfg(not(feature = "serial-eprintln"))]
+#[cfg(not(test))]
+#[macro_export]
+macro_rules! eprintln {
+    () => (print_screen!("\n"));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print_screen!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ($crate::print_screen!(concat!($fmt, "\n")));
+}
+
+/// eprintln! with UART
+#[cfg(feature = "serial-eprintln")]
+#[cfg(not(test))]
+#[macro_export]
+macro_rules! eprintln {
+    ($($arg:tt)*) => ($crate::serial_println!($($arg)*));
+}

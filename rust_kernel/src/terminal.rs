@@ -410,7 +410,7 @@ impl Terminal {
         self.ttys[new_foreground_tty].refresh();
     }
 
-    fn get_foreground_tty(&mut self) -> Option<&mut Tty> {
+    pub fn get_foreground_tty(&mut self) -> Option<&mut Tty> {
         self.ttys.iter_mut().find(|tty| tty.echo)
     }
 
