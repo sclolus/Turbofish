@@ -100,11 +100,16 @@ macro_rules! printfixed {
                             use crate::terminal::Pos;;
 
                             let tty = term.get_tty(1);
-                            let env = tty.modify(WriteMode::Fixed, $cursor_pos, $color);
+                            let (save_write_mode, save_cursor, save_text_color) = (tty.write_mode, tty.cursor.pos, tty.text_color);
+                            tty.write_mode = WriteMode::Fixed;
+                            tty.cursor.pos = $cursor_pos;
+                            tty.text_color = $color;
 
                             core::fmt::write({tty}, a).unwrap();
 
-                            tty.modify(env.0, env.1, env.2);
+                            tty.write_mode = save_write_mode;
+                            tty.cursor.pos = save_cursor;
+                            tty.text_color = save_text_color;
                         }
                     }
                 }
