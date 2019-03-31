@@ -796,7 +796,6 @@ pub enum CapsLockSensitive {
 
 use KeySymb::*;
 
-/*
 /// generated with `dumpkeys --full-table`
 pub const KEYCODE_TO_KEYSYMB_AZERTY: [[CapsLockSensitive; 16]; 128] = [
     [
@@ -3104,7 +3103,7 @@ pub const KEYCODE_TO_KEYSYMB_AZERTY: [[CapsLockSensitive; 16]; 128] = [
         CapsLockSensitive::No(VoidSymbol),
     ],
 ];
-*/
+
 pub const KEYCODE_TO_KEYSYMB_QWERTY: [[CapsLockSensitive; 16]; 128] = [
     [
         CapsLockSensitive::No(VoidSymbol),
