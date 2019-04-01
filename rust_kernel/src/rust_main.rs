@@ -8,8 +8,8 @@ use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
+use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
-use crate::terminal::Color;
 use crate::timer::Rtc;
 
 #[no_mangle]
@@ -37,9 +37,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
     }
     println!("device map ptr {:#?}", device_map_ptr);
-    set_text_color!(Color::Red);
+    // set_text_color!(Color::Red);
     println!("multiboot_infos {:#?}", multiboot_info);
-    set_text_color!(Color::Green);
+    // set_text_color!(Color::Green);
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
@@ -49,7 +49,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
-    printfixed!(Pos { line: 1, column: 111 }, Color::Green, "Turbo Fish v{}+", 0.2);
+    printfixed!(Pos { line: 1, column: 111 }, "{}", "Turbo Fish v0.2+".green());
     debug::bench_start();
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);

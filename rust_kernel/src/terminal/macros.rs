@@ -39,7 +39,10 @@ macro_rules! print_bypass_mutex {
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         // I consider it's works !
-                        Some(term) => core::fmt::write(term.get_foreground_tty().unwrap(), a).unwrap(),
+                        Some(term) => {
+                            use core::fmt::Write;
+                            term.get_foreground_tty().unwrap().write_fmt(a).unwrap();
+                        }
                     }
                 }
             }
@@ -62,34 +65,35 @@ macro_rules! print_syslog {
     ($($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
-                core::fmt::write(unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0)}, a).unwrap();
+                use core::fmt::Write;
+                unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0).write_fmt(a).unwrap();}
             }
         }
     })
 }
 
-/// common set_text_color method
-#[macro_export]
-macro_rules! set_text_color {
-    ($color:expr) => {{
-        unsafe {
-            match { $crate::terminal::TERMINAL.as_mut() } {
-                None => {
-                    use crate::terminal::EARLY_TERMINAL;
-                    EARLY_TERMINAL.set_text_color($color);
-                }
-                Some(term) => {
-                    term.set_text_color($color);
-                }
-            }
-        }
-    }};
-}
+// /// common set_text_color method
+// #[macro_export]
+// macro_rules! set_text_color {
+//     ($color:expr) => {{
+//         unsafe {
+//             match { $crate::terminal::TERMINAL.as_mut() } {
+//                 None => {
+//                     use crate::terminal::EARLY_TERMINAL;
+//                     EARLY_TERMINAL.set_text_color($color);
+//                 }
+//                 Some(term) => {
+//                     term.set_text_color($color);
+//                 }
+//             }
+//         }
+//     }};
+// }
 
 /// Common print fixed method
 #[macro_export]
 macro_rules! printfixed {
-    ($cursor_pos:expr, $color:expr, $($arg:tt)*) => ({
+    ($cursor_pos:expr, $($arg:tt)*) => ({
         match format_args!($($arg)*) {
             a => {
                 unsafe {
@@ -97,19 +101,18 @@ macro_rules! printfixed {
                         None => {},
                         Some(term) => {
                             use crate::terminal::WriteMode;
-                            use crate::terminal::Pos;;
+                            use crate::terminal::Pos;
+                            use core::fmt::Write;
 
                             let tty = term.get_tty(1);
-                            let (save_write_mode, save_cursor, save_text_color) = (tty.write_mode, tty.cursor.pos, tty.text_color);
+                            let (save_write_mode, save_cursor) = (tty.write_mode, tty.cursor.pos);
                             tty.write_mode = WriteMode::Fixed;
                             tty.cursor.pos = $cursor_pos;
-                            tty.text_color = $color;
 
-                            core::fmt::write(tty, a).unwrap();
+                            tty.write_fmt(a).unwrap();
 
                             tty.write_mode = save_write_mode;
                             tty.cursor.pos = save_cursor;
-                            tty.text_color = save_text_color;
                         }
                     }
                 }

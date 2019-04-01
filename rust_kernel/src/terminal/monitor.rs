@@ -158,7 +158,7 @@ impl AdvancedGraphic for ScreenMonad {
     /// Fill the graphic buffer with a custom function
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         match &mut self.drawing_mode {
-            DrawingMode::Vga(_vga) => Err(IoError::GraphicModeNotFounded),
+            DrawingMode::Vga(_vga) => Ok(()),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
         }
     }

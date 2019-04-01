@@ -76,13 +76,6 @@ impl TerminalBuffer {
     }
 }
 
-/// for the moment, we just handle left and right keys
-#[derive(Debug, Copy, Clone)]
-pub enum CursorDirection {
-    Left,
-    Right,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum WriteMode {
     Dynamic,
@@ -173,7 +166,7 @@ impl Tty {
     }
 
     /// Allow a shell for example to move cursor manually
-    pub fn move_cursor(&mut self, direction: CursorMove) {
+    fn move_cursor(&mut self, direction: CursorMove) {
         if !self.cursor.visible || !self.foreground {
             return;
         }
@@ -205,13 +198,13 @@ impl Tty {
         SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
     }
 
-    /// Simple and basic
-    pub fn set_text_color(&mut self, color: Color) {
-        self.text_color = color;
-    }
+    // /// Simple and basic
+    // fn set_text_color(&mut self, color: Color) {
+    //     self.text_color = color;
+    // }
 
     /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
-    pub fn draw_cursor(&self) {
+    fn draw_cursor(&self) {
         let c = match self.buf.get_char(self.buf.write_pos) {
             None | Some((0, _)) => (' ' as u8, self.text_color),
             Some(elem) => elem,
@@ -220,7 +213,7 @@ impl Tty {
     }
 
     /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
-    pub fn clear_cursor(&self) {
+    fn clear_cursor(&self) {
         let c = match self.buf.get_char(self.buf.write_pos) {
             None | Some((0, _)) => (' ' as u8, self.text_color),
             Some(elem) => elem,
@@ -229,7 +222,7 @@ impl Tty {
     }
 
     /// re-print the entire screen
-    pub fn print_screen(&mut self, offset: isize) {
+    fn print_screen(&mut self, offset: isize) {
         SCREEN_MONAD.lock().clear_screen();
         self.cursor.pos = Default::default();
 
@@ -307,67 +300,72 @@ impl Tty {
 /// Fixed: The text is always printed on screen
 impl Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        eprintln!("'{}'", s);
-        eprintln!("'{:?}'", s.bytes());
-        match self.write_mode {
-            WriteMode::Dynamic => {
-                if self.cursor.visible {
-                    self.clear_cursor();
-                }
+        // eprintln!("'{}'", s);
+        // eprintln!("'{:?}'", s.bytes());
+        // match self.write_mode {
+        //     WriteMode::Dynamic => {
+        if self.cursor.visible {
+            self.clear_cursor();
+        }
 
-                // Make the scroll coherency
-                if self.foreground && self.scroll_offset != 0 {
-                    self.scroll_offset = 0;
-                    self.print_screen(self.scroll_offset);
-                }
+        // Make the scroll coherency
+        if self.foreground && self.scroll_offset != 0 {
+            self.scroll_offset = 0;
+            self.print_screen(self.scroll_offset);
+        }
 
-                use crate::terminal::ansi_escape_code::*;
-                use EscapedItem::*;
-                for e in iter_escaped(s) {
-                    match e {
-                        Escaped(e) => match e {
-                            EscapedCode::Color(color) => self.text_color = color.into(),
-                            EscapedCode::CursorMove(cursor_move) => self.move_cursor(cursor_move),
-                        },
-                        Str(s) => {
-                            for c in s.chars() {
-                                self.buf.write_char(c, self.text_color);
-                                if self.foreground {
-                                    if c != '\n' {
-                                        SCREEN_MONAD
-                                            .lock()
-                                            .draw_character(c, self.cursor.pos, self.text_color)
-                                            .unwrap();
-                                        self.cursor.forward().map(|line| self.map_line(line));
-                                    } else {
-                                        self.cursor.cariage_return().map(|line| self.map_line(line));
-                                    }
-                                }
+        use crate::terminal::ansi_escape_code::*;
+        use EscapedItem::*;
+        for e in iter_escaped(s) {
+            match e {
+                Escaped(e) => match e {
+                    EscapedCode::Color(color) => self.text_color = color.into(),
+                    EscapedCode::CursorMove(cursor_move) => self.move_cursor(cursor_move),
+                },
+                Str(s) => {
+                    for c in s.chars() {
+                        match self.write_mode {
+                            WriteMode::Dynamic => self.buf.write_char(c, self.text_color),
+                            WriteMode::Fixed => {
+                                self.buf.fixed_buf
+                                    [self.cursor.pos.line * self.cursor.nb_columns + self.cursor.pos.column] =
+                                    Some((c as u8, self.text_color))
+                            }
+                        };
+
+                        if self.foreground {
+                            if c != '\n' {
+                                SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
+                                self.cursor.forward().map(|line| self.map_line(line));
+                            } else {
+                                self.cursor.cariage_return().map(|line| self.map_line(line));
                             }
                         }
                     }
                 }
-                if self.foreground && self.cursor.pos.column != 0 {
-                    SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
-                }
-            }
-            // Fixed character write
-            WriteMode::Fixed => {
-                for c in s.chars() {
-                    self.buf.fixed_buf[self.cursor.pos.line * self.cursor.nb_columns + self.cursor.pos.column] =
-                        Some((c as u8, self.text_color));
-                    SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
-                    self.cursor.forward().map(|line| self.map_line(line));
-                }
-                if self.cursor.pos.column != 0 {
-                    SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
-                }
             }
         }
+        if self.foreground && self.cursor.pos.column != 0 {
+            SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+        }
+        // }
+        // Fixed character write
+        // WriteMode::Fixed => {
+        // for c in s.chars() {
+        //     self.buf.fixed_buf[self.cursor.pos.line * self.cursor.nb_columns + self.cursor.pos.column] =
+        //         Some((c as u8, self.text_color));
+        //     SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
+        //     self.cursor.forward().map(|line| self.map_line(line));
+        // }
+        // if self.cursor.pos.column != 0 {
+        //     SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
+        // }
+        // }
+        // }
         Ok(())
     }
     fn write_fmt(&mut self, args: Arguments) -> core::fmt::Result {
-        self.write_buf.write_fmt(args);
+        self.write_buf.write_fmt(args).unwrap();
         let res = self.write_str(&self.write_buf.clone());
         self.write_buf.truncate(0);
         res

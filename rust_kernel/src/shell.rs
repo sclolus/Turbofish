@@ -1,7 +1,7 @@
 mod builtin;
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::terminal::ansi_escape_code::CursorMove;
-use crate::terminal::{CursorDirection, TERMINAL};
+use crate::terminal::TERMINAL;
 use alloc::string::String;
 use alloc::vec::Vec;
 use builtin::*;
@@ -67,34 +67,32 @@ fn read_line() -> String {
                 print!("{}", &line[cursor_pos..]);
                 cursor_pos += 1;
 
-                unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Backward(line.len() - cursor_pos)) };
+                print!("{}", CursorMove::Backward(line.len() - cursor_pos));
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
                     cursor_pos -= 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Backward(1)) };
+                    print!("{}", CursorMove::Backward(1));
                 }
             }
             KeySymb::Right => {
                 if cursor_pos < line.len() {
                     cursor_pos += 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Forward(1)) };
+                    print!("{}", CursorMove::Forward(1));
                 }
             }
             KeySymb::Delete => {
                 if cursor_pos > 0 {
                     line.remove(cursor_pos - 1);
                     cursor_pos -= 1;
-                    unsafe { TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Backward(1)) };
+                    print!("{}", CursorMove::Backward(1));
                     if cursor_pos == line.len() {
                         print!("{}", " ");
                     } else {
                         print!("{}", &line[cursor_pos..]);
                         print!("{}", " ");
                     }
-                    unsafe {
-                        TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Backward(line.len() - cursor_pos + 1))
-                    };
+                    print!("{}", CursorMove::Backward(line.len() - cursor_pos + 1));
                 }
             }
             _ => {}
@@ -107,9 +105,7 @@ pub fn shell() {
     loop {
         // Display prompt
         print!("{}", PROMPT);
-        unsafe {
-            TERMINAL.as_mut().unwrap().move_cursor(CursorMove::Forward(0));
-        }
+        print!("{}", CursorMove::Forward(0));
         // Call to blocked read_line function
         let line = read_line();
         // Make a line jump

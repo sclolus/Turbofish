@@ -64,19 +64,7 @@ impl From<u8> for AnsiColor {
 
 impl Display for AnsiColor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use AnsiColor::*;
-        match self {
-            // // TODO: this is a hack, waiting for a buffer in tty
-            // Standard(0) => write!(f, "\x1b[38;5;0m"),
-            // Standard(1) => write!(f, "\x1b[38;5;1m"),
-            // Standard(2) => write!(f, "\x1b[38;5;2m"),
-            // Standard(3) => write!(f, "\x1b[38;5;3m"),
-            // Standard(4) => write!(f, "\x1b[38;5;4m"),
-            // Standard(5) => write!(f, "\x1b[38;5;5m"),
-            // Standard(6) => write!(f, "\x1b[38;5;6m"),
-            // Standard(7) => write!(f, "\x1b[38;5;7m"),
-            _ => write!(f, "{}38;5;{}m", CSI, Into::<u8>::into(*self)),
-        }
+        write!(f, "{}38;5;{}m", CSI, Into::<u8>::into(*self))
     }
 }
 
