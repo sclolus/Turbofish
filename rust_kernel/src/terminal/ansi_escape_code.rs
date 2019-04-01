@@ -2,9 +2,10 @@
 pub mod color;
 pub mod cursor;
 
-use color::AnsiColor;
+pub use color::*;
+pub use cursor::*;
+
 use core::str::FromStr;
-use cursor::CursorMove;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EscapedCode {
@@ -82,5 +83,14 @@ mod test {
         // for s in iter_escaped(&format!("{}", "I AM BLACK".black())) {
         //     dbg!(s);
         // }
+    }
+
+    #[test]
+    fn test_iter_no_escape() {
+        use EscapedItem::*;
+        let s = format!("{}", "I AM BLACK");
+        let mut iterator = iter_escaped(&s);
+        assert_eq!(iterator.next().unwrap(), Str("I AM BLACK"));
+        assert_eq!(iterator.next(), None);
     }
 }

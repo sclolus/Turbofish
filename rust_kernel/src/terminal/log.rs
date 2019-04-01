@@ -1,6 +1,8 @@
 use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 
+use crate::terminal::ansi_escape_code::color::Colored;
+
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
@@ -10,7 +12,14 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            print_syslog!("{} - {}\n", record.level(), record.args());
+            let level_str = match record.level() {
+                Level::Info => "INFO".green(),
+                Level::Trace => "TRACE".white(),
+                Level::Error => "ERROR".red(),
+                Level::Warn => "WARN".yellow(),
+                Level::Debug => "DEBUG".cyan(),
+            };
+            print_syslog!("{} - {}\n", level_str, record.args());
         }
     }
 

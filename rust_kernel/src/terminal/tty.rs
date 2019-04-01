@@ -306,30 +306,39 @@ impl Write for Tty {
                 }
 
                 // Make the scroll coherency
-                if self.scroll_offset != 0 {
+                if self.foreground && self.scroll_offset != 0 {
                     self.scroll_offset = 0;
                     self.print_screen(self.scroll_offset);
                 }
 
-                if self.foreground {
-                    for c in s.chars() {
-                        self.buf.write_char(c, self.text_color);
-                        if c != '\n' {
-                            SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
-                            self.cursor.forward().map(|line| self.map_line(line));
-                        } else {
-                            self.cursor.cariage_return().map(|line| self.map_line(line));
+                use crate::terminal::ansi_escape_code::*;
+                use EscapedItem::*;
+                for e in iter_escaped(s) {
+                    match e {
+                        Escaped(e) => match e {
+                            EscapedCode::Color(color) => self.text_color = color.into(),
+                            EscapedCode::CursorMove(_) => {}
+                        },
+                        Str(s) => {
+                            for c in s.chars() {
+                                self.buf.write_char(c, self.text_color);
+                                if self.foreground {
+                                    if c != '\n' {
+                                        SCREEN_MONAD
+                                            .lock()
+                                            .draw_character(c, self.cursor.pos, self.text_color)
+                                            .unwrap();
+                                        self.cursor.forward().map(|line| self.map_line(line));
+                                    } else {
+                                        self.cursor.cariage_return().map(|line| self.map_line(line));
+                                    }
+                                }
+                            }
                         }
                     }
-                    if self.cursor.pos.column != 0 {
-                        SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
-                    }
-                    Ok(())
-                } else {
-                    for c in s.chars() {
-                        self.buf.write_char(c, self.text_color);
-                    }
-                    Ok(())
+                }
+                if self.foreground && self.cursor.pos.column != 0 {
+                    SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
                 }
             }
             // Fixed character write
@@ -343,8 +352,8 @@ impl Write for Tty {
                 if self.cursor.pos.column != 0 {
                     SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
                 }
-                Ok(())
             }
         }
+        Ok(())
     }
 }
