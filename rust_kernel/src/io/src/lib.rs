@@ -1,5 +1,7 @@
+//! This module provide methods to read and write on I/O ports
 #![cfg_attr(not(test), no_std)]
 #![feature(asm)]
+#![deny(missing_docs)]
 
 use core::cmp::PartialEq;
 
@@ -24,10 +26,12 @@ pub struct ReadOnly<I: Io> {
 }
 
 impl<I: Io> ReadOnly<I> {
+    /// Global constructor
     pub fn new(inner: I) -> Self {
         ReadOnly { inner }
     }
 
+    /// Reads from object returning a `I::value`
     pub fn read(&self) -> I::Value {
         self.inner.read()
     }
@@ -39,10 +43,12 @@ pub struct WriteOnly<I: Io> {
 }
 
 impl<I: Io> WriteOnly<I> {
+    /// Global constructor
     pub fn new(inner: I) -> Self {
         WriteOnly { inner }
     }
 
+    /// Writes `I::value` to the object
     pub fn write(&mut self, value: I::Value) {
         self.inner.write(value)
     }
