@@ -1,9 +1,9 @@
 use crate::debug;
-use crate::drivers::keyboard::init_keyboard_driver;
 use crate::drivers::pci::PCI;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::drivers::{pic_8259, PIC_8259};
 use crate::interrupts;
+use crate::keyboard::init_keyboard_driver;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::multiboot::MultibootInfo;

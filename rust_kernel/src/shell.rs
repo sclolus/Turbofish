@@ -1,9 +1,9 @@
 mod builtin;
-use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::terminal::{CursorDirection, TERMINAL};
 use alloc::string::String;
 use alloc::vec::Vec;
 use builtin::*;
+use keyboard::keysymb::KeySymb;
 
 // ASCII mouse
 const PROMPT: &str = "----{,_,\"> $ ";

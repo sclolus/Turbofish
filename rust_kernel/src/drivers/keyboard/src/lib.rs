@@ -1,10 +1,12 @@
 //! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
+#![cfg_attr(not(test), no_std)]
+
 use io::{Io, Pio};
 
 pub mod keysymb;
-use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
-use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
-use super::keyboard::keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
+use keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
+use keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
+use keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
 
 #[allow(dead_code)]
 struct Ps2Controler {
@@ -201,9 +203,9 @@ impl KeyboardDriver {
         }
     }
 
-    pub fn interrupt_handler(&mut self, scancode: u32) {
+    pub fn interrupt_handler(&mut self, scancode: u32) -> Result<(), ()> {
         match self.io_term {
-            None => eprintln!("no consumer registered !"),
+            None => Err(()),
             Some(arg) => {
                 use CallbackKeyboard::*;
                 match arg {
@@ -215,6 +217,7 @@ impl KeyboardDriver {
                         KeyCode::from_scancode(scancode).map(|s| self.keycode_to_keymap(s).map(|s| u(s)));
                     }
                 }
+                Ok(())
             }
         }
     }
@@ -231,7 +234,7 @@ extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
         unsafe {
-            KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode);
+            KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode).unwrap();
         }
     }
 }

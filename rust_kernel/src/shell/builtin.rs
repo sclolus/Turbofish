@@ -1,4 +1,5 @@
 use crate::drivers::pci::PCI;
+use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 pub type BuiltinResult = core::result::Result<usize, ()>;
 
@@ -46,8 +47,6 @@ pub fn fucking_big_string(args: &[&str]) -> BuiltinResult {
     }
     Ok(0)
 }
-
-use crate::drivers::keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// select a keyboard layout
 pub fn layout(args: &[&str]) -> BuiltinResult {

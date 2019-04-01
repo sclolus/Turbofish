@@ -18,8 +18,9 @@ mod log;
 use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
-use crate::drivers::keyboard::keysymb::KeySymb;
-use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use keyboard::keysymb::KeySymb;
+use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;

@@ -17,6 +17,7 @@ extern crate alloc;
 
 // Our Crates
 extern crate io;
+extern crate keyboard;
 
 #[macro_use]
 pub mod utils;
