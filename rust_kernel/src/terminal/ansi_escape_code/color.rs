@@ -4,14 +4,14 @@ use core::{fmt, fmt::Display};
 
 /// (0 ≤ r, g, b ≤ 5)
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct AnsiRGB {
+pub struct AnsiRGB {
     r: u8,
     g: u8,
     b: u8,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum AnsiColor {
+pub enum AnsiColor {
     /// 0 -> 7
     Standard(u8),
     /// 0 -> 7
@@ -28,14 +28,14 @@ impl Default for AnsiColor {
 }
 
 impl AnsiColor {
-    const BLACK: Self = AnsiColor::Standard(0);
-    const RED: Self = AnsiColor::Standard(1);
-    const GREEN: Self = AnsiColor::Standard(2);
-    const YELLOW: Self = AnsiColor::Standard(3);
-    const BLUE: Self = AnsiColor::Standard(4);
-    const MAGENTA: Self = AnsiColor::Standard(5);
-    const CYAN: Self = AnsiColor::Standard(6);
-    const WHITE: Self = AnsiColor::Standard(7);
+    pub const BLACK: Self = AnsiColor::Standard(0);
+    pub const RED: Self = AnsiColor::Standard(1);
+    pub const GREEN: Self = AnsiColor::Standard(2);
+    pub const YELLOW: Self = AnsiColor::Standard(3);
+    pub const BLUE: Self = AnsiColor::Standard(4);
+    pub const MAGENTA: Self = AnsiColor::Standard(5);
+    pub const CYAN: Self = AnsiColor::Standard(6);
+    pub const WHITE: Self = AnsiColor::Standard(7);
 }
 
 impl From<AnsiColor> for u8 {
@@ -69,7 +69,7 @@ impl Display for AnsiColor {
 }
 
 #[derive(Debug)]
-struct ParseColorError;
+pub struct ParseColorError;
 
 impl FromStr for AnsiColor {
     type Err = ParseColorError;
@@ -199,7 +199,7 @@ mod test {
         for i in 0..=255 {
             let color: AnsiColor = i.into();
             assert_eq!(Into::<u8>::into(color), i);
-            let color_str = format!("{}", format_args!("{}", color));
+            let color_str = format!("{}", color);
             assert_eq!(
                 AnsiColor::from_str(&color_str)
                     .expect(&format!("failed to parse colors_str: {} at it: {}", color_str, i)),
