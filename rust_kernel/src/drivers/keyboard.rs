@@ -1,5 +1,6 @@
 //! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
-use crate::io::{Io, Pio};
+use io::{Io, Pio};
+
 pub mod keysymb;
 use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
 use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
