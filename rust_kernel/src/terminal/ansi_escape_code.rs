@@ -39,8 +39,8 @@ impl<'a> Iterator for IterEscaped<'a> {
             return None;
         }
         Some(if self.s[self.off..].starts_with(0x1b as char) {
-            let next_alpha =
-                self.off + self.s[self.off..].find(|x: char| x.is_ascii_alphabetic()).unwrap_or(self.s.len() - 1);
+            let next_alpha = self.off
+                + self.s[self.off..].find(|x: char| x.is_ascii_alphabetic()).unwrap_or(self.s[self.off..].len() - 1);
             let ret = &self.s[self.off..=next_alpha];
             self.off = next_alpha + 1;
             if &self.s[next_alpha..next_alpha + 1] == "m" {
@@ -55,7 +55,7 @@ impl<'a> Iterator for IterEscaped<'a> {
                 }
             }
         } else {
-            let next_escape = self.off + self.s[self.off..].find(0x1b as char).unwrap_or(self.s.len());
+            let next_escape = self.off + self.s[self.off..].find(0x1b as char).unwrap_or(self.s[self.off..].len());
 
             let ret = &self.s[self.off..next_escape];
             self.off = next_escape;
@@ -91,6 +91,15 @@ mod test {
         let s = format!("{}", "I AM BLACK");
         let mut iterator = iter_escaped(&s);
         assert_eq!(iterator.next().unwrap(), Str("I AM BLACK"));
+        assert_eq!(iterator.next(), None);
+    }
+    #[test]
+    fn test_iter_one_escape() {
+        use EscapedItem::*;
+        let s = format!("{}{}", AnsiColor::RED, "H");
+        let mut iterator = iter_escaped(&s);
+        assert_eq!(iterator.next().unwrap(), Escaped(EscapedCode::Color(AnsiColor::RED)));
+        assert_eq!(iterator.next().unwrap(), Str("H"));
         assert_eq!(iterator.next(), None);
     }
 }
