@@ -1,7 +1,7 @@
 /// Simple and Basic implementation of cursor
 
 /// Usable to select write position for characters
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Pos {
     pub line: usize,
     pub column: usize,
