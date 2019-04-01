@@ -585,21 +585,24 @@ impl SlabAllocator {
 mod tests {
     #[test]
     fn test_sodo() {
-        use rand::Rng;
-        use rand::{rngs::SmallRng, SeedableRng};
-        let mut rng: SmallRng = SmallRng::seed_from_u64(0xDEADBEEF);
+        use crate::math::random::srand;
+        use core::alloc::Layout;
+        use crate::memory::tools::Virt;
+        crate::math::random::srand_init(42).unwrap();
 
+        use super::SlabAllocator;
         let mut slab_allocator = SlabAllocator::new();
         const ALLOC_SIZE: usize = 2 << 17;
         let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
 
         for _index in 0..32728 * 32 {
-            match rng.gen::<u8>() {
+            // match rng.gen::<u8>() {
+            match srand::<u8>(255) {
                 0...200 => {
-                    let alloc_size = rng.gen::<usize>() % ALLOC_SIZE;
-                    let addr = slab_allocator.alloc(alloc_size).unwrap();
-                    let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr, alloc_size) };
-                    let random_byte = rng.gen::<u8>();
+                    let alloc_size = srand(core::usize::MAX) % ALLOC_SIZE;
+                    let addr = slab_allocator.alloc(Layout::from_size_align(alloc_size, 16).unwrap()).unwrap();
+                    let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr.0 as *mut u8, alloc_size) };
+                    let random_byte = srand::<u8>(255);
 
                     // for b in object.iter_mut() {
                     //     *b = random_byte;
@@ -607,13 +610,13 @@ mod tests {
 
                     // assert!(addrs.iter().all(|&(x, _, _)| x != addr));
                     //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
-                    addrs.push((addr, random_byte, alloc_size));
+                    addrs.push((addr.0 as *mut u8, random_byte, alloc_size));
                 }
                 _ => {
                     if addrs.len() == 0 {
                         continue;
                     }
-                    let (addr, byte, alloc_size) = addrs.swap_remove(rng.gen::<usize>() % addrs.len());
+                    let (addr, byte, alloc_size) = addrs.swap_remove(srand(core::usize::MAX) % addrs.len());
 
                     //                println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
                     let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
@@ -628,7 +631,7 @@ mod tests {
                     //     }
                     //     assert!(*b == byte);
                     // }
-                    slab_allocator.free(addr, alloc_size);
+                    slab_allocator.free(Virt(addr as usize).into(), alloc_size);
                     //                println!("Free'd {:p}", addr);
                 }
             }
@@ -645,7 +648,7 @@ mod tests {
             // }
 
             //        println!("freeing: {:p}", addr);
-            slab_allocator.free(addr, alloc_size);
+            slab_allocator.free(Virt(addr as usize).into(), alloc_size);
             //        println!("free'd: {:p}", addr);
         }
     }
