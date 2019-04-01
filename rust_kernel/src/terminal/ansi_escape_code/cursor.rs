@@ -40,12 +40,15 @@ impl FromStr for CursorMove {
     type Err = ParseCursorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use CursorMove::*;
-        if &s[0..=1] != CSI {
+        if s.len() < 4 || &s[0..=1] != CSI {
             return Err(ParseCursorError);
         }
         match &s[(s.len() - 1)..s.len()] {
             "H" => s.find(';').ok_or(ParseCursorError).and_then(|off| {
                 let line: usize = s[2..off].parse().map_err(|_e| ParseCursorError)?;
+                if off + 1 >= s.len() {
+                    return Err(ParseCursorError);
+                }
                 let column: usize = s[off + 1..s.len() - 1].parse().map_err(|_e| ParseCursorError)?;
                 Ok(Pos(terminal::Pos { line, column }))
             }),
