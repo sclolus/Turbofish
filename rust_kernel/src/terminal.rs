@@ -22,6 +22,7 @@ use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use crate::terminal::ansi_escape_code::cursor::CursorMove;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
@@ -91,8 +92,8 @@ impl Terminal {
         self.ttys[fd].write_str(s).unwrap();
     }
 
-    pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) {
-        self.get_foreground_tty().unwrap().move_cursor(direction, q)
+    pub fn move_cursor(&mut self, direction: CursorMove) {
+        self.get_foreground_tty().unwrap().move_cursor(direction)
     }
 
     pub fn get_tty(&mut self, fd: usize) -> &mut Tty {

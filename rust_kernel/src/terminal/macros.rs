@@ -3,6 +3,7 @@
 #[cfg(not(test))]
 macro_rules! print {
     ($($arg:tt)*) => ({
+        use core::fmt::Write;
         match format_args!($($arg)*) {
             a => {
                 unsafe {
@@ -11,7 +12,7 @@ macro_rules! print {
                             use crate::terminal::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
-                        Some(term) => core::fmt::write(term.get_tty(1), a).unwrap(),
+                        Some(term) => term.get_tty(1).write_fmt(a).unwrap(),
                     }
                 }
             }

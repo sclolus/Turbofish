@@ -44,6 +44,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     dbg!(multiboot_info.mem_upper);
 
     init_terminal();
+    println!("{} INIT {}", "AFTER", "TERMINAL");
 
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
@@ -93,6 +94,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::trace!("a trace");
     log::warn!("a warning");
     log::error!("a error");
+    println!("{} {}", "bonjour 1", "bonjour2");
     shell();
     sum
 }

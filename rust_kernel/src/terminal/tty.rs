@@ -1,8 +1,11 @@
+use crate::terminal::ansi_escape_code::CursorMove;
 use crate::terminal::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 use crate::terminal::{Color, Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::fmt::Arguments;
 use core::fmt::Write;
 
 /// Description of a TTY buffer
@@ -95,6 +98,7 @@ pub struct Tty {
     buf: TerminalBuffer,
     scroll_offset: isize,
     background: Option<Vec<u8>>,
+    write_buf: String,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -123,6 +127,7 @@ impl Tty {
             text_color: Color::White,
             write_mode: WriteMode::Dynamic,
             background,
+            write_buf: String::with_capacity(4096),
         }
     }
 
@@ -168,7 +173,7 @@ impl Tty {
     }
 
     /// Allow a shell for example to move cursor manually
-    pub fn move_cursor(&mut self, direction: CursorDirection, q: usize) {
+    pub fn move_cursor(&mut self, direction: CursorMove) {
         if !self.cursor.visible || !self.foreground {
             return;
         }
@@ -178,17 +183,20 @@ impl Tty {
 
         // Apply new cursor direction
         match direction {
-            CursorDirection::Right => {
+            CursorMove::Forward(q) => {
                 self.buf.write_pos += q;
                 for _i in 0..q {
                     self.cursor.forward();
                 }
             }
-            CursorDirection::Left => {
+            CursorMove::Backward(q) => {
                 self.buf.write_pos -= q;
                 for _i in 0..q {
                     self.cursor.backward();
                 }
+            }
+            _ => {
+                unimplemented!();
             }
         }
 
@@ -299,6 +307,8 @@ impl Tty {
 /// Fixed: The text is always printed on screen
 impl Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        eprintln!("'{}'", s);
+        eprintln!("'{:?}'", s.bytes());
         match self.write_mode {
             WriteMode::Dynamic => {
                 if self.cursor.visible {
@@ -317,7 +327,7 @@ impl Write for Tty {
                     match e {
                         Escaped(e) => match e {
                             EscapedCode::Color(color) => self.text_color = color.into(),
-                            EscapedCode::CursorMove(_) => {}
+                            EscapedCode::CursorMove(cursor_move) => self.move_cursor(cursor_move),
                         },
                         Str(s) => {
                             for c in s.chars() {
@@ -355,5 +365,11 @@ impl Write for Tty {
             }
         }
         Ok(())
+    }
+    fn write_fmt(&mut self, args: Arguments) -> core::fmt::Result {
+        self.write_buf.write_fmt(args);
+        let res = self.write_str(&self.write_buf.clone());
+        self.write_buf.truncate(0);
+        res
     }
 }
