@@ -1,9 +1,9 @@
 //! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
 use crate::io::{Io, Pio};
 pub mod keysymb;
-use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP;
-//use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
-use super::keyboard::keysymb::{CapsLockSensitive, KeySymb};
+use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
+use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
+use super::keyboard::keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
 
 #[allow(dead_code)]
 struct Ps2Controler {
@@ -112,27 +112,42 @@ pub enum CallbackKeyboard {
     RequestKeySymb(fn(KeySymb)),
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum KeyMap {
+    En,
+    Fr,
+}
+
 pub struct KeyboardDriver {
     escape_key_mask: u8,
     capslock: bool,
     io_term: Option<CallbackKeyboard>,
+    pub keymap: KeyMap,
 }
 
 pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
 
 impl KeyboardDriver {
     pub fn new(f: Option<CallbackKeyboard>) -> Self {
-        Self { escape_key_mask: 0, capslock: false, io_term: f }
+        Self { escape_key_mask: 0, capslock: false, io_term: f, keymap: KeyMap::En }
     }
 
     pub fn bind(&mut self, f: CallbackKeyboard) {
         self.io_term = Some(f);
     }
 
+    /// Return the current keymap
+    fn get_keymap(&self) -> &KeyMapArray {
+        match self.keymap {
+            KeyMap::En => &KEYMAP_QWERTY,
+            KeyMap::Fr => &KEYMAP_AZERTY,
+        }
+    }
+
     pub fn keycode_to_keymap(&mut self, keycode: KeyCode) -> Option<KeySymb> {
         match keycode {
             KeyCode::Pressed(k) => {
-                let symb = &KEYMAP[k as usize][(self.escape_key_mask) as usize];
+                let symb = self.get_keymap()[k as usize][(self.escape_key_mask) as usize];
                 match symb {
                     CapsLockSensitive::No(KeySymb::Control) => {
                         self.escape_key_mask |= EscapeKeyMask::Control as u8;
@@ -154,17 +169,17 @@ impl KeyboardDriver {
                         self.capslock = !self.capslock;
                         None
                     }
-                    CapsLockSensitive::No(other) => Some(*other),
+                    CapsLockSensitive::No(other) => Some(other),
                     CapsLockSensitive::Yes(_) => {
-                        let symb = &KEYMAP[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
+                        let symb = self.get_keymap()[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
                         match symb {
-                            CapsLockSensitive::No(other) | CapsLockSensitive::Yes(other) => Some(*other),
+                            CapsLockSensitive::No(other) | CapsLockSensitive::Yes(other) => Some(other),
                         }
                     }
                 }
             }
             KeyCode::Released(k) => {
-                let symb = &KEYMAP[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
+                let symb = self.get_keymap()[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
                 match symb {
                     CapsLockSensitive::No(KeySymb::Control) => {
                         self.escape_key_mask &= !(EscapeKeyMask::Control as u8);

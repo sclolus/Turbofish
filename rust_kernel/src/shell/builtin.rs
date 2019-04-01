@@ -47,6 +47,22 @@ pub fn fucking_big_string(args: &[&str]) -> BuiltinResult {
     Ok(0)
 }
 
+use crate::drivers::keyboard::{KeyMap, KEYBOARD_DRIVER};
+
+/// select a keyboard layout
+pub fn layout(args: &[&str]) -> BuiltinResult {
+    if args.len() != 1 {
+        println!("usage: layout [en/us || fr]");
+    } else {
+        match args[0] {
+            "fr" => unsafe { KEYBOARD_DRIVER.as_mut().unwrap().keymap = KeyMap::Fr },
+            "en" | "us" => unsafe { KEYBOARD_DRIVER.as_mut().unwrap().keymap = KeyMap::En },
+            _ => println!("unknown keymap !"),
+        }
+    }
+    Ok(0)
+}
+
 /// display a very lazy hello world
 pub fn hello_world(_args: &[&str]) -> BuiltinResult {
     crate::test_helpers::really_lazy_hello_world();
