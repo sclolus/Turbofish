@@ -26,17 +26,6 @@ impl core::fmt::Debug for EarlyTerminal {
     }
 }
 
-/*
-/// Base cursor structure
-#[derive(Debug, Copy, Clone)]
-pub struct Cursor {
-    y: usize,
-    x: usize,
-    lines: usize,
-    columns: usize,
-}
-*/
-
 /// Main globale
 pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
 
@@ -74,7 +63,7 @@ impl core::fmt::Write for EarlyTerminal {
             match *c as char {
                 '\n' => {
                     if let Some(line) = self.cursor.cariage_return() {
-                        if line == self.cursor.nb_columns - 1 {
+                        if line == self.cursor.nb_lines - 1 {
                             self.scroll_vga_screen();
                         }
                     }
@@ -84,7 +73,7 @@ impl core::fmt::Write for EarlyTerminal {
                     SCREEN_MONAD.lock().draw_character(*c as char, self.cursor.pos, self.text_color).unwrap();
 
                     if let Some(line) = self.cursor.forward() {
-                        if line == self.cursor.nb_columns - 1 {
+                        if line == self.cursor.nb_lines - 1 {
                             self.scroll_vga_screen();
                         }
                     }

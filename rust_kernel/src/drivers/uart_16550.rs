@@ -1,6 +1,6 @@
 //! impl write on the [Serial Ports](https://wiki.osdev.org/Serial_ports)
-use crate::io::{Io, Pio};
 use core::fmt;
+use io::{Io, Pio};
 
 struct LineStsFlags {
     data: u8,
@@ -71,7 +71,7 @@ macro_rules! serial_print {
         match format_args!($($arg)*) {
             a => {
                 #[allow(unused_unsafe)]
-                core::fmt::write(unsafe {&mut $crate::io::uart_16550::UART_16550}, a).unwrap();
+                core::fmt::write(unsafe {&mut $crate::drivers::uart_16550::UART_16550}, a).unwrap();
             }
         }
     }

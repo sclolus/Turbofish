@@ -38,7 +38,7 @@ pub struct VbeMode {
     /// Some informations about graphic mode
     mode_info: ModeInfo,
     /// Some informations about how the screen manage display
-    crtc_info: CrtcInfo,
+    crtc_info: Option<CrtcInfo>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -47,14 +47,7 @@ struct LinearFrameBuffer(pub *mut u8);
 unsafe impl Send for LinearFrameBuffer {}
 
 impl VbeMode {
-    pub fn new(
-        linear_frame_buffer: *mut u8,
-        width: usize,
-        height: usize,
-        bpp: usize,
-        mode_info: ModeInfo,
-        crtc_info: CrtcInfo,
-    ) -> Self {
+    pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize, mode_info: ModeInfo) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
         let screen_size: usize = bytes_per_pixel * width * height;
         let columns: usize = unsafe { width / _font_width };
@@ -72,8 +65,8 @@ impl VbeMode {
             char_height: unsafe { _font_height },
             columns: columns,
             lines: lines,
-            crtc_info,
             mode_info,
+            crtc_info: None,
         }
     }
 

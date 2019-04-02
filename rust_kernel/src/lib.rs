@@ -15,6 +15,10 @@
 
 extern crate alloc;
 
+// Our Crates
+extern crate io;
+extern crate keyboard;
+
 #[macro_use]
 pub mod utils;
 
@@ -31,7 +35,6 @@ pub mod terminal;
 pub mod interrupts;
 
 #[macro_use]
-pub mod io;
 pub mod drivers;
 pub mod math;
 pub mod multiboot;

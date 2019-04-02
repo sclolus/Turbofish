@@ -19,8 +19,8 @@ mod log;
 use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
-use crate::drivers::keyboard::keysymb::KeySymb;
-use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use keyboard::keysymb::KeySymb;
+use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 use crate::terminal::monitor::{AdvancedGraphic, Drawer};
 use alloc::vec;
 use alloc::vec::Vec;
@@ -91,17 +91,9 @@ impl Terminal {
         self.ttys[fd].write_str(s).unwrap();
     }
 
-    // pub fn move_cursor(&mut self, direction: CursorMove) {
-    //     self.get_foreground_tty().unwrap().move_cursor(direction)
-    // }
-
     pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
         &mut self.ttys[fd]
     }
-
-    // pub fn set_text_color(&mut self, color: Color) {
-    //     self.get_foreground_tty().unwrap().set_text_color(color);
-    // }
 }
 
 /// Usefull method to stock the character from the keyboard

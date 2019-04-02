@@ -1,6 +1,6 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
-use crate::io::{Io, Pio};
 use crate::Spinlock;
+use io::{Io, Pio};
 use lazy_static::lazy_static;
 
 use bit_field::BitField;

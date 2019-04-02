@@ -6,6 +6,7 @@ macro_rules! print {
         use core::fmt::Write;
         match format_args!($($arg)*) {
             a => {
+                #[allow(unused_unsafe)]
                 unsafe {
                     match $crate::terminal::TERMINAL.as_mut() {
                         None => {

@@ -1,9 +1,9 @@
 use crate::debug;
-use crate::drivers::keyboard::init_keyboard_driver;
 use crate::drivers::pci::PCI;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
 use crate::drivers::{pic_8259, PIC_8259};
 use crate::interrupts;
+use crate::keyboard::init_keyboard_driver;
 use crate::memory;
 use crate::memory::allocator::physical_page_allocator::DeviceMap;
 use crate::multiboot::MultibootInfo;
@@ -18,7 +18,7 @@ use crate::timer::Rtc;
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
-        unsafe { crate::io::UART_16550.init() };
+        unsafe { crate::drivers::UART_16550.init() };
         eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
@@ -45,7 +45,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
-    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
+    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
     println!("{} INIT {}", "AFTER", "TERMINAL");
 

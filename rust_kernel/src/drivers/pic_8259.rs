@@ -2,11 +2,10 @@
 //! See [PIC](https://wiki.osdev.org/PIC)
 mod pic_8259_isr;
 use crate::Spinlock;
+use bit_field::BitField;
+use io::{Io, Pio};
 use lazy_static::lazy_static;
 use pic_8259_isr::*;
-
-use crate::io::{Io, Pio};
-use bit_field::BitField;
 
 const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
 const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;

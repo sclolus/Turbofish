@@ -29,6 +29,7 @@ pub struct VbeInfo {
 define_raw_data!(VbeInfoReserved, 222);
 define_raw_data!(VbeInfoOemData, 256);
 
+#[allow(dead_code)]
 impl VbeInfo {
     /// only way to initialize VbeInfo safely transform all the pointers within the struct by their offsets
     unsafe fn new(ptr: *const Self) -> Self {
@@ -60,19 +61,6 @@ impl VbeInfo {
     /// return an iterator on available modes
     pub fn iter_modes(&self) -> core::slice::Iter<u16> {
         unsafe { core::slice::from_raw_parts(self.get_video_mode_ptr(), self.nb_mode()).iter() }
-    }
-    /// return the best resolution mode available which is in 3 bytes color if any.
-    pub fn find_best_resolution_mode(&self) -> (u16, ModeInfo) {
-        self.iter_modes()
-            .map(|m| (*m, query_mode_info(*m).unwrap()))
-            .max_by(|(_, a), (_, b)| {
-                if a.bits_per_pixel != b.bits_per_pixel {
-                    a.bits_per_pixel.cmp(&b.bits_per_pixel) // more bits for pixel is better
-                } else {
-                    (a.x_resolution + a.y_resolution).cmp(&(b.x_resolution + b.y_resolution))
-                }
-            })
-            .unwrap()
     }
 }
 
@@ -196,22 +184,11 @@ unsafe fn set_vbe_mode(mode_number: u16) -> Result<CrtcInfo, VbeError> {
 }
 
 /// do all nessesary initialisation and switch to vbe mode 'mode' if given, if not swith to the best resolution mode
-pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
+pub fn init_graphic_mode(mode: u16) -> Result<VbeMode, VbeError> {
     unsafe {
-        let vbe_info = save_vbe_info()?;
-        let mode_info: ModeInfo;
-        let crtc_info: CrtcInfo;
-        match mode {
-            Some(m) => {
-                mode_info = query_mode_info(m)?;
-                crtc_info = set_vbe_mode(m)?;
-            }
-            None => {
-                let result = vbe_info.find_best_resolution_mode();
-                mode_info = result.1;
-                crtc_info = set_vbe_mode(result.0)?;
-            }
-        }
+        let _vbe_info = save_vbe_info()?;
+        let mode_info: ModeInfo = query_mode_info(mode)?;
+
         KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
             .unwrap()
@@ -223,14 +200,19 @@ pub fn init_graphic_mode(mode: Option<u16>) -> Result<VbeMode, VbeError> {
                 .into(),
             )
             .unwrap();
-        Ok(VbeMode::new(
+
+        /*
+         * Make all Dynamics allocations before switching to new graphic mode
+         */
+        let mut ret = VbeMode::new(
             LINEAR_FRAMEBUFFER_VIRTUAL_ADDR,
             mode_info.x_resolution as usize,
             mode_info.y_resolution as usize,
             mode_info.bits_per_pixel as usize,
             mode_info,
-            crtc_info,
-        ))
+        );
+        ret.crtc_info = Some(set_vbe_mode(mode)?);
+        Ok(ret)
     }
 }
 

@@ -1,5 +1,4 @@
 use super::BuddyAllocator;
-use super::KERNEL_PHYSICAL_MEMORY;
 use crate::memory::tools::*;
 use alloc::vec;
 use bitflags::bitflags;
@@ -45,50 +44,51 @@ impl PhysicalPageAllocator {
 
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
-pub unsafe fn init_physical_allocator(_device_map_ptr: *const DeviceMap) {
+pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map_ptr: *const DeviceMap) {
     eprintln!("kernel physical end: {:x?}", symbol_addr!(high_kernel_physical_end));
     eprintln!(
         "kernel physical end alligned: {:x?}",
         Phys(symbol_addr!(high_kernel_physical_end)).align_next(PAGE_SIZE)
     );
-    let pallocator = PhysicalPageAllocator::new(
-        Phys(symbol_addr!(high_kernel_physical_end)).align_next(PAGE_SIZE).into(),
-        KERNEL_PHYSICAL_MEMORY,
-    );
+    let mut pallocator = PhysicalPageAllocator::new(Page::new(0), system_memory_amount);
 
-    // let device_map_len = {
-    //     let mut i: usize = 0;
-    //     use core::mem::size_of;
-    //     loop {
-    //         if *(device_map_ptr.offset(i as isize) as *const [u8; size_of::<DeviceMap>()])
-    //             == [0; size_of::<DeviceMap>()]
-    //         {
-    //             break i;
-    //         }
-    //         i += 1;
-    //     }
-    // };
-    //DOESNT WORK I DONT KNOW WHY
-    // pallocator.reserve(Phys(0), NbrPages::_1MB.into()).unwrap();
-    // pallocator
-    //     .reserve(
-    //         Phys(symbol_addr!(kernel_physical_start)),
-    //         symbol_addr!(kernel_physical_end) - symbol_addr!(kernel_physical_start),
-    //     )
-    //     .unwrap();
-    // let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
-    // for d in device_map_slice {
-    //     println!("{:x?}", d);
-    //     println!("addr: {:x?}", d.low_addr);
-    //     println!("len: {}ko", d.low_length >> 10);
-    //     match d.region_type {
-    //         RegionType::Usable => {}
-    //         _ => {
-    //             //TODO: see that
-    //             pallocator.reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into());
-    //         }
-    //     }
-    // }
+    let device_map_len = {
+        let mut i: usize = 0;
+        use core::mem::size_of;
+        loop {
+            if *(device_map_ptr.offset(i as isize) as *const [u8; size_of::<DeviceMap>()])
+                == [0; size_of::<DeviceMap>()]
+            {
+                break i;
+            }
+            i += 1;
+        }
+    };
+    //    DOESNT WORK I DONT KNOW WHY
+    pallocator.reserve(Page::new(0), NbrPages::_1MB.into()).unwrap();
+    pallocator
+        .reserve(
+            Page::containing(Phys(symbol_addr!(high_kernel_physical_start))),
+            (symbol_addr!(high_kernel_physical_end) - symbol_addr!(high_kernel_physical_start)).into(),
+        )
+        .unwrap();
+    let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
+    for d in device_map_slice {
+        println!("{:x?}", d);
+        println!("addr: {:x?}", d.low_addr);
+        println!("len: {}ko", d.low_length >> 10);
+        match d.region_type {
+            RegionType::Usable => {}
+            _ => {
+                //TODO: see that
+                if let Err(e) =
+                    pallocator.reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into())
+                {
+                    println!("some error were occured on pallocator ! {:?}", e);
+                }
+            }
+        }
+    }
     PHYSICAL_ALLOCATOR = Some(pallocator);
 }
 

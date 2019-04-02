@@ -1,5 +1,5 @@
 mod builtin;
-use crate::drivers::keyboard::keysymb::KeySymb;
+use keyboard::keysymb::KeySymb;
 use crate::terminal::ansi_escape_code::CursorMove;
 use crate::terminal::TERMINAL;
 use alloc::string::String;
@@ -19,7 +19,7 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 /// List of some builtins
-const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 8] = [
+const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 9] = [
     ("echo", echo),
     ("ls", ls),
     ("yes", yes),
@@ -28,6 +28,7 @@ const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 8] = [
     ("division_by_zero", division_by_zero),
     ("lspci", lspci),
     ("hello_world", hello_world),
+    ("layout", layout),
 ];
 
 /// Exectution of builtin commands
@@ -54,6 +55,9 @@ fn read_line() -> String {
     let mut cursor_pos = 0;
     let mut buf: [KeySymb; 1] = [KeySymb::nul; 1];
 
+    let mut graphical_cursor_offset = 0;
+    let mut graphical_len = 0;
+
     loop {
         block_read(&mut buf);
         let keysymb = buf[0];
@@ -62,29 +66,52 @@ fn read_line() -> String {
                 print!("{}", &line[cursor_pos..]);
                 return line;
             }
-            key if (key >= KeySymb::space) && (key <= KeySymb::asciitilde) => {
+            key if ((key >= KeySymb::space) && (key <= KeySymb::ydiaeresis) && (key != KeySymb::Delete)) => {
                 line.insert(cursor_pos, key as u8 as char);
-                print!("{}", &line[cursor_pos..]);
-                cursor_pos += 1;
 
-                print!("{}", CursorMove::Backward(line.len() - cursor_pos));
+                print!("{}", &line[cursor_pos..]);
+
+                cursor_pos += (key as u8 as char).len_utf8();
+
+                graphical_cursor_offset += 1;
+                graphical_len += 1;
+
+		print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset));
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
+                    while !line.is_char_boundary(cursor_pos - 1) {
+                        cursor_pos -= 1;
+                    }
                     cursor_pos -= 1;
-                    print!("{}", CursorMove::Backward(1));
+                    graphical_cursor_offset -= 1;
+
+                    print!("{}", CursorMove::Backward(1))
                 }
             }
             KeySymb::Right => {
                 if cursor_pos < line.len() {
+                    while !line.is_char_boundary(cursor_pos + 1) {
+                        cursor_pos += 1;
+                    }
                     cursor_pos += 1;
+
+                    graphical_cursor_offset += 1;
+
                     print!("{}", CursorMove::Forward(1));
                 }
             }
             KeySymb::Delete => {
                 if cursor_pos > 0 {
+                    while !line.is_char_boundary(cursor_pos - 1) {
+                        cursor_pos -= 1;
+                    }
                     line.remove(cursor_pos - 1);
                     cursor_pos -= 1;
+
+                    graphical_cursor_offset -= 1;
+                    graphical_len -= 1;
+
                     print!("{}", CursorMove::Backward(1));
                     if cursor_pos == line.len() {
                         print!("{}", " ");
@@ -92,7 +119,7 @@ fn read_line() -> String {
                         print!("{}", &line[cursor_pos..]);
                         print!("{}", " ");
                     }
-                    print!("{}", CursorMove::Backward(line.len() - cursor_pos + 1));
+                    print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset + 1));
                 }
             }
             _ => {}

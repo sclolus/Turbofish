@@ -44,11 +44,8 @@ VPATH += src/terminal/monitor
 
 SRC_C_KERNEL += panic
 
-SRC_ASM_KERNEL += real_mode_call io align_stack
+SRC_ASM_KERNEL += real_mode_call align_stack
 VPATH += src/system
-
-SRC_ASM_KERNEL += io
-VPATH += src/io
 
 SRC_ASM_KERNEL += cpu_exceptions_isr default_isr
 VPATH += src/interrupts/idt
