@@ -23,6 +23,8 @@ pub enum IoError {
 
 /// Drawer is a common trait between VGA and VBE interfaces
 pub trait Drawer {
+    /// return window size in nb char
+    fn query_window_size(&self) -> Pos;
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
     fn clear_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
     fn draw_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
@@ -34,16 +36,13 @@ pub trait AdvancedGraphic {
     fn refresh_screen(&mut self);
     fn refresh_text_line(&mut self, line: usize) -> IoResult;
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
+    fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError>;
 }
 
 /// Manage interaction between monitor/graphic_card and software
 pub struct ScreenMonad {
     drawing_mode: DrawingMode,
-    pub nb_lines: usize,
-    pub nb_columns: usize,
-    pub height: Option<usize>,
-    pub width: Option<usize>,
-    pub bpp: Option<usize>,
+    size: Pos,
 }
 
 enum DrawingMode {
@@ -60,39 +59,36 @@ impl ScreenMonad {
     /// default is vga
     fn new() -> Self {
         let vga = VgaTextMode::new();
-        let (lines, columns, _, _, _) = vga.query_window_size();
-        Self {
-            drawing_mode: DrawingMode::Vga(vga),
-            nb_lines: lines,
-            nb_columns: columns,
-            height: None,
-            width: None,
-            bpp: None,
-        }
+        let size = vga.query_window_size();
+        Self { drawing_mode: DrawingMode::Vga(vga), size }
     }
     /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
-        let (lines, columns, height, width, bpp) = vbe.query_window_size();
+        self.size = vbe.query_window_size();
         self.drawing_mode = DrawingMode::Vbe(vbe);
-        self.nb_lines = lines;
-        self.nb_columns = columns;
-        self.height = height;
-        self.width = width;
-        self.bpp = bpp;
         Ok(())
     }
     /// Check the bounds
     fn check_bound(&self, position: Pos) -> IoResult {
-        if position.line >= self.nb_lines || position.column >= self.nb_columns {
+        if position.line >= self.size.line || position.column >= self.size.column {
             Err(IoError::OutOfBound)
         } else {
             Ok(())
         }
     }
+    pub fn is_graphic(&self) -> bool {
+        match &self.drawing_mode {
+            DrawingMode::Vga(_vga) => false,
+            DrawingMode::Vbe(_vbe) => true,
+        }
+    }
 }
 
 impl Drawer for ScreenMonad {
+    fn query_window_size(&self) -> Pos {
+        self.size
+    }
     /// Put a character into the screen
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.check_bound(position)?;
@@ -147,6 +143,13 @@ impl AdvancedGraphic for ScreenMonad {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Ok(()),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
+        }
+    }
+
+    fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError> {
+        match &self.drawing_mode {
+            DrawingMode::Vga(_vga) => Err(IoError::NotSupported),
+            DrawingMode::Vbe(vbe) => vbe.query_graphic_infos(),
         }
     }
 }

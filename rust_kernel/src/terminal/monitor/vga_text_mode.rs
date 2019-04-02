@@ -12,14 +12,12 @@ impl VgaTextMode {
     pub fn new() -> Self {
         unsafe { Self { memory_location: &mut *(0xb8000 as *mut [(u8, u8); WIDTH * HEIGHT]) } }
     }
-
-    /// return window size in nb char
-    pub const fn query_window_size(&self) -> (usize, usize, Option<usize>, Option<usize>, Option<usize>) {
-        (HEIGHT, WIDTH, None, None, None)
-    }
 }
 
 impl Drawer for VgaTextMode {
+    fn query_window_size(&self) -> Pos {
+        Pos { line: HEIGHT, column: WIDTH }
+    }
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.memory_location[position.column + position.line * WIDTH] = (c as u8, Into::<VgaColor>::into(color).0);
         Ok(())

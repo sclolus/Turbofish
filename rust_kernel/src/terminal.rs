@@ -21,6 +21,7 @@ use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
 use crate::drivers::keyboard::keysymb::KeySymb;
 use crate::drivers::keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use crate::terminal::monitor::{AdvancedGraphic, Drawer};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
@@ -37,19 +38,10 @@ const MAX_SCREEN_BUFFER: usize = 10;
 
 impl Terminal {
     pub fn new() -> Self {
-        let screen_monad = SCREEN_MONAD.lock();
+        let size = SCREEN_MONAD.lock().query_window_size();
         Self {
             buf: None,
-            ttys: vec![
-                BufferedTty::new(Tty::new(
-                    false,
-                    screen_monad.nb_lines,
-                    screen_monad.nb_columns,
-                    MAX_SCREEN_BUFFER,
-                    None
-                ));
-                2
-            ],
+            ttys: vec![BufferedTty::new(Tty::new(false, size.line, size.column, MAX_SCREEN_BUFFER, None)); 2],
         }
     }
 
@@ -126,7 +118,6 @@ extern "C" {
 
 /// Extern function for initialisation
 pub fn init_terminal() {
-    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
     let mut term = Terminal::new();
     term.get_tty(1).tty.cursor.visible = true;
 
@@ -137,32 +128,21 @@ pub fn init_terminal() {
     }
 
     let screen_monad = SCREEN_MONAD.lock();
-    let size = screen_monad.width.unwrap() * screen_monad.height.unwrap() * screen_monad.bpp.unwrap() / 8;
+    if screen_monad.is_graphic() {
+        let (height, width, bpp) = screen_monad.query_graphic_infos().unwrap();
+        let size = width * height * bpp / 8;
 
-    let mut v: Vec<u8> = vec![42; size];
-    bmp_loader::draw_image(
-        unsafe { &_wanggle_bmp_start },
-        v.as_mut_ptr(),
-        screen_monad.width.unwrap(),
-        screen_monad.height.unwrap(),
-        screen_monad.bpp.unwrap(),
-    )
-    .unwrap();
-    unsafe {
-        TERMINAL.as_mut().unwrap().get_tty(1).tty.set_background_buffer(v);
-    }
+        let mut v: Vec<u8> = vec![42; size];
+        bmp_loader::draw_image(unsafe { &_wanggle_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        unsafe {
+            TERMINAL.as_mut().unwrap().get_tty(1).tty.set_background_buffer(v);
+        }
 
-    let mut v: Vec<u8> = vec![84; size];
-    bmp_loader::draw_image(
-        unsafe { &_univers_bmp_start },
-        v.as_mut_ptr(),
-        screen_monad.width.unwrap(),
-        screen_monad.height.unwrap(),
-        screen_monad.bpp.unwrap(),
-    )
-    .unwrap();
-    unsafe {
-        TERMINAL.as_mut().unwrap().get_tty(0).tty.set_background_buffer(v);
+        let mut v: Vec<u8> = vec![84; size];
+        bmp_loader::draw_image(unsafe { &_univers_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        unsafe {
+            TERMINAL.as_mut().unwrap().get_tty(0).tty.set_background_buffer(v);
+        }
     }
 
     // unlock mutex

@@ -5,7 +5,7 @@ pub use init::*;
 mod rgb;
 use rgb::RGB;
 
-use super::{AdvancedGraphic, Drawer, IoResult, Pos};
+use super::{AdvancedGraphic, Drawer, IoError, IoResult, Pos};
 use crate::terminal::ansi_escape_code::AnsiColor;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -77,17 +77,6 @@ impl VbeMode {
         }
     }
 
-    /// return window size in nb char
-    pub fn query_window_size(&self) -> (usize, usize, Option<usize>, Option<usize>, Option<usize>) {
-        (
-            self.height / self.char_height,
-            self.width / self.char_width,
-            Some(self.height),
-            Some(self.width),
-            Some(self.bytes_per_pixel * 8),
-        )
-    }
-
     /// put pixel at position y, x in pixel unit
     #[inline(always)]
     fn put_pixel(&self, y: usize, x: usize, color: RGB) {
@@ -143,6 +132,11 @@ impl VbeMode {
 }
 
 impl Drawer for VbeMode {
+    /// return window size in nb char
+    fn query_window_size(&self) -> Pos {
+        Pos { line: self.height / self.char_height, column: self.width / self.char_width }
+    }
+
     #[inline(always)]
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.copy_graphic_buffer_line_area(position.line, position.column, position.column + 1);
@@ -206,6 +200,10 @@ impl AdvancedGraphic for VbeMode {
         closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
         self.clear_screen();
         Ok(())
+    }
+
+    fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError> {
+        Ok((self.height, self.width, self.bytes_per_pixel * 8))
     }
 }
 

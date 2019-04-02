@@ -10,6 +10,8 @@ use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
+use crate::terminal::monitor::Drawer;
+use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 
 #[no_mangle]
@@ -43,13 +45,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     dbg!(multiboot_info.mem_lower);
     dbg!(multiboot_info.mem_upper);
 
+    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
     init_terminal();
     println!("{} INIT {}", "AFTER", "TERMINAL");
 
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
-    printfixed!(Pos { line: 1, column: 111 }, "{}", "Turbo Fish v0.2+".green());
+    let size = SCREEN_MONAD.lock().query_window_size();
+    printfixed!(Pos { line: 1, column: size.column - 17 }, "{}", "Turbo Fish v0.2+".green());
     debug::bench_start();
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
