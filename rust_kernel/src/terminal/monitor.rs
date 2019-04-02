@@ -84,7 +84,7 @@ impl ScreenMonad {
         }
     }
     /// Switch between VBE mode
-    pub fn switch_graphic_mode(&mut self, mode: Option<u16>) -> Result<(), VbeError> {
+    pub fn switch_graphic_mode(&mut self, mode: u16) -> Result<(), VbeError> {
         let vbe = init_graphic_mode(mode)?;
         let (lines, columns, height, width, bpp) = vbe.query_window_size();
         self.drawing_mode = DrawingMode::Vbe(vbe);

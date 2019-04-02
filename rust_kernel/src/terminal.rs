@@ -117,7 +117,7 @@ extern "C" {
 
 /// Extern function for initialisation
 pub fn init_terminal() {
-    SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
+    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     let mut term = Terminal::new();
     term.get_tty(1).cursor.visible = true;
 
