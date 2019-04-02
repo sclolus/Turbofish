@@ -12,7 +12,7 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
 
 mod log;
 
@@ -28,7 +28,7 @@ use core::fmt::Write;
 #[derive(Debug, Clone)]
 pub struct Terminal {
     buf: Option<KeySymb>,
-    ttys: Vec<Tty>,
+    ttys: Vec<BufferedTty>,
 }
 
 pub static mut TERMINAL: Option<Terminal> = None;
@@ -40,28 +40,37 @@ impl Terminal {
         let screen_monad = SCREEN_MONAD.lock();
         Self {
             buf: None,
-            ttys: vec![Tty::new(false, screen_monad.nb_lines, screen_monad.nb_columns, MAX_SCREEN_BUFFER, None); 2],
+            ttys: vec![
+                BufferedTty::new(Tty::new(
+                    false,
+                    screen_monad.nb_lines,
+                    screen_monad.nb_columns,
+                    MAX_SCREEN_BUFFER,
+                    None
+                ));
+                2
+            ],
         }
     }
 
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
-        self.ttys.iter_mut().find(|tty| tty.foreground).map(|t| t.foreground = false);
-        self.ttys[new_foreground_tty].foreground = true;
-        self.ttys[new_foreground_tty].refresh();
+        self.ttys.iter_mut().find(|btty| btty.tty.foreground).map(|btty| btty.tty.foreground = false);
+        self.ttys[new_foreground_tty].tty.foreground = true;
+        self.ttys[new_foreground_tty].tty.refresh();
     }
 
-    pub fn get_foreground_tty(&mut self) -> Option<&mut Tty> {
-        self.ttys.iter_mut().find(|tty| tty.foreground)
+    pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
+        self.ttys.iter_mut().find(|btty| btty.tty.foreground)
     }
 
     fn handle_macros(&mut self) {
         match self.buf {
             Some(KeySymb::F1) => self.switch_foreground_tty(1),
             Some(KeySymb::F2) => self.switch_foreground_tty(0),
-            Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().scroll(Scroll::Up),
-            Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().scroll(Scroll::Down),
-            Some(KeySymb::Control_b) => self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenUp),
-            Some(KeySymb::Control_d) => self.get_foreground_tty().unwrap().scroll(Scroll::HalfScreenDown),
+            Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
+            Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
+            Some(KeySymb::Control_b) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenUp),
+            Some(KeySymb::Control_d) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenDown),
             _ => {
                 return;
             }
@@ -75,7 +84,7 @@ impl Terminal {
 
     pub fn read(&mut self, buf: &mut [KeySymb], tty: usize) -> usize {
         self.handle_macros();
-        if !self.ttys[tty].foreground {
+        if !self.ttys[tty].tty.foreground {
             return 0;
         }
         if let Some(key) = self.buf {
@@ -94,7 +103,7 @@ impl Terminal {
     //     self.get_foreground_tty().unwrap().move_cursor(direction)
     // }
 
-    pub fn get_tty(&mut self, fd: usize) -> &mut Tty {
+    pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
         &mut self.ttys[fd]
     }
 
@@ -119,7 +128,7 @@ extern "C" {
 pub fn init_terminal() {
     SCREEN_MONAD.lock().switch_graphic_mode(Some(0x118)).unwrap();
     let mut term = Terminal::new();
-    term.get_tty(1).cursor.visible = true;
+    term.get_tty(1).tty.cursor.visible = true;
 
     term.switch_foreground_tty(1);
 
@@ -140,7 +149,7 @@ pub fn init_terminal() {
     )
     .unwrap();
     unsafe {
-        TERMINAL.as_mut().unwrap().get_tty(1).set_background_buffer(v);
+        TERMINAL.as_mut().unwrap().get_tty(1).tty.set_background_buffer(v);
     }
 
     let mut v: Vec<u8> = vec![84; size];
@@ -153,14 +162,14 @@ pub fn init_terminal() {
     )
     .unwrap();
     unsafe {
-        TERMINAL.as_mut().unwrap().get_tty(0).set_background_buffer(v);
+        TERMINAL.as_mut().unwrap().get_tty(0).tty.set_background_buffer(v);
     }
 
     // unlock mutex
     drop(screen_monad);
 
     unsafe {
-        TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().refresh();
+        TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().tty.refresh();
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
     self::log::init().unwrap();

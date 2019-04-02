@@ -104,15 +104,15 @@ macro_rules! printfixed {
                             use crate::terminal::Pos;
                             use core::fmt::Write;
 
-                            let tty = term.get_tty(1);
-                            let (save_write_mode, save_cursor) = (tty.write_mode, tty.cursor.pos);
-                            tty.write_mode = WriteMode::Fixed;
-                            tty.cursor.pos = $cursor_pos;
+                            let btty = term.get_tty(1);
+                            let (save_write_mode, save_cursor) = (btty.tty.write_mode, btty.tty.cursor.pos);
+                            btty.tty.write_mode = WriteMode::Fixed;
+                            btty.tty.cursor.pos = $cursor_pos;
 
-                            tty.write_fmt(a).unwrap();
+                            btty.write_fmt(a).unwrap();
 
-                            tty.write_mode = save_write_mode;
-                            tty.cursor.pos = save_cursor;
+                            btty.tty.write_mode = save_write_mode;
+                            btty.tty.cursor.pos = save_cursor;
                         }
                     }
                 }

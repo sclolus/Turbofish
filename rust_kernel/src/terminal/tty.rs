@@ -91,7 +91,6 @@ pub struct Tty {
     buf: TerminalBuffer,
     scroll_offset: isize,
     background: Option<Vec<u8>>,
-    write_buf: String,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -120,7 +119,6 @@ impl Tty {
             text_color: AnsiColor::WHITE,
             write_mode: WriteMode::Dynamic,
             background,
-            write_buf: String::with_capacity(4096),
         }
     }
 
@@ -300,10 +298,6 @@ impl Tty {
 /// Fixed: The text is always printed on screen
 impl Write for Tty {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        // eprintln!("'{}'", s);
-        // eprintln!("'{:?}'", s.bytes());
-        // match self.write_mode {
-        //     WriteMode::Dynamic => {
         if self.cursor.visible {
             self.clear_cursor();
         }
@@ -317,7 +311,6 @@ impl Write for Tty {
         use crate::terminal::ansi_escape_code::*;
         use EscapedItem::*;
         for e in iter_escaped(s) {
-            // eprintln!("{:?}", e);
             match e {
                 Escaped(e) => match e {
                     EscapedCode::Color(color) => self.text_color = color.into(),
@@ -349,25 +342,29 @@ impl Write for Tty {
         if self.foreground && self.cursor.pos.column != 0 {
             SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
         }
-        // }
-        // Fixed character write
-        // WriteMode::Fixed => {
-        // for c in s.chars() {
-        //     self.buf.fixed_buf[self.cursor.pos.line * self.cursor.nb_columns + self.cursor.pos.column] =
-        //         Some((c as u8, self.text_color));
-        //     SCREEN_MONAD.lock().draw_character(c, self.cursor.pos, self.text_color).unwrap();
-        //     self.cursor.forward().map(|line| self.map_line(line));
-        // }
-        // if self.cursor.pos.column != 0 {
-        //     SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
-        // }
-        // }
-        // }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BufferedTty {
+    pub tty: Tty,
+    write_buf: String,
+}
+
+impl BufferedTty {
+    pub fn new(tty: Tty) -> Self {
+        Self { tty, write_buf: String::with_capacity(4096) }
+    }
+}
+
+impl Write for BufferedTty {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.tty.write_str(s)
     }
     fn write_fmt(&mut self, args: Arguments) -> core::fmt::Result {
         self.write_buf.write_fmt(args).unwrap();
-        let res = self.write_str(&self.write_buf.clone());
+        let res = self.tty.write_str(&self.write_buf);
         self.write_buf.truncate(0);
         res
     }
