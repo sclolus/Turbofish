@@ -19,7 +19,7 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 /// List of some builtins
-const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 9] = [
+const BUILTINS: [(&str, fn(&[&str]) -> u8); 11] = [
     ("echo", echo),
     ("ls", ls),
     ("yes", yes),
@@ -29,6 +29,8 @@ const BUILTINS: [(&str, fn(&[&str]) -> BuiltinResult); 9] = [
     ("lspci", lspci),
     ("hello_world", hello_world),
     ("layout", layout),
+    ("fish", fish),
+    ("more_fish", more_fish),
 ];
 
 /// Exectution of builtin commands
@@ -44,7 +46,7 @@ fn exec_builtin(line: &str) {
             println!("{}: command not found", command);
         }
         Some((_c, f)) => {
-            f(args.as_slice()).unwrap();
+            f(args.as_slice());
         }
     };
 }
