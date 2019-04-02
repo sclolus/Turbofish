@@ -1,5 +1,7 @@
+/// Definition of KeyMapArray typedef
 pub type KeyMapArray = [[CapsLockSensitive; 16]; 128];
 
+#[allow(missing_docs)]
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 /// generated with `dumpkeys --long-info`
@@ -792,7 +794,9 @@ pub enum KeySymb {
 #[derive(Copy, Clone, Debug)]
 /// if CapsLock must affect the Keysymb
 pub enum CapsLockSensitive {
+    /// CapsLock is enable
     Yes(KeySymb),
+    /// CapsLock is disable
     No(KeySymb),
 }
 
@@ -3106,6 +3110,7 @@ pub const KEYCODE_TO_KEYSYMB_AZERTY: KeyMapArray = [
     ],
 ];
 
+/// generated with `dumpkeys --full-table`
 pub const KEYCODE_TO_KEYSYMB_QWERTY: KeyMapArray = [
     [
         CapsLockSensitive::No(VoidSymbol),

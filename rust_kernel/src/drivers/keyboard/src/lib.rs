@@ -1,8 +1,10 @@
 //! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
 #![cfg_attr(not(test), no_std)]
+#![deny(missing_docs)]
 
 use io::{Io, Pio};
 
+/// this module contains all the keySymbols for multiple layouts
 pub mod keysymb;
 use keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
 use keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
@@ -11,9 +13,7 @@ use keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
 #[allow(dead_code)]
 struct Ps2Controler {
     data: Pio<u8>,
-    /// command port unused for the moment
-    _command: Pio<u8>,
-    /// stock the current bytes of the scancode being read
+    command: Pio<u8>,
     current_scancode: Option<u32>,
 }
 
@@ -21,7 +21,7 @@ static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
 
 impl Ps2Controler {
     pub const fn new() -> Self {
-        Ps2Controler { data: Pio::new(0x60), _command: Pio::new(0x64), current_scancode: None }
+        Ps2Controler { data: Pio::new(0x60), command: Pio::new(0x64), current_scancode: None }
     }
     // TODO or NOT TODO: it handle only escape sequence 0xE0, 0xE0 0xF0 for the moment
     /// read one byte on data port, return an entire scancode if any
@@ -51,9 +51,12 @@ impl Ps2Controler {
     }
 }
 
+/// keycode has two variants 'pressed' or 'released'
 #[derive(Copy, Clone, Debug)]
 pub enum KeyCode {
+    /// It is very simple to understand what this variant means
     Pressed(u8),
+    /// It is very simple to understand what this variant means
     Released(u8),
 }
 
@@ -98,7 +101,7 @@ impl KeyCode {
         None
     }
 }
-#[allow(dead_code)]
+/// enum C of escape key sequence
 enum EscapeKeyMask {
     Shift = 1,
     Altgr = 2,
@@ -108,38 +111,53 @@ enum EscapeKeyMask {
 
 type ScanCode = u32;
 
+/// callback consumer may get three types of keyboard data depending of their implementations
 #[derive(Copy, Clone, Debug)]
 pub enum CallbackKeyboard {
+    /// consumer want a simple scancode
     RequestScanCode(fn(ScanCode)),
+    /// consumer want a more complex thing, a keycode
     RequestKeyCode(fn(KeyCode)),
+    /// consumer want a very complex keysymbol, ideal for a shell
     RequestKeySymb(fn(KeySymb)),
 }
 
+/// exported enum for user, allow to select a specific layout
 #[derive(Copy, Clone, Debug)]
 pub enum KeyMap {
+    /// variant QWERTY, english (EN/US)
     En,
+    /// variant AZERTY with extended ascii, french (FR)
     Fr,
 }
 
+/// main structure of the driver
 pub struct KeyboardDriver {
+    /// mask of control keys like ctrl, alt etc...
     escape_key_mask: u8,
+    /// is capslock active
     capslock: bool,
+    /// consumer callback registered
     io_term: Option<CallbackKeyboard>,
+    /// keymap selected by consumer
     pub keymap: KeyMap,
 }
 
+/// this globale can be used by consumer
 pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
 
 impl KeyboardDriver {
+    /// default initialisation
     pub fn new(f: Option<CallbackKeyboard>) -> Self {
         Self { escape_key_mask: 0, capslock: false, io_term: f, keymap: KeyMap::En }
     }
 
+    /// bind a new callback
     pub fn bind(&mut self, f: CallbackKeyboard) {
         self.io_term = Some(f);
     }
 
-    /// Return the current keymap
+    /// return the current keymap
     fn get_keymap(&self) -> &KeyMapArray {
         match self.keymap {
             KeyMap::En => &KEYMAP_QWERTY,
@@ -147,7 +165,8 @@ impl KeyboardDriver {
         }
     }
 
-    pub fn keycode_to_keymap(&mut self, keycode: KeyCode) -> Option<KeySymb> {
+    /// convert a heycode to a keysymb
+    pub fn keycode_to_keysymb(&mut self, keycode: KeyCode) -> Option<KeySymb> {
         match keycode {
             KeyCode::Pressed(k) => {
                 let symb = self.get_keymap()[k as usize][(self.escape_key_mask) as usize];
@@ -203,26 +222,24 @@ impl KeyboardDriver {
         }
     }
 
-    pub fn interrupt_handler(&mut self, scancode: u32) -> Result<(), ()> {
-        match self.io_term {
-            None => Err(()),
-            Some(arg) => {
-                use CallbackKeyboard::*;
-                match arg {
-                    RequestScanCode(u) => u(scancode),
-                    RequestKeyCode(u) => {
-                        KeyCode::from_scancode(scancode).map(|s| u(s));
-                    }
-                    RequestKeySymb(u) => {
-                        KeyCode::from_scancode(scancode).map(|s| self.keycode_to_keymap(s).map(|s| u(s)));
-                    }
+    /// call the registered callback with choosen options
+    pub fn interrupt_handler(&mut self, scancode: u32) {
+        self.io_term.map(|arg| {
+            use CallbackKeyboard::*;
+            match arg {
+                RequestScanCode(u) => u(scancode),
+                RequestKeyCode(u) => {
+                    KeyCode::from_scancode(scancode).map(|s| u(s));
                 }
-                Ok(())
+                RequestKeySymb(u) => {
+                    KeyCode::from_scancode(scancode).map(|s| self.keycode_to_keysymb(s).map(|s| u(s)));
+                }
             }
-        }
+        });
     }
 }
 
+/// extern initialisation function of the keyboard driver with default parameters
 pub fn init_keyboard_driver() {
     unsafe {
         KEYBOARD_DRIVER = Some(KeyboardDriver::new(None));
@@ -233,8 +250,6 @@ pub fn init_keyboard_driver() {
 extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
-        unsafe {
-            KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode).unwrap();
-        }
+        unsafe { KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode) }
     }
 }
