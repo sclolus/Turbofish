@@ -16,5 +16,8 @@ pub use buddy_allocator::BuddyAllocator;
 use crate::memory::tools::*;
 
 /// 64 MB for the kernel memory
+#[allow(dead_code)]
 const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
+#[allow(dead_code)]
+// WTF ?!?
 const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_64MB;
