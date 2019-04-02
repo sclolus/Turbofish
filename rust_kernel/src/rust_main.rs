@@ -95,6 +95,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::warn!("a warning");
     log::error!("a error");
     println!("{} {}", "bonjour 1", "bonjour2");
+    crate::test_helpers::fish();
+    crate::test_helpers::fish2();
     shell();
     sum
 }

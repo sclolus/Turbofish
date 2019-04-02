@@ -10,7 +10,6 @@ pub mod cursor;
 pub use cursor::{Cursor, Pos};
 
 pub mod monitor;
-pub use self::monitor::Color;
 
 mod tty;
 pub use tty::{Scroll, Tty, WriteMode};

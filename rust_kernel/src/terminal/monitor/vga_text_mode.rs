@@ -1,4 +1,5 @@
-use super::{Color, Drawer, IoResult, Pos};
+use super::{Drawer, IoResult, Pos};
+use crate::terminal::ansi_escape_code::{AnsiColor, StandardColor};
 
 const HEIGHT: usize = 25;
 const WIDTH: usize = 80;
@@ -19,7 +20,7 @@ impl VgaTextMode {
 }
 
 impl Drawer for VgaTextMode {
-    fn draw_character(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+    fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.memory_location[position.column + position.line * WIDTH] = (c as u8, Into::<VgaColor>::into(color).0);
         Ok(())
     }
@@ -30,12 +31,12 @@ impl Drawer for VgaTextMode {
         }
     }
 
-    fn clear_cursor(&mut self, _c: char, _position: Pos, _color: Color) -> IoResult {
+    fn clear_cursor(&mut self, _c: char, _position: Pos, _color: AnsiColor) -> IoResult {
         // wanted fallback
         Ok(())
     }
 
-    fn draw_cursor(&mut self, _c: char, _position: Pos, _color: Color) -> IoResult {
+    fn draw_cursor(&mut self, _c: char, _position: Pos, _color: AnsiColor) -> IoResult {
         // wanted fallback
         Ok(())
     }
@@ -43,17 +44,30 @@ impl Drawer for VgaTextMode {
 #[derive(Debug, Copy, Clone)]
 pub struct VgaColor(pub u8);
 
-impl From<Color> for VgaColor {
-    fn from(c: Color) -> Self {
+impl From<StandardColor> for VgaColor {
+    fn from(c: StandardColor) -> Self {
+        use StandardColor::*;
         match c {
-            Color::Red => VgaColor(4),
-            Color::Green => VgaColor(10),
-            Color::Blue => VgaColor(11),
-            Color::Yellow => VgaColor(14),
-            Color::Cyan => VgaColor(3),
-            Color::Magenta => VgaColor(13),
-            Color::White => VgaColor(7),
-            _ => Color::White.into(),
+            //TODO: Where to find the code ?
+            Black => VgaColor(0),
+            Red => VgaColor(4),
+            Green => VgaColor(10),
+            Blue => VgaColor(11),
+            Yellow => VgaColor(14),
+            Cyan => VgaColor(3),
+            Magenta => VgaColor(13),
+            White => VgaColor(7),
+        }
+    }
+}
+
+impl From<AnsiColor> for VgaColor {
+    fn from(c: AnsiColor) -> Self {
+        match c {
+            // Convert only the 8 Standard Ansi color
+            AnsiColor::Standard(c) => c.into(),
+            // Otherwise set default to white
+            _ => VgaColor(7),
         }
     }
 }

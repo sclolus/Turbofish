@@ -1,6 +1,6 @@
-use crate::terminal::ansi_escape_code::CursorMove;
+use crate::terminal::ansi_escape_code::{AnsiColor, CursorMove};
 use crate::terminal::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
-use crate::terminal::{Color, Cursor, Pos};
+use crate::terminal::{Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::string::String;
 use alloc::vec;
@@ -11,8 +11,8 @@ use core::fmt::Write;
 /// Description of a TTY buffer
 #[derive(Debug, Clone)]
 struct TerminalBuffer {
-    buf: VecDeque<Vec<(u8, Color)>>,
-    fixed_buf: Vec<Option<(u8, Color)>>,
+    buf: VecDeque<Vec<(u8, AnsiColor)>>,
+    fixed_buf: Vec<Option<(u8, AnsiColor)>>,
     draw_start_pos: usize,
     write_pos: usize,
     nb_lines: usize,
@@ -35,12 +35,12 @@ impl TerminalBuffer {
     /// Make some place for a new screen
     fn make_place(&mut self) {
         if self.buf.len() < self.buf.capacity() {
-            self.buf.push_back(vec![(0, Color::Black); self.nb_lines * self.nb_columns]);
+            self.buf.push_back(vec![(0, AnsiColor::BLACK); self.nb_lines * self.nb_columns]);
         } else {
             let mut first = self.buf.pop_front().unwrap();
             // fresh the vec for reuse as last elem
             for c in &mut first {
-                *c = (0, Color::Black);
+                *c = (0, AnsiColor::BLACK);
             }
             self.buf.push_back(first);
             self.draw_start_pos -= self.nb_lines * self.nb_columns;
@@ -49,13 +49,13 @@ impl TerminalBuffer {
     }
 
     /// Get a specified character from the buffer
-    fn get_char(&self, i: usize) -> Option<(u8, Color)> {
+    fn get_char(&self, i: usize) -> Option<(u8, AnsiColor)> {
         self.buf.get(i / (self.nb_lines * self.nb_columns)).map(|screen| screen[i % (self.nb_lines * self.nb_columns)])
     }
 
     /// Write a char into the buffer
     #[inline(always)]
-    fn write_char(&mut self, c: char, color: Color) {
+    fn write_char(&mut self, c: char, color: AnsiColor) {
         match self.buf.get_mut(self.write_pos / (self.nb_lines * self.nb_columns)) {
             Some(screen) => {
                 let pos = self.write_pos % (self.nb_lines * self.nb_columns);
@@ -86,7 +86,7 @@ pub enum WriteMode {
 pub struct Tty {
     pub foreground: bool,
     pub cursor: Cursor,
-    pub text_color: Color,
+    pub text_color: AnsiColor,
     pub write_mode: WriteMode,
     buf: TerminalBuffer,
     scroll_offset: isize,
@@ -117,7 +117,7 @@ impl Tty {
             buf: TerminalBuffer::new(nb_lines, nb_columns, max_screen_buffer),
             scroll_offset: 0,
             cursor: Cursor { pos: Default::default(), nb_lines, nb_columns, visible: false },
-            text_color: Color::White,
+            text_color: AnsiColor::WHITE,
             write_mode: WriteMode::Dynamic,
             background,
             write_buf: String::with_capacity(4096),
@@ -199,7 +199,7 @@ impl Tty {
     }
 
     // /// Simple and basic
-    // fn set_text_color(&mut self, color: Color) {
+    // fn set_text_color(&mut self, color: AnsiColor) {
     //     self.text_color = color;
     // }
 
@@ -317,6 +317,7 @@ impl Write for Tty {
         use crate::terminal::ansi_escape_code::*;
         use EscapedItem::*;
         for e in iter_escaped(s) {
+            // eprintln!("{:?}", e);
             match e {
                 Escaped(e) => match e {
                     EscapedCode::Color(color) => self.text_color = color.into(),

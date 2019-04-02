@@ -1,6 +1,7 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
 
-use crate::terminal::monitor::{Color, Drawer, SCREEN_MONAD};
+use crate::terminal::ansi_escape_code::AnsiColor;
+use crate::terminal::monitor::{Drawer, SCREEN_MONAD};
 
 use super::Cursor;
 use super::Pos;
@@ -14,8 +15,8 @@ const WIDTH: usize = 80;
 #[derive(Copy, Clone)]
 pub struct EarlyTerminal {
     cursor: Cursor,
-    text_color: Color,
-    buf: [Option<(u8, Color)>; WIDTH * HEIGHT],
+    text_color: AnsiColor,
+    buf: [Option<(u8, AnsiColor)>; WIDTH * HEIGHT],
 }
 
 /// Custom implementation of Debug trait
@@ -44,14 +45,9 @@ impl EarlyTerminal {
     pub const fn new() -> Self {
         Self {
             cursor: Cursor { pos: Pos { line: 0, column: 0 }, nb_lines: HEIGHT, nb_columns: WIDTH, visible: true },
-            text_color: Color::White,
+            text_color: AnsiColor::WHITE,
             buf: [None; WIDTH * HEIGHT],
         }
-    }
-
-    /// Set a new text color
-    pub fn set_text_color(&mut self, color: Color) {
-        self.text_color = color;
     }
 
     /// Scroll screen
@@ -64,7 +60,7 @@ impl EarlyTerminal {
         for (i, elem) in self.buf.iter().enumerate() {
             let (c, color) = match *elem {
                 Some(e) => e,
-                None => (' ' as u8, Color::White),
+                None => (' ' as u8, AnsiColor::WHITE),
             };
             SCREEN_MONAD.lock().draw_character(c as char, Pos { line: i / WIDTH, column: i % WIDTH }, color).unwrap();
         }

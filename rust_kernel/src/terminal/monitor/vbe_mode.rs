@@ -2,8 +2,11 @@ mod font;
 pub use font::*;
 mod init;
 pub use init::*;
+mod rgb;
+use rgb::RGB;
 
-use super::{AdvancedGraphic, Color, Drawer, IoResult, Pos};
+use super::{AdvancedGraphic, Drawer, IoResult, Pos};
+use crate::terminal::ansi_escape_code::AnsiColor;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefCell;
@@ -141,7 +144,7 @@ impl VbeMode {
 
 impl Drawer for VbeMode {
     #[inline(always)]
-    fn draw_character(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+    fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.copy_graphic_buffer_line_area(position.line, position.column, position.column + 1);
 
         let font = unsafe { _font.get_char(c as u8) };
@@ -160,11 +163,11 @@ impl Drawer for VbeMode {
         }
     }
 
-    fn clear_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+    fn clear_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.draw_character(c, position, color)
     }
 
-    fn draw_cursor(&mut self, c: char, position: Pos, color: Color) -> IoResult {
+    fn draw_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.copy_graphic_buffer_line_area(position.line, position.column, position.column + 1);
 
         let font = unsafe { _font.get_char(c as u8) };
@@ -203,26 +206,6 @@ impl AdvancedGraphic for VbeMode {
         closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
         self.clear_screen();
         Ok(())
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct RGB(pub u32);
-
-impl From<Color> for RGB {
-    #[inline(always)]
-    fn from(c: Color) -> Self {
-        match c {
-            Color::Red => RGB(0xFF0000),
-            Color::Green => RGB(0x00FF00),
-            Color::Blue => RGB(0x0000FF),
-            Color::Yellow => RGB(0xFFFF00),
-            Color::Cyan => RGB(0x00FFFF),
-            Color::Brown => RGB(0xA52A2A),
-            Color::Magenta => RGB(0xFF00FF),
-            Color::White => RGB(0xFFFFFF),
-            Color::Black => RGB(0x000000),
-        }
     }
 }
 

@@ -10,10 +10,29 @@ pub struct AnsiRGB {
     b: u8,
 }
 
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum StandardColor {
+    Black = 0,
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
+    White,
+}
+
+impl From<StandardColor> for AnsiColor {
+    fn from(c: StandardColor) -> Self {
+        AnsiColor::Standard(c)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AnsiColor {
     /// 0 -> 7
-    Standard(u8),
+    Standard(StandardColor),
     /// 0 -> 7
     HighIntensity(u8),
     AnsiRGB(AnsiRGB),
@@ -23,26 +42,26 @@ pub enum AnsiColor {
 
 impl Default for AnsiColor {
     fn default() -> Self {
-        AnsiColor::Standard(7)
+        AnsiColor::Standard(StandardColor::White)
     }
 }
 
 impl AnsiColor {
-    pub const BLACK: Self = AnsiColor::Standard(0);
-    pub const RED: Self = AnsiColor::Standard(1);
-    pub const GREEN: Self = AnsiColor::Standard(2);
-    pub const YELLOW: Self = AnsiColor::Standard(3);
-    pub const BLUE: Self = AnsiColor::Standard(4);
-    pub const MAGENTA: Self = AnsiColor::Standard(5);
-    pub const CYAN: Self = AnsiColor::Standard(6);
-    pub const WHITE: Self = AnsiColor::Standard(7);
+    pub const BLACK: Self = AnsiColor::Standard(StandardColor::Black);
+    pub const RED: Self = AnsiColor::Standard(StandardColor::Red);
+    pub const GREEN: Self = AnsiColor::Standard(StandardColor::Green);
+    pub const YELLOW: Self = AnsiColor::Standard(StandardColor::Yellow);
+    pub const BLUE: Self = AnsiColor::Standard(StandardColor::Blue);
+    pub const MAGENTA: Self = AnsiColor::Standard(StandardColor::Magenta);
+    pub const CYAN: Self = AnsiColor::Standard(StandardColor::Cyan);
+    pub const WHITE: Self = AnsiColor::Standard(StandardColor::White);
 }
 
 impl From<AnsiColor> for u8 {
     fn from(c: AnsiColor) -> u8 {
         use AnsiColor::*;
         match c {
-            Standard(x) => x,
+            Standard(x) => x as u8,
             HighIntensity(x) => x + 8,
             AnsiRGB(x) => 16 + 36 * x.r + 6 * x.g + x.b,
             Grey(x) => 232 + x,
@@ -54,7 +73,7 @@ impl From<u8> for AnsiColor {
     fn from(c: u8) -> AnsiColor {
         use AnsiColor::*;
         match c {
-            0...7 => Standard(c),
+            0...7 => Standard(unsafe { core::mem::transmute(c) }),
             8...15 => HighIntensity(c - 8),
             16...231 => AnsiRGB(self::AnsiRGB { r: (c - 16) / (6 * 6), g: ((c - 16) / 6) % 6, b: (c - 16) % 6 }),
             232...255 => Grey(c - 232),
@@ -68,41 +87,24 @@ impl Display for AnsiColor {
     }
 }
 
-use crate::terminal::monitor::Color;
-
-impl From<AnsiColor> for Color {
-    fn from(c: AnsiColor) -> Color {
-        use AnsiColor::*;
-        use Color::*;
-        match c {
-            // TODO: this is a hack, waiting for a buffer in tty
-            Standard(0) => Black,
-            Standard(1) => Red,
-            Standard(2) => Green,
-            Standard(3) => Yellow,
-            Standard(4) => Blue,
-            Standard(5) => Magenta,
-            Standard(6) => Cyan,
-            Standard(7) => White,
-            _ => White,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ParseColorError;
 
 impl FromStr for AnsiColor {
     type Err = ParseColorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() < 6 {
+        // eprintln!("{:?}", s);
+        if s == "\x1b[0m" {
+            return Ok(AnsiColor::WHITE);
+        }
+        if &s[(s.len() - 1)..s.len()] != "m" {
             return Err(ParseColorError);
         }
         if &s[0..=1] != CSI {
             return Err(ParseColorError);
         }
         // TODO: handle other color esape codes
-        if &s[2..=6] != "38;5;" || &s[(s.len() - 1)..s.len()] != "m" {
+        if s.len() < 6 || &s[2..=6] != "38;5;" {
             return Err(ParseColorError);
         }
         let nb: u8 = s[7..s.find('m').unwrap()].parse().map_err(|_e| ParseColorError)?;
@@ -122,7 +124,7 @@ impl<'a> AnsiStr<'a> {
         use AnsiColor::*;
         Self {
             color: match self.color {
-                Standard(x) => HighIntensity(x),
+                Standard(x) => HighIntensity(x as u8),
                 o => o,
             },
             ..self
