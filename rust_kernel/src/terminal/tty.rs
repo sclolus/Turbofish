@@ -165,8 +165,8 @@ impl Tty {
         let add_scroll = match scroll {
             Up => -(self.buf.nb_columns as isize),
             Down => self.buf.nb_columns as isize,
-            HalfScreenUp => -(((self.buf.nb_lines * self.buf.nb_columns) / 2) as isize),
-            HalfScreenDown => ((self.buf.nb_lines * self.buf.nb_columns) / 2) as isize,
+            HalfScreenUp => -((self.buf.nb_lines / 2 * self.buf.nb_columns) as isize),
+            HalfScreenDown => (self.buf.nb_lines / 2 * self.buf.nb_columns) as isize,
         };
         self.scroll_offset = if (self.scroll_offset + add_scroll + self.buf.draw_start_pos as isize) < 0 {
             -(self.buf.draw_start_pos as isize)
