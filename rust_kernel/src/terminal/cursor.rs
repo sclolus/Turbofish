@@ -1,17 +1,24 @@
-/// Simple and Basic implementation of cursor
+//! Simple and Basic implementation of cursor
 
 /// Usable to select write position for characters
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Pos {
+    /// Y coordinate
     pub line: usize,
+    /// X coordinate
     pub column: usize,
 }
 
+/// Standarrd Cursor structure
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Cursor {
+    /// Current position of the cursor
     pub pos: Pos,
+    /// Height in line of the entire screen
     pub nb_lines: usize,
+    /// Width in column of the entire screen
     pub nb_columns: usize,
+    /// Cursor is it visible or not
     pub visible: bool,
 }
 

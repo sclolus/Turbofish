@@ -1,5 +1,9 @@
+//! Kernel tty manager
+
+#![deny(missing_docs)]
+
 #[macro_use]
-pub mod macros;
+mod macros;
 
 pub mod ansi_escape_code;
 
@@ -19,24 +23,27 @@ mod log;
 use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
-use keyboard::keysymb::KeySymb;
-use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 use crate::terminal::monitor::{AdvancedGraphic, Drawer};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
+use keyboard::keysymb::KeySymb;
+use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 
+/// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
     buf: Option<KeySymb>,
     ttys: Vec<BufferedTty>,
 }
 
+/// No initialized at the beginning
 pub static mut TERMINAL: Option<Terminal> = None;
 
 const MAX_SCREEN_BUFFER: usize = 10;
 
 impl Terminal {
+    /// Construct all the TTY
     pub fn new() -> Self {
         let size = SCREEN_MONAD.lock().query_window_size();
         Self {
@@ -51,6 +58,7 @@ impl Terminal {
         self.ttys[new_foreground_tty].tty.refresh();
     }
 
+    /// Get the foregounded TTY
     pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
         self.ttys.iter_mut().find(|btty| btty.tty.foreground)
     }
@@ -74,6 +82,7 @@ impl Terminal {
         self.buf = Some(keysymb);
     }
 
+    /// Read a Key from the buffer and throw it to the foreground TTY
     pub fn read(&mut self, buf: &mut [KeySymb], tty: usize) -> usize {
         self.handle_macros();
         if !self.ttys[tty].tty.foreground {
@@ -87,10 +96,12 @@ impl Terminal {
         return 0;
     }
 
+    /// Write a string th the designed TTY
     pub fn write_str(&mut self, fd: usize, s: &str) {
         self.ttys[fd].write_str(s).unwrap();
     }
 
+    /// Get the TTY n
     pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
         &mut self.ttys[fd]
     }

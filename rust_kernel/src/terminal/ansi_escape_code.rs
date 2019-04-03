@@ -7,27 +7,35 @@ pub use cursor::*;
 
 use core::str::FromStr;
 
+///Definition of what produce a escape sequence
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EscapedCode {
+    ///Movement of the cursor
     CursorMove(CursorMove),
+    ///Text color
     Color(AnsiColor),
 }
 
 ///Comand Sequence Introducer
 const CSI: &str = "\x1b[";
 
+///Iterator on escape sequence
 pub fn iter_escaped<'a>(s: &'a str) -> IterEscaped<'a> {
     IterEscaped { s, off: 0 }
 }
 
+///Document not founded
 pub struct IterEscaped<'a> {
     off: usize,
     s: &'a str,
 }
 
+///Document not founded
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EscapedItem<'a> {
+    ///Document not founded
     Escaped(EscapedCode),
+    ///Document not founded
     Str(&'a str),
 }
 

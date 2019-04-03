@@ -76,29 +76,42 @@ impl TerminalBuffer {
     }
 }
 
+/// TTY handle many write mode
 #[derive(Debug, Clone, Copy)]
 pub enum WriteMode {
+    /// Scroll may move printed characters
     Dynamic,
+    /// The string is staticly fixed
     Fixed,
 }
 
+/// Base structure of a TTY
 #[derive(Debug, Clone)]
 pub struct Tty {
+    /// TTY is it on foreground
     pub foreground: bool,
+    /// Current TTY cursor
     pub cursor: Cursor,
+    /// Current Text Color
     pub text_color: AnsiColor,
+    /// current Write mode
     pub write_mode: WriteMode,
     buf: TerminalBuffer,
     scroll_offset: isize,
     background: Option<Vec<u8>>,
 }
 
+/// Handle different types of scroll
 #[derive(Debug, Copy, Clone)]
 pub enum Scroll {
+    /// One line on top
     Up,
+    /// One line on bottom
     Down,
-    HalfScreenDown,
+    /// Half screen on top
     HalfScreenUp,
+    /// Half screen on bottom
+    HalfScreenDown,
 }
 
 /// Implementation a a unique TTY
@@ -195,11 +208,6 @@ impl Tty {
         self.draw_cursor();
         SCREEN_MONAD.lock().refresh_text_line(self.cursor.pos.line).unwrap();
     }
-
-    // /// Simple and basic
-    // fn set_text_color(&mut self, color: AnsiColor) {
-    //     self.text_color = color;
-    // }
 
     /// draw cursor for the character designed by write_pos in coordinate cursor.y and cursor.x
     fn draw_cursor(&self) {
@@ -346,13 +354,16 @@ impl Write for Tty {
     }
 }
 
+/// Handle a TTY with a write buffer
 #[derive(Debug, Clone)]
 pub struct BufferedTty {
+    /// TTY contained
     pub tty: Tty,
     write_buf: String,
 }
 
 impl BufferedTty {
+    /// Create a new buffered TTY
     pub fn new(tty: Tty) -> Self {
         Self { tty, write_buf: String::with_capacity(4096) }
     }

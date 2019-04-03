@@ -31,6 +31,7 @@ pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
 
 /// Early terminal is made just for VGA mode at the beginning of the program
 impl EarlyTerminal {
+    /// (const fn) Create a new instance of an Early terminal
     pub const fn new() -> Self {
         Self {
             cursor: Cursor { pos: Pos { line: 0, column: 0 }, nb_lines: HEIGHT, nb_columns: WIDTH, visible: true },

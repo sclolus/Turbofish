@@ -1,3 +1,5 @@
+//! Handle the monitor with different graphic modes
+
 pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
@@ -15,27 +17,37 @@ pub type IoResult = core::result::Result<(), IoError>;
 /// Common errors for this module
 #[derive(Debug, Copy, Clone)]
 pub enum IoError {
+    /// Not a valid position
     OutOfBound,
+    /// Cannot apply the selected color
     ColorNotSupported,
-    GraphicModeNotFounded,
+    /// Common error Variant
     NotSupported,
 }
 
 /// Drawer is a common trait between VGA and VBE interfaces
 pub trait Drawer {
-    /// return window size in nb char
+    /// Return window size in nb char
     fn query_window_size(&self) -> Pos;
+    /// Draw a character
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
+    /// Erase a cursor (must specify color and character)
     fn clear_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
+    /// Draw a cursor (must specify color and character)
     fn draw_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult;
+    /// Clear the entire screen
     fn clear_screen(&mut self);
 }
 
 /// AdvancedGraphic is only VBE compatible functions
 pub trait AdvancedGraphic {
+    /// Refresh all the screen
     fn refresh_screen(&mut self);
+    /// Command a refresh for selected graphic area
     fn refresh_text_line(&mut self, line: usize) -> IoResult;
+    /// Fill the graphic buffer with a custom function
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
+    /// Query info about screeb composition
     fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError>;
 }
 
@@ -77,6 +89,7 @@ impl ScreenMonad {
             Ok(())
         }
     }
+    /// Ask if a mode is graphic
     pub fn is_graphic(&self) -> bool {
         match &self.drawing_mode {
             DrawingMode::Vga(_vga) => false,
@@ -89,7 +102,6 @@ impl Drawer for ScreenMonad {
     fn query_window_size(&self) -> Pos {
         self.size
     }
-    /// Put a character into the screen
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.check_bound(position)?;
         match &mut self.drawing_mode {
@@ -97,14 +109,12 @@ impl Drawer for ScreenMonad {
             DrawingMode::Vbe(vbe) => vbe.draw_character(c, position, color),
         }
     }
-    /// Fflush the screen
     fn clear_screen(&mut self) {
         match &mut self.drawing_mode {
             DrawingMode::Vga(vga) => vga.clear_screen(),
             DrawingMode::Vbe(vbe) => vbe.clear_screen(),
         }
     }
-    /// Clear cursor in a specified area
     fn clear_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.check_bound(position)?;
         match &mut self.drawing_mode {
@@ -112,7 +122,6 @@ impl Drawer for ScreenMonad {
             DrawingMode::Vbe(vbe) => vbe.clear_cursor(c, position, color),
         }
     }
-    /// Draw cursor in a specified area
     fn draw_cursor(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
         self.check_bound(position)?;
         match &mut self.drawing_mode {
@@ -123,14 +132,12 @@ impl Drawer for ScreenMonad {
 }
 
 impl AdvancedGraphic for ScreenMonad {
-    /// Refresh all the screen
     fn refresh_screen(&mut self) {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => (),
             DrawingMode::Vbe(vbe) => vbe.refresh_screen(),
         }
     }
-    /// Command a refresh for selected graphic area
     fn refresh_text_line(&mut self, line: usize) -> IoResult {
         self.check_bound(Pos { line, column: 0 })?;
         match &mut self.drawing_mode {
@@ -138,14 +145,12 @@ impl AdvancedGraphic for ScreenMonad {
             DrawingMode::Vbe(vbe) => vbe.refresh_text_line(line),
         }
     }
-    /// Fill the graphic buffer with a custom function
     fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Ok(()),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),
         }
     }
-
     fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError> {
         match &self.drawing_mode {
             DrawingMode::Vga(_vga) => Err(IoError::NotSupported),

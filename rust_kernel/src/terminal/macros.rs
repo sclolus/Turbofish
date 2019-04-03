@@ -73,24 +73,6 @@ macro_rules! print_syslog {
     })
 }
 
-// /// common set_text_color method
-// #[macro_export]
-// macro_rules! set_text_color {
-//     ($color:expr) => {{
-//         unsafe {
-//             match { $crate::terminal::TERMINAL.as_mut() } {
-//                 None => {
-//                     use crate::terminal::EARLY_TERMINAL;
-//                     EARLY_TERMINAL.set_text_color($color);
-//                 }
-//                 Some(term) => {
-//                     term.set_text_color($color);
-//                 }
-//             }
-//         }
-//     }};
-// }
-
 /// Common print fixed method
 #[macro_export]
 macro_rules! printfixed {

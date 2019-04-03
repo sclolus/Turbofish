@@ -1,3 +1,4 @@
+//! Contains initialisation colors
 use super::CSI;
 use core::str::FromStr;
 use core::{fmt, fmt::Display};
@@ -10,6 +11,8 @@ pub struct AnsiRGB {
     b: u8,
 }
 
+/// minimal set of colors for VGA compatibility
+#[allow(missing_docs)]
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum StandardColor {
@@ -29,12 +32,14 @@ impl From<StandardColor> for AnsiColor {
     }
 }
 
+/// handle differents types of colors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AnsiColor {
     /// 0 -> 7
     Standard(StandardColor),
     /// 0 -> 7
     HighIntensity(u8),
+    /// 0 -> 24
     AnsiRGB(AnsiRGB),
     /// 0 -> 24
     Grey(u8),
@@ -46,6 +51,8 @@ impl Default for AnsiColor {
     }
 }
 
+// associate colors with ANSI standard
+#[allow(missing_docs)]
 impl AnsiColor {
     pub const BLACK: Self = AnsiColor::Standard(StandardColor::Black);
     pub const RED: Self = AnsiColor::Standard(StandardColor::Red);
@@ -87,6 +94,7 @@ impl Display for AnsiColor {
     }
 }
 
+/// local error enum
 #[derive(Debug)]
 pub struct ParseColorError;
 
@@ -112,6 +120,7 @@ impl FromStr for AnsiColor {
     }
 }
 
+/// definitition of ansi string
 #[derive(Copy, Clone, Debug)]
 pub struct AnsiStr<'a> {
     s: &'a str,
@@ -138,6 +147,8 @@ impl<'a> Display for AnsiStr<'a> {
     }
 }
 
+/// this trait contains method to associate a string to a color
+#[allow(missing_docs)]
 pub trait Colored {
     fn black(&self) -> AnsiStr;
     fn red(&self) -> AnsiStr;

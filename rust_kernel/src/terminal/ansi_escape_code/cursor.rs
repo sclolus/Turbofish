@@ -1,15 +1,19 @@
 //! Ansi cursor move
 use super::CSI;
 use crate::{terminal, terminal::Pos};
-use core::{fmt, fmt::Display};
 use core::str::FromStr;
+use core::{fmt, fmt::Display};
 
+/// Cursor possible moves
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CursorMove {
     ///Moves the cursor n (default 1) cells in the given direction. If the cursor is already at the edge of the screen, this has no effect.
     Up(usize),
+    ///Rise an option if the cursor is on the bottom of the screen
     Down(usize),
+    ///Rise an option if the cursor if on the bottom right if the screen
     Forward(usize),
+    ///No special effect
     Backward(usize),
 
     ///Moves the cursor to column n
@@ -33,6 +37,7 @@ impl Display for CursorMove {
     }
 }
 
+///Local error enum
 #[derive(Debug)]
 pub struct ParseCursorError;
 
