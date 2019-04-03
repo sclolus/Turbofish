@@ -1,7 +1,8 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
+//! It may be used on VBE with low feature in case of debuging request and panic displaying
 
 use crate::terminal::ansi_escape_code::AnsiColor;
-use crate::terminal::monitor::{Drawer, SCREEN_MONAD};
+use crate::terminal::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 
 use super::Cursor;
 use super::Pos;
@@ -17,6 +18,7 @@ pub struct EarlyTerminal {
     cursor: Cursor,
     text_color: AnsiColor,
     buf: [Option<(u8, AnsiColor)>; WIDTH * HEIGHT],
+    is_vbe_mode: bool,
 }
 
 /// Custom implementation of Debug trait
@@ -37,11 +39,17 @@ impl EarlyTerminal {
             cursor: Cursor { pos: Pos { line: 0, column: 0 }, nb_lines: HEIGHT, nb_columns: WIDTH, visible: true },
             text_color: AnsiColor::WHITE,
             buf: [None; WIDTH * HEIGHT],
+            is_vbe_mode: false,
         }
     }
 
     /// Scroll screen
     fn scroll_vga_screen(&mut self) {
+        // It is necessary if we are in VBE mode
+        if self.is_vbe_mode {
+            SCREEN_MONAD.lock().refresh_screen();
+        }
+
         let m = self.cursor.nb_columns * (self.cursor.nb_lines - 1);
         self.buf.copy_within(self.cursor.nb_columns.., 0);
         for elem in self.buf[m..].iter_mut() {
@@ -54,12 +62,27 @@ impl EarlyTerminal {
             };
             SCREEN_MONAD.lock().draw_character(c as char, Pos { line: i / WIDTH, column: i % WIDTH }, color).unwrap();
         }
+
+        // It is necessary if we are in VBE mode
+        if self.is_vbe_mode {
+            SCREEN_MONAD.lock().refresh_screen();
+        }
     }
 }
 
 /// Common implementation of write
 impl core::fmt::Write for EarlyTerminal {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        // In case we go in VBE mode, mark it, clear cursor and buffer
+        if self.is_vbe_mode == false && SCREEN_MONAD.lock().is_graphic() {
+            self.cursor.pos.line = 0;
+            self.cursor.pos.column = 0;
+            self.is_vbe_mode = true;
+            for elem in self.buf.iter_mut() {
+                *elem = None;
+            }
+        }
+
         for c in s.as_bytes() {
             match *c as char {
                 '\n' => {
@@ -80,6 +103,11 @@ impl core::fmt::Write for EarlyTerminal {
                     }
                 }
             };
+        }
+
+        // It is necessary if we are in VBE mode
+        if self.is_vbe_mode {
+            SCREEN_MONAD.lock().refresh_screen();
         }
         Ok(())
     }

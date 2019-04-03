@@ -126,10 +126,6 @@ pub fn init_terminal() {
 
     term.switch_foreground_tty(1);
 
-    unsafe {
-        TERMINAL = Some(term);
-    }
-
     let screen_monad = SCREEN_MONAD.lock();
     if screen_monad.is_graphic() {
         let (height, width, bpp) = screen_monad.query_graphic_infos().unwrap();
@@ -137,21 +133,18 @@ pub fn init_terminal() {
 
         let mut v: Vec<u8> = vec![42; size];
         bmp_loader::draw_image(unsafe { &_wanggle_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
-        unsafe {
-            TERMINAL.as_mut().unwrap().get_tty(1).tty.set_background_buffer(v);
-        }
+        term.get_tty(1).tty.set_background_buffer(v);
 
         let mut v: Vec<u8> = vec![84; size];
         bmp_loader::draw_image(unsafe { &_univers_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
-        unsafe {
-            TERMINAL.as_mut().unwrap().get_tty(0).tty.set_background_buffer(v);
-        }
+        term.get_tty(0).tty.set_background_buffer(v);
     }
 
     // unlock mutex
     drop(screen_monad);
 
     unsafe {
+        TERMINAL = Some(term);
         TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().tty.refresh();
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
