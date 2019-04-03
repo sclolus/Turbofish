@@ -74,9 +74,7 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
         .unwrap();
     let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
     for d in device_map_slice {
-        println!("{:x?}", d);
-        println!("addr: {:x?}", d.low_addr);
-        println!("len: {}ko", d.low_length >> 10);
+        eprintln!("{:x?} addr: {:x?}, len {}ko", d, d.low_addr, d.low_length >> 10);
         match d.region_type {
             RegionType::Usable => {}
             _ => {
@@ -84,7 +82,7 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
                 if let Err(e) =
                     pallocator.reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into())
                 {
-                    println!("some error were occured on pallocator ! {:?}", e);
+                    eprintln!("Physical Allocator: {:?}", e);
                 }
             }
         }

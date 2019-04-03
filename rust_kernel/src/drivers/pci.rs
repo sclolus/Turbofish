@@ -287,8 +287,6 @@ impl Pci {
 
     /// Output all connected pci devices
     pub fn scan_pci_buses(&mut self) {
-        println!("scanning PCI buses ...");
-
         // Simple and Basic brute force scan method is used here !
         for bus in 0..=255 {
             for slot in 0..=31 {
