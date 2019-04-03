@@ -8,6 +8,7 @@ extern alt_gdt_new
 extern alt_init_early_idt
 extern alt_get_device_mem_map
 extern alt_init_paging
+; extern alt_acpi
 
 %define MULTIBOOT_INFOS_LEN 128
 
@@ -135,6 +136,9 @@ _init:
 
 	call alt_disable_cursor
 	call alt_clear_screen
+
+	; Do ACPI tests
+	; call alt_acpi
 
 	; Get device map in memory and push a pointer to a generated structure
 	call alt_get_device_mem_map

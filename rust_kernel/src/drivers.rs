@@ -1,3 +1,4 @@
+pub mod acpi;
 pub mod pci;
 
 #[macro_use]

@@ -80,6 +80,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("processus address allocated: {:x?}", addr);
 
     log::error!("this is an example of error");
+
     watch_dog();
     shell();
     0

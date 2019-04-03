@@ -27,7 +27,7 @@ CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-except
 
 IFLAGS = -Iinclude -Ilibft/includes -I./
 
-SRC_C += get_device_mem_map vga_text early_gdt early_panic early_idt early_watchdog
+SRC_C += get_device_mem_map vga_text early_gdt early_panic early_idt early_watchdog acpi
 SRC_ASM += 8086_payload payload_get_mem_map init_paging idt_cpu_handler
 VPATH += src/
 HEADERS += vga_text.h early_gdt.h early_idt.h early_panic.h early_paging.asm early_watchdog.h
