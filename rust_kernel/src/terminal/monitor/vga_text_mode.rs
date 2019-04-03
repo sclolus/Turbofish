@@ -1,5 +1,6 @@
 use super::{Drawer, IoResult, Pos};
 use crate::terminal::ansi_escape_code::{AnsiColor, StandardColor};
+use io::{Io, Pio};
 
 const HEIGHT: usize = 25;
 const WIDTH: usize = 80;
@@ -9,8 +10,12 @@ pub struct VgaTextMode {
 }
 
 impl VgaTextMode {
+    // see https://wiki.osdev.org/Text_Mode_Cursor for info about cursor
+    const CURSOR_INDEX_REGISTER: u16 = 0x3D4;
+    const CURSOR_DATA_REGISTER: u16 = 0x3D5;
+
     pub fn new() -> Self {
-        unsafe { Self { memory_location: &mut *(0xb8000 as *mut [(u8, u8); WIDTH * HEIGHT]) } }
+        Self { memory_location: unsafe { &mut *(0xb8000 as *mut [(u8, u8); WIDTH * HEIGHT]) } }
     }
 }
 
@@ -24,18 +29,48 @@ impl Drawer for VgaTextMode {
     }
 
     fn clear_screen(&mut self) {
+        // get the current cursor position
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0F);
+        let column = Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).read();
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0E);
+        let line = Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).read();
+
+        // clear the cursor
+        self.clear_cursor(' ', Pos { line: line as usize, column: column as usize }, AnsiColor::WHITE).unwrap();
+
+        // fill screen with white non visible cells (cursor will be white)
         unsafe {
-            ft_memset(self.memory_location.as_mut_ptr() as *mut u8, 0, WIDTH * HEIGHT * 2);
+            _screencpy_des_familles(
+                0xb8000 as *mut u8,
+                VgaCell { character: ' ' as u8, color: Into::<VgaColor>::into(AnsiColor::WHITE).0 },
+                WIDTH * HEIGHT,
+            );
         }
     }
 
     fn clear_cursor(&mut self, _c: char, _position: Pos, _color: AnsiColor) -> IoResult {
-        // wanted fallback
+        // Disable cursor
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0A);
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write(0x20);
         Ok(())
     }
 
-    fn draw_cursor(&mut self, _c: char, _position: Pos, _color: AnsiColor) -> IoResult {
-        // wanted fallback
+    fn draw_cursor(&mut self, _c: char, position: Pos, _color: AnsiColor) -> IoResult {
+        // set cursor position
+        let absolute_pos: u16 = (position.column + position.line * WIDTH) as u16;
+
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0F);
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write(absolute_pos as u8);
+
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0E);
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write(((absolute_pos >> 8) & 0xff) as u8);
+
+        // Enable cursor
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0A); // start scanline
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write((Pio::<u8>::new(0x3D5).read()) & 0xC0 | 0);
+
+        Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0B); // end scanline
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write((Pio::<u8>::new(0x3D5).read()) & 0xE0 | 15);
         Ok(())
     }
 }
@@ -70,6 +105,12 @@ impl From<AnsiColor> for VgaColor {
     }
 }
 
+#[repr(C)]
+struct VgaCell {
+    character: u8,
+    color: u8,
+}
+
 extern "C" {
-    pub fn ft_memset(p: *mut u8, val: i32, len: usize) -> *mut u8;
+    fn _screencpy_des_familles(dst: *mut u8, pattern: VgaCell, nb_copies: usize);
 }

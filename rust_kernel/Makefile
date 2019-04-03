@@ -39,6 +39,7 @@ SRC_ASM_KERNEL += init_kernel start cpu_features
 HEADERS +=
 VPATH += src/boot
 
+SRC_C_KERNEL += vga_cpy
 SRC_ASM_KERNEL += vbe_font
 VPATH += src/terminal/monitor
 

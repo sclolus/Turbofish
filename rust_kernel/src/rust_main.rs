@@ -38,7 +38,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
     }
-//    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
+    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
 
     init_terminal();
     println!("TTY system initialized");
