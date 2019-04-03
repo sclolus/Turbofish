@@ -1,10 +1,14 @@
+//! Kernel shell
+
+#![deny(missing_docs)]
+
 mod builtin;
-use keyboard::keysymb::KeySymb;
 use crate::terminal::ansi_escape_code::CursorMove;
 use crate::terminal::TERMINAL;
 use alloc::string::String;
 use alloc::vec::Vec;
 use builtin::*;
+use keyboard::keysymb::KeySymb;
 
 // ASCII mouse
 const PROMPT: &str = "----{,_,\"> $ ";
@@ -78,7 +82,7 @@ fn read_line() -> String {
                 graphical_cursor_offset += 1;
                 graphical_len += 1;
 
-		print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset));
+                print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset));
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
