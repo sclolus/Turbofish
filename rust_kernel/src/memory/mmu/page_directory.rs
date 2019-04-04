@@ -38,6 +38,16 @@ impl PageDirectory {
     }
 
     #[inline(always)]
+    fn get_page_table_init(&self, virtp: Page<Virt>) -> Option<&mut PageTable> {
+        let pd_index = virtp.pd_index();
+        if !self[pd_index].contains(Entry::PRESENT) {
+            return None;
+        }
+        // assert!(self as *const _ == 0xFFC00000 as *const _);
+        Some(unsafe { &mut *((self[pd_index].entry_addr().0 + symbol_addr!(virtual_offset)) as *mut PageTable) })
+    }
+
+    #[inline(always)]
     fn get_page_table_trick(&self, virtp: Page<Virt>) -> Option<&mut PageTable> {
         let pd_index = virtp.pd_index();
         if !self[pd_index].contains(Entry::PRESENT) {
@@ -87,9 +97,9 @@ impl PageDirectory {
         entry: Entry,
     ) -> Result<()> {
         for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
-            let pd_index = virtp.pd_index();
-            let page_table = &mut PAGE_TABLES[pd_index];
-            page_table.map_page(virtp, physp, entry)?;
+            self.get_page_table_init(virtp)
+                .ok_or(MemoryError::PageTableNotPresent)
+                .and_then(|page_table| page_table.map_page(virtp, physp, entry))?
         }
         Ok(())
     }

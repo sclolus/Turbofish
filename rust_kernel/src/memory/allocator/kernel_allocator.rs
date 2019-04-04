@@ -2,7 +2,7 @@ use super::virtual_page_allocator::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_AL
 use super::KERNEL_VIRTUAL_MEMORY;
 use crate::memory::mmu::Entry;
 use crate::memory::mmu::_enable_paging;
-use crate::memory::mmu::{PageDirectory, PAGE_TABLES};
+use crate::memory::mmu::{PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::{BuddyAllocator, SlabAllocator};
 use alloc::boxed::Box;
@@ -214,7 +214,8 @@ pub unsafe fn init_kernel_virtual_allocator() {
         vec![0; BuddyAllocator::<Virt>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
     let mut pd = Box::new(PageDirectory::new());
-    pd.set_page_tables(0, &PAGE_TABLES);
+    pd.set_page_tables(0, &BIOS_PAGE_TABLE);
+    pd.set_page_tables(768, &PAGE_TABLES);
     pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT)
         .expect("Could not identity map the first megabyte of memory");
     pd.map_range_page_init(
