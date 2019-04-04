@@ -1,6 +1,30 @@
 use crate::drivers::pci::PCI;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
+/// select a keyboard layout
+pub fn butterfly(args: &[&str]) -> u8 {
+    if args.len() != 2 {
+        println!("usage: butterfly [mem_location in hex] [value in hex]");
+    } else {
+        match usize::from_str_radix(args[0], 16) {
+            Ok(v) => {
+                let p: *mut u8 = v as *mut u8;
+                match usize::from_str_radix(args[1], 16) {
+                    Ok(v) => {
+                        unsafe {
+                            *p = v as u8;
+                        }
+                        return 0;
+                    }
+                    Err(e) => println!("cannot parse args[1]: {:?}", e),
+                }
+            }
+            Err(e) => println!("cannot parse args[0]: {:?}", e),
+        }
+    }
+    1
+}
+
 /// simple, basic
 pub fn echo(args: &[&str]) -> u8 {
     for s in args {
