@@ -583,73 +583,72 @@ impl SlabAllocator {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_sodo() {
-        use crate::math::random::srand;
-        use core::alloc::Layout;
-        use crate::memory::tools::Virt;
-        crate::math::random::srand_init(42).unwrap();
+    // fn test_sodo() {
+    //     use crate::math::random::srand;
+    //     use crate::memory::tools::Virt;
+    //     use core::alloc::Layout;
+    //     crate::math::random::srand_init(42).unwrap();
 
-        use super::SlabAllocator;
-        let mut slab_allocator = SlabAllocator::new();
-        const ALLOC_SIZE: usize = 2 << 17;
-        let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
+    //     use super::SlabAllocator;
+    //     let mut slab_allocator = SlabAllocator::new();
+    //     const ALLOC_SIZE: usize = 2 << 17;
+    //     let mut addrs: Vec<(*mut u8, u8, usize)> = Vec::with_capacity(32728);
 
-        for _index in 0..32728 * 32 {
-            // match rng.gen::<u8>() {
-            match srand::<u8>(255) {
-                0...200 => {
-                    let alloc_size = srand(core::usize::MAX) % ALLOC_SIZE;
-                    let addr = slab_allocator.alloc(Layout::from_size_align(alloc_size, 16).unwrap()).unwrap();
-                    let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr.0 as *mut u8, alloc_size) };
-                    let random_byte = srand::<u8>(255);
+    //     for _index in 0..32728 * 32 {
+    //         // match rng.gen::<u8>() {
+    //         match srand::<u8>(255) {
+    //             0...200 => {
+    //                 let alloc_size = srand(core::usize::MAX) % ALLOC_SIZE;
+    //                 let addr = slab_allocator.alloc(Layout::from_size_align(alloc_size, 16).unwrap()).unwrap();
+    //                 let object: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr.0 as *mut u8, alloc_size) };
+    //                 let random_byte = srand::<u8>(255);
 
-                    // for b in object.iter_mut() {
-                    //     *b = random_byte;
-                    // }
+    //                 // for b in object.iter_mut() {
+    //                 //     *b = random_byte;
+    //                 // }
 
-                    // assert!(addrs.iter().all(|&(x, _, _)| x != addr));
-                    //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
-                    addrs.push((addr.0 as *mut u8, random_byte, alloc_size));
-                }
-                _ => {
-                    if addrs.len() == 0 {
-                        continue;
-                    }
-                    let (addr, byte, alloc_size) = addrs.swap_remove(srand(core::usize::MAX) % addrs.len());
+    //                 // assert!(addrs.iter().all(|&(x, _, _)| x != addr));
+    //                 //                println!("Allocated object of size {} at: {:p}, filled with: {:x}", alloc_size, addr, random_byte);
+    //                 addrs.push((addr.0 as *mut u8, random_byte, alloc_size));
+    //             }
+    //             _ => {
+    //                 if addrs.len() == 0 {
+    //                     continue;
+    //                 }
+    //                 let (addr, byte, alloc_size) = addrs.swap_remove(srand(core::usize::MAX) % addrs.len());
 
-                    //                println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
-                    let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
+    //                 //                println!("Freeing {} -> {:p} filled with byte: {:x}", index, addr, byte);
+    //                 let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
 
-                    // for b in object.iter() {
-                    //     if *b != byte {
-                    //         //                        println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
-                    //         //                        println!("Zones which match incorrect byte: {}", byte);
-                    //         for (_addr, _, _size) in addrs.iter().filter(|(_, pbyte, _)| byte == *pbyte) {
-                    //             //                            println!("\t{:p} of size: {}", addr, size);
-                    //         }
-                    //     }
-                    //     assert!(*b == byte);
-                    // }
-                    slab_allocator.free(Virt(addr as usize).into(), alloc_size);
-                    //                println!("Free'd {:p}", addr);
-                }
-            }
-        }
-        for (addr, byte, alloc_size) in addrs.drain(..) {
-            //        println!("Freeing -> {:p} filled with byte: {:x}", addr, byte);
-            let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
+    //                 // for b in object.iter() {
+    //                 //     if *b != byte {
+    //                 //         //                        println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+    //                 //         //                        println!("Zones which match incorrect byte: {}", byte);
+    //                 //         for (_addr, _, _size) in addrs.iter().filter(|(_, pbyte, _)| byte == *pbyte) {
+    //                 //             //                            println!("\t{:p} of size: {}", addr, size);
+    //                 //         }
+    //                 //     }
+    //                 //     assert!(*b == byte);
+    //                 // }
+    //                 slab_allocator.free(Virt(addr as usize).into(), alloc_size);
+    //                 //                println!("Free'd {:p}", addr);
+    //             }
+    //         }
+    //     }
+    //     for (addr, byte, alloc_size) in addrs.drain(..) {
+    //         //        println!("Freeing -> {:p} filled with byte: {:x}", addr, byte);
+    //         let object: &[u8] = unsafe { core::slice::from_raw_parts(addr, alloc_size) };
 
-            // for b in object.iter() {
-            //     if *b != byte {
-            //         //                println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
-            //     }
-            //     assert!(*b == byte);
-            // }
+    //         // for b in object.iter() {
+    //         //     if *b != byte {
+    //         //         //                println!("Failed to free {:p}, byte at {:p} is {:x} instead of {:x}", addr, b, *b, byte);
+    //         //     }
+    //         //     assert!(*b == byte);
+    //         // }
 
-            //        println!("freeing: {:p}", addr);
-            slab_allocator.free(Virt(addr as usize).into(), alloc_size);
-            //        println!("free'd: {:p}", addr);
-        }
-    }
+    //         //        println!("freeing: {:p}", addr);
+    //         slab_allocator.free(Virt(addr as usize).into(), alloc_size);
+    //         //        println!("free'd: {:p}", addr);
+    //     }
+    // }
 }
