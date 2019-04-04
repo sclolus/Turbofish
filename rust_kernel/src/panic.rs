@@ -141,9 +141,10 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 
 pub fn panic_sa_mere() {
     let ebp: *const u32;
-    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
-    // As we don't have eip in a panic, the first eip is put at ebp
-    trace_back((ebp as u32, ebp));
+    unsafe {
+        asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel");
+        trace_back((*ebp.add(1), *ebp as *const u32));
+    };
 }
 
 #[panic_handler]
