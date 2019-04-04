@@ -101,7 +101,8 @@ use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCA
 
 #[no_mangle]
 pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -> () {
-    if let Err(e) = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().valloc_handle_page_fault(cr2) } {
+    let virtual_page_allocator = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap() };
+    if let Err(e) = virtual_page_allocator.valloc_handle_page_fault(cr2) {
         use bit_field::BitField;
         let page_fault_cause = unsafe {
             match ext_reg.eflags.get_bits(0..3) {

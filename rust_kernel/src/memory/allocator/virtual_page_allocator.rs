@@ -32,15 +32,16 @@ impl VirtualPageAllocator {
     pub fn alloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
 
         unsafe {
-            let paddr = PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
+            let paddr = physical_allocator.alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
                 e
             })?;
             self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(paddr, size).unwrap();
+                physical_allocator.free(paddr, size).unwrap();
                 e
             })?;
         }
@@ -62,12 +63,12 @@ impl VirtualPageAllocator {
 
     pub fn valloc_handle_page_fault(&mut self, cr2: u32) -> Result<()> {
         let p = Page::containing(Virt(cr2 as usize));
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
         // TODO: remove this unwrap
         let entry = self.mmu.get_entry_mut(p).unwrap();
+
         if entry.contains(Entry::VALLOC) {
-            let paddr = unsafe {
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(NbrPages(1), AllocFlags::KERNEL_MEMORY).map_err(|e| e)
-            }?;
+            let paddr = physical_allocator.alloc(NbrPages(1), AllocFlags::KERNEL_MEMORY).map_err(|e| e)?;
             entry.set_entry_page(paddr);
             *entry |= Entry::PRESENT;
             Ok(())
@@ -78,6 +79,7 @@ impl VirtualPageAllocator {
 
     pub fn free(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
         let order = size.into();
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
         self.virt.free(vaddr, order)?;
 
         if let Some(entry) = self.mmu.get_entry(vaddr) {
@@ -86,7 +88,7 @@ impl VirtualPageAllocator {
                 for virtp in (vaddr..vaddr + size).iter() {
                     let entry = self.mmu.get_entry_mut(virtp).unwrap();
                     if entry.contains(Entry::PRESENT) {
-                        unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap().free(entry.entry_page(), NbrPages(1)) }?;
+                        physical_allocator.free(entry.entry_page(), NbrPages(1))?;
                         invalidate_page(virtp);
                     }
                     *entry = Default::default();
@@ -94,10 +96,8 @@ impl VirtualPageAllocator {
                 Ok(())
             } else {
                 // Free of Alloced memory
-                unsafe {
-                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(entry.entry_page(), size)?;
-                    self.mmu.unmap_range_page(vaddr, size.into())
-                }
+                physical_allocator.free(entry.entry_page(), size)?;
+                unsafe { self.mmu.unmap_range_page(vaddr, size.into()) }
             }
         } else {
             Err(MemoryError::NotPhysicallyMapped)
