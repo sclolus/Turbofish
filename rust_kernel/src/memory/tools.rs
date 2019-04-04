@@ -21,7 +21,7 @@ pub enum MemoryError {
     AlreadyMapped,
     AlreadyUnMapped,
     CannotFree,
-    NotPhysicalyMapped,
+    NotPhysicallyMapped,
     PageFault,
     PageTableNotPresent,
 }

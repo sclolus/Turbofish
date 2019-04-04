@@ -24,7 +24,9 @@ mod test {
     fn test_const_assert() {
         const_assert!(true, true, 1 + 1 == 2);
         const_assert!(true,,,);
+        #[cfg(not(test))]
         const_assert!(core::mem::size_of::<Example>() == 8);
+        #[cfg(not(test))]
         const_assert!(core::mem::size_of::<usize>() == 4);
     }
 }

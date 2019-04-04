@@ -95,7 +95,7 @@ impl VirtualPageAllocator {
                 }
             }
         } else {
-            Err(MemoryError::NotPhysicalyMapped)
+            Err(MemoryError::NotPhysicallyMapped)
         }
     }
 }

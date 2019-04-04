@@ -28,7 +28,14 @@ pub struct Eflags {
 }
 
 impl Eflags {
+    #[cfg(test)]
+    /// Placeholder for get_eflags in 64-bit mode. Panics.
+    pub fn get_eflags() -> Self {
+        panic!("Get_eflags should not be called in 64-bit mode (until we supported x86_64)");
+    }
+
     /// Gets the current EFLAGS
+    #[cfg(not(test))]
     pub fn get_eflags() -> Self {
         let inner: u32;
 
@@ -123,7 +130,11 @@ impl Eflags {
     /// Returns if the cpu supports the cpuid instruction.
     /// This method relies directly on core. So I'm not sure this should be a EFLAGS method, but it still has semantic sense.
     pub fn cpuid_flag(&self) -> bool {
-        core::arch::x86::has_cpuid()
+        #[cfg(not(test))]
+        use core::arch::x86::has_cpuid;
+        #[cfg(test)]
+        use core::arch::x86_64::has_cpuid;
+        has_cpuid()
     }
 }
 

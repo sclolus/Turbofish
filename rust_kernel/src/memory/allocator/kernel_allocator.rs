@@ -96,7 +96,8 @@ pub unsafe fn init_kernel_virtual_allocator() {
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &PAGE_TABLES);
-    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT).unwrap();
+    pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT)
+        .expect("Could not identity map the first megabyte of memory");
     pd.map_range_page_init(
         Page::containing(Virt(symbol_addr!(high_kernel_virtual_start))),
         Page::containing(Phys(symbol_addr!(high_kernel_physical_start))),
@@ -105,7 +106,7 @@ pub unsafe fn init_kernel_virtual_allocator() {
         .into(),
         Entry::READ_WRITE | Entry::PRESENT,
     )
-    .unwrap();
+    .expect("Init: Could not map the kernel");
     let raw_pd = Box::into_raw(pd);
     let real_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
 

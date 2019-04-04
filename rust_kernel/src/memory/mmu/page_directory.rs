@@ -43,7 +43,7 @@ impl PageDirectory {
         if !self[pd_index].contains(Entry::PRESENT) {
             return None;
         }
-
+        // assert!(self as *const _ == 0xFFC00000 as *const _);
         Some(unsafe { &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable) })
     }
 
