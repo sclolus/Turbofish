@@ -200,7 +200,7 @@ struct Vacant;
 struct Slab {
     status: SlabStatus,
     nbr_pages: usize,
-    elem_size: usize,
+    pub elem_size: usize,
     elem_count: usize,
     free_list: LinkedList<Vacant>,
     data: *mut u8,
@@ -234,7 +234,6 @@ fn mmap(size: usize) -> Option<*mut u8> {
 
 fn munmap(addr: *mut u8, size: usize) {
     unsafe {
-        eprintln!("size: {}", size);
         if let Err(e) = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))) {
             panic!("Failed to munmap {:p} size: {}: {:?}", addr, size, e);
         }
@@ -558,25 +557,39 @@ impl SlabAllocator {
         if size < 32 {
             size = 32;
         }
-        eprintln!("Trying to allocate {} bytes", layout.size());
 
         self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize]
             .alloc()
             .map(|addr| Virt(addr as usize))
     }
 
-    pub fn free(&mut self, addr: Virt, mut size: usize) {
+    pub fn free(&mut self, addr: Virt) -> Result<()> {
+        let ptr = addr.0 as *mut u8;
+        if let Some(cache) = self.caches.iter_mut().find(|cache| cache.contains(ptr)) {
+            cache.free(ptr);
+            Ok(())
+        } else {
+            // panic!("Tried to free non-allocated object: {:p}", addr);
+            Err(MemoryError::NotAllocated)
+        }
+    }
+
+    pub fn free_with_size(&mut self, addr: Virt, mut size: usize) {
         if size < 32 {
             size = 32;
         }
         let addr = addr.0 as *mut u8;
         let cache = &mut self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize];
         cache.free(addr);
-        // if let Some(cache) = self.caches.iter_mut().find(|cache| cache.contains(addr)) {
-        //     cache.free(addr)
-        // } else {
-        //     panic!("Tried to free non-allocated object: {:p}", addr);
-        // }
+    }
+
+    pub fn ksize(&self, addr: Virt) -> Result<usize> {
+        let ptr = addr.0 as *mut u8;
+        if let Some(pos) = self.caches.iter().position(|cache| cache.contains(ptr)) {
+            Ok(self.caches[pos].elem_size)
+        } else {
+            return Err(MemoryError::NotAllocated);
+        }
     }
 }
 

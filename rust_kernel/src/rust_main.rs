@@ -119,6 +119,38 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("device map ptr: {:#?}", device_map_ptr);
     println!("first structure: {:?}", unsafe { *device_map_ptr });
 
+    use memory::{kfree, kmalloc, ksize, vfree, vmalloc, vsize};
+
+    for size in 0..1024 {
+        let ptr = unsafe { kmalloc(size) as *mut u8 };
+        let slice = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+        for byte in slice.iter_mut() {
+            *byte = 0;
+        }
+
+        unsafe {
+            let _ksize = ksize(ptr).unwrap();
+
+            // println!("ksize returned {} == {}", _ksize, size);
+            kfree(ptr);
+        }
+    }
+
+    for size in 0..256 {
+        let ptr = unsafe { vmalloc(size) as *mut u8 };
+        let slice = unsafe { core::slice::from_raw_parts_mut(ptr, size) };
+        for byte in slice.iter_mut() {
+            *byte = 0;
+        }
+
+        unsafe {
+            let _ksize = vsize(ptr).unwrap();
+
+            // println!("ksize returned {} == {}", _ksize, size);
+            vfree(ptr);
+        }
+    }
+
     crate::watch_dog();
     sum
 }

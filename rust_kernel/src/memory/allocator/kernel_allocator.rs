@@ -45,13 +45,87 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
         match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Kernel(a) => {
                 if layout.size() <= PAGE_SIZE {
-                    a.free(Virt(ptr as usize), layout.size());
+                    a.free_with_size(Virt(ptr as usize), layout.size());
                 } else {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(ptr as usize))).unwrap()
                 }
             }
-            KernelAllocator::Bootstrap(_) => panic!("try to free while in bootstrap allocator"),
+            KernelAllocator::Bootstrap(_) => panic!("Attempting to free while in bootstrap allocator"),
         }
+    }
+}
+
+pub unsafe fn kmalloc(size: usize) -> *mut u8 {
+    use crate::MEMORY_MANAGER;
+
+    MEMORY_MANAGER.alloc(Layout::from_size_align(size, 1).unwrap())
+}
+
+pub unsafe fn kfree(addr: *mut u8) {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(a) => {
+            if let Err(_) = a.free(Virt(addr as usize)) {
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .free(Page::containing(Virt(addr as usize)))
+                    .expect("Pointer being free'd was not allocated");
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Attempting to free while in bootstrap allocator"),
+    }
+}
+
+pub unsafe fn ksize(addr: *mut u8) -> Result<usize> {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(a) => {
+            let res = a.ksize(Virt(addr as usize));
+            if let Err(_) = res {
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .ksize(Page::containing(Virt(addr as usize)))
+                    .map(|nbr_pages| nbr_pages.to_bytes())
+            } else {
+                res
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
+    }
+}
+
+pub unsafe fn vmalloc(size: usize) -> *mut u8 {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(_) => {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .valloc(size.into())
+                .unwrap_or(Page::containing(Virt(0x0)))
+                .to_addr()
+                .0 as *mut u8
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement vmalloc()"),
+    }
+}
+
+pub unsafe fn vfree(addr: *mut u8) {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(_) => {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))).unwrap()
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement vfree()"),
+    }
+}
+
+pub unsafe fn vsize(addr: *mut u8) -> Result<usize> {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .ksize(Page::containing(Virt(addr as usize)))
+            .map(|nbr_pages| nbr_pages.to_bytes()),
+        KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
     }
 }
 

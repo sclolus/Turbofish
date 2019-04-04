@@ -8,8 +8,8 @@ use alloc::boxed::Box;
 
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
-    virt: BuddyAllocator<Virt>,
-    mmu: Box<PageDirectory>,
+    pub virt: BuddyAllocator<Virt>,
+    pub mmu: Box<PageDirectory>,
 }
 
 impl VirtualPageAllocator {
@@ -65,10 +65,12 @@ impl VirtualPageAllocator {
         let vaddr = self.virt.alloc(order)?;
 
         unsafe {
-            self.mmu.map_range_page(vaddr, Page::new(0), size, Entry::READ_WRITE | Entry::VALLOC).map_err(|e| {
-                self.virt.free(vaddr, order).expect("Failed to free virtual page after mapping failed");
-                e
-            })?;
+            self.mmu.map_range_page(vaddr, Page::new(0), order.into(), Entry::READ_WRITE | Entry::VALLOC).map_err(
+                |e| {
+                    self.virt.free(vaddr, order).expect("Failed to free virtual page after mapping failed");
+                    e
+                },
+            )?;
         }
         Ok(vaddr)
     }
@@ -113,7 +115,6 @@ impl VirtualPageAllocator {
             } else {
                 // Free of Alloced memory
                 physical_allocator.free(entry.entry_page())?;
-                eprintln!("current size : {:?}", size);
                 unsafe { self.mmu.unmap_range_page(vaddr, size)? }
             }
             Ok(())
