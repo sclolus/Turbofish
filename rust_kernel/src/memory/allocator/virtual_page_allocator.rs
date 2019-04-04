@@ -1,7 +1,5 @@
 use super::physical_page_allocator::{AllocFlags, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::invalidate_page;
-use crate::memory::mmu::Entry;
-use crate::memory::mmu::PageDirectory;
+use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;
 use alloc::boxed::Box;
@@ -15,6 +13,33 @@ pub struct VirtualPageAllocator {
 impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
+    }
+    pub unsafe fn new_for_process() -> Self {
+        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB);
+        buddy.reserve_exact(Page::new(0x0), NbrPages::_1MB).unwrap();
+
+        // map the kenel pages tables
+        let mut pd = Box::new(PageDirectory::new());
+        pd.set_page_tables(0, &BIOS_PAGE_TABLE);
+        pd.set_page_tables(768, &PAGE_TABLES);
+
+        // get the physical addr of the page directory for the tricks
+        let phys_pd: Phys = {
+            let raw_pd = Box::into_raw(pd);
+            pd = Box::from_raw(raw_pd);
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .mmu
+                .get_entry(Virt(raw_pd as usize).into())
+                .unwrap()
+                .entry_addr()
+        };
+        eprintln!("{:x?}", phys_pd);
+
+        pd.self_map_tricks(phys_pd);
+        _enable_paging(phys_pd);
+        Self::new(buddy, pd)
     }
 
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {

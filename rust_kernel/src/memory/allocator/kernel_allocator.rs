@@ -1,8 +1,6 @@
 use super::virtual_page_allocator::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
 use super::KERNEL_VIRTUAL_MEMORY;
-use crate::memory::mmu::Entry;
-use crate::memory::mmu::_enable_paging;
-use crate::memory::mmu::{PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
+use crate::memory::mmu::{Entry, PageDirectory, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::{BuddyAllocator, SlabAllocator};
 use alloc::boxed::Box;
@@ -226,11 +224,12 @@ pub unsafe fn init_kernel_virtual_allocator() {
     )
     .expect("Init: Could not map the kernel");
     let raw_pd = Box::into_raw(pd);
-    let real_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
+    let phys_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
 
-    _enable_paging(real_pd);
     pd = Box::from_raw(raw_pd);
-    pd.self_map_tricks(real_pd);
+    pd.self_map_tricks(phys_pd);
+
+    _enable_paging(phys_pd);
 
     let virt = VirtualPageAllocator::new(buddy, pd);
 

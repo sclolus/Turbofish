@@ -25,6 +25,7 @@ impl NbrPages {
     pub const _512MB: NbrPages = NbrPages(1 << 17);
     pub const _1GB: NbrPages = NbrPages(1 << 18);
     pub const _2GB: NbrPages = NbrPages(1 << 19);
+    pub const _3GB: NbrPages = NbrPages((1 << 19) + (1 << 18));
     pub const _4GB: NbrPages = NbrPages(1 << 20);
 }
 

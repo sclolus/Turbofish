@@ -151,6 +151,20 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         }
     }
 
+    use crate::memory::allocator::virtual_page_allocator::VirtualPageAllocator;
+    let v = unsafe { VirtualPageAllocator::new_for_process() };
     crate::watch_dog();
+    eprintln!("ala");
+    println!("begin test 1");
+    debug::bench_start();
+    let mut sum: u32 = 0;
+    for i in 0..2 {
+        let v: Vec<u8> = vec![(i & 0xff) as u8; 4096 * 16];
+        sum += v[0] as u32;
+        drop(v);
+    }
+    let t = debug::bench_end();
+    println!("{:?} ms ellapsed", t);
+    loop {}
     sum
 }
