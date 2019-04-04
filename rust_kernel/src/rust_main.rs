@@ -36,7 +36,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
 
         crate::watch_dog();
-        eprintln!("bonjour");
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
         SCREEN_MONAD.set_text_color(Color::Green).unwrap();
 
@@ -50,7 +49,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
             })
             .unwrap();
         SCREEN_MONAD.set_text_color(Color::Cyan).unwrap();
-        eprintln!("bonjour");
     }
     printfixed!(111, 46, "Turbo Fish v{}+", 0.2);
 
