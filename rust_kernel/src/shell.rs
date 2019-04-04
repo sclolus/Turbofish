@@ -5,6 +5,7 @@
 mod builtin;
 use crate::terminal::ansi_escape_code::CursorMove;
 use crate::terminal::TERMINAL;
+use crate::watch_dog;
 use alloc::string::String;
 use alloc::vec::Vec;
 use builtin::*;
@@ -145,5 +146,6 @@ pub fn shell() {
         print!("\n");
         // Execute command
         exec_builtin(&line);
+        watch_dog();
     }
 }
