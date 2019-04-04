@@ -115,6 +115,7 @@ pub unsafe fn init_kernel_virtual_allocator() {
     pd.self_map_tricks(real_pd);
 
     let virt = VirtualPageAllocator::new(buddy, pd);
+
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
     KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator::new());
 }

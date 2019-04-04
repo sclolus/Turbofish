@@ -119,8 +119,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("device map ptr: {:#?}", device_map_ptr);
     println!("first structure: {:?}", unsafe { *device_map_ptr });
 
-    //crate::test_helpers::trash_test::sa_va_castagner();
-    //crate::test_helpers::trash_test::kpanic();
     crate::watch_dog();
     sum
 }

@@ -19,6 +19,11 @@ impl VirtualPageAllocator {
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
         //TODO: reserve the buddys
         unsafe {
+            // self.virt.reserve_exact(vaddr, size.into())?;
+            // PHYSICAL_ALLOCATOR.as_mut().unwrap().reserve(paddr, size.into()).map_err(|e| {
+            //     self.virt.free(vaddr, size.into()).expect("Could not free memory reserved on VirtualPageAllocator");
+            //     e
+            // })?;
             self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT)?;
         }
         Ok(())

@@ -170,7 +170,7 @@ exec:
 	qemu-system-x86_64 $(QEMU_ARGS)
 
 exec_serial_port:
-	qemu-system-x86_64 -device isa-debug-exit,iobase=0xf4,iosize=0x04 --serial /dev/tty $(QEMU_ARGS)
+	qemu-system-x86_64 -device isa-debug-exit,iobase=0xf4,iosize=0x04 --serial stdio $(QEMU_ARGS)
 
 exec_gdb:
 	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) $(QEMU_ARGS)
