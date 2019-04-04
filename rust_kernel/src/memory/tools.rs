@@ -6,6 +6,9 @@ pub use nbr_pages::*;
 pub mod sections;
 pub use sections::*;
 
+pub mod device_map;
+pub use device_map::*;
+
 pub const PAGE_SIZE: usize = 4096;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use crate::interrupts;
 use crate::interrupts::pit::*;
 use crate::interrupts::{pic_8259, PIC_8259};
 use crate::memory;
-use crate::memory::allocator::physical_page_allocator::DeviceMap;
+use crate::memory::tools::DeviceMap;
 use crate::monitor::bmp_loader::*;
 use crate::monitor::*;
 use crate::multiboot::MultibootInfo;
@@ -31,7 +31,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         interrupts::init();
         crate::watch_dog();
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
+
+        let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+
         crate::watch_dog();
         eprintln!("bonjour");
         SCREEN_MONAD.switch_graphic_mode(Some(0x118)).unwrap();
