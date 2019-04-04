@@ -259,6 +259,39 @@ impl<T: Address> BuddyAllocator<T> {
     pub fn nbr_buddies(depth: usize) -> usize {
         2_usize.pow(depth as u32) * 2 - 1
     }
+
+    pub fn ksize(&mut self, addr: Page<T>) -> Result<Order> {
+        if addr < self.addr || addr - self.addr > self.max_order.nbr_pages() {
+            return Err(MemoryError::OutOfBound);
+        }
+
+        let mut current_index = 0;
+        let mut order = self.max_order;
+        let target: usize = (addr - self.addr).to_bytes();
+        let mut current_addr = 0;
+
+        loop {
+            if current_addr == target {
+                let buddy = self.get_buddy(current_index);
+
+                if buddy.occupied() && !buddy.splitted() {
+                    break Ok(order);
+                } else if !buddy.occupied() && !buddy.splitted() {
+                    break Err(MemoryError::NotAllocated);
+                } else {
+                    current_index = Self::left_child_index(current_index);
+                }
+            } else {
+                if target >= current_addr + (order - Order(1)).nbr_bytes() {
+                    current_addr += (order - Order(1)).nbr_bytes();
+                    current_index = Self::right_child_index(current_index);
+                } else {
+                    current_index = Self::left_child_index(current_index);
+                }
+            }
+            order = order - Order(1);
+        }
+    }
 }
 
 pub struct Buddy<'a> {
@@ -399,7 +432,7 @@ mod test {
     fn sodo_allocator() {
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 500;
+        const NB_ALLOC: usize = 50000;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x10000;
@@ -467,6 +500,7 @@ mod test {
                                 ptr: p,
                                 random_u8,
                             };
+                            assert_eq!(elem.order, buddy_allocator.ksize(p).unwrap());
                             //                                eprintln!("Got {}\n", elem);
                             allocations.push(elem);
                         }
@@ -478,6 +512,7 @@ mod test {
                         let elem = allocations.remove(index);
                         //                            eprintln!("Attempting to free {}", elem);
                         assert_eq!(elem.buddy_index, buddy_allocator.buddy_index(elem.ptr, elem.order));
+                        assert_eq!(elem.order, buddy_allocator.ksize(elem.ptr).unwrap());
                         buddy_allocator.free(elem.ptr, elem.order).expect("failed to free");
                         let ptr: Virt = elem.ptr.into();
                         let mem = unsafe { core::slice::from_raw_parts_mut(ptr.0 as *mut u8, elem.order.into()) };

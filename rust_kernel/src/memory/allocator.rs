@@ -20,4 +20,4 @@ use crate::memory::tools::*;
 const KERNEL_PHYSICAL_MEMORY: NbrPages = NbrPages::_64MB;
 #[allow(dead_code)]
 // WTF ?!?
-const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_64MB;
+const KERNEL_VIRTUAL_MEMORY: NbrPages = NbrPages::_1GB;

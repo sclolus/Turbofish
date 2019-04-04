@@ -16,14 +16,24 @@ impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
     }
+
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
-        //TODO: reserve the buddys
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
+
         unsafe {
-            // self.virt.reserve_exact(vaddr, size.into())?;
-            // PHYSICAL_ALLOCATOR.as_mut().unwrap().reserve(paddr, size.into()).map_err(|e| {
-            //     self.virt.free(vaddr, size.into()).expect("Could not free memory reserved on VirtualPageAllocator");
-            //     e
-            // })?;
+            self.virt.reserve_exact(vaddr, size.into())?;
+            let res = physical_allocator.reserve(paddr, size.into());
+
+            match res {
+                Ok(_) => (),
+                Err(MemoryError::OutOfBound) => (), //Todo fix this eventually ?
+                Err(e) => {
+                    self.virt
+                        .free_reserve(vaddr, size.into())
+                        .expect("Could not free memory reserved on VirtualPageAllocator");
+                    return Err(e);
+                }
+            }
             self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT)?;
         }
         Ok(())

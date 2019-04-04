@@ -24,6 +24,7 @@ pub enum MemoryError {
     NotPhysicallyMapped,
     PageFault,
     PageTableNotPresent,
+    NotAllocated,
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
