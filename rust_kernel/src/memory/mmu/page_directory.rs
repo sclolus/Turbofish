@@ -2,7 +2,6 @@
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::page_table::PageTable;
 use super::Entry;
-use super::PAGE_TABLES;
 use crate::memory::tools::*;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
