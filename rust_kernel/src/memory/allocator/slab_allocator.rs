@@ -234,9 +234,8 @@ fn mmap(size: usize) -> Option<*mut u8> {
 
 fn munmap(addr: *mut u8, size: usize) {
     unsafe {
-        if let Err(e) =
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize)), size.into())
-        {
+        eprintln!("size: {}", size);
+        if let Err(e) = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))) {
             panic!("Failed to munmap {:p} size: {}: {:?}", addr, size, e);
         }
     }

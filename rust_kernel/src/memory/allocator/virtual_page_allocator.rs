@@ -51,9 +51,9 @@ impl VirtualPageAllocator {
                     .expect("Failed to free allocated virtual page after physical allocator failed");
                 e
             })?;
-            self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
+            self.mmu.map_range_page(vaddr, paddr, order.into(), Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
-                physical_allocator.free(paddr, size).unwrap();
+                physical_allocator.free(paddr).unwrap();
                 e
             })?;
         }
@@ -89,7 +89,12 @@ impl VirtualPageAllocator {
         }
     }
 
-    pub fn free(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
+    pub fn ksize(&mut self, vaddr: Page<Virt>) -> Result<NbrPages> {
+        Ok(self.virt.ksize(vaddr)?.nbr_pages())
+    }
+
+    pub fn free(&mut self, vaddr: Page<Virt>) -> Result<()> {
+        let size = self.ksize(vaddr)?;
         let order = size.into();
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
         self.virt.free(vaddr, order)?;
@@ -100,15 +105,16 @@ impl VirtualPageAllocator {
                 for virtp in (vaddr..vaddr + size).iter() {
                     let entry = self.mmu.get_entry_mut(virtp).unwrap();
                     if entry.contains(Entry::PRESENT) {
-                        physical_allocator.free(entry.entry_page(), NbrPages(1))?;
+                        physical_allocator.free(entry.entry_page())?;
                         invalidate_page(virtp);
                     }
                     *entry = Default::default();
                 }
             } else {
                 // Free of Alloced memory
-                physical_allocator.free(entry.entry_page(), size)?;
-                unsafe { self.mmu.unmap_range_page(vaddr, size.into())? }
+                physical_allocator.free(entry.entry_page())?;
+                eprintln!("current size : {:?}", size);
+                unsafe { self.mmu.unmap_range_page(vaddr, size)? }
             }
             Ok(())
         })

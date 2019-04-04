@@ -37,10 +37,14 @@ impl PhysicalPageAllocator {
         self.allocator.reserve_exact(addr, size)
     }
     /// size in bytes
-    pub fn free(&mut self, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
-        let order = size.into();
-        // eprintln!("{:x?}", paddr.to_addr());
+    pub fn free(&mut self, paddr: Page<Phys>) -> Result<()> {
+        let order = self.ksize(paddr)?.into();
+
         Ok(self.allocator.free(paddr, order)?)
+    }
+
+    pub fn ksize(&mut self, paddr: Page<Phys>) -> Result<NbrPages> {
+        Ok(self.allocator.ksize(paddr)?.nbr_pages())
     }
 }
 
