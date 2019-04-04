@@ -219,18 +219,3 @@ extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
         }
     }
 }
-
-/*
-(Trash code)
-println!("key {:X?}", scancode);
-let keycode = KeyCode::from_scancode(scancode);
-if let Some(keycode) = keycode {
-let keysymb = self.keycode_to_keymap(keycode);
-println!("keycode {:X?}", keycode);
-if let Some(keysymb) = keysymb {
-println!("keysymb {:?}, = {:X?}", keysymb, keysymb as u32);
-let keysymb = keysymb as u32;
-if keysymb >= 0x20 && keysymb <= 0x7E {
-println!("keysymb {:?}", keysymb as u8 as char);
-}}}
-*/
