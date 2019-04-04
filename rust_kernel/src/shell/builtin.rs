@@ -1,7 +1,14 @@
 use crate::drivers::pci::PCI;
+use crate::panic::panic_sa_mere;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
-/// select a keyboard layout
+/// show backtrace
+pub fn backtrace(_args: &[&str]) -> u8 {
+    panic_sa_mere();
+    0
+}
+
+/// put a butterfly on memory
 pub fn butterfly(args: &[&str]) -> u8 {
     if args.len() != 2 {
         println!("usage: butterfly [mem_location in hex] [value in hex]");
