@@ -36,7 +36,9 @@ impl VirtualPageAllocator {
 
         unsafe {
             let paddr = physical_allocator.alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
+                self.virt
+                    .free(vaddr, order)
+                    .expect("Failed to free allocated virtual page after physical allocator failed");
                 e
             })?;
             self.mmu.map_range_page(vaddr, paddr, size, Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
@@ -54,7 +56,7 @@ impl VirtualPageAllocator {
 
         unsafe {
             self.mmu.map_range_page(vaddr, Page::new(0), size, Entry::READ_WRITE | Entry::VALLOC).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
+                self.virt.free(vaddr, order).expect("Failed to free virtual page after mapping failed");
                 e
             })?;
         }
@@ -82,7 +84,7 @@ impl VirtualPageAllocator {
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
         self.virt.free(vaddr, order)?;
 
-        if let Some(entry) = self.mmu.get_entry(vaddr) {
+        self.mmu.get_entry(vaddr).ok_or(MemoryError::NotPhysicallyMapped).and_then(|entry| {
             if entry.contains(Entry::VALLOC) {
                 // Free of Valloced memory
                 for virtp in (vaddr..vaddr + size).iter() {
@@ -93,15 +95,13 @@ impl VirtualPageAllocator {
                     }
                     *entry = Default::default();
                 }
-                Ok(())
             } else {
                 // Free of Alloced memory
                 physical_allocator.free(entry.entry_page(), size)?;
-                unsafe { self.mmu.unmap_range_page(vaddr, size.into()) }
+                unsafe { self.mmu.unmap_range_page(vaddr, size.into())? }
             }
-        } else {
-            Err(MemoryError::NotPhysicallyMapped)
-        }
+            Ok(())
+        })
     }
 }
 
