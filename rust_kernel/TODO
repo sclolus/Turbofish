@@ -1,0 +1,12 @@
+Un test de valloc; (integeration)
+ksize
+with ksize impl kmalloc kfree and krealloc
+create a user virtual allocator, change cr3 and do some alloc
+reserve virtual memory of the self mapping tricks (page_directory.rs)
+Custom the entry set to page table entries.
+
+with ksize impl kmalloc kfree and krealloc: {
+     void   *kmalloc(size_t size, gfp_t flags);
+     void   kfree(void *addr);
+     size_t ksize(void *addr);
+}
