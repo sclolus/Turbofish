@@ -1,8 +1,6 @@
 use super::BuddyAllocator;
 use crate::memory::tools::*;
-use alloc::vec;
 use bitflags::bitflags;
-use core::mem;
 
 #[derive(Debug)]
 pub struct PhysicalPageAllocator {
@@ -18,7 +16,7 @@ bitflags! {
 
 impl PhysicalPageAllocator {
     pub fn new(phys_start: Page<Phys>, size: NbrPages) -> Self {
-        Self { allocator: BuddyAllocator::new(phys_start, size, vec![0; BuddyAllocator::<Phys>::metadata_size(size)]) }
+        Self { allocator: BuddyAllocator::new(phys_start, size) }
     }
     /// size in bytes
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Phys>> {

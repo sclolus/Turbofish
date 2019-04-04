@@ -1,4 +1,5 @@
 use crate::memory::tools::*;
+use alloc::vec;
 use alloc::vec::Vec;
 use bit_field::BitField;
 use core::fmt;
@@ -18,11 +19,12 @@ pub struct BuddyAllocator<T: Address> {
 
 impl<T: Address> BuddyAllocator<T> {
     /// buddies must be a zeroed vec
-    pub fn new(addr: Page<T>, size: NbrPages, buddies: Vec<u8>) -> Self {
-        let max_order: Order = size.into();
+    pub fn new(addr: Page<T>, size: NbrPages) -> Self {
+        let max_order: Order = size.into(); //TODO: c faux
         let nbr_buddies: usize = Self::nbr_buddies(max_order.0);
 
-        let new = Self { addr, size, max_order, buddies, nbr_buddies };
+        let new =
+            Self { addr, size, max_order, buddies: vec![0; BuddyAllocator::<Virt>::metadata_size(size)], nbr_buddies };
 
         // let normalized_size = size.0.next_power_of_two();
         // let unavailable_range = size.0..normalized_size;
@@ -440,11 +442,8 @@ mod test {
             unsafe { allocator.alloc(Layout::from_size_align(NB_BLOCK * PAGE_SIZE, PAGE_SIZE).unwrap()).unwrap() };
         const MAX_ORDER: usize = NB_BLOCK.trailing_zeros() as usize;
 
-        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
-            Virt(address_space.as_ptr() as usize).into(),
-            NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
-        );
+        let mut buddy_allocator: BuddyAllocator<Virt> =
+            BuddyAllocator::new(Virt(address_space.as_ptr() as usize).into(), NbrPages(NB_BLOCK));
 
         // buddy_allocator.reserve_exact(Virt(address_space.as_ptr() as usize).into(), NbrPages(12));
 
@@ -572,11 +571,8 @@ mod test {
         const NB_BLOCK: usize = 16;
         let map_location = 0x00010000 as *const u8;
 
-        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
-            Virt(map_location as usize).into(),
-            NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
-        );
+        let mut buddy_allocator: BuddyAllocator<Virt> =
+            BuddyAllocator::new(Virt(map_location as usize).into(), NbrPages(NB_BLOCK));
 
         let alloc_size = NbrPages(1);
         for i in 0..(NB_BLOCK) {
@@ -601,11 +597,8 @@ mod test {
         const NB_BLOCK: usize = 16;
         let map_location = 0x00010000 as *const u8;
 
-        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
-            Virt(map_location as usize).into(),
-            NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
-        );
+        let mut buddy_allocator: BuddyAllocator<Virt> =
+            BuddyAllocator::new(Virt(map_location as usize).into(), NbrPages(NB_BLOCK));
         buddy_allocator.reserve_exact(Virt(map_location as usize + PAGE_SIZE).into(), NbrPages(2)).unwrap();
         let buddy_before = buddy_allocator.clone();
         let alloc_size = NbrPages(1);
@@ -642,11 +635,8 @@ mod test {
 
         // First allocate a Buddy of NB_BLOCK
         let map_location = 0x100000 as *const u8;
-        let mut buddy_allocator: BuddyAllocator<Virt> = BuddyAllocator::new(
-            Virt(map_location as usize).into(),
-            NbrPages(NB_BLOCK),
-            vec![0; BuddyAllocator::<Virt>::metadata_size(NbrPages(NB_BLOCK))],
-        );
+        let mut buddy_allocator: BuddyAllocator<Virt> =
+            BuddyAllocator::new(Virt(map_location as usize).into(), NbrPages(NB_BLOCK));
 
         let mut nb_allocations: usize = 0;
 

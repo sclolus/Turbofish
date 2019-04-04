@@ -6,7 +6,6 @@ use crate::memory::mmu::{PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::{BuddyAllocator, SlabAllocator};
 use alloc::boxed::Box;
-use alloc::vec;
 use core::alloc::{GlobalAlloc, Layout};
 
 mod bootstrap;
@@ -211,7 +210,6 @@ pub unsafe fn init_kernel_virtual_allocator() {
     let buddy = BuddyAllocator::new(
         Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE).into(),
         KERNEL_VIRTUAL_MEMORY,
-        vec![0; BuddyAllocator::<Virt>::metadata_size(KERNEL_VIRTUAL_MEMORY)],
     );
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &BIOS_PAGE_TABLE);
