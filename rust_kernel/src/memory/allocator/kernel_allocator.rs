@@ -55,7 +55,9 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     }
 }
 
+/// Allocate Kernel physical Memory
 /// kmalloc like a boss
+#[no_mangle]
 pub unsafe fn kmalloc(size: usize) -> *mut u8 {
     match Layout::from_size_align(size, 16) {
         Err(_) => 0 as *mut u8,
@@ -78,6 +80,8 @@ pub unsafe fn kmalloc(size: usize) -> *mut u8 {
     }
 }
 
+/// De-allocate Kernel physical Memory
+#[no_mangle]
 pub unsafe fn kfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(a) => {
@@ -93,7 +97,9 @@ pub unsafe fn kfree(addr: *mut u8) {
     }
 }
 
-pub unsafe fn ksize(addr: *mut u8) -> Result<usize> {
+/// Get the internal size of a kmalloc allocation
+#[no_mangle]
+pub unsafe fn ksize(addr: *mut u8) -> usize {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(a) => {
             let res = a.ksize(Virt(addr as usize));
@@ -103,14 +109,17 @@ pub unsafe fn ksize(addr: *mut u8) -> Result<usize> {
                     .unwrap()
                     .ksize(Page::containing(Virt(addr as usize)))
                     .map(|nbr_pages| nbr_pages.to_bytes())
+                    .unwrap()
             } else {
-                res
+                res.unwrap()
             }
         }
         KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
     }
 }
 
+/// Allocate Kernel virtual Memory
+#[no_mangle]
 pub unsafe fn vmalloc(size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
@@ -126,6 +135,8 @@ pub unsafe fn vmalloc(size: usize) -> *mut u8 {
     }
 }
 
+/// De-allocate Kernel virtual Memory
+#[no_mangle]
 pub unsafe fn vfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
@@ -135,13 +146,16 @@ pub unsafe fn vfree(addr: *mut u8) {
     }
 }
 
-pub unsafe fn vsize(addr: *mut u8) -> Result<usize> {
+/// Get the internal size of a vmalloc allocation
+#[no_mangle]
+pub unsafe fn vsize(addr: *mut u8) -> usize {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
             .unwrap()
             .ksize(Page::containing(Virt(addr as usize)))
-            .map(|nbr_pages| nbr_pages.to_bytes()),
+            .map(|nbr_pages| nbr_pages.to_bytes())
+            .unwrap(),
         KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
     }
 }

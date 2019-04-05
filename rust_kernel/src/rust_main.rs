@@ -129,7 +129,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         }
 
         unsafe {
-            let _ksize = ksize(ptr).unwrap();
+            let _ksize = ksize(ptr);
 
             // println!("ksize returned {} == {}", _ksize, size);
             kfree(ptr);
@@ -144,7 +144,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         }
 
         unsafe {
-            let _ksize = vsize(ptr).unwrap();
+            let _ksize = vsize(ptr);
 
             // println!("ksize returned {} == {}", _ksize, size);
             vfree(ptr);
