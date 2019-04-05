@@ -1,6 +1,6 @@
 KERNEL = rust
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 16384
+IMAGE_SIZE = 20480
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 

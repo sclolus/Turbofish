@@ -36,7 +36,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         watch_dog();
         interrupts::enable();
 
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map_ptr).unwrap();
+        let device_map = get_device_map_slice(device_map_ptr);
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();

@@ -1,6 +1,6 @@
 use super::standard_sodomizer::make_somization;
+use crate::drivers::UART_16550;
 use crate::interrupts;
-use crate::io::UART_16550;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
 use crate::memory::allocator::kernel_allocator::{kfree, kmalloc, ksize};

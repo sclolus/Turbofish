@@ -113,7 +113,7 @@ fn get_eip(ebp: *const u32) -> (u32, *const u32) {
 }
 
 /// Take the first eip and epb as parameter and trace back up.
-fn trace_back(mut s: (u32, *const u32)) {
+pub fn trace_back(mut s: (u32, *const u32)) {
     loop {
         let symbol = unsafe { _get_symbol(s.0) };
         eprintln!("{:X?} : {:?}, eip={:X?}", symbol.offset, symbol.name, s.0);
@@ -178,10 +178,8 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
     exit_qemu(1);
 }
 
-use core::panic::PanicInfo;
-
 #[allow(dead_code)]
-fn panic_sa_mere(info: &PanicInfo) {
+pub fn panic_sa_mere(info: &PanicInfo) {
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;
     unsafe {
@@ -195,7 +193,7 @@ fn panic_sa_mere(info: &PanicInfo) {
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
-    panic_sa_mere();
+    panic_sa_mere(info);
     loop {}
 }
 
@@ -204,7 +202,7 @@ fn panic(info: &PanicInfo) -> ! {
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
-    panic_sa_mere();
+    panic_sa_mere(info);
     use crate::tests::helpers::exit_qemu;
     exit_qemu(1);
     loop {}

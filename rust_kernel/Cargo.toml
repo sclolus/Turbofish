@@ -11,6 +11,7 @@ panic = "abort"
 
 [profile.dev]
 panic = "abort"
+debug = true
 
 [lib]
 crate-type = ["staticlib"]

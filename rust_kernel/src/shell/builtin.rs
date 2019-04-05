@@ -5,7 +5,11 @@ use keyboard::{KeyMap, KEYBOARD_DRIVER};
 /// show backtrace
 pub fn backtrace(_args: &[&str]) -> u8 {
     #[cfg(not(test))]
-    crate::panic::panic_sa_mere();
+    unsafe {
+        let ebp: *const u32;
+        asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel");
+        crate::panic::trace_back((*ebp.add(1), *ebp as *const u32));
+    }
     0
 }
 
