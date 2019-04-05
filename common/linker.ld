@@ -39,9 +39,6 @@ SECTIONS
 	virtual_offset = 0xc0000000;
 	. += virtual_offset;
 
-	high_kernel_virtual_start = .;
-	high_kernel_physical_start = . - virtual_offset;
-
 	/* Base code section */
 	.text BLOCK(4K) : AT(ADDR(.text) - virtual_offset) ALIGN(4K)
 	{
@@ -96,7 +93,5 @@ SECTIONS
 	   a segment with the same name. Simply add stuff here as needed. */
 
 	kernel_virtual_end = .;
-	high_kernel_virtual_end = .;
-	high_kernel_physical_end = . - virtual_offset;
 	kernel_physical_end = . - virtual_offset;
 }

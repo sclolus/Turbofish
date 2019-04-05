@@ -15,7 +15,6 @@ impl PhysicalPageAllocator {
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
             let res = self.allocator.alloc(order)?;
-            assert!(res.to_addr().0 > symbol_addr!(high_kernel_physical_start));
             // eprintln!("{:x?}", res.to_addr());
             Ok(res)
         } else {
@@ -41,15 +40,12 @@ impl PhysicalPageAllocator {
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
 pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map: &[DeviceMap]) {
-    eprintln!("kernel physical end: {:x?}", symbol_addr!(high_kernel_physical_end));
-    eprintln!(
-        "kernel physical end alligned: {:x?}",
-        Phys(symbol_addr!(high_kernel_physical_end)).align_next(PAGE_SIZE)
-    );
+    eprintln!("kernel physical end: {:x?}", symbol_addr!(kernel_physical_end));
+    eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_next(PAGE_SIZE));
 
     let mut pallocator = PhysicalPageAllocator::new(Page::new(0), system_memory_amount);
 
-    pallocator.reserve(Page::new(0), (symbol_addr!(high_kernel_physical_end) - 0).into()).unwrap();
+    pallocator.reserve(Page::new(0), (symbol_addr!(kernel_physical_end) - 0).into()).unwrap();
     // Reserve in memory the regions that are not usable according to the device_map slice,
     // making them effectively unusable by the memory system.
     for region in device_map.iter() {
