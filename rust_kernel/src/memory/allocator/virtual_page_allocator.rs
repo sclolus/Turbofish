@@ -141,8 +141,7 @@ impl VirtualPageAllocator {
     pub fn valloc_handle_page_fault(&mut self, cr2: u32) -> Result<()> {
         let p = Page::containing(Virt(cr2 as usize));
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
-        // TODO: remove this unwrap
-        let entry = self.mmu.get_entry_mut(p).unwrap();
+        let entry = self.mmu.get_entry_mut(p).ok_or(MemoryError::PageFault)?;
 
         if entry.contains(Entry::VALLOC) {
             let paddr = physical_allocator.alloc(NbrPages(1), AllocFlags::KERNEL_MEMORY).map_err(|e| e)?;
