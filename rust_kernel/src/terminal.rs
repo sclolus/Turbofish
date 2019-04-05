@@ -143,9 +143,9 @@ pub fn init_terminal() {
     // unlock mutex
     drop(screen_monad);
 
+    term.get_foreground_tty().unwrap().tty.refresh();
     unsafe {
         TERMINAL = Some(term);
-        TERMINAL.as_mut().unwrap().get_foreground_tty().unwrap().tty.refresh();
         KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
     self::log::init().unwrap();

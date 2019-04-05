@@ -4,6 +4,7 @@ use io::{Io, Pio};
 
 const HEIGHT: usize = 25;
 const WIDTH: usize = 80;
+const VGA_MEM_LOCATION: *mut u8 = 0xb8000 as *mut u8;
 
 pub struct VgaTextMode {
     memory_location: &'static mut [(u8, u8); WIDTH * HEIGHT],
@@ -15,7 +16,7 @@ impl VgaTextMode {
     const CURSOR_DATA_REGISTER: u16 = 0x3D5;
 
     pub fn new() -> Self {
-        Self { memory_location: unsafe { &mut *(0xb8000 as *mut [(u8, u8); WIDTH * HEIGHT]) } }
+        Self { memory_location: unsafe { &mut *(VGA_MEM_LOCATION as *mut [(u8, u8); WIDTH * HEIGHT]) } }
     }
 }
 
@@ -41,7 +42,7 @@ impl Drawer for VgaTextMode {
         // fill screen with white non visible cells (cursor will be white)
         unsafe {
             _screencpy_des_familles(
-                0xb8000 as *mut u8,
+                VGA_MEM_LOCATION,
                 VgaCell { character: ' ' as u8, color: Into::<VgaColor>::into(AnsiColor::WHITE).0 },
                 WIDTH * HEIGHT,
             );

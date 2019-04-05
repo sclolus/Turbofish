@@ -61,6 +61,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let date = rtc.read_date();
     println!("{}", date);
 
+    log::error!("this is an example of error");
     watch_dog();
     shell();
     0
