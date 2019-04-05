@@ -1,5 +1,4 @@
 use super::virtual_page_allocator::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
-use super::KERNEL_VIRTUAL_MEMORY;
 use crate::memory::mmu::{Entry, PageDirectory, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::{BuddyAllocator, SlabAllocator};
@@ -208,7 +207,7 @@ pub unsafe fn init_kernel_virtual_allocator() {
     let virt_start: Page<Virt> = Virt(symbol_addr!(virtual_offset)).into();
     let virt_end: Page<Virt> = Virt(symbol_addr!(kernel_virtual_end)).align_next(PAGE_SIZE).into();
 
-    let mut buddy = BuddyAllocator::new(virt_start, KERNEL_VIRTUAL_MEMORY);
+    let mut buddy = BuddyAllocator::new(virt_start, NbrPages::_1GB);
     buddy.reserve_exact(virt_start, virt_end - virt_start).expect("failed to reserve the virtual kernel");
 
     // reserve the trics addresses in the buddy

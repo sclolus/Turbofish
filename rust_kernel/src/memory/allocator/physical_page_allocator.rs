@@ -10,7 +10,7 @@ impl PhysicalPageAllocator {
     pub fn new(phys_start: Page<Phys>, size: NbrPages) -> Self {
         Self { allocator: BuddyAllocator::new(phys_start, size) }
     }
-    /// size in bytes
+
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Phys>> {
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
@@ -25,7 +25,7 @@ impl PhysicalPageAllocator {
     pub fn reserve(&mut self, addr: Page<Phys>, size: NbrPages) -> Result<()> {
         self.allocator.reserve_exact(addr, size)
     }
-    /// size in bytes
+
     pub fn free(&mut self, paddr: Page<Phys>) -> Result<()> {
         let order = self.ksize(paddr)?.into();
 
