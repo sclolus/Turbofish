@@ -211,6 +211,9 @@ pub unsafe fn init_kernel_virtual_allocator() {
     let mut buddy = BuddyAllocator::new(virt_start, KERNEL_VIRTUAL_MEMORY);
     buddy.reserve_exact(virt_start, virt_end - virt_start).expect("failed to reserve the virtual kernel");
 
+    // reserve the trics addresses in the buddy
+    buddy.reserve_exact(Page::containing(Virt(0xFFC00000)), (1024 * 4096).into()).unwrap();
+
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &BIOS_PAGE_TABLE);
     pd.set_page_tables(768, &PAGE_TABLES);
