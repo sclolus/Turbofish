@@ -74,10 +74,7 @@ impl<T: Address> BuddyAllocator<T> {
     /// # Panic
     /// panic if addr is not a multiple of order.nbr_pages() * PAGE_SIZE
     fn reserve(&mut self, addr: Page<T>, order: Order) -> Result<()> {
-        if order > self.max_order
-            || addr < self.addr
-            || (addr - self.addr) + order.nbr_pages() > self.max_order.nbr_pages()
-        {
+        if order > self.max_order || addr < self.addr || (addr - self.addr) + order.nbr_pages() > self.size {
             return Err(MemoryError::OutOfBound);
         }
         // print!("{:?},", addr.number);

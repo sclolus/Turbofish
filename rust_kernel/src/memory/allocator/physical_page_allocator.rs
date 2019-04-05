@@ -24,6 +24,7 @@ impl PhysicalPageAllocator {
         if flags.contains(AllocFlags::KERNEL_MEMORY) {
             let order = size.into();
             let res = self.allocator.alloc(order)?;
+            assert!(res.to_addr().0 > symbol_addr!(high_kernel_physical_start));
             // eprintln!("{:x?}", res.to_addr());
             Ok(res)
         } else {
@@ -64,14 +65,7 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
             i += 1;
         }
     };
-    //    DOESNT WORK I DONT KNOW WHY
-    pallocator.reserve(Page::new(0), NbrPages::_1MB.into()).unwrap();
-    pallocator
-        .reserve(
-            Page::containing(Phys(symbol_addr!(high_kernel_physical_start))),
-            (symbol_addr!(high_kernel_physical_end) - symbol_addr!(high_kernel_physical_start)).into(),
-        )
-        .unwrap();
+    pallocator.reserve(Page::new(0), (symbol_addr!(high_kernel_physical_end) - 0).into()).unwrap();
     let device_map_slice = core::slice::from_raw_parts(device_map_ptr, device_map_len);
     for d in device_map_slice {
         println!("{:x?}", d);
