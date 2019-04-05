@@ -432,7 +432,7 @@ mod test {
     fn sodo_allocator() {
         use std::alloc::{Alloc, Global, Layout, System};
 
-        const NB_ALLOC: usize = 50000;
+        const NB_ALLOC: usize = 50000 / 10;
         let mut allocator: System = System;
 
         const NB_BLOCK: usize = 0x10000;
@@ -632,7 +632,7 @@ mod test {
     fn sodo_buddy_fill() {
         use crate::math::random::rand;
 
-        const NB_TESTS: usize = 10000;
+        const NB_TESTS: usize = 10000 / 10;
 
         const NB_BLOCK: usize = 128;
         const PAGE_ORDER: usize = 4;
