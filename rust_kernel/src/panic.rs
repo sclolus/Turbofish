@@ -1,6 +1,6 @@
 use crate::ffi::c_str;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ExtendedRegisters {
@@ -22,6 +22,36 @@ pub struct ExtendedRegisters {
     /*60      |*/ pub eax: u32,
     /*64      |*/ pub old_ebp: u32,
     /*68      |*/
+}
+
+impl core::fmt::Debug for ExtendedRegisters {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        unsafe {
+            write!(
+                f,
+                "cs: {:#X?}, ds: {:#X?}, es: {:#X?}, fs: {:#X?}, gs: {:#X?}, ss: {:#X?}\n\
+                 esi: {:#010X?}, edi: {:#010X?}, ebp: {:#010X?}, esp: {:#010X?}\n\
+                 eax: {:#010X?}, ebx: {:#010X?}, ecx: {:#010X?}, edx: {:#010X?}\n\
+                 eip: {:#010X?}, eflags => {:#010X?}",
+                self.cs,
+                self.ds,
+                self.es,
+                self.fs,
+                self.gs,
+                self.ss,
+                self.esi,
+                self.edi,
+                self.new_ebp,
+                self.esp,
+                self.eax,
+                self.ebx,
+                self.ecx,
+                self.edx,
+                self.eip,
+                self.eflags
+            )
+        }
+    }
 }
 
 /*
@@ -129,14 +159,23 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
     };
 }
 
+#[cfg(not(feature = "exit-on-panic"))] //for integration test when not in graphical
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
-    eprintln!("KERNEL PANIC !");
-    eprintln!("reason {:?}", s);
-    eprintln!("{:X?}\n", ext_reg);
+    eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
 
     trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
     loop {}
+}
+
+#[cfg(feature = "exit-on-panic")] //for integration test when not in graphical
+#[no_mangle]
+pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
+    eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
+
+    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    use crate::tests::helpers::exit_qemu;
+    exit_qemu(1);
 }
 
 use core::panic::PanicInfo;

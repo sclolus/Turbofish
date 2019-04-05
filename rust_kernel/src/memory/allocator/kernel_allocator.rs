@@ -160,6 +160,47 @@ pub unsafe extern "C" fn vsize(addr: *mut u8) -> usize {
     }
 }
 
+/// FFI safe function: Map a physical addr
+#[no_mangle]
+pub unsafe extern "C" fn map(phy_addr: *mut u8, mut size: usize) -> *mut u8 {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(_) => {
+            // if addr is between two pages boundaries, increment size by one page
+            if size % PAGE_SIZE != 0 {
+                size += PAGE_SIZE;
+            }
+            match KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().map_addr(Phys(phy_addr as usize).into(), size.into())
+            {
+                Err(_) => 0 as *mut u8,
+                Ok(virt_addr) => (virt_addr.to_addr().0 as *mut u8).add(phy_addr as usize % PAGE_SIZE),
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Mapping memory while in bootstrap allocator is unsafe"),
+    }
+}
+
+/// FFI safe function: Unmap a physical addr corresponding to a physical addr
+#[no_mangle]
+pub unsafe extern "C" fn unmap(virt_addr: *mut u8, mut size: usize) -> i32 {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(_) => {
+            // if addr is between two pages boundaries, increment size by one page
+            if size % PAGE_SIZE != 0 {
+                size += PAGE_SIZE;
+            }
+            match KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .unmap_addr(Virt(virt_addr as usize).into(), size.into())
+            {
+                Err(_) => -1,
+                Ok(_) => 0,
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Unmapping memory while in bootstrap allocator is unsafe"),
+    }
+}
+
 #[alloc_error_handler]
 #[cfg(not(test))]
 fn out_of_memory(_: core::alloc::Layout) -> ! {

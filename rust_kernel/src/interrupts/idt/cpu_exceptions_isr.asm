@@ -8,10 +8,16 @@
 	push dword [ebp + 16] ; eflags
 	push dword [ebp + 12] ; cs
 	push dword [ebp + 8]  ; eip
+	xor eax, eax
+	mov [esp - 4], eax
 	push ss
+	mov [esp - 4], eax
 	push gs
+	mov [esp - 4], eax
 	push fs
+	mov [esp - 4], eax
 	push es
+	mov [esp - 4], eax
 	push ds
 %endmacro
 
@@ -20,10 +26,16 @@
 	push dword [ebp + 12] ; eflags
 	push dword [ebp + 8]  ; cs
 	push dword [ebp + 4]  ; eip
+	xor eax, eax
+	mov [esp - 4], eax
 	push ss
+	mov [esp - 4], eax
 	push gs
+	mov [esp - 4], eax
 	push fs
+	mov [esp - 4], eax
 	push es
+	mov [esp - 4], eax
 	push ds
 %endmacro
 
