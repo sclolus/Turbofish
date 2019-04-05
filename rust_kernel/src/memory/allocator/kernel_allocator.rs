@@ -205,28 +205,23 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 }
 
 pub unsafe fn init_kernel_virtual_allocator() {
-    let buddy = BuddyAllocator::new(
-        Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE).into(),
-        KERNEL_VIRTUAL_MEMORY,
-    );
+    let virt_start: Page<Virt> = Virt(symbol_addr!(virtual_offset)).into();
+    let virt_end: Page<Virt> = Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE).into();
+
+    let mut buddy = BuddyAllocator::new(virt_start, KERNEL_VIRTUAL_MEMORY);
+    buddy.reserve_exact(virt_start, virt_end - virt_start).expect("failed to reserve the virtual kernel");
+
     let mut pd = Box::new(PageDirectory::new());
     pd.set_page_tables(0, &BIOS_PAGE_TABLE);
     pd.set_page_tables(768, &PAGE_TABLES);
     pd.map_range_page_init(Virt(0).into(), Phys(0).into(), NbrPages::_1MB, Entry::READ_WRITE | Entry::PRESENT)
         .expect("Could not identity map the first megabyte of memory");
-    pd.map_range_page_init(
-        Page::containing(Virt(symbol_addr!(high_kernel_virtual_start))),
-        Page::containing(Phys(symbol_addr!(high_kernel_physical_start))),
-        (Virt(symbol_addr!(high_kernel_virtual_end)).align_next(PAGE_SIZE)
-            - Virt(symbol_addr!(high_kernel_virtual_start)).align_prev(PAGE_SIZE))
-        .into(),
-        Entry::READ_WRITE | Entry::PRESENT,
-    )
-    .expect("Init: Could not map the kernel");
-    let raw_pd = Box::into_raw(pd);
-    let phys_pd = Phys(raw_pd as usize - symbol_addr!(virtual_offset));
+    pd.map_range_page_init(virt_start, Page::new(0), virt_end - virt_start, Entry::READ_WRITE | Entry::PRESENT)
+        .expect("Init: Could not map the kernel");
 
-    pd = Box::from_raw(raw_pd);
+    let raw_pd = pd.as_mut();
+    let phys_pd = Phys(raw_pd as *mut PageDirectory as usize - symbol_addr!(virtual_offset));
+
     pd.self_map_tricks(phys_pd);
 
     _enable_paging(phys_pd);
