@@ -2,7 +2,9 @@
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::page_table::PageTable;
 use super::Entry;
+use crate::memory::allocator::PHYSICAL_ALLOCATOR;
 use crate::memory::tools::*;
+use core::mem::size_of;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
 
@@ -19,8 +21,8 @@ impl PageDirectory {
     pub const fn new() -> Self {
         Self { entries: [Entry::new(); 1024] }
     }
-
-    /// trick to always map the pages tables from address 0xFFC...
+    /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .
+    /// The idea is that the last Entry points to self, viewed as a Page Table.
     /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)
     pub unsafe fn self_map_tricks(&mut self, cr3: Phys) {
         self[1023] = Default::default();
@@ -52,8 +54,25 @@ impl PageDirectory {
         if !self[pd_index].contains(Entry::PRESENT) {
             return None;
         }
-        // assert!(self as *const _ == 0xFFC00000 as *const _);
         Some(unsafe { &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable) })
+    }
+
+    #[inline(always)]
+    unsafe fn get_page_table_trick_alloc(&mut self, virtp: Page<Virt>) -> Result<&mut PageTable> {
+        let pd_index = virtp.pd_index();
+        if !self[pd_index].contains(Entry::PRESENT) {
+            let new_page_table =
+                PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(size_of::<PageTable>().into(), AllocFlags::KERNEL_MEMORY)?;
+            self[pd_index].set_entry_page(new_page_table);
+            self[pd_index] |= Entry::PRESENT | Entry::READ_WRITE;
+
+            let slice =
+                core::slice::from_raw_parts_mut((0xFFC00000 + pd_index * 4096) as *mut u8, size_of::<PageTable>());
+            for i in slice {
+                *i = 0;
+            }
+        }
+        Ok(&mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable))
     }
 
     #[inline(always)]
@@ -69,9 +88,7 @@ impl PageDirectory {
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
     pub unsafe fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
-        self.get_page_table_trick(virtp)
-            .ok_or(MemoryError::PageTableNotPresent)
-            .and_then(|page_table| page_table.map_page(virtp, physp, entry))
+        self.get_page_table_trick_alloc(virtp)?.map_page(virtp, physp, entry)
     }
 
     //TODO: check overflow
@@ -131,8 +148,8 @@ impl PageDirectory {
     // pub unsafe fn get_current_page_directory() -> *mut PageDirectory {
     //     Cr3::read() as *mut PageDirectory
     // }
-    // /// This is a trick that ensures that the page tables are mapped into virtual memory.
-    // /// The idea is that the last Entry points to self, viewed as a Page Table.
+    //
+    //
     // /// It means that the Virtual Addresses of the PageTables have their 10-higher bits set.
     // /// The range of bits [12..22] then describes the index inside the PageDirectory, that is the index of the PageTable itself.
     // /// Then the range of bits [0..12] describes the offset inside the PageTable, which is fine since a PageTable is exactly 4096 bytes.
