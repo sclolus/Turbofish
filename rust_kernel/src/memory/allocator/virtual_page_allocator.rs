@@ -1,4 +1,4 @@
-use super::physical_page_allocator::{AllocFlags, PHYSICAL_ALLOCATOR};
+use super::physical_page_allocator::PHYSICAL_ALLOCATOR;
 use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use crate::memory::BuddyAllocator;

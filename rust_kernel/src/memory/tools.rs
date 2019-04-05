@@ -9,6 +9,9 @@ pub use sections::*;
 pub mod device_map;
 pub use device_map::*;
 
+pub mod alloc_flags;
+pub use alloc_flags::*;
+
 pub const PAGE_SIZE: usize = 4096;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

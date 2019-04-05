@@ -1,17 +1,9 @@
 use super::BuddyAllocator;
 use crate::memory::tools::*;
-use bitflags::bitflags;
 
 #[derive(Debug)]
 pub struct PhysicalPageAllocator {
     allocator: BuddyAllocator<Phys>,
-}
-
-bitflags! {
-    pub struct AllocFlags: u32 {
-        const KERNEL_MEMORY = 1 << 0;
-        const USER_MEMORY = 1 << 0;
-    }
 }
 
 impl PhysicalPageAllocator {
