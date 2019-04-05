@@ -174,6 +174,3 @@ exec_serial_port:
 
 exec_gdb:
 	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) $(QEMU_ARGS)
-
-tests:
-	cargo test
