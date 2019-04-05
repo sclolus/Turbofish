@@ -187,7 +187,7 @@ impl KeyboardDriver {
 
     pub fn interrupt_handler(&mut self, scancode: u32) {
         match self.io_term {
-            None => eprintln!("no consumer registered !"),
+            None => eprintln!("No consumer registered !"),
             Some(arg) => {
                 use CallbackKeyboard::*;
                 match arg {

@@ -82,7 +82,7 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
                 if let Err(e) =
                     pallocator.reserve(Page::containing(Phys(d.low_addr as usize)), (d.low_length as usize).into())
                 {
-                    eprintln!("Physical Allocator: {:?}", e);
+                    eprintln!("{} {:?}", function!(), e);
                 }
             }
         }

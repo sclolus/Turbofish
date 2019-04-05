@@ -2,7 +2,7 @@ use crate::drivers::pit_8253::PIT0;
 use crate::terminal::ansi_escape_code::color::AnsiColor;
 use core::time::Duration;
 
-pub fn really_lazy_hello_world() {
+pub fn really_lazy_hello_world(duration: Duration) {
     let hello_world = [
         ("H", AnsiColor::GREEN),
         ("E", AnsiColor::RED),
@@ -19,7 +19,7 @@ pub fn really_lazy_hello_world() {
         ("!", AnsiColor::WHITE),
     ];
     for (c, color) in hello_world.iter() {
-        PIT0.lock().sleep(Duration::from_millis(200));
+        PIT0.lock().sleep(duration);
         print!("{}{}", color, c);
     }
     print!("\n");

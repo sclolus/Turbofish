@@ -119,10 +119,9 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
         };
 
         eprintln!("{}", page_fault_cause);
-
         eprintln!("cr2: 0x{:x}", cr2);
-
         eprintln!("{:?}", e);
+        eprintln!("{:X?}\n", ext_reg);
 
         trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
         loop {}

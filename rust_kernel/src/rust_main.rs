@@ -13,6 +13,7 @@ use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 use crate::watch_dog;
+use core::time::Duration;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
@@ -54,7 +55,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
 
-    crate::test_helpers::really_lazy_hello_world();
+    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");

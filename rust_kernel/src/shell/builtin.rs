@@ -1,4 +1,5 @@
 use crate::drivers::pci::PCI;
+use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// show backtrace
@@ -93,7 +94,7 @@ pub fn layout(args: &[&str]) -> u8 {
 
 /// display a very lazy hello world
 pub fn hello_world(_args: &[&str]) -> u8 {
-    crate::test_helpers::really_lazy_hello_world();
+    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
     0
 }
 
