@@ -3,14 +3,14 @@ use crate::memory::tools::sections::{__end_rodata, __end_text, __start_rodata, _
 #[allow(deprecated)]
 use core::hash::{Hash, Hasher, SipHasher};
 
-type IdtBios = [[u16; 2]; 256];
+type IvtBios = [[u16; 2]; 256];
 
 struct WatchDog {
     pub checksum_text: u64,
     pub checksum_rodata: u64,
     pub idt: [IdtGateEntry; InterruptTable::DEFAULT_IDT_SIZE as usize],
     pub idt_size: usize,
-    pub idt_bios: IdtBios,
+    pub ivt_bios: IvtBios,
 }
 
 static mut WATCH_DOG: Option<WatchDog> = None;
@@ -27,41 +27,53 @@ pub fn watch_dog() {
     let checksum_text = hash_section(symbol_addr!(__start_text), symbol_addr!(__end_text));
     let checksum_rodata = hash_section(symbol_addr!(__start_rodata), symbol_addr!(__end_rodata));
     unsafe {
-        let curr_idt = InterruptTable::current_interrupt_table();
-        let idt_bios = *(0x0 as *const IdtBios);
-        match WATCH_DOG {
+        let curr_idt = InterruptTable::current_interrupt_table().unwrap();
+        let ivt_bios = *(0x0 as *const IvtBios);
+        match &mut WATCH_DOG {
             None => {
                 let mut idt: [IdtGateEntry; InterruptTable::DEFAULT_IDT_SIZE as usize] = core::mem::zeroed();
 
                 for (d, s) in idt.iter_mut().zip(curr_idt.iter()) {
                     *d = *s;
                 }
-                WATCH_DOG = Some(WatchDog { checksum_text, checksum_rodata, idt, idt_size: curr_idt.len(), idt_bios });
+                WATCH_DOG = Some(WatchDog { checksum_text, checksum_rodata, idt, idt_size: curr_idt.len(), ivt_bios });
             }
-            Some(WatchDog {
-                checksum_text: old_checksum_text,
-                checksum_rodata: old_checksum_rodata,
-                idt,
-                idt_size,
-                idt_bios: old_idt_bios,
-            }) => {
-                assert_eq!(idt_size, curr_idt.len(), "corruption of idt, idt size has changed");
-                let old_idt = core::slice::from_raw_parts(idt.as_ptr(), idt_size);
-                for (i, (o, n)) in old_idt.iter().zip(curr_idt.iter()).enumerate() {
-                    assert_eq!(o, n, "\ncorruption of idt at offset '{}'", i);
+            Some(watchdog) => {
+                assert_eq!(watchdog.idt_size, curr_idt.len(), "corruption of idt, idt size has changed");
+
+                // test if modifications are occured in IDT
+                for (i, (o, n)) in watchdog.idt.iter().zip(curr_idt.iter()).enumerate() {
+                    if o != n {
+                        log::warn!("Watchdog is worried about IDT at offset {}", i);
+                    }
                 }
-                for (i, (o, n)) in old_idt_bios.iter().zip(idt_bios.iter()).enumerate() {
-                    assert_eq!(o, n, "\ncorruption of idtbios at offset '{}'", i);
+                // refresh watchdog IDT
+                for (d, s) in watchdog.idt.iter_mut().zip(curr_idt.iter()) {
+                    *d = *s;
                 }
-                if checksum_rodata != old_checksum_rodata {
+                // test if modifications are occured in IVT BIOS
+                for (i, (o, n)) in watchdog.ivt_bios.iter().zip(ivt_bios.iter()).enumerate() {
+                    if o != n {
+                        log::warn!("Watchdog is worried about bios IVT at offset {}", i);
+                    }
+                }
+                // refresh watchdog IVT BIOS
+                watchdog.ivt_bios = ivt_bios;
+
+                if checksum_rodata != watchdog.checksum_rodata {
                     panic!("rodata corruption detected");
                 }
-                if checksum_text != old_checksum_text {
+                if checksum_text != watchdog.checksum_text {
                     panic!("text corruption detected");
                 }
             }
         }
-        // to test the watch dog
+        // to test the watch dog on text segment
         //*(symbol_addr!(__start_text) as *mut u8) = 42;
+        // to test watch dog on BIOS IVT
+        //watchdog.ivt_bios[42] = [0x42, 0x42];
+        // to test watch dog on IDT
+        //let p: *mut u8 = 0x1018 as *mut u8;
+        //*p = 42 as u8;
     }
 }

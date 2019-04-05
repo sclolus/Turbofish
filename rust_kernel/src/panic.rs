@@ -1,4 +1,5 @@
 use crate::ffi::c_str;
+use core::panic::PanicInfo;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -149,10 +150,9 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
         };
 
         eprintln!("{}", page_fault_cause);
-
         eprintln!("cr2: 0x{:x}", cr2);
-
         eprintln!("{:?}", e);
+        eprintln!("{:X?}\n", ext_reg);
 
         trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
         loop {}
@@ -184,16 +184,18 @@ use core::panic::PanicInfo;
 fn panic_sa_mere(info: &PanicInfo) {
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;
-    unsafe { asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel") }
-    // As we don't have eip in a panic, the first eip is put at ebp
-    trace_back((ebp as u32, ebp));
+    unsafe {
+        asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel");
+        trace_back((*ebp.add(1), *ebp as *const u32));
+    };
 }
 
 #[panic_handler]
 #[cfg(not(feature = "exit-on-panic"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
-    panic_sa_mere(info);
+    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
+    panic_sa_mere();
     loop {}
 }
 
@@ -201,7 +203,8 @@ fn panic(info: &PanicInfo) -> ! {
 #[cfg(feature = "exit-on-panic")] //for integration test when not in graphical
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
-    panic_sa_mere(info);
+    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
+    panic_sa_mere();
     use crate::tests::helpers::exit_qemu;
     exit_qemu(1);
     loop {}

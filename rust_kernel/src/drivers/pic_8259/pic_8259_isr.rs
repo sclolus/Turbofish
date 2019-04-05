@@ -1,5 +1,5 @@
 //! See [ISR](https://wiki.osdev.org/ISR)
-use crate::ffi::*;
+use crate::ffi::{c_char, strlen};
 
 extern "C" {
     pub(super) fn _isr_timer();
@@ -16,7 +16,6 @@ extern "C" {
     pub(super) fn _isr_fpu_coproc();
     pub(super) fn _isr_primary_hard_disk();
     pub(super) fn _isr_secondary_hard_disk();
-    pub(super) fn _default_isr();
 }
 
 /// For now, this is assigned as the handler for every interrupt that are not exceptions

@@ -1,5 +1,7 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
-use crate::io::{Io, Pio};
+use crate::Spinlock;
+use io::{Io, Pio};
+use lazy_static::lazy_static;
 
 use bit_field::BitField;
 
@@ -7,7 +9,9 @@ pub struct Pci {
     pub devices_list: CustomPciDeviceAllocator,
 }
 
-pub static mut PCI: Pci = Pci::new();
+lazy_static! {
+    pub static ref PCI: Spinlock<Pci> = Spinlock::new(Pci::new());
+}
 
 /// That Rust macro extend code of lot of PIO calls
 macro_rules! fill_struct_with_io {
@@ -34,7 +38,7 @@ macro_rules! fill_struct_with_io {
             }
 }
 
-/// Rust abstract of First line of PCI header
+// Rust abstract of First line of PCI header
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
@@ -43,7 +47,7 @@ fill_struct_with_io!(
     }
 );
 
-/// Rust Abstract of next third lines of PCI header
+// Rust Abstract of next third lines of PCI header
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
@@ -54,7 +58,7 @@ fill_struct_with_io!(
     }
 );
 
-/// Rust Abstract of Pci Registers (body)
+// Rust Abstract of Pci Registers (body)
 fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
@@ -283,8 +287,6 @@ impl Pci {
 
     /// Output all connected pci devices
     pub fn scan_pci_buses(&mut self) {
-        println!("scanning PCI buses ...");
-
         // Simple and Basic brute force scan method is used here !
         for bus in 0..=255 {
             for slot in 0..=31 {

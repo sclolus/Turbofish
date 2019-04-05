@@ -3,7 +3,6 @@
 #![feature(const_raw_ptr_to_usize_cast)] // rust is being annoying on the types of ffi functions
 #![feature(core_intrinsics)] // for function! macro
 #![feature(asm)] // for inline asm
-#![feature(try_from)]
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
 #![feature(copy_within)]
@@ -16,6 +15,10 @@
 
 extern crate alloc;
 
+// Our Crates
+extern crate io;
+extern crate keyboard;
+
 #[macro_use]
 pub mod utils;
 
@@ -26,15 +29,13 @@ pub mod debug;
 pub mod ffi;
 
 #[macro_use]
-pub mod monitor;
+pub mod terminal;
 
 #[macro_use]
 pub mod interrupts;
 
 #[macro_use]
-pub mod io;
 pub mod drivers;
-pub mod keyboard;
 pub mod math;
 pub mod multiboot;
 #[cfg(not(test))]
@@ -50,6 +51,11 @@ pub mod system;
 
 pub mod watch_dog;
 pub use watch_dog::*;
+
+pub mod shell;
+
+pub mod spinlock;
+pub use spinlock::{Spinlock, SpinlockGuard};
 
 use crate::memory::RustGlobalAlloc;
 

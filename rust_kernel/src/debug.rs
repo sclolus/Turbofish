@@ -1,4 +1,4 @@
-use crate::interrupts::pit::*;
+use crate::drivers::pit_8253::*;
 
 pub const POISON_SLAB: u32 = 0x5a5a5a5a;
 
@@ -54,5 +54,5 @@ pub fn bench_start() {
 
 /// return time elapsed is ms since bench_start in ms using the pit actual configuration
 pub fn bench_end() -> u32 {
-    unsafe { ((_get_pic_time() - BENCH_START_TIME) as f32 * PIT0.period * 1000 as f32) as u32 }
+    unsafe { ((_get_pic_time() - BENCH_START_TIME) as f32 * PIT0.lock().period * 1000 as f32) as u32 }
 }

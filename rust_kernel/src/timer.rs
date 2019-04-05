@@ -1,9 +1,9 @@
 //! Get current Date using the
 //! [CMOS](https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC) ram on the RTC chip.
-use crate::io::{Io, Pio};
 use bit_field::BitField;
 use core::convert::{TryFrom, TryInto};
 use core::{fmt, fmt::Display};
+use io::{Io, Pio};
 
 #[derive(Debug)]
 #[allow(dead_code)]

@@ -1,7 +1,10 @@
+//! Uselfull tools to read BMP files
+
 use super::{IoError, IoResult};
 use crate::ffi::c_char;
 use core::slice;
 
+/// Basic header of a BMP image
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
 pub struct BmpImage {
@@ -44,7 +47,7 @@ fn fill_image(output: *mut u8, image: *const u8, width: usize, height: usize, bp
     }
 }
 
-// This function implemente no scale change, only work with 1024 * 768 * (24b || 32b bitmap)
+/// This function implemente no scale change, only work with 1024 * 768 * (24b || 32b bitmap)
 pub fn draw_image(image: *const BmpImage, buffer: *mut u8, width: usize, height: usize, bpp: usize) -> IoResult {
     if bpp != 32 && bpp != 24 {
         Err(IoError::NotSupported)

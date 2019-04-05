@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-# define BUFF_SIZE 		128
+# define BUFF_SIZE 		256
 # define MAX_DESCRIPTORS	65536
 
 typedef struct		s_buffer

@@ -1,5 +1,5 @@
+use crate::drivers::UART_16550;
 use crate::interrupts;
-use crate::io::UART_16550;
 use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;

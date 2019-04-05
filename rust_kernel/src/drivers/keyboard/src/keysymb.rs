@@ -1,5 +1,9 @@
+/// Definition of KeyMapArray typedef
+pub type KeyMapArray = [[CapsLockSensitive; 16]; 128];
+
+#[allow(missing_docs)]
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 /// generated with `dumpkeys --long-info`
 pub enum KeySymb {
     nul = 0x0000,
@@ -790,15 +794,16 @@ pub enum KeySymb {
 #[derive(Copy, Clone, Debug)]
 /// if CapsLock must affect the Keysymb
 pub enum CapsLockSensitive {
+    /// CapsLock is enable
     Yes(KeySymb),
+    /// CapsLock is disable
     No(KeySymb),
 }
 
 use KeySymb::*;
 
-/*
 /// generated with `dumpkeys --full-table`
-pub const KEYCODE_TO_KEYSYMB_AZERTY: [[CapsLockSensitive; 16]; 128] = [
+pub const KEYCODE_TO_KEYSYMB_AZERTY: KeyMapArray = [
     [
         CapsLockSensitive::No(VoidSymbol),
         CapsLockSensitive::No(VoidSymbol),
@@ -3104,8 +3109,9 @@ pub const KEYCODE_TO_KEYSYMB_AZERTY: [[CapsLockSensitive; 16]; 128] = [
         CapsLockSensitive::No(VoidSymbol),
     ],
 ];
-*/
-pub const KEYCODE_TO_KEYSYMB_QWERTY: [[CapsLockSensitive; 16]; 128] = [
+
+/// generated with `dumpkeys --full-table`
+pub const KEYCODE_TO_KEYSYMB_QWERTY: KeyMapArray = [
     [
         CapsLockSensitive::No(VoidSymbol),
         CapsLockSensitive::No(VoidSymbol),

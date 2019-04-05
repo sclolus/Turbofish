@@ -1,10 +1,12 @@
 //! This files contains the code related to the Programmable Interval Timer
 //! ([PIT](https://wiki.osdev.org/Programmable_Interval_Timer)) chip (also called an 8253/8254 chip)
+use super::{pic_8259, PIC_8259};
 use crate::interrupts;
-use crate::io::{Io, Pio};
+use crate::Spinlock;
 use bit_field::BitField;
 use core::time::Duration;
-use core::u16;
+use io::{Io, Pio};
+use lazy_static::lazy_static;
 
 #[derive(Debug)]
 pub struct Pit {
@@ -23,7 +25,9 @@ pub struct Pit {
     pub period: f32,
 }
 
-pub static mut PIT0: Pit = Pit::new(Channel::Channel0);
+lazy_static! {
+    pub static ref PIT0: Spinlock<Pit> = Spinlock::new(Pit::new(Channel::Channel0));
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Channel {
@@ -52,6 +56,7 @@ pub enum OperatingMode {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PitError {
+    PicNotInitialized,
     BadFrequency,
 }
 
@@ -125,11 +130,14 @@ impl Pit {
             return Err(PitError::BadFrequency);
         }
         unsafe {
-            interrupts::disable();
+            if PIC_8259.lock().is_initialized() == false {
+                return Err(PitError::PicNotInitialized);
+            }
+            PIC_8259.lock().disable_irq(pic_8259::Irq::SystemTimer);
         }
         let mut divisor = (Self::BASE_FREQUENCY / freq) as u32;
-        if divisor > u16::MAX as u32 {
-            divisor = u16::MAX as u32;
+        if divisor > core::u16::MAX as u32 {
+            divisor = core::u16::MAX as u32;
         } else if divisor == 0 {
             divisor = 1;
         }
@@ -137,7 +145,7 @@ impl Pit {
         self.data.write(divisor.get_bits(0..8) as u8);
         self.data.write(divisor.get_bits(8..16) as u8);
         unsafe {
-            interrupts::enable();
+            PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer);
         }
         Ok(())
     }

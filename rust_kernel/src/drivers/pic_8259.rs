@@ -1,7 +1,11 @@
 //! This files contains the code related to the 8259 Programmable interrupt controller.
 //! See [PIC](https://wiki.osdev.org/PIC)
-use crate::io::{Io, Pio};
+mod pic_8259_isr;
+use crate::Spinlock;
 use bit_field::BitField;
+use io::{Io, Pio};
+use lazy_static::lazy_static;
+use pic_8259_isr::*;
 
 const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
 const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
@@ -62,7 +66,9 @@ pub struct Pic8259 {
     bios_imr: Option<u16>,
 }
 
-pub static mut PIC_8259: Pic8259 = Pic8259::new();
+lazy_static! {
+    pub static ref PIC_8259: Spinlock<Pic8259> = Spinlock::new(Pic8259::new());
+}
 
 pub enum Irq {
     /// The System timer, (PIT: Programmable Interval Timer) IRQ.
@@ -122,6 +128,24 @@ impl Pic8259 {
     /// The default port number for the slave PIC
     const SLAVE_COMMAND_PORT: u16 = 0xA0;
 
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
+    /// They are mapped from 0x20 to 0x27
+    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] =
+        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _isr_lpt1];
+
+    /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
+    /// They are mapped from 0x28 to 0x30
+    const DEFAULT_IRQS_SLAVE: [unsafe extern "C" fn(); 8] = [
+        _isr_cmos,
+        _isr_acpi,
+        reserved_interruption,
+        reserved_interruption,
+        _isr_ps2_mouse,
+        _isr_fpu_coproc,
+        _isr_primary_hard_disk,
+        _isr_secondary_hard_disk,
+    ];
+
     pub const fn new() -> Self {
         Self { master: Pic::new(Self::MASTER_COMMAND_PORT), slave: Pic::new(Self::SLAVE_COMMAND_PORT), bios_imr: None }
     }
@@ -129,8 +153,41 @@ impl Pic8259 {
     /// Must be called when PIC is initialized
     /// The bios default IMR are stored when this function is called
     pub unsafe fn init(&mut self) {
+        let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+
         self.bios_imr = Some(self.get_masks());
         self.set_idt_vectors(KERNEL_PIC_MASTER_IDT_VECTOR, KERNEL_PIC_SLAVE_IDT_VECTOR);
+
+        use crate::interrupts::idt::GateType::InterruptGate32;
+        use crate::interrupts::idt::*;
+        use core::ffi::c_void;
+
+        let mut gate_entry = *IdtGateEntry::new()
+            .set_storage_segment(false)
+            .set_privilege_level(0)
+            .set_selector(1 << 3)
+            .set_gate_type(InterruptGate32);
+
+        gate_entry.set_gate_type(InterruptGate32);
+
+        let offset = KERNEL_PIC_MASTER_IDT_VECTOR as usize;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
+
+            interrupt_table[index + offset] = gate_entry;
+        }
+
+        let offset = KERNEL_PIC_SLAVE_IDT_VECTOR as usize;
+        for (index, &interrupt_handler) in Self::DEFAULT_IRQS_SLAVE.iter().enumerate() {
+            gate_entry.set_handler(interrupt_handler as *const c_void as u32);
+
+            interrupt_table[index + offset] = gate_entry;
+        }
+    }
+
+    /// Public ascessor to check init of PIC
+    pub fn is_initialized(&self) -> bool {
+        self.bios_imr != None
     }
 
     /// Initialize the PICs with `offset_1` as the vector offset for self.master

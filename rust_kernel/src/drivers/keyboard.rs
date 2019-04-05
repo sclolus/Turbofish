@@ -2,8 +2,8 @@
 use crate::io::{Io, Pio};
 pub mod keysymb;
 //use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP;
-use crate::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
-use crate::keyboard::keysymb::{CapsLockSensitive, KeySymb};
+use super::keyboard::keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP;
+use super::keyboard::keysymb::{CapsLockSensitive, KeySymb};
 
 #[allow(dead_code)]
 struct Ps2Controler {
@@ -103,16 +103,30 @@ enum EscapeKeyMask {
     Alt = 8,
 }
 
-struct KeyboardDriver {
-    escape_key_mask: u8,
-    capslock: bool,
+type ScanCode = u32;
+
+#[derive(Copy, Clone, Debug)]
+pub enum CallbackKeyboard {
+    RequestScanCode(fn(ScanCode)),
+    RequestKeyCode(fn(KeyCode)),
+    RequestKeySymb(fn(KeySymb)),
 }
 
-static mut KEYBOARD_DRIVER: KeyboardDriver = KeyboardDriver::new();
+pub struct KeyboardDriver {
+    escape_key_mask: u8,
+    capslock: bool,
+    io_term: Option<CallbackKeyboard>,
+}
+
+pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
 
 impl KeyboardDriver {
-    pub const fn new() -> Self {
-        Self { escape_key_mask: 0, capslock: false }
+    pub fn new(f: Option<CallbackKeyboard>) -> Self {
+        Self { escape_key_mask: 0, capslock: false, io_term: f }
+    }
+
+    pub fn bind(&mut self, f: CallbackKeyboard) {
+        self.io_term = Some(f);
     }
 
     pub fn keycode_to_keymap(&mut self, keycode: KeyCode) -> Option<KeySymb> {
@@ -170,25 +184,38 @@ impl KeyboardDriver {
             }
         }
     }
+
+    pub fn interrupt_handler(&mut self, scancode: u32) {
+        match self.io_term {
+            None => eprintln!("No consumer registered !"),
+            Some(arg) => {
+                use CallbackKeyboard::*;
+                match arg {
+                    RequestScanCode(u) => u(scancode),
+                    RequestKeyCode(u) => {
+                        KeyCode::from_scancode(scancode).map(|s| u(s));
+                    }
+                    RequestKeySymb(u) => {
+                        KeyCode::from_scancode(scancode).map(|s| self.keycode_to_keymap(s).map(|s| u(s)));
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn init_keyboard_driver() {
+    unsafe {
+        KEYBOARD_DRIVER = Some(KeyboardDriver::new(None));
+    }
 }
 
 #[no_mangle]
 extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
-        println!("key {:X?}", scancode);
-        let keycode = KeyCode::from_scancode(scancode);
-        if let Some(keycode) = keycode {
-            let keysymb = unsafe { KEYBOARD_DRIVER.keycode_to_keymap(keycode) };
-            println!("keycode {:X?}", keycode);
-            if let Some(keysymb) = keysymb {
-                println!("keysymb {:?}, = {:X?}", keysymb, keysymb as u32);
-                let keysymb = keysymb as u32;
-                if keysymb >= 0x20 && keysymb <= 0x7E {
-                    println!("keysymb {:?}", keysymb as u8 as char);
-                }
-            }
+        unsafe {
+            KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode);
         }
     }
-    //println!("keyboard key code: {:X?}", scancode);
 }
