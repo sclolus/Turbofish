@@ -152,12 +152,17 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
 
     use crate::memory::allocator::virtual_page_allocator::VirtualPageAllocator;
-    let v = unsafe { VirtualPageAllocator::new_for_process() };
+    let mut v = unsafe { VirtualPageAllocator::new_for_process() };
+    unsafe {
+        v.context_switch();
+    }
+    // use crate::memory::tools::*;
+    // let addr = v.alloc(NbrPages::_1MB).unwrap();
+    // println!("{:x?}", addr);
     crate::watch_dog();
     eprintln!("ala");
     println!("begin test 1");
     debug::bench_start();
-    let mut sum: u32 = 0;
     for i in 0..2 {
         let v: Vec<u8> = vec![(i & 0xff) as u8; 4096 * 16];
         sum += v[0] as u32;
@@ -165,6 +170,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     let t = debug::bench_end();
     println!("{:?} ms ellapsed", t);
-    loop {}
+    use crate::memory::allocator::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+    unsafe {
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().context_switch();
+    }
     sum
 }

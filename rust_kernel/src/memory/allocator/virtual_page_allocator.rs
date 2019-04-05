@@ -14,9 +14,10 @@ impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
     }
+
     pub unsafe fn new_for_process() -> Self {
         let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB);
-        buddy.reserve_exact(Page::new(0x0), NbrPages::_1MB).unwrap();
+        buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).unwrap();
 
         // map the kenel pages tables
         let mut pd = Box::new(PageDirectory::new());
@@ -25,21 +26,28 @@ impl VirtualPageAllocator {
 
         // get the physical addr of the page directory for the tricks
         let phys_pd: Phys = {
-            let raw_pd = Box::into_raw(pd);
-            pd = Box::from_raw(raw_pd);
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .mmu
-                .get_entry(Virt(raw_pd as usize).into())
-                .unwrap()
-                .entry_addr()
+            let raw_pd = pd.as_mut() as *mut PageDirectory;
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
         };
         eprintln!("{:x?}", phys_pd);
 
         pd.self_map_tricks(phys_pd);
-        _enable_paging(phys_pd);
+        // _enable_paging(phys_pd);
         Self::new(buddy, pd)
+    }
+
+    /// get the physical mapping of virtual address `v`
+    pub unsafe fn get_physical_addr(&self, v: Virt) -> Option<Phys> {
+        let offset = v.offset();
+        self.mmu.get_entry(Page::containing(v)).map(|e| e.entry_addr() + offset)
+    }
+
+    pub unsafe fn context_switch(&mut self) {
+        let phys_pd: Phys = {
+            let raw_pd = self.mmu.as_mut() as *mut PageDirectory;
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+        };
+        _enable_paging(phys_pd);
     }
 
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
