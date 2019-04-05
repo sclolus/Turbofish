@@ -4,9 +4,9 @@ use core::slice;
 pub fn make_somization<T: Fn() -> usize>(
     nb_tests: usize,
     max_alloc: usize,
-    allocator: unsafe fn(usize) -> *mut u8,
-    deallocator: unsafe fn(*mut u8),
-    size_verifier: unsafe fn(*mut u8) -> usize,
+    allocator: unsafe extern "C" fn(usize) -> *mut u8,
+    deallocator: unsafe extern "C" fn(*mut u8),
+    size_verifier: unsafe extern "C" fn(*mut u8) -> usize,
     alloc_size_fn: T,
 ) -> Result<(), ()> {
     const MAX_ALLOCATION_ARRAY_SIZE: usize = 1 << 16;

@@ -55,10 +55,10 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     }
 }
 
-/// Allocate Kernel physical Memory
+/// FFI safe function: Allocate Kernel physical Memory
 /// kmalloc like a boss
 #[no_mangle]
-pub unsafe fn kmalloc(size: usize) -> *mut u8 {
+pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
     match Layout::from_size_align(size, 16) {
         Err(_) => 0 as *mut u8,
         Ok(layout) => match &mut KERNEL_ALLOCATOR {
@@ -80,9 +80,9 @@ pub unsafe fn kmalloc(size: usize) -> *mut u8 {
     }
 }
 
-/// De-allocate Kernel physical Memory
+/// FFI safe function: De-allocate Kernel physical Memory
 #[no_mangle]
-pub unsafe fn kfree(addr: *mut u8) {
+pub unsafe extern "C" fn kfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(a) => {
             if let Err(_) = a.free(Virt(addr as usize)) {
@@ -97,9 +97,9 @@ pub unsafe fn kfree(addr: *mut u8) {
     }
 }
 
-/// Get the internal size of a kmalloc allocation
+/// FFI safe function: Get the internal size of a kmalloc allocation
 #[no_mangle]
-pub unsafe fn ksize(addr: *mut u8) -> usize {
+pub unsafe extern "C" fn ksize(addr: *mut u8) -> usize {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(a) => {
             let res = a.ksize(Virt(addr as usize));
@@ -118,9 +118,9 @@ pub unsafe fn ksize(addr: *mut u8) -> usize {
     }
 }
 
-/// Allocate Kernel virtual Memory
+/// FFI safe function: Allocate Kernel virtual Memory
 #[no_mangle]
-pub unsafe fn vmalloc(size: usize) -> *mut u8 {
+pub unsafe extern "C" fn vmalloc(size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
@@ -135,9 +135,9 @@ pub unsafe fn vmalloc(size: usize) -> *mut u8 {
     }
 }
 
-/// De-allocate Kernel virtual Memory
+/// FFI safe function: De-allocate Kernel virtual Memory
 #[no_mangle]
-pub unsafe fn vfree(addr: *mut u8) {
+pub unsafe extern "C" fn vfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))).unwrap()
@@ -146,9 +146,9 @@ pub unsafe fn vfree(addr: *mut u8) {
     }
 }
 
-/// Get the internal size of a vmalloc allocation
+/// FFI safe function: Get the internal size of a vmalloc allocation
 #[no_mangle]
-pub unsafe fn vsize(addr: *mut u8) -> usize {
+pub unsafe extern "C" fn vsize(addr: *mut u8) -> usize {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
