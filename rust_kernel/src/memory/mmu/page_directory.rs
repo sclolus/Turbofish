@@ -141,31 +141,6 @@ impl PageDirectory {
     pub unsafe fn physical_addr(&self, vaddr: Virt) -> Option<Phys> {
         self.physical_page(vaddr.into()).map(|v| v.into())
     }
-    // pub unsafe fn load_current_page_directory(ptr: *mut PageDirectory) {
-    //     Cr3::write(ptr as usize);
-    // }
-
-    // pub unsafe fn get_current_page_directory() -> *mut PageDirectory {
-    //     Cr3::read() as *mut PageDirectory
-    // }
-    //
-    //
-    // /// It means that the Virtual Addresses of the PageTables have their 10-higher bits set.
-    // /// The range of bits [12..22] then describes the index inside the PageDirectory, that is the index of the PageTable itself.
-    // /// Then the range of bits [0..12] describes the offset inside the PageTable, which is fine since a PageTable is exactly 4096 bytes.
-
-    // pub fn get_page_from_vaddr(&self, vaddr: u32) -> Option<&PageTableEntry> {
-    //     let pdindex = (vaddr >> 22) as usize;
-    //     let ptindex = ((vaddr >> 12) & 0x0fff) as usize;
-
-    //     if !self[pdindex].present() {
-    //         return None;
-    //     }
-
-    //     let page_table = unsafe { &mut *(self[pdindex].entry_addr() as *mut PageTable) };
-
-    //     Some(&page_table[ptindex])
-    // }
 }
 
 /// The PageDirectory implements Index which enables us to use the syntax: `pd[index]`,
