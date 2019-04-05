@@ -1,5 +1,5 @@
-use core::convert::{From, Into};
-    
+use core::convert::From;
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u8)]
 enum PrivilegeLevel {
@@ -19,7 +19,7 @@ enum PrivilegeLevel {
 impl From<u8> for PrivilegeLevel {
     fn from(from: u8) -> Self {
         use PrivilegeLevel::*;
-        
+
         match from {
             0b00 => Ring0,
             0b01 => Ring1,
