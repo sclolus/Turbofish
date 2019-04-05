@@ -1,10 +1,10 @@
 use crate::drivers::pci::PCI;
-use crate::panic::panic_sa_mere;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// show backtrace
 pub fn backtrace(_args: &[&str]) -> u8 {
-    panic_sa_mere();
+    #[cfg(not(test))]
+    crate::panic::panic_sa_mere();
     0
 }
 
