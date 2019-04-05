@@ -213,3 +213,15 @@ impl AsMut<[Entry]> for PageDirectory {
         &mut self.entries
     }
 }
+
+impl Drop for PageDirectory {
+    fn drop(&mut self) {
+        for i in 1..768 {
+            if self[i].contains(Entry::PRESENT) {
+                unsafe {
+                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
+                }
+            }
+        }
+    }
+}
