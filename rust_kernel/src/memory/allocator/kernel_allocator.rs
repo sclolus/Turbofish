@@ -55,10 +55,27 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     }
 }
 
+/// kmalloc like a boss
 pub unsafe fn kmalloc(size: usize) -> *mut u8 {
-    use crate::MEMORY_MANAGER;
-
-    MEMORY_MANAGER.alloc(Layout::from_size_align(size, 1).unwrap())
+    match Layout::from_size_align(size, 16) {
+        Err(_) => 0 as *mut u8,
+        Ok(layout) => match &mut KERNEL_ALLOCATOR {
+            KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
+            KernelAllocator::Kernel(a) => {
+                if layout.size() <= PAGE_SIZE {
+                    a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
+                } else {
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .alloc(layout.size().into())
+                        .unwrap_or(Page::containing(Virt(0x0)))
+                        .to_addr()
+                        .0 as *mut u8
+                }
+            }
+        },
+    }
 }
 
 pub unsafe fn kfree(addr: *mut u8) {
