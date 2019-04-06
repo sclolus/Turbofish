@@ -2,6 +2,7 @@ use super::{BuddyAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
 use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
+use core::convert::Into;
 
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
@@ -48,6 +49,7 @@ impl VirtualPageAllocator {
         _enable_paging(phys_pd);
     }
 
+    // Should this have an AllocFlags.
     pub fn reserve(&mut self, vaddr: Page<Virt>, paddr: Page<Phys>, size: NbrPages) -> Result<()> {
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
 
@@ -100,19 +102,20 @@ impl VirtualPageAllocator {
         unsafe { self.mmu.unmap_range_page(vaddr, order.into()) }
     }
 
-    pub fn alloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
+    pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
+        let entry = Entry::from(flags) | Entry::PRESENT;
 
         unsafe {
-            let paddr = physical_allocator.alloc(size, AllocFlags::KERNEL_MEMORY).map_err(|e| {
+            let paddr = physical_allocator.alloc(size, flags).map_err(|e| {
                 self.virt
                     .free(vaddr, order)
                     .expect("Failed to free allocated virtual page after physical allocator failed");
                 e
             })?;
-            self.mmu.map_range_page(vaddr, paddr, order.into(), Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
+            self.mmu.map_range_page(vaddr, paddr, order.into(), entry).map_err(|e| {
                 self.virt.free(vaddr, order).unwrap();
                 physical_allocator.free(paddr).unwrap();
                 e
@@ -121,17 +124,16 @@ impl VirtualPageAllocator {
         Ok(vaddr.into())
     }
 
-    pub fn valloc(&mut self, size: NbrPages) -> Result<Page<Virt>> {
+    pub fn valloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
+        let entry = Entry::from(flags);
 
         unsafe {
-            self.mmu.map_range_page(vaddr, Page::new(0), order.into(), Entry::READ_WRITE | Entry::VALLOC).map_err(
-                |e| {
-                    self.virt.free(vaddr, order).expect("Failed to free virtual page after mapping failed");
-                    e
-                },
-            )?;
+            self.mmu.map_range_page(vaddr, Page::new(0), order.into(), entry | Entry::VALLOC).map_err(|e| {
+                self.virt.free(vaddr, order).expect("Failed to free virtual page after mapping failed");
+                e
+            })?;
         }
         Ok(vaddr)
     }
@@ -142,6 +144,7 @@ impl VirtualPageAllocator {
         let entry = self.mmu.get_entry_mut(p).ok_or(MemoryError::PageFault)?;
 
         if entry.contains(Entry::VALLOC) {
+            // KERNEL_MEMORY flags is currently not used.
             let paddr = physical_allocator.alloc(NbrPages(1), AllocFlags::KERNEL_MEMORY).map_err(|e| e)?;
             entry.set_entry_page(paddr);
             *entry |= Entry::PRESENT;

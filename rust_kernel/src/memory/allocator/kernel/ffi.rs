@@ -1,5 +1,4 @@
 use super::*;
-
 /// FFI safe function: Allocate Kernel physical Memory
 /// kmalloc like a boss
 #[no_mangle]
@@ -15,7 +14,7 @@ pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR
                         .as_mut()
                         .unwrap()
-                        .alloc(layout.size().into())
+                        .alloc(layout.size().into(), AllocFlags::KERNEL_MEMORY)
                         .unwrap_or(Page::containing(Virt(0x0)))
                         .to_addr()
                         .0 as *mut u8
@@ -71,7 +70,7 @@ pub unsafe extern "C" fn vmalloc(size: usize) -> *mut u8 {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
-                .valloc(size.into())
+                .valloc(size.into(), AllocFlags::KERNEL_MEMORY)
                 .unwrap_or(Page::containing(Virt(0x0)))
                 .to_addr()
                 .0 as *mut u8

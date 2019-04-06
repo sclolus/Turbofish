@@ -12,7 +12,7 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR
                         .as_mut()
                         .unwrap()
-                        .alloc(layout.size().into())
+                        .alloc(layout.size().into(), AllocFlags::KERNEL_MEMORY)
                         .unwrap_or(Page::containing(Virt(0x0)))
                         .to_addr()
                         .0 as *mut u8

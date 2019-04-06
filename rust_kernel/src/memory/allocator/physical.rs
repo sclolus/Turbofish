@@ -11,15 +11,17 @@ impl PhysicalPageAllocator {
         Self { allocator: BuddyAllocator::new(phys_start, size) }
     }
 
-    pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Phys>> {
-        if flags.contains(AllocFlags::KERNEL_MEMORY) {
-            let order = size.into();
-            let res = self.allocator.alloc(order)?;
-            // eprintln!("{:x?}", res.to_addr());
-            Ok(res)
-        } else {
-            unimplemented!()
-        }
+    pub fn alloc(&mut self, size: NbrPages, _flags: AllocFlags) -> Result<Page<Phys>> {
+        // Commented this as this is currently handled by the upper abstraction.
+        // This is to be modified eventually.
+        // if flags.contains(AllocFlags::KERNEL_MEMORY) {
+        let order = size.into();
+        let res = self.allocator.alloc(order)?;
+        // eprintln!("{:x?}", res.to_addr());
+        Ok(res)
+        // } else {
+        //     unimplemented!()
+        // }
     }
 
     pub fn reserve(&mut self, addr: Page<Phys>, size: NbrPages) -> Result<()> {

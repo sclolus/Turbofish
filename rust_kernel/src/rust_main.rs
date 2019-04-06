@@ -69,14 +69,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     use crate::memory::tools::*;
     println!("before alloc");
 
-    let addr = v.alloc(NbrPages::_1MB).unwrap().to_addr().0 as *mut u8;
+    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
 
     let slice = unsafe { core::slice::from_raw_parts_mut(addr, NbrPages::_1MB.into()) };
     for i in slice.iter_mut() {
         *i = 42;
     }
     println!("processus address allocated: {:x?}", addr);
-    let addr = v.alloc(NbrPages::_1MB).unwrap().to_addr().0 as *mut u8;
+    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
     println!("processus address allocated: {:x?}", addr);
 
     log::error!("this is an example of error");
