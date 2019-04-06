@@ -1,4 +1,5 @@
 use super::BuddyAllocator;
+use crate::memory::allocator::buddy_allocator::Order;
 use crate::memory::tools::*;
 
 #[derive(Debug)]
@@ -44,6 +45,14 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
     eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_next(PAGE_SIZE));
 
     let mut pallocator = PhysicalPageAllocator::new(Page::new(0), system_memory_amount);
+
+    // Calculate how much non-existent memory the physical buddy allocator thinks it actually has.
+    let reserve_order: Order = system_memory_amount.into();
+    let overflowing_memory_amount: NbrPages = NbrPages::from(reserve_order) - system_memory_amount;
+    let high_mem_limit: Page<Phys> = Page::new(0) + system_memory_amount;
+
+    // Reserve the non-existent memory so that the buddy allocator cannot ever give it to anyone (except if this is freed at some point...).
+    pallocator.reserve(high_mem_limit, overflowing_memory_amount).unwrap();
 
     pallocator.reserve(Page::new(0), (symbol_addr!(kernel_physical_end) - 0).into()).unwrap();
     // Reserve in memory the regions that are not usable according to the device_map slice,

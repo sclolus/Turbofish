@@ -21,6 +21,9 @@ impl<T: Address> BuddyAllocator<T> {
     /// buddies must be a zeroed vec
     pub fn new(addr: Page<T>, size: NbrPages) -> Self {
         let max_order: Order = size.into(); //TODO: c faux
+                                            // This problem is now handled in the init_physical_allocator.
+                                            // This is done by reserving the overflowing memory given to the buddy allocator by the rounding of Order::into.
+                                            // The use of self.size in the check of bound in reserve() has been replaced in favor of self.max_order...
         let nbr_buddies: usize = Self::nbr_buddies(max_order.0);
 
         let new =
@@ -76,7 +79,10 @@ impl<T: Address> BuddyAllocator<T> {
     /// # Panic
     /// panic if addr is not a multiple of order.nbr_pages() * PAGE_SIZE
     fn reserve(&mut self, addr: Page<T>, order: Order) -> Result<()> {
-        if order > self.max_order || addr < self.addr || (addr - self.addr) + order.nbr_pages() > self.size {
+        if order > self.max_order
+            || addr < self.addr
+            || (addr - self.addr) + order.nbr_pages() > self.max_order.nbr_pages()
+        {
             return Err(MemoryError::OutOfBound);
         }
         // print!("{:?},", addr.number);
