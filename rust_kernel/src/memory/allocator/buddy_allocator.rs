@@ -20,7 +20,7 @@ pub struct BuddyAllocator<T: Address> {
 impl<T: Address> BuddyAllocator<T> {
     /// buddies must be a zeroed vec
     pub fn new(addr: Page<T>, size: NbrPages) -> Self {
-        let max_order: Order = size.into(); //TODO: c faux
+        let max_order: Order = size.into();
         let nbr_buddies: usize = Self::nbr_buddies(max_order.0);
 
         let new =
@@ -55,7 +55,11 @@ impl<T: Address> BuddyAllocator<T> {
                 debug_assert!(layer_index <= buddy_index);
                 let buddy_layer_index: usize = buddy_index - layer_index;
 
-                Ok(self.addr + order.nbr_pages() * buddy_layer_index)
+                let addr = self.addr + order.nbr_pages() * buddy_layer_index;
+                if addr < self.addr || (addr - self.addr) + order.nbr_pages() > self.size {
+                    return Err(MemoryError::OutOfBound);
+                }
+                Ok(addr)
             }
             None => Err(MemoryError::OutOfMem),
         }
