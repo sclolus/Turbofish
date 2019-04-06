@@ -88,6 +88,11 @@ impl PageDirectory {
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
     pub unsafe fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
+        // We can't have hybrid permisions inside a page table.
+        // So if we try to map a map as an User page, we need to set it to for the corresponding page directory entry.
+        if entry.contains(Entry::USER) {
+            self[virtp.pd_index()] |= Entry::USER;
+        }
         self.get_page_table_trick_alloc(virtp)?.map_page(virtp, physp, entry)
     }
 
