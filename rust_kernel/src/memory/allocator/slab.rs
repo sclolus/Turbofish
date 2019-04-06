@@ -1,4 +1,4 @@
-use super::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use super::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 use crate::memory::tools::*;
 use core::alloc::Layout;

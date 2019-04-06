@@ -1,14 +1,14 @@
-pub mod kernel_allocator;
-pub use kernel_allocator::init_kernel_virtual_allocator;
-pub use kernel_allocator::{kfree, kmalloc, ksize, vfree, vmalloc, vsize, RustGlobalAlloc};
+mod kernel;
+pub use kernel::*;
 
-pub mod physical_page_allocator;
-pub use physical_page_allocator::{init_physical_allocator, PHYSICAL_ALLOCATOR};
+mod physical;
+pub use physical::{init_physical_allocator, PHYSICAL_ALLOCATOR};
 
-pub mod virtual_page_allocator;
+mod r#virtual;
+pub use r#virtual::VirtualPageAllocator;
 
-pub mod slab_allocator;
-pub use slab_allocator::SlabAllocator;
+mod slab;
+use slab::SlabAllocator;
 
-pub mod buddy_allocator;
-pub use buddy_allocator::BuddyAllocator;
+mod buddy;
+use buddy::BuddyAllocator;

@@ -61,7 +61,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
     println!("{}", date);
-    use crate::memory::allocator::virtual_page_allocator::VirtualPageAllocator;
+    use crate::memory::allocator::VirtualPageAllocator;
     let mut v = unsafe { VirtualPageAllocator::new_for_process() };
     unsafe {
         v.context_switch();

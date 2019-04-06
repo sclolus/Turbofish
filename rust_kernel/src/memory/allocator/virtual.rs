@@ -1,13 +1,12 @@
-use super::physical_page_allocator::PHYSICAL_ALLOCATOR;
+use super::{BuddyAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
 use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
-use crate::memory::BuddyAllocator;
 use alloc::boxed::Box;
 
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
-    pub virt: BuddyAllocator<Virt>,
-    pub mmu: Box<PageDirectory>,
+    virt: BuddyAllocator<Virt>,
+    mmu: Box<PageDirectory>,
 }
 
 impl VirtualPageAllocator {
@@ -32,7 +31,6 @@ impl VirtualPageAllocator {
         eprintln!("{:x?}", phys_pd);
 
         pd.self_map_tricks(phys_pd);
-        // _enable_paging(phys_pd);
         Self::new(buddy, pd)
     }
 
@@ -183,5 +181,3 @@ impl VirtualPageAllocator {
         })
     }
 }
-
-pub static mut KERNEL_VIRTUAL_PAGE_ALLOCATOR: Option<VirtualPageAllocator> = None;
