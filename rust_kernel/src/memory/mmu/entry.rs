@@ -61,7 +61,7 @@ impl Entry {
     /// Sets the address field of the entry.
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
-    #[allow(dead_code)]
+    #[inline(always)]
     pub fn set_entry_addr(&mut self, addr: Phys) -> &mut Self {
         // asserts that if the page_size bit is set for this entry, the set addr is 4-MiB aligned.
         assert!(if self.contains(Entry::PAGE_SIZE) {
@@ -90,7 +90,7 @@ impl Entry {
     /// Gets the address field of the entry.
     /// When the page_size bit is not set, the address is a 4-kb aligned address pointing to a Page Table.
     /// When the page_size bit is set, the address instead directly points to a 4-MiB page, so no Page Table is then involved.
-    #[allow(dead_code)]
+    #[inline(always)]
     pub fn entry_addr(&self) -> Phys {
         Phys((self.bits.get_bits(12..32) as usize) << 12)
     }

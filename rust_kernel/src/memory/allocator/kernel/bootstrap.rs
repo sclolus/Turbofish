@@ -1,6 +1,5 @@
 //! This file contains the bootstrap allocator used to allocate the kernel allocator.
-
-use crate::memory::tools::*;
+use super::*;
 use core::alloc::Layout;
 
 /// 4 MB for the bootstrap

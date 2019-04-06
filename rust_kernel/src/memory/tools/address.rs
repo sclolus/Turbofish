@@ -47,6 +47,10 @@ pub trait Address:
 
         self - (addr & size - 1)
     }
+    #[inline(always)]
+    fn offset(&self) -> usize {
+        Into::<usize>::into(*self).get_bits(0..12)
+    }
 }
 
 #[repr(transparent)]
@@ -62,12 +66,6 @@ impl Virt {
     #[inline(always)]
     pub fn pt_index(&self) -> usize {
         self.0.get_bits(12..22)
-    }
-
-    #[inline(always)]
-    #[allow(dead_code)]
-    pub fn offset(&self) -> usize {
-        self.0.get_bits(0..12)
     }
 }
 

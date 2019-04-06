@@ -1,4 +1,4 @@
-use super::virtual_page_allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use super::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 use crate::memory::tools::*;
 use core::alloc::Layout;
@@ -228,7 +228,12 @@ type FreeSlot = Node<Vacant>;
 /// In bytes, probably should be a multiple of PAGE_SIZE
 fn mmap(size: usize) -> Option<*mut u8> {
     unsafe {
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc(size.into()).ok().map(|addr| addr.to_addr().0 as *mut u8)
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .alloc(size.into(), AllocFlags::KERNEL_MEMORY)
+            .ok()
+            .map(|addr| addr.to_addr().0 as *mut u8)
     }
 }
 
