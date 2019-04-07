@@ -1,8 +1,11 @@
-// ACPI version 1 RSDP structure
+//! Minimal ACPI driver
+
 use crate::ffi::c_char;
+
 use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::address::Address;
 use crate::memory::tools::{Phys, Virt};
+
 use core::mem::size_of;
 
 use io::{Io, Pio};
@@ -10,8 +13,8 @@ use io::{Io, Pio};
 use crate::drivers::pit_8253::PIT0;
 use core::time::Duration;
 
-#[repr(packed)]
 #[derive(Copy, Clone, Debug)]
+#[repr(packed)]
 struct RSDPDescriptor {
     signature: [u8; 8],
     checksum: u8,
@@ -20,7 +23,7 @@ struct RSDPDescriptor {
     rsdt_address: u32,
 }
 
-// ACPI version 2+ RSDP structure
+/// ACPI version 2+ RSDP structure
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 struct RSDPDescriptor20 {
@@ -33,7 +36,7 @@ struct RSDPDescriptor20 {
     reserved: [u8; 3],
 }
 
-// ACPI version 1 RSDT structure
+/// ACPI version 1 RSDT structure
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 struct ACPIRSDTHeader {
@@ -49,7 +52,7 @@ struct ACPIRSDTHeader {
     /*36 */
 }
 
-// ACPI version 2+ XSDT structure
+/// ACPI version 2+ XSDT structure
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 struct ACPIXSDTHeader {
@@ -196,6 +199,38 @@ struct DsdtHeader {
     /*32 */ compiler_version: u32,
 }
 
+//
+// bytecode of the \_S5 object
+// -----------------------------------------
+//        | (optional) |    |    |    |
+// NameOP | \          | _  | S  | 5  | _
+// 08     | 5A         | 5F | 53 | 35 | 5F
+//
+// -----------------------------------------------------------------------------------------------------------
+//           |           |              | ( SLP_TYPa   ) | ( SLP_TYPb   ) | ( Reserved   ) | (Reserved    )
+// PackageOP | PkgLength | NumElements  | byteprefix Num | byteprefix Num | byteprefix Num | byteprefix Num
+// 12        | 0A        | 04           | 0A         05  | 0A          05 | 0A         05  | 0A         05
+//
+//----this-structure-was-also-seen----------------------
+// PackageOP | PkgLength | NumElements |
+// 12        | 06        | 04          | 00 00 00 00
+//
+// (Pkglength bit 6-7 encode additional PkgLength bytes [shouldn't be the case here])
+//
+// PackageOP
+
+#[derive(Copy, Clone, Debug)]
+#[repr(packed)]
+struct S5Object {
+    package_op: u8,
+    pkg_length: u8,
+    num_elements: u8,
+    slp_typ_a_byteprefix: u8,
+    slp_typ_a_num: u8,
+    slp_typ_b_byteprefix: u8,
+    slp_typ_b_num: u8,
+}
+
 fn map_helper(phy_addr: *mut u8, mut size: usize) -> *mut u8 {
     let offset = Phys(phy_addr as usize).offset();
     if offset != 0 {
@@ -248,38 +283,6 @@ pub unsafe fn acpi() -> Result<(), ()> {
         unmap_helper(v, size_of::<ACPIRSDTHeader>());
     }
     Ok(())
-}
-
-//
-// bytecode of the \_S5 object
-// -----------------------------------------
-//        | (optional) |    |    |    |
-// NameOP | \          | _  | S  | 5  | _
-// 08     | 5A         | 5F | 53 | 35 | 5F
-//
-// -----------------------------------------------------------------------------------------------------------
-//           |           |              | ( SLP_TYPa   ) | ( SLP_TYPb   ) | ( Reserved   ) | (Reserved    )
-// PackageOP | PkgLength | NumElements  | byteprefix Num | byteprefix Num | byteprefix Num | byteprefix Num
-// 12        | 0A        | 04           | 0A         05  | 0A          05 | 0A         05  | 0A         05
-//
-//----this-structure-was-also-seen----------------------
-// PackageOP | PkgLength | NumElements |
-// 12        | 06        | 04          | 00 00 00 00
-//
-// (Pkglength bit 6-7 encode additional PkgLength bytes [shouldn't be the case here])
-//
-// PackageOP
-
-#[repr(packed)]
-#[derive(Copy, Clone, Debug)]
-struct S5Object {
-    package_op: u8,
-    pkg_length: u8,
-    num_elements: u8,
-    slp_typ_a_byteprefix: u8,
-    slp_typ_a_num: u8,
-    slp_typ_b_byteprefix: u8,
-    slp_typ_b_num: u8,
 }
 
 const SLP_EN: u16 = 1 << 13;
@@ -336,15 +339,6 @@ unsafe fn rsdt_stage(acpi_rsdt_header: *const ACPIRSDTHeader) -> Result<S5Object
         unmap_helper(dsdt_header as *mut u8, size_of::<DsdtHeader>());
         Err(())
     }
-
-    // println!("{:?}", fadt);
-    // println!("founded state: {:?}\n", fadt);
-    // println!("flags {:x?} for IA BootArchitectureFlags\n", (*fadt).boot_architecture_flags);
-    // if ((*fadt).boot_architecture_flags & 0x2) != 0 {
-    //    println!("8042 founded !");
-    // } else {
-    //    println!("8042 not founded ! :(((");
-    // }
 }
 
 unsafe fn find_facp(rsdt: *const Rsdt) -> Result<*const FADT, ()> {
@@ -379,7 +373,7 @@ unsafe fn rdsp_stage() -> Result<*const RSDPDescriptor, ()> {
     Ok(rsdp_descriptor)
 }
 
-// checksum for rsdp descriptor
+/// Checksum for rsdp descriptor
 unsafe fn rsdp_checksum(rsdp_descriptor: *const u8) -> bool {
     let ptr: *const u8 = rsdp_descriptor;
     let checksum: u8 = 0;
@@ -395,7 +389,7 @@ unsafe fn rsdp_checksum(rsdp_descriptor: *const u8) -> bool {
     }
 }
 
-// search a sized pattern in a designed memory area
+/// Search a sized pattern in a designed memory area
 unsafe fn memschr(
     mut base_mem: *const u8,
     range: usize,
