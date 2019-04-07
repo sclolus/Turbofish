@@ -1,14 +1,14 @@
-use crate::drivers::acpi::acpi;
-use crate::drivers::pci::PCI;
+use crate::drivers::{ACPI, PCI};
 use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// shutdown the PC
 pub fn shutdown(_args: &[&str]) -> u8 {
     unsafe {
-        acpi().unwrap();
+        ACPI.lock().shutdown();
     }
-    0
+    println!("shudown failure");
+    1
 }
 
 /// show backtrace

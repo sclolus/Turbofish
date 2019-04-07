@@ -1,5 +1,8 @@
 pub mod acpi;
+pub use acpi::ACPI;
+
 pub mod pci;
+pub use pci::PCI;
 
 #[macro_use]
 pub mod uart_16550;

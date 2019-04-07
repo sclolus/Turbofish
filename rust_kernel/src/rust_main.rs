@@ -1,6 +1,5 @@
-use crate::drivers::pci::PCI;
 use crate::drivers::pit_8253::{OperatingMode, PIT0};
-use crate::drivers::{pic_8259, PIC_8259};
+use crate::drivers::{pic_8259, ACPI, PCI, PIC_8259};
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
@@ -41,6 +40,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
+
+    ACPI.lock().enable().unwrap();
+
     println!("TTY system initialized");
 
     unsafe {

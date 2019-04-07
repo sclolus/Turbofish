@@ -13,9 +13,12 @@ use io::{Io, Pio};
 use crate::drivers::pit_8253::PIT0;
 use core::time::Duration;
 
+use crate::Spinlock;
+use lazy_static::lazy_static;
+
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
-struct RSDPDescriptor {
+struct RSDPDescriptor10 {
     signature: [u8; 8],
     checksum: u8,
     oemid: [u8; 6],
@@ -27,7 +30,7 @@ struct RSDPDescriptor {
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 struct RSDPDescriptor20 {
-    first_part: RSDPDescriptor,
+    first_part: RSDPDescriptor10,
 
     length: u32,
     xsdt_address_0_31: u32,
@@ -231,6 +234,145 @@ struct S5Object {
     slp_typ_b_num: u8,
 }
 
+// Main driver structure
+#[derive(Copy, Clone, Debug)]
+#[allow(dead_code)]
+pub struct Acpi {
+    rsdp_descriptor: RSDPDescriptor,
+    fadt: FADT,
+}
+
+lazy_static! {
+    /// ACPI driver
+    pub static ref ACPI: Spinlock<Acpi> = Spinlock::new(Acpi::new());
+}
+
+#[derive(Copy, Clone, Debug)]
+enum RSDPDescriptor {
+    LegacyRSDPDescriptor(RSDPDescriptor10),
+    AdvancedRSDPDescriptor(RSDPDescriptor20),
+}
+
+impl Acpi {
+    const RSDP_BIOS_ADDR: *const u8 = 0xe0000 as *const u8;
+    const SLP_EN: u16 = 1 << 13;
+    const SLEEP_STATE_MAGIC_SHL: u16 = 10;
+
+    unsafe fn get_rsdp_descriptor_ptr() -> Result<*const RSDPDescriptor10, ()> {
+        let rsdp_descriptor_ptr = memschr(Self::RSDP_BIOS_ADDR, 0x20000, "RSD PTR ".as_ptr(), 8, Some(rsdp_checksum))?
+            as *const RSDPDescriptor10;
+        Ok(rsdp_descriptor_ptr)
+    }
+
+    unsafe fn find_fadt(rsdt: *const Rsdt) -> Result<FADT, ()> {
+        let entries = (((*rsdt).h.length - size_of::<ACPIRSDTHeader>() as u32) / 4) as usize;
+
+        let others_rsdt = map_helper((*rsdt).others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+
+        println!("begin research... on {:?}", others_rsdt);
+        for i in 0..entries {
+            let h = (others_rsdt as *const ACPIRSDTHeader).add(i);
+
+            if (*h).signature == "FACP".as_bytes() {
+                println!("iteration {} / {}: sign = ", i, entries);
+                println!("{:?}", (*h).signature);
+                let ret = *(h as *const FADT);
+                unmap_helper(others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+                return Ok(ret);
+            }
+        }
+        // No FACP found
+        unmap_helper(others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+        Err(())
+    }
+
+    fn new() -> Self {
+        let rsdp_descriptor: RSDPDescriptor;
+
+        unsafe {
+            let rsdp_descriptor_ptr: *const RSDPDescriptor10 = Self::get_rsdp_descriptor_ptr().unwrap();
+            rsdp_descriptor = match (*rsdp_descriptor_ptr).revision {
+                0 => RSDPDescriptor::LegacyRSDPDescriptor(*rsdp_descriptor_ptr),
+                _ => RSDPDescriptor::AdvancedRSDPDescriptor(*(rsdp_descriptor_ptr as *const RSDPDescriptor20)),
+            };
+        }
+
+        let virt_addr: *const u8 = match rsdp_descriptor {
+            RSDPDescriptor::LegacyRSDPDescriptor(descriptor) => {
+                map_helper(descriptor.rsdt_address as *mut u8, size_of::<ACPIRSDTHeader>())
+            }
+            RSDPDescriptor::AdvancedRSDPDescriptor(descriptor) => {
+                map_helper(descriptor.xsdt_address_0_31 as *mut u8, size_of::<ACPIRSDTHeader>())
+            }
+        };
+
+        let fadt = unsafe { Self::find_fadt(virt_addr as *const Rsdt).unwrap() };
+
+        unmap_helper(virt_addr as *mut u8, size_of::<ACPIRSDTHeader>());
+
+        Self { rsdp_descriptor, fadt }
+    }
+
+    /// Enable ACPI
+    pub fn enable(self) -> Result<(), ()> {
+        // give 3 seconds for ACPI initialization timeout
+        let mut count = 60;
+
+        while count != 0 && (Pio::<u16>::new(self.fadt.pm1a_control_block as u16).read() & 0x1 != 1) {
+            Pio::<u8>::new(self.fadt.smi_command_port as u16).write(self.fadt.acpi_enable);
+            PIT0.lock().sleep(Duration::from_millis(50));
+            count -= 1;
+        }
+
+        if count != 0 {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    /// Shutdown the computer now or return
+    pub unsafe fn shutdown(&self) {
+        let dsdt_header = map_helper(self.fadt.dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
+        let dsdt =
+            map_helper((self.fadt.dsdt as usize + size_of::<DsdtHeader>()) as *mut u8, (*dsdt_header).length as usize)
+                as *const u8;
+
+        dbg!(*dsdt_header);
+
+        memschr(dsdt as *const u8, (*dsdt_header).length as usize - size_of::<DsdtHeader>(), "_S5_".as_ptr(), 4, None)
+            .map(|pdsdt| {
+                let s5_obj = *(pdsdt.add(4) as *const S5Object);
+
+                if s5_obj.package_op == 0x12 {
+                    // disable all interrupts
+                    asm!("cli" :::: "volatile");
+
+                    println!(
+                        "ports: A -> {:#X?} B -> {:#X?}",
+                        self.fadt.pm1a_control_block, self.fadt.pm1b_control_block
+                    );
+                    println!("SLP_TYPa: {:#X?}", s5_obj.slp_typ_a_num);
+                    println!("SLP_TYPb: {:#X?}", s5_obj.slp_typ_b_num);
+
+                    println!("preparing shutdown...");
+                    Pio::<u16>::new(self.fadt.pm1a_control_block as u16)
+                        .write(((s5_obj.slp_typ_a_num as u16) << Self::SLEEP_STATE_MAGIC_SHL) | Self::SLP_EN);
+                    if self.fadt.pm1b_control_block != 0 {
+                        Pio::<u16>::new(self.fadt.pm1b_control_block as u16)
+                            .write(((s5_obj.slp_typ_b_num as u16) << Self::SLEEP_STATE_MAGIC_SHL) | Self::SLP_EN);
+                    }
+                    // wait for shutdown in iddle mode
+                    asm!("hlt");
+                }
+            })
+            .unwrap();
+        // _S5_ instructions OR s5_obj.package_op not found !
+        unmap_helper(dsdt as *mut u8, (*dsdt_header).length as usize);
+        unmap_helper(dsdt_header as *mut u8, size_of::<DsdtHeader>());
+    }
+}
+
 fn map_helper(phy_addr: *mut u8, mut size: usize) -> *mut u8 {
     let offset = Phys(phy_addr as usize).offset();
     if offset != 0 {
@@ -259,126 +401,12 @@ fn unmap_helper(virt_addr: *mut u8, mut size: usize) {
     }
 }
 
-pub unsafe fn acpi() -> Result<(), ()> {
-    let rsdp_descriptor: *const RSDPDescriptor = rdsp_stage()?;
-
-    println!("{:#p}", (*rsdp_descriptor).rsdt_address as *mut u8);
-
-    if (*rsdp_descriptor).revision == 0 {
-        // legacy RSDP descriptor
-        let v = map_helper((*rsdp_descriptor).rsdt_address as *mut u8, size_of::<ACPIRSDTHeader>());
-
-        rsdt_stage(v as *const ACPIRSDTHeader).unwrap();
-
-        unmap_helper(v, size_of::<ACPIRSDTHeader>());
-    } else {
-        // extended RSDP descriptor
-        let v = map_helper(
-            (*(rsdp_descriptor as *const RSDPDescriptor20)).xsdt_address_0_31 as *mut u8,
-            size_of::<ACPIRSDTHeader>(),
-        );
-
-        rsdt_stage(v as *const ACPIRSDTHeader).unwrap();
-
-        unmap_helper(v, size_of::<ACPIRSDTHeader>());
-    }
-    Ok(())
-}
-
-const SLP_EN: u16 = 1 << 13;
-
-unsafe fn acpi_enable(fadt: *const FADT) {
-    println!("initial_state: {:?}", Pio::<u16>::new((*fadt).pm1a_control_block as u16).read());
-
-    while Pio::<u16>::new((*fadt).pm1a_control_block as u16).read() & 0x1 != 1 {
-        Pio::<u8>::new((*fadt).smi_command_port as u16).write((*fadt).acpi_enable);
-    }
-    println!("final state: {:?}", Pio::<u16>::new((*fadt).pm1a_control_block as u16).read());
-    PIT0.lock().sleep(Duration::from_millis(200));
-}
-
-unsafe fn rsdt_stage(acpi_rsdt_header: *const ACPIRSDTHeader) -> Result<S5Object, ()> {
-    println!("start rsdt_stage at {:#X?}", acpi_rsdt_header);
-
-    let fadt: *const FADT = find_facp(acpi_rsdt_header as *const Rsdt)?;
-
-    acpi_enable(fadt);
-
-    let dsdt_header = map_helper((*fadt).dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
-
-    let dsdt = map_helper(((*fadt).dsdt as usize + size_of::<DsdtHeader>()) as *mut u8, (*dsdt_header).length as usize)
-        as *const u8;
-
-    dbg!(*dsdt_header);
-
-    let pdsdt =
-        memschr(dsdt as *const u8, (*dsdt_header).length as usize - size_of::<DsdtHeader>(), "_S5_".as_ptr(), 4, None)?;
-
-    let s5_obj = pdsdt.add(4) as *const S5Object;
-
-    if (*s5_obj).package_op == 0x12 {
-        let ret = *s5_obj;
-        unmap_helper(dsdt as *mut u8, (*dsdt_header).length as usize);
-        unmap_helper(dsdt_header as *mut u8, size_of::<DsdtHeader>());
-
-        println!("ports: A -> {:#X?} B -> {:#X?}", (*fadt).pm1a_control_block, (*fadt).pm1b_control_block,);
-        println!("SLP_TYPa: {:#X?}", ret.slp_typ_a_num);
-        println!("SLP_TYPb: {:#X?}", ret.slp_typ_b_num);
-        println!("{:#X?}", ret);
-
-        asm!("cli" :::: "volatile");
-        println!("preparing shutdowm");
-        Pio::<u16>::new((*fadt).pm1a_control_block as u16).write(((ret.slp_typ_a_num as u16) << 10) | SLP_EN);
-        if (*fadt).pm1b_control_block != 0 {
-            Pio::<u16>::new((*fadt).pm1b_control_block as u16).write(((ret.slp_typ_b_num as u16) << 10) | SLP_EN);
-        }
-        asm!("hlt");
-        Ok(ret)
-    } else {
-        unmap_helper(dsdt as *mut u8, (*dsdt_header).length as usize);
-        unmap_helper(dsdt_header as *mut u8, size_of::<DsdtHeader>());
-        Err(())
-    }
-}
-
-unsafe fn find_facp(rsdt: *const Rsdt) -> Result<*const FADT, ()> {
-    println!("{}", function!());
-    let entries = (((*rsdt).h.length - size_of::<ACPIRSDTHeader>() as u32) / 4) as usize;
-
-    let others_rsdt = map_helper((*rsdt).others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
-
-    println!("begin research... on {:?}", others_rsdt);
-    for i in 0..entries {
-        let h = (others_rsdt as *const ACPIRSDTHeader).add(i);
-
-        if (*h).signature == "FACP".as_bytes() {
-            println!("iteration {} / {}: sign = ", i, entries);
-            println!("{:?}", (*h).signature);
-            return Ok(h as *const FADT);
-        }
-    }
-    // No FACP found
-    Err(())
-}
-
-unsafe fn rdsp_stage() -> Result<*const RSDPDescriptor, ()> {
-    let bios_addr = 0xe0000 as *const u8;
-
-    let rsdp_descriptor =
-        memschr(bios_addr, 0x20000, "RSD PTR ".as_ptr(), 8, Some(rsdp_checksum))? as *const RSDPDescriptor;
-
-    println!("ACPI RSDP_DESCRIPTOR founded !\n");
-    println!("rsdp descriptor: {:?}", *rsdp_descriptor);
-
-    Ok(rsdp_descriptor)
-}
-
 /// Checksum for rsdp descriptor
 unsafe fn rsdp_checksum(rsdp_descriptor: *const u8) -> bool {
     let ptr: *const u8 = rsdp_descriptor;
     let checksum: u8 = 0;
 
-    for i in 0..size_of::<RSDPDescriptor>() {
+    for i in 0..size_of::<RSDPDescriptor10>() {
         checksum.overflowing_add(*ptr.add(i));
     }
 
