@@ -1,3 +1,4 @@
+//! contains the alloc flags taken by the various allocators
 use crate::memory::mmu::Entry;
 use bitflags::bitflags;
 

@@ -1,9 +1,11 @@
+//! contains the new types representing an address and a page frame
 use super::NbrPages;
 use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Range, RangeInclusive, Sub, SubAssign};
 
+/// trait address common to physical and virtual address
 pub trait Address:
     From<usize>
     + From<Page<Self>>
@@ -39,6 +41,8 @@ pub trait Address:
         self + (!self.is_aligned_on(size)) as usize * (size - (addr & (size - 1)))
     }
 
+    /// Align the address on the prev multiple of size
+    /// size must be a power of two
     #[inline(always)]
     fn align_prev(self, size: usize) -> <Self as Sub<usize>>::Output {
         debug_assert!(size.is_power_of_two());
@@ -47,22 +51,26 @@ pub trait Address:
 
         self - (addr & size - 1)
     }
+    /// offset on the page <=> self % 4096
     #[inline(always)]
     fn offset(&self) -> usize {
         Into::<usize>::into(*self).get_bits(0..12)
     }
 }
 
+/// New type representing a Virtual Adress
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Virt(pub usize);
 
 impl Virt {
+    /// index on the page directory
     #[inline(always)]
     pub fn pd_index(&self) -> usize {
         self.0.get_bits(22..32)
     }
 
+    /// index on the page table
     #[inline(always)]
     pub fn pt_index(&self) -> usize {
         self.0.get_bits(12..22)
@@ -128,6 +136,7 @@ impl SubAssign<usize> for Virt {
 
 impl Address for Virt {}
 
+/// New type representing a Physical Adress
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Phys(pub usize);
@@ -191,35 +200,42 @@ impl SubAssign<usize> for Phys {
 
 impl Address for Phys {}
 
+/// represent a page frame, wich can be virtual or physical
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Page<T: Address> {
+    /// the page number
     pub number: usize,
     _phantom: core::marker::PhantomData<T>,
 }
 
 impl<T: Address> Page<T> {
+    /// new page frame from the page number
     #[inline(always)]
     pub fn new(number: usize) -> Self {
         Self { number, _phantom: core::marker::PhantomData }
     }
 
+    /// page wich contains the address `addr`
     #[inline(always)]
     pub fn containing(addr: T) -> Self {
         From::from(addr)
     }
 
+    /// create an iterator of the inclusive range (from..=to)
     #[inline(always)]
     pub fn inclusive_range(from: Self, to: Self) -> PageIter<T> {
         PageIter { current: from, end: to }
     }
 
+    /// create an iterator of the exclusive range (from..to)
     #[inline(always)]
     pub fn exclusive_range(from: Self, to: Self) -> PageIter<T> {
         let end = Self::new(to.number - 1);
         PageIter { current: from, end }
     }
 
+    /// convert to the address
     #[inline(always)]
     pub fn to_addr(self) -> T {
         From::<Page<T>>::from(self)
@@ -227,11 +243,13 @@ impl<T: Address> Page<T> {
 }
 
 impl Page<Virt> {
+    /// index on the page directory
     #[inline(always)]
     pub fn pd_index(&self) -> usize {
         self.number.get_bits(10..20)
     }
 
+    /// index on the page table
     #[inline(always)]
     pub fn pt_index(&self) -> usize {
         self.number.get_bits(0..10)
@@ -269,8 +287,11 @@ impl<T: Address> From<T> for Page<T> {
     }
 }
 
+/// trait to implement into page iter on range traits of the Std
 pub trait IntoPageIter {
+    /// associate type representing Virtual or Physical page
     type PageType: Address;
+    /// return the page iterator
     fn iter(self) -> PageIter<Self::PageType>;
 }
 
@@ -290,9 +311,12 @@ impl<T: Address> IntoPageIter for RangeInclusive<Page<T>> {
     }
 }
 
+/// Page iterator
 #[derive(Debug, Copy, Clone)]
 pub struct PageIter<T: Address> {
+    /// curent page
     pub current: Page<T>,
+    /// end page inclusive
     pub end: Page<T>,
 }
 

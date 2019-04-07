@@ -1,5 +1,5 @@
-/// This file contains the code for the device map obtained from GRUB.
-/// It is an array of entries that describe zones across the whole RAM-space.
+//! This file contains the code for the device map obtained from GRUB.
+//! It is an array of entries that describe zones across the whole RAM-space.
 use core::mem;
 
 #[repr(u32)]
@@ -26,13 +26,14 @@ pub struct DeviceMap {
     pub low_addr: u32,
     /// used only in 64 bit
     pub high_addr: u32,
+    /// length in bytes
     pub low_length: u32,
     pub high_length: u32,
     pub region_type: RegionType,
     pub acpi_reserved: u32,
 }
 
-// Do not have any lifetime bound to make so I'll just make it static
+/// take a pointer on Null terminated device map array and create a slice of it
 pub unsafe fn get_device_map_slice(device_map_ptr: *const DeviceMap) -> &'static [DeviceMap] {
     let device_map_len = {
         let mut i = 0;

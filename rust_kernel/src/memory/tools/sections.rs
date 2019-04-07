@@ -1,3 +1,4 @@
+//! contains the symbols defined in the linker and a macro to get their address
 extern "C" {
     pub static __start_text: u8;
     pub static __end_text: u8;

@@ -30,6 +30,7 @@ impl PageDirectory {
         self[1023] |= Entry::PRESENT | Entry::READ_WRITE;
     }
 
+    /// set the page tables by translating the addresses of the slice by virtual_offset
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             self[offset + i] = Default::default();
@@ -38,6 +39,7 @@ impl PageDirectory {
         }
     }
 
+    /// get the page table without using the trick (by translating the addresses by virtual_offset)
     #[inline(always)]
     fn get_page_table_init(&self, virtp: Page<Virt>) -> Option<&mut PageTable> {
         let pd_index = virtp.pd_index();
@@ -48,6 +50,7 @@ impl PageDirectory {
         Some(unsafe { &mut *((self[pd_index].entry_addr().0 + symbol_addr!(virtual_offset)) as *mut PageTable) })
     }
 
+    /// get the page table corresponding to `virtp` using the trick
     #[inline(always)]
     fn get_page_table_trick(&self, virtp: Page<Virt>) -> Option<&mut PageTable> {
         let pd_index = virtp.pd_index();
@@ -57,6 +60,8 @@ impl PageDirectory {
         Some(unsafe { &mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable) })
     }
 
+    /// get the page table corresponding to `virtp` using the trick
+    /// and allocate a new one with the physical allocator if not present
     #[inline(always)]
     unsafe fn get_page_table_trick_alloc(&mut self, virtp: Page<Virt>) -> Result<&mut PageTable> {
         let pd_index = virtp.pd_index();
@@ -75,11 +80,13 @@ impl PageDirectory {
         Ok(&mut *((0xFFC00000 + pd_index * 4096) as *mut PageTable))
     }
 
+    /// get mutably the entry of the page table corresponding to `virtp`
     #[inline(always)]
     pub fn get_entry_mut(&mut self, virtp: Page<Virt>) -> Option<&mut Entry> {
         self.get_page_table_trick(virtp).map(|page_table| &mut page_table[virtp.pt_index()])
     }
 
+    /// get the entry of the page table corresponding to `virtp`
     #[inline(always)]
     pub fn get_entry(&self, virtp: Page<Virt>) -> Option<Entry> {
         self.get_page_table_trick(virtp).map(|page_table| page_table[virtp.pt_index()])
@@ -97,6 +104,7 @@ impl PageDirectory {
     }
 
     //TODO: check overflow
+    /// map the virutal pages (virtp..virtp + nb_pages) on the physical pages (physp..physp + nb_pages)
     pub unsafe fn map_range_page(
         &mut self,
         virtp: Page<Virt>,
@@ -110,6 +118,8 @@ impl PageDirectory {
         Ok(())
     }
 
+    /// map the virutal pages (virtp..virtp + nb_pages) on the physical pages (physp..physp + nb_pages)
+    /// without using the trick. So it can be used in initialisation before enable paging
     pub unsafe fn map_range_page_init(
         &mut self,
         virtp: Page<Virt>,
@@ -132,6 +142,7 @@ impl PageDirectory {
     }
 
     //TODO: check overflow
+    /// unmap the virutal pages (virtp..virtp + nb_pages) on the physical pages (physp..physp + nb_pages)
     pub unsafe fn unmap_range_page(&mut self, virtp: Page<Virt>, nb_pages: NbrPages) -> Result<()> {
         for p in (virtp..virtp + nb_pages).iter() {
             self.unmap_page(p)?;
@@ -139,10 +150,12 @@ impl PageDirectory {
         Ok(())
     }
 
+    /// get the physical page wich is mapped on `vaddr`
     pub unsafe fn physical_page(&self, vaddr: Page<Virt>) -> Option<Page<Phys>> {
         self.get_entry(vaddr).map(|entry| entry.entry_page())
     }
 
+    /// get the physical address wich is mapped on `vaddr`
     pub unsafe fn physical_addr(&self, vaddr: Virt) -> Option<Phys> {
         self.physical_page(vaddr.into()).map(|v| v.into())
     }
@@ -194,6 +207,7 @@ impl AsMut<[Entry]> for PageDirectory {
     }
 }
 
+/// call the physical allocator to free the user page tables
 impl Drop for PageDirectory {
     fn drop(&mut self) {
         for i in 1..768 {
