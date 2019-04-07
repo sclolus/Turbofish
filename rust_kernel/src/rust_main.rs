@@ -1,5 +1,5 @@
-use crate::drivers::pit_8253::{OperatingMode, PIT0};
-use crate::drivers::{pic_8259, ACPI, PCI, PIC_8259};
+use crate::drivers::pit_8253::OperatingMode;
+use crate::drivers::{pic_8259, ACPI, PCI, PIC_8259, PIT0};
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;

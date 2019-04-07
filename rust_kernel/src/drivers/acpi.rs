@@ -10,7 +10,7 @@ use core::mem::size_of;
 
 use io::{Io, Pio};
 
-use crate::drivers::pit_8253::PIT0;
+use crate::drivers::PIT0;
 use core::time::Duration;
 
 use crate::Spinlock;

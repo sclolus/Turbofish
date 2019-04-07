@@ -1,4 +1,4 @@
-use crate::drivers::pit_8253::PIT0;
+use crate::drivers::PIT0;
 use crate::terminal::ansi_escape_code::color::AnsiColor;
 use core::time::Duration;
 
