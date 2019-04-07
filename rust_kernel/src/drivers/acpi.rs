@@ -356,6 +356,10 @@ impl Acpi {
 
     /// Shutdown the computer now or return, result is not necessary
     pub unsafe fn shutdown(&mut self) -> AcpiResult<()> {
+        if self.is_disable() {
+            return Err(AcpiError::Disabled);
+        }
+
         let dsdt_header = map(self.fadt.dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
         let dsdt = map((self.fadt.dsdt as usize + size_of::<DsdtHeader>()) as *mut u8, (*dsdt_header).length as usize)
             as *const u8;
