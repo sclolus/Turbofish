@@ -4,6 +4,9 @@ pub mod idt;
 
 pub use self::idt::{Idtr, InterruptTable};
 
+pub mod interrupt_manager;
+// pub use interrupt_manager::{InterruptHandler, InterruptManager, Manager};
+
 /// Enables interrupts system-wide
 #[inline(always)]
 pub unsafe fn enable() {

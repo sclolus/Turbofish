@@ -24,7 +24,12 @@ extern "C" {
 extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
     println!("in interrupt context");
     let slice: &[u8] = unsafe { core::slice::from_raw_parts(interrupt_name, strlen(interrupt_name as *const c_char)) };
-    println!("From interrupt: {}", unsafe { core::str::from_utf8_unchecked(slice) })
+    println!("From interrupt: {}", unsafe { core::str::from_utf8_unchecked(slice) });
+    use crate::interrupts::interrupt_manager::generic_handler;
+
+    unsafe {
+        generic_handler(12);
+    }
 }
 
 /// This is the handler set to the reserved Gate Entries.

@@ -13,7 +13,10 @@ use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 use crate::watch_dog;
+use alloc::boxed::Box;
+// use alloc::vec::Vec;
 use core::time::Duration;
+use interrupts::interrupt_manager::*;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
@@ -43,6 +46,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     init_terminal();
     println!("TTY system initialized");
 
+    unsafe {
+        INTERRUPT_MANAGER = Some(Manager::new());
+        INTERRUPT_MANAGER.as_mut().unwrap().register(Box::new(DummyHandler::new(12))).unwrap();
+        INTERRUPT_MANAGER.as_mut().unwrap().register(Box::new(DummyHandler::new(12))).unwrap_or(());
+    }
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
@@ -81,6 +89,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     log::error!("this is an example of error");
     watch_dog();
+    unsafe { generic_handler(12) }
+    unsafe { generic_handler(2) }
     shell();
     0
 }
