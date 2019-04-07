@@ -1,9 +1,11 @@
+//! This module contains the turbo fish's drivers excepts for vbe
+
 #[macro_use]
 pub mod uart_16550;
 pub use uart_16550::UART_16550;
 
 pub mod acpi;
-pub use acpi::ACPI;
+pub use acpi::{Acpi, ACPI};
 
 pub mod pci;
 pub use pci::PCI;

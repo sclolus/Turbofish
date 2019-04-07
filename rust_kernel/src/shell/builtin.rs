@@ -4,10 +4,13 @@ use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// shutdown the PC
 pub fn shutdown(_args: &[&str]) -> u8 {
-    unsafe {
-        ACPI.lock().shutdown();
+    match *ACPI.lock() {
+        Some(mut acpi) => match unsafe { acpi.shutdown() } {
+            Ok(_) => {}
+            Err(e) => log::error!("ACPI shudown failure: {:?}", e),
+        },
+        None => log::warn!("Cannot shutdown your computer without ACPI"),
     }
-    println!("shudown failure");
     1
 }
 

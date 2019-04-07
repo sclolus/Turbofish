@@ -1,5 +1,5 @@
 use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::{pic_8259, ACPI, PCI, PIC_8259, PIT0};
+use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
@@ -40,10 +40,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
-
-    ACPI.lock().enable().unwrap();
-
     println!("TTY system initialized");
+
+    match Acpi::init() {
+        Ok(()) => match ACPI.lock().unwrap().enable() {
+            Ok(()) => log::info!("ACPI driver initialized"),
+            Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+        },
+        Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+    };
 
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.

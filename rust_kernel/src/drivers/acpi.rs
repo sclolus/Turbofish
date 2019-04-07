@@ -239,6 +239,7 @@ struct S5Object {
 #[derive(Copy, Clone, Debug)]
 #[allow(missing_docs)]
 pub enum AcpiError {
+    AcpiAbsent,
     CannotInitialize,
     Disabled,
     Enabled,
@@ -259,7 +260,7 @@ pub struct Acpi {
 
 lazy_static! {
     /// ACPI driver
-    pub static ref ACPI: Spinlock<Acpi> = Spinlock::new(Acpi::new());
+    pub static ref ACPI: Spinlock<Option<Acpi>> = Spinlock::new(None);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -273,12 +274,13 @@ const SLP_EN: u16 = 1 << 13;
 const SLEEP_STATE_MAGIC_SHL: u16 = 10;
 
 impl Acpi {
-    fn new() -> Self {
+    /// Initialize the ACPI feature
+    pub fn init() -> AcpiResult<()> {
         let rsdp_descriptor: RSDPDescriptor;
-        let fadt: FADT;
+        let fadt;
 
         unsafe {
-            let rsdp_descriptor_ptr: *const RSDPDescriptor10 = get_rsdp_descriptor_ptr().unwrap();
+            let rsdp_descriptor_ptr: *const RSDPDescriptor10 = get_rsdp_descriptor_ptr()?;
             rsdp_descriptor = match (*rsdp_descriptor_ptr).revision {
                 0 => RSDPDescriptor::LegacyRSDPDescriptor(*rsdp_descriptor_ptr),
                 _ => RSDPDescriptor::AdvancedRSDPDescriptor(*(rsdp_descriptor_ptr as *const RSDPDescriptor20)),
@@ -293,15 +295,21 @@ impl Acpi {
                 }
             };
 
-            fadt = find_fadt(virt_addr as *const Rsdt).unwrap();
+            fadt = find_fadt(virt_addr as *const Rsdt);
 
             unmap(virt_addr as *mut u8, size_of::<ACPIRSDTHeader>());
         }
-        Self { rsdp_descriptor, fadt }
+        match fadt {
+            Ok(fadt) => {
+                *ACPI.lock() = Some(Self { rsdp_descriptor, fadt });
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Enable ACPI
-    pub fn enable(&self) -> AcpiResult<()> {
+    pub fn enable(&mut self) -> AcpiResult<()> {
         // give 3 seconds for ACPI initialization timeout
         let mut count = 60;
 
@@ -319,12 +327,12 @@ impl Acpi {
     }
 
     /// Check is ACPI is enable
-    pub fn is_enable(&self) -> bool {
+    pub fn is_enable(&mut self) -> bool {
         Pio::<u16>::new(self.fadt.pm1a_control_block as u16).read() & 0x1 == 1
     }
 
     /// Disable ACPI
-    pub fn disable(&self) -> AcpiResult<()> {
+    pub fn disable(&mut self) -> AcpiResult<()> {
         // give 3 seconds for ACPI uninitialization timeout
         let mut count = 60;
 
@@ -342,56 +350,63 @@ impl Acpi {
     }
 
     /// Check is ACPI is disable
-    pub fn is_disable(&self) -> bool {
+    pub fn is_disable(&mut self) -> bool {
         Pio::<u16>::new(self.fadt.pm1a_control_block as u16).read() & 0x1 == 0
     }
 
     /// Shutdown the computer now or return, result is not necessary
-    pub unsafe fn shutdown(&self) {
+    pub unsafe fn shutdown(&mut self) -> AcpiResult<()> {
         let dsdt_header = map(self.fadt.dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
         let dsdt = map((self.fadt.dsdt as usize + size_of::<DsdtHeader>()) as *mut u8, (*dsdt_header).length as usize)
             as *const u8;
 
         // dbg!(*dsdt_header);
 
-        memschr(dsdt as *const u8, (*dsdt_header).length as usize - size_of::<DsdtHeader>(), "_S5_".as_ptr(), 4, None)
-            .map(|pdsdt| {
-                let s5_obj = *(pdsdt.add(4) as *const S5Object);
+        let res = memschr(
+            dsdt as *const u8,
+            (*dsdt_header).length as usize - size_of::<DsdtHeader>(),
+            "_S5_".as_ptr(),
+            4,
+            None,
+        )
+        .map(|pdsdt| {
+            let s5_obj = *(pdsdt.add(4) as *const S5Object);
 
-                if s5_obj.package_op == 0x12 {
-                    // disable all interrupts
-                    asm!("cli" :::: "volatile");
+            if s5_obj.package_op == 0x12 {
+                // disable all interrupts
+                asm!("cli" :::: "volatile");
 
-                    // println!(
-                    //    "ports: A -> {:#X?} B -> {:#X?}",
-                    //    self.fadt.pm1a_control_block, self.fadt.pm1b_control_block
-                    // );
-                    // println!("SLP_TYPa: {:#X?}", s5_obj.slp_typ_a_num);
-                    // println!("SLP_TYPb: {:#X?}", s5_obj.slp_typ_b_num);
+                // println!(
+                //    "ports: A -> {:#X?} B -> {:#X?}",
+                //    self.fadt.pm1a_control_block, self.fadt.pm1b_control_block
+                // );
+                // println!("SLP_TYPa: {:#X?}", s5_obj.slp_typ_a_num);
+                // println!("SLP_TYPb: {:#X?}", s5_obj.slp_typ_b_num);
 
-                    println!("preparing shutdown...");
-                    Pio::<u16>::new(self.fadt.pm1a_control_block as u16)
-                        .write(((s5_obj.slp_typ_a_num as u16) << SLEEP_STATE_MAGIC_SHL) | SLP_EN);
-                    if self.fadt.pm1b_control_block != 0 {
-                        Pio::<u16>::new(self.fadt.pm1b_control_block as u16)
-                            .write(((s5_obj.slp_typ_b_num as u16) << SLEEP_STATE_MAGIC_SHL) | SLP_EN);
-                    }
-                    // wait for shutdown in iddle mode
-                    asm!("hlt");
+                println!("preparing shutdown...");
+                Pio::<u16>::new(self.fadt.pm1a_control_block as u16)
+                    .write(((s5_obj.slp_typ_a_num as u16) << SLEEP_STATE_MAGIC_SHL) | SLP_EN);
+                if self.fadt.pm1b_control_block != 0 {
+                    Pio::<u16>::new(self.fadt.pm1b_control_block as u16)
+                        .write(((s5_obj.slp_typ_b_num as u16) << SLEEP_STATE_MAGIC_SHL) | SLP_EN);
                 }
-            })
-            .unwrap();
+                // wait for shutdown in iddle mode
+                asm!("hlt");
+            }
+        });
         // _S5_ instructions OR s5_obj.package_op not found !
         unmap(dsdt as *mut u8, (*dsdt_header).length as usize);
         unmap(dsdt_header as *mut u8, size_of::<DsdtHeader>());
+        res
     }
 }
 
 /// Get the first main ACPI descriptor
 unsafe fn get_rsdp_descriptor_ptr() -> AcpiResult<*const RSDPDescriptor10> {
-    let rsdp_descriptor_ptr = memschr(RSDP_BIOS_ADDR, 0x20000, "RSD PTR ".as_ptr(), 8, Some(rsdp_checksum)).unwrap()
-        as *const RSDPDescriptor10;
-    Ok(rsdp_descriptor_ptr)
+    match memschr(RSDP_BIOS_ADDR, 0x20000, "RSD PTR ".as_ptr(), 8, Some(rsdp_checksum)) {
+        Ok(rsdp_descriptor_ptr) => Ok(rsdp_descriptor_ptr as *const RSDPDescriptor10),
+        Err(_) => Err(AcpiError::AcpiAbsent),
+    }
 }
 
 /// Search the big fucking table
