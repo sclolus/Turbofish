@@ -120,7 +120,7 @@ impl Rtc {
             sec: convert_to_binary(self.read_register(0x00)),
             minutes: convert_to_binary(self.read_register(0x02)),
             hours: convert_to_binary_24hour(self.read_register(0x04)),
-            day_of_month: self.read_register(0x07),
+            day_of_month: convert_to_binary(self.read_register(0x07)),
             month: self.read_register(0x08).try_into().unwrap(),
             year: {
                 let year: u32 = convert_to_binary(self.read_register(0x09)) as u32;

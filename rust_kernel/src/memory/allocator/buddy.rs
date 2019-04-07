@@ -267,7 +267,7 @@ impl<T: Address> BuddyAllocator<T> {
     }
 
     pub fn ksize(&mut self, addr: Page<T>) -> Result<Order> {
-        if addr < self.addr || addr - self.addr > self.max_order.nbr_pages() {
+        if addr < self.addr || addr - self.addr > self.size {
             return Err(MemoryError::OutOfBound);
         }
 
