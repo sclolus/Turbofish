@@ -54,6 +54,9 @@ VPATH += src/interrupts/idt
 SRC_ASM_KERNEL += pic_8259_isr
 VPATH += src/drivers/pic_8259
 
+SRC_ASM_KERNEL += syscall_isr test_syscall
+VPATH += src/syscall
+
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
 
