@@ -9,14 +9,13 @@ use super::{AdvancedGraphic, Drawer, IoError, IoResult, Pos};
 use crate::terminal::ansi_escape_code::AnsiColor;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 
 #[derive(Debug, Clone)]
 pub struct VbeMode {
     /// linear frame buffer address
     linear_frame_buffer: LinearFrameBuffer,
     /// double framebuffer location
-    db_frame_buffer: RefCell<Vec<u8>>,
+    db_frame_buffer: Vec<u8>,
     /// graphic buffer location
     graphic_buffer: Vec<u8>,
     /// in pixel
@@ -55,7 +54,7 @@ impl VbeMode {
         Self {
             linear_frame_buffer: LinearFrameBuffer(linear_frame_buffer),
             // Never trust the borrow checker ! Adding 1 for 24bpp mode
-            db_frame_buffer: RefCell::new(vec![0; screen_size + 1]),
+            db_frame_buffer: vec![0; screen_size + 1],
             graphic_buffer: vec![0; screen_size + 1],
             width,
             height,
@@ -72,17 +71,17 @@ impl VbeMode {
 
     /// put pixel at position y, x in pixel unit
     #[inline(always)]
-    fn put_pixel(&self, y: usize, x: usize, color: RGB) {
+    fn put_pixel(&mut self, y: usize, x: usize, color: RGB) {
         let loc = y * self.pitch + x * self.bytes_per_pixel;
         unsafe {
             // Be carefull, in 24 bpp mode, the last pixel overflow by one byte !
-            *((*self.db_frame_buffer.borrow_mut()).as_mut_ptr().add(loc) as *mut u32) = color.0 as u32;
+            *(self.db_frame_buffer.as_mut_ptr().add(loc) as *mut u32) = color.0 as u32;
         }
     }
 
     /// write a single character with common rules
     #[inline(always)]
-    fn write_char(&self, char_font: &[u8], line: usize, column: usize, color: RGB) {
+    fn write_char(&mut self, char_font: &[u8], line: usize, column: usize, color: RGB) {
         let mut y = line * self.char_height;
         let mut x;
         for l in char_font {
@@ -99,7 +98,7 @@ impl VbeMode {
 
     /// write a cursor with common rules
     #[inline(always)]
-    fn write_cursor(&self, char_font: &[u8], line: usize, column: usize, color: RGB) {
+    fn write_cursor(&mut self, char_font: &[u8], line: usize, column: usize, color: RGB) {
         let mut y = line * self.char_height;
         let mut x;
         for l in char_font {
@@ -115,11 +114,11 @@ impl VbeMode {
     }
 
     /// copy one bounded area line from graphic buffer to db frame buffer
-    fn copy_graphic_buffer_line_area(&self, line: usize, column_1: usize, column_2: usize) {
+    fn copy_graphic_buffer_line_area(&mut self, line: usize, column_1: usize, column_2: usize) {
         for i in 0..self.char_height {
             let o1 = (line * self.char_height + i) * self.pitch + column_1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (column_2 - column_1) * self.char_width * self.bytes_per_pixel;
-            (*self.db_frame_buffer.borrow_mut())[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
+            self.db_frame_buffer[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
         }
     }
 }
@@ -142,11 +141,7 @@ impl Drawer for VbeMode {
     fn clear_screen(&mut self) {
         // Copy the entire graphic buffer
         unsafe {
-            _sse2_memcpy(
-                (*self.db_frame_buffer.borrow_mut()).as_mut_ptr(),
-                self.graphic_buffer.as_ptr(),
-                self.pitch * self.height,
-            );
+            _sse2_memcpy(self.db_frame_buffer.as_mut_ptr(), self.graphic_buffer.as_ptr(), self.pitch * self.height);
         }
     }
 
@@ -167,11 +162,7 @@ impl AdvancedGraphic for VbeMode {
     /// refresh framebuffer
     fn refresh_screen(&mut self) {
         unsafe {
-            _sse2_memcpy(
-                self.linear_frame_buffer.0,
-                (*self.db_frame_buffer.borrow_mut()).as_ptr(),
-                self.pitch * self.height,
-            );
+            _sse2_memcpy(self.linear_frame_buffer.0, self.db_frame_buffer.as_ptr(), self.pitch * self.height);
         }
     }
 
@@ -181,7 +172,7 @@ impl AdvancedGraphic for VbeMode {
         unsafe {
             _sse2_memcpy(
                 self.linear_frame_buffer.0.add(offset),
-                (*self.db_frame_buffer.borrow_mut()).as_ptr().add(offset),
+                self.db_frame_buffer.as_ptr().add(offset),
                 self.pitch * self.char_height,
             );
         }
