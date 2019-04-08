@@ -2,7 +2,7 @@ use core::convert::From;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u8)]
-enum PrivilegeLevel {
+pub enum PrivilegeLevel {
     // Most priviliged level, Most of the critical kernel code is expected to run at this level
     Ring0 = 0b00,
 

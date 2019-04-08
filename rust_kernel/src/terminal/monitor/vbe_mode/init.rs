@@ -3,7 +3,8 @@ use super::VbeMode;
 use crate::ffi::c_char;
 use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{Phys, Virt};
-use crate::registers::{real_mode_op, BaseRegisters};
+use crate::registers::real_mode_op;
+use crate::system::BaseRegisters;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
