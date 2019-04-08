@@ -41,7 +41,7 @@ u32		benchmark(void)
  * Background bitmap
  */
 extern char _univers_bmp_start;
-extern char _asterix_bmp_start;
+extern char _wanggle_bmp_start;
 
 /*
  * For the moment, only mode in 24bpp and 32bpp 1024x768 mode work
@@ -122,7 +122,7 @@ void 		kmain(struct multiboot_info *multiboot_info_addr, void *dev_map)
 	create_tty(img, 0xFFFFFF);
 
 	img = bmp_load(
-			(u8 *)&_asterix_bmp_start,
+			(u8 *)&_wanggle_bmp_start,
 			&width,
 			&height,
 			NULL);
