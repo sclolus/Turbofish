@@ -6,6 +6,7 @@ use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::shell::shell;
+use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
 use crate::terminal::monitor::Drawer;
@@ -89,6 +90,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::error!("this is an example of error");
 
     watch_dog();
+
+    syscall::init();
+
+    let s = "write that";
+    unsafe {
+        crate::syscall::_write(1, s.as_ptr(), s.len());
+    }
     shell();
     0
 }
