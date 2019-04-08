@@ -1,6 +1,18 @@
-use crate::drivers::pci::PCI;
+use crate::drivers::{ACPI, PCI};
 use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
+
+/// shutdown the PC
+pub fn shutdown(_args: &[&str]) -> u8 {
+    match *ACPI.lock() {
+        Some(mut acpi) => match unsafe { acpi.shutdown() } {
+            Ok(_) => {}
+            Err(e) => log::error!("ACPI shudown failure: {:?}", e),
+        },
+        None => log::warn!("Cannot shutdown your computer without ACPI"),
+    }
+    1
+}
 
 /// show backtrace
 pub fn backtrace(_args: &[&str]) -> u8 {

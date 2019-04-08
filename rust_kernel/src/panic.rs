@@ -192,7 +192,6 @@ pub fn panic_sa_mere(info: &PanicInfo) {
 #[cfg(not(feature = "exit-on-panic"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
-    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     panic_sa_mere(info);
     loop {}
 }

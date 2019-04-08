@@ -1,0 +1,17 @@
+To generate a 42 rendu:
+----------------------
+cargo clean manually inside integration_tester directory inside the rust_kernel directory
+
+go the the root of the KFS project
+
+make fclean
+
+cp -RvL rendu target_directory_outside_the_project
+(-L, --dereference Follow symbolic links when copying from them. With this option, cp cannot create a symbolic link.
+For example, a symlink (to regular file) in the source tree will be copied to a regular file in the destination tree.)
+
+cd target_directory_outside_the_project
+
+it's done !
+
+Dont forget to git init . and git remote add vogsphere_stuff to put the entire project in 42 network !
