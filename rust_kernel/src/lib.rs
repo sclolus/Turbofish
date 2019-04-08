@@ -20,10 +20,10 @@ extern crate io;
 extern crate keyboard;
 
 #[macro_use]
-pub mod utils;
+pub mod debug;
 
 #[macro_use]
-pub mod debug;
+pub mod utils;
 
 #[macro_use]
 pub mod ffi;

@@ -48,8 +48,16 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     unsafe {
         INTERRUPT_MANAGER = Some(Manager::new());
-        INTERRUPT_MANAGER.as_mut().unwrap().register(Box::new(DummyHandler::new(12))).unwrap();
-        INTERRUPT_MANAGER.as_mut().unwrap().register(Box::new(DummyHandler::new(12))).unwrap_or(());
+        let interrupt_manager = INTERRUPT_MANAGER.as_mut().unwrap();
+        interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap();
+        interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap_or(());
+        interrupt_manager.register(Box::new(GenericManager::new()), 1);
+        let handler: FnHandler = FnHandler::new(Box::new(|num| {
+            println!("In interrupt context: {}", num);
+            HandlingState::Handled
+        }));
+
+        interrupt_manager.register(Box::new(handler), 1);
     }
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
@@ -91,6 +99,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     watch_dog();
     unsafe { generic_handler(12) }
     unsafe { generic_handler(2) }
+    unsafe { generic_handler(1) }
     shell();
     0
 }
