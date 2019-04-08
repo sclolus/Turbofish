@@ -1,6 +1,6 @@
 KERNEL = rust
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 20480
+IMAGE_SIZE = 16384
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 
@@ -19,7 +19,16 @@ $(IMG_DISK):
 	sudo mkfs.ext2 $(LOOP_DEVICE)p1
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	echo "(hd0) " $(LOOP_DEVICE) > loopdevice.map
-	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loopdevice.map --fonts="en_US" --themes=no --modules="part_msdos part_gpt" --boot-directory=/mnt $(LOOP_DEVICE) -v
+# test - This module provides the "test" command which is used to evaluate an expression.
+# echo - This module provides the "echo" command.
+# vga - This module provides VGA support.
+# normal - This module provides "Normal Mode" which is the opposite of "Rescue Mode".
+# elf - This module loads ELF files.
+# multiboot - multiboot - This module provides various functions needed to support multi-booting systems.
+# part_msdos - This module provides support for MS-DOS (MBR) partitions and partitioning tables.
+# ext2 - This module provides support for EXT2 filesystems.
+# sleep - This module allow to sleep a while.
+	sudo grub-install --target=i386-pc --no-floppy --grub-mkdevicemap=loopdevice.map --install-modules="sleep test echo vga normal elf multiboot part_msdos ext2" --locales="" --fonts="" --themes=no --modules="part_msdos" --boot-directory=/mnt $(LOOP_DEVICE) -v
 	sudo cp -vf grub/grub.cfg /mnt/grub
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
