@@ -47,10 +47,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("TTY system initialized");
 
     unsafe {
-        INTERRUPT_MANAGER = Some(Manager::new());
+        INTERRUPT_MANAGER = Some(Manager::new().unwrap());
         let interrupt_manager = INTERRUPT_MANAGER.as_mut().unwrap();
         interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap();
         interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap_or(());
+
         interrupt_manager.register(Box::new(GenericManager::new()), 1);
         let handler: FnHandler = FnHandler::new(Box::new(|num| {
             println!("In interrupt context: {}", num);

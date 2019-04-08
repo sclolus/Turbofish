@@ -68,23 +68,23 @@ pub struct IdtGateEntry {
     /// The type attr is layout in this way.
     ///
     /// ```None
-    ///  7                             0  
-    /// +---+---+---+---+---+---+---+---+  
-    /// | P |  DPL  | S |    GateType   |  
-    /// +---+---+---+---+---+---+---+---+  
-    /// - P:          Present	Set to 0 for unused interrupts.  
+    ///  7                             0
+    /// +---+---+---+---+---+---+---+---+
+    /// | P |  DPL  | S |    GateType   |
+    /// +---+---+---+---+---+---+---+---+
+    /// - P:          Present	Set to 0 for unused interrupts.
     /// - DPL:        Descriptor Privilege Level	Gate call protection.
     ///               Specifies which privilege Level the calling Descriptor minimum
     ///               should have.
     ///               So hardware and CPU interrupts can be protected from
-    ///               being called out of userspace.  
-    /// - S:          Storage Segment	Set to 0 for interrupt and trap gates  
+    ///               being called out of userspace.
+    /// - S:          Storage Segment	Set to 0 for interrupt and trap gates
     /// - Gate Type:  Possible IDT gate types :
     ///               0b0101	0x5	5	80386 32 bit task gate
     ///               0b0110	0x6	6	80286 16-bit interrupt gate
     ///               0b0111	0x7	7	80286 16-bit trap gate
     ///               0b1110	0xE	14	80386 32-bit interrupt gate
-    ///               0b1111	0xF	15	80386 32-bit trap gate  
+    ///               0b1111	0xF	15	80386 32-bit trap gate
     /// ```
     /// type and attributes,
     pub type_attr: u8,
@@ -391,6 +391,7 @@ impl InterruptTable<'_> {
 
     /// Gets the current InterruptTable as specified by the current IDTR.
     /// This method is basically just a shorthand.
+    // Should this really still be unsafe ? To consider.
     pub unsafe fn current_interrupt_table<'a>() -> Option<InterruptTable<'a>> {
         match INITIALIZED {
             false => None,

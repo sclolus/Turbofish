@@ -1,11 +1,17 @@
 //! This file contains the code related to the interrupt managing system, i.e the InterruptManger
 
+use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::utils::{Either, Either::*};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use HandlingState::*;
 
 pub static mut INTERRUPT_MANAGER: Option<Manager> = None;
+
+#[derive(Debug)]
+pub enum InterruptManagerError {
+    IdtNotInitialized,
+}
 
 pub unsafe extern "C" fn generic_handler(interrupt_number: u8) {
     assert!(INTERRUPT_MANAGER.is_some());
@@ -20,9 +26,10 @@ pub unsafe extern "C" fn generic_handler(interrupt_number: u8) {
 /// The Manager implements InterruptManager.
 /// The InterruptHandler implementors can also implement InterruptManager,
 /// enabling them to further dispatch the interrupt to a list of registered InterruptHandler.
-pub struct Manager {
+pub struct Manager<'a> {
     // 256 entries in the IDT, put a constant here please.
     handlers: [Option<Box<InterruptHandler>>; 256],
+    interrupt_table: InterruptTable<'a>,
 }
 
 /// The InterruptManager trait.
@@ -48,8 +55,8 @@ where
     }
 }
 
-impl Manager {
-    pub fn new() -> Self {
+impl<'a> Manager<'a> {
+    pub fn new() -> Result<Self, InterruptManagerError> {
         use core::mem;
         let mut handlers: [Option<Box<InterruptHandler>>; 256] = unsafe { core::mem::uninitialized() };
 
@@ -57,11 +64,16 @@ impl Manager {
             mem::forget(mem::replace(handler, None));
         }
 
-        Self { handlers }
+        let interrupt_table = unsafe { InterruptTable::current_interrupt_table() };
+
+        match interrupt_table {
+            Some(table) => Ok(Self { handlers, interrupt_table: table }),
+            None => Err(InterruptManagerError::IdtNotInitialized),
+        }
     }
 }
 
-impl InterruptManager for Manager {
+impl<'a> InterruptManager for Manager<'a> {
     fn dispatch(&mut self, interrupt_number: u8) -> HandlingState {
         match &mut self.handlers[interrupt_number as usize] {
             Some(handler) => handler.handle(interrupt_number),
@@ -73,20 +85,33 @@ impl InterruptManager for Manager {
     }
 
     fn register(&mut self, handler: Box<InterruptHandler>, interrupt_number: u8) -> Result<(), ()> {
-        match &mut self.handlers[interrupt_number as usize] {
-            Some(registered_handler) => registered_handler
-                .kind()
-                .map_left(|handler| {
-                    log::warn!(
-                        "Handler {} for interrupt number {} is already registered",
-                        handler.name(),
-                        interrupt_number
-                    );
-                    Err(())
-                })
-                .map_right(|interrupt_manager| interrupt_manager.register(handler, interrupt_number))
-                .move_out()?,
-            None => self.handlers[interrupt_number as usize] = Some(handler),
+        unsafe {
+            without_interrupts!({
+                match &mut self.handlers[interrupt_number as usize] {
+                    Some(registered_handler) => registered_handler
+                        .kind()
+                        .map_left(|handler| {
+                            log::warn!(
+                                "Handler {} for interrupt number {} is already registered",
+                                handler.name(),
+                                interrupt_number
+                            );
+                            Err(())
+                        })
+                        .map_right(|interrupt_manager| interrupt_manager.register(handler, interrupt_number))
+                        .move_out()?,
+                    None => {
+                        self.interrupt_table[interrupt_number as usize]
+                            .set_storage_segment(false)
+                            .set_privilege_level(0) // To be discussed when different context are a thing.
+                            .set_selector(1 << 3)
+                            .set_gate_type(GateType::InterruptGate32)
+                            .set_handler(generic_handler as *const () as u32);
+
+                        self.handlers[interrupt_number as usize] = Some(handler);
+                    }
+                }
+            });
         }
         Ok(())
     }
@@ -106,7 +131,6 @@ pub trait InterruptHandler {
         NotHandled
     }
 
-    // fn interrupt_number(&self) -> u8;
     fn kind(&mut self) -> Either<&mut dyn InterruptHandler, &mut dyn InterruptManager>; // {
                                                                                         //     Left(&self)
                                                                                         // }
