@@ -129,7 +129,7 @@ VPATH += src/kernel_io
 HEADERS += kernel_io.h
 
 # images
-SRC_ASM_KERNEL += asterix univers
+SRC_ASM_KERNEL += wanggle univers
 VPATH += medias
 
 OBJ_DIR := objs
