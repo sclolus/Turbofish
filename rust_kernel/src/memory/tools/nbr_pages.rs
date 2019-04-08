@@ -1,6 +1,8 @@
+//! this module contains a new type `NbrPages` to represent a number of pages
 use super::PAGE_SIZE;
 use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
+/// new type representing a number of page
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrPages(pub usize);
 
@@ -30,12 +32,14 @@ impl NbrPages {
 }
 
 impl NbrPages {
+    /// convertion to number of bytes
     pub fn to_bytes(self) -> usize {
         self.into()
     }
 }
 
 impl From<usize> for NbrPages {
+    /// convertion from number of bytes
     #[inline(always)]
     fn from(nb_bytes: usize) -> Self {
         Self(nb_bytes / PAGE_SIZE + (nb_bytes % PAGE_SIZE != 0) as usize)
@@ -43,6 +47,7 @@ impl From<usize> for NbrPages {
 }
 
 impl Into<usize> for NbrPages {
+    /// convertion to number of bytes
     #[inline(always)]
     fn into(self) -> usize {
         self.0 * PAGE_SIZE as usize
