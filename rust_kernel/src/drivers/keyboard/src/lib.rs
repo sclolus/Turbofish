@@ -247,7 +247,8 @@ pub fn init_keyboard_driver() {
 }
 
 #[no_mangle]
-extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
+/// Definetly not some documentation.
+pub extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
         unsafe { KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode) }

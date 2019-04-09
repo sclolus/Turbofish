@@ -168,8 +168,6 @@ impl Pic8259 {
             .set_selector(1 << 3)
             .set_gate_type(InterruptGate32);
 
-        gate_entry.set_gate_type(InterruptGate32);
-
         let offset = KERNEL_PIC_MASTER_IDT_VECTOR as usize;
         for (index, &interrupt_handler) in Self::DEFAULT_IRQS_MASTER.iter().enumerate() {
             gate_entry.set_handler(interrupt_handler as *const c_void as u32);

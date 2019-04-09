@@ -49,25 +49,34 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         INTERRUPT_MANAGER = Some(Manager::new().unwrap());
         let interrupt_manager = INTERRUPT_MANAGER.as_mut().unwrap();
-        interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap();
-        interrupt_manager.register(Box::new(DummyHandler::new()), 12).unwrap_or(());
 
-        interrupt_manager.register(Box::new(GenericManager::new()), 1);
+        interrupt_manager.register(Box::new(GenericManager::new()), 12 + 32).unwrap();
         let handler: FnHandler = FnHandler::new(Box::new(|num| {
             println!("In interrupt context: {}", num);
-            HandlingState::Handled
+            HandlingState::NotHandled
         }));
 
-        interrupt_manager.register(Box::new(handler), 1);
+        interrupt_manager.register(Box::new(handler), 12 + 32).unwrap();
+
+        extern "C" {
+            pub fn _isr_timer_handler();
+        }
+
+        let pit_handler = FnHandler::new(Box::new(|_num| {
+            PIC_8259.lock().send_eoi(pic_8259::Irq::MouseOnPS2Controller);
+            HandlingState::Handled
+        }));
+        interrupt_manager.register(Box::new(pit_handler), 12 + 32).unwrap();
     }
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+        PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer); // enable only the keyboard.
+        PIC_8259.lock().enable_irq(pic_8259::Irq::MouseOnPS2Controller); // enable only the keyboard.
     }
     log::info!("Keyboard has been initialized: IRQ mask: {:X?}", PIC_8259.lock().get_masks());
 
     let size = SCREEN_MONAD.lock().query_window_size();
     printfixed!(Pos { line: 1, column: size.column - 17 }, "{}", "Turbo Fish v0.2+".green());
-
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
@@ -76,6 +85,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");
+
     let date = rtc.read_date();
     println!("{}", date);
     use crate::memory::allocator::VirtualPageAllocator;
@@ -98,9 +108,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     log::error!("this is an example of error");
     watch_dog();
-    unsafe { generic_handler(12) }
-    unsafe { generic_handler(2) }
-    unsafe { generic_handler(1) }
     shell();
     0
 }

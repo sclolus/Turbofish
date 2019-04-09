@@ -9,6 +9,7 @@ extern debug_pit
 
 extern keyboard_interrupt_handler
 
+global _pic_time
 segment .data
 _pic_time dd 0
 
