@@ -3,6 +3,16 @@ use crate::system::i8086_payload_apm_shutdown;
 use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 
+/// Halt the PC
+pub fn halt(_args: &[&str]) -> u8 {
+    unsafe {
+        asm!("cli" :::: "volatile");
+        println!("System is now halted.");
+        asm!("hlt" :::: "volatile");
+    }
+    unreachable!();
+}
+
 /// shutdown the PC
 pub fn reboot(_args: &[&str]) -> u8 {
     match *ACPI.lock() {

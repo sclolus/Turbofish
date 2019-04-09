@@ -42,8 +42,8 @@ impl PhysicalPageAllocator {
 pub static mut PHYSICAL_ALLOCATOR: Option<PhysicalPageAllocator> = None;
 
 pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map: &[DeviceMap]) {
-    eprintln!("kernel physical end: {:x?}", symbol_addr!(kernel_physical_end));
-    eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_next(PAGE_SIZE));
+    //eprintln!("kernel physical end: {:x?}", symbol_addr!(kernel_physical_end));
+    //eprintln!("kernel physical end alligned: {:x?}", Phys(symbol_addr!(kernel_physical_end)).align_next(PAGE_SIZE));
 
     let mut pallocator = PhysicalPageAllocator::new(Page::new(0), system_memory_amount);
 
@@ -51,16 +51,16 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
     // Reserve in memory the regions that are not usable according to the device_map slice,
     // making them effectively unusable by the memory system.
     for region in device_map.iter() {
-        println!("{:x?}", region);
-        println!("addr: {:x?}", region.low_addr);
-        println!("len: {}ko", region.low_length >> 10);
+        //println!("{:x?}", region);
+        //println!("addr: {:x?}", region.low_addr);
+        //println!("len: {}ko", region.low_length >> 10);
         if RegionType::Usable == region.region_type {
             continue;
         }
-        if let Err(e) =
+        if let Err(_e) =
             pallocator.reserve(Page::containing(Phys(region.low_addr as usize)), (region.low_length as usize).into())
         {
-            println!("some error were occured on pallocator ! {:?}", e);
+            //println!("some error were occured on pallocator ! {:?}", e);
         }
     }
     PHYSICAL_ALLOCATOR = Some(pallocator);

@@ -57,7 +57,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::info!("Keyboard has been initialized: IRQ mask: {:X?}", PIC_8259.lock().get_masks());
 
     let size = SCREEN_MONAD.lock().query_window_size();
-    printfixed!(Pos { line: 1, column: size.column - 17 }, "{}", "Turbo Fish v0.2+".green());
+    printfixed!(Pos { line: 1, column: size.column - 17 }, "{}", "Turbo Fish v0.3".green());
 
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
