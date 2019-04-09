@@ -64,14 +64,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         let pit_handler = FnHandler::new(Box::new(|_num| {
             PIC_8259.lock().send_eoi(pic_8259::Irq::MouseOnPS2Controller);
+            log::info!("Successfully reached this handler");
             HandlingState::Handled
         }));
         interrupt_manager.register(Box::new(pit_handler), 12 + 32).unwrap();
     }
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
-        PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer); // enable only the keyboard.
-        PIC_8259.lock().enable_irq(pic_8259::Irq::MouseOnPS2Controller); // enable only the keyboard.
+        PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer);
+        PIC_8259.lock().enable_irq(pic_8259::Irq::MouseOnPS2Controller);
     }
     log::info!("Keyboard has been initialized: IRQ mask: {:X?}", PIC_8259.lock().get_masks());
 
@@ -108,6 +109,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     log::error!("this is an example of error");
     watch_dog();
+    unsafe {
+        asm!("int 44":::: "volatile", "intel");
+    }
     shell();
     0
 }
