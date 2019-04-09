@@ -30,7 +30,7 @@ struct RSDPDescriptor10 {
 #[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 struct RSDPDescriptor20 {
-    first_part: RSDPDescriptor10,
+    legacy_part: RSDPDescriptor10,
 
     length: u32,
     xsdt_address_0_31: u32,
@@ -119,7 +119,7 @@ struct FADT {
     /*55 */ pstate_control: u8,
     /*56 */ pm1a_event_block: u32,
     /*60 */ pm1b_event_block: u32,
-    /*64 */ pm1a_control_block: u32, // -> PM1a_cnt (ex: shutdow port 1)           // SLP_EN is the bit 13
+    /*64 */ pm1a_control_block: u32, // -> PM1a_cnt (ex: shutdow port 1)
     /*68 */ pm1b_control_block: u32, // -> PM1b_cnt (ex: shutdow port 2)
     pm2_control_block: u32,
     pm_timer_block: u32,
@@ -245,6 +245,7 @@ pub enum AcpiError {
     Enabled,
     Timeout,
     InternalError,
+    BadAcpiVersion,
 }
 
 /// Standard ACPI type result
@@ -354,7 +355,27 @@ impl Acpi {
         Pio::<u16>::new(self.fadt.pm1a_control_block as u16).read() & 0x1 == 0
     }
 
+    /// Perform a ACPI hard reboot
+    pub fn reboot_computer(&mut self) -> AcpiResult<()> {
+        if self.is_disable() {
+            return Err(AcpiError::Disabled);
+        }
+        let acpi_revision = match self.rsdp_descriptor {
+            RSDPDescriptor::LegacyRSDPDescriptor(descriptor) => descriptor.revision,
+            RSDPDescriptor::AdvancedRSDPDescriptor(descriptor) => descriptor.legacy_part.revision,
+        };
+        if acpi_revision == 0 {
+            return Err(AcpiError::BadAcpiVersion);
+        }
+        Pio::<u8>::new(self.fadt.reset_reg.address_0_31 as u16).write(self.fadt.reset_value);
+        // Give 1 second for reboot before sending an error
+        PIT0.lock().sleep(Duration::from_millis(1000));
+        Err(AcpiError::InternalError)
+    }
+
     /// Shutdown the computer now or return, result is not necessary
+    /// Works only with ACPI2+ versions
+    /// See: https://wiki.osdev.org/Reboot
     pub unsafe fn shutdown(&mut self) -> AcpiResult<()> {
         if self.is_disable() {
             return Err(AcpiError::Disabled);

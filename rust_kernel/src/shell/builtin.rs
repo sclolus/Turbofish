@@ -3,6 +3,18 @@ use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER};
 
 /// shutdown the PC
+pub fn reboot(_args: &[&str]) -> u8 {
+    match *ACPI.lock() {
+        Some(mut acpi) => match acpi.reboot_computer() {
+            Ok(_) => {}
+            Err(e) => log::error!("ACPI reboot failure: {:?}", e),
+        },
+        None => log::warn!("Cannot reboot your computer without ACPI"),
+    }
+    1
+}
+
+/// shutdown the PC
 pub fn shutdown(_args: &[&str]) -> u8 {
     match *ACPI.lock() {
         Some(mut acpi) => match unsafe { acpi.shutdown() } {
