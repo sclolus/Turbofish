@@ -1,6 +1,7 @@
 //! See [PS/2 Keyboard](https://wiki.osdev.org/Keyboard)
 #![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]
+#![feature(asm)]
 
 use io::{Io, Pio};
 
@@ -10,16 +11,19 @@ use keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
 use keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
 use keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
 
-#[allow(dead_code)]
-struct Ps2Controler {
+/// This structure describe PS/2 interface
+#[derive(Debug)]
+pub struct Ps2Controler {
     data: Pio<u8>,
     command: Pio<u8>,
     current_scancode: Option<u32>,
 }
 
-static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
+/// Main PS/2 globale
+pub static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
 
 impl Ps2Controler {
+    /// Instanciante an instance of PS/2 controler. (const fn power)
     pub const fn new() -> Self {
         Ps2Controler { data: Pio::new(0x60), command: Pio::new(0x64), current_scancode: None }
     }
@@ -47,6 +51,20 @@ impl Ps2Controler {
                     Some((curr << 8) + key as u32)
                 }
             }
+        }
+    }
+
+    /// Execute a 8042 reboot
+    /// See: https://wiki.osdev.org/Reboot (there is a error in that documentation, use command port to write command instead of data port)
+    pub fn reboot_computer(&mut self) {
+        let mut good: u8 = 0x02;
+
+        while good & 0x02 != 0 {
+            good = self.data.read();
+        }
+        self.command.write(0xfe);
+        unsafe {
+            asm!("hlt");
         }
     }
 }

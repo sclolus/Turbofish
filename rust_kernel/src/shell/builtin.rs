@@ -1,15 +1,20 @@
 use crate::drivers::{ACPI, PCI};
 use core::time::Duration;
-use keyboard::{KeyMap, KEYBOARD_DRIVER};
+use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 
 /// shutdown the PC
 pub fn reboot(_args: &[&str]) -> u8 {
     match *ACPI.lock() {
         Some(mut acpi) => match acpi.reboot_computer() {
             Ok(_) => {}
-            Err(e) => log::error!("ACPI reboot failure: {:?}", e),
+            Err(e) => {
+                log::error!("ACPI reboot failure: {:?}. Trying with PS/2 controler ...", e);
+                unsafe {
+                    PS2_CONTROLER.reboot_computer();
+                }
+            }
         },
-        None => log::warn!("Cannot reboot your computer without ACPI"),
+        None => unsafe { PS2_CONTROLER.reboot_computer() },
     }
     1
 }
