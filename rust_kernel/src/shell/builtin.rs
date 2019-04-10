@@ -1,4 +1,5 @@
 use crate::drivers::{ACPI, PCI};
+use crate::system::i8086_payload_apm_shutdown;
 use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 
@@ -24,10 +25,20 @@ pub fn shutdown(_args: &[&str]) -> u8 {
     match *ACPI.lock() {
         Some(mut acpi) => match unsafe { acpi.shutdown() } {
             Ok(_) => {}
-            Err(e) => log::error!("ACPI shudown failure: {:?}", e),
+            Err(e) => {
+                log::error!("ACPI shudown failure: {:?}. Trying with APM ...", e);
+                match i8086_payload_apm_shutdown() {
+                    Ok(_) => {}
+                    Err(e) => log::error!("APM shutdown error: {:?}", e),
+                }
+            }
         },
-        None => log::warn!("Cannot shutdown your computer without ACPI"),
+        None => match i8086_payload_apm_shutdown() {
+            Ok(_) => {}
+            Err(e) => log::error!("APM shutdown error: {:?}", e),
+        },
     }
+    log::error!("shutdown failure ... it is very disapointing ...");
     1
 }
 

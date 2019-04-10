@@ -85,8 +85,8 @@ segment .text
 %define REBASE(x)           (BASE_LOCATION + x - begin_sub_sequence)
 
 ; int i8086_payload(Base_registers *reg, void *payload, size_t payload_len);
-GLOBAL i8086_payload
-i8086_payload:
+GLOBAL _i8086_payload
+_i8086_payload:
 	push ebp
 	mov ebp, esp
 
@@ -254,6 +254,7 @@ begin_sub_sequence:
 .payload:
 	times PAYLOAD_MAX_LEN nop
 	; Disable interupt
+
 	cli
 
 	; Load caller idt and caller gdt
