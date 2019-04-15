@@ -1,5 +1,6 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
 use crate::Spinlock;
+use core::mem::{size_of, transmute_copy};
 use io::{Io, Pio};
 use lazy_static::lazy_static;
 
@@ -63,6 +64,30 @@ fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
     struct PciDeviceRegistersRaw {
+        l4: u32,
+        l5: u32,
+        l6: u32,
+        l7: u32,
+        l8: u32,
+        l9: u32,
+        l10: u32,
+        l11: u32,
+        l12: u32,
+        l13: u32,
+        l14: u32,
+        l15: u32,
+    }
+);
+
+// Rust Abstract of Complete Pci Device
+fill_struct_with_io!(
+    #[derive(Debug, Copy, Clone)]
+    #[repr(C)]
+    struct PciDeviceRaw {
+        l0: u32,
+        l1: u32,
+        l2: u32,
+        l3: u32,
         l4: u32,
         l5: u32,
         l6: u32,
@@ -206,9 +231,20 @@ pub struct PciDevice {
     header_body: PciDeviceHeaderBody,
     registers: PciDeviceRegisters,
     class: PciDeviceClass,
+    address_space: AddressSpace,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct AddressSpace {
     bus: u8,
     slot: u8,
     function: u8,
+}
+
+impl AddressSpace {
+    pub fn get_location(&self) -> u32 {
+        0x80000000 + ((self.bus as u32) << 16) + ((self.slot as u32) << 11) + ((self.function as u32) << 8)
+    }
 }
 
 /// Custom debug definition for PCI device
@@ -219,7 +255,11 @@ impl core::fmt::Display for PciDevice {
             PciDeviceRegisters::PciType1(_) => "Pci to Pci bridge",
             PciDeviceRegisters::PciType2(_) => "Pci to CardBus bridge",
         };
-        write!(f, "{:02X?}:{:02X?}.{:X?} {:?} {:?}", self.bus, self.slot, self.function, self.class, device_type)
+        write!(
+            f,
+            "{:02X?}:{:02X?}.{:X?} {:?} {:?}",
+            self.address_space.bus, self.address_space.slot, self.address_space.function, self.class, device_type
+        )
     }
 }
 
@@ -285,6 +325,13 @@ impl Pci {
         Pci { devices_list: CustomPciDeviceAllocator::new() }
     }
 
+    pub fn query_device<T: Copy + core::fmt::Debug>(&mut self, device_class: PciDeviceClass) -> Option<(T, u32)> {
+        let dev = self.devices_list.iter().find(|d| d.class == device_class)?;
+        let location = dev.address_space.get_location();
+        let dev = unsafe { transmute_copy::<PciDeviceRaw, T>(&PciDeviceRaw::fill(location)) };
+        Some((dev, location))
+    }
+
     /// Output all connected pci devices
     pub fn scan_pci_buses(&mut self) {
         // Simple and Basic brute force scan method is used here !
@@ -334,8 +381,6 @@ impl Pci {
     /// Take a device location as argument and check if a device exists here
     /// return PciDevice on success
     fn check_device(&self, bus: u8, slot: u8, function: u8) -> Option<PciDevice> {
-        use core::mem::{size_of, transmute_copy};
-
         let mut location: u32 = 0x80000000;
         location += (bus as u32) << 16;
         location += (slot as u32) << 11;
@@ -369,9 +414,7 @@ impl Pci {
                     header_body: header_body,
                     registers: registers,
                     class: get_pci_device(header_body.class_code, header_body.sub_class, header_body.prog_if),
-                    bus: bus,
-                    slot: slot,
-                    function: function,
+                    address_space: AddressSpace { bus, slot, function },
                 })
             }
         }
@@ -776,7 +819,7 @@ fn get_pci_device(id: u8, subclass: u8, prog_if: u8) -> PciDeviceClass {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciDeviceClass {
     Unclassified(UnclassifiedSubClass),
     MassStorageController(MassStorageControllerSubClass),
@@ -805,14 +848,14 @@ pub enum PciDeviceClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UnclassifiedSubClass {
     NonVgaCompatibleDevice,
     VgaCompatibleDevice,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MassStorageControllerSubClass {
     ScsiBusController,
     IdeController(IdeControllerProgIf),
@@ -827,7 +870,7 @@ pub enum MassStorageControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IdeControllerProgIf {
     IsaCompatibilityModeOnlyController,
     PciNativeModeOnlyController,
@@ -840,14 +883,14 @@ pub enum IdeControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AtaControllerProgIf {
     SingleDma,
     ChainedDma,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialAtaProgIf {
     VendorSpecificInterface,
     Ahci1,
@@ -855,21 +898,21 @@ pub enum SerialAtaProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialAttachedScsiProgIf {
     Sas,
     SerialStorageBus,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NonVolatileMemoryControllerProgIf {
     Nvmhci,
     NvmExpress,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NetworkControllerSubClass {
     EthernetController,
     TokenRingController,
@@ -884,7 +927,7 @@ pub enum NetworkControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DisplayControllerSubClass {
     VgaCompatibleController(VgaCompatibleControllerProgIf),
     XgaController,
@@ -893,14 +936,14 @@ pub enum DisplayControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum VgaCompatibleControllerProgIf {
     VgaController,
     Compatible8514Controller,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MultimediaControllerSubClass {
     MultimediaVideoController,
     MultimediaAudioController,
@@ -910,7 +953,7 @@ pub enum MultimediaControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MemoryControllerSubClass {
     RamController,
     FlashController,
@@ -918,7 +961,7 @@ pub enum MemoryControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum BridgeDeviceSubClass {
     HostBridge,
     IsaBridge,
@@ -935,28 +978,28 @@ pub enum BridgeDeviceSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciToPciBridgeProgIf {
     NormalDecode,
     SubtractiveDecode,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum RaceWayBridgeProgIf {
     TransparentMode,
     EndpointMode,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciToPciBridge2ProgIf {
     SemiTransparentPrimaryBusTowardsHostCPU,
     SemiTransparentSecondaryBusTowardsHostCPU,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SimpleCommunicationControllerSubClass {
     SerialController(SerialControllerProgIf),
     ParallelController(ParallelControllerProgIf),
@@ -968,7 +1011,7 @@ pub enum SimpleCommunicationControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialControllerProgIf {
     CompatibleGenericXT,
     Compatible16450,
@@ -980,7 +1023,7 @@ pub enum SerialControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ParallelControllerProgIf {
     StandardParallelPort,
     BiDirectionalParallelPort,
@@ -990,7 +1033,7 @@ pub enum ParallelControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ModemProgIf {
     GenericModem,
     Hayes16450CompatibleInterface,
@@ -1000,7 +1043,7 @@ pub enum ModemProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum BaseSystemPeripheralSubClass {
     Pic(PicProgIf),
     DmaController(DmaControllerProgIf),
@@ -1013,7 +1056,7 @@ pub enum BaseSystemPeripheralSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PicProgIf {
     Generic8259Compatible,
     ISACompatible,
@@ -1023,7 +1066,7 @@ pub enum PicProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DmaControllerProgIf {
     Generic8237Compatible,
     ISACompatible,
@@ -1031,7 +1074,7 @@ pub enum DmaControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TimerProgIf {
     Generic8254Compatible,
     ISACompatible,
@@ -1040,14 +1083,14 @@ pub enum TimerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum RtcControllerProgIf {
     GenericRTC,
     ISACompatible,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum InputDeviceControllerSubClass {
     KeyboardController,
     DigitizerPen,
@@ -1058,21 +1101,21 @@ pub enum InputDeviceControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum GameportControllerProgIf {
     Generic,
     Extended,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DockingStationSubClass {
     Generic,
     Other,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ProcessorSubClass {
     I386,
     I486,
@@ -1084,7 +1127,7 @@ pub enum ProcessorSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialBusControllerSubClass {
     FireWireIeee1394Controller(FireWireIeee1394ControllerProgIf),
     AccessBus,
@@ -1099,14 +1142,14 @@ pub enum SerialBusControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FireWireIeee1394ControllerProgIf {
     Generic,
     OHCI,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UsbControllerProgIf {
     UHCIController,
     OHCIController,
@@ -1117,7 +1160,7 @@ pub enum UsbControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IpmiInterfaceProgIf {
     SMIC,
     KeyboardControllerStyle,
@@ -1125,7 +1168,7 @@ pub enum IpmiInterfaceProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WirelessControllerSubClass {
     IrdaCompatibleController,
     ConsumerIrController,
@@ -1138,13 +1181,13 @@ pub enum WirelessControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IntelligentControllerSubClass {
     I20,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SatelliteCommunicationControllerSubClass {
     SatelliteTVController,
     SatelliteAudioController,
@@ -1153,7 +1196,7 @@ pub enum SatelliteCommunicationControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EncryptionControllerSubClass {
     NetworkAndComputingEncrpytionDecryption,
     EntertainmentEncryptionDecryption,
@@ -1161,7 +1204,7 @@ pub enum EncryptionControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SignalProcessingControllerSubClass {
     DpioModules,
     PerformanceCounters,
