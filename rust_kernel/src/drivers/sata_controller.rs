@@ -1,11 +1,9 @@
 use super::{
     pci::{MassStorageControllerSubClass, PciDeviceClass, SerialAtaProgIf},
-    Pci, PCI,
+    PCI,
 };
 
 use super::PciType0;
-
-use io::{Io, Pio};
 
 use crate::memory::allocator::{map, unmap};
 use core::mem::size_of;
@@ -103,8 +101,8 @@ impl SataController {
         let mut vec = Vec::new();
         unsafe {
             println!("{:#X?}", *s);
-            let virt = unsafe { map((self.pci.bar5 + 0x100) as *mut u8, size_of::<HbaPort>() * (*s).pi as usize) }
-                as *const HbaPort;
+            let virt =
+                map((self.pci.bar5 + 0x100) as *mut u8, size_of::<HbaPort>() * (*s).pi as usize) as *const HbaPort;
             for i in 0..(*s).pi as usize {
                 let l = core::ptr::read_volatile(virt.add(i));
                 if l.sig == Self::SATA_SIG_ATA
@@ -118,6 +116,10 @@ impl SataController {
             for h in vec {
                 println!("{:#X?}", core::ptr::read_volatile(h));
             }
+            unmap(virt as *mut u8, size_of::<HbaPort>() * (*s).pi as usize);
+        }
+        unsafe {
+            unmap(virt, size_of::<HbaMem>());
         }
         println!("bar 5: {:#X?}", self.pci.bar5);
     }
