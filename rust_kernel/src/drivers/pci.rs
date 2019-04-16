@@ -215,6 +215,39 @@ struct PciDeviceType2 {
 /*44       |*/ b16_pc_card_legacy_mode_base_address: u32,
  */
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct PciType0 {
+    /*0        |*/ vendor_id: u16,
+    /*2        |*/ device_id: u16,
+    /*4        |*/ command: u16,
+    /*6        |*/ status: u16,
+    /*8        |*/ revision_id: u8,
+    /*9        |*/ prog_if: u8,
+    /*a        |*/ sub_class: u8,
+    /*b        |*/ class_code: u8,
+    /*c        |*/ cache_line_size: u8,
+    /*d        |*/ latency_timer: u8,
+    /*e        |*/ header_type: u8,
+    /*f        |*/ bist: u8,
+    /*10       |*/ bar0: u32,
+    /*14       |*/ bar1: u32,
+    /*18       |*/ bar2: u32,
+    /*1c       |*/ bar3: u32,
+    /*20       |*/ bar4: u32,
+    /*24       |*/ bar5: u32,
+    /*28       |*/ cardbus_cis_pointer: u32,
+    /*2c       |*/ subsystem_vendor_id: u16,
+    /*2e       |*/ subsystem_id: u16,
+    /*30       |*/ expansion_rom_base_address: u32,
+    /*34       |*/ capabilities_pointer: u8,
+    /*35       |*/ reserved: [u8; 7],
+    /*3c       |*/ interrupt_line: u8,
+    /*3d       |*/ interrupt_pin: u8,
+    /*3e       |*/ min_grant: u8,
+    /*3f       |*/ max_latency: u8,
+}
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 enum PciDeviceRegisters {
