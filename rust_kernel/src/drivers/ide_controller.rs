@@ -1,5 +1,5 @@
 use super::{
-    pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass},
+    pci::{PciType0, IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass},
     PCI,
 };
 
@@ -49,7 +49,7 @@ struct IDEChannelRegisters {
 
 #[derive(Copy, Clone, Debug)]
 pub struct IdeController {
-    pci: PciIdeController,
+    pci: PciType0,
     location: u32,
 }
 
