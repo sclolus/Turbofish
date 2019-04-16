@@ -1,9 +1,16 @@
 use super::{
     pci::{MassStorageControllerSubClass, PciDeviceClass, SerialAtaProgIf},
-    PCI,
+    Pci, PCI,
 };
 
 use super::PciType0;
+
+use io::{Io, Pio};
+
+use crate::memory::allocator::{map, unmap};
+use core::mem::size_of;
+
+use alloc::vec::Vec;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
@@ -27,9 +34,7 @@ struct HbaMem {
     // 0xA0 - 0xFF, Vendor specific registers
     /*A0       |*/
     vendor_specific_registers: VendorSpecificRegisters,
-
-    // 0x100 - 0x10FF, Port control registers
-    /*100      |*/ ports: [HbaPort; 32],
+    // 0x100 - 0x10FF, Port control registers ... (relative to pi value)
 }
 
 define_raw_data!(Reserved, 0xA0 - 0x2C);
@@ -73,11 +78,47 @@ pub struct SataController {
 }
 
 impl SataController {
+    /// SATA drive
+    const SATA_SIG_ATA: u32 = 0x00000101;
+    /// SATAPI drive
+    const SATA_SIG_ATAPI: u32 = 0xEB140101;
+    /// Enclosure management bridge
+    const SATA_SIG_SEMB: u32 = 0xC33C0101;
+    /// Port multiplier
+    const SATA_SIG_PM0: u32 = 0x96690101;
+
     pub fn init() -> Option<Self> {
         PCI.lock()
             .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::SerialAta(
                 SerialAtaProgIf::Ahci1,
             )))
             .map(|(pci, location)| Self { pci, location })
+    }
+
+    pub fn dump_hba(&self) {
+        let virt = unsafe { map(self.pci.bar5 as *mut u8, size_of::<HbaMem>()) };
+        println!("{:#X?}", virt);
+
+        let s = virt as *mut HbaMem;
+        let mut vec = Vec::new();
+        unsafe {
+            println!("{:#X?}", *s);
+            let virt = unsafe { map((self.pci.bar5 + 0x100) as *mut u8, size_of::<HbaPort>() * (*s).pi as usize) }
+                as *const HbaPort;
+            for i in 0..(*s).pi as usize {
+                let l = core::ptr::read_volatile(virt.add(i));
+                if l.sig == Self::SATA_SIG_ATA
+                    || l.sig == Self::SATA_SIG_ATAPI
+                    || l.sig == Self::SATA_SIG_SEMB
+                    || l.sig == Self::SATA_SIG_PM0
+                {
+                    vec.push(virt.add(i));
+                }
+            }
+            for h in vec {
+                println!("{:#X?}", core::ptr::read_volatile(h));
+            }
+        }
+        println!("bar 5: {:#X?}", self.pci.bar5);
     }
 }

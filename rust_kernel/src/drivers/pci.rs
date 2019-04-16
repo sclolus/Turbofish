@@ -218,34 +218,34 @@ struct PciDeviceType2 {
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct PciType0 {
-    /*0        |*/ vendor_id: u16,
-    /*2        |*/ device_id: u16,
-    /*4        |*/ command: u16,
-    /*6        |*/ status: u16,
-    /*8        |*/ revision_id: u8,
-    /*9        |*/ prog_if: u8,
-    /*a        |*/ sub_class: u8,
-    /*b        |*/ class_code: u8,
-    /*c        |*/ cache_line_size: u8,
-    /*d        |*/ latency_timer: u8,
-    /*e        |*/ header_type: u8,
-    /*f        |*/ bist: u8,
-    /*10       |*/ bar0: u32,
-    /*14       |*/ bar1: u32,
-    /*18       |*/ bar2: u32,
-    /*1c       |*/ bar3: u32,
-    /*20       |*/ bar4: u32,
-    /*24       |*/ bar5: u32,
-    /*28       |*/ cardbus_cis_pointer: u32,
-    /*2c       |*/ subsystem_vendor_id: u16,
-    /*2e       |*/ subsystem_id: u16,
-    /*30       |*/ expansion_rom_base_address: u32,
-    /*34       |*/ capabilities_pointer: u8,
-    /*35       |*/ reserved: [u8; 7],
-    /*3c       |*/ interrupt_line: u8,
-    /*3d       |*/ interrupt_pin: u8,
-    /*3e       |*/ min_grant: u8,
-    /*3f       |*/ max_latency: u8,
+    /*0        |*/ pub vendor_id: u16,
+    /*2        |*/ pub device_id: u16,
+    /*4        |*/ pub command: u16,
+    /*6        |*/ pub status: u16,
+    /*8        |*/ pub revision_id: u8,
+    /*9        |*/ pub prog_if: u8,
+    /*a        |*/ pub sub_class: u8,
+    /*b        |*/ pub class_code: u8,
+    /*c        |*/ pub cache_line_size: u8,
+    /*d        |*/ pub latency_timer: u8,
+    /*e        |*/ pub header_type: u8,
+    /*f        |*/ pub bist: u8,
+    /*10       |*/ pub bar0: u32,
+    /*14       |*/ pub bar1: u32,
+    /*18       |*/ pub bar2: u32,
+    /*1c       |*/ pub bar3: u32,
+    /*20       |*/ pub bar4: u32,
+    /*24       |*/ pub bar5: u32,
+    /*28       |*/ pub cardbus_cis_pointer: u32,
+    /*2c       |*/ pub subsystem_vendor_id: u16,
+    /*2e       |*/ pub subsystem_id: u16,
+    /*30       |*/ pub expansion_rom_base_address: u32,
+    /*34       |*/ pub capabilities_pointer: u8,
+    /*35       |*/ pub reserved: [u8; 7],
+    /*3c       |*/ pub interrupt_line: u8,
+    /*3d       |*/ pub interrupt_pin: u8,
+    /*3e       |*/ pub min_grant: u8,
+    /*3f       |*/ pub max_latency: u8,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -351,8 +351,8 @@ impl<'a> Iterator for CustomPciDeviceAllocatorIterator<'a> {
 
 impl Pci {
     /// PCI configuration address
-    const CONFIG_ADDRESS: u16 = 0x0CF8;
-    const CONFIG_DATA: u16 = 0x0CFC;
+    pub const CONFIG_ADDRESS: u16 = 0x0CF8;
+    pub const CONFIG_DATA: u16 = 0x0CFC;
 
     pub const fn new() -> Pci {
         Pci { devices_list: CustomPciDeviceAllocator::new() }

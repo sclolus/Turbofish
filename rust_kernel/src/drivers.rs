@@ -8,7 +8,7 @@ pub mod acpi;
 pub use acpi::{Acpi, ACPI};
 
 pub mod pci;
-pub use pci::PCI;
+pub use pci::{Pci, PCI};
 
 use pci::PciType0;
 

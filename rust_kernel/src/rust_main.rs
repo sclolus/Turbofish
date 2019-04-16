@@ -1,5 +1,6 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
+
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
@@ -94,7 +95,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     syscall::init();
 
     dbg!(IdeController::init());
-    println!("{:#X?}", SataController::init());
+
+    match SataController::init() {
+        Some(sata_controller) => {
+            println!("{:#X?}", sata_controller);
+            sata_controller.dump_hba();
+        }
+        None => {}
+    }
 
     let s = "write that";
     unsafe {
