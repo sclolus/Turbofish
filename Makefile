@@ -52,5 +52,13 @@ copy: $(IMG_DISK)
 	dd if=$(IMG_DISK) of=/dev/sdb bs=1024 count=$(IMAGE_SIZE)
 	sync
 
+RAM_AMOUNT=128
+
 exec:
-	qemu-system-x86_64 -m 128 -vga std -hda $(IMG_DISK) -enable-kvm -cpu IvyBridge
+	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -hda $(IMG_DISK) -enable-kvm -cpu IvyBridge
+
+exec_sata:
+	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -enable-kvm -cpu IvyBridge \
+	-drive file=$(IMG_DISK),if=none,id=toto,format=raw \
+	-device ich9-ahci,id=ahci \
+	-device ide-drive,drive=toto,bus=ahci.0 \
