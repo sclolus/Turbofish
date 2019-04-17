@@ -3,11 +3,10 @@
 #[deny(missing_docs)]
 use io::{Io, Pio};
 
+use bit_field::BitField;
 use bitflags::bitflags;
 
 use alloc::vec::Vec;
-
-//use bit_field::BitField;
 
 /// Global structure
 #[derive(Debug, Copy, Clone, Default)]
@@ -25,6 +24,7 @@ pub struct DummyAta {
     selected_drive: Option<Rank>,
     command_port: u16,
     control_port: u16,
+    magic: u8,
 }
 
 /// AtaResult is just made to handle module errors
@@ -55,7 +55,7 @@ pub enum Hierarchy {
 
 /// new type representing a number of sectors
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub struct NbrSectors(pub usize);
+pub struct NbrSectors(pub u16);
 
 /// new type representing the start sector
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -195,8 +195,14 @@ impl DummyAta {
             self.control_port = control_port;
             match hierarchy {
                 // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
-                Hierarchy::Master => Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xA0),
-                Hierarchy::Souillon => Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xB0),
+                Hierarchy::Master => {
+                    self.magic = Self::MAGIC_MASTER_COMMAND_BYTE;
+                    Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xA0);
+                }
+                Hierarchy::Souillon => {
+                    self.magic = Self::MAGIC_SOUILLON_COMMAND_BYTE;
+                    Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xB0);
+                }
             };
             Ok(())
         } else {
@@ -205,12 +211,47 @@ impl DummyAta {
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(&self, _start_sector: Sector, _nbr_sectors: NbrSectors, _buf: *mut u8) -> AtaResult<()> {
+    pub fn read(&self, _start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8) -> AtaResult<()> {
+        if self.selected_drive == None {
+            return Err(AtaError::DeviceNotFound);
+        }
+
+        let lba_low = 0;
+        let lba_high = 0;
+
+        // Send 0x40 for the "master" or 0x50 for the "slave" to port 0x1F6: outb(0x1F6, 0x40 | (slavebit << 4))
+        Pio::<u8>::new(self.command_port + Self::SELECTOR).write(self.magic);
+
+        // Outb (0x1F2, sectorcount high byte)
+        Pio::<u8>::new(self.command_port + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(8..16) as u8);
+
+        // LBA 4
+        Pio::<u8>::new(self.command_port + Self::L1_SECTOR).write(lba_low.get_bits(24..32) as u8);
+        // LBA 5
+        Pio::<u8>::new(self.command_port + Self::L2_CYLINDER).write(lba_high.get_bits(0..8) as u8);
+        // LBA 6
+        Pio::<u8>::new(self.command_port + Self::L3_CYLINDER).write(lba_high.get_bits(8..16) as u8);
+
+        // outb (0x1F2, sectorcount low byte)
+        Pio::<u8>::new(self.command_port + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(0..8) as u8);
+
+        // LBA 1
+        Pio::<u8>::new(self.command_port + Self::L1_SECTOR).write(lba_low.get_bits(0..8) as u8);
+        // LBA 2
+        Pio::<u8>::new(self.command_port + Self::L2_CYLINDER).write(lba_low.get_bits(8..16) as u8);
+        // LBA 3
+        Pio::<u8>::new(self.command_port + Self::L3_CYLINDER).write(lba_low.get_bits(16..24) as u8);
+
+        // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
+        Pio::<u8>::new(self.command_port + Self::COMMAND).write(0x24);
         Ok(())
     }
 
     /// Write nbr_sectors after start_sector location from the buf
     pub fn write(&self, _start_sector: Sector, _nbr_sectors: NbrSectors, _buf: *const u8) -> AtaResult<()> {
+        if self.selected_drive == None {
+            return Err(AtaError::DeviceNotFound);
+        }
         Ok(())
     }
 
