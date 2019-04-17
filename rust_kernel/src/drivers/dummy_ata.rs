@@ -16,10 +16,10 @@ pub struct DummyAta {
     primary_control_register: u16,
     secondary_control_register: u16,
 
-    primary_master: Option<Capabilities>,
-    secondary_master: Option<Capabilities>,
-    primary_slave: Option<Capabilities>,
-    secondary_slave: Option<Capabilities>,
+    primary_master: Option<Characteristics>,
+    secondary_master: Option<Characteristics>,
+    primary_slave: Option<Characteristics>,
+    secondary_slave: Option<Characteristics>,
 
     selected_drive: Option<Rank>,
     command_port: u16,
@@ -59,12 +59,22 @@ pub struct NbrSectors(pub u16);
 
 /// new type representing the start sector
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub struct Sector(pub usize);
+pub struct Sector(pub u64);
 
-/// Disk reader capabilities
+/// Global disk characteristics
 #[derive(Debug, Copy, Clone)]
-struct Capabilities {
-    lba48: bool,
+struct Characteristics {
+    capabilities: Capabilities,
+    sector_capacity: u64,
+    udma_support: u16,
+}
+
+/// Disk access capabilities
+#[derive(Debug, Copy, Clone)]
+enum Capabilities {
+    Lba48,
+    Lba28,
+    Chs,
 }
 
 // Some erros may occured
@@ -211,13 +221,15 @@ impl DummyAta {
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(&self, _start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8) -> AtaResult<()> {
+    pub fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8) -> AtaResult<()> {
         if self.selected_drive == None {
             return Err(AtaError::DeviceNotFound);
         }
 
-        let lba_low = 0;
-        let lba_high = 0;
+        // TODO handle different Capabilities
+        // Only applicable if is a Lba24 or Lba48 drive.
+        let lba_low = start_sector.0.get_bits(0..32) as u32;
+        let lba_high = start_sector.0.get_bits(32..54) as u32;
 
         // Send 0x40 for the "master" or 0x50 for the "slave" to port 0x1F6: outb(0x1F6, 0x40 | (slavebit << 4))
         Pio::<u8>::new(self.command_port + Self::SELECTOR).write(self.magic);
@@ -244,6 +256,8 @@ impl DummyAta {
 
         // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
         Pio::<u8>::new(self.command_port + Self::COMMAND).write(0x24);
+
+        // TODO read and loop and put to buf
         Ok(())
     }
 
@@ -252,11 +266,12 @@ impl DummyAta {
         if self.selected_drive == None {
             return Err(AtaError::DeviceNotFound);
         }
+        // TODO implementation
         Ok(())
     }
 
-    /// Check if the selected IDE device is present, return capabilities if it is
-    fn identify(&self, rank: Rank) -> Option<Capabilities> {
+    /// Check if the selected IDE device is present, return characteristics if it is
+    fn identify(&self, rank: Rank) -> Option<Characteristics> {
         let (cmd_port, target) = match rank {
             Rank::Primary(Hierarchy::Master) => (self.primary_base_register, 0xA0),
             Rank::Primary(Hierarchy::Souillon) => (self.primary_base_register, 0xB0),
@@ -276,12 +291,8 @@ impl DummyAta {
         // send the IDENTIFY command (0xEC) to the Command IO port (0x1F7)
         Pio::<u8>::new(cmd_port + Self::COMMAND).write(0xEC);
 
-        // read the Status port (0x1F7)
-        let res = Pio::<u8>::new(cmd_port + Self::STATUS).read();
-
-        // If the value read is 0, the drive does not exist
-        if res == 0 {
-            eprintln!("no drive at: {:?}", rank);
+        // read the Status port (0x1F7). If the value read is 0, the drive does not exist
+        if Pio::<u8>::new(cmd_port + Self::STATUS).read() == 0 {
             return None;
         }
 
@@ -309,18 +320,29 @@ impl DummyAta {
         for _i in 0..256 {
             v.push(Pio::<u16>::new(cmd_port + Self::DATA).read());
         }
-        println!("DISPLAYING summary for {:?}", rank);
 
         // Bit 10 is set if the drive supports LBA48 mode.
-        println!("LBA48 supported: {:#X?}", v[83] & (1 << 10) != 0);
-        // The bits in the low byte tell you the supported UDMA modes, the upper byte tells you which UDMA mode is active.
-        println!("UDMA support: {:#X?}", v[88]);
-        // 60 & 61 taken as a uint32_t contain the total number of 28 bit LBA addressable sectors on the drive. (If non-zero, the drive supports LBA28.)
-        println!("lba28: {:#X?} {:#X?}", v[60], v[61]);
         // 100 through 103 taken as a uint64_t contain the total number of 48 bit addressable sectors on the drive. (Probably also proof that LBA48 is supported.)
-        println!("lba48: {:#X?} {:#X?} {:#X?} {:#X?}", v[100], v[101], v[102], v[103]);
-
-        Some(Capabilities { lba48: (v[83] & (1 << 10) != 0) })
+        if v[83] & (1 << 10) != 0 {
+            Some(Characteristics {
+                capabilities: Capabilities::Lba48,
+                sector_capacity: v[100] as u64
+                    + ((v[101] as u64) << 16)
+                    + ((v[102] as u64) << 32)
+                    + ((v[103] as u64) << 48),
+                // The bits in the low byte tell you the supported UDMA modes, the upper byte tells you which UDMA mode is active.
+                udma_support: v[88],
+            })
+        // 60 & 61 taken as a uint32_t contain the total number of 28 bit LBA addressable sectors on the drive. (If non-zero, the drive supports LBA28.)
+        } else if v[60] != 0 || v[61] != 0 {
+            Some(Characteristics {
+                capabilities: Capabilities::Lba28,
+                sector_capacity: v[60] as u64 + ((v[61] as u64) << 16),
+                udma_support: v[88],
+            })
+        } else {
+            Some(Characteristics { capabilities: Capabilities::Chs, sector_capacity: 0, udma_support: v[88] })
+        }
     }
 }
 
