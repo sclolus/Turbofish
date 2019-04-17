@@ -58,6 +58,14 @@ pub enum Hierarchy {
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrSectors(pub u64);
 
+use core::ops::SubAssign;
+
+impl SubAssign for NbrSectors {
+    fn sub_assign(&mut self, other: NbrSectors) {
+        self.0 -= other.0;
+    }
+}
+
 /// new type representing the start sector
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Sector(pub u64);
@@ -191,27 +199,21 @@ impl DummyAta {
     /// Select the drive we would like to read or write
     pub fn select_drive(&mut self, rank: Rank) -> AtaResult<()> {
         self.selected_drive = match rank {
-            Rank::Primary(Hierarchy::Master) => self.primary_master.map(|_| Rank::Primary(Hierarchy::Master)),
-            Rank::Primary(Hierarchy::Souillon) => self.primary_slave.map(|_| Rank::Primary(Hierarchy::Souillon)),
-            Rank::Secondary(Hierarchy::Master) => self.secondary_master.map(|_| Rank::Secondary(Hierarchy::Master)),
-            Rank::Secondary(Hierarchy::Souillon) => self.secondary_slave.map(|_| Rank::Secondary(Hierarchy::Souillon)),
+            Rank::Primary(Hierarchy::Master) if self.primary_master.is_some() => Some(rank),
+            Rank::Primary(Hierarchy::Souillon) if self.primary_slave.is_some() => Some(rank),
+            Rank::Secondary(Hierarchy::Master) if self.secondary_master.is_some() => Some(rank),
+            Rank::Secondary(Hierarchy::Souillon) if self.secondary_slave.is_some() => Some(rank),
+            _ => None,
         };
 
-        if self.selected_drive != None {
-            let (command_port, _control_port, hierarchy) = match rank {
-                Rank::Primary(h) => (self.primary_base_register, self.primary_control_register, h),
-                Rank::Secondary(h) => (self.secondary_base_register, self.secondary_control_register, h),
-            };
-            match hierarchy {
-                // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
-                // I dont think it is necessary or really true
-                Hierarchy::Master => Pio::<u8>::new(command_port + Self::SELECTOR).write(0xA0),
-                Hierarchy::Souillon => Pio::<u8>::new(command_port + Self::SELECTOR).write(0xB0),
-            };
-            Ok(())
-        } else {
-            Err(AtaError::DeviceNotFound)
-        }
+        let (_, command_port, _, hierarchy) = self.get_drive()?;
+        match hierarchy {
+            // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
+            // I dont think it is necessary or really true
+            Hierarchy::Master => Pio::<u8>::new(command_port + Self::SELECTOR).write(0xA0),
+            Hierarchy::Souillon => Pio::<u8>::new(command_port + Self::SELECTOR).write(0xB0),
+        };
+        Ok(())
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
@@ -221,6 +223,15 @@ impl DummyAta {
 
         match drive.capabilities {
             Capabilities::Lba48 => {
+                let mut t = NbrSectors(4);
+                t -= NbrSectors(3);
+                println!("{:?}", t);
+
+                // Partie commune lba48 (some variables ...)
+                // Utilisation ici de READ_EX pour LBA48
+
+                //                fn (start_sector, nbr_sectors, command_port, hierarchy)
+
                 let lba_low = start_sector.0.get_bits(0..32) as u32;
                 let lba_high = start_sector.0.get_bits(32..48) as u32;
 
