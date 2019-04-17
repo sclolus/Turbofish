@@ -5,6 +5,8 @@ use io::{Io, Pio};
 
 use bitflags::bitflags;
 
+use alloc::vec::Vec;
+
 //use bit_field::BitField;
 
 /// Global structure
@@ -14,6 +16,7 @@ pub struct DummyAta {
     secondary_base_register: u16,
     primary_control_register: u16,
     secondary_control_register: u16,
+
     primary_master: Option<Capabilities>,
     secondary_master: Option<Capabilities>,
     primary_slave: Option<Capabilities>,
@@ -49,6 +52,14 @@ pub enum Hierarchy {
     Master,
     Souillon,
 }
+
+/// new type representing a number of sectors
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub struct NbrSectors(pub usize);
+
+/// new type representing the start sector
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub struct Sector(pub usize);
 
 /// Disk reader capabilities
 #[derive(Debug, Copy, Clone)]
@@ -193,6 +204,16 @@ impl DummyAta {
         }
     }
 
+    /// Read nbr_sectors after start_sector location and write it into the buf
+    pub fn read(&self, _start_sector: Sector, _nbr_sectors: NbrSectors, _buf: *mut u8) -> AtaResult<()> {
+        Ok(())
+    }
+
+    /// Write nbr_sectors after start_sector location from the buf
+    pub fn write(&self, _start_sector: Sector, _nbr_sectors: NbrSectors, _buf: *const u8) -> AtaResult<()> {
+        Ok(())
+    }
+
     /// Check if the selected IDE device is present, return capabilities if it is
     fn identify(&self, rank: Rank) -> Option<Capabilities> {
         let (cmd_port, target) = match rank {
@@ -242,8 +263,6 @@ impl DummyAta {
         }
 
         // if ERR is clear, the data is ready to read from the Data port (0x1F0). Read 256 16-bit values, and store them.
-        use alloc::vec::Vec;
-
         let mut v = Vec::new();
 
         for _i in 0..256 {
