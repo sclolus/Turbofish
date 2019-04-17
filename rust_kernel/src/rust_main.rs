@@ -1,4 +1,5 @@
-use crate::drivers::dummy_ata::{Hierarchy, NbrSectors, Rank, Sector};
+use crate::drivers::dummy_ata::{Hierarchy, Rank};
+// use crate::drivers::dummy_ata::{Hierarchy, NbrSectors, Rank, Sector};
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, DummyAta, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
 
@@ -110,20 +111,25 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::syscall::_write(1, s.as_ptr(), s.len());
     }
 
+    unsafe {
+        PIC_8259.lock().enable_irq(pic_8259::Irq::PrimaryATAChannel);
+        PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel);
+    }
+
     let mut disk = DummyAta::new();
+
     println!("{:#X?}", disk);
     println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
-    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Secondary(Hierarchy::Master)));
-    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
 
-    use alloc::vec;
-    use alloc::vec::Vec;
-
-    let mut v1: Vec<u8> = vec![0; 512];
-    disk.read(Sector(0), NbrSectors(1), v1.as_mut_ptr()).unwrap();
-
-    let v2: Vec<u8> = vec![0x42; 512];
-    disk.write(Sector(0), NbrSectors(1), v2.as_ptr()).unwrap();
+    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Secondary(Hierarchy::Master)));
+    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
+    // use alloc::vec;
+    // use alloc::vec::Vec;
+    // let size_read = NbrSectors(0x8000);
+    // let mut v1: Vec<u8> = vec![0; size_read.into()];
+    // disk.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));
+    // disk.write(Sector(0x0), size_read, v1.as_ptr()).unwrap();
 
     shell();
     0
