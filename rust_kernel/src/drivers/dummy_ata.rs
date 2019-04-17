@@ -1,33 +1,90 @@
 //! This files contains the code related to the ATA / IDE CONTROLER
 /// See https://wiki.osdev.org/ATA_PIO_Mode
+#[deny(missing_docs)]
 
-//use io::{Io, Pio};
+use io::{Io, Pio};
+
+use bitflags::bitflags;
+
 //use bit_field::BitField;
-
 //use super::DeviceError;
 //use super::DeviceResult;
 
-#[derive(Debug, Copy, Clone)]
+/// Global structure
+#[derive(Debug, Copy, Clone, Default)]
 pub struct DummyAta {
     primary_base_register: u16,
     secondary_base_register: u16,
     primary_control_register: u16,
     secondary_control_register: u16,
+    primary_master: Option<Capabilities>,
+    secondary_master: Option<Capabilities>,
+    primary_slave: Option<Capabilities>,
+    secondary_slave: Option<Capabilities>,
 }
 
+/// Disk reader capabilities
+#[derive(Debug, Copy, Clone)]
+struct Capabilities {
+    lba48: bool,
+}
+
+/// Rank
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Rank {
+enum Rank {
     Primary,
     Secondary,
 }
 
+/// Is it a Slave or a Master ?
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Hierarchy {
+enum Hierarchy {
     Master,
     Souillon,
 }
 
-/// LBA 48 CONFIGURATION
+// Some erros may occured
+bitflags! {
+    struct ErrorRegister: u8 {
+        const ADDRESS_MARK_NOT_FOUND = 1 << 0;
+        const TRACK_ZERO_NOT_FOUND = 1 << 1;
+        const ABORTED_COMMAND = 1 << 2;
+        const MEDIA_CHANGE_REQUEST = 1 << 3;
+        const ID_MOT_FOUND = 1 << 4;
+        const MEDIA_CHANGED = 1 << 5;
+        const UNCORRECTABLE_DATA_ERROR = 1 << 6;
+        const BAD_BLOCK_DETECTED = 1 << 7;
+    }
+}
+
+/// Is it a boilerplate ?
+impl From<u8> for ErrorRegister {
+    fn from(status: u8) -> ErrorRegister {
+        ErrorRegister { bits: status }
+    }
+}
+
+// We need always check status register
+bitflags! {
+    struct StatusRegister: u8 {
+        const ERR = 1 << 0; // Indicates an error occurred. Send a new command to clear it (or nuke it with a Software Reset).
+        const IDX = 1 << 1; // Index. Always set to zero.
+        const CORR = 1 << 2; // Corrected data. Always set to zero.
+        const DRQ = 1 << 3; // Set when the drive has PIO data to transfer, or is ready to accept PIO data.
+        const SRV = 1 << 4; // Overlapped Mode Service Request.
+        const DF = 1 << 5; // Drive Fault Error (does not set ERR).
+        const RDY = 1 << 6; // Bit is clear when drive is spun down, or after an error. Set otherwise.
+        const BSY = 1 << 7; //Indicates the drive is preparing to send/receive data (wait for it to clear). In case of 'hang' (it never clears), do a software reset
+    }
+}
+
+/// Is it a boilerplate ?
+impl From<u8> for StatusRegister {
+    fn from(status: u8) -> StatusRegister {
+        StatusRegister { bits: status }
+    }
+}
+
 /// 0x01F0-0x01F7 The primary ATA hard-disk controller. 0x03F6-0x03F7 The control register, pop on IRQ14,
 /// 0x0170-0x0177 The secondary ATA hard-disk controller. 0x0376-0x0377 The control register, pop on IRQ15
 #[allow(dead_code)]
@@ -80,14 +137,93 @@ impl DummyAta {
     /// Provides drive select and head select information. (read) (8-bit / 8-bit)
     const DRIVE_ADDRESS: u16 = 0x1;
 
-    /// Invoque a new Dummy-IDE controller
-    pub const fn new() -> Self {
-        Self {
+    /// Invocation of a new Dummy-IDE controller
+    pub fn new() -> Self {
+        let mut s = Self {
             primary_base_register: Self::PRIMARY_BASE_REGISTER,
             secondary_base_register: Self::SECONDARY_BASE_REGISTER,
             primary_control_register: Self::PRIMARY_CONTROL_REGISTER,
             secondary_control_register: Self::SECONDARY_CONTROL_REGISTER,
+            ..Default::default()
+        };
+        s.primary_master = s.identify(Rank::Primary, Hierarchy::Master);
+        s.primary_slave = s.identify(Rank::Primary, Hierarchy::Souillon);
+        s.secondary_master = s.identify(Rank::Secondary, Hierarchy::Master);
+        s.secondary_slave = s.identify(Rank::Secondary, Hierarchy::Souillon);
+        s
+    }
+
+    /// Check if the selected IDE device is present, return capabilities if it is
+    fn identify(&self, rank: Rank, hierarchy: Hierarchy) -> Option<Capabilities> {
+        let target: u8 = match hierarchy {
+            Hierarchy::Master => 0xA0,
+            Hierarchy::Souillon => 0xB0,
+        };
+        let cmd_port: u16 = match rank {
+            Rank::Primary => self.primary_base_register,
+            Rank::Secondary => self.secondary_base_register,
+        };
+
+        // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
+        Pio::<u8>::new(cmd_port + Self::SELECTOR).write(target);
+
+        // set the Sectorcount, LBAlo, LBAmid, and LBAhi IO ports to 0
+        Pio::<u8>::new(cmd_port + Self::SECTOR_COUNT).write(0);
+        Pio::<u8>::new(cmd_port + Self::L1_SECTOR).write(0);
+        Pio::<u8>::new(cmd_port + Self::L2_CYLINDER).write(0);
+        Pio::<u8>::new(cmd_port + Self::L3_CYLINDER).write(0);
+
+        // send the IDENTIFY command (0xEC) to the Command IO port (0x1F7)
+        Pio::<u8>::new(cmd_port + Self::COMMAND).write(0xEC);
+
+        // read the Status port (0x1F7)
+        let res = Pio::<u8>::new(cmd_port + Self::STATUS).read();
+
+        // If the value read is 0, the drive does not exist
+        if res == 0 {
+            eprintln!("no drive at: {:?} {:?}", rank, hierarchy);
+            return None;
         }
+
+        // For any other value: poll the Status port (0x1F7) until bit 7 (BSY, value = 0x80) clears
+        while (StatusRegister::from(Pio::<u8>::new(cmd_port + Self::STATUS).read())).contains(StatusRegister::BSY) {}
+
+        // Continue polling one of the Status ports until bit 3 (DRQ, value = 8) sets, or until bit 0 (ERR, value = 1) sets.
+        while !(StatusRegister::from(Pio::<u8>::new(cmd_port + Self::STATUS).read()))
+            .intersects(StatusRegister::ERR | StatusRegister::DRQ)
+        {}
+
+        // If ERR is set, it is a failure
+        if (StatusRegister::from(Pio::<u8>::new(cmd_port + Self::STATUS).read())).contains(StatusRegister::ERR) {
+            eprintln!(
+                "unexpected error while polling status of {:?} {:?} err: {:?}",
+                rank,
+                hierarchy,
+                ErrorRegister::from(Pio::<u8>::new(cmd_port + Self::ERROR).read())
+            );
+            return None;
+        }
+
+        // if ERR is clear, the data is ready to read from the Data port (0x1F0). Read 256 16-bit values, and store them.
+        use alloc::vec::Vec;
+
+        let mut v = Vec::new();
+
+        for _i in 0..256 {
+            v.push(Pio::<u16>::new(cmd_port + Self::DATA).read());
+        }
+        println!("DISPLAYING summary for {:?} {:?}", rank, hierarchy);
+
+        // Bit 10 is set if the drive supports LBA48 mode.
+        println!("LBA48 supported: {:#X?}", v[83] & (1 << 10) != 0);
+        // The bits in the low byte tell you the supported UDMA modes, the upper byte tells you which UDMA mode is active.
+        println!("UDMA support: {:#X?}", v[88]);
+        // 60 & 61 taken as a uint32_t contain the total number of 28 bit LBA addressable sectors on the drive. (If non-zero, the drive supports LBA28.)
+        println!("lba28: {:#X?} {:#X?}", v[60], v[61]);
+        // 100 through 103 taken as a uint64_t contain the total number of 48 bit addressable sectors on the drive. (Probably also proof that LBA48 is supported.)
+        println!("lba48: {:#X?} {:#X?} {:#X?} {:#X?}", v[100], v[101], v[102], v[103]);
+
+        Some(Capabilities { lba48: (v[83] & (1 << 10) != 0) })
     }
 }
 
