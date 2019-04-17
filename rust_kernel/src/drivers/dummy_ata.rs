@@ -1,14 +1,11 @@
 //! This files contains the code related to the ATA / IDE CONTROLER
 /// See https://wiki.osdev.org/ATA_PIO_Mode
 #[deny(missing_docs)]
-
 use io::{Io, Pio};
 
 use bitflags::bitflags;
 
 //use bit_field::BitField;
-//use super::DeviceError;
-//use super::DeviceResult;
 
 /// Global structure
 #[derive(Debug, Copy, Clone, Default)]
@@ -21,26 +18,42 @@ pub struct DummyAta {
     secondary_master: Option<Capabilities>,
     primary_slave: Option<Capabilities>,
     secondary_slave: Option<Capabilities>,
+
+    selected_drive: Option<Rank>,
+    command_port: u16,
+    control_port: u16,
+}
+
+/// AtaResult is just made to handle module errors
+pub type AtaResult<T> = core::result::Result<T, AtaError>;
+
+/// Common errors for this module
+#[derive(Debug, Copy, Clone)]
+pub enum AtaError {
+    /// Not a valid position
+    DeviceNotFound,
+    /// Common error Variant
+    NotSupported,
+}
+
+/// Rank
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Rank {
+    Primary(Hierarchy),
+    Secondary(Hierarchy),
+}
+
+/// Is it a Slave or a Master ?
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Hierarchy {
+    Master,
+    Souillon,
 }
 
 /// Disk reader capabilities
 #[derive(Debug, Copy, Clone)]
 struct Capabilities {
     lba48: bool,
-}
-
-/// Rank
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum Rank {
-    Primary,
-    Secondary,
-}
-
-/// Is it a Slave or a Master ?
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum Hierarchy {
-    Master,
-    Souillon,
 }
 
 // Some erros may occured
@@ -146,22 +159,47 @@ impl DummyAta {
             secondary_control_register: Self::SECONDARY_CONTROL_REGISTER,
             ..Default::default()
         };
-        s.primary_master = s.identify(Rank::Primary, Hierarchy::Master);
-        s.primary_slave = s.identify(Rank::Primary, Hierarchy::Souillon);
-        s.secondary_master = s.identify(Rank::Secondary, Hierarchy::Master);
-        s.secondary_slave = s.identify(Rank::Secondary, Hierarchy::Souillon);
+        s.primary_master = s.identify(Rank::Primary(Hierarchy::Master));
+        s.primary_slave = s.identify(Rank::Primary(Hierarchy::Souillon));
+        s.secondary_master = s.identify(Rank::Secondary(Hierarchy::Master));
+        s.secondary_slave = s.identify(Rank::Secondary(Hierarchy::Souillon));
         s
     }
 
-    /// Check if the selected IDE device is present, return capabilities if it is
-    fn identify(&self, rank: Rank, hierarchy: Hierarchy) -> Option<Capabilities> {
-        let target: u8 = match hierarchy {
-            Hierarchy::Master => 0xA0,
-            Hierarchy::Souillon => 0xB0,
+    /// Select the drive we would like to read or write
+    pub fn select_drive(&mut self, rank: Rank) -> AtaResult<()> {
+        self.selected_drive = match rank {
+            Rank::Primary(Hierarchy::Master) => self.primary_master.map(|_| Rank::Primary(Hierarchy::Master)),
+            Rank::Primary(Hierarchy::Souillon) => self.primary_slave.map(|_| Rank::Primary(Hierarchy::Souillon)),
+            Rank::Secondary(Hierarchy::Master) => self.secondary_master.map(|_| Rank::Secondary(Hierarchy::Master)),
+            Rank::Secondary(Hierarchy::Souillon) => self.secondary_slave.map(|_| Rank::Secondary(Hierarchy::Souillon)),
         };
-        let cmd_port: u16 = match rank {
-            Rank::Primary => self.primary_base_register,
-            Rank::Secondary => self.secondary_base_register,
+
+        if self.selected_drive != None {
+            let (command_port, control_port, hierarchy) = match rank {
+                Rank::Primary(h) => (self.primary_base_register, self.primary_control_register, h),
+                Rank::Secondary(h) => (self.secondary_base_register, self.secondary_control_register, h),
+            };
+            self.command_port = command_port;
+            self.control_port = control_port;
+            match hierarchy {
+                // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
+                Hierarchy::Master => Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xA0),
+                Hierarchy::Souillon => Pio::<u8>::new(self.command_port + Self::SELECTOR).write(0xB0),
+            };
+            Ok(())
+        } else {
+            Err(AtaError::DeviceNotFound)
+        }
+    }
+
+    /// Check if the selected IDE device is present, return capabilities if it is
+    fn identify(&self, rank: Rank) -> Option<Capabilities> {
+        let (cmd_port, target) = match rank {
+            Rank::Primary(Hierarchy::Master) => (self.primary_base_register, 0xA0),
+            Rank::Primary(Hierarchy::Souillon) => (self.primary_base_register, 0xB0),
+            Rank::Secondary(Hierarchy::Master) => (self.secondary_base_register, 0xA0),
+            Rank::Secondary(Hierarchy::Souillon) => (self.secondary_base_register, 0xB0),
         };
 
         // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
@@ -181,7 +219,7 @@ impl DummyAta {
 
         // If the value read is 0, the drive does not exist
         if res == 0 {
-            eprintln!("no drive at: {:?} {:?}", rank, hierarchy);
+            eprintln!("no drive at: {:?}", rank);
             return None;
         }
 
@@ -196,9 +234,8 @@ impl DummyAta {
         // If ERR is set, it is a failure
         if (StatusRegister::from(Pio::<u8>::new(cmd_port + Self::STATUS).read())).contains(StatusRegister::ERR) {
             eprintln!(
-                "unexpected error while polling status of {:?} {:?} err: {:?}",
+                "unexpected error while polling status of {:?} err: {:?}",
                 rank,
-                hierarchy,
                 ErrorRegister::from(Pio::<u8>::new(cmd_port + Self::ERROR).read())
             );
             return None;
@@ -212,7 +249,7 @@ impl DummyAta {
         for _i in 0..256 {
             v.push(Pio::<u16>::new(cmd_port + Self::DATA).read());
         }
-        println!("DISPLAYING summary for {:?} {:?}", rank, hierarchy);
+        println!("DISPLAYING summary for {:?}", rank);
 
         // Bit 10 is set if the drive supports LBA48 mode.
         println!("LBA48 supported: {:#X?}", v[83] & (1 << 10) != 0);

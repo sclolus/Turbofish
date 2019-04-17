@@ -1,3 +1,4 @@
+use crate::drivers::dummy_ata::{Hierarchy, Rank};
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, DummyAta, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
 
@@ -109,9 +110,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::syscall::_write(1, s.as_ptr(), s.len());
     }
 
-    let disk = DummyAta::new();
+    let mut disk = DummyAta::new();
     println!("{:#X?}", disk);
-
+    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
+    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Secondary(Hierarchy::Master)));
+    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
     shell();
     0
 }
