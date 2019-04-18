@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 
 /// Global structure
 #[derive(Debug, Copy, Clone, Default)]
-pub struct DummyAta {
+pub struct AtaPio {
     primary_master: Option<Drive>,
     secondary_master: Option<Drive>,
     primary_slave: Option<Drive>,
@@ -402,8 +402,8 @@ const SECONDARY_BASE_REGISTER: u16 = 0x0170;
 const PRIMARY_CONTROL_REGISTER: u16 = 0x03f6;
 const SECONDARY_CONTROL_REGISTER: u16 = 0x376;
 
-impl DummyAta {
-    /// Invocation of a new Dummy-IDE controller
+impl AtaPio {
+    /// Invocation of a new AtaPio-IDE controller
     pub fn new() -> Self {
         Self {
             primary_master: Drive::identify(

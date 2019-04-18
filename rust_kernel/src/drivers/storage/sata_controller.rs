@@ -1,7 +1,4 @@
-use super::{
-    pci::{MassStorageControllerSubClass, PciDeviceClass, SerialAtaProgIf},
-    PciType0, PCI,
-};
+use super::{MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::memory::allocator::{map, unmap};
 use core::mem::size_of;

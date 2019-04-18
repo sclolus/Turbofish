@@ -7,8 +7,8 @@ pub use uart_16550::UART_16550;
 pub mod acpi;
 pub use acpi::{Acpi, ACPI};
 
-pub mod pci;
-pub use pci::{PciType0, PCI};
+mod pci;
+pub use pci::PCI;
 
 pub mod pic_8259;
 pub use pic_8259::PIC_8259;

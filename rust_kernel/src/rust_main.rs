@@ -2,8 +2,8 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
-use crate::drivers::storage::dummy_ata::{Hierarchy, Rank};
-use crate::drivers::storage::{DummyAta, IdeController, SataController};
+use crate::drivers::storage::ata_pio::{Hierarchy, Rank};
+use crate::drivers::storage::{AtaPio, PciIdeController, SataController};
 
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
@@ -98,7 +98,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     syscall::init();
 
-    eprintln!("{:#X?}", IdeController::init());
+    eprintln!("{:#X?}", PciIdeController::init());
 
     match SataController::init() {
         Some(sata_controller) => {
@@ -118,7 +118,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel);
     }
 
-    let mut disk = DummyAta::new();
+    let mut disk = AtaPio::new();
 
     println!("{:#X?}", disk);
     println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
