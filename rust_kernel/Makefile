@@ -125,12 +125,11 @@ re: fclean all
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 compile_bootstrap = make -C src/boot/bootstrap
 extract_kernel_symbols = nm -n $@ > autobuild/nm.res
-gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
+gen_symbol_map = cargo run --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
-autobuild/nm_map_gen: autobuild/nm_map_gen.c
-	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
-	$(gen_symbol_map)
+autobuild/nm_map_gen:
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
 
 LIBS = libft/libft.a libasm_i386/libasm_i386.a
 
@@ -138,14 +137,14 @@ $(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	$(gen_symbol_map)
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
 	$(compile_panic)
 	$(compile_bootstrap)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	$(gen_symbol_map)
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
 	$(compile_panic)
 	$(compile_bootstrap)
 

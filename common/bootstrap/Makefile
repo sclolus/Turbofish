@@ -56,7 +56,7 @@ $(NAME): $(OBJ_C) $(OBJ_ASM) $(LIBS)
 
 compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/early_panic.o src/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/early_panic.o
 extract_kernel_symbols = nm -n $@ > autobuild/nm.res
-gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
+gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml
 link = $(LD) $(LDFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
@@ -67,9 +67,8 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
 
-autobuild/nm_map_gen: autobuild/nm_map_gen.c
-	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
-	$(gen_symbol_map)
+autobuild/nm_map_gen:
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
 
 build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
