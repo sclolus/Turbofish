@@ -1,7 +1,7 @@
-// use crate::drivers::dummy_ata::{Hierarchy, NbrSectors, Rank, Sector};
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
+//use crate::drivers::storage::ata_pio::{Hierarchy, NbrSectors, Rank, Sector};
 use crate::drivers::storage::ata_pio::{Hierarchy, Rank};
 use crate::drivers::storage::{AtaPio, PciIdeController, SataController};
 

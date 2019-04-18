@@ -8,6 +8,8 @@ use bitflags::bitflags;
 
 use alloc::vec::Vec;
 
+use core::slice;
+
 /// Global structure
 #[derive(Debug, Copy, Clone, Default)]
 pub struct AtaPio {
@@ -71,11 +73,21 @@ impl Into<usize> for NbrSectors {
         self.0 as usize * 512
     }
 }
-use core::ops::SubAssign;
 
-impl SubAssign for NbrSectors {
-    fn sub_assign(&mut self, other: NbrSectors) {
-        self.0 -= other.0;
+impl From<usize> for NbrSectors {
+    fn from(u: usize) -> Self {
+        Self((u / 512 + if u % 512 != 0 { 1 } else { 0 }) as u64)
+    }
+}
+
+use core::ops::Add;
+
+/// Add  boilerplate for Sector + NbrSectors
+impl Add<NbrSectors> for Sector {
+    type Output = Sector;
+
+    fn add(self, other: NbrSectors) -> Self::Output {
+        Self(self.0 + other.0)
     }
 }
 
@@ -264,16 +276,26 @@ impl Drive {
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
+        let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
+
         match self.capabilities {
             Capabilities::Lba48 => {
-                self.init_lba48(start_sector, nbr_sectors);
+                // Do disk operation for each 'chunk_size' bytes
+                const CHUNK_SIZE: usize = 1024;
 
-                // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
-                self.wait_available();
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x24);
+                for (i, chunk) in s.chunks_mut(CHUNK_SIZE).enumerate() {
+                    let sectors_to_read = chunk.len().into();
 
-                // Read n sectors and put them into buf
-                self.read_sectors(nbr_sectors, buf)
+                    self.init_lba48(start_sector + (i * CHUNK_SIZE).into(), sectors_to_read);
+
+                    // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
+                    self.wait_available();
+                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x24);
+
+                    // Read n sectors and put them into buf
+                    self.read_sectors(sectors_to_read, chunk.as_mut_ptr())?;
+                }
+                Ok(())
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Lba28 => Err(AtaError::NotSupported),
@@ -282,23 +304,32 @@ impl Drive {
         }
     }
 
-    /// Drive specific write method
+    /// Drive specific WRITE method
     fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
+        let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
+
         match self.capabilities {
             Capabilities::Lba48 => {
-                self.init_lba48(start_sector, nbr_sectors);
+                // Do disk operation for each 'chunk_size' bytes
+                const CHUNK_SIZE: usize = 1024;
 
-                // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x24)
-                self.wait_available();
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x34);
+                for (i, chunk) in s.chunks(CHUNK_SIZE).enumerate() {
+                    let sectors_to_write = chunk.len().into();
 
-                // Write n sectors from buf to disk
-                self.write_sectors(nbr_sectors, buf)?;
+                    self.init_lba48(start_sector + (i * CHUNK_SIZE).into(), sectors_to_write);
 
-                // Fflush write cache
-                self.fflush_write_cache();
+                    // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x24)
+                    self.wait_available();
+                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x34);
+
+                    // Write n sectors from buf to disk
+                    self.write_sectors(sectors_to_write, chunk.as_ptr())?;
+
+                    // Fflush write cache
+                    self.fflush_write_cache();
+                }
                 Ok(())
             }
             // I experiment a lack of documentation about this mode
