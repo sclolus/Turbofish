@@ -1,7 +1,9 @@
-use crate::drivers::dummy_ata::{Hierarchy, Rank};
 // use crate::drivers::dummy_ata::{Hierarchy, NbrSectors, Rank, Sector};
 use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::{pic_8259, Acpi, DummyAta, IdeController, SataController, ACPI, PCI, PIC_8259, PIT0};
+use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
+
+use crate::drivers::storage::dummy_ata::{Hierarchy, Rank};
+use crate::drivers::storage::{DummyAta, IdeController, SataController};
 
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;

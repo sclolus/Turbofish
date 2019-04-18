@@ -1,6 +1,6 @@
 use super::{
-    pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0},
-    PCI,
+    pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass},
+    PciType0, PCI,
 };
 
 #[derive(Copy, Clone, Debug)]
