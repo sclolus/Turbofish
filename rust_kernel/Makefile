@@ -91,7 +91,7 @@ endif
 
 .PHONY: all clean fclean common_clean re exec $(kernel)
 
-all: .rust_toolchain .xbuild_toolchain autobuild/nm_map_gen build_rust build_libasm_i386 build_libft $(kernel)
+all: .rust_toolchain .xbuild_toolchain gen_kernel_symbols compile_bootstrap build_rust build_libasm_i386 build_libft $(kernel)
 
 .rust_toolchain: rust-toolchain
 	rustup component add rust-src
@@ -104,7 +104,7 @@ all: .rust_toolchain .xbuild_toolchain autobuild/nm_map_gen build_rust build_lib
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
-	rm -f autobuild/nm.res
+	rm -f autobuild/nm_output
 	rm -f autobuild/nm.map
 	rm -f autobuild/nm_map_gen
 	rm -f $(kernel)
@@ -122,14 +122,19 @@ fclean: common_clean
 
 re: fclean all
 
+compile_bootstrap:
+	$(compile_bootstrap)
+
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-compile_bootstrap = make -C src/boot/bootstrap
-extract_kernel_symbols = nm -n $@ > autobuild/nm.res
-gen_symbol_map = cargo run --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
+compile_bootstrap = make -C src/boot/bootstrap RUST_GEN_SYMBOL=yes
+extract_kernel_symbols = nm -n $@ > autobuild/nm_output
+gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
-autobuild/nm_map_gen:
-	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
+gen_kernel_symbols:
+	echo "rust kernel gen kernel symbols"
+	touch autobuild/nm_output
+	$(gen_symbol_map) autobuild/nm.map && sync
 
 LIBS = libft/libft.a libasm_i386/libasm_i386.a
 
@@ -137,14 +142,16 @@ $(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
+	echo "prebuild high kernel gen map"
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
 	$(compile_panic)
 	$(compile_bootstrap)
 
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	$(gen_symbol_map) autobuild/nm.map autobuild/nm.res && sync
+	echo "mainbuild high kernel gen map"
+	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
 	$(compile_panic)
 	$(compile_bootstrap)
 
@@ -155,6 +162,7 @@ build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
 
 src/boot/bootstrap/build/bootstrap.o:
+	echo "bootstrap.o"
 	$(compile_bootstrap)
 
 build_libasm_i386:
