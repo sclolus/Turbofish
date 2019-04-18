@@ -70,7 +70,6 @@ ifeq ($(RUST_GEN_SYMBOL),yes)
 gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml
 
 gen_kernel_symbols:
-	echo "gen kernel symbols"
 	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
 
 else

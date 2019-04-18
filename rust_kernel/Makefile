@@ -132,7 +132,6 @@ gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/C
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
 gen_kernel_symbols:
-	echo "rust kernel gen kernel symbols"
 	touch autobuild/nm_output
 	$(gen_symbol_map) autobuild/nm.map && sync
 
@@ -142,7 +141,6 @@ $(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL
 	@echo PREBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	echo "prebuild high kernel gen map"
 	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
 	$(compile_panic)
 	$(compile_bootstrap)
@@ -150,7 +148,6 @@ $(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL
 	@echo MAINBUILD
 	$(link_kernel)
 	$(extract_kernel_symbols)
-	echo "mainbuild high kernel gen map"
 	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
 	$(compile_panic)
 	$(compile_bootstrap)
@@ -162,7 +159,6 @@ build_rust:
 	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
 
 src/boot/bootstrap/build/bootstrap.o:
-	echo "bootstrap.o"
 	$(compile_bootstrap)
 
 build_libasm_i386:
