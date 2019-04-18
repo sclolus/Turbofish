@@ -44,6 +44,10 @@ pub enum AtaError {
     OutOfBound,
     /// There is nothing to do
     NothingToDo,
+    /// Read error
+    ReadError,
+    /// Write error
+    WriteError,
 }
 
 /// Rank
@@ -258,44 +262,6 @@ impl Drive {
         }
     }
 
-    /// Drive specific write method
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
-        check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
-
-        match self.capabilities {
-            Capabilities::Lba48 => {
-                self.init_lba48(start_sector, nbr_sectors);
-
-                // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x24)
-                self.wait_available();
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x34);
-
-                for sector in 0..nbr_sectors.0 as usize {
-                    // Wait for end of Busy state and DRQ ready
-                    loop {
-                        let r = StatusRegister::from_bits_truncate(
-                            Pio::<u8>::new(self.command_register + Self::STATUS).read(),
-                        );
-                        if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
-                            break;
-                        }
-                    }
-                    // TODO: check for eventuals errors
-                    let p = buf as *const u16;
-                    for i in 0..256 {
-                        unsafe { Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * 256)) }
-                    }
-                    // TODO self.wait_available(); ? Fflush cache ?
-                }
-                Ok(())
-            }
-            // I experiment a lack of documentation about this mode
-            Capabilities::Lba28 => Err(AtaError::NotSupported),
-            // I experiment a lack of documentation about this mode
-            Capabilities::Chs => Err(AtaError::NotSupported),
-        }
-    }
-
     /// drive specif READ method
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
@@ -314,17 +280,85 @@ impl Drive {
                         let r = StatusRegister::from_bits_truncate(
                             Pio::<u8>::new(self.command_register + Self::STATUS).read(),
                         );
+                        if r.contains(StatusRegister::ERR) {
+                            eprintln!(
+                                "unexpected error while reading of {:?} err: {:?}",
+                                self.rank,
+                                ErrorRegister::from_bits_truncate(
+                                    Pio::<u8>::new(self.command_register + Self::ERROR).read()
+                                )
+                            );
+                            return Err(AtaError::ReadError);
+                        }
                         if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
                             break;
                         }
                     }
-                    // TODO: check for eventuals errors
                     let p = buf as *mut u16;
                     for i in 0..256 {
                         unsafe { *p.add(i + sector * 256) = Pio::<u16>::new(self.command_register + Self::DATA).read() }
                     }
-                    // TODO: self.wait_available() ?)
                 }
+                Ok(())
+            }
+            // I experiment a lack of documentation about this mode
+            Capabilities::Lba28 => Err(AtaError::NotSupported),
+            // I experiment a lack of documentation about this mode
+            Capabilities::Chs => Err(AtaError::NotSupported),
+        }
+    }
+
+    /// Drive specific write method
+    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+        check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
+
+        match self.capabilities {
+            Capabilities::Lba48 => {
+                self.init_lba48(start_sector, nbr_sectors);
+
+                // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x24)
+                self.wait_available();
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x34);
+
+                for sector in 0..nbr_sectors.0 as usize {
+                    // Wait for end of Busy state and DRQ ready
+                    loop {
+                        let r = StatusRegister::from_bits_truncate(
+                            Pio::<u8>::new(self.command_register + Self::STATUS).read(),
+                        );
+                        if r.contains(StatusRegister::ERR) {
+                            eprintln!(
+                                "unexpected error while writing of {:?} err: {:?}",
+                                self.rank,
+                                ErrorRegister::from_bits_truncate(
+                                    Pio::<u8>::new(self.command_register + Self::ERROR).read()
+                                )
+                            );
+                            return Err(AtaError::WriteError);
+                        }
+                        if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
+                            break;
+                        }
+                    }
+                    let p = buf as *const u16;
+                    for i in 0..256 {
+                        unsafe { Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * 256)) }
+                    }
+                }
+                // On some drives it is necessary to "manually" flush the hardware write cache after every write command.
+                // This is done by sending the 0xE7 command to the Command Register (then waiting for BSY to clear).
+                // If a driver does not do this, then subsequent write commands can fail invisibly,
+                // or "temporary bad sectors" can be created on your disk.
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0xE7);
+
+                let p = Pio::<u8>::new(self.command_register + Self::STATUS);
+                while StatusRegister::from_bits_truncate(p.read()).contains(StatusRegister::BSY) {}
+
+                /*
+                while (StatusRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::STATUS).read()))
+                    .contains(StatusRegister::BSY)
+                {}
+                */
                 Ok(())
             }
             // I experiment a lack of documentation about this mode
