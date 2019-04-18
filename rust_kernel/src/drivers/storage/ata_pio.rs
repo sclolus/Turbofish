@@ -44,10 +44,8 @@ pub enum AtaError {
     OutOfBound,
     /// There is nothing to do
     NothingToDo,
-    /// Read error
-    ReadError,
-    /// Write error
-    WriteError,
+    /// IO error
+    IoError,
 }
 
 /// Rank
@@ -262,7 +260,7 @@ impl Drive {
         }
     }
 
-    /// drive specif READ method
+    /// drive specific READ method
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
@@ -274,32 +272,8 @@ impl Drive {
                 self.wait_available();
                 Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x24);
 
-                for sector in 0..nbr_sectors.0 as usize {
-                    // Wait for end of Busy state and DRQ ready
-                    loop {
-                        let r = StatusRegister::from_bits_truncate(
-                            Pio::<u8>::new(self.command_register + Self::STATUS).read(),
-                        );
-                        if r.contains(StatusRegister::ERR) {
-                            eprintln!(
-                                "unexpected error while reading of {:?} err: {:?}",
-                                self.rank,
-                                ErrorRegister::from_bits_truncate(
-                                    Pio::<u8>::new(self.command_register + Self::ERROR).read()
-                                )
-                            );
-                            return Err(AtaError::ReadError);
-                        }
-                        if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
-                            break;
-                        }
-                    }
-                    let p = buf as *mut u16;
-                    for i in 0..256 {
-                        unsafe { *p.add(i + sector * 256) = Pio::<u16>::new(self.command_register + Self::DATA).read() }
-                    }
-                }
-                Ok(())
+                // Read n sectors and put them into buf
+                self.read_sectors(nbr_sectors, buf)
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Lba28 => Err(AtaError::NotSupported),
@@ -320,45 +294,11 @@ impl Drive {
                 self.wait_available();
                 Pio::<u8>::new(self.command_register + Self::COMMAND).write(0x34);
 
-                for sector in 0..nbr_sectors.0 as usize {
-                    // Wait for end of Busy state and DRQ ready
-                    loop {
-                        let r = StatusRegister::from_bits_truncate(
-                            Pio::<u8>::new(self.command_register + Self::STATUS).read(),
-                        );
-                        if r.contains(StatusRegister::ERR) {
-                            eprintln!(
-                                "unexpected error while writing of {:?} err: {:?}",
-                                self.rank,
-                                ErrorRegister::from_bits_truncate(
-                                    Pio::<u8>::new(self.command_register + Self::ERROR).read()
-                                )
-                            );
-                            return Err(AtaError::WriteError);
-                        }
-                        if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
-                            break;
-                        }
-                    }
-                    let p = buf as *const u16;
-                    for i in 0..256 {
-                        unsafe { Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * 256)) }
-                    }
-                }
-                // On some drives it is necessary to "manually" flush the hardware write cache after every write command.
-                // This is done by sending the 0xE7 command to the Command Register (then waiting for BSY to clear).
-                // If a driver does not do this, then subsequent write commands can fail invisibly,
-                // or "temporary bad sectors" can be created on your disk.
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(0xE7);
+                // Write n sectors from buf to disk
+                self.write_sectors(nbr_sectors, buf)?;
 
-                let p = Pio::<u8>::new(self.command_register + Self::STATUS);
-                while StatusRegister::from_bits_truncate(p.read()).contains(StatusRegister::BSY) {}
-
-                /*
-                while (StatusRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::STATUS).read()))
-                    .contains(StatusRegister::BSY)
-                {}
-                */
+                // Fflush write cache
+                self.fflush_write_cache();
                 Ok(())
             }
             // I experiment a lack of documentation about this mode
@@ -366,6 +306,64 @@ impl Drive {
             // I experiment a lack of documentation about this mode
             Capabilities::Chs => Err(AtaError::NotSupported),
         }
+    }
+
+    /// Read n_sectors, store them into buf
+    fn read_sectors(&self, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+        for sector in 0..nbr_sectors.0 as usize {
+            // Wait for end of Busy state and DRQ ready
+            self.busy_wait()?;
+
+            let p = buf as *mut u16;
+            for i in 0..256 {
+                unsafe { *p.add(i + sector * 256) = Pio::<u16>::new(self.command_register + Self::DATA).read() }
+            }
+        }
+        Ok(())
+    }
+
+    /// Write n sectors from buf
+    fn write_sectors(&self, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+        for sector in 0..nbr_sectors.0 as usize {
+            // Wait for end of Busy state and DRQ ready
+            self.busy_wait()?;
+
+            let p = buf as *const u16;
+            for i in 0..256 {
+                unsafe { Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * 256)) }
+            }
+        }
+        Ok(())
+    }
+
+    /// Wait for end of Busy state and DRQ ready
+    fn busy_wait(&self) -> AtaResult<()> {
+        loop {
+            let r = StatusRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::STATUS).read());
+            if r.contains(StatusRegister::ERR) {
+                eprintln!(
+                    "unexpected error while busy of {:?} err: {:?}",
+                    self.rank,
+                    ErrorRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::ERROR).read())
+                );
+                return Err(AtaError::IoError);
+            }
+            if !r.contains(StatusRegister::BSY) && r.contains(StatusRegister::DRQ) {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    /// On some drives it is necessary to "manually" flush the hardware write cache after every write command.
+    /// This is done by sending the 0xE7 command to the Command Register (then waiting for BSY to clear).
+    /// If a driver does not do this, then subsequent write commands can fail invisibly,
+    /// or "temporary bad sectors" can be created on your disk.
+    fn fflush_write_cache(&self) {
+        Pio::<u8>::new(self.command_register + Self::COMMAND).write(0xE7);
+
+        let p = Pio::<u8>::new(self.command_register + Self::STATUS);
+        while StatusRegister::from_bits_truncate(p.read()).contains(StatusRegister::BSY) {}
     }
 
     /// The method suggested in the ATA specs for sending ATA commands tells you to check the BSY and DRQ bits before trying to send a command
