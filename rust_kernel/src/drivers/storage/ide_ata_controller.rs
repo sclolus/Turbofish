@@ -1,7 +1,10 @@
 //! This module contains the turbo fish's ATA/IDE drivers
 
+#[deny(missing_docs)]
+
 use super::SECTOR_SIZE;
 use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI};
+
 use crate::drivers::storage::tools::*;
 
 pub mod pio_polling;

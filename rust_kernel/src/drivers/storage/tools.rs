@@ -17,6 +17,10 @@ impl From<usize> for NbrSectors {
     }
 }
 
+/// new type representing the start sector
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub struct Sector(pub u64);
+
 /// Add boilerplate for Sector + NbrSectors
 impl Add<NbrSectors> for Sector {
     type Output = Sector;
@@ -25,7 +29,3 @@ impl Add<NbrSectors> for Sector {
         Self(self.0 + other.0)
     }
 }
-
-/// new type representing the start sector
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub struct Sector(pub u64);

@@ -1,10 +1,13 @@
-//! This files contains the code related to the ATA / IDE CONTROLER
-use super::Drive;
+//! This files contains the code related to the ATA PIO MODE
 /// See https://wiki.osdev.org/ATA_PIO_Mode
+
 #[deny(missing_docs)]
+
+use super::Drive;
 use super::SECTOR_SIZE;
 use super::{check_bounds, AtaError, AtaResult, Capabilities, DeviceControlRegister, Hierarchy, Rank};
 use super::{Command, ErrorRegister, StatusRegister};
+
 use crate::drivers::storage::tools::*;
 
 use io::{Io, Pio};
