@@ -1,4 +1,7 @@
-use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI};
+use super::{
+    AtaResult, DmaIo, Drive, IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI,
+};
+use crate::drivers::storage::tools::*;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -13,18 +16,12 @@ struct IDEChannelRegisters {
     raw_stuff: [u8; 2],
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct PciUdma {
-    pci: PciType0,
-    location: u32,
-}
-
-impl PciUdma {
-    pub fn init() -> Option<Self> {
-        PCI.lock()
-            .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::IdeController(
-                IdeControllerProgIf::IsaCompatibilityModeOnlyControllerBusMastered,
-            )))
-            .map(|(pci, location)| Self { pci, location })
+impl DmaIo for Drive {
+    /// drive specific READ method
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
+        Ok(())
+    }
+    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+        Ok(())
     }
 }

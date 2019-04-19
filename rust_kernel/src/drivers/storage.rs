@@ -5,7 +5,7 @@ use super::pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceCl
 const SECTOR_SIZE: usize = 512;
 
 pub mod ide_ata_controller;
-pub use ide_ata_controller::{IdeAtaController, PciUdma};
+pub use ide_ata_controller::IdeAtaController;
 
 pub mod tools;
 pub use tools::*;

@@ -2,7 +2,7 @@ use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
 // use crate::drivers::storage::{Sector, NbrSectors, ide_ata_controller::pio_polling::{Hierarchy, Rank}};
-use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, PciUdma, Rank};
+use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
 use crate::drivers::storage::SataController;
 
 use crate::interrupts;
@@ -98,8 +98,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     syscall::init();
 
-    eprintln!("{:#X?}", PciUdma::init());
-
     match SataController::init() {
         Some(sata_controller) => {
             println!("{:#X?}", sata_controller);
@@ -120,8 +118,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut disk = IdeAtaController::new();
 
-    println!("{:#X?}", disk);
-    println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
+    //println!("{:#X?}", disk);
+    if let Some(d) = disk.as_mut() {
+        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
+    }
 
     // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Secondary(Hierarchy::Master)));
     // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
