@@ -2,6 +2,8 @@
 
 use super::pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
+const SECTOR_SIZE: usize = 512;
+
 pub mod ata_pio;
 pub use ata_pio::AtaPio;
 

@@ -1,6 +1,8 @@
 //! This files contains the code related to the ATA / IDE CONTROLER
 /// See https://wiki.osdev.org/ATA_PIO_Mode
 #[deny(missing_docs)]
+use super::SECTOR_SIZE;
+
 use io::{Io, Pio};
 
 use bit_field::BitField;
@@ -70,13 +72,13 @@ pub struct NbrSectors(pub u64);
 
 impl Into<usize> for NbrSectors {
     fn into(self) -> usize {
-        self.0 as usize * 512
+        self.0 as usize * SECTOR_SIZE
     }
 }
 
 impl From<usize> for NbrSectors {
     fn from(u: usize) -> Self {
-        Self((u / 512 + if u % 512 != 0 { 1 } else { 0 }) as u64)
+        Self((u / SECTOR_SIZE + if u % SECTOR_SIZE != 0 { 1 } else { 0 }) as u64)
     }
 }
 
@@ -281,7 +283,7 @@ impl Drive {
         match self.capabilities {
             Capabilities::Lba48 => {
                 // Do disk operation for each 'chunk_size' bytes
-                const CHUNK_SIZE: usize = 512 * 256 * 256;
+                const CHUNK_SIZE: usize = SECTOR_SIZE * 256 * 256;
 
                 for (i, chunk) in s.chunks_mut(CHUNK_SIZE).enumerate() {
                     let sectors_to_read = chunk.len().into();
@@ -299,7 +301,7 @@ impl Drive {
             }
             Capabilities::Lba28 => {
                 // Do disk operation for each 'chunk_size' bytes
-                const CHUNK_SIZE: usize = 512 * 256;
+                const CHUNK_SIZE: usize = SECTOR_SIZE * 256;
 
                 for (i, chunk) in s.chunks_mut(CHUNK_SIZE).enumerate() {
                     let sectors_to_read = chunk.len().into();
@@ -329,7 +331,7 @@ impl Drive {
         match self.capabilities {
             Capabilities::Lba48 => {
                 // Do disk operation for each 'chunk_size' bytes (32mo max for lba48)
-                const CHUNK_SIZE: usize = 512 * 256 * 256;
+                const CHUNK_SIZE: usize = SECTOR_SIZE * 256 * 256;
 
                 for (i, chunk) in s.chunks(CHUNK_SIZE).enumerate() {
                     let sectors_to_write = chunk.len().into();
@@ -350,7 +352,7 @@ impl Drive {
             }
             Capabilities::Lba28 => {
                 // Do disk operation for each 'chunk_size' bytes (32k max for lba28)
-                const CHUNK_SIZE: usize = 512 * 256;
+                const CHUNK_SIZE: usize = SECTOR_SIZE * 256;
 
                 for (i, chunk) in s.chunks(CHUNK_SIZE).enumerate() {
                     let sectors_to_write = chunk.len().into();
@@ -381,8 +383,10 @@ impl Drive {
             self.busy_wait()?;
 
             let p = buf as *mut u16;
-            for i in 0..256 {
-                unsafe { *p.add(i + sector * 256) = Pio::<u16>::new(self.command_register + Self::DATA).read() }
+            for i in 0..SECTOR_SIZE >> 1 {
+                unsafe {
+                    *p.add(i + sector * (SECTOR_SIZE >> 1)) = Pio::<u16>::new(self.command_register + Self::DATA).read()
+                }
             }
         }
         Ok(())
@@ -395,8 +399,10 @@ impl Drive {
             self.busy_wait()?;
 
             let p = buf as *const u16;
-            for i in 0..256 {
-                unsafe { Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * 256)) }
+            for i in 0..SECTOR_SIZE >> 1 {
+                unsafe {
+                    Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * (SECTOR_SIZE >> 1)))
+                }
             }
         }
         Ok(())
