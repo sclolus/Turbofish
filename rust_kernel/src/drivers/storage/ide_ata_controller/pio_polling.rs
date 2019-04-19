@@ -6,8 +6,7 @@ use super::Drive;
 use super::SECTOR_SIZE;
 use super::{check_bounds, AtaError, AtaResult, Capabilities, DeviceControlRegister, Hierarchy, Rank};
 use super::{Command, ErrorRegister, PioIo, StatusRegister};
-
-use crate::drivers::storage::tools::*;
+use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
 
