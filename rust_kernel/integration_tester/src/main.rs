@@ -21,13 +21,10 @@ enum TestError {
 }
 
 /// Execute a command with specifics arguments
-fn exec_custom_command(cmd: &str, args: Vec<&str>) {
+fn exec_command(cmd: &str, args: &[&str]) {
     let cmd_generate = {
         let mut cmd = Command::new(cmd);
-
-        for argument in args.iter() {
-            cmd.arg(argument);
-        }
+        cmd.args(args);
         println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
         cmd.output().expect("failed to execute process")
     };
@@ -82,10 +79,9 @@ fn main() {
             let native = if feature.starts_with("native-test-") { true } else { false };
             println!("test: {} native_mode: {}", (*feature).clone().magenta().bold(), native);
 
-            let compilation_output = {
-                let mut cmd = Command::new("make");
-
-                cmd.args(&[
+            exec_command(
+                "make",
+                &[
                     "-C",
                     if native { "../" } else { "./" },
                     "DEBUG=yes",
@@ -94,23 +90,18 @@ fn main() {
                         feature,
                         if matches.opt_present("g") { "" } else { "serial-eprintln,exit-on-panic" }
                     ),
-                ]);
+                ],
+            );
 
-                println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
-                cmd.output().expect("failed to execute process")
-            };
-            println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
-            println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
-
-            if native == true && feature.contains("hard-drive") {
+            if native && feature.contains("hard-drive") {
                 // Compiling generate C programm
-                exec_custom_command("gcc", vec!["src/tests/generate.c", "-o", "generate", "--verbose"]);
+                exec_command("gcc", &["src/tests/generate.c", "-o", "generate", "--verbose"]);
 
                 // Generating a Rainbow disk of 16mo
-                exec_custom_command("./generate", vec!["../rainbow_disk.img", "16777216"]);
+                exec_command("./generate", &["../rainbow_disk.img", "16777216"]);
 
                 // Clean executable
-                exec_custom_command("rm", vec!["generate", "-v"]);
+                exec_command("rm", &["generate", "-v"]);
             }
 
             let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
