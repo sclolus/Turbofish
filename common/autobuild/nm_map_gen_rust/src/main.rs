@@ -23,7 +23,7 @@ fn main() {
                 let mut s = x.split_whitespace();
                 Symbol { addr: s.next().unwrap(), t: s.next().unwrap(), name: s.next().unwrap_or("") }
             })
-            .filter(|sym| sym.t != "U")
+            .filter(|sym| !(sym.t == "U" || sym.name == ""))
             .collect();
         let nb_symbol = symbols.len();
         write!(res_file, "#define FN_DIR_LEN	{}\n", nb_symbol).unwrap();
