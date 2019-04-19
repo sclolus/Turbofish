@@ -127,7 +127,7 @@ compile_bootstrap:
 	$(compile_bootstrap)
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-compile_bootstrap = make -C src/boot/bootstrap
+compile_bootstrap = make -C src/boot/bootstrap OWNED_BY_KERNEL=yes
 extract_kernel_symbols = nm -n $@ > autobuild/nm_output
 gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
