@@ -102,7 +102,7 @@ fn main() {
             println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
             println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
 
-            if native == true {
+            if native == true && feature.contains("hard-drive") {
                 // Compiling generate C programm
                 exec_custom_command("gcc", vec!["src/tests/generate.c", "-o", "generate", "--verbose"]);
 
@@ -123,7 +123,15 @@ fn main() {
                     .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() });
 
                 match native {
-                    true => qemu_command.args(&["-hda", "../image_disk.img"]).args(&["-hdb", "../rainbow_disk.img"]),
+                    true => {
+                        if feature.contains("hard-drive") {
+                            qemu_command
+                                .args(&["-drive", "format=raw,file=../image_disk.img"])
+                                .args(&["-drive", "format=raw,file=../rainbow_disk.img"])
+                        } else {
+                            qemu_command.args(&["-drive", "format=raw,file=../image_disk.img"])
+                        }
+                    }
                     false => qemu_command.args(&["-kernel", "build/kernel.elf"]),
                 };
                 println!("{}: {:?}", "EXECUTING".blue().bold(), qemu_command);

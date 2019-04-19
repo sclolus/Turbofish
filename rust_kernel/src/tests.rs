@@ -21,5 +21,5 @@ mod reexport_test_kmalloc {
     pub mod standard_sodomizer;
 }
 
-#[cfg(feature = "native-test-hard-drive")]
-pub mod hard_drive;
+#[cfg(feature = "native-test-hard-drive-read")]
+pub mod hard_drive_read;
