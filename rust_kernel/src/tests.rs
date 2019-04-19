@@ -23,3 +23,6 @@ mod reexport_test_kmalloc {
 
 #[cfg(feature = "native-test-hard-drive-read")]
 pub mod hard_drive_read;
+
+#[cfg(feature = "native-test-hard-drive-write")]
+pub mod hard_drive_write;
