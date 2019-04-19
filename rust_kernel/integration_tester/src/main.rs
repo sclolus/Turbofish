@@ -20,6 +20,21 @@ enum TestError {
     Timeout,
 }
 
+/// Execute a command with specifics arguments
+fn exec_custom_command(cmd: &str, args: Vec<&str>) {
+    let cmd_generate = {
+        let mut cmd = Command::new(cmd);
+
+        for argument in args.iter() {
+            cmd.arg(argument);
+        }
+        println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
+        cmd.output().expect("failed to execute process")
+    };
+    println!("COMPILATION stdout {}", String::from_utf8_lossy(&cmd_generate.stdout));
+    println!("COMPILATION stderr {}", String::from_utf8_lossy(&cmd_generate.stderr));
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -49,16 +64,30 @@ fn main() {
             Value::Table(btree) => btree,
             _ => panic!("not a btree"),
         };
-        btree.into_iter().filter_map(|f| if f.0.starts_with("test-") { Some(f.0.clone()) } else { None }).collect()
+        btree
+            .into_iter()
+            .filter_map(|f| {
+                if f.0.starts_with("test-") || f.0.starts_with("native-test-") {
+                    Some(f.0.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     };
     println!("running {} tests", all_tests.len());
     let all_result: Vec<Result<(), TestError>> = all_tests
         .iter()
         .map(|feature| {
-            println!("test: {}", (*feature).clone().magenta().bold());
+            let native = if feature.starts_with("native-test-") { true } else { false };
+            println!("test: {} native_mode: {}", (*feature).clone().magenta().bold(), native);
+
             let compilation_output = {
                 let mut cmd = Command::new("make");
+
                 cmd.args(&[
+                    "-C",
+                    if native { "../" } else { "./" },
                     "DEBUG=yes",
                     &format!(
                         "cargo_flags=--features {},test,{}",
@@ -72,14 +101,31 @@ fn main() {
             };
             println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
             println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
+
+            if native == true {
+                // Compiling generate C programm
+                exec_custom_command("gcc", vec!["src/tests/generate.c", "-o", "generate", "--verbose"]);
+
+                // Generating a Rainbow disk of 16mo
+                exec_custom_command("./generate", vec!["../rainbow_disk.img", "16777216"]);
+
+                // Clean executable
+                exec_custom_command("rm", vec!["generate", "-v"]);
+            }
+
             let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
-                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M", "-kernel", "build/kernel.elf"])
+                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
                     .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() });
+
+                match native {
+                    true => qemu_command.args(&["-hda", "../image_disk.img"]).args(&["-hdb", "../rainbow_disk.img"]),
+                    false => qemu_command.args(&["-kernel", "build/kernel.elf"]),
+                };
                 println!("{}: {:?}", "EXECUTING".blue().bold(), qemu_command);
                 qemu_command.spawn().expect("failed to execute process")
             };

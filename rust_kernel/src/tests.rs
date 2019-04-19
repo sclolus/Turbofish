@@ -20,3 +20,6 @@ mod reexport_test_kmalloc {
     pub mod kmalloc;
     pub mod standard_sodomizer;
 }
+
+#[cfg(feature = "native-test-hard-drive")]
+pub mod hard_drive;
