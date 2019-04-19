@@ -6,8 +6,8 @@ use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::tests::helpers::exit_qemu;
 
-use crate::drivers::storage::ata_pio::{Hierarchy, NbrSectors, Rank, Sector};
-use crate::drivers::storage::AtaPio;
+use crate::drivers::storage::ide_ata_controller::pio_polling::{Hierarchy, NbrSectors, Rank, Sector};
+use crate::drivers::storage::ide_ata_controller::PioPolling;
 
 const NB_TESTS: usize = 32;
 const DISK_SECTOR_CAPACITY: u16 = 0x8000;
@@ -31,7 +31,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     srand_init(42).unwrap();
 
-    let mut disk = AtaPio::new();
+    let mut disk = PioPolling::new();
 
     eprintln!("{:#X?}", disk);
     eprintln!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));

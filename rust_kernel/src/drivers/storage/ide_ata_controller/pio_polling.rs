@@ -14,7 +14,7 @@ use core::slice;
 
 /// Global structure
 #[derive(Debug, Copy, Clone, Default)]
-pub struct AtaPio {
+pub struct PioPolling {
     primary_master: Option<Drive>,
     secondary_master: Option<Drive>,
     primary_slave: Option<Drive>,
@@ -536,8 +536,8 @@ const SECONDARY_BASE_REGISTER: u16 = 0x0170;
 const PRIMARY_CONTROL_REGISTER: u16 = 0x03f6;
 const SECONDARY_CONTROL_REGISTER: u16 = 0x376;
 
-impl AtaPio {
-    /// Invocation of a new AtaPio-IDE controller
+impl PioPolling {
+    /// Invocation of a new PioMode-IDE controller
     pub fn new() -> Self {
         Self {
             primary_master: Drive::identify(

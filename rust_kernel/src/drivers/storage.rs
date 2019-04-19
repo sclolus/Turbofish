@@ -4,11 +4,10 @@ use super::pci::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceCl
 
 const SECTOR_SIZE: usize = 512;
 
-pub mod ata_pio;
-pub use ata_pio::AtaPio;
-
-pub mod pci_ide_controller;
-pub use pci_ide_controller::PciIdeController;
+pub mod ide_ata_controller;
+pub use ide_ata_controller::{PciUdma, PioPolling};
+// TODO -> MUST WILL BE:
+// pub use ide_ata_controller::IdeAtaController;
 
 pub mod sata_controller;
 pub use sata_controller::SataController;

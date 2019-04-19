@@ -14,12 +14,12 @@ struct IDEChannelRegisters {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct PciIdeController {
+pub struct PciUdma {
     pci: PciType0,
     location: u32,
 }
 
-impl PciIdeController {
+impl PciUdma {
     pub fn init() -> Option<Self> {
         PCI.lock()
             .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::IdeController(
