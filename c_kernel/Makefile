@@ -167,9 +167,9 @@ $(KERNEL): src/boot/bootstrap/build/bootstrap.o $(OBJ_C_KERNEL) $(OBJ_ASM_KERNEL
 	chmod -x $@
 
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
-compile_bootstrap = make -C src/boot/bootstrap
-extract_kernel_symbols = nm -n $@ > autobuild/nm.res
-gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
+compile_bootstrap = make -C src/boot/bootstrap OWNED_BY_KERNEL=yes
+extract_kernel_symbols = nm -n $@ > autobuild/nm_output
+gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm_output && sync
 link_kernel = $(LD) $(LDFLAGS) -T $(LDSCRIPT) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
@@ -189,7 +189,7 @@ build_libft:
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
-	rm -f autobuild/nm.res
+	rm -f autobuild/nm_output
 	rm -f autobuild/nm.map
 	rm -f autobuild/nm_map_gen
 	rm -f $(KERNEL)

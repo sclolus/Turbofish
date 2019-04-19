@@ -46,7 +46,13 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 
 .PHONY: all clean fclean common_clear re help $(NAME)
 
+ifeq ($(OWNED_BY_KERNEL),yes)
+all: build_libft $(NAME)
+else
+# *** for auto-compilation of the library ***
 all: build_libft autobuild/nm_map_gen $(NAME)
+# *** *** *** *** *** *** *** *** *** *** ***
+endif
 
 LIBS = libft/alt_libft.a
 
@@ -55,8 +61,12 @@ $(NAME): $(OBJ_C) $(OBJ_ASM) $(LIBS)
 	$(link)
 
 compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/early_panic.o src/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/early_panic.o
-extract_kernel_symbols = nm -n $@ > autobuild/nm.res
-gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm.res && sync
+
+# *** for auto-compilation of the library ***
+extract_kernel_symbols = nm -n $@ > autobuild/nm_output
+gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm_output && sync
+# *** *** *** *** *** *** *** *** *** *** ***
+
 link = $(LD) $(LDFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
@@ -67,16 +77,18 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
 
+# *** for auto-compilation of the library ***
 autobuild/nm_map_gen: autobuild/nm_map_gen.c
 	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
 	$(gen_symbol_map)
+# *** *** *** *** *** *** *** *** *** *** ***
 
 build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
-	rm -f autobuild/nm.res
+	rm -f autobuild/nm_output
 	rm -f autobuild/nm.map
 	rm -f autobuild/nm_map_gen
 	rm -f $(NAME)

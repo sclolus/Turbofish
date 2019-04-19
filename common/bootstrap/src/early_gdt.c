@@ -1,4 +1,3 @@
-
 #include "early_gdt.h"
 
 /*

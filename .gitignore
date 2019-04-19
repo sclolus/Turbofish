@@ -1,5 +1,6 @@
 .*
 !.cargo
+nm_output
 *.o
 *.img
 *.elf
