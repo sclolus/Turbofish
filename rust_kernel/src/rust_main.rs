@@ -1,9 +1,8 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
-//use crate::drivers::storage::ide_ata_controller::pio_polling::{Hierarchy, NbrSectors, Rank, Sector};
-use crate::drivers::storage::ide_ata_controller::pio_polling::{Hierarchy, Rank};
-use crate::drivers::storage::ide_ata_controller::{PciUdma, PioPolling};
+// use crate::drivers::storage::{Sector, NbrSectors, ide_ata_controller::pio_polling::{Hierarchy, Rank}};
+use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, PciUdma, Rank};
 use crate::drivers::storage::SataController;
 
 use crate::interrupts;
@@ -119,7 +118,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel);
     }
 
-    let mut disk = PioPolling::new();
+    let mut disk = IdeAtaController::new();
 
     println!("{:#X?}", disk);
     println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
