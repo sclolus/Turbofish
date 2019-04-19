@@ -46,7 +46,7 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 
 .PHONY: all clean fclean common_clear re help $(NAME)
 
-all: build_libft gen_kernel_symbols $(NAME)
+all: build_libft $(NAME)
 
 LIBS = libft/alt_libft.a
 
@@ -55,7 +55,6 @@ $(NAME): $(OBJ_C) $(OBJ_ASM) $(LIBS)
 	$(link)
 
 compile_early_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/early_panic.o src/early_panic.c $(IFLAGS) && objcopy --prefix-symbols=alt_ $(OBJ_DIR)/early_panic.o
-extract_kernel_symbols = nm -n $@ > autobuild/nm_output
 link = $(LD) $(LDFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
@@ -65,22 +64,6 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(ASM) $(ASMFLAGS) -o $@ $<
 	objcopy --prefix-symbols=alt_ $@
-
-ifeq ($(RUST_GEN_SYMBOL),yes)
-gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml
-
-gen_kernel_symbols:
-	$(gen_symbol_map) autobuild/nm.map autobuild/nm_output && sync
-
-else
-gen_kernel_symbols: autobuild/nm_map_gen
-
-gen_symbol_map = autobuild/nm_map_gen autobuild/nm.map autobuild/nm_output && sync
-
-autobuild/nm_map_gen: autobuild/nm_map_gen.c
-	gcc -Wextra -Wall $< -o $@ -g -O0 -fsanitize=address
-	$(gen_symbol_map)
-endif
 
 build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM) ALT=yes
