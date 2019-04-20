@@ -36,27 +36,29 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut disk = IdeAtaController::new();
 
-    eprintln!("{:#X?}", disk);
-    eprintln!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));
+    println!("{:#X?}", disk);
+    if let Some(d) = disk.as_mut() {
+        eprintln!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Slave)));
 
-    use alloc::vec;
-    use alloc::vec::Vec;
+        use alloc::vec;
+        use alloc::vec::Vec;
 
-    for _i in 0..NB_TESTS {
-        let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
-        let mut n = srand::<u16>(1024) as u64;
-        if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
-            n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
-        }
-        let nbr_sectors = NbrSectors(n);
+        for _i in 0..NB_TESTS {
+            let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
+            let mut n = srand::<u16>(1024) as u64;
+            if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
+                n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
+            }
+            let nbr_sectors = NbrSectors(n);
 
-        let mut v: Vec<u32> = vec![0; n as usize * SECTOR_SIZE as usize / 4];
-        disk.read(start_sector, nbr_sectors, v.as_mut_ptr() as *mut u8).unwrap();
+            let mut v: Vec<u32> = vec![0; n as usize * SECTOR_SIZE as usize / 4];
+            d.read(start_sector, nbr_sectors, v.as_mut_ptr() as *mut u8).unwrap();
 
-        for (j, i) in
-            (start_sector.0 * SECTOR_SIZE..(start_sector.0 + nbr_sectors.0) * SECTOR_SIZE).step_by(4).enumerate()
-        {
-            assert_eq!(v[j], i as u32);
+            for (j, i) in
+                (start_sector.0 * SECTOR_SIZE..(start_sector.0 + nbr_sectors.0) * SECTOR_SIZE).step_by(4).enumerate()
+            {
+                assert_eq!(v[j], i as u32);
+            }
         }
     }
     crate::watch_dog();

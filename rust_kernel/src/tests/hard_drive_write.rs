@@ -36,30 +36,32 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut disk = IdeAtaController::new();
 
-    eprintln!("{:#X?}", disk);
-    eprintln!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));
+    println!("{:#X?}", disk);
+    if let Some(d) = disk.as_mut() {
+        eprintln!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Slave)));
 
-    use alloc::vec;
-    use alloc::vec::Vec;
+        use alloc::vec;
+        use alloc::vec::Vec;
 
-    for _i in 0..NB_TESTS {
-        let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
-        let mut n = srand::<u16>(1024) as u64;
-        if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
-            n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
-        }
-        let nbr_sectors = NbrSectors(n);
+        for _i in 0..NB_TESTS {
+            let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
+            let mut n = srand::<u16>(1024) as u64;
+            if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
+                n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
+            }
+            let nbr_sectors = NbrSectors(n);
 
-        let r = srand::<u8>(255);
+            let r = srand::<u8>(255);
 
-        let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
-        disk.write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
+            let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
+            d.write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
 
-        let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
-        disk.read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
+            let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
+            d.read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
 
-        for i in 0..src.len() {
-            assert_eq!(src[i], dst[i]);
+            for i in 0..src.len() {
+                assert_eq!(src[i], dst[i]);
+            }
         }
     }
     crate::watch_dog();

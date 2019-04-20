@@ -1,9 +1,8 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
-// use crate::drivers::storage::{Sector, NbrSectors, ide_ata_controller::pio_polling::{Hierarchy, Rank}};
 use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
-use crate::drivers::storage::SataController;
+use crate::drivers::storage::{NbrSectors, SataController, Sector};
 
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
@@ -118,18 +117,17 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut disk = IdeAtaController::new();
 
-    //println!("{:#X?}", disk);
+    println!("{:#X?}", disk);
     if let Some(d) = disk.as_mut() {
         println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
+        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Secondary(Hierarchy::Master)));
+        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
+        use alloc::vec;
+        use alloc::vec::Vec;
+        let size_read = NbrSectors(0x800);
+        let mut v1: Vec<u8> = vec![0; size_read.into()];
+        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
     }
-
-    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Secondary(Hierarchy::Master)));
-    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Master)));
-    // use alloc::vec;
-    // use alloc::vec::Vec;
-    // let size_read = NbrSectors(0x8000);
-    // let mut v1: Vec<u8> = vec![0; size_read.into()];
-    // disk.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
     // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));
     // disk.write(Sector(0x0), size_read, v1.as_ptr()).unwrap();
 

@@ -18,7 +18,7 @@ use crate::memory::tools::*;
 use alloc::vec;
 
 /// Global structure
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct IdeAtaController {
     primary_master: Option<Drive>,
     secondary_master: Option<Drive>,
@@ -29,6 +29,23 @@ pub struct IdeAtaController {
     memory_dma_secondary: Vec<Vec<u8>>,
     pci: PciType0,
     pci_location: u32,
+}
+
+/// Debug boilerplate (Vector cannot be displayed)
+impl core::fmt::Debug for IdeAtaController {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "{:#X?}\n{:#X?}\n{:#X?}\n{:#X?}\n{:#?}\n{:#X?}\npci addr: {:#X?}",
+            self.primary_master,
+            self.secondary_master,
+            self.primary_slave,
+            self.secondary_slave,
+            self.selected_drive,
+            self.pci,
+            self.pci_location
+        )
+    }
 }
 
 /// Global disk characteristics
