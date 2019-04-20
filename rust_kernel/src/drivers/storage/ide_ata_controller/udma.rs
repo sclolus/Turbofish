@@ -18,7 +18,12 @@ pub struct Udma {
 /// UDMA Debug boilerplate
 impl core::fmt::Debug for Udma {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "CHANNELS: primary -> {:#X?} secondary -> {:#X?}", &self.primary_channel, &self.secondary_channel)
+        write!(
+            f,
+            "CHANNELS: primary -> {:#X?} secondary -> {:#X?}",
+            self.primary_channel[0].as_ptr() as *const _,
+            self.secondary_channel[0].as_ptr() as *const _
+        )
     }
 }
 
@@ -87,10 +92,11 @@ impl Udma {
         let mut primary_channel = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
         let mut secondary_channel = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
 
-        let prdt1 =
-            unsafe { core::slice::from_raw_parts_mut(Self::PRDT_PRIMARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES) };
-        let prdt2 = unsafe {
-            core::slice::from_raw_parts_mut(Self::PRDT_SECONDARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES)
+        let (prdt1, prdt2) = unsafe {
+            (
+                core::slice::from_raw_parts_mut(Self::PRDT_PRIMARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES),
+                core::slice::from_raw_parts_mut(Self::PRDT_SECONDARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES),
+            )
         };
 
         init_prdt(prdt1, &mut primary_channel);

@@ -17,6 +17,3 @@ pub mod pit_8253;
 pub use pit_8253::PIT0;
 
 pub mod storage;
-
-pub mod udma;
-pub use udma::Udma;

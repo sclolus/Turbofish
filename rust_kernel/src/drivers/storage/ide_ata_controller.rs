@@ -4,6 +4,9 @@
 pub mod pci_udma;
 pub mod pio_polling;
 
+mod udma;
+use udma::Udma;
+
 use super::SECTOR_SIZE;
 use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI};
 use super::{NbrSectors, Sector};
@@ -14,7 +17,7 @@ use io::{Io, Pio};
 use bitflags::bitflags;
 
 /// Global structure
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct IdeAtaController {
     primary_master: Option<Drive>,
     secondary_master: Option<Drive>,
@@ -23,6 +26,7 @@ pub struct IdeAtaController {
     selected_drive: Option<Rank>,
     pci: PciType0,
     pci_location: u32,
+    udma: Option<Udma>,
 }
 
 /// Global disk characteristics
@@ -37,8 +41,8 @@ struct Drive {
 }
 
 pub trait DmaIo {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors) -> AtaResult<()>;
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors) -> AtaResult<()>;
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8, udma: &mut Udma) -> AtaResult<()>;
+    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8, udma: &mut Udma) -> AtaResult<()>;
 }
 
 /// When in PIO mode, buff address is passed by pointer and methods read or write on it
@@ -69,7 +73,6 @@ impl IdeAtaController {
             if pci.bar2 == 0 || pci.bar2 == 1 { SECONDARY_BASE_REGISTER } else { pci.bar2 as u16 };
         let secondary_control_register =
             if pci.bar3 == 0 || pci.bar3 == 1 { SECONDARY_CONTROL_REGISTER } else { pci.bar3 as u16 };
-        println!("PCI BAR 4: {:X?}", pci.bar4);
         Some(Self {
             primary_master: Drive::identify(
                 Rank::Primary(Hierarchy::Master),
@@ -94,6 +97,8 @@ impl IdeAtaController {
             selected_drive: None,
             pci_location,
             pci,
+            //udma: if pci.bar4 != 0 { Some(Udma::init()) } else { None },
+            udma: None,
         })
     }
 
@@ -111,26 +116,28 @@ impl IdeAtaController {
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
-        self.get_selected_drive()
-            .ok_or(AtaError::DeviceNotFound)
-            .and_then(|d| PioIo::read(d, start_sector, nbr_sectors, buf))
+    pub fn read(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
+        self.get_selected_drive().ok_or(AtaError::DeviceNotFound).and_then(|d| match self.udma.as_mut() {
+            Some(u) => DmaIo::read(&d, start_sector, nbr_sectors, buf, u),
+            None => PioIo::read(&d, start_sector, nbr_sectors, buf),
+        })
     }
 
     /// Write nbr_sectors after start_sector location from the buf
-    pub fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
-        self.get_selected_drive()
-            .ok_or(AtaError::DeviceNotFound)
-            .and_then(|d| PioIo::write(d, start_sector, nbr_sectors, buf))
+    pub fn write(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+        self.get_selected_drive().ok_or(AtaError::DeviceNotFound).and_then(|d| match self.udma.as_mut() {
+            Some(u) => DmaIo::write(&d, start_sector, nbr_sectors, buf, u),
+            None => PioIo::write(&d, start_sector, nbr_sectors, buf),
+        })
     }
 
     /// Get the drive pointed by Rank, or else return None
-    fn get_selected_drive(&self) -> Option<&Drive> {
+    fn get_selected_drive(&self) -> Option<Drive> {
         match self.selected_drive? {
-            Rank::Primary(Hierarchy::Master) => self.primary_master.as_ref(),
-            Rank::Primary(Hierarchy::Slave) => self.primary_slave.as_ref(),
-            Rank::Secondary(Hierarchy::Master) => self.secondary_master.as_ref(),
-            Rank::Secondary(Hierarchy::Slave) => self.secondary_slave.as_ref(),
+            Rank::Primary(Hierarchy::Master) => self.primary_master,
+            Rank::Primary(Hierarchy::Slave) => self.primary_slave,
+            Rank::Secondary(Hierarchy::Master) => self.secondary_master,
+            Rank::Secondary(Hierarchy::Slave) => self.secondary_slave,
         }
     }
 }
