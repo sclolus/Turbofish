@@ -13,43 +13,20 @@ use io::{Io, Pio};
 
 use bitflags::bitflags;
 
-use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
-use crate::memory::tools::*;
-use alloc::vec;
-
 /// Global structure
-#[derive(Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct IdeAtaController {
     primary_master: Option<Drive>,
     secondary_master: Option<Drive>,
     primary_slave: Option<Drive>,
     secondary_slave: Option<Drive>,
     selected_drive: Option<Rank>,
-    memory_dma_primary: Vec<Vec<u8>>,
-    memory_dma_secondary: Vec<Vec<u8>>,
     pci: PciType0,
     pci_location: u32,
 }
 
-/// Debug boilerplate (Vector cannot be displayed)
-impl core::fmt::Debug for IdeAtaController {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            "{:#X?}\n{:#X?}\n{:#X?}\n{:#X?}\n{:#?}\n{:#X?}\npci addr: {:#X?}",
-            self.primary_master,
-            self.secondary_master,
-            self.primary_slave,
-            self.secondary_slave,
-            self.selected_drive,
-            self.pci,
-            self.pci_location
-        )
-    }
-}
-
 /// Global disk characteristics
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Drive {
     command_register: u16,
     control_register: u16,
@@ -76,88 +53,7 @@ const SECONDARY_BASE_REGISTER: u16 = 0x0170;
 const PRIMARY_CONTROL_REGISTER: u16 = 0x03f6;
 const SECONDARY_CONTROL_REGISTER: u16 = 0x376;
 
-/// physical region descriptor
-#[repr(C)]
-struct PrdEntry {
-    /// addr cannot cross 64K
-    addr: Phys,
-    size: u16,
-    /// if set indicate that it is the last entry in the prdt
-    is_end: u16,
-}
-
-// There are just 2 DMA commands
-bitflags! {
-    struct DmaCommand: u8 {
-        const ONOFF = 1 << 0; // Bit 0 (value = 1) is the Start/Stop bit. Setting the bit puts the controller in DMA mode for that ATA channel.
-        const RDWR = 1 << 3; // Bit 3 (value = 8) The disk controller does not automatically detect whether the next disk operation is a read or write.
-    }
-}
-
-// Some status indications
-bitflags! {
-    struct DmaStatus: u8 {
-        const STATUS = 1 << 0; // Bit 0 (value = 1) is set when the bus goes into DMA mode. It is cleared when the last PRD in the table has been used up.
-        const FAILED = 1 << 1; // Bit 1 (value = 2) is set if any DMA memory transfer failed for any reason in this PRDT.
-        const IRQ = 1 << 2; // If bit 2 (value = 4) is not set after the OS receives an IRQ, then some other device sharing the IRQ generated the IRQ -- not the disk.
-        const SOO = 1 << 7; // Bit 7 (Simplex operation only) is completely obsolete...
-    }
-}
-
 impl IdeAtaController {
-    /// *** These below constants are expressed with offset from the bus master register ***
-    /// DMA Command Byte (8 bits)
-    const _DMA_PRIMARY_COMMAND: usize = 0x0;
-    const _DMA_SECONDARY_COMMAND: usize = 0x8;
-
-    /// DMA Status Byte (8 bits)
-    const _DMA_PRIMARY_STATUS: usize = 0x2;
-    const _DMA_SECONDARY_STATUS: usize = 0xA;
-
-    /// DMA PRDT Address (32 bits)
-    const _DMA_PRIMARY_PRDT_ADDR: usize = 0x4;
-    const _DMA_SECONDARY_PRDT_ADDR: usize = 0xC;
-
-    /// Physical address of primary and secondary PRDT
-    const PRDT_PRIMARY_PTR: usize = 0x4000;
-    const PRDT_SECONDARY_PTR: usize = 0x8000;
-
-    /// Number of PRD chunk Per PRDT
-    const NBR_DMA_ENTRIES: usize = 16;
-
-    fn init_prdt(prdt: &mut [PrdEntry], memory_zone: &mut Vec<Vec<u8>>) {
-        for (mem, prd) in memory_zone.iter().zip(prdt.iter_mut()) {
-            unsafe {
-                *prd = PrdEntry {
-                    addr: KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                        .as_mut()
-                        .unwrap()
-                        .get_physical_addr(Virt(mem.as_ptr() as usize))
-                        .unwrap(),
-                    size: 0,
-                    is_end: 0,
-                }
-            }
-        }
-        crate::watch_dog();
-    }
-
-    fn init_dma(&mut self) {
-        self.memory_dma_primary = vec![vec![0; 1 << 16]; Self::NBR_DMA_ENTRIES];
-        self.memory_dma_secondary = vec![vec![0; 1 << 16]; Self::NBR_DMA_ENTRIES];
-
-        let prdt1 =
-            unsafe { core::slice::from_raw_parts_mut(Self::PRDT_PRIMARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES) };
-        let prdt2 = unsafe {
-            core::slice::from_raw_parts_mut(Self::PRDT_SECONDARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES)
-        };
-
-        Self::init_prdt(prdt1, &mut self.memory_dma_primary);
-        Self::init_prdt(prdt2, &mut self.memory_dma_secondary);
-
-        self.pci.bar4;
-    }
-
     /// Invocation of a new PioMode-IDE controller
     pub fn new() -> Option<Self> {
         let (pci, pci_location) = PCI.lock().query_device::<PciType0>(PciDeviceClass::MassStorageController(
@@ -174,7 +70,7 @@ impl IdeAtaController {
         let secondary_control_register =
             if pci.bar3 == 0 || pci.bar3 == 1 { SECONDARY_CONTROL_REGISTER } else { pci.bar3 as u16 };
         println!("PCI BAR 4: {:X?}", pci.bar4);
-        let mut s = Self {
+        Some(Self {
             primary_master: Drive::identify(
                 Rank::Primary(Hierarchy::Master),
                 primary_base_register,
@@ -198,12 +94,7 @@ impl IdeAtaController {
             selected_drive: None,
             pci_location,
             pci,
-            memory_dma_primary: Vec::new(),
-            memory_dma_secondary: Vec::new(),
-        };
-        s.init_dma();
-
-        Some(s)
+        })
     }
 
     /// Select the drive we would like to read or write
