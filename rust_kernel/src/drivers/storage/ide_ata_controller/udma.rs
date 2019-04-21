@@ -1,4 +1,4 @@
-//! This module provide a toolkit for UDMA
+//! This module provide a toolkit for UDMA. See https://wiki.osdev.org/ATA/ATAPI_using_DMA
 
 use io::{Io, Pio};
 

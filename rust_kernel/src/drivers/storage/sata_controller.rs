@@ -1,3 +1,5 @@
+//! This module handle a SATA driver. See https://wiki.osdev.org/SATA, https://wiki.osdev.org/AHCI
+
 use super::{MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::memory::allocator::{map, unmap};

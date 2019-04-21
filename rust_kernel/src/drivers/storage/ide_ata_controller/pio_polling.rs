@@ -1,5 +1,5 @@
-//! This files contains the code related to the ATA PIO MODE
-/// See https://wiki.osdev.org/ATA_PIO_Mode
+//! This files contains the code related to the ATA PIO MODE. See https://wiki.osdev.org/ATA_PIO_Mode
+
 use super::Drive;
 use super::PioIo;
 use super::SECTOR_SIZE;

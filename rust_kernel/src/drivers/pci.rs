@@ -289,18 +289,15 @@ impl PciType0 {
     /// Apply a command into PCI bus
     pub fn set_command(&self, command: PciCommand, state: bool, pci_location: u32) {
         Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
-        let mut l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
+        let l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
 
         let c = match state {
             true => PciCommand { bits: l1 as u16 } | command,
             false => PciCommand { bits: l1 as u16 } & !command,
         };
 
-        l1 &= 0xffff0000;
-        l1 |= c.bits as u32;
-
         Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
-        Pio::<u32>::new(Pci::CONFIG_DATA).write(l1);
+        Pio::<u16>::new(Pci::CONFIG_DATA).write(c.bits);
     }
 
     /// Get the status of the PCI bus

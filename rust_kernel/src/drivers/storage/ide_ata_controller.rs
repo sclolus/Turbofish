@@ -1,7 +1,6 @@
-//! This module contains the turbo fish's ATA/IDE drivers
+//! This module contains the turbo fish's ATA/IDE drivers, See https://wiki.osdev.org/PCI_IDE_Controller
 
 // TODO: Disable interrupts if only PIO mode is possible (enable it id UDMA)
-#[deny(missing_docs)]
 pub mod pci_udma;
 pub mod pio_polling;
 
@@ -214,8 +213,8 @@ fn check_bounds(start_sector: Sector, nbr_sectors: NbrSectors, drive_capacity: N
     }
 }
 
-/// Rank
 #[derive(Debug, Copy, Clone, PartialEq)]
+/// Rank
 pub enum Rank {
     Primary(Hierarchy),
     Secondary(Hierarchy),

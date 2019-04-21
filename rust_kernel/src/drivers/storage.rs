@@ -1,5 +1,5 @@
 //! This module contains the turbo fish's storage drivers
-
+#[deny(missing_docs)]
 use super::pci::{
     IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI,
 };

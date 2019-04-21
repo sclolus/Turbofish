@@ -1,6 +1,6 @@
-//! This module contains udma read/write methods on IDE drive
+//! This module contains udma read/write methods on IDE drive. See https://wiki.osdev.org/ATA/ATAPI_using_DMA
 
-use super::{AtaResult, DmaIo, Drive};
+use super::{AtaError, AtaResult, Capabilities, DmaIo, Drive};
 use super::{Command, Udma};
 use super::{NbrSectors, Sector};
 
@@ -9,8 +9,10 @@ use io::{Io, Pio};
 use crate::drivers::PIT0;
 use core::time::Duration;
 
-// Prepare a PRDT in system memory. DONE
-// Send the physical PRDT address to the Bus Master PRDT Register. DONE
+// -------- INITIALISATION -------
+// Prepare a PRDT in system memory.
+// Send the physical PRDT address to the Bus Master PRDT Register.
+// ----------------------------------------------- READ / WRITE ------------------------------------------
 // Set the direction of the data transfer by setting the Read/Write bit in the Bus Master Command Register.
 // Clear the Error and Interrupt bit in the Bus Master Status Register.
 // Select the drive.
@@ -23,13 +25,29 @@ impl DmaIo for Drive {
     /// drive specific READ method
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8, udma: &mut Udma) -> AtaResult<()> {
         println!("dma read");
+
         udma.set_read();
         udma.clear_error();
         udma.clear_interrupt();
+
         self.select_drive();
-        //self.wait_available();
-        self.init_lba48(start_sector, nbr_sectors);
-        Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDmaExt as u8);
+        self.wait_available();
+
+        match self.capabilities {
+            Capabilities::Lba48 => {
+                self.init_lba48(start_sector, nbr_sectors);
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDmaExt as u8);
+            }
+            Capabilities::Lba28 => {
+                self.init_lba28(start_sector, nbr_sectors);
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDma as u8);
+            }
+            // I experiment a lack of documentation about this mode
+            Capabilities::Chs => {
+                return Err(AtaError::NotSupported);
+            }
+        }
+
         udma.start_transfer();
 
         PIT0.lock().sleep(Duration::from_millis(1000));
