@@ -1,7 +1,10 @@
 //! This module contains udma read/write methods on IDE drive. See https://wiki.osdev.org/ATA/ATAPI_using_DMA
 
+// TODO: IRQ handling seems broken (i dont know if is a Qemu bug or a mistake made by us)
+
+use super::udma;
 use super::{AtaError, AtaResult, Capabilities, DmaIo, Drive};
-use super::{Command, Udma};
+use super::{Command, DmaStatus, Udma};
 use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
@@ -26,52 +29,17 @@ impl DmaIo for Drive {
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8, udma: &mut Udma) -> AtaResult<()> {
         println!("dma read");
 
+        udma.reset_command();
         udma.set_read();
         udma.clear_error();
         udma.clear_interrupt();
 
-        // Seems to be useless ! Drive may be set before in qemu. i dont know about real situation behavior
-        // self.select_drive();
-        // self.enable_interrupt();
-        // self.wait_available();
-
-        match self.capabilities {
-            Capabilities::Lba48 => {
-                self.init_lba48(start_sector, nbr_sectors);
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDmaExt as u8);
-            }
-            Capabilities::Lba28 => {
-                self.init_lba28(start_sector, nbr_sectors);
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDma as u8);
-            }
-            // I experiment a lack of documentation about this mode
-            Capabilities::Chs => {
-                return Err(AtaError::NotSupported);
-            }
-        }
-
-        udma.start_transfer();
-
-        PIT0.lock().sleep(Duration::from_millis(1000));
-        let u = udma.get_memory();
-
-        for i in 0..512 {
-            print!("{:X?} ", u[0][i]);
-        }
-        eprintln!("current status of DMA controller '{:X?}'", udma.get_status());
-
-        eprintln!("stoping transfer...");
-        udma.stop_transfer();
-
-        PIT0.lock().sleep(Duration::from_millis(1000));
+        // udma.start_transfer();
+        self.fill_dma(start_sector, nbr_sectors, udma)?;
+        // udma.stop_transfer();
 
         eprintln!("current status of DMA controller '{:X?}'", udma.get_status());
 
-        let u = udma.get_memory();
-
-        for i in 0..512 {
-            print!("{:X?} ", u[0][i]);
-        }
         Ok(())
     }
 
@@ -87,14 +55,104 @@ impl DmaIo for Drive {
     }
 }
 
+impl Drive {
+    fn fill_dma(&self, start_sector: Sector, nbr_sectors: NbrSectors, udma: &mut Udma) -> AtaResult<()> {
+        println!("fill dma");
+        if nbr_sectors == NbrSectors(0) {
+            return Ok(());
+        }
+        //let prd_size = NbrSectors::from(Udma::PRD_SIZE / 2);
+        let prd_size = NbrSectors(1);
+
+        PIT0.lock().sleep(Duration::from_millis(50));
+
+        match self.capabilities {
+            Capabilities::Lba48 => {
+                self.init_lba48(start_sector, prd_size);
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDmaExt as u8);
+            }
+            Capabilities::Lba28 => {
+                self.init_lba28(start_sector, prd_size);
+                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDma as u8);
+            }
+            // I experiment a lack of documentation about this mode
+            Capabilities::Chs => {
+                return Err(AtaError::NotSupported);
+            }
+        }
+        udma.start_transfer();
+
+        // println!("after start transfer{:?}", udma.get_status());
+        // PIT0.lock().sleep(Duration::from_millis(1000));
+
+        // let status = udma.get_status();
+        // if status.contains(DmaStatus::FAILED) {
+        //     eprintln!("An error as occured: {:?}", status);
+        //     panic!("panic sa mere !");
+        // }
+
+        // loop {
+        //     unsafe {
+        //         asm!("hlt");
+        //     }
+
+        //     if TRIGGER.compare_and_swap(true, false, Ordering::Relaxed) == true
+        //         && udma.get_status().contains(DmaStatus::IRQ)
+        //     {
+        //         break;
+        //     }
+        // }
+
+        PIT0.lock().sleep(Duration::from_millis(500));
+
+        let u = udma.get_memory();
+        for i in 0..512 {
+            print!("{:X?} ", u[0][i]);
+        }
+
+        udma.clear_interrupt();
+        let status = udma.get_status();
+        if status.contains(DmaStatus::FAILED) {
+            eprintln!("An error as occured: {:?}", status);
+            panic!("panic sa mere !");
+        }
+        //self.wait_available();
+        //udma.stop_transfer();
+        println!("\nSTATUS after the end transfer {:?}", udma.get_status());
+        dbg!(udma);
+        Ok(())
+    }
+}
+
+use core::sync::atomic::{AtomicBool, Ordering};
+
+static TRIGGER: AtomicBool = AtomicBool::new(false);
+
+use crate::terminal::ansi_escape_code::color::Colored;
 #[no_mangle]
 fn primary_hard_disk_interrupt_handler() -> u32 {
-    println!("primary IRQ");
+    eprintln!("{}", "primary IRQ".red());
+    TRIGGER.store(true, Ordering::Relaxed);
+
+    // It seems to be wrong: Logically, we dont need to do things inside IRQ handling since we have Atomic recall
+    // read disk status
+    eprintln!("disk status {:?}", Pio::<u8>::new(0x0170 + 7).read());
+
+    // read dma status
+    let s = Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).read();
+    eprintln!("dma status {:?}", s);
+
+    // clear interrupt
+    Pio::<u8>::new(0xc040 + Udma::DMA_STATUS).write(s & !((1 << 2) as u8));
+
+    // stop DMA transfert
+    Pio::<u8>::new(0xc040 + Udma::DMA_COMMAND).write(s & !udma::DmaCommand::ONOFF.bits());
+    Pio::<u8>::new(0xC040 + Udma::DMA_COMMAND).write(0);
     0
 }
 
 #[no_mangle]
 fn secondary_hard_disk_interrupt_handler() -> u32 {
-    println!("secondary IRQ");
+    eprintln!("{:?}", "secondary IRQ".green());
     0
 }

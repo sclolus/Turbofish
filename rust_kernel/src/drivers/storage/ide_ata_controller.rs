@@ -1,6 +1,5 @@
 //! This module contains the turbo fish's ATA/IDE drivers, See https://wiki.osdev.org/PCI_IDE_Controller
 
-// TODO: Disable interrupts if only PIO mode is possible (enable it id UDMA)
 pub mod pci_udma;
 pub mod pio_polling;
 
@@ -95,7 +94,7 @@ impl IdeAtaController {
             if pci.bar3 == 0 || pci.bar3 == 1 { SECONDARY_CONTROL_REGISTER } else { pci.bar3 as u16 };
 
         // DMA port is contained inside BAR 4 of the PCI device
-        let dma_port = pci.bar4 as u16;
+        let _dma_port = pci.bar4 as u16;
 
         // Construct all objects
         Some(Self {
@@ -122,10 +121,15 @@ impl IdeAtaController {
             selected_drive: None,
             pci_location,
             pci,
-            operating_mode: OperatingMode::UdmaTransfert,
-            udma_capable: true,
-            udma_primary: if dma_port != 0 { Some(Udma::init(dma_port, Channel::Primary)) } else { None },
-            udma_secondary: if dma_port != 0 { Some(Udma::init(dma_port + 8, Channel::Secondary)) } else { None },
+            // TODO: UDMA IRQ does not work at all: Set PioTransfert instead
+            operating_mode: OperatingMode::PioTransfert,
+            udma_capable: false,
+            udma_primary: None,
+            udma_secondary: None,
+            // operating_mode: OperatingMode::UdmaTransfert,
+            // udma_capable: true,
+            // udma_primary: if _dma_port != 0 { Some(Udma::init(_dma_port, Channel::Primary)) } else { None },
+            // udma_secondary: if _dma_port != 0 { Some(Udma::init(_dma_port + 8, Channel::Secondary)) } else { None },
         })
     }
 

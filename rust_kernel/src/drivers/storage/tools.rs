@@ -1,5 +1,5 @@
 use super::SECTOR_SIZE;
-use core::ops::Add;
+use core::ops::{Add, Sub};
 
 /// new type representing a number of sectors
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -17,6 +17,14 @@ impl From<usize> for NbrSectors {
     }
 }
 
+/// Add boilerplate for Sector + NbrSectors
+impl Sub<NbrSectors> for NbrSectors {
+    type Output = Self;
+
+    fn sub(self, other: NbrSectors) -> Self::Output {
+        Self(self.0 - other.0)
+    }
+}
 /// new type representing the start sector
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Sector(pub u64);

@@ -115,17 +115,22 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("{:#X?}", disk);
     if let Some(d) = disk.as_mut() {
         println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
-        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Secondary(Hierarchy::Master)));
-        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
+
         use alloc::vec;
         use alloc::vec::Vec;
-        let size_read = NbrSectors(128);
+
+        let size_read = NbrSectors(1);
+        let mut v1: Vec<u8> = vec![0; size_read.into()];
+        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+
+        let size_read = NbrSectors(1);
+        let mut v1: Vec<u8> = vec![0; size_read.into()];
+        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+
+        let size_read = NbrSectors(1);
         let mut v1: Vec<u8> = vec![0; size_read.into()];
         d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
     }
-    // println!("Selecting drive: {:#X?}", disk.select_drive(Rank::Primary(Hierarchy::Slave)));
-    // disk.write(Sector(0x0), size_read, v1.as_ptr()).unwrap();
-
     shell();
     0
 }

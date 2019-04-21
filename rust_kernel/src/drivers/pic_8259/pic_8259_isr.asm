@@ -85,7 +85,7 @@ _isr_%2:
 
 %macro SLAVE 0
 	MASTER
-	mov al, 0xa0
+	mov al, 0x20
 	out 0xa0, al
 %endmacro
 

@@ -13,7 +13,9 @@ unsafe impl RawMutex for RawSpinlock {
     type GuardMarker = GuardSend;
 
     fn lock(&self) {
-        while !self.try_lock() {}
+        if !self.try_lock() {
+            panic!("dead lock");
+        }
     }
 
     fn try_lock(&self) -> bool {

@@ -65,7 +65,7 @@ impl Prdt {
 
 // There are just 2 DMA commands
 bitflags! {
-    struct DmaCommand: u8 {
+    pub struct DmaCommand: u8 {
         const ONOFF = 1 << 0; // Bit 0 (value = 1) is the Start/Stop bit. Setting the bit puts the controller in DMA mode for that ATA channel.
         const RDWR = 1 << 3; // Bit 3 (value = 8) The disk controller does not automatically detect whether the next disk operation is a read or write.
     }
@@ -84,19 +84,19 @@ bitflags! {
 impl Udma {
     /// *** These below constants are expressed with offset from the bus master register ***
     /// DMA Command Byte (8 bits)
-    const DMA_COMMAND: u16 = 0x0;
+    pub const DMA_COMMAND: u16 = 0x0;
 
     /// DMA Status Byte (8 bits)
-    const DMA_STATUS: u16 = 0x2;
+    pub const DMA_STATUS: u16 = 0x2;
 
     /// DMA PRDT Address (32 bits)
     const DMA_PRDT_ADDR: u16 = 0x4;
 
     /// Number of PRD chunk Per PRDT
-    const NBR_DMA_ENTRIES: usize = 16;
+    pub const NBR_DMA_ENTRIES: usize = 16;
 
     /// Size of a PRD entries
-    const PRD_SIZE: usize = 1 << 16;
+    pub const PRD_SIZE: usize = 1 << 16;
 
     /// Init all UDMA channels
     pub fn init(mut bus_mastered_register: u16, channel: Channel) -> Self {
@@ -132,6 +132,11 @@ impl Udma {
     /// Get the complete memory DMA zone
     pub fn get_memory(&mut self) -> &mut Vec<Vec<u8>> {
         &mut self.memory
+    }
+
+    /// Reset bus master register's command register
+    pub fn reset_command(&mut self) {
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(0);
     }
 
     /// Start the UDMA transfert
@@ -179,6 +184,6 @@ impl Udma {
 fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
     for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
         let addr = get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap();
-        *prd = PrdEntry { addr, size: 0, is_end: 0 }
+        *prd = PrdEntry { addr, size: 1 << 15, is_end: 0 }
     }
 }
