@@ -8,9 +8,9 @@ use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::tests::helpers::exit_qemu;
 
-use crate::drivers::storage::ide_ata_controller::IdeAtaController;
 use crate::drivers::storage::{
-    ide_ata_controller::{Hierarchy, Rank},
+    ide_ata_controller,
+    ide_ata_controller::{Hierarchy, IdeAtaController, Rank},
     NbrSectors, Sector,
 };
 
@@ -50,34 +50,34 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     srand_init(42).unwrap();
 
-    let mut disk = IdeAtaController::new();
+    let mut d = IdeAtaController::new().unwrap();
 
-    println!("{:#X?}", disk);
-    if let Some(d) = disk.as_mut() {
-        eprintln!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Slave)));
+    d.force_operating_mode(ide_ata_controller::OperatingMode::PioTransfert).unwrap();
 
-        use alloc::vec;
-        use alloc::vec::Vec;
+    println!("{:#X?}", d);
+    eprintln!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Slave)));
 
-        for _i in 0..NB_TESTS {
-            let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
-            let mut n = srand::<u16>(1024) as u64;
-            if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
-                n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
-            }
-            let nbr_sectors = NbrSectors(n);
+    use alloc::vec;
+    use alloc::vec::Vec;
 
-            let r = srand::<u8>(255);
+    for _i in 0..NB_TESTS {
+        let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
+        let mut n = srand::<u16>(1024) as u64;
+        if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
+            n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
+        }
+        let nbr_sectors = NbrSectors(n);
 
-            let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
-            d.write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
+        let r = srand::<u8>(255);
 
-            let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
-            d.read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
+        let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
+        d.write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
 
-            for i in 0..src.len() {
-                assert_eq!(src[i], dst[i]);
-            }
+        let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
+        d.read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
+
+        for i in 0..src.len() {
+            assert_eq!(src[i], dst[i]);
         }
     }
     crate::watch_dog();

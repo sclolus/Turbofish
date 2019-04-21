@@ -15,7 +15,7 @@ use core::time::Duration;
 // ----------------------------------------------- READ / WRITE ------------------------------------------
 // Set the direction of the data transfer by setting the Read/Write bit in the Bus Master Command Register.
 // Clear the Error and Interrupt bit in the Bus Master Status Register.
-// Select the drive.
+// Select the drive. (since to be useless almost on qemu)
 // Send the LBA and sector count to their respective ports.
 // Send the DMA transfer command to the ATA controller.
 // Set the Start/Stop bit on the Bus Master Command Register.
@@ -30,8 +30,10 @@ impl DmaIo for Drive {
         udma.clear_error();
         udma.clear_interrupt();
 
-        self.select_drive();
-        self.wait_available();
+        // Seems to be useless ! Drive may be set before in qemu. i dont know about real situation behavior
+        // self.select_drive();
+        // self.enable_interrupt();
+        // self.wait_available();
 
         match self.capabilities {
             Capabilities::Lba48 => {

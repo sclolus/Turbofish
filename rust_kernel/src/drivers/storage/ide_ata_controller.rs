@@ -30,6 +30,8 @@ pub struct IdeAtaController {
     selected_drive: Option<Rank>,
     pci: PciType0,
     pci_location: u32,
+    operating_mode: OperatingMode,
+    udma_capable: bool,
     udma_primary: Option<Udma>,
     udma_secondary: Option<Udma>,
 }
@@ -120,9 +122,28 @@ impl IdeAtaController {
             selected_drive: None,
             pci_location,
             pci,
+            operating_mode: OperatingMode::UdmaTransfert,
+            udma_capable: true,
             udma_primary: if dma_port != 0 { Some(Udma::init(dma_port, Channel::Primary)) } else { None },
             udma_secondary: if dma_port != 0 { Some(Udma::init(dma_port + 8, Channel::Secondary)) } else { None },
         })
+    }
+
+    /// Select the operating mode of the IDE controller
+    pub fn force_operating_mode(&mut self, operating_mode: OperatingMode) -> AtaResult<()> {
+        match operating_mode {
+            OperatingMode::PioTransfert => {
+                self.operating_mode = OperatingMode::PioTransfert;
+                Ok(())
+            }
+            OperatingMode::UdmaTransfert => match self.udma_capable {
+                true => {
+                    self.operating_mode = OperatingMode::UdmaTransfert;
+                    Ok(())
+                }
+                false => Err(AtaError::NotSupported),
+            },
+        }
     }
 
     /// Select the drive we would like to read or write
@@ -156,10 +177,18 @@ impl IdeAtaController {
                 self.udma_secondary.as_mut(),
             ),
         };
-        drive.ok_or(AtaError::DeviceNotFound).and_then(|d| match udma {
-            Some(u) => DmaIo::read(d, start_sector, nbr_sectors, buf, u),
-            None => PioIo::read(d, start_sector, nbr_sectors, buf),
-        })
+        let d = drive.ok_or(AtaError::DeviceNotFound)?;
+        match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(u), true) => {
+                d.enable_interrupt();
+                DmaIo::read(d, start_sector, nbr_sectors, buf, u)
+            }
+            (OperatingMode::PioTransfert, _, _) => {
+                d.disable_interrupt();
+                PioIo::read(d, start_sector, nbr_sectors, buf)
+            }
+            other => panic!("this device should not be in that configuration, {:?}", other),
+        }
     }
 
     /// Write nbr_sectors after start_sector location from the buf
@@ -180,10 +209,18 @@ impl IdeAtaController {
                 self.udma_secondary.as_mut(),
             ),
         };
-        drive.ok_or(AtaError::DeviceNotFound).and_then(|d| match udma {
-            Some(u) => DmaIo::write(d, start_sector, nbr_sectors, buf, u),
-            None => PioIo::write(d, start_sector, nbr_sectors, buf),
-        })
+        let d = drive.ok_or(AtaError::DeviceNotFound)?;
+        match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(u), true) => {
+                d.enable_interrupt();
+                DmaIo::write(d, start_sector, nbr_sectors, buf, u)
+            }
+            (OperatingMode::PioTransfert, _, _) => {
+                d.disable_interrupt();
+                PioIo::write(d, start_sector, nbr_sectors, buf)
+            }
+            other => panic!("this device should not be in that configuration, {:?}", other),
+        }
     }
 
     /// Get the drive pointed by Rank, or else return None
@@ -227,7 +264,14 @@ pub enum Hierarchy {
     Slave,
 }
 
-/// Disk access capabilities
+/// Operating mode of IDE controller
+#[derive(Debug, Copy, Clone)]
+pub enum OperatingMode {
+    PioTransfert,
+    UdmaTransfert,
+}
+
+/// disk access capabilities
 #[derive(Debug, Copy, Clone)]
 enum Capabilities {
     Lba48,
@@ -280,7 +324,7 @@ impl Drive {
     /// A duplicate of the Status Register which does not affect interrupts. (read) (8-bit / 8-bit)
     /// Used to reset the bus or enable/disable interrupts. (write) (8-bit / 8-bit)
     const ALTERNATE_STATUS: u16 = 0x0;
-    const _DEVICE_CONTROL: u16 = 0x0;
+    const DEVICE_CONTROL: u16 = 0x0;
 
     /// Provides drive select and head select information. (read) (8-bit / 8-bit)
     const _DRIVE_ADDRESS: u16 = 0x1;
@@ -385,8 +429,19 @@ impl Drive {
             Hierarchy::Master => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xA0),
             Hierarchy::Slave => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xB0),
         };
-        // Disable interruot bit for the selected drive
-        // Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(DeviceControlRegister::NIEN.bits());
+    }
+
+    /// Disable IRQ for the selected drive
+    pub fn disable_interrupt(&self) {
+        // Disable interrupt bit for the selected drive
+        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(DeviceControlRegister::NIEN.bits());
+    }
+
+    /// Enable IRQ for the selected drive
+    pub fn enable_interrupt(&self) {
+        // Enable interrupt bit for the selected drive
+        let c = Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).read();
+        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(c & !DeviceControlRegister::NIEN.bits());
     }
 
     /// The method suggested in the ATA specs for sending ATA commands tells you to check the BSY and DRQ bits before trying to send a command
