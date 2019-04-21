@@ -5,7 +5,7 @@ use io::{Io, Pio};
 use bitflags::bitflags;
 
 use crate::drivers::{pic_8259, PIC_8259};
-use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::get_physical_addr;
 use crate::memory::tools::*;
 
 use alloc::boxed::Box;
@@ -109,14 +109,7 @@ impl Udma {
         // Init a new PRDT
         init_prdt(prdt.as_mut(), &mut memory);
 
-        let physical_prdt_address = unsafe {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .get_physical_addr(Virt(prdt.as_ref() as *const _ as usize))
-                .unwrap()
-                .0
-        };
+        let physical_prdt_address = get_physical_addr(Virt(prdt.as_ref() as *const _ as usize)).unwrap().0;
 
         eprintln!("Physical PRDT address = {:X?}", physical_prdt_address as u32);
 
@@ -185,9 +178,7 @@ impl Udma {
 /// Set a unique PRDT
 fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
     for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
-        let addr = unsafe {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap()
-        };
+        let addr = get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap();
         *prd = PrdEntry { addr, size: 0, is_end: 0 }
     }
 }
