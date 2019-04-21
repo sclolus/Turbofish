@@ -50,9 +50,7 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
-    let all_tests = if !matches.free.is_empty() {
-        matches.free.clone()
-    } else {
+    let tests: Vec<String> = {
         let mut file = File::open("./Cargo.toml").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
@@ -61,7 +59,7 @@ fn main() {
             Value::Table(btree) => btree,
             _ => panic!("not a btree"),
         };
-        btree
+        let all_tests: Vec<String> = btree
             .into_iter()
             .filter_map(|f| {
                 if f.0.starts_with("test-") || f.0.starts_with("native-test-") {
@@ -70,10 +68,22 @@ fn main() {
                     None
                 }
             })
-            .collect()
+            .collect();
+        if !matches.free.is_empty() {
+            for test in matches.free.iter() {
+                if !all_tests.iter().find(|&x| x == test).is_some() {
+                    eprintln!("invalid test name{}", test);
+                    eprintln!("possible tests are: {:?}", all_tests);
+                    std::process::exit(1);
+                }
+            }
+            matches.free.clone()
+        } else {
+            all_tests
+        }
     };
-    println!("running {} tests", all_tests.len());
-    let all_result: Vec<Result<(), TestError>> = all_tests
+    println!("running {} tests", tests.len());
+    let all_result: Vec<Result<(), TestError>> = tests
         .iter()
         .map(|feature| {
             let native = if feature.starts_with("native-test-") { true } else { false };
@@ -164,7 +174,7 @@ fn main() {
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(
         "test result: {} {} passed; {} failed",
-        if total_succeed == all_tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
+        if total_succeed == tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
         total_succeed,
         total_failed
     );
