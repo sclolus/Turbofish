@@ -1,18 +1,24 @@
 //! This module provide a toolkit for UDMA
 
+use io::{Io, Pio};
+
 use bitflags::bitflags;
 
+use crate::drivers::{pic_8259, PIC_8259};
 use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::*;
 
+use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 
 /// Global UDMA structure
 #[derive(Clone)]
 pub struct Udma {
-    primary_channel: Vec<Vec<u8>>,
-    secondary_channel: Vec<Vec<u8>>,
+    memory: Vec<Vec<u8>>,
+    bus_mastered_register: u16,
+    channel: Channel,
+    prdt: Box<Prdt>,
 }
 
 /// UDMA Debug boilerplate
@@ -20,16 +26,17 @@ impl core::fmt::Debug for Udma {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
-            "CHANNELS: primary -> {:#X?} secondary -> {:#X?}",
-            self.primary_channel[0].as_ptr() as *const _,
-            self.secondary_channel[0].as_ptr() as *const _
+            "CHANNELS: {:?} -> {:#X?} at IO/PORT: {:#X?}",
+            self.channel,
+            self.memory[0].as_ptr() as *const _,
+            self.bus_mastered_register,
         )
     }
 }
 
 /// Our UDMA implementation contains two channels
 #[derive(Copy, Clone, Debug)]
-pub enum UdmaChannel {
+pub enum Channel {
     Primary,
     Secondary,
 }
@@ -43,6 +50,17 @@ struct PrdEntry {
     size: u16,
     /// if set indicate that it is the last entry in the prdt
     is_end: u16,
+}
+
+#[derive(Debug, Clone)]
+// Alignement = sizeof(struct PrdEntry) * Udma::NBR_DMA_ENTRIES <- Cannot cross a 64k boundary
+#[repr(align(128))]
+struct Prdt([PrdEntry; Udma::NBR_DMA_ENTRIES]);
+
+impl Prdt {
+    fn new() -> Self {
+        Self([PrdEntry { addr: Phys(0), size: 0, is_end: 0 }; Udma::NBR_DMA_ENTRIES])
+    }
 }
 
 // There are just 2 DMA commands
@@ -66,20 +84,13 @@ bitflags! {
 impl Udma {
     /// *** These below constants are expressed with offset from the bus master register ***
     /// DMA Command Byte (8 bits)
-    const _DMA_PRIMARY_COMMAND: usize = 0x0;
-    const _DMA_SECONDARY_COMMAND: usize = 0x8;
+    const DMA_COMMAND: u16 = 0x0;
 
     /// DMA Status Byte (8 bits)
-    const _DMA_PRIMARY_STATUS: usize = 0x2;
-    const _DMA_SECONDARY_STATUS: usize = 0xA;
+    const DMA_STATUS: u16 = 0x2;
 
     /// DMA PRDT Address (32 bits)
-    const _DMA_PRIMARY_PRDT_ADDR: usize = 0x4;
-    const _DMA_SECONDARY_PRDT_ADDR: usize = 0xC;
-
-    /// Physical address of primary and secondary PRDT
-    const PRDT_PRIMARY_PTR: usize = 0x4000;
-    const PRDT_SECONDARY_PTR: usize = 0x8000;
+    const DMA_PRDT_ADDR: u16 = 0x4;
 
     /// Number of PRD chunk Per PRDT
     const NBR_DMA_ENTRIES: usize = 16;
@@ -88,45 +99,88 @@ impl Udma {
     const PRD_SIZE: usize = 1 << 16;
 
     /// Init all UDMA channels
-    pub fn init() -> Self {
-        let mut primary_channel = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
-        let mut secondary_channel = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
+    pub fn init(mut bus_mastered_register: u16, channel: Channel) -> Self {
+        let mut memory = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
+        let mut prdt = Box::new(Prdt::new());
 
-        let (prdt1, prdt2) = unsafe {
-            (
-                core::slice::from_raw_parts_mut(Self::PRDT_PRIMARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES),
-                core::slice::from_raw_parts_mut(Self::PRDT_SECONDARY_PTR as *mut PrdEntry, Self::NBR_DMA_ENTRIES),
-            )
+        // Qemu quick fix
+        bus_mastered_register &= 0xfffe;
+
+        // Init a new PRDT
+        init_prdt(prdt.as_mut(), &mut memory);
+
+        let physical_prdt_address = unsafe {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .get_physical_addr(Virt(prdt.as_ref() as *const _ as usize))
+                .unwrap()
+                .0
         };
 
-        init_prdt(prdt1, &mut primary_channel);
-        init_prdt(prdt2, &mut secondary_channel);
+        eprintln!("Physical PRDT address = {:X?}", physical_prdt_address as u32);
 
-        Self { primary_channel, secondary_channel }
+        // Set the IO/PORT on Bus master register with physical DMA PRDT Address
+        Pio::<u32>::new(bus_mastered_register + Self::DMA_PRDT_ADDR).write(physical_prdt_address as u32);
+
+        // Enable IRQ mask for a specific channel
+        unsafe {
+            match channel {
+                Channel::Primary => PIC_8259.lock().enable_irq(pic_8259::Irq::PrimaryATAChannel),
+                Channel::Secondary => PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel),
+            }
+        }
+
+        dbg_hex!(prdt.as_mut());
+
+        Self { memory, channel, prdt, bus_mastered_register }
     }
 
     /// Get a specific UDMA channel
-    pub fn get_channel(&mut self, channel: UdmaChannel) -> *mut Vec<Vec<u8>> {
-        match channel {
-            UdmaChannel::Primary => &mut self.primary_channel,
-            UdmaChannel::Secondary => &mut self.secondary_channel,
-        }
+    pub fn get_channel(&mut self) -> &mut Vec<Vec<u8>> {
+        &mut self.memory
+    }
+
+    pub fn start_transfer(&self) {
+        let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::ONOFF.bits());
+    }
+
+    pub fn stop_transfer(&self) {
+        let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::ONOFF.bits());
+    }
+
+    pub fn set_read(&self) {
+        let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::RDWR.bits());
+    }
+
+    pub fn set_write(&self) {
+        let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::RDWR.bits());
+    }
+
+    pub fn clear_interrupt(&self) {
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(DmaStatus::IRQ.bits());
+    }
+
+    pub fn clear_error(&self) {
+        let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read();
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(s & !DmaStatus::FAILED.bits());
+    }
+
+    pub fn get_status(&self) -> u8 {
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read()
     }
 }
 
 /// Set a unique PRDT
-fn init_prdt(prdt: &mut [PrdEntry], memory_zone: &mut Vec<Vec<u8>>) {
-    for (mem, prd) in memory_zone.iter().zip(prdt.iter_mut()) {
-        unsafe {
-            *prd = PrdEntry {
-                addr: KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                    .as_mut()
-                    .unwrap()
-                    .get_physical_addr(Virt(mem.as_ptr() as usize))
-                    .unwrap(),
-                size: 0,
-                is_end: 0,
-            }
-        }
+fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
+    for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
+        let addr = unsafe {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap()
+        };
+        *prd = PrdEntry { addr, size: 0, is_end: 0 }
     }
 }

@@ -1,16 +1,13 @@
 //! This files contains the code related to the ATA PIO MODE
 /// See https://wiki.osdev.org/ATA_PIO_Mode
-
-#[deny(missing_docs)]
 use super::Drive;
+use super::PioIo;
 use super::SECTOR_SIZE;
-use super::{check_bounds, AtaError, AtaResult, Capabilities, DeviceControlRegister, Hierarchy, Rank};
-use super::{Command, ErrorRegister, PioIo, StatusRegister};
+use super::{check_bounds, AtaError, AtaResult, Capabilities};
+use super::{Command, ErrorRegister, StatusRegister};
 use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
-
-use bit_field::BitField;
 
 use core::slice;
 
@@ -188,105 +185,4 @@ impl Drive {
         let p = Pio::<u8>::new(self.command_register + Self::STATUS);
         while StatusRegister::from_bits_truncate(p.read()).contains(StatusRegister::BSY) {}
     }
-
-    /// The method suggested in the ATA specs for sending ATA commands tells you to check the BSY and DRQ bits before trying to send a command
-    fn wait_available(&self) {
-        // Continue polling one of the Status ports until bit 3 (DRQ, value = 8) sets, or until bit 0 (BSY, value = 7) sets.
-        while StatusRegister::from_bits_truncate(Pio::<u8>::new(self.control_register + Self::ALTERNATE_STATUS).read())
-            .intersects(StatusRegister::BSY | StatusRegister::DRQ)
-        {}
-    }
-
-    /// Init read or write sequence for lba48 mode
-    fn init_lba48(&self, start_sector: Sector, nbr_sectors: NbrSectors) {
-        let lba_low = start_sector.0.get_bits(0..32) as u32;
-        let lba_high = start_sector.0.get_bits(32..48) as u32;
-
-        // Send 0x40 for the "master" or 0x50 for the "slave" to port 0x1F6: outb(0x1F6, 0x40 | (slavebit << 4))
-        self.wait_available();
-        match self.get_hierarchy() {
-            Hierarchy::Master => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0x40),
-            Hierarchy::Slave => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0x50),
-        }
-
-        // Outb (0x1F2, sectorcount high byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(8..16) as u8);
-
-        // LBA 4
-        Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(24..32) as u8);
-        // LBA 5
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_high.get_bits(0..8) as u8);
-        // LBA 6
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_high.get_bits(8..16) as u8);
-
-        // outb (0x1F2, sectorcount low byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(0..8) as u8);
-
-        // LBA 1
-        Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(0..8) as u8);
-        // LBA 2
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_low.get_bits(8..16) as u8);
-        // LBA 3
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_low.get_bits(16..24) as u8);
-    }
-
-    /// Init read or write sequence for lba28 mode
-    fn init_lba28(&self, start_sector: Sector, nbr_sectors: NbrSectors) {
-        let lba_low = start_sector.0.get_bits(0..32) as u32;
-
-        // Send 0xE0 for the "master" or 0xF0 for the "slave" to port 0x1F6
-        // and add the highest 4 bits of the LBA to port 0x1F6: outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
-        self.wait_available();
-        match self.get_hierarchy() {
-            Hierarchy::Master => {
-                Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xE0 | ((lba_low >> 24) & 0xF) as u8)
-            }
-            Hierarchy::Slave => {
-                Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xF0 | ((lba_low >> 24) & 0xF) as u8)
-            }
-        }
-
-        // Send a NULL byte to port 0x1F1, if you like (it is ignored and wastes lots of CPU time): outb(0x1F1, 0x00)
-        Pio::<u8>::new(self.command_register + Self::FEATURES).write(0);
-
-        // outb (0x1F2, sectorcount low byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(0..8) as u8);
-
-        // LBA 1
-        Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(0..8) as u8);
-        // LBA 2
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_low.get_bits(8..16) as u8);
-        // LBA 3
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_low.get_bits(16..24) as u8);
-    }
-
-    /// Extract the sub tag hierarchy from rank
-    fn get_hierarchy(&self) -> Hierarchy {
-        match self.rank {
-            Rank::Primary(h) | Rank::Secondary(h) => h,
-        }
-    }
-
-    /// Select the drive for future read and write operations
-    pub fn select_drive(&self) {
-        self.wait_available();
-        match self.get_hierarchy() {
-            // select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave
-            // I dont think it is necessary or really true
-            Hierarchy::Master => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xA0),
-            Hierarchy::Slave => Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xB0),
-        };
-        // Disable interruot bit for the selected drive
-        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(DeviceControlRegister::NIEN.bits());
-    }
-}
-
-#[no_mangle]
-fn primary_hard_disk_interrupt_handler() -> u32 {
-    0
-}
-
-#[no_mangle]
-fn secondary_hard_disk_interrupt_handler() -> u32 {
-    0
 }

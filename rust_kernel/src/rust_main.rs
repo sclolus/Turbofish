@@ -110,11 +110,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::syscall::_write(1, s.as_ptr(), s.len());
     }
 
-    unsafe {
-        PIC_8259.lock().enable_irq(pic_8259::Irq::PrimaryATAChannel);
-        PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel);
-    }
-
     let mut disk = IdeAtaController::new();
 
     println!("{:#X?}", disk);
@@ -124,7 +119,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
         use alloc::vec;
         use alloc::vec::Vec;
-        let size_read = NbrSectors(0x800);
+        let size_read = NbrSectors(128);
         let mut v1: Vec<u8> = vec![0; size_read.into()];
         d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
     }
