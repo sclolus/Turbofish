@@ -51,21 +51,21 @@ impl DmaIo for Drive {
         udma.start_transfer();
 
         PIT0.lock().sleep(Duration::from_millis(1000));
-        let u = udma.get_channel();
+        let u = udma.get_memory();
 
         for i in 0..512 {
             print!("{:X?} ", u[0][i]);
         }
-        eprintln!("current status of DMA controller {:X?}", udma.get_status());
+        eprintln!("current status of DMA controller '{:X?}'", udma.get_status());
 
         eprintln!("stoping transfer...");
         udma.stop_transfer();
 
         PIT0.lock().sleep(Duration::from_millis(1000));
 
-        eprintln!("current status of DMA controller {:X?}", udma.get_status());
+        eprintln!("current status of DMA controller '{:X?}'", udma.get_status());
 
-        let u = udma.get_channel();
+        let u = udma.get_memory();
 
         for i in 0..512 {
             print!("{:X?} ", u[0][i]);

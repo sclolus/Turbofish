@@ -73,7 +73,7 @@ bitflags! {
 
 // Some status indications
 bitflags! {
-    struct DmaStatus: u8 {
+    pub struct DmaStatus: u8 {
         const STATUS = 1 << 0; // Bit 0 (value = 1) is set when the bus goes into DMA mode. It is cleared when the last PRD in the table has been used up.
         const FAILED = 1 << 1; // Bit 1 (value = 2) is set if any DMA memory transfer failed for any reason in this PRDT.
         const IRQ = 1 << 2; // If bit 2 (value = 4) is not set after the OS receives an IRQ, then some other device sharing the IRQ generated the IRQ -- not the disk.
@@ -136,42 +136,49 @@ impl Udma {
         Self { memory, channel, prdt, bus_mastered_register }
     }
 
-    /// Get a specific UDMA channel
-    pub fn get_channel(&mut self) -> &mut Vec<Vec<u8>> {
+    /// Get the complete memory DMA zone
+    pub fn get_memory(&mut self) -> &mut Vec<Vec<u8>> {
         &mut self.memory
     }
 
+    /// Start the UDMA transfert
     pub fn start_transfer(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::ONOFF.bits());
     }
 
+    /// Stop the UDMA transfert
     pub fn stop_transfer(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::ONOFF.bits());
     }
 
+    /// Set reading mode: DISK to DMA buffer
     pub fn set_read(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::RDWR.bits());
     }
 
+    /// Set writing mode: DMA buffer to DISK
     pub fn set_write(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::RDWR.bits());
     }
 
+    /// Clear interrupt bit
     pub fn clear_interrupt(&self) {
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(DmaStatus::IRQ.bits());
     }
 
+    /// Clear error bit
     pub fn clear_error(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read();
         Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(s & !DmaStatus::FAILED.bits());
     }
 
-    pub fn get_status(&self) -> u8 {
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read()
+    /// Get the UDMA status
+    pub fn get_status(&self) -> DmaStatus {
+        DmaStatus { bits: Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read() }
     }
 }
 

@@ -5,7 +5,7 @@ pub mod pci_udma;
 pub mod pio_polling;
 
 mod udma;
-use udma::{Channel, Udma};
+pub use udma::{Channel, DmaStatus, Udma};
 
 use super::SECTOR_SIZE;
 use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI};
