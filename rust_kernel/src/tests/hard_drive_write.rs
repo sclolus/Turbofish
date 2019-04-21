@@ -1,4 +1,6 @@
-use crate::drivers::UART_16550;
+use crate::drivers::pit_8253::OperatingMode;
+use crate::drivers::{PCI, PIC_8259, PIT0};
+
 use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
@@ -18,18 +20,32 @@ const SECTOR_SIZE: u64 = 512;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
-    unsafe {
-        UART_16550.init();
+    #[cfg(feature = "serial-eprintln")]
+    {
+        unsafe { crate::drivers::UART_16550.init() };
+        eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
+
     unsafe {
         interrupts::init();
-    }
-    crate::watch_dog();
-    unsafe {
+        PIC_8259.lock().init();
+        PIC_8259.lock().disable_all_irqs();
+
+        PIT0.lock().configure(OperatingMode::RateGenerator);
+        PIT0.lock().start_at_frequency(1000.).unwrap();
+
+        crate::watch_dog();
+        interrupts::enable();
+
         let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
     }
+
+    log::info!("Scanning PCI buses ...");
+    PCI.lock().scan_pci_buses();
+    log::info!("PCI buses has been scanned");
+
     crate::watch_dog();
 
     srand_init(42).unwrap();
