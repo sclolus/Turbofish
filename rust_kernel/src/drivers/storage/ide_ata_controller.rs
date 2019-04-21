@@ -9,7 +9,7 @@ mod udma;
 use udma::{Channel, Udma};
 
 use super::SECTOR_SIZE;
-use super::{IdeControllerProgIf, MassStorageControllerSubClass, Pci, PciDeviceClass, PciType0, PCI};
+use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI};
 use super::{NbrSectors, Sector};
 
 use alloc::vec::Vec;
@@ -77,15 +77,11 @@ impl IdeAtaController {
         // Become the BUS MASTER, it is very important on QEMU since it does not do it for us (give little tempos)
         PIT0.lock().sleep(Duration::from_millis(40));
 
-        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
-        let command = Pio::<u32>::new(Pci::CONFIG_DATA).read() | 4;
+        pci.set_command(PciCommand::BUS_MASTER, true, pci_location);
 
         PIT0.lock().sleep(Duration::from_millis(40));
 
-        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
-        Pio::<u32>::new(Pci::CONFIG_DATA).write(command);
-
-        PIT0.lock().sleep(Duration::from_millis(40));
+        eprintln!("current pci status: {:#?}", pci.get_status(pci_location));
 
         // Get primary and secondary IO ports (0 or 1 means ide default port values_
         let primary_base_register =

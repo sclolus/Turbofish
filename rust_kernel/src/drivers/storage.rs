@@ -1,7 +1,7 @@
 //! This module contains the turbo fish's storage drivers
 
 use super::pci::{
-    IdeControllerProgIf, MassStorageControllerSubClass, Pci, PciDeviceClass, PciType0, SerialAtaProgIf, PCI,
+    IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI,
 };
 
 const SECTOR_SIZE: usize = 512;

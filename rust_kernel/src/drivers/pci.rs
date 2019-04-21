@@ -1,10 +1,12 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
 use crate::Spinlock;
+
 use core::mem::{size_of, transmute_copy};
 use io::{Io, Pio};
 use lazy_static::lazy_static;
 
 use bit_field::BitField;
+use bitflags::bitflags;
 
 pub struct Pci {
     pub devices_list: CustomPciDeviceAllocator,
@@ -246,6 +248,68 @@ pub struct PciType0 {
     /*3d       |*/ pub interrupt_pin: u8,
     /*3e       |*/ pub min_grant: u8,
     /*3f       |*/ pub max_latency: u8,
+}
+
+// List of PCI commands
+bitflags! {
+    pub struct PciCommand: u16 {
+        const INTERRUPT_DISABLE = 1 << 10; // If set to 1 the assertion of the devices INTx# signal is disabled; otherwise, assertion of the signal is enabled.
+        const FAST_BACK_TO_BACK_ENABLE = 1 << 9; // If set to 1 indicates a device is allowed to generate fast back-to-back transactions; otherwise, fast back-to-back transactions are only allowed to the same agent.
+        const SERR_ENABLE = 1 << 8; // If set to 1 the SERR# driver is enabled; otherwise, the driver is disabled.
+        const BIT_7 = 1 << 7; // As of revision 3.0 of the PCI local bus specification this bit is hardwired to 0. In earlier versions of the specification this bit was used by devices and may have been hardwired to 0, 1, or implemented as a read/write bit.
+        const PARITY_ERROR_RESPONDE = 1 << 6; // If set to 1 the device will take its normal action when a parity error is detected; otherwise, when an error is detected, the device will set bit 15 of the Status register (Detected Parity Error Status Bit), but will not assert the PERR# (Parity Error) pin and will continue operation as normal.
+        const VGA_PALETTE_SNOOP = 1 << 5; // If set to 1 the device does not respond to palette register writes and will snoop the data; otherwise, the device will trate palette write accesses like all other accesses.
+        const MEMORY_WRITE_AND_INVALIDABLE_ENABLE = 1 << 4; // If set to 1 the device can generate the Memory Write and Invalidate command; otherwise, the Memory Write command must be used.
+        const SPECIAL_CYCLES = 1 << 3; // If set to 1 the device can monitor Special Cycle operations; otherwise, the device will ignore them.
+        const BUS_MASTER = 1 << 2; // If set to 1 the device can behave as a bus master; otherwise, the device can not generate PCI accesses.
+        const MEMORY_SPACE = 1 << 1;  // If set to 1 the device can respond to Memory Space accesses; otherwise, the device's response is disabled.
+        const IO_SPACE = 1 << 0;  // If set to 1 the device can respond to I/O Space accesses; otherwise, the device's response is disabled.
+    }
+}
+
+// List of PCI status
+bitflags! {
+    pub struct PciStatus: u16 {
+        const INTERRUPT_STATUS = 1 << 3; // Represents the state of the device's INTx# signal. If set to 1 and bit 10 of the Command register (Interrupt Disable bit) is set to 0 the signal will be asserted; otherwise, the signal will be ignored.
+        const CAPABILITIES_LIST = 1 << 4; // If set to 1 the device implements the pointer for a New Capabilities Linked list at offset 0x34; otherwise, the linked list is not available
+        const MHZ_66_CAPABLE = 1 << 5; // If set to 1 the device is capable of running at 66 MHz; otherwise, the device runs at 33 MHz.
+        const FAST_BACK_TO_BACK_CAPABLE = 1 << 7; // If set to 1 the device can accept fast back-to-back transactions that are not from the same agent; otherwise, transactions can only be accepted from the same agent.
+        const MASTER_DATA_PARITY_ERROR = 1 << 8; //  This bit is only set when the following some conditions are met. The bus agent asserted PERR# on a read or observed an assertion of PERR# on a write, the agent setting the bit acted as the bus master for the operation in which the error occurred, and bit 6 of the Command register (Parity Error Response bit) is set to 1.
+        const DEVSEL_TIMING = (1 << 9) | (1 << 10); // Read only bits that represent the slowest time that a device will assert DEVSEL# for any bus command except Configuration Space read and writes. Where a value of 0x00 represents fast timing, a value of 0x01 represents medium timing, and a value of 0x02 represents slow timing.
+        const SIGNALED_TARGET_ABORT = 1 << 11; // This bit will be set to 1 whenever a target device terminates a transaction with Target-Abort.
+        const RECEIVED_TARGET_ABORT = 1 << 12; // This bit will be set to 1, by a master device, whenever its transaction is terminated with Target-Abort.
+        const RECEIVED_MASTER_ABORT = 1 << 13; // This bit will be set to 1, by a master device, whenever its transaction (except for Special Cycle transactions) is terminated with Master-Abort.
+        const SIGNALED_SYSTEM_ERROR = 1 << 14; // This bit will be set to 1 whenever the device asserts SERR#
+        const DETECTED_PARITY_ERROR = 1 << 15; // This bit will be set to 1 whenever the device detects a parity error, even if parity error handling is disabled.
+    }
+}
+
+/// PCI boilerplate
+impl PciType0 {
+    /// Apply a command into PCI bus
+    pub fn set_command(&self, command: PciCommand, state: bool, pci_location: u32) {
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        let mut l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
+
+        let c = match state {
+            true => PciCommand { bits: l1 as u16 } | command,
+            false => PciCommand { bits: l1 as u16 } & !command,
+        };
+
+        l1 &= 0xffff0000;
+        l1 |= c.bits as u32;
+
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        Pio::<u32>::new(Pci::CONFIG_DATA).write(l1);
+    }
+
+    /// Get the status of the PCI bus
+    pub fn get_status(&self, pci_location: u32) -> PciStatus {
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        let l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
+
+        PciStatus { bits: (l1 >> 16) as u16 }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
