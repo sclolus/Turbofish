@@ -3,7 +3,7 @@ use getopts::Options;
 use std::env;
 use std::fs::File;
 use std::io::Read;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::time::Duration;
 use toml::Value;
 use wait_timeout::ChildExt;
@@ -18,18 +18,15 @@ fn print_usage(program: &str, opts: Options) {
 enum TestError {
     Failed,
     Timeout,
+    CompilationFailed,
 }
 
 /// Execute a command with specifics arguments
-fn exec_command(cmd: &str, args: &[&str]) {
-    let cmd_generate = {
-        let mut cmd = Command::new(cmd);
-        cmd.args(args);
-        println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
-        cmd.output().expect("failed to execute process")
-    };
-    println!("COMPILATION stdout {}", String::from_utf8_lossy(&cmd_generate.stdout));
-    println!("COMPILATION stderr {}", String::from_utf8_lossy(&cmd_generate.stderr));
+fn exec_command(cmd: &str, args: &[&str]) -> ExitStatus {
+    let mut cmd = Command::new(cmd);
+    cmd.args(args);
+    println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
+    cmd.status().expect("failed to execute process")
 }
 
 fn main() {
@@ -89,7 +86,7 @@ fn main() {
             let native = if feature.starts_with("native-test-") { true } else { false };
             println!("test: {} native_mode: {}", (*feature).clone().magenta().bold(), native);
 
-            exec_command(
+            let exit_status = exec_command(
                 "make",
                 &[
                     "-C",
@@ -102,6 +99,10 @@ fn main() {
                     ),
                 ],
             );
+            if !exit_status.success() {
+                println!("{}", "Compilation Failed".red().bold());
+                return Err(TestError::CompilationFailed);
+            }
 
             if native && feature.contains("hard-drive") {
                 // Compiling generate C programm
