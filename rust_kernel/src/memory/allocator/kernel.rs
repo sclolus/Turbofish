@@ -3,6 +3,7 @@ use crate::memory::mmu::{Entry, PageDirectory, _enable_paging, BIOS_PAGE_TABLE, 
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::alloc::{GlobalAlloc, Layout};
+use core::mem::size_of;
 
 mod bootstrap;
 use bootstrap::*;
@@ -51,4 +52,45 @@ pub unsafe fn init_kernel_virtual_allocator() {
 
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
     KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator::new());
+}
+
+/// map the physical ptr into virtual memory
+pub unsafe fn mmap<T>(phy_addr: *mut T, entry: Entry) -> Result<*mut T> {
+    assert!(in_kernel_mode(), "Mapping memory while in bootstrap allocator is unsafe");
+    let addr = Phys(phy_addr as usize);
+    let size = size_of::<T>();
+    let virt_addr = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().map_addr(
+        Page::containing(addr),
+        ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into(),
+        entry,
+    )?;
+    Ok((virt_addr.to_addr().0 as *mut u8).add(addr.offset()) as *mut T)
+}
+
+/// map the physical ptr into virtual memory
+pub unsafe fn munmap<T>(phy_addr: *mut T) -> Result<()> {
+    assert!(in_kernel_mode(), "UnMapping memory while in bootstrap allocator is unsafe");
+    let addr = Virt(phy_addr as usize);
+    let size = size_of::<T>();
+    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+        .as_mut()
+        .unwrap()
+        .unmap_addr(Page::containing(addr), ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into())
+}
+
+/// get the physical addr which is map to virtual addr `addr`
+/// TODO: Should call get_physical_addr on the current process allocator and not the kernel_virtual_allocator
+pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
+    assert!(in_kernel_mode(), "call to get_physical_addr while in bootstrap allocator ");
+    unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(addr) }
+}
+
+/// return true if the allocator is in kernel mode and not in bootstrap mode anymore
+pub fn in_kernel_mode() -> bool {
+    unsafe {
+        match &KERNEL_ALLOCATOR {
+            KernelAllocator::Bootstrap(_) => false,
+            KernelAllocator::Kernel(_) => true,
+        }
+    }
 }

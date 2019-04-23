@@ -1,9 +1,9 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
-use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
-use crate::drivers::storage::{NbrSectors, SataController, Sector};
-
+// use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
+// use crate::drivers::storage::{NbrSectors,Sector};
+use crate::drivers::storage::SataController;
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
@@ -110,27 +110,27 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::syscall::_write(1, s.as_ptr(), s.len());
     }
 
-    let mut disk = IdeAtaController::new();
+    // let mut disk = IdeAtaController::new();
 
-    println!("{:#X?}", disk);
-    if let Some(d) = disk.as_mut() {
-        println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
+    // println!("{:#X?}", disk);
+    // if let Some(d) = disk.as_mut() {
+    //     println!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Master)));
 
-        use alloc::vec;
-        use alloc::vec::Vec;
+    //     use alloc::vec;
+    //     use alloc::vec::Vec;
 
-        let size_read = NbrSectors(1);
-        let mut v1: Vec<u8> = vec![0; size_read.into()];
-        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    //     let size_read = NbrSectors(1);
+    //     let mut v1: Vec<u8> = vec![0; size_read.into()];
+    //     d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
 
-        let size_read = NbrSectors(1);
-        let mut v1: Vec<u8> = vec![0; size_read.into()];
-        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    //     let size_read = NbrSectors(1);
+    //     let mut v1: Vec<u8> = vec![0; size_read.into()];
+    //     d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
 
-        let size_read = NbrSectors(1);
-        let mut v1: Vec<u8> = vec![0; size_read.into()];
-        d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
-    }
+    //     let size_read = NbrSectors(1);
+    //     let mut v1: Vec<u8> = vec![0; size_read.into()];
+    //     d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    // }
     shell();
     0
 }

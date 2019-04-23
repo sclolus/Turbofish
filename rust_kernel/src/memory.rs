@@ -7,8 +7,9 @@ pub mod tools;
 
 pub mod allocator;
 pub use allocator::kernel::ffi::*;
+pub use allocator::kernel::{get_physical_addr, mmap, munmap};
 
 pub mod init;
 pub use init::init_memory_system;
 
-mod mmu;
+pub mod mmu;

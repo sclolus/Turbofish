@@ -37,3 +37,49 @@ impl Add<NbrSectors> for Sector {
         Self(self.0 + other.0)
     }
 }
+
+use crate::memory::mmu::Entry;
+use crate::memory::tools::*;
+use crate::memory::{mmap, munmap};
+use core::fmt;
+use core::fmt::Debug;
+
+pub struct MemoryMapped<T: Copy> {
+    inner: *mut T,
+}
+
+impl<T: Copy + Debug> Debug for MemoryMapped<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.get())
+    }
+}
+
+impl<T: Copy> MemoryMapped<T> {
+    /// take a physical addr and mmap the addr in noncachable way
+    pub fn new(p: *mut T) -> Result<Self> {
+        unsafe { Ok(Self { inner: mmap(p, Entry::CACHE_DISABLE)? }) }
+    }
+    /// read volatile the underlying data
+    pub fn get(&self) -> T {
+        unsafe { core::ptr::read_volatile(self.inner) }
+    }
+    /// write volatile the underlying data
+    pub fn set(&mut self, t: T) {
+        unsafe { core::ptr::write_volatile(self.inner, t) }
+    }
+    /// apply f on the underlying data
+    pub fn update<F: FnOnce(T) -> T>(&mut self, f: F) -> T {
+        let old = self.get();
+        let new = f(old);
+        self.set(new);
+        new
+    }
+}
+
+impl<T: Copy> Drop for MemoryMapped<T> {
+    fn drop(&mut self) {
+        unsafe {
+            munmap(self.inner).unwrap();
+        }
+    }
+}

@@ -2,13 +2,12 @@
 
 use super::{MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
-use crate::memory::allocator::{map, unmap};
-use core::mem::size_of;
-
+use crate::drivers::storage::tools::*;
 use alloc::vec::Vec;
+use bit_field::BitField;
 
 #[derive(Debug, Copy, Clone)]
-#[repr(packed)]
+#[repr(C)]
 struct HbaMem {
     // 0x00 - 0x2B, Generic Host Control
     /*0        |*/ cap: u32, // Host capability
@@ -36,7 +35,7 @@ define_raw_data!(Reserved, 0xA0 - 0x2C);
 define_raw_data!(VendorSpecificRegisters, 0x100 - 0xA0);
 
 #[derive(Debug, Copy, Clone)]
-#[repr(packed)]
+#[repr(C)]
 struct HbaPort {
     /*0        |*/ clb: u32, // command list base address, 1K-byte aligned
     /*4        |*/ clbu: u32, // command list base address upper 32 bits
@@ -91,32 +90,30 @@ impl SataController {
     }
 
     pub fn dump_hba(&self) {
-        let virt = unsafe { map(self.pci.bar5 as *mut u8, size_of::<HbaMem>()) };
-        println!("{:#X?}", virt);
+        let hba_mem_cell = MemoryMapped::new(self.pci.bar5 as *mut HbaMem).unwrap();
 
-        let s = virt as *mut HbaMem;
+        let hba_mem = hba_mem_cell.get();
+        println!("{:#X?}", hba_mem);
+
         let mut vec = Vec::new();
-        unsafe {
-            println!("{:#X?}", *s);
-            let virt =
-                map((self.pci.bar5 + 0x100) as *mut u8, size_of::<HbaPort>() * (*s).pi as usize) as *const HbaPort;
-            for i in 0..(*s).pi as usize {
-                let l = core::ptr::read_volatile(virt.add(i));
-                if l.sig == Self::SATA_SIG_ATA
-                    || l.sig == Self::SATA_SIG_ATAPI
-                    || l.sig == Self::SATA_SIG_SEMB
-                    || l.sig == Self::SATA_SIG_PM0
+        let virt = (self.pci.bar5 + 0x100) as *mut HbaPort;
+        for i in 0..32 {
+            if hba_mem.pi.get_bit(i) {
+                let l = MemoryMapped::new(unsafe { virt.add(i) }).unwrap();
+                let hba_port = l.get();
+                if hba_port.sig == Self::SATA_SIG_ATA
+                    || hba_port.sig == Self::SATA_SIG_ATAPI
+                    || hba_port.sig == Self::SATA_SIG_SEMB
+                    || hba_port.sig == Self::SATA_SIG_PM0
                 {
-                    vec.push(virt.add(i));
+                    vec.push(l);
+                } else {
+                    println!("invalid signature for port");
                 }
             }
-            for h in vec {
-                println!("{:#X?}", core::ptr::read_volatile(h));
-            }
-            unmap(virt as *mut u8, size_of::<HbaPort>() * (*s).pi as usize);
         }
-        unsafe {
-            unmap(virt, size_of::<HbaMem>());
+        for p in vec {
+            println!("{:#X?}", p.get());
         }
         println!("bar 5: {:#X?}", self.pci.bar5);
     }

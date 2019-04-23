@@ -74,7 +74,7 @@ impl VirtualPageAllocator {
 
     /// Map a ranged physical area and return a virtual address associated
     /// notice: fn(Phys(physical_address_to_map).into(), size.into()) -> Some stuff
-    pub fn map_addr(&mut self, paddr: Page<Phys>, size: NbrPages) -> Result<Page<Virt>> {
+    pub fn map_addr(&mut self, paddr: Page<Phys>, size: NbrPages, entry: Entry) -> Result<Page<Virt>> {
         let order = size.into();
 
         // get a new chunk on kernel virtual buddy
@@ -82,10 +82,12 @@ impl VirtualPageAllocator {
 
         unsafe {
             // map this virtual chunk with the associated physical address
-            self.mmu.map_range_page(vaddr, paddr, order.into(), Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
-                e
-            })?;
+            self.mmu.map_range_page(vaddr, paddr, order.into(), Entry::READ_WRITE | Entry::PRESENT | entry).map_err(
+                |e| {
+                    self.virt.free(vaddr, order).unwrap();
+                    e
+                },
+            )?;
         }
         Ok(vaddr)
     }
