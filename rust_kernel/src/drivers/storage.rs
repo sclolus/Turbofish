@@ -12,5 +12,17 @@ pub use ide_ata_controller::IdeAtaController;
 pub mod sata_controller;
 pub use sata_controller::SataController;
 
+pub mod bios_int13h;
+pub use bios_int13h::BiosInt13h;
+
 pub mod tools;
 pub use tools::{NbrSectors, Sector};
+
+pub type DiskResult<T> = core::result::Result<T, DiskError>;
+
+#[derive(Debug, Copy, Clone)]
+pub enum DiskError {
+    OutOfBound,
+    InternalError,
+    NotSupported,
+}

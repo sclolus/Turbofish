@@ -16,6 +16,7 @@ extern int _i8086_payload(struct base_registers *regs, void *payload, size_t pay
 extern void payload_get_mem_map(void);
 extern size_t payload_get_mem_map_len;
 
+/*
 extern int payload_13h_check_extension_present(void);
 extern size_t payload_13h_check_extension_present_len;
 extern int payload_13h_extended_read_drive_parameters(void);
@@ -24,6 +25,7 @@ extern int payload_13h_extended_read_sectors(void);
 extern size_t payload_13h_extended_read_sectors_len;
 extern int payload_13h_extended_write_sectors(void);
 extern size_t payload_13h_extended_write_sectors_len;
+*/
 
 struct __attribute__ ((packed)) device {
 	u32 low_addr;
@@ -36,6 +38,7 @@ struct __attribute__ ((packed)) device {
 	u32 reserved_b;
 };
 
+/*
 struct __attribute__ ((packed)) drive_parameters {
 	u16 result_size;      // size of Result Buffer (set this to 1Eh)
 	u16 info_flag;        // information flags
@@ -104,10 +107,7 @@ static void check_bios_extended(void) {
 	printk("\ndumping result\n");
 	for (u8 *i = (u8 *)0x90000; i < (u8 *)0x90200; i++)
 		printk("%hhx ", *i);
-	/*
-	for (u8 *i = (u8 *)0x90000; i < (u8 *)0x90200; i++)
-		*i = 0x42;
-	*/
+
 	ft_memset(dap, 0, sizeof(*dap));
 		dap->size_of_dap = 0x10;
 	dap->nb_sectors = 0x1;
@@ -123,6 +123,7 @@ static void check_bios_extended(void) {
 	for (u8 *i = (u8 *)0x90000; i < (u8 *)0x90200; i++)
 		printk("%hhx ", *i);
 }
+*/
 
 /*
  * Return the memory map device
@@ -151,7 +152,6 @@ struct device *get_device_mem_map(void) {
 	}
 	// Mark zero on the last entry
 	ft_memset(ptr_device, 0, sizeof(struct device));
-	check_bios_extended();
-	while (1) {}
+//	check_bios_extended();
 	return (struct device *)DEVICE_MAP_PTR_ADDR;
 }
