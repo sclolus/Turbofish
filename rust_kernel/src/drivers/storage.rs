@@ -25,4 +25,6 @@ pub enum DiskError {
     OutOfBound,
     InternalError,
     NotSupported,
+    NothingToDo,
+    IOError,
 }
