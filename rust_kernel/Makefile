@@ -48,7 +48,7 @@ SRC_C_KERNEL += panic
 SRC_ASM_KERNEL += real_mode_call align_stack i8086_payload
 VPATH += src/system
 
-SRC_ASM_KERNEL += apm_shutdown payload_13h_extended.asm
+SRC_ASM_KERNEL += apm_shutdown
 VPATH += src/system/i8086_payloads
 
 SRC_ASM_KERNEL += cpu_exceptions_isr default_isr
@@ -68,6 +68,9 @@ VPATH += medias
 
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
+
+SRC_ASM_KERNEL += payload_13h_extended
+VPATH += src/drivers/storage/bios_int13h
 
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
