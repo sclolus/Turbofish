@@ -45,7 +45,7 @@ use core::fmt;
 use core::fmt::Debug;
 
 pub struct MemoryMapped<T: Copy> {
-    inner: *mut T,
+    pub inner: *mut T,
 }
 
 impl<T: Copy + Debug> Debug for MemoryMapped<T> {
