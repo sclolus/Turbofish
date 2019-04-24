@@ -34,6 +34,8 @@ pub struct BiosInt13h {
     nb_sector: NbrSectors,
     /// Size of one sector
     sector_size: u16,
+    /// Version
+    version: u16,
 }
 
 // Check extension result boilerplate
@@ -67,7 +69,7 @@ struct DriveParameters {
     option_ptr: u32,
 }
 
-/// Packed structure used by rea and write operations
+/// Packed structure used by real and write operations
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)] // Representation packed is mandatory for this kind of structure
 struct Dap {
@@ -86,10 +88,10 @@ struct Dap {
 const DAP_LOCATION: usize = 0x80000; // Correspond to real addr 0x8000:0000
 
 /// this part define the buffer
-const N_SECTOR: usize = 64; // Max sector capacity in one buffer chunk
-const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 32ko buffer
-const REAL_BUFFER_LOCATION: u32 = 0x80008000; // expressed as segment/offset, correspond to 0x88000 in 32bits
-const BUFFER_LOCATION: u32 = 0x88000; // the buffer will be between 0x8000:8000 and 0x9000:0000
+const N_SECTOR: usize = 96; // Max sector capacity in one buffer chunk
+const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 48ko buffer
+const REAL_BUFFER_LOCATION: u32 = 0x80004000; // expressed as segment/offset, correspond to 0x84000 in 32bits
+const BUFFER_LOCATION: u32 = 0x84000; // the buffer will be between 0x8000:4000 and 0x9000:0000
 
 impl BiosInt13h {
     /// Public invocation of a new BiosInt13h instance
@@ -109,6 +111,7 @@ impl BiosInt13h {
         if ret == -1 {
             return Err(DiskError::NotSupported);
         }
+        let version = reg.eax as u16;
 
         // Check if interface support DAP (Device Access using the packet structure)
         let interface_support = InterfaceSupport { bits: reg.ecx.get_bits(0..16) as u16 };
@@ -142,7 +145,7 @@ impl BiosInt13h {
         }
 
         // Return the main constructor
-        Ok(Self { boot_device, interface_support, nb_sector, sector_size })
+        Ok(Self { boot_device, interface_support, nb_sector, sector_size, version })
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf

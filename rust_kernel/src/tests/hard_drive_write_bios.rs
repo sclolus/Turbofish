@@ -11,7 +11,7 @@ use crate::tests::helpers::exit_qemu;
 use crate::drivers::storage::BiosInt13h;
 use crate::drivers::storage::{NbrSectors, Sector};
 
-const NB_TESTS: usize = 32;
+const NB_TESTS: usize = 48;
 const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
@@ -66,6 +66,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         let r = srand::<u8>(255);
 
         let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
+        eprintln!("performing test {:?} write at {:?} for {:?}", nb_test, start_sector, nbr_sectors);
         d.unwrap().write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
 
         let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
