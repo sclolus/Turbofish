@@ -1,6 +1,6 @@
 //! This module handle a SATA driver. See https://wiki.osdev.org/SATA, https://wiki.osdev.org/AHCI
 
-use super::{MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
+use super::{MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::drivers::storage::tools::*;
 use alloc::vec::Vec;
@@ -26,7 +26,10 @@ impl SataController {
             .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::SerialAta(
                 SerialAtaProgIf::Ahci1,
             )))
-            .map(|(pci, location)| Self { pci, location })
+            .map(|(pci, location): (PciType0, u32)| {
+                pci.set_command(PciCommand::BUS_MASTER, true, location);
+                Self { pci, location }
+            })
     }
 
     pub fn dump_hba(&self) {

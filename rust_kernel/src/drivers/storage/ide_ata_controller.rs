@@ -7,7 +7,7 @@ mod udma;
 pub use udma::{Channel, DmaStatus, Udma};
 
 use super::SECTOR_SIZE;
-use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI};
+use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI};
 use super::{NbrSectors, Sector};
 
 use alloc::vec::Vec;
@@ -77,7 +77,8 @@ impl IdeAtaController {
         // Become the BUS MASTER, it is very important on QEMU since it does not do it for us (give little tempos)
         PIT0.lock().sleep(Duration::from_millis(40));
 
-        pci.set_command(PciCommand::BUS_MASTER, true, pci_location);
+        // Since UDMA does not work, Bus Mastering of the IDE device is useless
+        // pci.set_command(PciCommand::BUS_MASTER, true, pci_location);
 
         PIT0.lock().sleep(Duration::from_millis(40));
 
