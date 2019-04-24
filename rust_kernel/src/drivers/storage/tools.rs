@@ -63,9 +63,17 @@ impl<T: Copy> MemoryMapped<T> {
     pub fn get(&self) -> T {
         unsafe { core::ptr::read_volatile(self.inner) }
     }
+    /// read volatile of a part of a part of inner data
+    pub fn get_precise<U>(&self, offset: usize) -> U {
+        unsafe { core::ptr::read_volatile((self.inner as *mut u8).add(offset) as *mut U) }
+    }
     /// write volatile the underlying data
     pub fn set(&mut self, t: T) {
         unsafe { core::ptr::write_volatile(self.inner, t) }
+    }
+    /// write volatile just a part of underlying data
+    pub fn set_precise<U>(&mut self, offset: usize, t: U) {
+        unsafe { core::ptr::write_volatile((self.inner as *mut u8).add(offset) as *mut U, t) }
     }
     /// apply f on the underlying data
     pub fn update<F: FnOnce(T) -> T>(&mut self, f: F) -> T {
