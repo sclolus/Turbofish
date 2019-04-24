@@ -1,4 +1,4 @@
-//! this module provide dummy low level bios IO operations
+//! this module provide dummy low level bios IO operations. See https://en.wikipedia.org/wiki/INT_13H
 
 use super::SECTOR_SIZE;
 use super::{DiskError, DiskResult};
@@ -83,11 +83,13 @@ struct Dap {
     sector: u64,
 }
 
-const N_SECTOR: usize = 128; // Max sector capacity in one buffer chunk
 const DAP_LOCATION: usize = 0x80000; // Correspond to real addr 0x8000:0000
-const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 64ko
-const REAL_BUFFER_LOCATION: u32 = 0x90000000; // expressed as segment/offset, correspond to 0x90000 in 32bits
-const BUFFER_LOCATION: u32 = 0x90000;
+
+/// this part define the buffer
+const N_SECTOR: usize = 64; // Max sector capacity in one buffer chunk
+const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 32ko buffer
+const REAL_BUFFER_LOCATION: u32 = 0x80008000; // expressed as segment/offset, correspond to 0x88000 in 32bits
+const BUFFER_LOCATION: u32 = 0x88000; // the buffer will be between 0x8000:8000 and 0x9000:0000
 
 impl BiosInt13h {
     /// Public invocation of a new BiosInt13h instance
