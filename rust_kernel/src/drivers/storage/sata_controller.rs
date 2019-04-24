@@ -3,14 +3,38 @@
 use super::{MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::drivers::storage::tools::*;
+use crate::memory::kmalloc;
+use crate::memory::{get_physical_addr, tools::*};
+
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bit_field::BitField;
 
-#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+struct AccessCmdTbl {
+    cmdtbl: [CmdTbl; 32],
+    data_poiters: [[*mut u8; NBR_PRDT_ENTRIES]; 32],
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(align(1024))]
+#[repr(C)]
+struct CmdList([CmdHeader; 32]);
+
+#[repr(C)]
+struct AccessPort {
+    cmdlist: Box<CmdList>,
+    cmdtbl: Box<AccessCmdTbl>,
+    port: MemoryMapped<HbaPort>,
+    received_fis: Box<ReceivedFIS>,
+}
+
 pub struct SataController {
     pci: PciType0,
     location: u32,
+    access_ports: Vec<AccessPort>,
 }
+
 impl SataController {
     /// SATA drive
     const SATA_SIG_ATA: u32 = 0x00000101;
@@ -22,26 +46,21 @@ impl SataController {
     const SATA_SIG_PM0: u32 = 0x96690101;
 
     pub fn init() -> Option<Self> {
-        PCI.lock()
-            .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::SerialAta(
-                SerialAtaProgIf::Ahci1,
-            )))
-            .map(|(pci, location): (PciType0, u32)| {
-                pci.set_command(PciCommand::BUS_MASTER, true, location);
-                Self { pci, location }
-            })
-    }
+        let (pci, location): (PciType0, u32) = PCI.lock().query_device(PciDeviceClass::MassStorageController(
+            MassStorageControllerSubClass::SerialAta(SerialAtaProgIf::Ahci1),
+        ))?;
+        pci.set_command(PciCommand::BUS_MASTER, true, location);
 
-    pub fn dump_hba(&self) {
-        let hba_mem_cell = MemoryMapped::new(self.pci.bar5 as *mut HbaMem).unwrap();
+        println!("bar 5: {:#X?}", pci.bar5);
 
+        let hba_mem_cell = MemoryMapped::new(pci.bar5 as *mut HbaMem).unwrap();
         println!("{:#X?}", hba_mem_cell.inner);
         let hba_mem = hba_mem_cell.get();
         println!("number of cmd slots: {}", hba_mem.cap.get_number_of_command_slots());
         println!("{:#X?}", hba_mem);
 
         let mut vec = Vec::new();
-        let virt = (self.pci.bar5 + 0x100) as *mut HbaPort;
+        let virt = (pci.bar5 + 0x100) as *mut HbaPort;
         for i in 0..32 {
             if hba_mem.pi.get_bit(i) {
                 let l = MemoryMapped::new(unsafe { virt.add(i) }).unwrap();
@@ -57,10 +76,31 @@ impl SataController {
                 }
             }
         }
-        for p in vec {
-            println!("{:#X?}", p.get());
-        }
-        println!("bar 5: {:#X?}", self.pci.bar5);
+        let access_ports = vec
+            .into_iter()
+            .map(|mut port| {
+                let mut cmdlist: Box<CmdList> = unsafe { Box::new(core::mem::zeroed()) };
+                let mut cmdtbl: Box<AccessCmdTbl> = unsafe { Box::new(core::mem::zeroed()) };
+                let received_fis: Box<ReceivedFIS> = unsafe { Box::new(core::mem::zeroed()) };
+                unsafe {
+                    core::ptr::write_volatile(
+                        &mut ((*port.inner).clb) as *mut _,
+                        get_physical_addr(Virt(cmdtbl.as_mut() as *mut _ as usize)).unwrap().0 as u32,
+                    );
+                }
+                port.set_precise(
+                    8,
+                    get_physical_addr(Virt(received_fis.as_ref() as *const _ as usize)).unwrap().0 as u32,
+                );
+                for cmdheader in &mut cmdlist.as_mut().0 {
+                    println!("{:?}", cmdheader);
+                }
+
+                println!("{:#X?}", port.get());
+                AccessPort { cmdlist, cmdtbl, port, received_fis }
+            })
+            .collect();
+        Some(Self { pci, location, access_ports })
     }
 }
 
@@ -152,12 +192,16 @@ impl CmdHeaderFlags {
     fn get_command_fis_length(&self) -> usize {
         self.0.get_bits(0..5) as usize
     }
+    fn set_command_fis_length(&mut self, l: usize) {
+        self.0.set_bits(0..5, l as u16);
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 struct CmdHeader {
-    flags: CmdHeaderFlags,
     // DW0
+    flags: CmdHeaderFlags,
     prdtl: u16, // Physical region descriptor table length in entries
 
     // DW1
@@ -172,8 +216,11 @@ struct CmdHeader {
     rsv1: [u32; 4], // Reserved
 }
 
-const NBR_PRDT_ENTRIES: usize = 64;
+const NBR_PRDT_ENTRIES: usize = 56;
 
+#[derive(Copy, Clone)]
+#[repr(C)]
+#[repr(align(65536))]
 struct CmdTbl {
     // 0x00
     cfis: [u8; 64], // Command FIS
@@ -207,10 +254,203 @@ impl PrdtFlags {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 struct PrdtEntry {
     dba: u32,  // Data base address
     dbau: u32, // Data base address upper 32 bits
     rsv0: u32, // Reserved
 
     flags: PrdtFlags,
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
+struct FisRegH2DFlags(u8);
+
+impl FisRegH2DFlags {
+    // u8  pmport:4;	// Port multiplier
+    // u8  rsv0:3;		// Reserved
+    // u8  c:1;		// 1: Command, 0: Control
+
+    /// command fis lenght in DWORD
+    fn get_command(&self) -> bool {
+        self.0.get_bit(7)
+    }
+    fn set_command(&mut self, command: bool) {
+        self.0.set_bit(7, command);
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+struct FisRegH2D {
+    // DWORD 0
+    fis_type: u8, // FIS_TYPE_REG_H2D
+    flags: FisRegH2DFlags,
+
+    command: u8,  // Command register
+    featurel: u8, // Feature register, 7:0
+
+    // DWORD 1
+    lba0: u8,   // LBA low register, 7:0
+    lba1: u8,   // LBA mid register, 15:8
+    lba2: u8,   // LBA high register, 23:16
+    device: u8, // Device register
+
+    // DWORD 2
+    lba3: u8,     // LBA register, 31:24
+    lba4: u8,     // LBA register, 39:32
+    lba5: u8,     // LBA register, 47:40
+    featureh: u8, // Feature register, 15:8
+
+    // DWORD 3
+    countl: u8,  // Count register, 7:0
+    counth: u8,  // Count register, 15:8
+    icc: u8,     // Isochronous command completion
+    control: u8, // Control register
+
+    // DWORD 4
+    rsv1: [u8; 4], // Reserved
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(align(256))]
+#[repr(C)]
+struct ReceivedFIS {
+    // 0x00
+    dsfis: FisDmaSetup, // DMA Setup FIS
+    pad0: [u8; 4],
+
+    // 0x20
+    psfis: FisPioSetup, // PIO Setup FIS
+    pad1: [u8; 12],
+
+    // 0x40
+    rfis: FisRegD2H, // Register – Device to Host FIS
+    pad2: [u8; 4],
+
+    // 0x58
+    // sdbfis: FisDevBits, // Set Device Bit FIS
+    fis_dev_bits: u8,
+    fis_dev_bits_2: u8,
+
+    // 0x60
+    ufis: Ufis,
+
+    // 0xA0
+    rsv: Rsv,
+}
+
+define_raw_data!(Ufis, 64);
+define_raw_data!(Rsv, 0x100 - 0xA0);
+
+#[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
+struct FisDmaSetupFlag(u8);
+
+impl FisDmaSetupFlag {
+    // u8  pmport:4;	// Port multiplier
+    // u8  rsv0:1;		// Reserved
+    // u8  d:1;		// Data transfer direction, 1 - device to host
+    // u8  i:1;		// Interrupt bit
+    // u8  a:1;            // Auto-activate. Specifies if DMA Activate FIS is needed
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+struct FisDmaSetup {
+    // DWORD 0
+    fis_type: u8, // FIS_TYPE_DMA_SETUP
+
+    flag: FisDmaSetupFlag,
+
+    rsved: [u8; 2], // Reserved
+
+    //DWORD 1&2
+    DMAbufferID: u64, // DMA Buffer Identifier. Used to Identify DMA buffer in host memory. SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
+
+    //DWORD 3
+    rsvd: u32, //More reserved
+
+    //DWORD 4
+    DMAbufOffset: u32, //Byte offset into buffer. First 2 bits must be 0
+
+    //DWORD 5
+    TransferCount: u32, //Number of bytes to transfer. Bit 0 must be 0
+
+    //DWORD 6
+    resvd: u32, //Reserved
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+struct FisPioSetup {
+    // DWORD 0
+    fis_type: u8, // FIS_TYPE_PIO_SETUP
+
+    flags: u8,
+    // u8  pmport:4;	// Port multiplier
+    // u8  rsv0:1;		// Reserved
+    // u8  d:1;		// Data transfer direction, 1 - device to host
+    // u8  i:1;		// Interrupt bit
+    // u8  rsv1:1;
+    status: u8, // Status register
+    error: u8,  // Error register
+
+    // DWORD 1
+    lba0: u8,   // LBA low register, 7:0
+    lba1: u8,   // LBA mid register, 15:8
+    lba2: u8,   // LBA high register, 23:16
+    device: u8, // Device register
+
+    // DWORD 2
+    lba3: u8, // LBA register, 31:24
+    lba4: u8, // LBA register, 39:32
+    lba5: u8, // LBA register, 47:40
+    rsv2: u8, // Reserved
+
+    // DWORD 3
+    countl: u8,   // Count register, 7:0
+    counth: u8,   // Count register, 15:8
+    rsv3: u8,     // Reserved
+    e_status: u8, // New value of status register
+
+    // DWORD 4
+    tc: u16,       // Transfer count
+    rsv4: [u8; 2], // Reserved
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+struct FisRegD2H {
+    // DWORD 0
+    fis_type: u8, // FIS_TYPE_REG_D2H
+
+    flags: u8,
+    // u8  pmport:4;    // Port multiplier
+    // u8  rsv0:2;      // Reserved
+    // u8  i:1;         // Interrupt bit
+    // u8  rsv1:1;      // Reserved
+    status: u8, // Status register
+    error: u8,  // Error register
+
+    // DWORD 1
+    lba0: u8,   // LBA low register, 7:0
+    lba1: u8,   // LBA mid register, 15:8
+    lba2: u8,   // LBA high register, 23:16
+    device: u8, // Device register
+
+    // DWORD 2
+    lba3: u8, // LBA register, 31:24
+    lba4: u8, // LBA register, 39:32
+    lba5: u8, // LBA register, 47:40
+    rsv2: u8, // Reserved
+
+    // DWORD 3
+    countl: u8,    // Count register, 7:0
+    counth: u8,    // Count register, 15:8
+    rsv3: [u8; 2], // Reserved
+
+    // DWORD 4
+    rsv4: [u8; 4], // Reserved
 }

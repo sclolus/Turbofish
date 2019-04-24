@@ -52,7 +52,7 @@ copy: $(IMG_DISK)
 	dd if=$(IMG_DISK) of=/dev/sdb bs=1024 count=$(IMAGE_SIZE)
 	sync
 
-RAM_AMOUNT=128
+RAM_AMOUNT=512
 
 exec:
 	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -hda $(IMG_DISK) -enable-kvm -cpu IvyBridge
