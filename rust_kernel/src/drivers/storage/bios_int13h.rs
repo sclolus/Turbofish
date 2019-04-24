@@ -83,13 +83,13 @@ struct Dap {
     sector: u64,
 }
 
-impl BiosInt13h {
-    const N_SECTOR: usize = 128; // Max sector capacity in one buffer chunk
-    const DAP_LOCATION: usize = 0x80000; // Correspond to real addr 0x8000:0000
-    const CHUNK_SIZE: usize = SECTOR_SIZE * Self::N_SECTOR; // Correspond to 64ko
-    const REAL_BUFFER_LOCATION: u32 = 0x90000000; // expressed as segment/offset, correspond to 0x90000 in 32bits
-    const BUFFER_LOCATION: u32 = 0x90000;
+const N_SECTOR: usize = 128; // Max sector capacity in one buffer chunk
+const DAP_LOCATION: usize = 0x80000; // Correspond to real addr 0x8000:0000
+const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 64ko
+const REAL_BUFFER_LOCATION: u32 = 0x90000000; // expressed as segment/offset, correspond to 0x90000 in 32bits
+const BUFFER_LOCATION: u32 = 0x90000;
 
+impl BiosInt13h {
     /// Public invocation of a new BiosInt13h instance
     pub fn new(boot_device: u8) -> DiskResult<Self> {
         // Check if BIOS extension of int 13h is present
@@ -116,7 +116,7 @@ impl BiosInt13h {
 
         // Get device characteristics
         let mut reg: BaseRegisters = BaseRegisters { ..Default::default() };
-        let mut p: *mut DriveParameters = Self::DAP_LOCATION as *mut _;
+        let mut p: *mut DriveParameters = DAP_LOCATION as *mut _;
         unsafe {
             (*p).result_size = 0x1E;
         }
@@ -149,17 +149,12 @@ impl BiosInt13h {
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
 
-        for (i, chunk) in s.chunks_mut(Self::CHUNK_SIZE).enumerate() {
+        for (i, chunk) in s.chunks_mut(CHUNK_SIZE).enumerate() {
             let sectors_to_read: NbrSectors = chunk.len().into();
 
             // Initalize a new DAP packet
-            let mut dap: *mut Dap = Self::DAP_LOCATION as *mut _;
             unsafe {
-                (*dap).size_of_dap = 0x10;
-                (*dap).unused = 0;
-                (*dap).nb_sectors = sectors_to_read.0 as u16;
-                (*dap).memory = Self::REAL_BUFFER_LOCATION;
-                (*dap).sector = start_sector.0 + (i * Self::N_SECTOR) as u64;
+                create_dap(Sector(start_sector.0 + (i * N_SECTOR) as u64), sectors_to_read, DAP_LOCATION);
             }
 
             // Command a read from disk to DAP buffer
@@ -179,7 +174,7 @@ impl BiosInt13h {
             }
 
             // Copy DAP buffer into buf
-            let p: *mut u8 = Self::BUFFER_LOCATION as *mut u8;
+            let p: *mut u8 = BUFFER_LOCATION as *mut u8;
             for (i, elem) in chunk.iter_mut().enumerate() {
                 *elem = unsafe { *(p.add(i)) };
             }
@@ -193,21 +188,16 @@ impl BiosInt13h {
 
         let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
 
-        for (i, chunk) in s.chunks(Self::CHUNK_SIZE).enumerate() {
+        for (i, chunk) in s.chunks(CHUNK_SIZE).enumerate() {
             let sectors_to_write: NbrSectors = chunk.len().into();
 
             // Initalize a new DAP packet
-            let mut dap: *mut Dap = Self::DAP_LOCATION as *mut _;
             unsafe {
-                (*dap).size_of_dap = 0x10;
-                (*dap).unused = 0;
-                (*dap).nb_sectors = sectors_to_write.0 as u16;
-                (*dap).memory = Self::REAL_BUFFER_LOCATION;
-                (*dap).sector = start_sector.0 + (i * Self::N_SECTOR) as u64;
+                create_dap(Sector(start_sector.0 + (i * N_SECTOR) as u64), sectors_to_write, DAP_LOCATION);
             }
 
             // Copy 'sectors_to_write' datas from 'buf' to DAP buffer
-            let p: *mut u8 = Self::BUFFER_LOCATION as *mut u8;
+            let p: *mut u8 = BUFFER_LOCATION as *mut u8;
             for (i, elem) in chunk.iter().enumerate() {
                 unsafe {
                     *(p.add(i)) = *elem;
@@ -248,4 +238,15 @@ fn check_bounds(start_sector: Sector, nbr_sectors: NbrSectors, drive_capacity: N
     } else {
         Ok(())
     }
+}
+
+/// Create a new DAP structure for write and read transactions
+unsafe fn create_dap(start_sector: Sector, nb_sectors: NbrSectors, addr: usize) {
+    let mut dap: *mut Dap = addr as *mut _;
+
+    (*dap).size_of_dap = 0x10;
+    (*dap).unused = 0;
+    (*dap).nb_sectors = nb_sectors.0 as u16;
+    (*dap).memory = REAL_BUFFER_LOCATION;
+    (*dap).sector = start_sector.0;
 }
