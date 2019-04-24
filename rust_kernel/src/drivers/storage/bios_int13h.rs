@@ -1,4 +1,5 @@
-//! this module provide dummy low level bios IO operations. See https://en.wikipedia.org/wiki/INT_13H
+//! this module provide dummy low level bios IO operations.
+//! See https://en.wikipedia.org/wiki/INT_13H
 
 use super::SECTOR_SIZE;
 use super::{DiskError, DiskResult};
@@ -12,6 +13,7 @@ use bitflags::bitflags;
 
 use core::slice;
 
+/// This module call 16 bits payloads which contain interrupt 13h calls
 extern "C" {
     static payload_13h_check_extension_present: extern "C" fn();
     static payload_13h_check_extension_present_len: usize;
@@ -38,7 +40,7 @@ pub struct BiosInt13h {
     version: u16,
 }
 
-// Check extension result boilerplate
+// Check extension result
 bitflags! {
     struct InterfaceSupport: u16 {
         const DAP = 1 << 0;              // Device Access using the packet structure
@@ -49,49 +51,69 @@ bitflags! {
 
 /// Packet sended and returned with payload_13h_extended_read_drive_parameters
 #[derive(Debug, Copy, Clone)]
-#[repr(packed)] // Representation packed is mandatory for this kind of structure
+#[repr(packed)] // ! Representation packed is mandatory for this kind of structure !
 struct DriveParameters {
-    /// size of Result Buffer (set this to 1Eh)
+    /// Size of Result Buffer (set this to 1Eh)
     result_size: u16,
-    /// information flags
+    /// Information flags
     info_flag: u16,
-    /// physical number of cylinders = last index + 1 (because index starts with 0)
+    /// Physical number of cylinders = last index + 1 (because index starts with 0)
     cylinders: u32,
-    /// physical number of heads = last index + 1 (because index starts with 0)
+    /// Physical number of heads = last index + 1 (because index starts with 0)
     heads: u32,
-    /// physical number of sectors per track = last index (because index starts with 1)
+    /// Physical number of sectors per track = last index (because index starts with 1)
     sectors: u32,
-    /// absolute number of sectors = last index + 1 (because index starts with 0)
+    /// Absolute number of sectors = last index + 1 (because index starts with 0)
     nb_sector: u64,
-    /// bytes per sector
+    /// Bytes per sector
     bytes_per_sector: u16,
-    /// optional pointer to Enhanced Disk Drive (EDD) configuration parameters which may be used for subsequent interrupt 13h Extension calls (if supported)
+    /// Optional pointer to Enhanced Disk Drive (EDD) configuration parameters which may be used for subsequent interrupt 13h Extension calls (if supported)
     option_ptr: u32,
 }
 
 /// Packed structure used by real and write operations
 #[derive(Debug, Copy, Clone)]
-#[repr(packed)] // Representation packed is mandatory for this kind of structure
+#[repr(packed)] // ! Representation packed is mandatory for this kind of structure !
 struct Dap {
-    /// size of DAP (set this to 10h)
+    /// Size of DAP (set this to 10h)
     size_of_dap: u8,
-    /// unused, should be zero
+    /// Unused, should be zero
     unused: u8,
-    /// number of sectors to be read, (some Phoenix BIOSes are limited to a maximum of 127 sectors)
+    /// Number of sectors to be read, (some Phoenix BIOSes are limited to a maximum of 127 sectors)
     nb_sectors: u16,
-    /// segment:offset pointer to the memory buffer to which sectors will be transferred
+    /// Segment:offset pointer to the memory buffer to which sectors will be transferred
     memory: u32,
-    /// absolute number of the start of the sectors to be read (1st sector of drive has number 0) using logical block addressing.
+    /// Absolute number of the start of the sectors to be read (1st sector of drive has number 0) using logical block addressing.
     sector: u64,
 }
 
-const DAP_LOCATION: usize = 0x80000; // Correspond to real addr 0x8000:0000
+/// Location of the DAP
+const DAP_LOCATION: usize = 0x80000; // Corresponds to real addr 0x8000:0000
 
-/// this part define the buffer
+// Physical description of region 0x8000:0000 (0x80000)
+// 0x80000 +--- DAP ---+  ^
+//         |     ^     |  | 16ko for DAP & STACK
+//         |     |     |  |
+//         |   STACK   |  v
+// 0x84000 |BBBBBBBBBBB|  ^
+//         |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+// 0x88000 |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  | 48ko for buffer
+//         |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+// 0x8C000 |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+//         |BBBBBBBBBBB|  |
+// 0x90000 +--BUF(end)-+  v
+
+/// This part define the buffer
 const N_SECTOR: usize = 96; // Max sector capacity in one buffer chunk
-const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Correspond to 48ko buffer
-const REAL_BUFFER_LOCATION: u32 = 0x80004000; // expressed as segment/offset, correspond to 0x84000 in 32bits
-const BUFFER_LOCATION: u32 = 0x84000; // the buffer will be between 0x8000:4000 and 0x9000:0000
+const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Corresponds to 48ko buffer
+const REAL_BUFFER_LOCATION: u32 = 0x80004000; // Expressed as segment/offset, corresponds to 0x84000 in 32bits
+const BUFFER_LOCATION: u32 = 0x84000; // The buffer will be between 0x8000:4000 and 0x9000:0000
 
 impl BiosInt13h {
     /// Public invocation of a new BiosInt13h instance
@@ -139,12 +161,12 @@ impl BiosInt13h {
 
         let (nb_sector, sector_size) = unsafe { (NbrSectors((*p).nb_sector), (*p).bytes_per_sector) };
 
-        // Sector size != 512 is very difficult to manage in our kernel
+        // Sector size != 512 is very difficult to manage in our kernel, skip out !
         if sector_size != SECTOR_SIZE as u16 {
             return Err(DiskError::NotSupported);
         }
 
-        // Return the main constructor
+        // Returns the main constructor
         Ok(Self { boot_device, interface_support, nb_sector, sector_size, version })
     }
 
@@ -201,7 +223,7 @@ impl BiosInt13h {
                 create_dap(Sector(start_sector.0 + (i * N_SECTOR) as u64), sectors_to_write, DAP_LOCATION);
             }
 
-            // Copy 'sectors_to_write' datas from 'buf' to DAP buffer
+            // Copy 'sectors_to_write' data from 'buf' to DAP buffer
             let p: *mut u8 = BUFFER_LOCATION as *mut u8;
             for (i, elem) in chunk.iter().enumerate() {
                 unsafe {
@@ -237,7 +259,7 @@ fn check_bounds(start_sector: Sector, nbr_sectors: NbrSectors, drive_capacity: N
     // Be careful with logical overflow
     } else if start_sector.0 as u64 > u64::max_value() as u64 - nbr_sectors.0 as u64 {
         Err(DiskError::OutOfBound)
-    // raide disk capacity
+    // Raise disk capacity
     } else if start_sector.0 + nbr_sectors.0 as u64 > drive_capacity.0 {
         Err(DiskError::OutOfBound)
     } else {
