@@ -3,13 +3,13 @@ use super::*;
 /// FFI safe function: Allocate Kernel physical Memory
 /// kmalloc like a boss
 #[no_mangle]
-pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
+pub unsafe extern "C" fn kmalloc(size: usize, flags: AllocFlags) -> *mut u8 {
     match Layout::from_size_align(size, 16) {
         Err(_) => 0 as *mut u8,
         Ok(layout) => match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
             KernelAllocator::Kernel(a) => {
-                if layout.size() <= PAGE_SIZE {
+                if layout.size() <= PAGE_SIZE && (flags & !AllocFlags::KERNEL_MEMORY).is_empty() {
                     a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
                 } else {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR

@@ -85,6 +85,16 @@ pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
     unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(addr) }
 }
 
+pub fn kmalloc<T>(flags: AllocFlags) -> *mut T {
+    unsafe { ffi::kmalloc(size_of::<T>(), flags) as *mut T }
+}
+
+pub fn kfree<T>(t: *mut T) {
+    unsafe {
+        ffi::kfree(t as *mut u8);
+    }
+}
+
 /// return true if the allocator is in kernel mode and not in bootstrap mode anymore
 pub fn in_kernel_mode() -> bool {
     unsafe {

@@ -91,6 +91,20 @@ impl From<usize> for Virt {
     }
 }
 
+impl<T> From<*mut T> for Virt {
+    #[inline(always)]
+    fn from(addr: *mut T) -> Self {
+        Self(addr as usize)
+    }
+}
+
+impl<T> From<*const T> for Virt {
+    #[inline(always)]
+    fn from(addr: *const T) -> Self {
+        Self(addr as usize)
+    }
+}
+
 impl From<Page<Virt>> for Virt {
     #[inline(always)]
     fn from(page: Page<Virt>) -> Self {

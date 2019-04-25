@@ -86,14 +86,14 @@ impl SataController {
                 unsafe {
                     core::ptr::write_volatile(
                         &mut ((*port.inner).clb) as *mut _,
-                        get_physical_addr(Virt(cmdtbl.as_mut() as *mut _ as usize)).unwrap().0 as u32,
+                        get_physical_addr(cmdtbl.ptr().into()).unwrap().0 as u32,
+                    );
+                    core::ptr::write_volatile(
+                        &mut ((*port.inner).fb) as *mut _,
+                        get_physical_addr(received_fis.ptr().into()).unwrap().0 as u32,
                     );
                 }
-                port.set_precise(
-                    8,
-                    get_physical_addr(Virt(received_fis.as_ref() as *const _ as usize)).unwrap().0 as u32,
-                );
-
+                println!("before");
                 for cmdheader in &mut cmdlist.as_mut().0 {
                     println!("{:?}", cmdheader);
                 }
@@ -222,7 +222,7 @@ const NBR_PRDT_ENTRIES: usize = 56;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-#[repr(align(65536))]
+// #[repr(align(65536))]
 struct CmdTbl {
     // 0x00
     cfis: [u8; 64], // Command FIS

@@ -91,34 +91,38 @@ impl<T: Copy> Drop for MemoryMapped<T> {
     }
 }
 
-use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::allocator::kernel::{kfree, kmalloc};
 use crate::memory::tools::*;
-use core::mem::size_of;
+use core::borrow::{Borrow, BorrowMut};
 
+/// Basicly a Box in which one's can customize the allocation with AllocFlags
 pub struct CustomBox<T> {
+    /// the alloced ptr
     ptr: *mut T,
+    /// remember the flags for clone
     flags: AllocFlags,
 }
 
 impl<T> CustomBox<T> {
     pub fn new(t: T, flags: AllocFlags) -> Self {
-        unsafe {
-            let ptr = KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .alloc(size_of::<T>().into(), flags)
-                .unwrap()
-                .to_addr()
-                .0 as *mut T;
-            ptr.write(t);
-            Self { ptr, flags }
-        }
+        dbg!(core::mem::size_of::<T>());
+        dbg!(core::mem::align_of::<T>());
+        let ptr: *mut T = kmalloc(flags);
+        eprintln!("{:?}", ptr);
+        unsafe { ptr.write(t) };
+        Self { ptr, flags }
+    }
+    pub fn mut_ptr(&mut self) -> *mut T {
+        self.as_mut() as *mut T
+    }
+    pub fn ptr(&self) -> *const T {
+        self.as_ref() as *const T
     }
 }
 
 impl<T> Drop for CustomBox<T> {
     fn drop(&mut self) {
-        unsafe { drop(KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Virt(self.ptr as usize).into())) }
+        kfree(self.ptr)
     }
 }
 
@@ -139,8 +143,6 @@ impl<T> AsMut<T> for CustomBox<T> {
         unsafe { &mut *self.ptr }
     }
 }
-
-use core::borrow::{Borrow, BorrowMut};
 
 impl<T> Borrow<T> for CustomBox<T> {
     fn borrow(&self) -> &T {
