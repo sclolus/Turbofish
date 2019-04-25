@@ -10,6 +10,7 @@ use crate::system::BaseRegisters;
 
 use bit_field::BitField;
 use bitflags::bitflags;
+use const_assert::const_assert;
 
 use core::slice;
 
@@ -109,10 +110,17 @@ const DAP_LOCATION: usize = 0x80000; // Corresponds to real addr 0x8000:0000
 //         |BBBBBBBBBBB|  |
 // 0x90000 +--BUF(end)-+  v
 
+macro_rules! convert_to_real_address {
+    ($expr:expr) => {{
+        const_assert!($expr < 0x100_000);
+        $expr << 12
+    }};
+}
+
 /// This part define the buffer
 const N_SECTOR: usize = 96; // Max sector capacity in one buffer chunk
 const CHUNK_SIZE: usize = SECTOR_SIZE * N_SECTOR; // Corresponds to 48ko buffer
-const REAL_BUFFER_LOCATION: u32 = 0x80004000; // Expressed as segment/offset, corresponds to 0x84000 in 32bits
+const REAL_BUFFER_LOCATION: u32 = convert_to_real_address!(BUFFER_LOCATION);
 const BUFFER_LOCATION: u32 = 0x84000; // The buffer will be between 0x8000:4000 and 0x9000:0000
 
 impl BiosInt13h {
