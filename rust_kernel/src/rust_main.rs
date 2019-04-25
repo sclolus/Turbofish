@@ -98,7 +98,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     syscall::init();
 
     match SataController::init() {
-        Some(sata_controller) => {
+        Some(_sata_controller) => {
             // println!("{:#X?}", sata_controller);
         }
         None => {}

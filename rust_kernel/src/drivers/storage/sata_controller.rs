@@ -3,10 +3,8 @@
 use super::{MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::drivers::storage::tools::*;
-use crate::memory::kmalloc;
 use crate::memory::{get_physical_addr, tools::*};
 
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bit_field::BitField;
 
@@ -23,10 +21,10 @@ struct CmdList([CmdHeader; 32]);
 
 #[repr(C)]
 struct AccessPort {
-    cmdlist: Box<CmdList>,
-    cmdtbl: Box<AccessCmdTbl>,
+    cmdlist: CustomBox<CmdList>,
+    cmdtbl: CustomBox<AccessCmdTbl>,
     port: MemoryMapped<HbaPort>,
-    received_fis: Box<ReceivedFIS>,
+    received_fis: CustomBox<ReceivedFIS>,
 }
 
 pub struct SataController {
@@ -79,9 +77,12 @@ impl SataController {
         let access_ports = vec
             .into_iter()
             .map(|mut port| {
-                let mut cmdlist: Box<CmdList> = unsafe { Box::new(core::mem::zeroed()) };
-                let mut cmdtbl: Box<AccessCmdTbl> = unsafe { Box::new(core::mem::zeroed()) };
-                let received_fis: Box<ReceivedFIS> = unsafe { Box::new(core::mem::zeroed()) };
+                let mut cmdlist: CustomBox<CmdList> =
+                    CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
+                let mut cmdtbl: CustomBox<AccessCmdTbl> =
+                    CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
+                let received_fis: CustomBox<ReceivedFIS> =
+                    CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
                 unsafe {
                     core::ptr::write_volatile(
                         &mut ((*port.inner).clb) as *mut _,
@@ -92,6 +93,7 @@ impl SataController {
                     8,
                     get_physical_addr(Virt(received_fis.as_ref() as *const _ as usize)).unwrap().0 as u32,
                 );
+
                 for cmdheader in &mut cmdlist.as_mut().0 {
                     println!("{:?}", cmdheader);
                 }
@@ -367,16 +369,16 @@ struct FisDmaSetup {
     rsved: [u8; 2], // Reserved
 
     //DWORD 1&2
-    DMAbufferID: u64, // DMA Buffer Identifier. Used to Identify DMA buffer in host memory. SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
+    dm_abuffer_id: u64, // DMA Buffer Identifier. Used to Identify DMA buffer in host memory. SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
 
     //DWORD 3
     rsvd: u32, //More reserved
 
     //DWORD 4
-    DMAbufOffset: u32, //Byte offset into buffer. First 2 bits must be 0
+    dm_abuf_offset: u32, //Byte offset into buffer. First 2 bits must be 0
 
     //DWORD 5
-    TransferCount: u32, //Number of bytes to transfer. Bit 0 must be 0
+    transfer_count: u32, //Number of bytes to transfer. Bit 0 must be 0
 
     //DWORD 6
     resvd: u32, //Reserved

@@ -39,7 +39,6 @@ impl Add<NbrSectors> for Sector {
 }
 
 use crate::memory::mmu::Entry;
-use crate::memory::tools::*;
 use crate::memory::{mmap, munmap};
 use core::fmt;
 use core::fmt::Debug;
@@ -89,5 +88,68 @@ impl<T: Copy> Drop for MemoryMapped<T> {
         unsafe {
             munmap(self.inner).unwrap();
         }
+    }
+}
+
+use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::tools::*;
+use core::mem::size_of;
+
+pub struct CustomBox<T> {
+    ptr: *mut T,
+    flags: AllocFlags,
+}
+
+impl<T> CustomBox<T> {
+    pub fn new(t: T, flags: AllocFlags) -> Self {
+        unsafe {
+            let ptr = KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .alloc(size_of::<T>().into(), flags)
+                .unwrap()
+                .to_addr()
+                .0 as *mut T;
+            ptr.write(t);
+            Self { ptr, flags }
+        }
+    }
+}
+
+impl<T> Drop for CustomBox<T> {
+    fn drop(&mut self) {
+        unsafe { drop(KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Virt(self.ptr as usize).into())) }
+    }
+}
+
+impl<T: Clone> Clone for CustomBox<T> {
+    fn clone(&self) -> Self {
+        unsafe { Self::new((*self.ptr).clone(), self.flags) }
+    }
+}
+
+impl<T> AsRef<T> for CustomBox<T> {
+    fn as_ref(&self) -> &T {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl<T> AsMut<T> for CustomBox<T> {
+    fn as_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.ptr }
+    }
+}
+
+use core::borrow::{Borrow, BorrowMut};
+
+impl<T> Borrow<T> for CustomBox<T> {
+    fn borrow(&self) -> &T {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl<T> BorrowMut<T> for CustomBox<T> {
+    fn borrow_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.ptr }
     }
 }
