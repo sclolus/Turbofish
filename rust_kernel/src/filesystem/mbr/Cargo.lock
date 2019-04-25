@@ -3,4 +3,11 @@
 [[package]]
 name = "mbr"
 version = "0.1.0"
+dependencies = [
+ "raw_data 0.1.0",
+]
+
+[[package]]
+name = "raw_data"
+version = "0.1.0"
 

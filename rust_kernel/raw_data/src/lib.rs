@@ -1,9 +1,11 @@
+#![no_std]
 /// implement debug for tuple struct slice
+#[macro_export(local_inner_macros)]
 macro_rules! impl_raw_data {
     ($e:ty, $size_in_bytes:expr) => {
         impl core::fmt::Debug for $e {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                write!(f, "raw data at address {:?}: {} bytes reserved", &self.0 as *const u8, self.0.len())
+                core::write!(f, "raw data at address {:?}: {} bytes reserved", &self.0 as *const u8, self.0.len())
             }
         }
         impl core::cmp::PartialEq for $e {
@@ -24,11 +26,10 @@ macro_rules! impl_raw_data {
 #[macro_export]
 macro_rules! define_raw_data {
     ($name:ident, $size_in_bytes:expr) => {
-        /// Low level u8 structure
         #[derive(Copy, Clone)]
         #[repr(C)]
         #[repr(packed)]
         pub struct $name(pub [u8; $size_in_bytes]);
-        impl_raw_data!($name, $size_in_bytes);
+        $crate::impl_raw_data!($name, $size_in_bytes);
     };
 }

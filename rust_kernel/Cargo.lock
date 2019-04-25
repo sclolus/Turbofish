@@ -53,6 +53,13 @@ dependencies = [
 [[package]]
 name = "mbr"
 version = "0.1.0"
+dependencies = [
+ "raw_data 0.1.0",
+]
+
+[[package]]
+name = "raw_data"
+version = "0.1.0"
 
 [[package]]
 name = "scopeguard"
@@ -76,6 +83,7 @@ dependencies = [
  "lock_api 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbr 0.1.0",
+ "raw_data 0.1.0",
 ]
 
 [metadata]

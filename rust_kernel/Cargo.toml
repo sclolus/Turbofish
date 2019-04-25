@@ -24,6 +24,7 @@ lock_api = "0.1.5"
 io = { path = "src/io" }
 keyboard = { path = "src/drivers/keyboard" }
 mbr = { path = "src/filesystem/mbr" }
+raw_data = { path = "raw_data" }
 
 [dependencies.lazy_static]
 version = "1.3.0"

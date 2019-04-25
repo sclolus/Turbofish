@@ -5,6 +5,7 @@ use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{Phys, Virt};
 use crate::registers::real_mode_op;
 use crate::system::BaseRegisters;
+use raw_data::define_raw_data;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 

@@ -9,3 +9,4 @@ documentation = "cargo doc --open"
 homepage = "index.html"
 
 [dependencies]
+raw_data = { path = "../../../raw_data" }

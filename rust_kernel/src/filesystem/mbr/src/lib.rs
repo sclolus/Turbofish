@@ -1,11 +1,8 @@
 //! This crate provide methods to read Master Boot record
 #![cfg_attr(not(test), no_std)]
-#![deny(missing_docs)]
-
-#[macro_use]
-mod raw_data;
 
 use core::mem;
+use raw_data::define_raw_data;
 
 /// Main crate structure
 #[derive(Debug, Copy, Clone)]
@@ -97,7 +94,7 @@ impl Mbr {
         let mut parts: [Partition; 4] = core::mem::uninitialized();
         for (i, elem) in parts.iter_mut().enumerate() {
             *elem = Partition {
-                part_type: get_part_type(physical_mbr.partitions[i].partition_type),
+                part_type: PartitionType::from(physical_mbr.partitions[i].partition_type),
                 start: physical_mbr.partitions[i].lba_start,
                 size: physical_mbr.partitions[i].nb_sector,
             };
@@ -106,13 +103,15 @@ impl Mbr {
     }
 }
 
-fn get_part_type(part_number: u8) -> PartitionType {
-    use PartitionType::*;
-    match part_number {
-        0x83 => LinuxExtendedPartition,
-        0x01 => Dos12bitsFat,
-        0x00 => Empty,
-        _ => Unknown,
+impl From<u8> for PartitionType {
+    fn from(part_number: u8) -> PartitionType {
+        use PartitionType::*;
+        match part_number {
+            0x83 => LinuxExtendedPartition,
+            0x01 => Dos12bitsFat,
+            0x00 => Empty,
+            _ => Unknown,
+        }
     }
 }
 
