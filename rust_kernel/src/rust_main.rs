@@ -140,6 +140,22 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let b = BiosInt13h::new((multiboot_info.boot_device >> 24) as u8);
     dbg_hex!(b.unwrap());
 
+    use alloc::vec;
+    use alloc::vec::Vec;
+    use mbr::Mbr;
+
+    let size_read = NbrSectors(1);
+    let mut v1: Vec<u8> = vec![0; size_read.into()];
+    b.unwrap().read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+
+    let mut a = [0; 512];
+    for (i, elem) in a.iter_mut().enumerate() {
+        *elem = v1[i];
+    }
+    unsafe {
+        dbg!(Mbr::new(&a));
+    }
+
     shell();
     0
 }
