@@ -454,45 +454,44 @@ impl File {
     }
 }
 
-struct ReaderDisk {
-    f: StdFile,
-    buf: [u8; 4096],
-}
+/// This newtype handle a pure IO object
+/// Must implements 'read', 'write', 'seek', 'flush' and 'try_clone'
+struct ReaderDisk(StdFile);
 
 impl ReaderDisk {
-    pub fn disk_read_struct<T: Copy>(&mut self, offset: u32) -> T {
-        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
-        self.f.read(&mut self.buf[0..core::mem::size_of::<T>()]).unwrap();
-        unsafe { core::mem::transmute_copy(&self.buf) }
-    }
-
-    pub fn disk_write_struct<T: Copy>(&mut self, offset: u32, t: &T) {
-        self.f.seek(SeekFrom::Start(dbg!(offset) as u64 + START_OF_PARTITION)).unwrap();
-        let s = unsafe { core::slice::from_raw_parts(t as *const _ as *const u8, size_of::<T>()) };
-        self.f.write(s).expect("WRITE FAILED");
-        self.f.flush().expect("flush failed");
-    }
-
-    #[allow(dead_code)]
-    pub fn disk_read_exact(&mut self, offset: u32, length: u32) -> *const u8 {
-        assert!((length as usize) < self.buf.len());
-        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
-        self.f.read(&mut self.buf[0..length as usize]).unwrap();
-        &self.buf as *const u8
-    }
-
+    /// Raw read. Fill the buf with readen data on file object
     pub fn disk_read_buffer(&mut self, offset: u32, buf: &mut [u8]) -> usize {
-        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
-        self.f.read(buf).unwrap()
+        self.0.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
+        self.0.read(buf).unwrap()
     }
 
+    /// Raw write. Write the buf inside file object
     pub fn disk_write_buffer(&mut self, offset: u32, buf: &[u8]) -> usize {
-        self.f.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
-        self.f.write(buf).unwrap()
+        self.0.seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION)).unwrap();
+        let ret = self.0.write(buf).unwrap();
+        self.0.flush().expect("flush failed");
+        ret
     }
 
+    /// Read a particulary struct in file object
+    pub fn disk_read_struct<T: Copy>(&mut self, offset: u32) -> T {
+        let t: T;
+        unsafe {
+            t = core::mem::uninitialized();
+            self.disk_read_buffer(offset, core::slice::from_raw_parts_mut(&t as *const T as *mut u8, size_of::<T>()));
+        }
+        t
+    }
+
+    /// Write a particulary struct inside file object
+    pub fn disk_write_struct<T: Copy>(&mut self, offset: u32, t: &T) {
+        let s = unsafe { core::slice::from_raw_parts(t as *const _ as *const u8, size_of::<T>()) };
+        self.disk_write_buffer(offset, s);
+    }
+
+    /// Try to clone xD
     pub fn try_clone(&self) -> std::io::Result<Self> {
-        Ok(Self { f: self.f.try_clone()?, ..*self })
+        Ok(Self(self.0.try_clone()?))
     }
 }
 
@@ -515,24 +514,19 @@ const START_OF_PARTITION: u64 = 2048 * 512;
 
 impl Ext2Filesystem {
     pub fn new(f: StdFile) -> Self {
-        let buf = [0; 4096];
-
-        let mut reader_disk = ReaderDisk { f, buf };
+        let mut reader_disk = ReaderDisk(f);
         let superblock: SuperBlock = reader_disk.disk_read_struct(1024);
 
-        // println!("{:#?}", superblock);
-
-        unsafe {
-            assert_eq!(superblock.ext2_signature, EXT2_SIGNATURE_MAGIC);
-        }
+        let signature = superblock.ext2_signature;
+        assert_eq!(signature, EXT2_SIGNATURE_MAGIC);
 
         let nbr_block_grp = div_rounded_up(superblock.nbr_blocks, superblock.block_per_block_grp);
         let nbr_block_grp2 = div_rounded_up(superblock.nbr_inode, superblock.inodes_per_block_grp);
+
         // consistency check
         assert_eq!(nbr_block_grp, nbr_block_grp2);
 
         let block_size = 1024 << superblock.log2_block_size;
-        // dbg!(block_size);
 
         Self { block_size, superblock, nbr_block_grp, reader_disk }
     }
@@ -636,17 +630,17 @@ impl Ext2Filesystem {
     fn alloc_inode_data_address_at_offset(
         &mut self,
         inode: &mut Inode,
-        inode_addr: u32,
+        _inode_addr: u32,
         offset: u32,
     ) -> Result<u32, IoError> {
         let block_off = offset / self.block_size;
-        let blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
+        let _blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
         // let none_if_zero = |x| if x == 0 { None } else { Some(x) };
         dbg!(offset);
 
         // Simple Addressing
-        let mut offset_start = 0;
-        let mut offset_end = 12;
+        let offset_start = 0;
+        let offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
             if unsafe { inode.direct_block_pointers[block_off as usize] == BlockNumber(0) } {
                 inode.direct_block_pointers[block_off as usize] =
@@ -658,6 +652,7 @@ impl Ext2Filesystem {
         unimplemented!();
     }
 
+    /// Get the file location at offset 'offset'
     fn inode_data_address_at_offset(&mut self, inode: &Inode, offset: u32) -> Option<u32> {
         let block_off = offset / self.block_size;
         let blocknumber_per_block = self.block_size as usize / size_of::<BlockNumber>();
