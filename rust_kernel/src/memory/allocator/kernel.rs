@@ -3,7 +3,7 @@ use crate::memory::mmu::{Entry, PageDirectory, _enable_paging, BIOS_PAGE_TABLE, 
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::alloc::{GlobalAlloc, Layout};
-use core::mem::size_of;
+use core::mem::{align_of, size_of};
 
 mod bootstrap;
 use bootstrap::*;
@@ -86,7 +86,26 @@ pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
 }
 
 pub fn kmalloc<T>(flags: AllocFlags) -> *mut T {
-    unsafe { ffi::kmalloc(size_of::<T>(), flags) as *mut T }
+    let layout = Layout::from_size_align(size_of::<T>(), align_of::<T>()).expect("cant create layout");
+    let size = if layout.align() > layout.size() { layout.align() } else { layout.size() };
+    unsafe {
+        match &mut KERNEL_ALLOCATOR {
+            KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
+            KernelAllocator::Kernel(a) => {
+                if size <= PAGE_SIZE && (flags & !AllocFlags::KERNEL_MEMORY).is_empty() {
+                    a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut T
+                } else {
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .alloc(size.into(), AllocFlags::KERNEL_MEMORY)
+                        .unwrap_or(Page::containing(Virt(0x0)))
+                        .to_addr()
+                        .0 as *mut T
+                }
+            }
+        }
+    }
 }
 
 pub fn kfree<T>(t: *mut T) {

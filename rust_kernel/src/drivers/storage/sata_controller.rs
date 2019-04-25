@@ -222,7 +222,7 @@ const NBR_PRDT_ENTRIES: usize = 56;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-// #[repr(align(65536))]
+#[repr(align(1024))]
 struct CmdTbl {
     // 0x00
     cfis: [u8; 64], // Command FIS

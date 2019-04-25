@@ -104,6 +104,7 @@ pub struct CustomBox<T> {
 }
 
 impl<T> CustomBox<T> {
+    #[inline(always)]
     pub fn new(t: T, flags: AllocFlags) -> Self {
         dbg!(core::mem::size_of::<T>());
         dbg!(core::mem::align_of::<T>());
