@@ -4,6 +4,19 @@ use super::Block;
 
 use bitflags::bitflags;
 
+// Like blocks, each inode has a numerical address. It is extremely important to note that unlike block addresses, inode addresses start at 1.
+
+// With Ext2 versions prior to Major version 1, inodes 1 to 10 are reserved and
+// should be in an allocated state. Starting with version 1, the first non-reserved inode
+// is indicated via a field in the Superblock. Of the reserved inodes, number 2
+// subjectively has the most significance as it is used for the root directory.
+
+// Inodes have a fixed size of either 128 for version 0 Ext2 file systems, or as
+// dictated by the field in the Superblock for version 1 file systems. All inodes
+// reside in inode tables that belong to block groups. Therefore, looking up an
+// inode is simply a matter of determining which block group it belongs to and indexing that block group's inode table.
+
+/// Inode Data Structure
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 pub struct Inode {
@@ -72,6 +85,8 @@ pub struct Inode {
     operating_system_specific_value_2: u32,
 }
 
+// The type indicator occupies the top hex digit (bits 15 to 12) of this 16-bit field
+// Permissions occupy the bottom 12 bits of this 16-bit field
 bitflags! {
     pub struct TypeAndPerm: u16 {
         const FIFO = 0x1000;
@@ -96,6 +111,7 @@ bitflags! {
     }
 }
 
+// Inode flags
 bitflags! {
     pub struct InodeFlags: u32 {
         const SECURE_DELETION = 0x00000001;

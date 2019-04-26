@@ -17,11 +17,8 @@ use reader_disk::ReaderDisk;
 mod header;
 use header::{BlockGroupDescriptor, SuperBlock};
 
-mod inode;
-use inode::{Inode, TypeAndPerm};
-
-mod directory_entry;
-use directory_entry::{DirectoryEntryHeader};
+mod body;
+use body::{DirectoryEntryHeader, Inode, TypeAndPerm};
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
 /// The size of blocks need not be the same size as the sector size of the disk the file system resides on.
