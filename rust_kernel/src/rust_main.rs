@@ -2,8 +2,8 @@ use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
 // use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
-// use crate::drivers::storage::{NbrSectors,Sector};
 use crate::drivers::storage::SataController;
+use crate::drivers::storage::{NbrSectors, Sector};
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
@@ -17,6 +17,7 @@ use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 use crate::watch_dog;
+use alloc::{vec, vec::Vec};
 use core::time::Duration;
 
 #[no_mangle]
@@ -97,17 +98,16 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     syscall::init();
 
-    match SataController::init() {
-        Some(_sata_controller) => {
-            // println!("{:#X?}", sata_controller);
-        }
-        None => {}
-    }
+    let mut sata = SataController::init().expect("sata init failed");
+    let size_read = NbrSectors(1);
+    let mut v1: Vec<u8> = vec![0; size_read.into()];
+    sata.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    dbg_hex!(v1);
 
-    let s = "write that";
-    unsafe {
-        crate::syscall::_write(1, s.as_ptr(), s.len());
-    }
+    // let s = "write that";
+    // unsafe {
+    //     crate::syscall::_write(1, s.as_ptr(), s.len());
+    // }
 
     // let mut disk = IdeAtaController::new();
 

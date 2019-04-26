@@ -6,6 +6,8 @@ pub mod pio_polling;
 mod udma;
 pub use udma::{Channel, DmaStatus, Udma};
 
+pub use super::Command;
+
 use super::SECTOR_SIZE;
 use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciDeviceClass, PciType0, PCI};
 use super::{NbrSectors, Sector};
@@ -572,22 +574,4 @@ bitflags! {
         const RDY = 1 << 6; // Bit is clear when drive is spun down, or after an error. Set otherwise.
         const BSY = 1 << 7; //Indicates the drive is preparing to send/receive data (wait for it to clear). In case of 'hang' (it never clears), do a software reset
     }
-}
-
-#[allow(dead_code)]
-#[repr(u8)]
-enum Command {
-    AtaCmdReadPio = 0x20,
-    AtaCmdReadPioExt = 0x24,
-    AtaCmdReadDma = 0xC8,
-    AtaCmdReadDmaExt = 0x25,
-    AtaCmdWritePio = 0x30,
-    AtaCmdWritePioExt = 0x34,
-    AtaCmdWriteDma = 0xCA,
-    AtaCmdWriteDmaExt = 0x35,
-    AtaCmdCacheFlush = 0xE7,
-    AtaCmdCacheFlushExt = 0xEA,
-    AtaCmdPacket = 0xA0,
-    AtaCmdIdentifyPacket = 0xA1,
-    AtaCmdIdentify = 0xEC,
 }

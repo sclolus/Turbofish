@@ -1,12 +1,22 @@
 //! This module handle a SATA driver. See https://wiki.osdev.org/SATA, https://wiki.osdev.org/AHCI
 
-use super::{MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
+use super::{Command, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI};
 
 use crate::drivers::storage::tools::*;
-use crate::memory::{get_physical_addr, tools::*};
-
+use crate::memory::{get_physical_addr, tools::AllocFlags};
 use alloc::vec::Vec;
 use bit_field::BitField;
+use core::mem::size_of;
+use core::ptr::{read_volatile, write_volatile};
+
+#[derive(Debug, Copy, Clone)]
+pub enum SataError {
+    /// no command slot available
+    NoSlot,
+    TaskFileError,
+}
+
+type Result<T> = core::result::Result<T, SataError>;
 
 #[repr(C)]
 struct AccessCmdTbl {
@@ -22,7 +32,7 @@ struct CmdList([CmdHeader; 32]);
 #[repr(C)]
 struct AccessPort {
     cmdlist: CustomBox<CmdList>,
-    cmdtbl: CustomBox<AccessCmdTbl>,
+    access_cmdtbl: CustomBox<AccessCmdTbl>,
     port: MemoryMapped<HbaPort>,
     received_fis: CustomBox<ReceivedFIS>,
 }
@@ -32,6 +42,8 @@ pub struct SataController {
     location: u32,
     access_ports: Vec<AccessPort>,
 }
+
+const HBA_PxIS_TFES: u32 = (1 << 30);
 
 impl SataController {
     /// SATA drive
@@ -79,30 +91,105 @@ impl SataController {
             .map(|mut port| {
                 let mut cmdlist: CustomBox<CmdList> =
                     CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
-                let mut cmdtbl: CustomBox<AccessCmdTbl> =
+                let mut access_cmdtbl: CustomBox<AccessCmdTbl> =
                     CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
                 let received_fis: CustomBox<ReceivedFIS> =
                     CustomBox::new(unsafe { core::mem::zeroed() }, AllocFlags::CACHE_DISABLE);
+                let cmdtbl = &mut access_cmdtbl.as_mut().cmdtbl;
+
+                for (cmdheader, cmdtable) in &mut cmdlist.as_mut().0.iter_mut().zip(cmdtbl.iter()) {
+                    cmdheader.ctba = get_physical_addr((cmdtable as *const CmdTbl).into()).unwrap().0 as u32;
+                    cmdheader.prdtl = NBR_PRDT_ENTRIES as u16;
+                    // println!("{:?}", cmdheader);
+                }
                 unsafe {
-                    core::ptr::write_volatile(
+                    write_volatile(
                         &mut ((*port.inner).clb) as *mut _,
-                        get_physical_addr(cmdtbl.ptr().into()).unwrap().0 as u32,
+                        get_physical_addr(cmdlist.ptr().into()).unwrap().0 as u32,
                     );
-                    core::ptr::write_volatile(
+                    write_volatile(
                         &mut ((*port.inner).fb) as *mut _,
                         get_physical_addr(received_fis.ptr().into()).unwrap().0 as u32,
                     );
                 }
-                println!("before");
-                for cmdheader in &mut cmdlist.as_mut().0 {
-                    println!("{:?}", cmdheader);
-                }
-
                 println!("{:#X?}", port.get());
-                AccessPort { cmdlist, cmdtbl, port, received_fis }
+                AccessPort { cmdlist, access_cmdtbl, port, received_fis }
             })
             .collect();
         Some(Self { pci, location, access_ports })
+    }
+    pub fn read(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> Result<usize> {
+        unsafe { self.access_ports[0].read(start_sector, nbr_sectors, buf) }
+    }
+}
+
+impl AccessPort {
+    unsafe fn find_cmdslot(&self) -> Option<usize> {
+        // If not set in SACT and CI, the slot is free
+        let sact = read_volatile(&mut ((*self.port.inner).sact) as *mut _);
+        let ci = read_volatile(&mut ((*self.port.inner).ci) as *mut _);
+        let mut slots: u32 = sact | ci;
+        for i in 0..32 {
+            if (slots & 1) == 0 {
+                return Some(i);
+            }
+            slots >>= 1;
+        }
+        None
+    }
+    // Find a free command list slot
+    unsafe fn read(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> Result<usize> {
+        write_volatile(&mut ((*self.port.inner).is) as *mut _, (-1_i32) as u32);
+        let slot_index: usize = self.find_cmdslot().ok_or(SataError::NoSlot)?;
+        let cmdheader: &mut CmdHeader = &mut self.cmdlist.as_mut().0[slot_index];
+        cmdheader.flags.set_command_fis_length(size_of::<FisRegH2D>() / size_of::<u32>());
+        cmdheader.flags.set_write(false);
+        cmdheader.prdtl = NBR_PRDT_ENTRIES as u16;
+
+        let size = nbr_sectors.into();
+        let cmdtbl: &mut CmdTbl = &mut self.access_cmdtbl.as_mut().cmdtbl[slot_index];
+        //TODO: handle multiple prd entry
+        assert!(size <= 2 << 22);
+        cmdtbl.prdt_entry[0].dba = get_physical_addr(buf.into()).unwrap().0 as u32;
+        cmdtbl.prdt_entry[0].flags.set_byte_count(size);
+        cmdtbl.prdt_entry[0].flags.set_interrupt_on_completion(true);
+        // TODO: Last entry?
+
+        let cmdfis: &mut FisRegH2D = &mut *(&mut cmdtbl.cfis as *mut _ as *mut u8 as *mut FisRegH2D);
+        cmdfis.fis_type = FisType::FisTypeRegH2D as u8;
+        cmdfis.flags.set_command(true);
+        cmdfis.command = Command::AtaCmdWriteDmaExt as u8;
+        cmdfis.device = 1 << 6; // LBA mode
+
+        let lba_low = start_sector.0.get_bits(0..32) as u32;
+        let lba_high = start_sector.0.get_bits(32..48) as u32;
+        cmdfis.lba0 = lba_low.get_bits(0..8) as u8;
+        cmdfis.lba1 = lba_low.get_bits(8..16) as u8;
+        cmdfis.lba2 = lba_low.get_bits(16..24) as u8;
+        cmdfis.lba3 = lba_low.get_bits(24..32) as u8;
+        cmdfis.lba4 = lba_high.get_bits(0..8) as u8;
+        cmdfis.lba5 = lba_high.get_bits(8..16) as u8;
+        cmdfis.countl = nbr_sectors.0.get_bits(0..8) as u8;
+        cmdfis.counth = nbr_sectors.0.get_bits(8..16) as u8;
+
+        //TODO: wait port available
+        write_volatile(&mut ((*self.port.inner).ci) as *mut _, (1 << slot_index) as u32); // Issue command
+                                                                                          // Wait for completion
+        loop {
+            // In some longer duration reads, it may be helpful to spin on the DPS bit
+            // in the PxIS port field as well (1 << 5)
+            let ci = read_volatile(&mut ((*self.port.inner).ci) as *mut _); // Issue command
+            if (ci & (1 << slot_index) as u32) == 0_u32 {
+                break;
+            }
+            // Task file error
+            let is = read_volatile(&mut ((*self.port.inner).is) as *mut _); // Issue command
+            if (is & HBA_PxIS_TFES) != 0_u32 {
+                return Err(SataError::TaskFileError);
+            }
+        }
+
+        Ok(size)
     }
 }
 
@@ -190,6 +277,9 @@ impl CmdHeaderFlags {
     // c:1 :u8,		// Clear busy upon R_OK
     // rsv0:1 :u8,		// Reserved
     // pmp:4 :u8,		// Port multiplier port
+    fn set_write(&mut self, w: bool) {
+        self.0.set_bit(6, w);
+    }
     /// command fis lenght in DWORD
     fn get_command_fis_length(&self) -> usize {
         self.0.get_bits(0..5) as usize
@@ -250,6 +340,16 @@ impl PrdtFlags {
     fn get_byte_count(&self) -> usize {
         self.0.get_bits(0..22) as usize + 1
     }
+
+    /// size max 4Mo, size must be pair
+    fn set_byte_count(&mut self, size: usize) {
+        self.0.set_bits(0..22, size as u32 - 1);
+    }
+
+    fn set_interrupt_on_completion(&mut self, value: bool) {
+        self.0.set_bit(31, value);
+    }
+
     fn get_interrupt_on_completion(&self) -> bool {
         self.0.get_bit(31) as bool
     }
@@ -281,6 +381,19 @@ impl FisRegH2DFlags {
     fn set_command(&mut self, command: bool) {
         self.0.set_bit(7, command);
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(u8)]
+enum FisType {
+    FisTypeRegH2D = 0x27,   // Register FIS - host to device
+    FisTypeRegD2H = 0x34,   // Register FIS - device to host
+    FisTypeDmaAct = 0x39,   // DMA activate FIS - device to host
+    FisTypeDmaSetup = 0x41, // DMA setup FIS - bidirectional
+    FisTypeData = 0x46,     // Data FIS - bidirectional
+    FisTypeBist = 0x58,     // BIST activate FIS - bidirectional
+    FisTypePioSetup = 0x5F, // PIO setup FIS - device to host
+    FisTypeDevBits = 0xA1,  // Set device bits FIS - device to host
 }
 
 #[derive(Debug, Copy, Clone)]
