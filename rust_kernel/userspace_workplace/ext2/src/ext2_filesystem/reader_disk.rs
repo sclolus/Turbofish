@@ -7,6 +7,7 @@ const START_OF_PARTITION: u64 = 2048 * 512;
 
 /// This newtype handle a pure IO object
 /// Must implements 'read', 'write', 'seek', 'flush' and 'try_clone'
+#[derive(Debug)]
 pub struct ReaderDisk(pub StdFile);
 
 impl ReaderDisk {
