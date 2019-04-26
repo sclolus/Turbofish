@@ -13,11 +13,11 @@ use std::fs::File as StdFile;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 
-mod superblock;
-use superblock::SuperBlock;
-
 mod reader_disk;
 use reader_disk::ReaderDisk;
+
+mod header;
+use header::{BlockGroupDescriptor, SuperBlock};
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
 /// The size of blocks need not be the same size as the sector size of the disk the file system resides on.
@@ -36,28 +36,6 @@ impl Add<Self> for Block {
 
 /// Used to help confirm the presence of Ext2 on a volume
 const EXT2_SIGNATURE_MAGIC: u16 = 0xef53;
-#[derive(Debug, Copy, Clone)]
-#[repr(packed)]
-struct BlockGroupDescriptor {
-    /// Block address of block usage bitmap
-    /*0 	3 	4*/
-    block_usage_bitmap: Block,
-    /// Block address of inode usage bitmap
-    /*4 	7 	4*/
-    inode_usage_bitmap: Block,
-    /// Starting block address of inode table
-    /*8 	11 	4*/
-    inode_table: Block,
-    /// Number of unallocated blocks in group
-    /*12 	13 	2*/
-    nbr_unallocated_blocks: u16,
-    /// Number of unallocated inodes in group
-    /*14 	15 	2*/
-    nbr_unallocated_inodes: u16,
-    /// Number of directories in group
-    /*16 	17 	2*/
-    nbr_directories: u16,
-}
 
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
@@ -327,7 +305,7 @@ impl Ext2Filesystem {
 
         let block_grp_descriptor = self.find_block_grp(block_grp);
         // dbg!(block_grp_descriptor);
-        let inode_addr = self.to_addr(block_grp_descriptor.inode_table) + inode_offset;
+        let inode_addr = self.to_addr(block_grp_descriptor.get_inode_table_address()) + inode_offset;
         // dbg!(inode_addr);
 
         (self.reader_disk.disk_read_struct(inode_addr), inode_addr)
@@ -365,17 +343,17 @@ impl Ext2Filesystem {
     fn alloc_block_on_grp(&mut self, n: u32) -> Option<Block> {
         let block_grp_addr = self.block_grp_addr(n);
         let mut block_grp = self.find_block_grp(n);
-        if block_grp.nbr_unallocated_blocks == 0 {
+        if block_grp.get_nbr_unallocated_blocks() == 0 {
             return None;
         }
         // TODO: dynamic alloc ?
-        let bitmap_addr = self.to_addr(block_grp.block_usage_bitmap);
+        let bitmap_addr = self.to_addr(block_grp.get_block_usage_bitmap_address());
         let mut bitmap: [u8; 1024] = self.reader_disk.disk_read_struct(bitmap_addr);
         for i in 0..self.superblock.get_block_per_block_grp() {
             if bitmap.get_bit(i as usize) {
                 bitmap.set_bit(i as usize, true);
                 self.reader_disk.disk_write_struct(bitmap_addr + i / 8, &bitmap[(i / 8) as usize]);
-                block_grp.nbr_unallocated_blocks -= 1;
+                block_grp.allocate_block();
                 self.reader_disk.disk_write_struct(self.to_addr(block_grp_addr), &block_grp);
                 return Some(block_grp_addr + Block(i));
             }
