@@ -12,6 +12,9 @@ extern keyboard_interrupt_handler
 extern primary_hard_disk_interrupt_handler
 extern secondary_hard_disk_interrupt_handler
 
+extern primary_sata_handler
+extern secondary_sata_handler
+
 segment .data
 _pic_time dd 0
 
@@ -102,5 +105,5 @@ _isr_%2:
 	CREATE_ISR SLAVE, acpi, "ACPI", generic_interrupt_handler
 	CREATE_ISR SLAVE, ps2_mouse, "PS/2 mouse", generic_interrupt_handler
 	CREATE_ISR SLAVE, fpu_coproc, "FPU / Coproc / inter-processor", generic_interrupt_handler
-	CREATE_ISR SLAVE, primary_hard_disk, "Primary ATA hard disk", primary_hard_disk_interrupt_handler
-	CREATE_ISR SLAVE, secondary_hard_disk, "Secondary ATA hard disk", secondary_hard_disk_interrupt_handler
+	CREATE_ISR SLAVE, primary_hard_disk, "Primary ATA hard disk", primary_sata_handler
+	CREATE_ISR SLAVE, secondary_hard_disk, "Secondary ATA hard disk", secondary_sata_handler

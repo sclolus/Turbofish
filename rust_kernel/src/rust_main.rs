@@ -101,8 +101,18 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let mut sata = SataController::init().expect("sata init failed");
     let size_read = NbrSectors(1);
     let mut v1: Vec<u8> = vec![0; size_read.into()];
+    unsafe {
+        PIC_8259.lock().enable_irq(pic_8259::Irq::PrimaryATAChannel); // enable only the keyboard.
+        PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel); // enable only the keyboard.
+    }
     sata.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
-    dbg_hex!(v1);
+    unsafe {
+        let array: [u8; 512] = core::ptr::read_volatile(v1.as_ptr() as *const [u8; 512]);
+
+        for e in array.iter() {
+            print!("{}", e);
+        }
+    }
 
     // let s = "write that";
     // unsafe {

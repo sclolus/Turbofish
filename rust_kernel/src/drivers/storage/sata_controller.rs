@@ -14,6 +14,7 @@ pub enum SataError {
     /// no command slot available
     NoSlot,
     TaskFileError,
+    PortBusy,
 }
 
 type Result<T> = core::result::Result<T, SataError>;
@@ -44,6 +45,8 @@ pub struct SataController {
 }
 
 const HBA_PxIS_TFES: u32 = (1 << 30);
+const ATA_DEV_BUSY: u32 = 0x80;
+const ATA_DEV_DRQ: u32 = 0x08;
 
 impl SataController {
     /// SATA drive
@@ -172,21 +175,40 @@ impl AccessPort {
         cmdfis.countl = nbr_sectors.0.get_bits(0..8) as u8;
         cmdfis.counth = nbr_sectors.0.get_bits(8..16) as u8;
 
-        //TODO: wait port available
+        let mut spin = 0;
+        // The below loop waits until the port is no longer busy before issuing a new command
+        loop {
+            let tfd = read_volatile(&mut ((*self.port.inner).tfd) as *mut _);
+            if spin > 1000000 {
+                return Err(SataError::PortBusy);
+            } else if tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ) != 0_u32 {
+                spin += 1;
+            } else {
+                break;
+            }
+        }
         write_volatile(&mut ((*self.port.inner).ci) as *mut _, (1 << slot_index) as u32); // Issue command
-                                                                                          // Wait for completion
+        use crate::drivers::PIT0;
+        use core::time::Duration;
+        PIT0.lock().sleep(Duration::from_millis(400));
+
         loop {
             // In some longer duration reads, it may be helpful to spin on the DPS bit
             // in the PxIS port field as well (1 << 5)
-            let ci = read_volatile(&mut ((*self.port.inner).ci) as *mut _); // Issue command
+            let ci = read_volatile(&mut ((*self.port.inner).ci) as *mut _);
             if (ci & (1 << slot_index) as u32) == 0_u32 {
                 break;
             }
             // Task file error
-            let is = read_volatile(&mut ((*self.port.inner).is) as *mut _); // Issue command
+            let is = read_volatile(&mut ((*self.port.inner).is) as *mut _);
             if (is & HBA_PxIS_TFES) != 0_u32 {
                 return Err(SataError::TaskFileError);
             }
+        }
+        // Check again
+        let is = read_volatile(&mut ((*self.port.inner).is) as *mut _);
+        if (is & HBA_PxIS_TFES) != 0_u32 {
+            return Err(SataError::TaskFileError);
         }
 
         Ok(size)
@@ -568,4 +590,18 @@ struct FisRegD2H {
 
     // DWORD 4
     rsv4: [u8; 4], // Reserved
+}
+
+use crate::terminal::ansi_escape_code::color::Colored;
+
+#[no_mangle]
+fn primary_sata_handler() -> u32 {
+    println!("{}", "primary IRQ".red());
+    0
+}
+
+#[no_mangle]
+fn secondary_sata_handler() -> u32 {
+    eprintln!("{:?}", "secondary IRQ".green());
+    0
 }
