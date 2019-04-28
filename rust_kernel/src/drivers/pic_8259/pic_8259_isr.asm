@@ -13,6 +13,9 @@ extern timer_interrupt_handler
 
 segment .data
 _pic_time dd 0
+_OLD_EIP:	dw 0
+_OLD_EAX:	dw 0
+_OLD_ESP:	dw 0
 
 segment .text
 
@@ -48,30 +51,49 @@ _process_b:
 	pop ebp
 	ret
 
+
+extern kernel_stack
 global _isr_timer
 _isr_timer:
-	push ebp
-	mov ebp, esp
-	pushad
+	;; save values and move to kernel_stack
+	mov [_OLD_EAX], eax
+	pop eax
+	mov [_OLD_EIP], eax
+
+	push after_iret
+	iret
+
+after_iret:
+	mov eax, esp
+	mov [_OLD_ESP], eax
+	mov esp, kernel_stack
+
+	;; PIT time
 	push eax
 	lock inc dword [_pic_time]
-	; send EOI master pic, irq0
-
-	mov eax, ebp
-	add eax, 4
-	push eax
-	push 4
-	push timer_interrupt_handler
-	call _align_stack
-	add esp, 12
-
 	mov al, 0x20
 	out 0x20, al
 	pop eax
 
-	popad
-	pop ebp
-	iret
+	push ebp
+	mov ebp, esp
+
+	mov eax, [_OLD_EAX]
+	pushad
+
+	mov eax, [_OLD_ESP]
+	push eax
+
+	mov eax, [_OLD_EIP]
+	push eax
+
+	push 8 * 4 + 4 + 4
+
+	; push false eip caller
+
+	push timer_interrupt_handler
+	call _align_stack
+
 
 global _get_pic_time
 _get_pic_time:

@@ -38,15 +38,36 @@ extern "C" {
     fn _process_b();
 }
 
-static mut CURR_PROCESS: u32 = 0;
-#[no_mangle]
-unsafe extern "C" fn timer_interrupt_handler(ret_eip: *mut u32) {
-    //let old_eip = *ret_eip;
+use crate::system::BaseRegisters;
 
-    *ret_eip =
-        if CURR_PROCESS == 0 || CURR_PROCESS == _process_b as u32 { _process_a as u32 } else { _process_b as u32 };
-    CURR_PROCESS = *ret_eip;
+#[derive(Debug, Copy, Clone)]
+struct Process {
+    eip: u32,
+    registers: BaseRegisters,
+}
+
+use alloc::vec;
+use alloc::vec::Vec;
+
+// static mut PROCESS: Vec<Process> = vec![
+//     Process { eip: _process_a as u32, registers: Default::default() },
+//     Process { eip: _process_b as u32, registers: Default::default() },
+// ];
+
+static mut CURR_PROCESS: Option<u32> = None;
+
+#[no_mangle]
+unsafe extern "C" fn timer_interrupt_handler(old_eip: u32, old_esp: u32, registers: BaseRegisters) -> ! {
+    eprintln!("bonjour {:?} {:?} {:?}", old_eip, old_esp, registers);
+    //let old_eip = *ret_eip;
+    // *ret_eip =
+    //     if CURR_PROCESS == 0 || CURR_PROCESS == _process_b as u32 { _process_a as u32 } else { _process_b as u32 };
+    // CURR_PROCESS = *ret_eip;
+    // eprintln!("{:X?}", *registers)
     // eprintln!(" {:X?}", old_eip);
+    loop {
+        asm!("hlt":::: "volatile");
+    }
 }
 
 #[no_mangle]

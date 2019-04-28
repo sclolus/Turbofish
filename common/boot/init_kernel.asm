@@ -67,5 +67,12 @@ segment .bss
 align 16
 
 ; 1mo for the main kernel stack
+global kernel_stack
 resb 1 << 20
 kernel_stack:
+
+resb 1 << 18
+process_a_stack:
+
+resb 1 << 18
+process_b_stack:
