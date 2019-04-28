@@ -154,6 +154,7 @@ impl Pit {
     /// i'am not sure that it is easy to ensure the PIT is well configured
     pub fn sleep(&mut self, duration: Duration) -> () {
         assert!(interrupts::get_interrupts_state());
+        panic!("sleep");
         use crate::math::convert::Convert;
 
         let ms = duration.as_millis();

@@ -35,8 +35,11 @@ pub mod terminal;
 pub mod interrupts;
 
 #[macro_use]
+pub mod system;
+#[macro_use]
 pub mod drivers;
 pub mod math;
+pub mod memory;
 pub mod multiboot;
 #[cfg(not(test))]
 pub mod panic;
@@ -45,9 +48,6 @@ pub mod registers;
 pub mod rust_main;
 pub mod tests;
 pub mod timer;
-#[macro_use]
-pub mod memory;
-pub mod system;
 
 pub mod watch_dog;
 pub use watch_dog::*;

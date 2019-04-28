@@ -13,9 +13,9 @@ extern timer_interrupt_handler
 
 segment .data
 _pic_time dd 0
-_OLD_EIP:	dw 0
-_OLD_EAX:	dw 0
-_OLD_ESP:	dw 0
+_OLD_EIP:	dd 0
+_OLD_EAX:	dd 0
+_OLD_ESP:	dd 0
 
 segment .text
 
@@ -75,9 +75,6 @@ after_iret:
 	out 0x20, al
 	pop eax
 
-	push ebp
-	mov ebp, esp
-
 	mov eax, [_OLD_EAX]
 	pushad
 
@@ -93,6 +90,36 @@ after_iret:
 
 	push timer_interrupt_handler
 	call _align_stack
+
+segment .data
+TMP_EIP:	dd 0
+TMP_ESP:	dd 0
+;;fn _switch_process(eip: u32, esp: u32, registers: BaseRegisters) -> !;
+segment .text
+extern debug_process
+global _switch_process
+_switch_process:
+	push ebp
+	mov ebp, esp
+
+	mov eax, dword [ebp + 8]
+	mov [TMP_EIP], eax
+
+	mov eax, dword [ebp + 12]
+	mov [TMP_ESP], eax
+
+	mov eax, ebp
+	add eax, 16
+	mov esp, eax
+	popad
+
+	mov esp, [TMP_ESP]
+
+	jmp [TMP_EIP]
+
+	;;push dword [TMP_EIP]
+	;; ret
+
 
 
 global _get_pic_time
