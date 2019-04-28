@@ -33,3 +33,18 @@ extern "C" fn generic_interrupt_handler(interrupt_name: *const u8) {
 pub(super) extern "C" fn reserved_interruption() {
     panic!("Reserved interruption raised");
 }
+extern "C" {
+    fn _process_a();
+}
+
+#[no_mangle]
+unsafe extern "C" fn timer_interrupt_handler(ret_eip: *mut u32) {
+    let old_eip = *ret_eip;
+    *ret_eip = _process_a as u32;
+    // eprintln!(" {:X?}", old_eip);
+}
+
+#[no_mangle]
+extern "C" fn process_a() {
+    eprintln!("cd scratched");
+}

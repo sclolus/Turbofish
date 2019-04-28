@@ -66,3 +66,5 @@ use crate::memory::allocator::RustGlobalAlloc;
 #[global_allocator]
 static MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc;
 pub mod test_helpers;
+
+pub mod process;

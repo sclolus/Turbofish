@@ -9,19 +9,52 @@ extern debug_pit
 
 extern keyboard_interrupt_handler
 
+extern timer_interrupt_handler
+
 segment .data
 _pic_time dd 0
 
 segment .text
+
+extern process_a
+global _process_a
+_process_a:
+	push ebp
+	mov ebp, esp
+	pushad
+	push 0
+	push process_a
+	call _align_stack
+	popad
+.loop:
+	hlt
+	jmp .loop
+	pop ebp
+	ret
+
 global _isr_timer
 _isr_timer:
+	push ebp
+	mov ebp, esp
+	pushad
 	push eax
 	lock inc dword [_pic_time]
 	; send EOI master pic, irq0
 
+	mov eax, ebp
+	add eax, 4
+	push eax
+	push 4
+	push timer_interrupt_handler
+	call _align_stack
+	add esp, 12
+
 	mov al, 0x20
 	out 0x20, al
 	pop eax
+
+	popad
+	pop ebp
 	iret
 
 global _get_pic_time

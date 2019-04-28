@@ -31,7 +31,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         init_keyboard_driver();
 
         PIT0.lock().configure(OperatingMode::RateGenerator);
-        PIT0.lock().start_at_frequency(1000.).unwrap();
+        PIT0.lock().start_at_frequency(100.).unwrap();
 
         watch_dog();
         interrupts::enable();

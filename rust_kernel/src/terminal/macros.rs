@@ -110,8 +110,8 @@ macro_rules! printfixed {
 #[macro_export]
 macro_rules! eprintln {
     () => ($crate::print_bypass_mutex!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print_bypass_mutex!(concat!($fmt, "\n"), $($arg)*));
-    ($fmt:expr) => ($crate::print_bypass_mutex!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print_bypass_mutex!($fmt, $($arg)*));
+    ($fmt:expr) => ($crate::print_bypass_mutex!($fmt));
 }
 
 /// eprintln! with UART
