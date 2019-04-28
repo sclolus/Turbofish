@@ -35,16 +35,26 @@ pub(super) extern "C" fn reserved_interruption() {
 }
 extern "C" {
     fn _process_a();
+    fn _process_b();
 }
 
+static mut CURR_PROCESS: u32 = 0;
 #[no_mangle]
 unsafe extern "C" fn timer_interrupt_handler(ret_eip: *mut u32) {
-    let old_eip = *ret_eip;
-    *ret_eip = _process_a as u32;
+    //let old_eip = *ret_eip;
+
+    *ret_eip =
+        if CURR_PROCESS == 0 || CURR_PROCESS == _process_b as u32 { _process_a as u32 } else { _process_b as u32 };
+    CURR_PROCESS = *ret_eip;
     // eprintln!(" {:X?}", old_eip);
 }
 
 #[no_mangle]
 extern "C" fn process_a() {
-    eprintln!("cd scratched");
+    eprintln!("process A ");
+}
+
+#[no_mangle]
+extern "C" fn process_b() {
+    eprintln!("process B ");
 }

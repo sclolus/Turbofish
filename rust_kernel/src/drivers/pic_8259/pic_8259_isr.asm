@@ -23,6 +23,22 @@ _process_a:
 	mov ebp, esp
 	pushad
 	push 0
+	push process_b
+	call _align_stack
+	popad
+.loop:
+	hlt
+	jmp .loop
+	pop ebp
+	ret
+
+extern process_b
+global _process_b
+_process_b:
+	push ebp
+	mov ebp, esp
+	pushad
+	push 0
 	push process_a
 	call _align_stack
 	popad
