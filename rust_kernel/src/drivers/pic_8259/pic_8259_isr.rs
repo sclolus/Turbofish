@@ -59,15 +59,16 @@ static mut CURR_PROCESS_INDEX: Option<usize> = None;
 
 unsafe fn switch_process(next_process_index: usize) -> ! {
     let next_process: &Process = &PROCESS.as_mut().unwrap()[next_process_index];
-    eprintln!("switch to eip:{:X?} esp:{:X?} reg:{:X?}", next_process.eip, next_process.esp, next_process.registers);
+    // eprintln!("switch to eip:{:X?} esp:{:X?} reg:{:X?}", next_process.eip, next_process.esp, next_process.registers);
     CURR_PROCESS_INDEX = Some(next_process_index);
     _switch_process(next_process.eip, next_process.esp, next_process.registers);
 }
 
 #[no_mangle]
 unsafe extern "C" fn timer_interrupt_handler(old_eip: u32, old_esp: u32, registers: BaseRegisters) -> ! {
-    eprintln!("kernel_stack: {:?}\n", &kernel_stack as *const u8);
-    eprintln!("bonjour eip:{:X?} esp:{:X?} reg:{:X?}", old_eip, old_esp, registers);
+    // eprintln!("kernel_stack: {:?}\n", &kernel_stack as *const u8);
+    // eprintln!("bonjour eip:{:X?} esp:{:X?} reg:{:X?}", old_eip, old_esp, registers);
+    eprintln!("sched");
     if !PROCESS.is_some() {
         PROCESS = Some(vec![
             Process {
@@ -81,7 +82,7 @@ unsafe extern "C" fn timer_interrupt_handler(old_eip: u32, old_esp: u32, registe
                 registers: Default::default(),
             },
         ]);
-        eprintln!("{:#X?}", PROCESS);
+        // eprintln!("{:#X?}", PROCESS);
     }
     match CURR_PROCESS_INDEX {
         None => {
@@ -97,21 +98,14 @@ unsafe extern "C" fn timer_interrupt_handler(old_eip: u32, old_esp: u32, registe
             return switch_process(next_process);
         }
     }
-
-    //let old_eip = *ret_eip;
-    // *ret_eip =
-    //     if CURR_PROCESS == 0 || CURR_PROCESS == _process_b as u32 { _process_a as u32 } else { _process_b as u32 };
-    // CURR_PROCESS = *ret_eip;
-    // eprintln!("{:X?}", *registers)
-    // eprintln!(" {:X?}", old_eip);
 }
 
 #[no_mangle]
 extern "C" fn process_a() {
     unsafe {
         for i in 0..1000000 {
-            eprintln!("process A {}", i);
-            asm!("hlt"::::"volatile");
+            user_eprintln!("process A {}", i);
+            //  asm!("hlt"::::"volatile");
         }
     }
 }
@@ -120,8 +114,8 @@ extern "C" fn process_a() {
 extern "C" fn process_b() {
     unsafe {
         for i in 0..1000000 {
-            eprintln!("process B {}", i);
-            asm!("hlt"::::"volatile");
+            user_eprintln!("process B {}", i);
+            //asm!("hlt"::::"volatile");
         }
     }
 }

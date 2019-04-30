@@ -37,6 +37,8 @@ pub mod interrupts;
 #[macro_use]
 pub mod system;
 #[macro_use]
+pub mod syscall;
+#[macro_use]
 pub mod drivers;
 pub mod math;
 pub mod memory;
@@ -56,8 +58,6 @@ pub mod shell;
 
 pub mod spinlock;
 pub use spinlock::{Spinlock, SpinlockGuard};
-
-pub mod syscall;
 
 use crate::memory::allocator::RustGlobalAlloc;
 

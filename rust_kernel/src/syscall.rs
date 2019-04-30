@@ -1,6 +1,7 @@
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use core::ffi::c_void;
-mod test_syscall;
+#[macro_use]
+pub mod test_syscall;
 pub use test_syscall::_write;
 mod syscall_isr;
 
