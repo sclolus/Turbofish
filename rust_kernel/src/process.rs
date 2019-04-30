@@ -1,3 +1,41 @@
+use crate::memory::allocator::VirtualPageAllocator;
+use crate::memory::mmu::{_enable_paging, _read_cr3};
+use crate::memory::tools::{AllocFlags, NbrPages};
+use crate::registers::Eflags;
+use crate::system::BaseRegisters;
+pub mod scheduler;
+
+pub struct Process {
+    pub eip: u32,
+    pub esp: u32,
+    pub eflags: Eflags,
+    pub segment: u32,
+    pub registers: BaseRegisters,
+    pub virtual_allocator: VirtualPageAllocator,
+}
+
+const STACK_SIZE: NbrPages = NbrPages::_1MB;
+
+impl Process {
+    pub unsafe fn new(f: unsafe extern "C" fn(), eflags: Eflags) -> Self {
+        let old_cr3 = _read_cr3();
+        let mut v = VirtualPageAllocator::new_for_process();
+        v.context_switch();
+        let stack =
+            (v.alloc(STACK_SIZE, AllocFlags::KERNEL_MEMORY).unwrap().to_addr().0 as *mut u8).add(STACK_SIZE.into());
+        let res = Self {
+            eip: f as u32,
+            esp: stack as u32,
+            registers: Default::default(),
+            segment: 0x8,
+            eflags,
+            virtual_allocator: v,
+        };
+        _enable_paging(old_cr3);
+        res
+    }
+}
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
 struct Tss {
     /*0x00*/ _reserved1: u16, link: u16,

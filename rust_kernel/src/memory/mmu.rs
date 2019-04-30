@@ -14,6 +14,7 @@ pub static mut PAGE_TABLES: [PageTable; 255] = [PageTable::new(); 255];
 
 extern "C" {
     pub fn _enable_paging(addr: Phys);
+    pub fn _read_cr3() -> Phys;
     fn _enable_pse();
     fn _invlpg(addr: Virt);
 }

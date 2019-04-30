@@ -10,4 +10,4 @@ pub mod allocator;
 pub mod init;
 pub use init::init_memory_system;
 
-mod mmu;
+pub mod mmu;

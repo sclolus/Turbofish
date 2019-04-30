@@ -41,9 +41,9 @@ impl VirtualPageAllocator {
         self.mmu.get_entry(Page::containing(v)).map(|e| e.entry_addr() + offset)
     }
 
-    pub unsafe fn context_switch(&mut self) {
+    pub unsafe fn context_switch(&self) {
         let phys_pd: Phys = {
-            let raw_pd = self.mmu.as_mut() as *mut PageDirectory;
+            let raw_pd = self.mmu.as_ref() as *const PageDirectory;
             KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
         };
         _enable_paging(phys_pd);
