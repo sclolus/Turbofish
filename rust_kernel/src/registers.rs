@@ -72,6 +72,12 @@ impl Eflags {
         self.inner.get_bit(9)
     }
 
+    /// set the state of the interrupt flag.
+    pub fn set_interrupt_flag(&mut self, value: bool) -> Self {
+        self.inner.set_bit(9, value);
+        *self
+    }
+
     /// Returns the state of the direction.
     pub fn direction_flag(&self) -> bool {
         self.inner.get_bit(10)

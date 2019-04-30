@@ -71,10 +71,3 @@ global kernel_stack
 resb 1 << 20
 kernel_stack:
 
-global process_a_stack
-resb 1 << 18
-process_a_stack:
-
-global process_b_stack
-resb 1 << 18
-process_b_stack:
