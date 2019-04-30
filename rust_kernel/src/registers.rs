@@ -12,6 +12,12 @@ pub struct Eflags {
 }
 
 impl Eflags {
+    pub fn new(inner: u32) -> Self {
+        Self { inner }
+    }
+    pub fn inner(&self) -> u32 {
+        self.inner
+    }
     #[cfg(test)]
     /// Placeholder for get_eflags in 64-bit mode. Panics.
     pub fn get_eflags() -> Self {

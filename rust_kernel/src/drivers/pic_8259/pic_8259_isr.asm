@@ -11,11 +11,6 @@ extern keyboard_interrupt_handler
 
 extern timer_interrupt_handler
 
-segment .data
-_pic_time dd 0
-_OLD_EIP:	dd 0
-_OLD_EAX:	dd 0
-_OLD_ESP:	dd 0
 
 segment .text
 
@@ -26,7 +21,7 @@ _process_a:
 	mov ebp, esp
 	pushad
 	push 0
-	push process_b
+	push process_a
 	call _align_stack
 	popad
 .loop:
@@ -42,7 +37,7 @@ _process_b:
 	mov ebp, esp
 	pushad
 	push 0
-	push process_a
+	push process_b
 	call _align_stack
 	popad
 .loop:
@@ -52,6 +47,15 @@ _process_b:
 	ret
 
 
+segment .data
+_pic_time dd 0
+_OLD_EIP:	dd 0
+_OLD_EAX:	dd 0
+_OLD_ESP:	dd 0
+_OLD_EFLAGS:	dd 0
+_OLD_SEGMENT:	dd 0
+
+segment .text
 extern kernel_stack
 global _isr_timer
 _isr_timer:
@@ -59,11 +63,11 @@ _isr_timer:
 	mov [_OLD_EAX], eax
 	pop eax
 	mov [_OLD_EIP], eax
+	pop eax
+	mov [_OLD_SEGMENT], eax
+	pop eax
+	mov [_OLD_EFLAGS], eax
 
-	push after_iret
-	iret
-
-after_iret:
 	mov eax, esp
 	mov [_OLD_ESP], eax
 	mov esp, kernel_stack
@@ -81,10 +85,16 @@ after_iret:
 	mov eax, [_OLD_ESP]
 	push eax
 
+	mov eax, [_OLD_EFLAGS]
+	push eax
+
+	mov eax, [_OLD_SEGMENT]
+	push eax
+
 	mov eax, [_OLD_EIP]
 	push eax
 
-	push 8 * 4 + 4 + 4
+	push 8 * 4 + 4 + 4 + 4 + 4
 
 	; push false eip caller
 
@@ -92,6 +102,8 @@ after_iret:
 	call _align_stack
 
 segment .data
+TMP_EFLAGS:	dd 0
+TMP_SEGMENT:	dd 0
 TMP_EIP:	dd 0
 TMP_ESP:	dd 0
 ;;fn _switch_process(eip: u32, esp: u32, registers: BaseRegisters) -> !;
@@ -103,19 +115,28 @@ _switch_process:
 	mov ebp, esp
 
 	mov eax, dword [ebp + 8]
-	mov [TMP_EIP], eax
+	mov [TMP_EFLAGS], eax
 
 	mov eax, dword [ebp + 12]
+	mov [TMP_SEGMENT], eax
+
+	mov eax, dword [ebp + 16]
+	mov [TMP_EIP], eax
+
+	mov eax, dword [ebp + 20]
 	mov [TMP_ESP], eax
 
 	mov eax, ebp
-	add eax, 16
+	add eax, 24
 	mov esp, eax
 	popad
 
 	mov esp, [TMP_ESP]
 
-	jmp [TMP_EIP]
+	push dword [TMP_EFLAGS]
+	push dword [TMP_SEGMENT]
+	push dword [TMP_EIP]
+	iret
 
 	;;push dword [TMP_EIP]
 	;; ret
