@@ -24,7 +24,7 @@ fn block_read(buf: &mut [KeySymb]) {
 }
 
 /// List of some builtins
-const BUILTINS: [(&str, fn(&[&str]) -> u8); 19] = [
+const BUILTINS: [(&str, fn(&[&str]) -> u8); 20] = [
     ("echo", echo),
     ("ls", ls),
     ("yes", yes),
@@ -44,6 +44,7 @@ const BUILTINS: [(&str, fn(&[&str]) -> u8); 19] = [
     ("pwd", pwd),
     ("cd", cd),
     ("cat", cat),
+    ("stack_overflow", stack_overflow),
 ];
 
 /// Exectution of builtin commands

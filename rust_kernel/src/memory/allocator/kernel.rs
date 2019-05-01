@@ -40,6 +40,8 @@ pub unsafe fn init_kernel_virtual_allocator() {
     pd.map_range_page_init(virt_start, Page::new(0), virt_end - virt_start, Entry::READ_WRITE | Entry::PRESENT)
         .expect("Init: Could not map the kernel");
 
+    pd.unmap_page_init(Virt(symbol_addr!(stack_overflow_zone)).into())
+        .expect("Init: Could not unmap the stack overflow zone");
     let raw_pd = pd.as_mut();
     let phys_pd = Phys(raw_pd as *mut PageDirectory as usize - symbol_addr!(virtual_offset));
 

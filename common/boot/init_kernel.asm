@@ -59,8 +59,11 @@ _init_kernel:
 	jmp .idle
 
 segment .bss
-align 16
-
+align 4096
+global stack_overflow_zone
+global kernel_stack
+stack_overflow_zone:
+resb 1 << 12
 ; 1mo for the main kernel stack
 resb 1 << 20
 global kernel_stack

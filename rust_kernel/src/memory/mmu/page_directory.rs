@@ -244,6 +244,12 @@ impl PageDirectory {
         Ok(())
     }
 
+    pub unsafe fn unmap_page_init(&mut self, virtp: Page<Virt>) -> Result<()> {
+        self.get_page_table_init(virtp)
+            .ok_or(MemoryError::PageTableNotPresent)
+            .and_then(|page_table| page_table.unmap_page(virtp))
+    }
+
     pub unsafe fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {
         self.get_page_table_trick(virtp)
             .ok_or(MemoryError::PageTableNotPresent)
