@@ -376,7 +376,7 @@ impl Write for BufferedTty {
     /// Fill its escaped buf when s has an unfinished escaped sequence
     /// to assure to call write_str on tty with complete escaped sequence.
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        debug_assert!(self.escaped_buf.capacity() == ESCAPED_BUF_CAPACITY);
+        debug_assert_eq!(self.escaped_buf.capacity(), ESCAPED_BUF_CAPACITY);
         if self.escaped_buf.len() == 0 {
             match s.find(CSI) {
                 Some(i) => match s[i..].find(|c: char| c.is_ascii_alphabetic()) {

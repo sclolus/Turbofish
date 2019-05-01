@@ -48,7 +48,10 @@ impl Terminal {
         let size = SCREEN_MONAD.lock().query_window_size();
         Self {
             buf: None,
-            ttys: vec![BufferedTty::new(Tty::new(false, size.line, size.column, MAX_SCREEN_BUFFER, None)); 2],
+            // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
+            ttys: (0..2)
+                .map(|_| BufferedTty::new(Tty::new(false, size.line, size.column, MAX_SCREEN_BUFFER, None)))
+                .collect(),
         }
     }
 
