@@ -5,6 +5,7 @@ use crate::keyboard::init_keyboard_driver;
 use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
+use crate::process::scheduler;
 use crate::shell::shell;
 use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
@@ -30,6 +31,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().disable_all_irqs();
         init_keyboard_driver();
 
+        PIT0.lock().configure(OperatingMode::RateGenerator);
+        PIT0.lock().start_at_frequency(100.).unwrap();
         watch_dog();
         interrupts::enable();
 
@@ -40,13 +43,13 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     init_terminal();
     println!("TTY system initialized");
 
-    // match Acpi::init() {
-    //     Ok(()) => match ACPI.lock().unwrap().enable() {
-    //         Ok(()) => log::info!("ACPI driver initialized"),
-    //         Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
-    //     },
-    //     Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
-    // };
+    match Acpi::init() {
+        Ok(()) => match ACPI.lock().unwrap().enable() {
+            Ok(()) => log::info!("ACPI driver initialized"),
+            Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+        },
+        Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+    };
 
     unsafe {
         PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
@@ -60,7 +63,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
 
-    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
+    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");
@@ -94,9 +97,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     unsafe {
         crate::syscall::_user_write(1, s.as_ptr(), s.len());
     }
-    PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(100.).unwrap();
 
+    // scheduler::init();
     shell();
     0
 }

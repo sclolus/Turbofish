@@ -55,6 +55,10 @@ _OLD_ESP:	dd 0
 _OLD_EFLAGS:	dd 0
 _OLD_SEGMENT:	dd 0
 
+; bool for activation of scheduler
+global SCHEDULER_ACTIVE
+SCHEDULER_ACTIVE:	db 0
+
 segment .text
 extern kernel_stack
 global _isr_timer
@@ -68,16 +72,25 @@ _isr_timer:
 	pop eax
 	mov [_OLD_EFLAGS], eax
 
-	mov eax, esp
-	mov [_OLD_ESP], eax
-	mov esp, kernel_stack
-
 	;; PIT time
-	push eax
 	lock inc dword [_pic_time]
 	mov al, 0x20
 	out 0x20, al
-	pop eax
+	cmp byte [SCHEDULER_ACTIVE], 1
+	je .continue
+
+	; return to kernel if scheduler not actif
+	mov eax, [_OLD_EAX]
+	push dword [_OLD_EFLAGS]
+	push dword [_OLD_SEGMENT]
+	push dword [_OLD_EIP]
+	iret
+
+.continue:
+	; change stack to kernel stack
+	mov eax, esp
+	mov [_OLD_ESP], eax
+	mov esp, kernel_stack
 
 	mov eax, [_OLD_EAX]
 	pushad

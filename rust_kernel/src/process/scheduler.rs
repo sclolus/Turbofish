@@ -11,6 +11,7 @@ extern "C" {
     fn _process_b();
     /// set all processor state to its arguments and iret to eip
     fn _switch_process(eflags: u32, segment: u32, eip: u32, esp: u32, registers: BaseRegisters) -> !;
+    static mut SCHEDULER_ACTIVE: bool;
 }
 
 /// the pit handler
@@ -118,6 +119,12 @@ const MAX_PID: AtomicU32 = AtomicU32::new(0);
 pub fn get_available_pid() -> u32 {
     //TODO: handle when overflow to 0
     MAX_PID.fetch_add(1, Ordering::Relaxed)
+}
+
+pub fn init() {
+    unsafe {
+        SCHEDULER_ACTIVE = true;
+    }
 }
 
 /// stupid kernel space process a
