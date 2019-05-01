@@ -1,9 +1,10 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::page_table::PageTable;
-use super::Entry;
-use crate::memory::allocator::PHYSICAL_ALLOCATOR;
+use super::{Entry, BIOS_PAGE_TABLE, PAGE_TABLES};
+use crate::memory::allocator::{KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
 use crate::memory::tools::*;
+use alloc::boxed::Box;
 use core::mem::size_of;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
@@ -21,6 +22,26 @@ impl PageDirectory {
     pub const fn new() -> Self {
         Self { entries: [Entry::new(); 1024] }
     }
+
+    /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
+    pub fn new_for_process() -> Box<Self> {
+        // map the kenel pages tables
+        let mut pd = Box::new(Self::new());
+        unsafe {
+            pd.set_page_tables(0, &BIOS_PAGE_TABLE);
+            pd.set_page_tables(768, &PAGE_TABLES);
+
+            // get the physical addr of the page directory for the tricks
+            let phys_pd: Phys = {
+                let raw_pd = pd.as_mut() as *mut PageDirectory;
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+            };
+
+            pd.self_map_tricks(phys_pd);
+        }
+        pd
+    }
+
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .
     /// The idea is that the last Entry points to self, viewed as a Page Table.
     /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)

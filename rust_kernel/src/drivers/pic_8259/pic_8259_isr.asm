@@ -96,8 +96,6 @@ _isr_timer:
 
 	push 8 * 4 + 4 + 4 + 4 + 4
 
-	; push false eip caller
-
 	push timer_interrupt_handler
 	call _align_stack
 
@@ -106,10 +104,10 @@ TMP_EFLAGS:	dd 0
 TMP_SEGMENT:	dd 0
 TMP_EIP:	dd 0
 TMP_ESP:	dd 0
-;;fn _switch_process(eip: u32, esp: u32, registers: BaseRegisters) -> !;
 segment .text
 extern debug_process
 global _switch_process
+;; fn _switch_process(eflags: u32, segment: u32, eip: u32, esp: u32, registers: BaseRegisters) -> !;
 _switch_process:
 	push ebp
 	mov ebp, esp
@@ -137,11 +135,6 @@ _switch_process:
 	push dword [TMP_SEGMENT]
 	push dword [TMP_EIP]
 	iret
-
-	;;push dword [TMP_EIP]
-	;; ret
-
-
 
 global _get_pic_time
 _get_pic_time:

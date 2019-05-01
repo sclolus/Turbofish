@@ -26,7 +26,8 @@ _isr_syscall:
 	push syscall_interrupt_handler
 	call _align_stack
 	add esp, 8
-	pop eax
+	; ignore eax, as eax is the return value of the syscall
+	add esp, 4
 	pop ebx
 	pop ecx
 	pop edx

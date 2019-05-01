@@ -92,7 +92,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let s = "write that";
     unsafe {
-        crate::syscall::_write(1, s.as_ptr(), s.len());
+        crate::syscall::_user_write(1, s.as_ptr(), s.len());
     }
     PIT0.lock().configure(OperatingMode::RateGenerator);
     PIT0.lock().start_at_frequency(100.).unwrap();

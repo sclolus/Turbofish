@@ -5,37 +5,72 @@ use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 pub mod scheduler;
 
+/// state of a process
+#[derive(Clone)]
+pub enum State {
+    Terminated { status: i32 },
+    Running,
+    Waiting,
+}
+
 pub struct Process {
+    /// pointer to the base of the stack
+    pub base_stack: u32,
+    /// current eip
     pub eip: u32,
+    /// current esp
     pub esp: u32,
+    /// current eflags
     pub eflags: Eflags,
+    /// current segment of code
     pub segment: u32,
+    /// current registers
     pub registers: BaseRegisters,
+    /// allocator for the process
     pub virtual_allocator: VirtualPageAllocator,
+    pub pid: u32,
+    pub state: State,
 }
 
 const STACK_SIZE: NbrPages = NbrPages::_1MB;
 
 impl Process {
+    /// create a new process wich will execute f, and start with eflags
     pub unsafe fn new(f: unsafe extern "C" fn(), eflags: Eflags) -> Self {
         let old_cr3 = _read_cr3();
         let mut v = VirtualPageAllocator::new_for_process();
         v.context_switch();
-        let stack =
-            (v.alloc(STACK_SIZE, AllocFlags::KERNEL_MEMORY).unwrap().to_addr().0 as *mut u8).add(STACK_SIZE.into());
+        let base_stack = v.alloc(STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
         let res = Self {
             eip: f as u32,
-            esp: stack as u32,
+            base_stack: base_stack as u32,
+            // stack go downwards set esp to the end of the allocation
+            esp: base_stack.add(STACK_SIZE.into()) as u32,
             registers: Default::default(),
             segment: 0x8,
             eflags,
             virtual_allocator: v,
+            pid: scheduler::get_available_pid(),
+            state: State::Running,
         };
         _enable_paging(old_cr3);
         res
     }
+
+    /// return a children
+    pub fn fork(&self) -> Self {
+        unimplemented!();
+        // unsafe {
+        //     Self::new(core::mem::transmute::<*const (), unsafe extern "C" fn()>(self.eip as *const ()), self.eflags)
+        // }
+    }
+    pub fn exit(&mut self, status: i32) {
+        self.state = State::Terminated { status };
+        // TODO: free resource
+    }
 }
 
+// tss unused for the moment
 #[cfg_attr(rustfmt, rustfmt_skip)]
 struct Tss {
     /*0x00*/ _reserved1: u16, link: u16,

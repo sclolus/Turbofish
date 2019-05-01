@@ -1,5 +1,5 @@
 use super::{BuddyAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory, BIOS_PAGE_TABLE, PAGE_TABLES};
+use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
@@ -19,20 +19,18 @@ impl VirtualPageAllocator {
         let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB);
         buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).unwrap();
 
-        // map the kenel pages tables
-        let mut pd = Box::new(PageDirectory::new());
-        pd.set_page_tables(0, &BIOS_PAGE_TABLE);
-        pd.set_page_tables(768, &PAGE_TABLES);
+        let pd = PageDirectory::new_for_process();
 
-        // get the physical addr of the page directory for the tricks
-        let phys_pd: Phys = {
-            let raw_pd = pd.as_mut() as *mut PageDirectory;
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
-        };
-        eprintln!("{:x?}", phys_pd);
-
-        pd.self_map_tricks(phys_pd);
         Self::new(buddy, pd)
+    }
+
+    /// the process forker must be the current cr3
+    pub fn fork(&self) -> Self {
+        unimplemented!();
+        // let buddy = self.virt.clone();
+        // let mut pd = PageDirectory::new_for_process();
+
+        // Self::new(buddy, pd)
     }
 
     /// get the physical mapping of virtual address `v`
