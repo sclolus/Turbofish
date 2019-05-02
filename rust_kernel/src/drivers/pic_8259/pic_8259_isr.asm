@@ -11,42 +11,6 @@ extern keyboard_interrupt_handler
 
 extern timer_interrupt_handler
 
-
-segment .text
-
-extern process_a
-global _process_a
-_process_a:
-	push ebp
-	mov ebp, esp
-	pushad
-	push 0
-	push process_a
-	call _align_stack
-	popad
-.loop:
-	hlt
-	jmp .loop
-	pop ebp
-	ret
-
-extern process_b
-global _process_b
-_process_b:
-	push ebp
-	mov ebp, esp
-	pushad
-	push 0
-	push process_b
-	call _align_stack
-	popad
-.loop:
-	hlt
-	jmp .loop
-	pop ebp
-	ret
-
-
 segment .data
 _pic_time dd 0
 _OLD_EIP:	dd 0

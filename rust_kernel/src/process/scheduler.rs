@@ -1,6 +1,7 @@
 use crate::process::{CpuState, Process};
 use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
+use crate::syscall::_user_exit;
 use alloc::vec;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -8,8 +9,6 @@ use hashmap_core::fnv::FnvHashMap as HashMap;
 use lazy_static::lazy_static;
 
 extern "C" {
-    fn _process_a();
-    fn _process_b();
     /// set all processor state to its arguments and iret to eip
     fn _switch_process(cpu_state: CpuState) -> !;
     static mut SCHEDULER_ACTIVE: bool;
@@ -22,7 +21,8 @@ type Pid = u32;
 unsafe extern "C" fn timer_interrupt_handler(cpu_state: CpuState) -> ! {
     let mut scheduler = SCHEDULER.lock();
     scheduler.save_process_state(cpu_state);
-    scheduler.schedule()
+    scheduler.switch_next_process();
+    scheduler.return_to_process()
 }
 
 pub struct Scheduler {
@@ -38,15 +38,18 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
+    // create a new scheduler for tests
     unsafe fn new() -> Self {
+        let test_process = vec![
+            Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
+        ];
         let all_process = {
             let mut a = HashMap::new();
-            let p = Process::new(_process_a, Eflags::get_eflags().set_interrupt_flag(true));
-            dbg!(&p);
-            a.insert(p.pid, p);
-            let p = Process::new(_process_b, Eflags::get_eflags().set_interrupt_flag(true));
-            dbg!(&p);
-            a.insert(p.pid, p);
+            for p in test_process.into_iter() {
+                a.insert(p.pid, p);
+            }
             a
         };
         Self {
@@ -57,27 +60,36 @@ impl Scheduler {
         }
     }
 
-    fn save_process_state(&mut self, cpu_state: CpuState) {
-        // eprintln!(
-        //     "saving process with: eip:{:X?} esp:{:X?} reg:{:X?}\n eflags: {}",
-        //     old_eip, old_esp, registers, eflags
-        // );
+    /// get current process mutably
+    fn curr_process_mut(&mut self) -> &mut Process {
+        self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
+    }
+
+    /// get current process
+    fn curr_process(&self) -> &Process {
+        self.all_process.get(&self.running_process[self.curr_process_index]).unwrap()
+    }
+
+    /// save in the current process the cpu_state after an interruption
+    pub fn save_process_state(&mut self, cpu_state: CpuState) {
+        // dbg_hex!(cpu_state);
         if self.no_process {
             self.no_process = false;
             return;
         }
-        let curr_process: &mut Process =
-            self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap();
-        curr_process.cpu_state = cpu_state;
+        self.curr_process_mut().cpu_state = cpu_state;
     }
 
-    fn schedule(&mut self) -> ! {
-        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
-        let next_process: &Process = self.all_process.get(&self.running_process[self.curr_process_index]).unwrap();
-        // eprintln!(
-        //     "switch to eip:{:X?} esp:{:X?} reg:{:X?}\n eflags: {}",
-        //     next_process.eip, next_process.esp, next_process.registers, next_process.eflags
-        // );
+    /// return to the process after a syscall which has return value `return value`
+    pub fn return_from_syscall(&mut self, return_value: i32) -> ! {
+        self.curr_process_mut().cpu_state.registers.eax = return_value as u32;
+        self.return_to_process()
+    }
+
+    /// return at the execution of the current process
+    pub fn return_to_process(&self) -> ! {
+        let next_process = self.curr_process();
+        // eprintln!("{:X?}", &next_process);
         unsafe {
             next_process.virtual_allocator.context_switch();
             SCHEDULER.force_unlock();
@@ -85,14 +97,22 @@ impl Scheduler {
         }
     }
 
-    pub fn fork(&mut self) {
+    /// set current process to the next process in the list of running process
+    fn switch_next_process(&mut self) {
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+    }
+
+    pub fn fork(&mut self) -> ! {
         unimplemented!();
     }
 
-    pub fn exit(&mut self, status: i32) {
-        unimplemented!();
-        // self.process[self.curr_process_index].exit(status);
-        // self.curr_process_index = (self.curr_process_index + 1) % self.process.len();
+    /// perform the exit syscall
+    /// (remove the process from the list of running process and schedule to an other process)
+    pub fn exit(&mut self, status: i32) -> ! {
+        self.curr_process_mut().exit(status);
+        self.running_process.remove(self.curr_process_index);
+        self.switch_next_process();
+        self.return_to_process()
     }
 }
 
@@ -118,23 +138,30 @@ pub fn init() {
 }
 
 /// stupid kernel space process a
-#[no_mangle]
-extern "C" fn process_a() {
+fn process_a() {
     unsafe {
         for i in 0..1000000 {
             user_eprintln!("process A {}", i);
-            asm!("hlt"::::"volatile");
+        }
+    }
+}
+
+/// stupid kernel space process b
+fn process_b() {
+    unsafe {
+        for i in 0..1000000 {
+            user_eprintln!("process B {}", i);
         }
     }
 }
 
 /// stupid kernel space process b
 #[no_mangle]
-extern "C" fn process_b() {
+fn diyng_process() {
     unsafe {
-        for i in 0..1000000 {
-            user_eprintln!("process B {}", i);
-            asm!("hlt"::::"volatile");
+        for i in 0..10 {
+            user_eprintln!("process diying slowly {}", i);
         }
+        _user_exit(0);
     }
 }

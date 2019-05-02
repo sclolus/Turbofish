@@ -93,10 +93,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     syscall::init();
 
-    let s = "write that";
-    unsafe {
-        crate::syscall::_user_write(1, s.as_ptr(), s.len());
-    }
+    // let s = "write that";
+    // unsafe {
+    //     crate::syscall::_user_write(1, s.as_ptr(), s.len());
+    // }
 
     scheduler::init();
     // shell();

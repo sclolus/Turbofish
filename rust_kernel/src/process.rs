@@ -13,6 +13,7 @@ pub enum State {
     Waiting,
 }
 
+/// represent all cpu state needed to continue the execution of a process
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct CpuState {
@@ -36,6 +37,7 @@ pub struct Process {
     pub cpu_state: CpuState,
     /// allocator for the process
     pub virtual_allocator: VirtualPageAllocator,
+    /// The pid
     pub pid: u32,
     pub state: State,
 }
@@ -44,7 +46,7 @@ const STACK_SIZE: NbrPages = NbrPages::_1MB;
 
 impl Process {
     /// create a new process wich will execute f, and start with eflags
-    pub unsafe fn new(f: unsafe extern "C" fn(), eflags: Eflags) -> Self {
+    pub unsafe fn new(f: fn(), eflags: Eflags) -> Self {
         let old_cr3 = _read_cr3();
         let mut v = VirtualPageAllocator::new_for_process();
         v.context_switch();
@@ -68,7 +70,7 @@ impl Process {
     }
 
     /// return a children
-    pub fn fork(&self) -> Self {
+    pub fn fork(&self) -> ! {
         unimplemented!();
         // unsafe {
         //     Self::new(core::mem::transmute::<*const (), unsafe extern "C" fn()>(self.eip as *const ()), self.eflags)

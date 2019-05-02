@@ -6,35 +6,41 @@ mod syscall_isr;
 
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use crate::process::scheduler::SCHEDULER;
+use crate::process::CpuState;
+use crate::system::BaseRegisters;
 use core::ffi::c_void;
 
-fn sys_write(_fd: i32, buf: *const u8, count: usize) {
+fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
     unsafe {
         println!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
     }
+    count as i32
 }
 
-fn sys_read(_fd: i32, _buf: *const u8, _count: usize) {
+fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> i32 {
     unimplemented!();
 }
 
-fn sys_exit(status: i32) {
+fn sys_exit(status: i32) -> i32 {
     SCHEDULER.lock().exit(status);
 }
 
-fn sys_fork() {
+fn sys_fork() -> i32 {
     SCHEDULER.lock().fork();
 }
 
 #[no_mangle]
-pub extern "C" fn syscall_interrupt_handler(args: [u32; 6]) {
-    match args[0] {
-        0x1 => sys_exit(args[1] as i32),
+pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) {
+    SCHEDULER.lock().save_process_state(cpu_state);
+    let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
+    let return_value = match eax {
+        0x1 => sys_exit(ebx as i32),
         0x2 => sys_fork(),
-        0x3 => sys_read(args[1] as i32, args[2] as *const u8, args[3] as usize),
-        0x4 => sys_write(args[1] as i32, args[2] as *const u8, args[3] as usize),
+        0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
+        0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         _ => panic!("wrong syscall"),
-    }
+    };
+    SCHEDULER.lock().return_from_syscall(return_value);
 }
 
 pub fn init() {
