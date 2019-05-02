@@ -1,5 +1,5 @@
-use super::{BuddyAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::{_enable_paging, invalidate_page, Entry, PageDirectory};
+use super::{BuddyAllocator, PHYSICAL_ALLOCATOR};
+use crate::memory::mmu::{invalidate_page, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
@@ -33,11 +33,11 @@ impl VirtualPageAllocator {
 
     /// the process forker must be the current cr3
     pub fn fork(&self) -> Self {
-        unimplemented!();
-        // let buddy = self.virt.clone();
-        // let mut pd = PageDirectory::new_for_process();
+        let buddy = self.virt.clone();
 
-        // Self::new(buddy, pd)
+        let pd = unsafe { self.mmu.fork() };
+
+        Self::new(buddy, pd)
     }
 
     /// get the physical mapping of virtual address `v`
@@ -47,11 +47,7 @@ impl VirtualPageAllocator {
     }
 
     pub unsafe fn context_switch(&self) {
-        let phys_pd: Phys = {
-            let raw_pd = self.mmu.as_ref() as *const PageDirectory;
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
-        };
-        _enable_paging(phys_pd);
+        PageDirectory::context_switch(&self.mmu);
     }
 
     // Should this have an AllocFlags.

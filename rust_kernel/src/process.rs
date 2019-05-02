@@ -42,7 +42,7 @@ pub struct Process {
     pub state: State,
 }
 
-const STACK_SIZE: NbrPages = NbrPages::_1MB;
+const STACK_SIZE: NbrPages = NbrPages::_4K;
 
 impl Process {
     /// create a new process wich will execute f, and start with eflags
@@ -69,12 +69,20 @@ impl Process {
         res
     }
 
-    /// return a children
-    pub fn fork(&self) -> ! {
-        unimplemented!();
-        // unsafe {
-        //     Self::new(core::mem::transmute::<*const (), unsafe extern "C" fn()>(self.eip as *const ()), self.eflags)
-        // }
+    pub fn fork(&self) -> Self {
+        let mut child = Self {
+            pid: scheduler::get_available_pid(),
+            cpu_state: self.cpu_state,
+            base_stack: self.base_stack,
+            state: State::Running,
+            virtual_allocator: self.virtual_allocator.fork(),
+        };
+        child.cpu_state.registers.eax = 0;
+
+        child
+        // let child = unsafe {
+        //     Self::new(core::mem::transmute::<*const (), fn()>(self.cpu_state.eip as *const ()), self.cpu_state.eflags)
+        // };
     }
     pub fn exit(&mut self, status: i32) {
         self.state = State::Terminated { status };

@@ -12,7 +12,7 @@ use core::ffi::c_void;
 
 fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
     unsafe {
-        println!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
+        print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
     }
     count as i32
 }
@@ -26,7 +26,7 @@ fn sys_exit(status: i32) -> i32 {
 }
 
 fn sys_fork() -> i32 {
-    SCHEDULER.lock().fork();
+    SCHEDULER.lock().fork()
 }
 
 #[no_mangle]

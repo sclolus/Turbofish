@@ -1,7 +1,7 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::page_table::PageTable;
-use super::{Entry, BIOS_PAGE_TABLE, PAGE_TABLES};
+use super::{Entry, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::allocator::{KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
@@ -40,6 +40,50 @@ impl PageDirectory {
             pd.self_map_tricks(phys_pd);
         }
         pd
+    }
+
+    pub unsafe fn context_switch(&self) {
+        let phys_pd = {
+            let raw_pd = self as *const Self;
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+        };
+        _enable_paging(phys_pd);
+    }
+
+    // dummy fork for the moment ( no copy on write and a lot of context switch )
+    pub unsafe fn fork(&self) -> Box<Self> {
+        let mut mem_tmp = [0; PAGE_SIZE];
+        let mut child = Self::new_for_process();
+
+        // parcour the user page directory
+        for i in 1..768 {
+            let page = Page::new(i * 1024);
+            if self[i].contains(Entry::PRESENT) {
+                let page_table = self.get_page_table_trick(page).unwrap();
+
+                // parcour the user page table
+                for j in 0..1024 {
+                    let entry = page_table[j];
+                    if entry.contains(Entry::PRESENT) {
+                        // get the memory
+                        let virt = page + NbrPages(j);
+                        let mem = virt.to_addr().0 as *mut [u8; PAGE_SIZE];
+                        mem_tmp = *mem;
+
+                        child.as_ref().context_switch();
+                        let phys = PHYSICAL_ALLOCATOR
+                            .as_mut()
+                            .unwrap()
+                            .alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)
+                            .unwrap();
+                        child.map_page(virt, phys, entry).unwrap();
+                        *(virt.to_addr().0 as *mut [u8; PAGE_SIZE]) = mem_tmp;
+                        self.context_switch();
+                    }
+                }
+            }
+        }
+        child
     }
 
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .
@@ -234,6 +278,7 @@ impl Drop for PageDirectory {
         for i in 1..768 {
             if self[i].contains(Entry::PRESENT) {
                 unsafe {
+                    //TODO: invalid page ?
                     PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
                 }
             }

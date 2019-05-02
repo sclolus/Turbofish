@@ -1,6 +1,7 @@
 extern "C" {
     pub fn _user_write(fd: i32, buf: *const u8, count: usize);
     pub fn _user_exit(status: i32) -> i32;
+    pub fn _user_fork() -> i32;
 }
 
 pub struct UserWriter;

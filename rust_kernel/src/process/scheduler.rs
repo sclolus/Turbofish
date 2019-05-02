@@ -1,7 +1,7 @@
 use crate::process::{CpuState, Process};
 use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
-use crate::syscall::_user_exit;
+use crate::syscall::{_user_exit, _user_fork};
 use alloc::vec;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -41,9 +41,10 @@ impl Scheduler {
     // create a new scheduler for tests
     unsafe fn new() -> Self {
         let test_process = vec![
-            Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
-            Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
-            Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(fork_process, Eflags::get_eflags().set_interrupt_flag(true)),
         ];
         let all_process = {
             let mut a = HashMap::new();
@@ -102,8 +103,17 @@ impl Scheduler {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
     }
 
-    pub fn fork(&mut self) -> ! {
-        unimplemented!();
+    pub fn fork(&mut self) -> i32 {
+        let curr_process = self.curr_process_mut();
+
+        let child = curr_process.fork();
+        let child_pid = child.pid;
+
+        // curr_process.cpu_state.registers.eax = child.pid;
+
+        self.running_process.push(child_pid);
+        self.all_process.insert(child_pid, child);
+        child_pid as i32
     }
 
     /// perform the exit syscall
@@ -155,12 +165,32 @@ fn process_b() {
     }
 }
 
-/// stupid kernel space process b
-#[no_mangle]
+/// stupid kernel space process diying in pain
 fn diyng_process() {
     unsafe {
         for i in 0..10 {
             user_eprintln!("process diying slowly {}", i);
+        }
+        _user_exit(0);
+    }
+}
+
+/// stupid kernel space process doing a fork
+fn fork_process() {
+    unsafe {
+        user_eprintln!("i am a the fork process");
+
+        let fork_res = _user_fork();
+        if fork_res == 0 {
+            for i in 0..1000000 {
+                user_eprintln!("i am a gentle child {}", i);
+                asm!("hlt"::::"volatile");
+            }
+        } else {
+            for i in 0..1000000 {
+                user_eprintln!("i am a proud father of child with pid({}) {}", fork_res, i);
+                asm!("hlt"::::"volatile");
+            }
         }
         _user_exit(0);
     }
