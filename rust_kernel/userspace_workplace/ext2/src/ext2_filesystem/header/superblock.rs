@@ -6,6 +6,7 @@ use bitflags::bitflags;
 
 use core::fmt;
 
+/// Common structure of a SuperBlock
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 pub struct SuperBlock {

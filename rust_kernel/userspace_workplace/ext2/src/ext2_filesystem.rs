@@ -1,3 +1,6 @@
+//! this module contains a ext2 driver
+//! see [osdev](https://wiki.osdev.org/Ext2)
+
 #![allow(dead_code)]
 
 mod reader_disk;
@@ -48,6 +51,7 @@ pub enum IoError {
 /// Used to help confirm the presence of Ext2 on a volume
 const EXT2_SIGNATURE_MAGIC: u16 = 0xef53;
 
+/// Magic iterator over the entire fileSytem
 pub struct EntryIter<'a> {
     filesystem: &'a mut Ext2Filesystem,
     inode: &'a Inode,
@@ -72,6 +76,7 @@ impl<'a> Iterator for EntryIter<'a> {
     }
 }
 
+/// Local file structure
 #[derive(Debug, Copy, Clone)]
 pub struct File {
     inode: Inode,
@@ -90,15 +95,17 @@ impl File {
     }
 }
 
+/// Global structure of ext2Filesystem
 #[derive(Debug)]
 pub struct Ext2Filesystem {
     superblock: SuperBlock,
+    reader_disk: ReaderDisk,
     nbr_block_grp: u32,
     block_size: u32,
-    reader_disk: ReaderDisk,
 }
 
 impl Ext2Filesystem {
+    /// Invocation of a new FileSystem instance: take a FD and his reader as parameter
     pub fn new(f: StdFile) -> Self {
         let mut reader_disk = ReaderDisk(f);
         let superblock: SuperBlock = reader_disk.disk_read_struct(1024);
@@ -106,21 +113,33 @@ impl Ext2Filesystem {
         let signature = superblock.get_ext2_signature();
         assert_eq!(signature, EXT2_SIGNATURE_MAGIC);
 
-        let nbr_block_grp = superblock.get_nbr_block_grp();
-        let nbr_block_grp2 = superblock.get_inode_block_grp();
-
         // consistency check
-        assert_eq!(nbr_block_grp, nbr_block_grp2);
+        let nbr_block_grp = superblock.get_nbr_block_grp();
+        assert_eq!(nbr_block_grp, superblock.get_inode_block_grp());
 
         let block_size = 1024 << superblock.get_log2_block_size();
 
         Self { block_size, superblock, nbr_block_grp, reader_disk }
     }
 
+    /// Try to clone the Ext2Filesystem instance
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self { reader_disk: self.reader_disk.try_clone()?, ..*self })
     }
 
+    /// Open a File
+    pub fn open(&mut self, path: &str) -> IoResult<File> {
+        let mut inode = self.find_inode(2);
+        for p in path.split('/') {
+            let entry =
+                self.iter_entries(&inode.0)?.find(|x| x.get_filename() == p).ok_or(IoError::NoSuchFileOrDirectory)?;
+            // dbg!(entry.get_path());
+            inode = self.find_inode(entry.inode);
+        }
+        Ok(File { inode: inode.0, inode_addr: inode.1, curr_offset: 0 })
+    }
+
+    
     /// read the block group descriptor from the block group number starting at 0
     pub fn block_grp_addr(&mut self, n: u32) -> Block {
         // The table is located in the block immediately following the Superblock. So if the block size (determined from a field in the superblock) is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. For any other block size, it will begin at block 1. Remember that blocks are numbered starting at 0, and that block numbers don't usually correspond to physical block addresses.
@@ -170,17 +189,6 @@ impl Ext2Filesystem {
             return Err(IoError::NotADirectory);
         }
         Ok(EntryIter { filesystem: self, inode, cur_dir_index: 0, cur_offset: 0 })
-    }
-
-    pub fn open(&mut self, path: &str) -> IoResult<File> {
-        let mut inode = self.find_inode(2);
-        for p in path.split('/') {
-            let entry =
-                self.iter_entries(&inode.0)?.find(|x| x.get_filename() == p).ok_or(IoError::NoSuchFileOrDirectory)?;
-            // dbg!(entry.get_path());
-            inode = self.find_inode(entry.inode);
-        }
-        Ok(File { inode: inode.0, inode_addr: inode.1, curr_offset: 0 })
     }
 
     fn alloc_block_on_grp(&mut self, n: u32) -> Option<Block> {

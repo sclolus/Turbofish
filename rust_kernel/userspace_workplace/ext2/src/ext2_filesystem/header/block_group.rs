@@ -2,6 +2,7 @@
 
 use super::Block;
 
+/// Common structure of a block groupe
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 pub struct BlockGroupDescriptor {

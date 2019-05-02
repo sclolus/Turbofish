@@ -1,5 +1,4 @@
-//! this module contains a ext2 driver
-//! see [osdev](https://wiki.osdev.org/Ext2)
+//! Main of tests
 
 #![feature(process_exitcode_placeholder)]
 
