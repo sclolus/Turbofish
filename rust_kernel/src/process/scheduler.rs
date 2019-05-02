@@ -4,6 +4,8 @@ use crate::spinlock::Spinlock;
 use crate::system::BaseRegisters;
 use alloc::vec;
 use alloc::vec::Vec;
+use hashmap_core::fnv::FnvHashMap as HashMap;
+// use hashmap_core::map::HashMap;
 use lazy_static::lazy_static;
 
 extern "C" {
@@ -13,6 +15,8 @@ extern "C" {
     fn _switch_process(eflags: u32, segment: u32, eip: u32, esp: u32, registers: BaseRegisters) -> !;
     static mut SCHEDULER_ACTIVE: bool;
 }
+
+type Pid = u32;
 
 /// the pit handler
 #[no_mangle]
@@ -29,9 +33,12 @@ unsafe extern "C" fn timer_interrupt_handler(
 }
 
 pub struct Scheduler {
-    /// contains all runing process for the moment
-    process: Vec<Process>,
+    /// contains pids of all runing process
+    running_process: Vec<Pid>,
+    /// contains a hashmap of pid, process
+    all_process: HashMap<Pid, Process>,
     /// index in the vector of the current running process
+    //curr_process_pid: Pid,
     curr_process_index: usize,
     // TODO: remove that, it is just use for starting the first process
     no_process: bool,
@@ -39,12 +46,19 @@ pub struct Scheduler {
 
 impl Scheduler {
     unsafe fn new() -> Self {
+        let all_process = {
+            let mut a = HashMap::new();
+            let p = Process::new(_process_a, Eflags::get_eflags().set_interrupt_flag(true));
+            dbg!(&p);
+            a.insert(p.pid, p);
+            let p = Process::new(_process_b, Eflags::get_eflags().set_interrupt_flag(true));
+            dbg!(&p);
+            a.insert(p.pid, p);
+            a
+        };
         Self {
-            process: vec![
-                //TODO: change the get_eflags for some default flags
-                Process::new(_process_a, Eflags::get_eflags().set_interrupt_flag(true)),
-                Process::new(_process_b, Eflags::get_eflags().set_interrupt_flag(true)),
-            ],
+            running_process: all_process.keys().map(|x| *x).collect(),
+            all_process,
             curr_process_index: 0,
             no_process: true,
         }
@@ -67,7 +81,8 @@ impl Scheduler {
             self.no_process = false;
             return;
         }
-        let curr_process: &mut Process = &mut self.process[self.curr_process_index];
+        let curr_process: &mut Process =
+            self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap();
         curr_process.eip = old_eip;
         curr_process.esp = old_esp;
         curr_process.registers = registers;
@@ -76,8 +91,8 @@ impl Scheduler {
     }
 
     fn schedule(&mut self) -> ! {
-        self.curr_process_index = (self.curr_process_index + 1) % self.process.len();
-        let next_process: &Process = &self.process[self.curr_process_index];
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+        let next_process: &Process = self.all_process.get(&self.running_process[self.curr_process_index]).unwrap();
         // eprintln!(
         //     "switch to eip:{:X?} esp:{:X?} reg:{:X?}\n eflags: {}",
         //     next_process.eip, next_process.esp, next_process.registers, next_process.eflags
@@ -113,7 +128,7 @@ lazy_static! {
 use core::sync::atomic::{AtomicU32, Ordering};
 
 /// represent the greatest available pid
-const MAX_PID: AtomicU32 = AtomicU32::new(0);
+static MAX_PID: AtomicU32 = AtomicU32::new(0);
 
 /// get the next available pid for a new process
 pub fn get_available_pid() -> u32 {

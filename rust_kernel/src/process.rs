@@ -6,13 +6,14 @@ use crate::system::BaseRegisters;
 pub mod scheduler;
 
 /// state of a process
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum State {
     Terminated { status: i32 },
     Running,
     Waiting,
 }
 
+#[derive(Debug)]
 pub struct Process {
     /// pointer to the base of the stack
     pub base_stack: u32,

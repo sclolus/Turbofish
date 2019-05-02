@@ -98,7 +98,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         crate::syscall::_user_write(1, s.as_ptr(), s.len());
     }
 
-    // scheduler::init();
-    shell();
+    scheduler::init();
+    // shell();
+    loop {}
     0
 }

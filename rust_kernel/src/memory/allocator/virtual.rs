@@ -10,6 +10,13 @@ pub struct VirtualPageAllocator {
     mmu: Box<PageDirectory>,
 }
 
+use core::{fmt, fmt::Debug};
+impl Debug for VirtualPageAllocator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Virtual allocator")
+    }
+}
+
 impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
