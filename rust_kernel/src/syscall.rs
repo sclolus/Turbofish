@@ -12,7 +12,7 @@ use core::ffi::c_void;
 
 fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
     unsafe {
-        print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
+        eprint!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
     }
     count as i32
 }

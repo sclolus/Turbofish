@@ -44,7 +44,9 @@ impl Scheduler {
             // Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
-            Process::new(fork_process, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(fork_process, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(fork_bomb, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(fork_test_different_stack, Eflags::get_eflags().set_interrupt_flag(true)),
         ];
         let all_process = {
             let mut a = HashMap::new();
@@ -106,14 +108,18 @@ impl Scheduler {
     pub fn fork(&mut self) -> i32 {
         let curr_process = self.curr_process_mut();
 
-        let child = curr_process.fork();
-        let child_pid = child.pid;
-
-        // curr_process.cpu_state.registers.eax = child.pid;
-
-        self.running_process.push(child_pid);
-        self.all_process.insert(child_pid, child);
-        child_pid as i32
+        match curr_process.fork() {
+            Ok(child) => {
+                let child_pid = child.pid;
+                self.running_process.push(child_pid);
+                self.all_process.insert(child_pid, child);
+                child_pid as i32
+            }
+            Err(e) => {
+                eprintln!("{:?}", e);
+                -1
+            }
+        }
     }
 
     /// perform the exit syscall
@@ -148,6 +154,7 @@ pub fn init() {
 }
 
 /// stupid kernel space process a
+#[allow(dead_code)]
 fn process_a() {
     unsafe {
         for i in 0..1000000 {
@@ -157,6 +164,7 @@ fn process_a() {
 }
 
 /// stupid kernel space process b
+#[allow(dead_code)]
 fn process_b() {
     unsafe {
         for i in 0..1000000 {
@@ -166,6 +174,7 @@ fn process_b() {
 }
 
 /// stupid kernel space process diying in pain
+#[allow(dead_code)]
 fn diyng_process() {
     unsafe {
         for i in 0..10 {
@@ -176,6 +185,7 @@ fn diyng_process() {
 }
 
 /// stupid kernel space process doing a fork
+#[allow(dead_code)]
 fn fork_process() {
     unsafe {
         user_eprintln!("i am a the fork process");
@@ -193,5 +203,72 @@ fn fork_process() {
             }
         }
         _user_exit(0);
+    }
+}
+
+/// stupid kernel space process doing a fork
+#[allow(dead_code)]
+fn fork_test_different_stack() {
+    let mut array: [u8; 128] = [42; 128];
+    unsafe {
+        user_eprintln!("i am a the fork process");
+
+        let fork_res = _user_fork();
+        if fork_res == 0 {
+            user_eprintln!("i am a gentle child");
+            user_eprintln!("i am a gentle child {:?}", &array[..]);
+            array = [21; 128];
+            asm!("hlt"::::"volatile");
+            user_eprintln!("i am a gentle child {:?}", &array[..]);
+        } else {
+            user_eprintln!("i am a proud father of child with pid({})", fork_res);
+            user_eprintln!("in the father {:?}", &array[..]);
+            asm!("hlt"::::"volatile");
+            array = [84; 128];
+            user_eprintln!("in the father {:?}", &array[..]);
+        }
+        loop {}
+    }
+}
+
+// /// stupid kernel space process doing a fork
+// #[allow(dead_code)]
+// fn fork_test_different_stack() {
+//     let mut array: [u8; 128] = [42; 128];
+//     unsafe {
+//         user_eprintln!("i am a the fork process");
+
+//         let fork_res = _user_fork();
+//         if fork_res == 0 {
+//             user_eprintln!("i am a gentle child");
+//             user_eprintln!("{}", format!("i am a gentle child {:?}", &array[..]));
+//             array = [21; 128];
+//             asm!("hlt"::::"volatile");
+//             user_eprintln!("{}", format!("i am a gentle child {:?}", &array[..]));
+//         } else {
+//             user_eprintln!("i am a proud father of child with pid({})", fork_res);
+//             user_eprintln!("{}", format!("in the father {:?}", &array[..]));
+//             asm!("hlt"::::"volatile");
+//             array = [84; 128];
+//             user_eprintln!("{}", format!("in the father {:?}", &array[..]));
+//         }
+//         loop {}
+//     }
+// }
+
+#[allow(dead_code)]
+#[allow(unconditional_recursion)]
+fn fork_bomb() {
+    unsafe {
+        user_eprintln!("i am a the fork process");
+
+        let fork_res = _user_fork();
+        if fork_res == 0 {
+            user_eprintln!("i am a gentle child ");
+            fork_bomb()
+        } else {
+            user_eprintln!("i am a proud father of child with pid({})", fork_res);
+            fork_bomb()
+        }
     }
 }

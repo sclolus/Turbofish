@@ -32,12 +32,12 @@ impl VirtualPageAllocator {
     }
 
     /// the process forker must be the current cr3
-    pub fn fork(&self) -> Self {
+    pub fn fork(&self) -> Result<Self> {
         let buddy = self.virt.clone();
 
-        let pd = unsafe { self.mmu.fork() };
+        let pd = unsafe { self.mmu.fork()? };
 
-        Self::new(buddy, pd)
+        Ok(Self::new(buddy, pd))
     }
 
     /// get the physical mapping of virtual address `v`

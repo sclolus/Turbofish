@@ -104,14 +104,30 @@ macro_rules! printfixed {
     })
 }
 
-/// eprintln without UART, dumping data in some active TTY
+/// eprint! without UART, dumping data in some active TTY
+#[cfg(not(feature = "serial-eprintln"))]
+#[cfg(not(test))]
+#[macro_export]
+macro_rules! eprint {
+    ($($arg:tt)*) => ($crate::print_bypass_mutex!($($arg)*))
+}
+
+/// eprint! with UART
+#[cfg(feature = "serial-eprintln")]
+#[cfg(not(test))]
+#[macro_export]
+macro_rules! eprint {
+    ($($arg:tt)*) => ($crate::serial_print!($($arg)*));
+}
+
+/// eprintln! without UART, dumping data in some active TTY
 #[cfg(not(feature = "serial-eprintln"))]
 #[cfg(not(test))]
 #[macro_export]
 macro_rules! eprintln {
-    () => ($crate::print_bypass_mutex!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print_bypass_mutex!($fmt, $($arg)*));
-    ($fmt:expr) => ($crate::print_bypass_mutex!($fmt));
+    () => ($crate::eprint!("\n"));
+    ($fmt:expr, $($arg:tt)*) => ($crate::eprint!($fmt, $($arg)*));
+    ($fmt:expr) => ($crate::eprint!($fmt));
 }
 
 /// eprintln! with UART

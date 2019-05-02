@@ -51,7 +51,7 @@ impl PageDirectory {
     }
 
     // dummy fork for the moment ( no copy on write and a lot of context switch )
-    pub unsafe fn fork(&self) -> Box<Self> {
+    pub unsafe fn fork(&self) -> Result<Box<Self>> {
         let mut mem_tmp = [0; PAGE_SIZE];
         let mut child = Self::new_for_process();
 
@@ -59,7 +59,7 @@ impl PageDirectory {
         for i in 1..768 {
             let page = Page::new(i * 1024);
             if self[i].contains(Entry::PRESENT) {
-                let page_table = self.get_page_table_trick(page).unwrap();
+                let page_table = self.get_page_table_trick(page).expect("can't happen");
 
                 // parcour the user page table
                 for j in 0..1024 {
@@ -71,19 +71,16 @@ impl PageDirectory {
                         mem_tmp = *mem;
 
                         child.as_ref().context_switch();
-                        let phys = PHYSICAL_ALLOCATOR
-                            .as_mut()
-                            .unwrap()
-                            .alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)
-                            .unwrap();
-                        child.map_page(virt, phys, entry).unwrap();
+                        let phys =
+                            PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)?;
+                        child.map_page(virt, phys, entry)?;
                         *(virt.to_addr().0 as *mut [u8; PAGE_SIZE]) = mem_tmp;
                         self.context_switch();
                     }
                 }
             }
         }
-        child
+        Ok(child)
     }
 
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .
