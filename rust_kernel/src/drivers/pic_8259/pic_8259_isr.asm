@@ -120,19 +120,19 @@ TMP_ESP:	dd 0
 segment .text
 extern debug_process
 global _switch_process
-;; fn _switch_process(eflags: u32, segment: u32, eip: u32, esp: u32, registers: BaseRegisters) -> !;
+;; fn _switch_process(CpuState {eip: u32, segment: u32, eflags: u32, esp: u32, registers: BaseRegisters}) -> !;
 _switch_process:
 	push ebp
 	mov ebp, esp
 
 	mov eax, dword [ebp + 8]
-	mov [TMP_EFLAGS], eax
+	mov [TMP_EIP], eax
 
 	mov eax, dword [ebp + 12]
 	mov [TMP_SEGMENT], eax
 
 	mov eax, dword [ebp + 16]
-	mov [TMP_EIP], eax
+	mov [TMP_EFLAGS], eax
 
 	mov eax, dword [ebp + 20]
 	mov [TMP_ESP], eax

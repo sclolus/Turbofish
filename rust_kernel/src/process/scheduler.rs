@@ -1,7 +1,6 @@
-use crate::process::Process;
+use crate::process::{CpuState, Process};
 use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
-use crate::system::BaseRegisters;
 use alloc::vec;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -12,7 +11,7 @@ extern "C" {
     fn _process_a();
     fn _process_b();
     /// set all processor state to its arguments and iret to eip
-    fn _switch_process(eflags: u32, segment: u32, eip: u32, esp: u32, registers: BaseRegisters) -> !;
+    fn _switch_process(cpu_state: CpuState) -> !;
     static mut SCHEDULER_ACTIVE: bool;
 }
 
@@ -20,15 +19,9 @@ type Pid = u32;
 
 /// the pit handler
 #[no_mangle]
-unsafe extern "C" fn timer_interrupt_handler(
-    old_eip: u32,
-    old_segment: u32,
-    old_eflags: u32,
-    old_esp: u32,
-    registers: BaseRegisters,
-) -> ! {
+unsafe extern "C" fn timer_interrupt_handler(cpu_state: CpuState) -> ! {
     let mut scheduler = SCHEDULER.lock();
-    scheduler.save_process_state(old_eip, old_segment, old_eflags, old_esp, registers);
+    scheduler.save_process_state(cpu_state);
     scheduler.schedule()
 }
 
@@ -64,15 +57,7 @@ impl Scheduler {
         }
     }
 
-    fn save_process_state(
-        &mut self,
-        old_eip: u32,
-        old_segment: u32,
-        old_eflags: u32,
-        old_esp: u32,
-        registers: BaseRegisters,
-    ) {
-        let eflags = crate::registers::Eflags::new(old_eflags);
+    fn save_process_state(&mut self, cpu_state: CpuState) {
         // eprintln!(
         //     "saving process with: eip:{:X?} esp:{:X?} reg:{:X?}\n eflags: {}",
         //     old_eip, old_esp, registers, eflags
@@ -83,11 +68,7 @@ impl Scheduler {
         }
         let curr_process: &mut Process =
             self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap();
-        curr_process.eip = old_eip;
-        curr_process.esp = old_esp;
-        curr_process.registers = registers;
-        curr_process.eflags = eflags;
-        curr_process.segment = old_segment;
+        curr_process.cpu_state = cpu_state;
     }
 
     fn schedule(&mut self) -> ! {
@@ -100,13 +81,7 @@ impl Scheduler {
         unsafe {
             next_process.virtual_allocator.context_switch();
             SCHEDULER.force_unlock();
-            _switch_process(
-                next_process.eflags.inner(),
-                next_process.segment,
-                next_process.eip,
-                next_process.esp,
-                next_process.registers,
-            );
+            _switch_process(next_process.cpu_state);
         }
     }
 

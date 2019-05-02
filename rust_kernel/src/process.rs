@@ -13,20 +13,27 @@ pub enum State {
     Waiting,
 }
 
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+pub struct CpuState {
+    /// current eip
+    pub eip: u32,
+    /// current segment of code
+    pub segment: u32,
+    /// current eflags
+    pub eflags: Eflags,
+    /// current esp
+    pub esp: u32,
+    /// current registers
+    pub registers: BaseRegisters,
+}
+
 #[derive(Debug)]
 pub struct Process {
     /// pointer to the base of the stack
     pub base_stack: u32,
-    /// current eip
-    pub eip: u32,
-    /// current esp
-    pub esp: u32,
-    /// current eflags
-    pub eflags: Eflags,
-    /// current segment of code
-    pub segment: u32,
-    /// current registers
-    pub registers: BaseRegisters,
+    /// represent the state of the processor when the process was last stoped
+    pub cpu_state: CpuState,
     /// allocator for the process
     pub virtual_allocator: VirtualPageAllocator,
     pub pid: u32,
@@ -43,13 +50,15 @@ impl Process {
         v.context_switch();
         let base_stack = v.alloc(STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
         let res = Self {
-            eip: f as u32,
+            cpu_state: CpuState {
+                eip: f as u32,
+                // stack go downwards set esp to the end of the allocation
+                esp: base_stack.add(STACK_SIZE.into()) as u32,
+                registers: Default::default(),
+                segment: 0x8,
+                eflags,
+            },
             base_stack: base_stack as u32,
-            // stack go downwards set esp to the end of the allocation
-            esp: base_stack.add(STACK_SIZE.into()) as u32,
-            registers: Default::default(),
-            segment: 0x8,
-            eflags,
             virtual_allocator: v,
             pid: scheduler::get_available_pid(),
             state: State::Running,
