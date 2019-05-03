@@ -2,6 +2,7 @@
 #[macro_use]
 pub mod test_syscall;
 pub use test_syscall::*;
+mod mmap;
 mod syscall_isr;
 
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
