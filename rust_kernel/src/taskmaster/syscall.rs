@@ -45,7 +45,9 @@ pub extern "C" fn syscall_interrupt_handler(base_registers: BaseRegisters) -> i3
         0x2 => sys_fork(),
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        _ => panic!("wrong syscall"),
+        // set thread area
+        0xf3 => -1,
+        sysnum => panic!("wrong syscall {}", sysnum),
     }
 }
 

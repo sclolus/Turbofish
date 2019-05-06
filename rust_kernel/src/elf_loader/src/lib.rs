@@ -316,8 +316,8 @@ impl TryFrom<&[u8]> for ElfHeader {
 //     }
 // }
 
-#[derive(Debug)]
-enum SegmentType {
+#[derive(Debug, PartialEq)]
+pub enum SegmentType {
     Null,
     Load,
     Dynamic,
@@ -397,20 +397,20 @@ impl TryFrom<u32> for SegmentType {
 
 #[derive(Debug)]
 pub struct ProgramHeader {
-    program_type: SegmentType,
+    pub segment_type: SegmentType,
     /// This member gives the offset from the beginning of the file at which the first byte of thesegment resides
-    offset: u32,
+    pub offset: u32,
     /// This member gives the virtual address at which the first byte of the segment resides inmemory.
-    vaddr: u32,
+    pub vaddr: u32,
     /// On systems for which physical addressing is relevant, this member is reserved for thesegment’s physical address.
-    paddr: u32,
+    pub paddr: u32,
     /// This member gives the number of bytes in the file image of the segment; it may be zero
-    filez: u32,
+    pub filez: u32,
     /// This member gives the number of bytes in the memory image of the segment; it may bezero
-    memsz: u32,
-    flags: ProgramHeaderFlags,
+    pub memsz: u32,
+    pub flags: ProgramHeaderFlags,
     /// loadable process segments must have congruent values for vaddr and offset, modulo the page size
-    align: u32,
+    pub align: u32,
 }
 
 impl ProgramHeader {
@@ -428,7 +428,7 @@ impl TryFrom<&[u8]> for ProgramHeader {
         }
 
         let new = Self {
-            program_type: SegmentType::try_from(u32::from_ne_bytes(copy_to_array(&value[0x0..0x4])))?,
+            segment_type: SegmentType::try_from(u32::from_ne_bytes(copy_to_array(&value[0x0..0x4])))?,
             offset: (u32::from_ne_bytes(copy_to_array(&value[0x4..0x8]))),
             vaddr: (u32::from_ne_bytes(copy_to_array(&value[0x8..0x0C]))),
             paddr: (u32::from_ne_bytes(copy_to_array(&value[0x0C..0x10]))),
@@ -450,7 +450,7 @@ impl TryFrom<&[u8]> for ProgramHeader {
 impl core::fmt::Display for ProgramHeader {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         Ok(write!(fmt, "type: {:?}, offset: {:08X}, vaddr: {:08X}, paddr: {:08X}, filez: {:08x}, memsz: {:08X}, flags: {:?}, align: {:02X}",
-                  self.program_type,
+                  self.segment_type,
                   self.offset,
                   self.vaddr,
                   self.paddr,

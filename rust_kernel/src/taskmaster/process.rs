@@ -2,6 +2,7 @@
 
 pub mod tss;
 
+// use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages};
@@ -89,7 +90,58 @@ impl Process {
         // When non-fork, return to Kernel PD, when forking, return to father PD
         res
     }
+    /*
+    /// Load a real process
+    pub unsafe fn load(eflags: Eflags) -> crate::memory::tools::Result<Self> {
+        let old_cr3 = _read_cr3();
+        let mut v = VirtualPageAllocator::new_for_process();
+        v.context_switch();
 
+        let content: &[u8] = &include_bytes!("./Charles")[..];
+        let elf = load_elf();
+        for h in &elf.program_header_table {
+            use core::slice;
+            use elf_loader::SegmentType;
+            if h.segment_type == SegmentType::Load {
+                println!("{:X?}", h);
+                let segment = {
+                    let _segment_addr = v
+                        .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
+                        .to_addr()
+                        .0 as *mut u8;
+                    slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
+                };
+
+                println!("segment: {:X?}", segment.as_ptr());
+                for (dest, src) in
+                    segment.iter_mut().zip(content[h.offset as usize..h.offset as usize + h.filez as usize].iter())
+                {
+                    *dest = *src;
+                }
+            }
+        }
+
+        let base_stack = v.alloc(STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+        let res = Self {
+            cpu_state: CpuState {
+                eip: elf.header.entry_point,
+                // stack go downwards set esp to the end of the allocation
+                esp: dbg_hex!(base_stack.add(STACK_SIZE.into()) as u32 - 16),
+                registers: Default::default(),
+                segment: 0x8,
+                eflags,
+            },
+            base_stack: base_stack as u32 - 16,
+            virtual_allocator: v,
+            pid: scheduler::get_available_pid(),
+            state: State::Running,
+        };
+
+        _enable_paging(old_cr3);
+
+        Ok(res)
+    }
+    */
     /// Launch a process
     pub unsafe fn launch(&self) -> ! {
         // Switch to process Page Directory

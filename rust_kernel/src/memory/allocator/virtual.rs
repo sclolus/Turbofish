@@ -103,6 +103,27 @@ impl VirtualPageAllocator {
         unsafe { self.mmu.unmap_range_page(vaddr, order.into()) }
     }
 
+    pub fn alloc_on(&mut self, vaddr: Page<Virt>, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
+        let order = size.into();
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
+        let entry = Entry::from(flags) | Entry::PRESENT;
+
+        self.virt.reserve_exact(vaddr, order)?;
+        unsafe {
+            let paddr = physical_allocator.alloc(size, flags).map_err(|e| {
+                self.virt
+                    .free_reserve(vaddr, order)
+                    .expect("Failed to free allocated virtual page after physical allocator failed");
+                e
+            })?;
+            self.mmu.map_range_page(vaddr, paddr, order.into(), entry).map_err(|e| {
+                self.virt.free_reserve(vaddr, order).unwrap();
+                physical_allocator.free(paddr).unwrap();
+                e
+            })?;
+        }
+        Ok(vaddr.into())
+    }
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
