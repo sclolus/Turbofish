@@ -52,6 +52,7 @@ impl PageDirectory {
 
     // dummy fork for the moment ( no copy on write and a lot of context switch )
     pub unsafe fn fork(&self) -> Result<Box<Self>> {
+        #[allow(unused_assignments)]
         let mut mem_tmp = [0; PAGE_SIZE];
         let mut child = Self::new_for_process();
 

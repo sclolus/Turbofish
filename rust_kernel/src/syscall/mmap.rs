@@ -1,8 +1,9 @@
 use crate::memory::tools::Virt;
 use bitflags::bitflags;
 
+#[allow(dead_code)]
 // void *mmap2(void *addr, size_t length, int prot, int flags, int fd, off_t pgoffset);
-fn sys_mmap(addr: Virt, length: usize, prot: MmapProt, flags: MmapFlags, fd: i32, pgoffset: usize) -> i32 {
+fn sys_mmap(_addr: Virt, _length: usize, _prot: MmapProt, _flags: MmapFlags, _fd: i32, _pgoffset: usize) -> i32 {
     -1
 }
 

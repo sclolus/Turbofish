@@ -41,11 +41,11 @@ impl Scheduler {
     // create a new scheduler for tests
     unsafe fn new() -> Self {
         let test_process = vec![
-            // Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
-            // Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(fork_process, Eflags::get_eflags().set_interrupt_flag(true)),
-            Process::new(fork_bomb, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(fork_bomb, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(fork_test_different_stack, Eflags::get_eflags().set_interrupt_flag(true)),
         ];
         let all_process = {

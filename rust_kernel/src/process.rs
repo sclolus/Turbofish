@@ -88,6 +88,7 @@ impl Process {
 }
 
 // tss unused for the moment
+#[allow(dead_code)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 struct Tss {
     /*0x00*/ _reserved1: u16, link: u16,

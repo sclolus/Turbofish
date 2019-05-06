@@ -6,7 +6,6 @@ use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::process::scheduler;
-use crate::shell::shell;
 use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
@@ -17,7 +16,7 @@ use crate::watch_dog;
 use core::time::Duration;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::drivers::UART_16550.init() };
@@ -99,7 +98,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // }
 
     scheduler::init();
-    // shell();
+    //crate::shell::shell();
     loop {}
-    0
 }
