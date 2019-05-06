@@ -28,6 +28,7 @@ mbr = { path = "dependencies/mbr" }
 raw_data = { path = "dependencies/raw_data" }
 const_assert = { path = "dependencies/const_assert" }
 ext2 = { path = "dependencies/ext2" }
+elf_loader = { path = "src/elf_loader" }
 
 [dependencies.lazy_static]
 version = "1.3.0"

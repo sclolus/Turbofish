@@ -58,6 +58,7 @@ pub mod shell;
 
 pub mod spinlock;
 pub use spinlock::{Spinlock, SpinlockGuard};
+pub mod elf_loader;
 
 use crate::memory::allocator::RustGlobalAlloc;
 
