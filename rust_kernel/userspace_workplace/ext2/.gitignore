@@ -1,1 +1,3 @@
-disk*
+/target
+**/*.rs.bk
+Cargo.lock
