@@ -1,5 +1,6 @@
 //! This module provide header structures and methods for EXT2 filesystems
 
+pub use super::div_rounded_up;
 use super::Block;
 
 mod superblock;

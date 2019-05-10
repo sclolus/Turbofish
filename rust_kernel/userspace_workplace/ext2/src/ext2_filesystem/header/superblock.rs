@@ -1,6 +1,6 @@
 //! This file describe all the superblock model
 
-use super::Block;
+use super::{div_rounded_up, Block};
 
 use bitflags::bitflags;
 
@@ -155,8 +155,8 @@ impl SuperBlock {
     }
 
     /// Get the superblock official block per block group
-    pub fn get_block_per_block_grp(&self) -> u32 {
-        self.block_per_block_grp
+    pub fn get_block_per_block_grp(&self) -> Block {
+        Block(self.block_per_block_grp)
     }
 
     /// Get the superblock official inode per block group
@@ -254,9 +254,4 @@ impl fmt::Debug for PathVolumeLastMounted {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", "PathVolumeLastMounted")
     }
-}
-
-/// Roundup style function
-fn div_rounded_up(a: u32, b: u32) -> u32 {
-    (a + b - 1) / b
 }

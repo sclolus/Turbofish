@@ -24,6 +24,8 @@ pub struct BlockGroupDescriptor {
     /// Number of directories in group
     /*16 	17 	2*/
     nbr_directories: u16,
+    pad: u16,
+    reserved: [u8; 12],
 }
 
 impl BlockGroupDescriptor {

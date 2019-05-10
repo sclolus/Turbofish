@@ -49,7 +49,7 @@ pub struct Inode {
     nbr_hard_links: u16,
     /// Count of disk sectors (not Ext2 blocks) in use by this inode, not counting the actual inode structure nor directory entries linking to the inode.
     /*28 	31      4*/
-    nbr_disk_sectors: u32,
+    pub nbr_disk_sectors: u32,
     /// Flags (see below)
     /*32 	35      4*/
     flags: InodeFlags,
