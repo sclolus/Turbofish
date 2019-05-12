@@ -1,8 +1,8 @@
 mod common;
 use common::*;
 
-use ext2::ext2_filesystem::{Ext2Filesystem, OpenFlags};
-use std::fs::{File, OpenOptions};
+use ext2::ext2_filesystem::OpenFlags;
+use std::fs::File;
 
 #[test]
 fn create_file() {
@@ -10,20 +10,8 @@ fn create_file() {
     let filename = "banane";
     let filename_mounted = DISK_MOUNTED_NAME.to_owned() + "/" + filename;
 
-    {
-        let f = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(DISK_NAME)
-            .expect("open filesystem failed");
-        let mut ext2 = Ext2Filesystem::new(f);
-        ext2.open(filename, OpenFlags::Creat | OpenFlags::ReadWrite)
-            .expect("open on filesystem failed");
-        let f = ext2
-            .open(filename, OpenFlags::ReadWrite)
-            .expect("open with ext2 failed");
-        dbg!(f);
-    }
+    open_ext2(filename, OpenFlags::Creat | OpenFlags::ReadWrite).expect("create file failed");
+    open_ext2(filename, OpenFlags::ReadWrite).expect("open just created file failed");
 
     mount_disk();
     {
