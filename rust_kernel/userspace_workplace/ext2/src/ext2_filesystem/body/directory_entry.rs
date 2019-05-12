@@ -1,6 +1,9 @@
 //! This file describe all the Directory Entry Header model
 
+use crate::ext2_filesystem::tools::{IoError, IoResult};
+use core::convert::{TryFrom, TryInto};
 use core::fmt;
+use core::mem::size_of;
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
@@ -18,9 +21,9 @@ use core::fmt;
 // equivalently marked by a separate directory entry with an inode number of zero, indicating that directory entry should be skipped.
 
 /// Directory Entry base structure
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(packed)]
-pub struct DirectoryEntryHeader {
+pub struct DirectoryEntry {
     /// Inode
     /*0 	3 	4*/
     pub inode: u32,
@@ -39,10 +42,10 @@ pub struct DirectoryEntryHeader {
 }
 
 /// Type of file
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
 #[repr(u8)]
-enum DirectoryEntryType {
+pub enum DirectoryEntryType {
     UnknownType,
     RegularFile,
     Directory,
@@ -54,13 +57,22 @@ enum DirectoryEntryType {
 }
 
 /// Implementations of the Directory Entry
-impl DirectoryEntryHeader {
+impl DirectoryEntry {
+    pub fn new(filename: &str, type_indicator: DirectoryEntryType, inode: u32) -> IoResult<Self> {
+        Ok(Self {
+            inode,
+            entry_size: size_of::<DirectoryEntry>() as u16,
+            name_length: filename.len() as u8,
+            type_indicator,
+            filename: filename.try_into()?,
+        })
+    }
+
     /// Get the file name
-    pub fn get_filename(&self) -> &str {
-        unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(&self.filename.0 as *const u8, self.name_length as usize);
-            core::str::from_utf8_unchecked(slice)
-        }
+    pub unsafe fn get_filename(&self) -> &str {
+        let slice: &[u8] =
+            core::slice::from_raw_parts(&self.filename.0 as *const u8, self.name_length as usize);
+        core::str::from_utf8_unchecked(slice)
     }
 }
 
@@ -69,9 +81,40 @@ impl DirectoryEntryHeader {
 #[repr(transparent)]
 pub struct Filename(pub [u8; 256]);
 
+impl TryFrom<&str> for Filename {
+    type Error = IoError;
+    fn try_from(s: &str) -> Result<Self, IoError> {
+        let mut n = [0; 256];
+        if s.len() >= 256 {
+            return Err(IoError::FilenameTooLong);
+        } else {
+            for (n, c) in n.iter_mut().zip(s.bytes()) {
+                *n = c;
+            }
+            Ok(Self(n))
+        }
+    }
+}
+
+impl Default for Filename {
+    fn default() -> Self {
+        Self([0; 256])
+    }
+}
+
+impl PartialEq for Filename {
+    fn eq(&self, other: &Self) -> bool {
+        self.0[..] == other.0[..]
+    }
+}
+
 /// Debug boilerplate of filename
 impl fmt::Debug for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", "Filename")
+        unsafe {
+            let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, 255);
+            let s = core::str::from_utf8_unchecked(slice);
+            write!(f, "{:?}", s)
+        }
     }
 }

@@ -6,4 +6,4 @@ mod inode;
 pub use inode::{Inode, TypeAndPerm};
 
 mod directory_entry;
-pub use directory_entry::DirectoryEntryHeader;
+pub use directory_entry::{DirectoryEntry, DirectoryEntryType};

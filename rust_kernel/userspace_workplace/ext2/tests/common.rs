@@ -1,4 +1,4 @@
-use ext2::ext2_filesystem::Ext2Filesystem;
+use ext2::ext2_filesystem::{Ext2Filesystem, OpenFlags};
 use std::fs::{File, OpenOptions};
 use std::process::Command;
 
@@ -52,7 +52,9 @@ pub const DOUBLY_MAX_SIZE: usize = SINGLY_MAX_SIZE + (1024 / 4) * (1024 / 4) * 1
 pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
     let f = File::open(DISK_NAME).expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    let mut file = ext2.open(filename).expect("open on filesystem failed");
+    let mut file = ext2
+        .open(filename, OpenFlags::ReadWrite)
+        .expect("open on filesystem failed");
 
     ext2.read(&mut file, buf)
         .expect("read on filesystem failed")
@@ -66,7 +68,9 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
         .open(DISK_NAME)
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    let mut file = ext2.open(filename).expect("open on filesystem failed");
+    let mut file = ext2
+        .open(filename, OpenFlags::ReadWrite)
+        .expect("open on filesystem failed");
     ext2.write(&mut file, buf)
         .expect("write on filesystem failed")
 }

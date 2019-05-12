@@ -17,7 +17,7 @@ use bitflags::bitflags;
 // inode is simply a matter of determining which block group it belongs to and indexing that block group's inode table.
 
 /// Inode Data Structure
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 #[repr(packed)]
 pub struct Inode {
     /// Type and Permissions (see below)
@@ -85,9 +85,19 @@ pub struct Inode {
     operating_system_specific_value_2: u32,
 }
 
+impl Inode {
+    pub fn new(type_and_perm: TypeAndPerm) -> Self {
+        Self {
+            type_and_perm,
+            ..Default::default()
+        }
+    }
+}
+
 // The type indicator occupies the top hex digit (bits 15 to 12) of this 16-bit field
 // Permissions occupy the bottom 12 bits of this 16-bit field
 bitflags! {
+    #[derive(Default)]
     pub struct TypeAndPerm: u16 {
         const FIFO = 0x1000;
         const CHARACTER_DEVICE = 0x2000;
@@ -113,6 +123,7 @@ bitflags! {
 
 // Inode flags
 bitflags! {
+    #[derive(Default)]
     pub struct InodeFlags: u32 {
         const SECURE_DELETION = 0x00000001;
         const KEEP_A_COPY_OF_DATA_WHEN_DELETED = 0x00000002;
