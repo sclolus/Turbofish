@@ -12,7 +12,7 @@ pub struct ReaderDisk(pub StdFile);
 
 impl ReaderDisk {
     /// Raw read. Fill the buf with readen data on file object
-    pub fn disk_read_buffer(&mut self, offset: u32, buf: &mut [u8]) -> usize {
+    pub fn read_buffer(&mut self, offset: u32, buf: &mut [u8]) -> usize {
         self.0
             .seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION))
             .expect("seek failed in disk_read_buffer");
@@ -20,7 +20,7 @@ impl ReaderDisk {
     }
 
     /// Raw write. Write the buf inside file object
-    pub fn disk_write_buffer(&mut self, offset: u32, buf: &[u8]) -> usize {
+    pub fn write_buffer(&mut self, offset: u32, buf: &[u8]) -> usize {
         self.0
             .seek(SeekFrom::Start(offset as u64 + START_OF_PARTITION))
             .expect("seek failed in disk_write_buffer");
@@ -36,7 +36,7 @@ impl ReaderDisk {
         let t: T;
         unsafe {
             t = core::mem::uninitialized();
-            self.disk_read_buffer(
+            self.read_buffer(
                 offset,
                 core::slice::from_raw_parts_mut(&t as *const T as *mut u8, size_of::<T>()),
             );
@@ -47,7 +47,7 @@ impl ReaderDisk {
     /// Write a particulary struct inside file object
     pub fn write_struct<T: Copy>(&mut self, offset: u32, t: &T) {
         let s = unsafe { core::slice::from_raw_parts(t as *const _ as *const u8, size_of::<T>()) };
-        self.disk_write_buffer(offset, s);
+        self.write_buffer(offset, s);
     }
 
     /// Try to clone xD

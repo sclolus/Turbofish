@@ -88,6 +88,9 @@ pub struct Inode {
 impl Inode {
     pub fn new(type_and_perm: TypeAndPerm) -> Self {
         Self {
+            //TODO: put the true time
+            creation_time: 42,
+            nbr_hard_links: 1,
             type_and_perm,
             ..Default::default()
         }

@@ -21,10 +21,10 @@ pub struct SuperBlock {
     nbr_blocks_reserved: u32,
     /// Total number of unallocated blocks
     /*12 	15 	4*/
-    nbr_unallocated_blocks: u32,
+    pub nbr_free_blocks: u32,
     /// Total number of unallocated inodes
     /*16 	19 	4*/
-    nbr_unallocated_inodes: u32,
+    pub nbr_free_inodes: u32,
     /// Block number of the block containing the superblock
     /*20 	23 	4*/
     block_containing_superblock: Block,

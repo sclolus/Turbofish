@@ -17,10 +17,10 @@ pub struct BlockGroupDescriptor {
     pub inode_table: Block,
     /// Number of unallocated blocks in group
     /*12 	13 	2*/
-    pub nbr_unallocated_blocks: u16,
+    pub nbr_free_blocks: u16,
     /// Number of unallocated inodes in group
     /*14 	15 	2*/
-    pub nbr_unallocated_inodes: u16,
+    pub nbr_free_inodes: u16,
     /// Number of directories in group
     /*16 	17 	2*/
     nbr_directories: u16,
