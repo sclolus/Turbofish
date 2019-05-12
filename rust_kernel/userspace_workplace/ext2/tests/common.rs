@@ -27,7 +27,7 @@ pub fn create_disk(size: usize) {
         size / 1024
     ));
     exec_shell(&format!("mkfs.ext2 {}", DISK_NAME));
-    // exec_shell("echo bonjour");
+    exec_shell("sync");
 }
 
 pub fn mount_disk() {

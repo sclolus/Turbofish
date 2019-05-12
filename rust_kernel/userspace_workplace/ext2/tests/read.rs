@@ -30,7 +30,6 @@ fn read_of_size(size: usize) {
     let count = read_ext2(filename, &mut buf);
     assert_eq!(count, size);
 
-    umount_disk();
     assert_eq!(buf[..], v[..]);
 }
 

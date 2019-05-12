@@ -74,6 +74,10 @@ impl DirectoryEntry {
             core::slice::from_raw_parts(&self.filename.0 as *const u8, self.name_length as usize);
         core::str::from_utf8_unchecked(slice)
     }
+
+    pub fn size(&self) -> u16 {
+        self.name_length as u16 + size_of::<Self>() as u16 - size_of::<Filename>() as u16
+    }
 }
 
 /// Newtype of filename

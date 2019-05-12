@@ -1,8 +1,9 @@
 //! This file describe all the Inode model
 
 use super::Block;
-
+use crate::ext2_filesystem::tools::div_rounded_up;
 use bitflags::bitflags;
+use core::mem::size_of;
 
 // Like blocks, each inode has a numerical address. It is extremely important to note that unlike block addresses, inode addresses start at 1.
 
@@ -47,7 +48,7 @@ pub struct Inode {
     /// Count of hard links (directory entries) to this inode. When this reaches 0, the data blocks are marked as unallocated.
     /*26 	27      2*/
     nbr_hard_links: u16,
-    /// Count of disk sectors (not Ext2 blocks) in use by this inode, not counting the actual inode structure nor directory entries linking to the inode.
+    /// Count of disk sectors (not Ext2 blocks) in use by this inode, not counting the actual inode structure nor directory entries linking to the inode. (iblocks)
     /*28 	31      4*/
     pub nbr_disk_sectors: u32,
     /// Flags (see below)
@@ -94,6 +95,51 @@ impl Inode {
             type_and_perm,
             ..Default::default()
         }
+    }
+    pub fn update_size(&mut self, new_size: u32, block_size: u32) {
+        self.low_size = new_size;
+
+        let block_off = new_size / block_size;
+        let blocknumber_per_block = block_size as usize / size_of::<Block>();
+
+        // let block_data = {
+        //     /* SIMPLE ADDRESSING */
+        //     let mut offset_start = 0;
+        //     let mut offset_end = 12;
+        //     let mut block_data = 0;
+
+        //     if block_off >= offset_start && block_off < offset_end {
+        //         block_data = div_rounded_up(new_size, 512);
+        //     }
+        //     /* SINGLY INDIRECT ADDRESSING */
+        //     offset_start = offset_end;
+        //     offset_end += blocknumber_per_block as u32;
+        //     if block_off >= offset_start && block_off < offset_end {
+        //         block_data = block_size / 512 + div_rounded_up(new_size, 512);
+        //     }
+        //     /* DOUBLY INDIRECT ADDRESSING */
+        //     offset_start = offset_end;
+        //     offset_end += (blocknumber_per_block * blocknumber_per_block) as u32;
+        //     if block_off >= offset_start && block_off < offset_end {
+        //         block_data = block_size / 512
+        //             + ((block_off - offset_start) / blocknumber_per_block as u32) * block_size
+        //                 / 512
+        //             + div_rounded_up(new_size, 512);
+        //     }
+
+        //     // Triply Indirect Addressing
+        //     offset_start = offset_end;
+        //     offset_end +=
+        //         (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u32;
+        //     if block_off >= offset_start && block_off < offset_end {
+        //         // TODO: implement that
+        //         unimplemented!()
+        //         // 1 + (block_off - offset_start) / blocknumber_per_block as u32
+        //         //     + div_rounded_up(new_size, 512)
+        //     }
+        //     block_data
+        // };
+        self.nbr_disk_sectors = div_rounded_up(new_size, 512);
     }
 }
 

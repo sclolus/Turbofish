@@ -15,7 +15,7 @@ fn create_file() {
 
     mount_disk();
     {
-        File::open(&filename_mounted).unwrap();
+        File::open(&filename_mounted).expect("open std failed");
     }
     umount_disk();
 }

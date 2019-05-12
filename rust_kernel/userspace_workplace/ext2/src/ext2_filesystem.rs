@@ -43,8 +43,6 @@ impl<'a> Iterator for EntryIter<'a> {
         {
             self.cur_dir_index += 1;
             let curr_offset = self.curr_offset;
-            dbg!(curr_offset);
-            dbg!(d.entry_size);
             self.curr_offset += d.entry_size as u32;
             if d.inode == 0 {
                 self.next()
@@ -133,17 +131,16 @@ impl Ext2Filesystem {
         let mut inode = self.find_inode(2);
         let mut iter_path = path.split('/').peekable();
         while let Some(p) = iter_path.next() {
-            dbg!(p);
-            let entry = dbg!(self
+            let entry = self
                 .iter_entries(inode)?
-                .find(|(x, _)| unsafe { dbg!(x.get_filename()) } == p)
-                .ok_or(IoError::NoSuchFileOrDirectory));
+                .find(|(x, _)| unsafe { x.get_filename() } == p)
+                .ok_or(IoError::NoSuchFileOrDirectory);
             // dbg!(entry?.0.get_filename());
             if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::Creat) {
-                inode_nbr = dbg!(self.create_file(p, inode, flags)?);
+                inode_nbr = self.create_file(p, inode, flags)?;
             } else {
                 inode_nbr = entry?.0.inode;
-                inode = dbg!(self.find_inode(entry?.0.inode));
+                inode = self.find_inode(entry?.0.inode);
             }
         }
         Ok(File {
@@ -182,6 +179,7 @@ impl Ext2Filesystem {
         if block_dtr.nbr_free_inodes == 0 {
             return None;
         }
+
         // TODO: dynamic alloc ?
         let bitmap_addr = self.to_addr(block_dtr.inode_usage_bitmap);
         let mut bitmap: [u8; 1024] = self.disk.read_struct(bitmap_addr);
@@ -192,7 +190,7 @@ impl Ext2Filesystem {
                     .write_struct(bitmap_addr + i / 8, &bitmap[(i / 8) as usize]);
                 block_dtr.nbr_free_inodes -= 1;
                 self.superblock.nbr_free_inodes -= 1;
-                dbg!(block_dtr.nbr_free_inodes);
+                block_dtr.nbr_free_inodes;
                 self.disk
                     .write_struct(self.superblock_addr, &self.superblock);
                 self.disk.write_struct(block_dtr_addr, &block_dtr);
@@ -226,32 +224,42 @@ impl Ext2Filesystem {
             .expect("directory contains no entries");
         let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
         // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry);
+        let entry_size = entry.entry_size; // TODO: Why that -> dbg!(entry.size()); doesn't work
 
         let (new_entry_addr, new_offset) =
         // if we do not cross a Block
-            if self.to_block(offset + entry.entry_size as u32) == self.to_block(offset + entry.entry_size as u32 + size_of::<DirectoryEntry>() as u32)
+            if self.to_block(offset + entry_size as u32) == self.to_block(offset + entry_size as u32 + size_of::<DirectoryEntry>() as u32)
         // and the block is already allocated
-            && self.inode_data((&mut inode, inode_addr), offset + entry.entry_size as u32).is_ok() //self.to_block( as u32) == self.to_block(offset)
+            && self.inode_data((&mut inode, inode_addr), offset + entry_size as u32).is_ok() //self.to_block( as u32) == self.to_block(offset)
         {
-            let offset = offset + entry.entry_size as u32;
+            let offset = offset + entry_size as u32;
             (self.inode_data((&mut inode, inode_addr), offset).unwrap(), offset)
         } else {
-            let offset = self.to_addr(self.to_block(offset + entry.entry_size as u32));
+            let offset = self.to_addr(self.to_block(offset + entry_size as u32));
             (self.inode_data_alloc((&mut inode, inode_addr), offset)?, offset)
         };
 
+        dbg!(offset);
+        dbg!(new_offset);
         // Update previous entry offset
         entry.entry_size = (new_offset - offset) as u16;
         self.disk.write_struct(entry_addr, &entry);
+        dbg!(entry);
 
         // Write the new entry
         let inode_nbr = self.alloc_inode().ok_or(IoError::NoSpaceLeftOnDevice)?;
-        let new_entry = DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
+        let mut new_entry =
+            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
+        // =(the offset to the next block)
+        new_entry.entry_size =
+            dbg!((self.to_addr(self.to_block(new_offset + 1)) - new_offset) as u16);
+        dbg!(new_entry);
         self.disk.write_struct(new_entry_addr, &new_entry);
 
         // Update inode size
-        inode.low_size = self.to_addr(self.to_block(new_offset + new_entry.entry_size as u32));
-        inode.nbr_disk_sectors = div_rounded_up(inode.low_size, 512);
+
+        inode.update_size(new_offset + new_entry.entry_size as u32, self.block_size);
+        dbg!(inode);
         self.disk.write_struct(inode_addr, &inode);
 
         // Generate the new inode
@@ -268,10 +276,9 @@ impl Ext2Filesystem {
         offset: u32,
     ) -> IoResult<DirectoryEntry> {
         if offset >= inode.0.low_size {
-            dbg!("none");
             return Err(IoError::EndOfFile);
         }
-        let base_addr = dbg!(self.inode_data(inode, offset))? as u32;
+        let base_addr = self.inode_data(inode, offset)? as u32;
         let dir_header: DirectoryEntry = self.disk.read_struct(base_addr);
         Ok(dir_header)
     }
@@ -396,13 +403,7 @@ impl Ext2Filesystem {
                 inode.direct_block_pointers[block_off as usize] =
                     self.alloc_block().ok_or(IoError::NoSpaceLeftOnDevice)?;
                 self.disk.write_struct(inode_addr, inode);
-                dbg!(block_off);
-                dbg!(inode_addr);
-                dbg!(inode.direct_block_pointers[block_off as usize]);
             }
-            // dbg!(&inode);
-            dbg!(block_off);
-            dbg!(inode.direct_block_pointers[block_off as usize]);
             return Ok(self.to_addr(err_if_zero(
                 inode.direct_block_pointers[block_off as usize],
             )?) + offset % self.block_size);
@@ -575,8 +576,7 @@ impl Ext2Filesystem {
         let data_write = self.disk.write_buffer(data_address, &buf[0..offset]);
         file.curr_offset += data_write as u32;
         if inode.low_size < file.curr_offset {
-            inode.low_size = file.curr_offset;
-            inode.nbr_disk_sectors = div_rounded_up(inode.low_size, 512);
+            inode.update_size(file.curr_offset, self.block_size);
             self.disk.write_struct(inode_addr, &inode);
         }
         if data_write < offset {
@@ -588,8 +588,7 @@ impl Ext2Filesystem {
             let data_write = self.disk.write_buffer(data_address, &chunk);
             file.curr_offset += data_write as u32;
             if inode.low_size < file.curr_offset {
-                inode.low_size = file.curr_offset;
-                inode.nbr_disk_sectors = div_rounded_up(inode.low_size, 512);
+                inode.update_size(file.curr_offset, self.block_size);
                 self.disk.write_struct(inode_addr, &inode);
             }
             if data_write < chunk.len() {
