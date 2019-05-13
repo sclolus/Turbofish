@@ -8,6 +8,7 @@ mod tools;
 use disk::ReaderDisk;
 pub use tools::{div_rounded_up, err_if_zero, Block, IoError, IoResult};
 
+use bit_field::BitField;
 use bitflags::bitflags;
 mod header;
 use header::{BlockGroupDescriptor, SuperBlock};
@@ -128,19 +129,17 @@ impl Ext2Filesystem {
     /// Open a File
     pub fn open(&mut self, path: &str, flags: OpenFlags) -> IoResult<File> {
         let mut inode_nbr = 2;
-        let mut inode = self.find_inode(2);
         let mut iter_path = path.split('/').peekable();
         while let Some(p) = iter_path.next() {
             let entry = self
-                .iter_entries(inode)?
+                .iter_entries(inode_nbr)?
                 .find(|(x, _)| unsafe { x.get_filename() } == p)
                 .ok_or(IoError::NoSuchFileOrDirectory);
             // dbg!(entry?.0.get_filename());
             if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::Creat) {
-                inode_nbr = self.create_file(p, inode, flags)?;
+                inode_nbr = self.create_file(p, inode_nbr, flags)?;
             } else {
                 inode_nbr = entry?.0.inode;
-                inode = self.find_inode(entry?.0.inode);
             }
         }
         Ok(File {
@@ -158,19 +157,25 @@ impl Ext2Filesystem {
     }
 
     /// get inode nbr inode and return the Inode and it's address
-    pub fn find_inode(&mut self, inode: u32) -> (Inode, u32) {
+    pub fn find_inode(&mut self, inode: u32) -> IoResult<(Inode, u32)> {
         println!("ENTERING_FIND_INODE {}", inode);
         assert!(inode >= 1);
         let block_grp = (inode - 1) / self.superblock.inodes_per_block_grp;
         let index = (inode - 1) % self.superblock.inodes_per_block_grp;
         let inode_offset = index * self.superblock.get_size_inode() as u32;
 
-        let (block_grp_descriptor, _) = self.get_block_grp_descriptor(block_grp);
-        // dbg!(block_grp_descriptor);
-        let inode_addr = self.to_addr(block_grp_descriptor.inode_table) + inode_offset;
+        let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
+        let bitmap_addr = self.to_addr(block_dtr.inode_usage_bitmap);
+        let bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
+        if !bitmap.get_bit((index % 8) as usize) {
+            return Err(IoError::InodeNotValid);
+        }
+
+        // dbg!(block_dtr);
+        let inode_addr = self.to_addr(block_dtr.inode_table) + inode_offset;
         // dbg!(inode_addr);
 
-        (self.disk.read_struct(inode_addr), inode_addr)
+        Ok((self.disk.read_struct(inode_addr), inode_addr))
     }
 
     /// try to allocate a new inode on block group n and return the inode number
@@ -211,15 +216,11 @@ impl Ext2Filesystem {
         None
     }
 
-    fn create_file(
-        &mut self,
-        filename: &str,
-        (mut inode, inode_addr): (Inode, u32),
-        flags: OpenFlags,
-    ) -> IoResult<u32> {
+    fn create_file(&mut self, filename: &str, inode_nbr: u32, flags: OpenFlags) -> IoResult<u32> {
+        let (mut inode, inode_addr) = self.find_inode(inode_nbr)?;
         // Get the last entry of the Directory
         let (mut entry, offset) = self
-            .iter_entries((inode, inode_addr))?
+            .iter_entries(inode_nbr)?
             .last()
             .expect("directory contains no entries");
         let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
@@ -263,7 +264,7 @@ impl Ext2Filesystem {
         self.disk.write_struct(inode_addr, &inode);
 
         // Generate the new inode
-        let (_, inode_addr) = self.find_inode(inode_nbr);
+        let (_, inode_addr) = self.find_inode(inode_nbr)?;
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
         self.disk.write_struct(inode_addr, &inode);
         Ok(inode_nbr)
@@ -283,10 +284,8 @@ impl Ext2Filesystem {
         Ok(dir_header)
     }
 
-    pub fn iter_entries<'a>(
-        &'a mut self,
-        (inode, inode_addr): (Inode, u32),
-    ) -> IoResult<EntryIter<'a>> {
+    pub fn iter_entries<'a>(&'a mut self, inode: u32) -> IoResult<EntryIter<'a>> {
+        let (inode, inode_addr) = self.find_inode(inode)?;
         if unsafe { !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) } {
             return Err(IoError::NotADirectory);
         }
@@ -519,7 +518,7 @@ impl Ext2Filesystem {
         // for i in 0..self.nbr_block_grp {
         //     dbg!(self.get_block_grp_descriptor(i));
         // }
-        let (mut inode, inode_addr) = self.find_inode(file.inode_nbr);
+        let (mut inode, inode_addr) = self.find_inode(file.inode_nbr)?;
         let file_curr_offset_start = file.curr_offset;
         if file.curr_offset > inode.low_size {
             return Err(IoError::FileOffsetOutOfFile);
@@ -562,7 +561,7 @@ impl Ext2Filesystem {
         // for i in 0..self.nbr_block_grp {
         //     dbg!(self.get_block_grp_descriptor(i));
         // }
-        let (mut inode, inode_addr) = self.find_inode(file.inode_nbr);
+        let (mut inode, inode_addr) = self.find_inode(file.inode_nbr)?;
         let file_curr_offset_start = file.curr_offset;
         if file.curr_offset > inode.low_size {
             return Err(IoError::FileOffsetOutOfFile);

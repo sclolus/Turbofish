@@ -47,4 +47,5 @@ pub enum IoError {
     NoSpaceLeftOnDevice,
     FilenameTooLong,
     EndOfFile,
+    InodeNotValid,
 }
