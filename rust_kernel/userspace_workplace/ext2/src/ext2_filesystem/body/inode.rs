@@ -109,47 +109,54 @@ impl Inode {
         self.low_size = new_size as u32;
         self.upper_size = (new_size >> 32) as u32;
 
-        let block_off = new_size / block_size as u64;
+        let block_size = block_size as u64;
+        let multiplier = block_size / 512;
+        let block_off = if new_size == 0 {
+            0
+        } else {
+            (new_size - 1) / block_size as u64
+        };
         let blocknumber_per_block = block_size as u64 / size_of::<Block>() as u64;
 
-        // let block_data = {
-        //     /* SIMPLE ADDRESSING */
-        //     let mut offset_start = 0;
-        //     let mut offset_end = 12;
-        //     let mut block_data = 0;
+        /* Very complex calcul to compute the number of disk_sector use by the data of the inode */
+        let block_data = if new_size == 0 {
+            0
+        } else {
+            /* SIMPLE ADDRESSING */
+            let mut offset_start = 0;
+            let mut offset_end = 12;
+            let mut block_data = 0;
 
-        //     if block_off >= offset_start && block_off < offset_end {
-        //         block_data = div_rounded_up(new_size, 512);
-        //     }
-        //     /* SINGLY INDIRECT ADDRESSING */
-        //     offset_start = offset_end;
-        //     offset_end += blocknumber_per_block as u32;
-        //     if block_off >= offset_start && block_off < offset_end {
-        //         block_data = block_size / 512 + div_rounded_up(new_size, 512);
-        //     }
-        //     /* DOUBLY INDIRECT ADDRESSING */
-        //     offset_start = offset_end;
-        //     offset_end += (blocknumber_per_block * blocknumber_per_block) as u32;
-        //     if block_off >= offset_start && block_off < offset_end {
-        //         block_data = block_size / 512
-        //             + ((block_off - offset_start) / blocknumber_per_block as u32) * block_size
-        //                 / 512
-        //             + div_rounded_up(new_size, 512);
-        //     }
+            if block_off >= offset_start {
+                block_data = (block_off + 1) * multiplier;
+            }
+            /* SINGLY INDIRECT ADDRESSING */
+            offset_start = offset_end;
+            offset_end += blocknumber_per_block;
+            if block_off >= offset_start {
+                block_data += multiplier
+            }
+            /* DOUBLY INDIRECT ADDRESSING */
+            offset_start = offset_end;
+            offset_end += blocknumber_per_block * blocknumber_per_block;
+            if block_off >= offset_start {
+                block_data += multiplier
+                    + ((block_off - offset_start) / blocknumber_per_block + 1) * multiplier
+            }
 
-        //     // Triply Indirect Addressing
-        //     offset_start = offset_end;
-        //     offset_end +=
-        //         (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u32;
-        //     if block_off >= offset_start && block_off < offset_end {
-        //         // TODO: implement that
-        //         unimplemented!()
-        //         // 1 + (block_off - offset_start) / blocknumber_per_block as u32
-        //         //     + div_rounded_up(new_size, 512)
-        //     }
-        //     block_data
-        // };
-        self.nbr_disk_sectors = div_rounded_up(new_size, 512) as u32;
+            // Triply Indirect Addressing
+            offset_start = offset_end;
+            //offset_end += blocknumber_per_block * blocknumber_per_block * blocknumber_per_block;
+            if block_off >= offset_start {
+                block_data += multiplier
+                    + (((block_off - offset_start)
+                        / (blocknumber_per_block * blocknumber_per_block))
+                        + 1)
+                        * multiplier
+            }
+            block_data
+        };
+        self.nbr_disk_sectors = block_data as u32;
     }
 }
 

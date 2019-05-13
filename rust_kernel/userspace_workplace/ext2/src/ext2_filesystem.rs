@@ -99,7 +99,6 @@ impl Ext2Filesystem {
         let mut disk = ReaderDisk(f);
         let superblock_addr = 1024;
         let superblock: SuperBlock = disk.read_struct(superblock_addr);
-        dbg!(superblock);
 
         let signature = superblock.get_ext2_signature();
         assert_eq!(signature, EXT2_SIGNATURE_MAGIC);
@@ -148,6 +147,21 @@ impl Ext2Filesystem {
             curr_offset: 0,
         })
     }
+
+    // /// for unlink syscall (see man unlink(2))
+    // pub fn unlink(&mut self, path: &str) -> IoResult<File> {
+    //     let mut inode_nbr = 2;
+    //     for p in path.split('/') {
+    //         let entry = self
+    //             .iter_entries(inode_nbr)?
+    //             .find(|(x, _)| unsafe { x.get_filename() } == p)
+    //             .ok_or(IoError::NoSuchFileOrDirectory)?;
+
+    //         inode_nbr = entry.0.inode;
+    //     }
+    //     let (inode, inode_addr) = self.find_inode(inode_nbr)?;
+    //     inode.unlink()
+    // }
 
     pub fn to_addr(&self, block_number: Block) -> u64 {
         self.block_size as u64 * block_number.0 as u64
@@ -244,27 +258,21 @@ impl Ext2Filesystem {
             (self.inode_data_alloc((&mut inode, inode_addr), offset)?, offset)
         };
 
-        dbg!(offset);
-        dbg!(new_offset);
         // Update previous entry offset
         entry.entry_size = (new_offset - offset) as u16;
         self.disk.write_struct(entry_addr, &entry);
-        dbg!(entry);
 
         // Write the new entry
         let inode_nbr = self.alloc_inode().ok_or(IoError::NoSpaceLeftOnDevice)?;
         let mut new_entry =
             DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
         // =(the offset to the next block)
-        new_entry.entry_size =
-            dbg!((self.to_addr(self.to_block(new_offset + 1)) - new_offset) as u16);
-        dbg!(new_entry);
+        new_entry.entry_size = (self.to_addr(self.to_block(new_offset + 1)) - new_offset) as u16;
         self.disk.write_struct(new_entry_addr, &new_entry);
 
         // Update inode size
 
         inode.update_size(new_offset + new_entry.entry_size as u64, self.block_size);
-        dbg!(inode);
         self.disk.write_struct(inode_addr, &inode);
 
         // Generate the new inode
@@ -572,7 +580,9 @@ impl Ext2Filesystem {
         if file.curr_offset > inode.get_size() {
             return Err(IoError::FileOffsetOutOfFile);
         }
-
+        if buf.len() == 0 {
+            return Ok(0);
+        }
         let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
         let offset = min(
             self.block_size as u64 - file.curr_offset % self.block_size as u64,
