@@ -146,12 +146,12 @@ impl SuperBlock {
 
     /// Get the number of block per block group
     pub fn get_nbr_block_grp(&self) -> u32 {
-        div_rounded_up(self.nbr_blocks, self.block_per_block_grp)
+        div_rounded_up(self.nbr_blocks as u64, self.block_per_block_grp as u64) as u32
     }
 
     /// Get the number of inode per block group
     pub fn get_inode_block_grp(&self) -> u32 {
-        div_rounded_up(self.nbr_inode, self.inodes_per_block_grp)
+        div_rounded_up(self.nbr_inode as u64, self.inodes_per_block_grp as u64) as u32
     }
 
     /// Get the superblock official block per block group

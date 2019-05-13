@@ -96,11 +96,21 @@ impl Inode {
             ..Default::default()
         }
     }
-    pub fn update_size(&mut self, new_size: u32, block_size: u32) {
-        self.low_size = new_size;
 
-        let block_off = new_size / block_size;
-        let blocknumber_per_block = block_size as usize / size_of::<Block>();
+    pub fn get_size(&self) -> u64 {
+        if self.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
+            self.low_size as u64
+        } else {
+            self.low_size as u64 + ((self.upper_size as u64) << 32)
+        }
+    }
+
+    pub fn update_size(&mut self, new_size: u64, block_size: u32) {
+        self.low_size = new_size as u32;
+        self.upper_size = (new_size >> 32) as u32;
+
+        let block_off = new_size / block_size as u64;
+        let blocknumber_per_block = block_size as u64 / size_of::<Block>() as u64;
 
         // let block_data = {
         //     /* SIMPLE ADDRESSING */
@@ -139,7 +149,7 @@ impl Inode {
         //     }
         //     block_data
         // };
-        self.nbr_disk_sectors = div_rounded_up(new_size, 512);
+        self.nbr_disk_sectors = div_rounded_up(new_size, 512) as u32;
     }
 }
 

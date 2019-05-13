@@ -60,7 +60,7 @@ pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
         .expect("open on filesystem failed");
 
     ext2.read(&mut file, buf)
-        .expect("read on filesystem failed")
+        .expect("read on filesystem failed") as usize
 }
 
 #[allow(dead_code)]
@@ -75,7 +75,7 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
         .open(filename, OpenFlags::ReadWrite)
         .expect("open on filesystem failed");
     ext2.write(&mut file, buf)
-        .expect("write on filesystem failed")
+        .expect("write on filesystem failed") as usize
 }
 
 #[allow(dead_code)]

@@ -8,7 +8,7 @@ use core::ops::{Add, Mul};
 pub struct Block(pub u32);
 
 /// Roundup style function
-pub fn div_rounded_up(a: u32, b: u32) -> u32 {
+pub fn div_rounded_up(a: u64, b: u64) -> u64 {
     (a + b - 1) / b
 }
 
