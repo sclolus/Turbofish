@@ -10,6 +10,6 @@ fn debug_fs() {
     let mut ext2_clone = ext2.try_clone().unwrap();
     for entry in ext2.iter_entries(2).expect("iter entries failed") {
         dbg!(entry);
-        dbg!(ext2_clone.find_inode(entry.0.inode).unwrap());
+        dbg!(ext2_clone.get_inode(entry.0.inode).unwrap());
     }
 }

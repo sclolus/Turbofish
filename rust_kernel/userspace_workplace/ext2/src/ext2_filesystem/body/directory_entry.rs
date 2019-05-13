@@ -1,6 +1,6 @@
 //! This file describe all the Directory Entry Header model
 
-use crate::ext2_filesystem::tools::{IoError, IoResult};
+use crate::ext2_filesystem::tools::{Errno, IoResult};
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
@@ -86,11 +86,11 @@ impl DirectoryEntry {
 pub struct Filename(pub [u8; 256]);
 
 impl TryFrom<&str> for Filename {
-    type Error = IoError;
-    fn try_from(s: &str) -> Result<Self, IoError> {
+    type Error = Errno;
+    fn try_from(s: &str) -> Result<Self, Errno> {
         let mut n = [0; 256];
         if s.len() >= 256 {
-            return Err(IoError::FilenameTooLong);
+            return Err(Errno::Enametoolong);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
                 *n = c;

@@ -1,7 +1,7 @@
 //! This file describe all the Inode model
 
 use super::Block;
-use crate::ext2_filesystem::tools::div_rounded_up;
+use crate::ext2_filesystem::tools::{div_rounded_up, IoResult};
 use bitflags::bitflags;
 use core::mem::size_of;
 
@@ -47,7 +47,7 @@ pub struct Inode {
     group_id: u16,
     /// Count of hard links (directory entries) to this inode. When this reaches 0, the data blocks are marked as unallocated.
     /*26 	27      2*/
-    nbr_hard_links: u16,
+    pub nbr_hard_links: u16,
     /// Count of disk sectors (not Ext2 blocks) in use by this inode, not counting the actual inode structure nor directory entries linking to the inode. (iblocks)
     /*28 	31      4*/
     pub nbr_disk_sectors: u32,
@@ -97,8 +97,12 @@ impl Inode {
         }
     }
 
+    pub fn is_a_directory(&self) -> bool {
+        self.type_and_perm.contains(TypeAndPerm::DIRECTORY)
+    }
+
     pub fn get_size(&self) -> u64 {
-        if self.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
+        if self.is_a_directory() {
             self.low_size as u64
         } else {
             self.low_size as u64 + ((self.upper_size as u64) << 32)
@@ -157,6 +161,9 @@ impl Inode {
             block_data
         };
         self.nbr_disk_sectors = block_data as u32;
+    }
+    pub fn unlink(&mut self) -> IoResult<()> {
+        unimplemented!()
     }
 }
 
