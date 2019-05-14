@@ -32,7 +32,6 @@ pub struct EntryIter<'a> {
     filesystem: &'a mut Ext2Filesystem,
     inode: (Inode, u64),
     curr_offset: u32,
-    cur_dir_index: u16,
 }
 
 impl<'a> Iterator for EntryIter<'a> {
@@ -42,7 +41,6 @@ impl<'a> Iterator for EntryIter<'a> {
             .filesystem
             .find_entry((&mut self.inode.0, self.inode.1), self.curr_offset as u64)
         {
-            self.cur_dir_index += 1;
             let curr_offset = self.curr_offset;
             self.curr_offset += d.entry_size as u32;
             if d.inode == 0 {
@@ -148,20 +146,115 @@ impl Ext2Filesystem {
         })
     }
 
-    // /// for unlink syscall (see man unlink(2))
-    // pub fn unlink(&mut self, path: &str) -> IoResult<File> {
+    /// for unlink syscall (see man unlink(2))
+    pub fn unlink(&mut self, path: &str) -> IoResult<File> {
+        let mut inode_nbr = 2;
+        for p in path.split('/') {
+            let entry = self
+                .iter_entries(inode_nbr)?
+                .find(|(x, _)| unsafe { x.get_filename() } == p)
+                .ok_or(Errno::Enoent)?;
+
+            inode_nbr = entry.0.inode;
+        }
+        // let (inode, inode_addr) = self.get_inode(inode_nbr)?;
+        unimplemented!()
+        // inode.unlink()
+    }
+
+    // fn find_file(&mut self, path: &str) -> IoResult<(DirectoryEntry, u64), u32)> {
     //     let mut inode_nbr = 2;
+    //     let mut entry;
     //     for p in path.split('/') {
-    //         let entry = self
+    //         entry = self
     //             .iter_entries(inode_nbr)?
     //             .find(|(x, _)| unsafe { x.get_filename() } == p)
-    //             .ok_or(IoError::NoSuchFileOrDirectory)?;
+    //             .ok_or(Errno::Enoent)?;
 
     //         inode_nbr = entry.0.inode;
     //     }
-    //     let (inode, inode_addr) = self.find_inode(inode_nbr)?;
-    //     inode.unlink()
+    //     entry, inode_nbr
+    //     let (inode, inode_addr) = self.get_inode(inode_nbr)?;
+
     // }
+
+    // pub fn delete_block()
+
+    pub fn delete_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
+        /* Unset Inode bitmap */
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+
+        assert!(inode_nbr >= 1);
+        let block_grp = (inode_nbr - 1) / self.superblock.inodes_per_block_grp;
+        let index = (inode_nbr as u64 - 1) % self.superblock.inodes_per_block_grp as u64;
+        let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
+        let bitmap_addr = self.to_addr(block_dtr.inode_usage_bitmap);
+        let mut bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
+        assert!(bitmap.get_bit((index % 8) as usize));
+        bitmap.set_bit((index % 8) as usize, false);
+        self.disk.write_struct(bitmap_addr + index / 8, &bitmap);
+
+        let mut curr_offset = 0;
+        while let Some(d) = self
+            .inode_data((&mut inode, inode_addr), curr_offset as u64)
+            .ok()
+        {
+            curr_offset += self.block_size;
+            self.free_block(self.to_block(d)).unwrap();
+        }
+        // TODO: delete data blocks
+        Ok(())
+    }
+
+    pub fn delete_entry(
+        &mut self,
+        parent_inode_nbr: u32,
+        (parent_entry, parent_entry_off): (DirectoryEntry, u32),
+        entry_off: u32,
+    ) -> IoResult<()> {
+        let entries: Vec<(DirectoryEntry, u32)> = self.iter_entries(parent_inode_nbr)?.collect();
+        // let pos = entries.iter().position(|(_, addr) addr = entry_off).unwrap();
+        // if pos + 1 <
+        // entries[pos - 1].entry_size
+        unimplemented!();
+
+        // Ok(())
+    }
+
+    /// rmdir(2) deletes a directory, which must be empty.
+    pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
+        let mut inode_nbr = 2;
+        let mut parent_inode_nbr = 2;
+        let mut entry = unsafe { core::mem::uninitialized() };
+        let mut parent_entry = unsafe { core::mem::uninitialized() };
+        for p in path.split('/') {
+            parent_entry = entry;
+            parent_inode_nbr = inode_nbr;
+            entry = self
+                .iter_entries(inode_nbr)?
+                .find(|(x, _)| unsafe { x.get_filename() } == p)
+                .ok_or(Errno::Enoent)?;
+
+            inode_nbr = entry.0.inode;
+        }
+        let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
+
+        if self
+            .iter_entries(inode_nbr)?
+            .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
+            || inode.nbr_hard_links > 2
+        {
+            return Err(Errno::Enotempty);
+        }
+        if !inode.is_a_directory() {
+            return Err(Errno::Enotdir);
+        }
+
+        self.delete_inode(inode_nbr).unwrap();
+        self.delete_entry(parent_inode_nbr, parent_entry, entry.1)
+            .unwrap();
+        unimplemented!()
+    }
 
     pub fn to_addr(&self, block_number: Block) -> u64 {
         self.block_size as u64 * block_number.0 as u64
@@ -301,12 +394,11 @@ impl Ext2Filesystem {
             filesystem: self,
             inode: (inode, inode_addr),
             curr_offset: 0,
-            cur_dir_index: 0,
         })
     }
 
     /// read the block group descriptor address from the block group number starting at 0
-    pub fn block_grp_descriptor_addr(&mut self, n: u32) -> u64 {
+    pub fn block_grp_descriptor_addr(&self, n: u32) -> u64 {
         // The table is located in the block immediately following the Superblock. So if the block size (determined from a field in the superblock) is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. For any other block size, it will begin at block 1. Remember that blocks are numbered starting at 0, and that block numbers don't usually correspond to physical block addresses.
         assert!(n <= self.nbr_block_grp);
         let offset = if self.block_size == 1024 { 2 } else { 1 };
@@ -358,16 +450,31 @@ impl Ext2Filesystem {
         None
     }
 
+    /// try to allocate a new block anywhere on the filesystem
+    fn free_block(&mut self, block_nbr: Block) -> IoResult<()> {
+        let block_grp = (block_nbr.0 - 1) / self.superblock.get_block_per_block_grp().0;
+        let index = (block_nbr.0 as u64 - 1) % self.superblock.get_block_per_block_grp().0 as u64;
+
+        let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
+        let bitmap_addr = self.to_addr(block_dtr.block_usage_bitmap);
+        let mut bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
+        assert!(bitmap.get_bit((index % 8) as usize));
+        bitmap.set_bit((index % 8) as usize, false);
+        self.disk.write_struct(bitmap_addr + index / 8, &bitmap);
+        // TODO: change nbr block count ?
+        Ok(())
+    }
+
     /// get the data of an inode at the offset file.curr_offset
-    fn inode_data(&mut self, inode: (&mut Inode, u64), offset: u64) -> Result<u64, Errno> {
+    fn inode_data(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
         self.inode_data_may_alloc(inode, offset, false)
     }
-    fn inode_data_alloc(&mut self, inode: (&mut Inode, u64), offset: u64) -> Result<u64, Errno> {
+    fn inode_data_alloc(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
         self.inode_data_may_alloc(inode, offset, true)
     }
 
     /// alloc a pointer (used by the function inode_data_alloc)
-    fn alloc_pointer(&mut self, pointer_addr: u64, alloc: bool) -> Result<Block, Errno> {
+    fn alloc_pointer(&mut self, pointer_addr: u64, alloc: bool) -> IoResult<Block> {
         err_if_zero({
             let pointer = self.disk.read_struct(pointer_addr);
             if alloc && pointer == Block(0) {

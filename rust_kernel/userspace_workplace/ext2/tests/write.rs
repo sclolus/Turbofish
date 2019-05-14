@@ -10,8 +10,8 @@ fn write_of_size(size: usize) {
     let filename = "simple_write";
 
     /* CREATE with the std */
+    mount_disk();
     {
-        mount_disk();
         let filename_mounted = DISK_MOUNTED_NAME.to_owned() + "/" + filename;
         File::create(&filename_mounted).expect(&format!(
             "open on mouted filesystem failed {}",

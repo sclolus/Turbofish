@@ -1,9 +1,9 @@
-use ext2::ext2_filesystem::{Ext2Filesystem, IoResult, OpenFlags};
+use ext2::ext2_filesystem::Ext2Filesystem;
 use std::fs::File;
 mod common;
 use common::*;
 
-#[test]
+// #[test]
 fn debug_fs() {
     let f = File::open(DISK_NAME).expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
