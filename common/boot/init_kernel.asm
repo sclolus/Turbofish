@@ -10,8 +10,6 @@ extern _set_sse
 extern _set_avx
 extern _set_fpu
 
-extern _align_stack
-
 ; This function is launched in high half memory area
 global _init_kernel
 _init_kernel:
@@ -51,12 +49,9 @@ _init_kernel:
 	call alt_check_all
 
 	; And finally go into the kernel !
-	push 8
-	push kmain
+	call kmain
 
-	call _align_stack
-
-	add esp, 16
+	add esp, 8
 
 ; Kernel fallback
 .idle:

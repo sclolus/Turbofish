@@ -1,6 +1,5 @@
 [BITS 32]
 
-extern _align_stack
 extern syscall_interrupt_handler
 extern kernel_stack
 
@@ -44,9 +43,6 @@ _isr_syscall:
 	mov eax, [_OLD_EIP]
 	push eax
 
-	push 8 * 4 + 4 + 4 + 4 + 4
-
-	push syscall_interrupt_handler
-	call _align_stack
+	call syscall_interrupt_handler
 	; no return
 	ud2

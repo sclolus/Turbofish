@@ -40,7 +40,6 @@
 %endmacro
 
 extern cpu_panic_handler
-extern _align_stack
 
 %macro CREATE_ISR 3
 segment .data
@@ -52,9 +51,7 @@ _isr_%1:
 	mov ebp, esp
 	%3
 	push isr_%1_str
-	push 72
-	push cpu_panic_handler
-	call _align_stack
+	call cpu_panic_handler
 %endmacro
 
 extern cpu_page_fault_handler
@@ -67,10 +64,8 @@ _isr_page_fault:
 	PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
 	mov eax, cr2
 	push eax
-	push 72
-	push cpu_page_fault_handler
-	call _align_stack
-	add esp, 32 + 12 ; to be on the pushad
+	call cpu_page_fault_handler
+	add esp, 32 + 4 ; to be on the pushad
 	popad
 	pop ebp
 	add esp, 4 ; to be on the eip

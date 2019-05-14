@@ -3,7 +3,6 @@
 ;; This file contains all asm code regarding the interrupt service routines of the 8259 PIC
 ;; See https://wiki.osdev.org/ISR
 
-extern _align_stack
 extern generic_interrupt_handler
 extern debug_pit
 
@@ -71,10 +70,7 @@ _isr_timer:
 	mov eax, [_OLD_EIP]
 	push eax
 
-	push 8 * 4 + 4 + 4 + 4 + 4
-
-	push timer_interrupt_handler
-	call _align_stack
+	call timer_interrupt_handler
 
 segment .data
 TMP_EFLAGS:	dd 0
@@ -154,10 +150,8 @@ _isr_%2:
 	mov ebp, esp
 	pushad
 	push isr_%2_str
-	push 4
-	push %4
-	call _align_stack
-	add esp, 12 ;pop interrupt string
+	call %4
+	add esp, 4 ;pop interrupt string
 	%1
 	popad
 	pop ebp
