@@ -1,4 +1,5 @@
 #include "early_gdt.h"
+#include "tss.h"
 
 /*
  * Create a new GDT segment and put it int the right place
@@ -53,4 +54,8 @@ void gdt_new(struct gdt_info *gdt_info)
 	// create_gdt_segment(gdt_info, 6, 0, 0xfffff,
 	// 		PR | SYSTEM_HOLDER | READ_WRITE | DPL,
 	//		SIZE | GRANULARITY);
+	// TSS segment for user process
+	create_gdt_segment(gdt_info, 7, TSS_ADDR, sizeof(struct tss),
+			ACCESSED | EXECUTABLE | DPL | PR,
+			0);
 }

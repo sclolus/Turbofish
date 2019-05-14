@@ -75,7 +75,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     watch_dog();
 
     syscall::init();
-    scheduler::init();
+    //scheduler::init();
+
+    use crate::process::tss::Tss;
+    let t = unsafe { Tss::init(0x42, 0x84) };
+    Tss::display();
+    unsafe {
+        (*t).reset(0x10, 0x20);
+    }
+    Tss::display();
 
     crate::shell::shell();
     loop {}
