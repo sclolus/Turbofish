@@ -29,7 +29,7 @@ pub struct DirectoryEntry {
     pub inode: u32,
     /// Total size of this entry (Including all subfields)
     /*4 	5 	2*/
-    pub entry_size: u16,
+    pub size: u16,
     /// Name Length least-significant 8 bits
     /*6 	6 	1*/
     name_length: u8,
@@ -61,7 +61,7 @@ impl DirectoryEntry {
     pub fn new(filename: &str, type_indicator: DirectoryEntryType, inode: u32) -> IoResult<Self> {
         Ok(Self {
             inode,
-            entry_size: size_of::<DirectoryEntry>() as u16,
+            size: size_of::<DirectoryEntry>() as u16,
             name_length: filename.len() as u8,
             type_indicator,
             filename: filename.try_into()?,

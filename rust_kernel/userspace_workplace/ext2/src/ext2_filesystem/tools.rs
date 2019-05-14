@@ -1,4 +1,5 @@
 use core::ops::{Add, Mul};
+use num_traits::Num;
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
 /// The size of blocks need not be the same size as the sector size of the disk the file system resides on.
@@ -32,6 +33,26 @@ pub fn err_if_zero(x: Block) -> Result<Block, Errno> {
         Err(Errno::Ebadf)
     } else {
         Ok(x)
+    }
+}
+
+#[inline(always)]
+pub fn is_aligned_on<T>(t: T, on: T) -> bool
+where
+    T: Copy + Num,
+{
+    t % on == T::zero()
+}
+
+#[inline(always)]
+pub fn align_next<T>(t: T, on: T) -> T
+where
+    T: Copy + Num,
+{
+    if is_aligned_on(t, on) {
+        t
+    } else {
+        t + (on - (t % on))
     }
 }
 
