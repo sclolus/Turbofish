@@ -146,48 +146,22 @@ impl Ext2Filesystem {
         })
     }
 
-    /// for unlink syscall (see man unlink(2))
-    pub fn unlink(&mut self, path: &str) -> IoResult<File> {
-        let mut inode_nbr = 2;
-        for p in path.split('/') {
-            let entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent)?;
-
-            inode_nbr = entry.0.inode;
-        }
-        // let (inode, inode_addr) = self.get_inode(inode_nbr)?;
-        unimplemented!()
-        // inode.unlink()
-    }
-
-    // fn find_file(&mut self, path: &str) -> IoResult<(DirectoryEntry, u64), u32)> {
-    //     let mut inode_nbr = 2;
-    //     let mut entry;
-    //     for p in path.split('/') {
-    //         entry = self
-    //             .iter_entries(inode_nbr)?
-    //             .find(|(x, _)| unsafe { x.get_filename() } == p)
-    //             .ok_or(Errno::Enoent)?;
-
-    //         inode_nbr = entry.0.inode;
-    //     }
-    //     entry, inode_nbr
-    //     let (inode, inode_addr) = self.get_inode(inode_nbr)?;
-
-    // }
-
+    /// truncate inode to the size `new_size` deleting all data blocks above
     pub fn truncate_inode(
         &mut self,
         (inode, inode_addr): (&mut Inode, u64),
         new_size: u64,
     ) -> IoResult<()> {
         let mut curr_offset = align_next(new_size, self.block_size as u64);
+        dbg!(curr_offset);
+        dbg!("bonjour");
         while let Some(d) = self
             .inode_data((inode, inode_addr), curr_offset as u64)
             .ok()
         {
+            dbg!("aurevoir");
+            dbg!(curr_offset);
+            dbg!(d);
             curr_offset += self.block_size as u64;
             self.free_block(self.to_block(d)).unwrap();
         }
@@ -196,6 +170,7 @@ impl Ext2Filesystem {
         Ok(())
     }
 
+    /// delete inode `inode_nbr`
     pub fn delete_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
         /* Delete Data Blocks */
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
@@ -215,6 +190,38 @@ impl Ext2Filesystem {
         Ok(())
     }
 
+    /// decrement link count of the inode and delete it if it becomes < 2
+    pub fn unlink_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
+        dbg!(inode_nbr);
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        if inode.nbr_hard_links <= 2 {
+            return self.delete_inode(inode_nbr);
+        }
+        inode.nbr_hard_links -= 1;
+        self.disk.write_struct(inode_addr, &inode);
+        Ok(())
+    }
+
+    /// for unlink syscall (see man unlink(2))
+    pub fn unlink(&mut self, path: &str) -> IoResult<()> {
+        let mut inode_nbr = 2;
+        let mut parent_inode_nbr = 2;
+        let mut entry = unsafe { core::mem::uninitialized() };
+        for p in path.split('/') {
+            parent_inode_nbr = inode_nbr;
+            entry = self
+                .iter_entries(inode_nbr)?
+                .find(|(x, _)| unsafe { x.get_filename() } == p)
+                .ok_or(Errno::Enoent)?;
+
+            inode_nbr = entry.0.inode;
+        }
+        self.unlink_inode(entry.0.inode)?;
+        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
+        Ok(())
+    }
+
+    /// the the entry at offset entry_offset the last entry of the directory
     pub fn set_as_last_entry(
         &mut self,
         (inode, inode_addr): (&mut Inode, u64),
@@ -232,12 +239,8 @@ impl Ext2Filesystem {
             .unwrap();
     }
 
-    pub fn delete_entry(
-        &mut self,
-        parent_inode_nbr: u32,
-        (parent_entry, parent_entry_off): (DirectoryEntry, u32),
-        entry_off: u32,
-    ) -> IoResult<()> {
+    /// delete the entry at entry_off of the parent_inode nbr
+    pub fn delete_entry(&mut self, parent_inode_nbr: u32, entry_off: u32) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(parent_inode_nbr)?;
         let mut curr_offset = entry_off;
         let entry = self
@@ -298,9 +301,7 @@ impl Ext2Filesystem {
         let mut inode_nbr = 2;
         let mut parent_inode_nbr = 2;
         let mut entry = unsafe { core::mem::uninitialized() };
-        let mut parent_entry = unsafe { core::mem::uninitialized() };
         for p in path.split('/') {
-            parent_entry = entry;
             parent_inode_nbr = inode_nbr;
             entry = self
                 .iter_entries(inode_nbr)?
@@ -323,15 +324,16 @@ impl Ext2Filesystem {
         }
 
         self.delete_inode(inode_nbr).unwrap();
-        self.delete_entry(parent_inode_nbr, parent_entry, entry.1)
-            .unwrap();
+        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
     }
 
+    /// convert a block to an address
     pub fn to_addr(&self, block_number: Block) -> u64 {
         self.block_size as u64 * block_number.0 as u64
     }
 
+    /// convert an address to a number of block
     pub fn to_block(&self, size: u64) -> Block {
         Block(
             (size / self.block_size as u64 + ((size % self.block_size as u64 != 0) as u64)) as u32,
@@ -453,6 +455,7 @@ impl Ext2Filesystem {
         Some(dir_header)
     }
 
+    /// iter of the entries of inodes if inode is a directory
     pub fn iter_entries<'a>(&'a mut self, inode: u32) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
         if unsafe { !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) } {
@@ -518,7 +521,7 @@ impl Ext2Filesystem {
         None
     }
 
-    /// try to allocate a new block anywhere on the filesystem
+    /// try to free the block block_nbr
     fn free_block(&mut self, block_nbr: Block) -> IoResult<()> {
         let block_grp = (block_nbr.0 - 1) / self.superblock.get_block_per_block_grp().0;
         let index = (block_nbr.0 as u64 - 1) % self.superblock.get_block_per_block_grp().0 as u64;
@@ -526,7 +529,7 @@ impl Ext2Filesystem {
         let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
         let bitmap_addr = self.to_addr(block_dtr.block_usage_bitmap);
         let mut bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
-        assert!(bitmap.get_bit((index % 8) as usize));
+        // assert!(bitmap.get_bit((index % 8) as usize));
         bitmap.set_bit((index % 8) as usize, false);
         self.disk.write_struct(bitmap_addr + index / 8, &bitmap);
         // TODO: change nbr block count ?
@@ -537,6 +540,8 @@ impl Ext2Filesystem {
     fn inode_data(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
         self.inode_data_may_alloc(inode, offset, false)
     }
+
+    /// get the data of inode at offset `offset`, and allocate the data block if necessary
     fn inode_data_alloc(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
         self.inode_data_may_alloc(inode, offset, true)
     }
@@ -697,6 +702,7 @@ impl Ext2Filesystem {
         panic!("out of file bound");
     }
 
+    /// for read syscall
     pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> IoResult<u64> {
         // for i in 0..self.nbr_block_grp {
         //     dbg!(self.get_block_grp_descriptor(i));
@@ -742,6 +748,7 @@ impl Ext2Filesystem {
         Ok(file.curr_offset - file_curr_offset_start)
     }
 
+    /// for write syscall
     pub fn write(&mut self, file: &mut File, buf: &[u8]) -> IoResult<u64> {
         // for i in 0..self.nbr_block_grp {
         //     dbg!(self.get_block_grp_descriptor(i));

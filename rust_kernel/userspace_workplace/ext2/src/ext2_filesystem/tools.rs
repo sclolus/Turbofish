@@ -60,7 +60,7 @@ where
 pub type IoResult<T> = core::result::Result<T, Errno>;
 
 #[repr(i8)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Errno {
     /// Argument list too long.
     E2Big,
