@@ -2,8 +2,8 @@
 #[macro_use]
 pub mod test_syscall;
 pub use test_syscall::*;
+
 mod mmap;
-mod syscall_isr;
 
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use crate::process::scheduler::SCHEDULER;
@@ -11,6 +11,11 @@ use crate::process::CpuState;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
 
+extern "C" {
+    fn _isr_syscall();
+}
+
+/// Write something into the screen
 fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
     unsafe {
         eprint!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
@@ -18,20 +23,24 @@ fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
     count as i32
 }
 
+/// Read something from a file descriptor
 fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> i32 {
     unimplemented!();
 }
 
+/// Exit from a process
 fn sys_exit(status: i32) -> i32 {
     SCHEDULER.lock().exit(status);
 }
 
+/// Fork a process
 fn sys_fork() -> i32 {
     SCHEDULER.lock().fork()
 }
 
+/// Global syscall interrupt handler called from assembly code
 #[no_mangle]
-pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) {
+pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> ! {
     SCHEDULER.lock().save_process_state(cpu_state);
     let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
     let return_value = match eax {
@@ -44,6 +53,7 @@ pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) {
     SCHEDULER.lock().return_from_syscall(return_value);
 }
 
+/// Initialize all the syscall system by creation of a new IDT entry at 0x80
 pub fn init() {
     let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
 
@@ -53,6 +63,6 @@ pub fn init() {
         .set_selector(1 << 3)
         .set_gate_type(InterruptGate32);
     gate_entry.set_gate_type(InterruptGate32);
-    gate_entry.set_handler(syscall_isr::_isr_syscall as *const c_void as u32);
+    gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
 }
