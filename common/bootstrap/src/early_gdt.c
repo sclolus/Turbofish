@@ -38,9 +38,9 @@ void gdt_new(struct gdt_info *gdt_info)
 			PR | SYSTEM_HOLDER | READ_WRITE,
 			SIZE | GRANULARITY);
 	// Stack Selector Kernel
-	create_gdt_segment(gdt_info, 3, 0, 0xfffff,
-			PR | SYSTEM_HOLDER | READ_WRITE,
-			SIZE | GRANULARITY);
+	// create_gdt_segment(gdt_info, 3, 0, 0xfffff,
+	//		PR | SYSTEM_HOLDER | READ_WRITE,
+	//		SIZE | GRANULARITY);
 	// Code Selector User
 	create_gdt_segment(gdt_info, 4, 0, 0xfffff,
 			PR | SYSTEM_HOLDER | EXECUTABLE | DPL,
@@ -50,7 +50,7 @@ void gdt_new(struct gdt_info *gdt_info)
 			PR | SYSTEM_HOLDER | READ_WRITE | DPL,
 			SIZE | GRANULARITY);
 	// Stack Selector User
-	create_gdt_segment(gdt_info, 6, 0, 0xfffff,
-			PR | SYSTEM_HOLDER | READ_WRITE | DPL,
-			SIZE | GRANULARITY);
+	// create_gdt_segment(gdt_info, 6, 0, 0xfffff,
+	// 		PR | SYSTEM_HOLDER | READ_WRITE | DPL,
+	//		SIZE | GRANULARITY);
 }

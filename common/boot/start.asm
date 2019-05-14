@@ -111,8 +111,8 @@ _init:
 	mov fs, ax
 	mov gs, ax
 
-	; Set up the stack segment
-	mov ax, 0x18
+	; Set up the stack segment (Same as Data segment for the moment)
+	mov ax, 0x10
 	mov ss, ax
 
 	; Set up the code segment
