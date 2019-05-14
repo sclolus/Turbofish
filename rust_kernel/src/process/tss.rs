@@ -1,11 +1,14 @@
+//! Process TSS manager
+
+/// Base TSS structure
 #[allow(unused)]
 #[derive(Default, Debug)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 #[repr(C)]
 pub struct Tss {
     /*0x00*/ link: u16, _reserved1: u16,
-    /*0x04*/ esp0: u32,
-    /*0x08*/ ss0: u16, _reserved2: u16,
+    /*0x04*/ esp0: u32,                   // Need to be set for software switch
+    /*0x08*/ ss0: u16, _reserved2: u16,   // Need to be set for software switch
     /*0x0C*/ esp1: u32,
     /*0x10*/ ss1: u16, _reserved3: u16,
     /*0x14*/ esp2: u32,
@@ -33,6 +36,7 @@ pub struct Tss {
 
 #[allow(unused)]
 impl Tss {
+    /// For software switch, only on TSS structure is required for each cpu
     const TSS_MEMORY_ADDRESS: u32 = 0x1800;
 
     /// Init a new TSS descriptor at TSS_MEMORY_ADDRESS (must be unique)
@@ -42,7 +46,7 @@ impl Tss {
         tss
     }
 
-    /// Reassign stack value for the TSS descriptor
+    /// Reassign stack values for the TSS descriptor, usefull for premptif scheduler
     pub fn reset(&mut self, esp: u32, ss: u16) {
         self.ss0 = ss;
         self.esp0 = esp;
