@@ -5,9 +5,10 @@ pub use test_syscall::*;
 
 mod mmap;
 
-use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+// use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
 // use crate::process::scheduler::SCHEDULER;
-use crate::process::CpuState;
+// use crate::process::CpuState;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
 
@@ -43,9 +44,11 @@ fn sys_fork() -> i32 {
 /// Global syscall interrupt handler called from assembly code
 #[no_mangle]
 // pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> ! {
-pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> i32 {
+pub extern "C" fn syscall_interrupt_handler(base_registers: BaseRegisters) -> i32 {
     // SCHEDULER.lock().save_process_state(cpu_state);
-    let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
+    // let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
+    eprintln!("{:#X?}", base_registers);
+    let BaseRegisters { eax, ebx, ecx, edx, .. } = base_registers;
     match eax {
         0x1 => sys_exit(ebx as i32),
         0x2 => sys_fork(),
@@ -62,10 +65,9 @@ pub fn init() {
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)
-        .set_privilege_level(0)
+        .set_privilege_level(3)
         .set_selector(1 << 3)
-        .set_gate_type(InterruptGate32);
-    gate_entry.set_gate_type(InterruptGate32);
+        .set_gate_type(TrapGate32);
     gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
 }

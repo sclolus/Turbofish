@@ -6,21 +6,55 @@ align 16
 global _dummy_process_code
 global _dummy_process_len
 
+%macro STO 1
+	mov ax, %1
+	stosb
+%endmacro
+
 _dummy_process_code:
 	push ebp
 	mov ebp, esp
 
-	push eax
+	mov edi, 0x400100
+	STO 'H'
+	STO 'e'
+	STO 'l'
+	STO 'l'
+	STO 'o'
+	STO ' '
+	STO 'w'
+	STO 'o'
+	STO 'r'
+	STO 'l'
+	STO 'd'
+	STO ' '
+	STO 'f'
+	STO 'r'
+	STO 'o'
+	STO 'm'
+	STO ' '
+	STO 'u'
+	STO 's'
+	STO 'e'
+	STO 'r'
+	STO 's'
+	STO 'p'
+	STO 'a'
+	STO 'c'
+	STO 'e'
+	STO ' '
+	STO '!'
+	STO 10
 
-	mov eax, 1
-	mov ebx, 2
-	mov ecx, 3
-	mov edx, 4
+	mov eax, 4
+	mov ebx, 1
+	mov ecx, 0x400100
+	mov edx, 29
 
-	mov esi, 0x42
-	mov edi, 0x84
+	int 80h
 
 	ud2
+
 	jmp $
 
 _dummy_process_len:    dd $-_dummy_process_code
