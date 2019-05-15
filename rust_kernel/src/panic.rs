@@ -99,7 +99,11 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: Exten
         eprintln!("{:?}", e);
         eprintln!("{:X?}\n", ext_reg);
 
-        trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+        if ext_reg.cs == 0x08 {
+            trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+        } else {
+            eprintln!("Cannot display backtrace from a non-kernel routine !");
+        }
         loop {}
     };
 }
@@ -109,7 +113,11 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: Exten
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
 
-    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    if ext_reg.cs == 0x08 {
+        trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    } else {
+        eprintln!("Cannot display backtrace from a non-kernel routine !");
+    }
     loop {}
 }
 
@@ -118,7 +126,11 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
 
-    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    if ext_reg.cs == 0x08 {
+        trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    } else {
+        eprintln!("Cannot display backtrace from a non-kernel routine !");
+    }
     use crate::tests::helpers::exit_qemu;
     exit_qemu(1);
 }
