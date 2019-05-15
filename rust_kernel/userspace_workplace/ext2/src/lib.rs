@@ -164,31 +164,45 @@ impl Ext2Filesystem {
     }
 
     /// delete inode `inode_nbr`
-    pub fn delete_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
+    pub fn free_inode(
+        &mut self,
+        (inode, inode_addr): (&mut Inode, u64),
+        inode_nbr: u32,
+    ) -> IoResult<()> {
+        assert!(inode_nbr >= 1);
+
         /* Delete Data Blocks */
-        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        self.truncate_inode((&mut inode, inode_addr), 0).unwrap();
+        self.truncate_inode((inode, inode_addr), 0).unwrap();
 
         /* Unset Inode bitmap */
-        assert!(inode_nbr >= 1);
         let block_grp = (inode_nbr - 1) / self.superblock.inodes_per_block_grp;
         let index = (inode_nbr as u64 - 1) % self.superblock.inodes_per_block_grp as u64;
-        let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
+        let (mut block_dtr, block_dtr_addr) = self.get_block_grp_descriptor(block_grp);
         let bitmap_addr = self.to_addr(block_dtr.inode_usage_bitmap);
         let mut bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
         assert!(bitmap.get_bit((index % 8) as usize));
         bitmap.set_bit((index % 8) as usize, false);
         self.disk.write_struct(bitmap_addr + index / 8, &bitmap);
 
+        debug_assert!(self.get_inode(inode_nbr).is_err());
+        // TODO: check that with fsck
+        block_dtr.nbr_free_inodes += 1;
+        self.superblock.nbr_free_inodes += 1;
+        block_dtr.nbr_free_inodes;
+        self.disk
+            .write_struct(self.superblock_addr, &self.superblock);
+        self.disk.write_struct(block_dtr_addr, &block_dtr);
         Ok(())
     }
 
     /// decrement link count of the inode and delete it if it becomes < 2
     pub fn unlink_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
-        dbg!(inode_nbr);
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        if inode.nbr_hard_links <= 2 {
-            return self.delete_inode(inode_nbr);
+        dbg!(inode);
+        if (inode.is_a_directory() && inode.nbr_hard_links <= 2)
+            || (inode.is_a_regular_file() && inode.nbr_hard_links <= 1)
+        {
+            return self.free_inode((&mut inode, inode_addr), inode_nbr);
         }
         inode.nbr_hard_links -= 1;
         self.disk.write_struct(inode_addr, &inode);
@@ -217,8 +231,7 @@ impl Ext2Filesystem {
                 .take_while(|(_, off)| *off < entry_off)
                 .last()
                 .unwrap();
-            self.set_as_last_entry((&mut inode, inode_addr), (&mut previous, previous_offset));
-            return Ok(());
+            self.set_as_last_entry((&mut inode, inode_addr), (&mut previous, previous_offset))
         } else {
             while let Some(entry) = self.find_entry((&mut inode, inode_addr), curr_offset as u64) {
                 if entry.get_inode() != 0 {
@@ -248,8 +261,8 @@ impl Ext2Filesystem {
                 }
                 curr_offset += entry.get_size() as u32;
             }
+            Ok(())
         }
-        Ok(())
     }
 
     /// convert a block to an address
@@ -329,7 +342,7 @@ impl Ext2Filesystem {
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::DIRECTORY);
         self.disk.write_struct(inode_addr, &inode);
         let mut new_entry =
-            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
+            DirectoryEntry::new(filename, DirectoryEntryType::Directory, inode_nbr)?;
         self.push_entry(parent_inode_nbr, &mut new_entry)?;
         Ok(inode_nbr)
     }
@@ -363,11 +376,10 @@ impl Ext2Filesystem {
         entry.set_size((align_next(entry_offset + 1, self.block_size) - entry_offset) as u16);
         entry.write_on_disk(entry_addr, &mut self.disk);
         /* Update inode size */
-        // self.truncate_inode(
-        //     (inode, inode_addr),
-        //     entry_offset as u64 + entry.get_size() as u64,
-        // )
-        Ok(())
+        self.truncate_inode(
+            (inode, inode_addr),
+            entry_offset as u64 + entry.get_size() as u64,
+        )
     }
 
     /// create a directory entry and an inode on the Directory inode: `inode_nbr`

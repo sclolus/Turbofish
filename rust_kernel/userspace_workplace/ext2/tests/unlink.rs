@@ -40,11 +40,6 @@ fn unlink_multiple() {
     for path in paths.iter() {
         open_ext2(&path, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
     }
-    let mut ext2_clone = ext2.try_clone().unwrap();
-    for entry in ext2.iter_entries(2).expect("iter entries failed") {
-        dbg!(entry);
-        dbg!(ext2_clone.get_inode(entry.0.get_inode()).unwrap());
-    }
     for path in paths.iter() {
         eprintln!("free: {:?}", path);
         ext2.unlink(&path).expect("unlink failed");

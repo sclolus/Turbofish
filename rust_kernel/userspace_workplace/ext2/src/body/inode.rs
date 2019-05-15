@@ -101,6 +101,10 @@ impl Inode {
         self.type_and_perm.contains(TypeAndPerm::DIRECTORY)
     }
 
+    pub fn is_a_regular_file(&self) -> bool {
+        self.type_and_perm.contains(TypeAndPerm::REGULAR_FILE)
+    }
+
     pub fn get_size(&self) -> u64 {
         if self.is_a_directory() {
             self.low_size as u64

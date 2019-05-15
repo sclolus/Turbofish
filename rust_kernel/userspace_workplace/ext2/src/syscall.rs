@@ -66,7 +66,9 @@ impl Ext2Filesystem {
         {
             return Err(Errno::Enotempty);
         }
-        self.delete_inode(inode_nbr).unwrap();
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        self.free_inode((&mut inode, inode_addr), inode_nbr)
+            .unwrap();
         self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
     }
