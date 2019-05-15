@@ -50,7 +50,7 @@ _ring3_switch:
 	push dword [ebp + 20]
 
 	; Assign DS/ES/FS/GS segments for the future ring3 process
-	mov eax, [ebp + 8]
+	mov ax, 0x28
 	mov ds, ax
 	mov es, ax
 	mov fs, ax

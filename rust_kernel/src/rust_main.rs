@@ -100,12 +100,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments ?
     use crate::process::tss::Tss;
-    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x10) };
+    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
 
     // Switch to ring 3
+    // user SS segment is defined as 0x30
+    // user CS segment is defined as 0x20
+    // user DATA segment is defined as 0x28
     unsafe {
-        _ring3_switch(0x28 + 3, addr.add(4096) as u32, 0x20 + 3, addr as u32);
+        _ring3_switch(0x30 + 3, addr.add(4096) as u32, 0x20 + 3, addr as u32);
     }
     //loop {}
 
@@ -123,7 +126,6 @@ extern "C" {
 
     fn _ring3_switch(ss: u16, esp: u32, cs: u16, eip: u32);
 }
-
 
 // syscall::init();
 // scheduler::init();
