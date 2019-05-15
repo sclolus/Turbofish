@@ -32,7 +32,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         init_keyboard_driver();
 
         PIT0.lock().configure(OperatingMode::RateGenerator);
-        PIT0.lock().start_at_frequency(100.).unwrap();
+        PIT0.lock().start_at_frequency(1000.).unwrap();
         watch_dog();
         interrupts::enable();
 
@@ -75,7 +75,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     watch_dog();
 
     syscall::init();
-    //scheduler::init();
+    scheduler::init();
 
     use crate::process::tss::Tss;
     let t = unsafe { Tss::init(0x42, 0x84) };

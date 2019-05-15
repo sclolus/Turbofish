@@ -12,101 +12,82 @@ extern timer_interrupt_handler
 
 segment .data
 _pic_time dd 0
-_OLD_EIP:	dd 0
-_OLD_EAX:	dd 0
-_OLD_ESP:	dd 0
-_OLD_EFLAGS:	dd 0
-_OLD_SEGMENT:	dd 0
+
+_eax: dd 0
+
+_esp: dd 0
+_eflags: dd 0
+_cs: dd 0
+_eip: dd 0
 
 ; bool for activation of scheduler
 global SCHEDULER_ACTIVE
-SCHEDULER_ACTIVE:	db 0
+SCHEDULER_ACTIVE: db 0
 
 segment .text
 extern kernel_stack
 global _isr_timer
 _isr_timer:
-	;; save values and move to kernel_stack
-	mov [_OLD_EAX], eax
-	pop eax
-	mov [_OLD_EIP], eax
-	pop eax
-	mov [_OLD_SEGMENT], eax
-	pop eax
-	mov [_OLD_EFLAGS], eax
-
-	;; PIT time
+	; PIT time
 	lock inc dword [_pic_time]
+	push eax
 	mov al, 0x20
 	out 0x20, al
+	pop eax
 	cmp byte [SCHEDULER_ACTIVE], 1
-	je .continue
-
-	; return to kernel if scheduler not actif
-	mov eax, [_OLD_EAX]
-	push dword [_OLD_EFLAGS]
-	push dword [_OLD_SEGMENT]
-	push dword [_OLD_EIP]
+	je .prepare_switch
+	; Return to kernel if scheduler not actif
 	iret
 
-.continue:
-	; change stack to kernel stack
+; Get process values, move to kernel_stack and launch schedule
+.prepare_switch:
+	; Get EIP, CS and EFLAGS of current process before interrupt
+	; TODO from ring 3: SS & ESP must be taken
+	pop dword [_eip]
+	pop dword [_cs]
+	pop dword [_eflags]
+
+	; Save the process stack and change stack to kernel stack
+	mov [_eax], eax
 	mov eax, esp
-	mov [_OLD_ESP], eax
+	mov [_esp], eax
+	mov eax, [_eax]
+	; TODO With TSS segment, it will be useless to manually set the kernel stack pointer
 	mov esp, kernel_stack
 
-	mov eax, [_OLD_EAX]
+	; Push all the process purpose registers
 	pushad
-
-	mov eax, [_OLD_ESP]
-	push eax
-
-	mov eax, [_OLD_EFLAGS]
-	push eax
-
-	mov eax, [_OLD_SEGMENT]
-	push eax
-
-	mov eax, [_OLD_EIP]
-	push eax
+	push dword [_esp]
+	push dword [_eflags]
+	push dword [_cs]
+	push dword [_eip]
 
 	call timer_interrupt_handler
 
-segment .data
-TMP_EFLAGS:	dd 0
-TMP_SEGMENT:	dd 0
-TMP_EIP:	dd 0
-TMP_ESP:	dd 0
 segment .text
 extern debug_process
+
+; fn _switch_process(CpuState {eip: u32, cs: u32, eflags: u32, esp: u32, registers: BaseRegisters}) -> !;
 global _switch_process
-;; fn _switch_process(CpuState {eip: u32, segment: u32, eflags: u32, esp: u32, registers: BaseRegisters}) -> !;
 _switch_process:
 	push ebp
 	mov ebp, esp
 
-	mov eax, dword [ebp + 8]
-	mov [TMP_EIP], eax
-
-	mov eax, dword [ebp + 12]
-	mov [TMP_SEGMENT], eax
-
-	mov eax, dword [ebp + 16]
-	mov [TMP_EFLAGS], eax
-
-	mov eax, dword [ebp + 20]
-	mov [TMP_ESP], eax
-
-	mov eax, ebp
-	add eax, 24
-	mov esp, eax
+	; Get all the passed arguments
+	add esp, 8
+	pop dword [_eip]
+	pop dword [_cs]
+	pop dword [_eflags]
+	pop dword [_esp]
 	popad
 
-	mov esp, [TMP_ESP]
+	mov esp, [_esp]
 
-	push dword [TMP_EFLAGS]
-	push dword [TMP_SEGMENT]
-	push dword [TMP_EIP]
+	; Do the IRET switch
+	; WARNING: IRET does not handle SS & ESP ?
+	push dword [_eflags]
+	push dword [_cs]
+	push dword [_eip]
 	iret
 
 global _get_pic_time
