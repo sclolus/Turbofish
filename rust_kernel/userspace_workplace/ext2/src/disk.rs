@@ -8,9 +8,9 @@ const START_OF_PARTITION: u64 = 0;
 /// This newtype handle a pure IO object
 /// Must implements 'read', 'write', 'seek', 'flush' and 'try_clone'
 #[derive(Debug)]
-pub struct ReaderDisk(pub StdFile);
+pub struct Disk(pub StdFile);
 
-impl ReaderDisk {
+impl Disk {
     /// Raw read. Fill the buf with readen data on file object
     pub fn read_buffer(&mut self, offset: u64, buf: &mut [u8]) -> u64 {
         self.0

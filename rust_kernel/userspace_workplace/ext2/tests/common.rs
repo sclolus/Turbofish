@@ -56,7 +56,7 @@ pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
     let f = File::open(DISK_NAME).expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
     let mut file = ext2
-        .open(filename, OpenFlags::ReadWrite)
+        .open(filename, OpenFlags::READWRITE)
         .expect("open on filesystem failed");
 
     ext2.read(&mut file, buf)
@@ -72,7 +72,7 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
     let mut file = ext2
-        .open(filename, OpenFlags::ReadWrite)
+        .open(filename, OpenFlags::READWRITE)
         .expect("open on filesystem failed");
     ext2.write(&mut file, buf)
         .expect("write on filesystem failed") as usize
@@ -87,4 +87,14 @@ pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::File> {
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
     ext2.open(path, open_flags)
+}
+
+pub fn debug_fs() {
+    let f = File::open(DISK_NAME).expect("open filesystem failed");
+    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2_clone = ext2.try_clone().unwrap();
+    for entry in ext2.iter_entries(2).expect("iter entries failed") {
+        dbg!(entry);
+        dbg!(ext2_clone.get_inode(entry.0.get_inode()).unwrap());
+    }
 }

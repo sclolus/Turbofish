@@ -9,10 +9,19 @@ fn create_file() {
     create_disk(1024 * 1024 * 10);
     let filename = "banane";
     let filename_mounted = DISK_MOUNTED_NAME.to_owned() + "/" + filename;
+    // mount_disk();
+    // {
+    //     File::create(&filename_mounted).expect(&format!(
+    //         "open on mouted filesystem failed {}",
+    //         &filename_mounted
+    //     ));
+    // }
+    // umount_disk();
 
-    open_ext2(filename, OpenFlags::Creat | OpenFlags::ReadWrite).expect("create file failed");
-    open_ext2(filename, OpenFlags::ReadWrite).expect("open just created file failed");
+    open_ext2(filename, OpenFlags::CREAT | OpenFlags::READWRITE).expect("create file failed");
+    open_ext2(filename, OpenFlags::READWRITE).expect("open just created file failed");
 
+    debug_fs();
     mount_disk();
     {
         File::open(&filename_mounted).expect("open std failed");

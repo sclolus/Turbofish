@@ -4,8 +4,9 @@
 #![allow(dead_code)]
 
 mod disk;
+pub mod syscall;
 mod tools;
-use disk::ReaderDisk;
+use disk::Disk;
 pub use tools::{align_next, div_rounded_up, err_if_zero, Block, Errno, IoResult};
 
 use bit_field::BitField;
@@ -18,7 +19,6 @@ use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
 
 use bit_field::BitArray;
 
-use core::cmp::min;
 use core::mem::size_of;
 
 use std::fs::File as StdFile;
@@ -42,8 +42,8 @@ impl<'a> Iterator for EntryIter<'a> {
             .find_entry((&mut self.inode.0, self.inode.1), self.curr_offset as u64)
         {
             let curr_offset = self.curr_offset;
-            self.curr_offset += d.size as u32;
-            if d.inode == 0 {
+            self.curr_offset += d.get_size() as u32;
+            if d.get_inode() == 0 {
                 self.next()
             } else {
                 Some((d, curr_offset))
@@ -77,24 +77,28 @@ impl File {
 pub struct Ext2Filesystem {
     superblock: SuperBlock,
     superblock_addr: u64,
-    disk: ReaderDisk,
+    disk: Disk,
     nbr_block_grp: u32,
     block_size: u32,
 }
 
 bitflags! {
     pub struct OpenFlags : u32 {
-        const Append = 1 << 0;
-        const ReadOnly = 1 << 1;
-        const ReadWrite = 1 << 2;
-        const Creat = 1 << 3;
+        #[allow(dead_code)]
+        const APPEND = 1 << 0;
+        #[allow(dead_code)]
+        const READONLY = 1 << 1;
+        #[allow(dead_code)]
+        const READWRITE = 1 << 2;
+        #[allow(dead_code)]
+        const CREAT = 1 << 3;
     }
 }
 
 impl Ext2Filesystem {
     /// Invocation of a new FileSystem instance: take a FD and his reader as parameter
     pub fn new(f: StdFile) -> Self {
-        let mut disk = ReaderDisk(f);
+        let mut disk = Disk(f);
         let superblock_addr = 1024;
         let superblock: SuperBlock = disk.read_struct(superblock_addr);
 
@@ -116,33 +120,27 @@ impl Ext2Filesystem {
         }
     }
 
+    /// go through all filesystem to find the Parent Inode and the entry of path
+    pub fn find_path(&mut self, path: &str) -> IoResult<(u32, (DirectoryEntry, u32))> {
+        let mut inode_nbr = 2;
+        let mut parent_inode_nbr = 2;
+        let mut entry = unsafe { core::mem::uninitialized() };
+        for p in path.split('/') {
+            parent_inode_nbr = inode_nbr;
+            entry = self
+                .iter_entries(inode_nbr)?
+                .find(|(x, _)| unsafe { x.get_filename() } == p)
+                .ok_or(Errno::Enoent)?;
+
+            inode_nbr = entry.0.get_inode();
+        }
+        Ok((parent_inode_nbr, entry))
+    }
     /// Try to clone the Ext2Filesystem instance
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self {
             disk: self.disk.try_clone()?,
             ..*self
-        })
-    }
-
-    /// Open a File
-    pub fn open(&mut self, path: &str, flags: OpenFlags) -> IoResult<File> {
-        let mut inode_nbr = 2;
-        let mut iter_path = path.split('/').peekable();
-        while let Some(p) = iter_path.next() {
-            let entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent);
-            // dbg!(entry?.0.get_filename());
-            if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::Creat) {
-                inode_nbr = self.create_file(p, inode_nbr, flags)?;
-            } else {
-                inode_nbr = entry?.0.inode;
-            }
-        }
-        Ok(File {
-            inode_nbr,
-            curr_offset: 0,
         })
     }
 
@@ -153,15 +151,10 @@ impl Ext2Filesystem {
         new_size: u64,
     ) -> IoResult<()> {
         let mut curr_offset = align_next(new_size, self.block_size as u64);
-        dbg!(curr_offset);
-        dbg!("bonjour");
         while let Some(d) = self
             .inode_data((inode, inode_addr), curr_offset as u64)
             .ok()
         {
-            dbg!("aurevoir");
-            dbg!(curr_offset);
-            dbg!(d);
             curr_offset += self.block_size as u64;
             self.free_block(self.to_block(d)).unwrap();
         }
@@ -202,43 +195,6 @@ impl Ext2Filesystem {
         Ok(())
     }
 
-    /// for unlink syscall (see man unlink(2))
-    pub fn unlink(&mut self, path: &str) -> IoResult<()> {
-        let mut inode_nbr = 2;
-        let mut parent_inode_nbr = 2;
-        let mut entry = unsafe { core::mem::uninitialized() };
-        for p in path.split('/') {
-            parent_inode_nbr = inode_nbr;
-            entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent)?;
-
-            inode_nbr = entry.0.inode;
-        }
-        self.unlink_inode(entry.0.inode)?;
-        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
-        Ok(())
-    }
-
-    /// the the entry at offset entry_offset the last entry of the directory
-    pub fn set_as_last_entry(
-        &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
-        (entry, entry_offset): (&mut DirectoryEntry, u32),
-    ) {
-        let entry_addr = self
-            .inode_data((inode, inode_addr), entry_offset as u64)
-            .unwrap();
-
-        // =(the offset to the next block)
-        entry.size = (align_next(entry_offset + 1, self.block_size) - entry_offset) as u16;
-        self.disk.write_struct(entry_addr, entry);
-        // Update inode size
-        self.truncate_inode((inode, inode_addr), entry_offset as u64 + entry.size as u64)
-            .unwrap();
-    }
-
     /// delete the entry at entry_off of the parent_inode nbr
     pub fn delete_entry(&mut self, parent_inode_nbr: u32, entry_off: u32) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(parent_inode_nbr)?;
@@ -251,7 +207,7 @@ impl Ext2Filesystem {
         if self
             .find_entry(
                 (&mut inode, inode_addr),
-                curr_offset as u64 + entry.size as u64,
+                curr_offset as u64 + entry.get_size() as u64,
             )
             .is_none()
         {
@@ -265,8 +221,8 @@ impl Ext2Filesystem {
             return Ok(());
         } else {
             while let Some(entry) = self.find_entry((&mut inode, inode_addr), curr_offset as u64) {
-                if entry.inode != 0 {
-                    let next_entry_off = curr_offset as u64 + entry.size as u64;
+                if entry.get_inode() != 0 {
+                    let next_entry_off = curr_offset as u64 + entry.get_size() as u64;
                     if let Some(mut next_entry) =
                         self.find_entry((&mut inode, inode_addr), next_entry_off as u64)
                     {
@@ -277,10 +233,10 @@ impl Ext2Filesystem {
 
                         if let Some(_next_next_entry) = self.find_entry(
                             (&mut inode, inode_addr),
-                            next_entry_off + next_entry.size as u64,
+                            next_entry_off + next_entry.get_size() as u64,
                         ) {
-                            next_entry.size = entry.size;
-                            self.disk.write_struct(entry_addr, &next_entry);
+                            next_entry.set_size(entry.get_size());
+                            next_entry.write_on_disk(entry_addr, &mut self.disk);
                         } else {
                             self.set_as_last_entry(
                                 (&mut inode, inode_addr),
@@ -290,41 +246,9 @@ impl Ext2Filesystem {
                         };
                     }
                 }
-                curr_offset += entry.size as u32;
+                curr_offset += entry.get_size() as u32;
             }
         }
-        Ok(())
-    }
-
-    /// rmdir(2) deletes a directory, which must be empty.
-    pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
-        let mut inode_nbr = 2;
-        let mut parent_inode_nbr = 2;
-        let mut entry = unsafe { core::mem::uninitialized() };
-        for p in path.split('/') {
-            parent_inode_nbr = inode_nbr;
-            entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent)?;
-
-            inode_nbr = entry.0.inode;
-        }
-        let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
-
-        if self
-            .iter_entries(inode_nbr)?
-            .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
-            || inode.nbr_hard_links > 2
-        {
-            return Err(Errno::Enotempty);
-        }
-        if !inode.is_a_directory() {
-            return Err(Errno::Enotdir);
-        }
-
-        self.delete_inode(inode_nbr).unwrap();
-        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
     }
 
@@ -399,50 +323,89 @@ impl Ext2Filesystem {
     }
 
     /// create a directory entry and an inode on the Directory inode: `inode_nbr`, return the new inode nbr
-    fn create_file(&mut self, filename: &str, inode_nbr: u32, flags: OpenFlags) -> IoResult<u32> {
-        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+    fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<u32> {
+        let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
+        let (_, inode_addr) = self.get_inode(inode_nbr)?;
+        let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::DIRECTORY);
+        self.disk.write_struct(inode_addr, &inode);
+        let mut new_entry =
+            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
+        Ok(inode_nbr)
+    }
+
+    fn create_file(
+        &mut self,
+        filename: &str,
+        parent_inode_nbr: u32,
+        flags: OpenFlags,
+    ) -> IoResult<u32> {
+        let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
+        let (_, inode_addr) = self.get_inode(inode_nbr)?;
+        let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
+        self.disk.write_struct(inode_addr, &inode);
+
+        let mut new_entry =
+            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
+        Ok(inode_nbr)
+    }
+
+    /// the the entry at offset entry_offset the last entry of the directory
+    pub fn set_as_last_entry(
+        &mut self,
+        (inode, inode_addr): (&mut Inode, u64),
+        (entry, entry_offset): (&mut DirectoryEntry, u32),
+    ) -> IoResult<()> {
+        let entry_addr = self.inode_data_alloc((inode, inode_addr), entry_offset as u64)?;
+
+        // =(the offset to the next block)
+        entry.set_size((align_next(entry_offset + 1, self.block_size) - entry_offset) as u16);
+        entry.write_on_disk(entry_addr, &mut self.disk);
+        /* Update inode size */
+        // self.truncate_inode(
+        //     (inode, inode_addr),
+        //     entry_offset as u64 + entry.get_size() as u64,
+        // )
+        Ok(())
+    }
+
+    /// create a directory entry and an inode on the Directory inode: `inode_nbr`
+    fn push_entry(
+        &mut self,
+        parent_inode_nbr: u32,
+        new_entry: &mut DirectoryEntry,
+    ) -> IoResult<()> {
+        let (mut inode, inode_addr) = self.get_inode(parent_inode_nbr)?;
         // Get the last entry of the Directory
         let (mut entry, offset) = self
-            .iter_entries(inode_nbr)?
+            .iter_entries(parent_inode_nbr)?
             .last()
             .expect("directory contains no entries");
         let offset = offset as u64;
 
         let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
         // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry);
-        let entry_size = entry.size as u64; // TODO: Why that -> dbg!(entry.size()); doesn't work
+        let entry_size = entry.size() as u64; // TODO: Why that -> dbg!(entry.size()); doesn't work
 
-        let (new_entry_addr, new_offset) =
-        // if we do not cross a Block
-            if self.to_block(offset + entry_size) == self.to_block(offset + entry_size + size_of::<DirectoryEntry>() as u64)
+        let new_offset = {
+            let new_offset = align_next(offset + entry_size, 4);
+            // if we do not cross a Block
+            if self.to_block(new_offset) == self.to_block(new_offset + new_entry.size() as u64)
         // and the block is already allocated
-            && self.inode_data((&mut inode, inode_addr), offset + entry_size).is_ok() //self.to_block( as u32) == self.to_block(offset)
-        {
-            let offset = offset + entry_size;
-            (self.inode_data((&mut inode, inode_addr), offset).unwrap(), offset)
-        } else {
-            let offset = align_next(offset + entry_size, self.block_size as u64);
-            (self.inode_data_alloc((&mut inode, inode_addr), offset)?, offset)
+            && self.inode_data((&mut inode, inode_addr), new_offset).is_ok()
+            //self.to_block( as u32) == self.to_block(offset)
+            {
+                new_offset
+            } else {
+                align_next(offset + entry_size, self.block_size as u64)
+            }
         };
+        /* Update previous entry size */
+        entry.set_size((new_offset - offset) as u16);
+        entry.write_on_disk(entry_addr, &mut self.disk);
 
-        // Update previous entry offset
-        entry.size = (new_offset - offset) as u16;
-        self.disk.write_struct(entry_addr, &entry);
-
-        // Write the new entry
-        let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
-        let mut new_entry =
-            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, inode_nbr)?;
-        self.set_as_last_entry(
-            (&mut inode, inode_addr),
-            (&mut new_entry, new_offset as u32),
-        );
-
-        // Generate the new inode
-        let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
-        self.disk.write_struct(inode_addr, &inode);
-        Ok(inode_nbr)
+        self.set_as_last_entry((&mut inode, inode_addr), (new_entry, new_offset as u32))
     }
 
     /// find the directory entry a offset file.curr_offset
@@ -700,96 +663,5 @@ impl Ext2Filesystem {
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
         panic!("out of file bound");
-    }
-
-    /// for read syscall
-    pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> IoResult<u64> {
-        // for i in 0..self.nbr_block_grp {
-        //     dbg!(self.get_block_grp_descriptor(i));
-        // }
-        let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
-        let file_curr_offset_start = file.curr_offset;
-        if file.curr_offset > inode.get_size() {
-            return Err(Errno::Ebadf);
-        }
-        if file.curr_offset == inode.get_size() {
-            return Ok(0);
-        }
-
-        let data_address = self
-            .inode_data((&mut inode, inode_addr), file.curr_offset)
-            .unwrap();
-        let offset = min(
-            inode.get_size() - file.curr_offset,
-            min(
-                self.block_size as u64 - file.curr_offset % self.block_size as u64,
-                buf.len() as u64,
-            ),
-        );
-        let data_read = self
-            .disk
-            .read_buffer(data_address, &mut buf[0..offset as usize]);
-        file.curr_offset += data_read as u64;
-        if data_read < offset {
-            return Ok(file.curr_offset - file_curr_offset_start);
-        }
-
-        for chunk in buf[offset as usize..].chunks_mut(self.block_size as usize) {
-            let data_address = self
-                .inode_data((&mut inode, inode_addr), file.curr_offset)
-                .unwrap();
-            let offset = min((inode.get_size() - file.curr_offset) as usize, chunk.len());
-            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset]);
-            file.curr_offset += data_read as u64;
-            if data_read < chunk.len() as u64 {
-                return Ok(file.curr_offset - file_curr_offset_start);
-            }
-        }
-        Ok(file.curr_offset - file_curr_offset_start)
-    }
-
-    /// for write syscall
-    pub fn write(&mut self, file: &mut File, buf: &[u8]) -> IoResult<u64> {
-        // for i in 0..self.nbr_block_grp {
-        //     dbg!(self.get_block_grp_descriptor(i));
-        // }
-        let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
-        let file_curr_offset_start = file.curr_offset;
-        if file.curr_offset > inode.get_size() {
-            return Err(Errno::Ebadf);
-        }
-        if buf.len() == 0 {
-            return Ok(0);
-        }
-        let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
-        let offset = min(
-            self.block_size as u64 - file.curr_offset % self.block_size as u64,
-            buf.len() as u64,
-        );
-        let data_write = self
-            .disk
-            .write_buffer(data_address, &buf[0..offset as usize]);
-        file.curr_offset += data_write as u64;
-        if inode.get_size() < file.curr_offset {
-            inode.update_size(file.curr_offset, self.block_size);
-            self.disk.write_struct(inode_addr, &inode);
-        }
-        if data_write < offset {
-            return Ok(file.curr_offset - file_curr_offset_start);
-        }
-
-        for chunk in buf[offset as usize..].chunks(self.block_size as usize) {
-            let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
-            let data_write = self.disk.write_buffer(data_address, &chunk);
-            file.curr_offset += data_write as u64;
-            if inode.get_size() < file.curr_offset {
-                inode.update_size(file.curr_offset, self.block_size);
-                self.disk.write_struct(inode_addr, &inode);
-            }
-            if data_write < chunk.len() as u64 {
-                return Ok(file.curr_offset - file_curr_offset_start);
-            }
-        }
-        Ok(file.curr_offset - file_curr_offset_start)
     }
 }

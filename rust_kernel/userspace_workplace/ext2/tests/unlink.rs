@@ -14,10 +14,10 @@ fn unlink() {
         .open(DISK_NAME)
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    open_ext2(&path, OpenFlags::ReadWrite | OpenFlags::Creat).expect("open with ext2 failed");
+    open_ext2(&path, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
     ext2.unlink(&path).expect("unlink failed");
     assert_eq!(
-        open_ext2(&path, OpenFlags::ReadWrite).unwrap_err(),
+        open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
         Errno::Enoent
     );
 }
@@ -38,18 +38,18 @@ fn unlink_multiple() {
         .map(|i| format!("simple_file, {}", i))
         .collect();
     for path in paths.iter() {
-        open_ext2(&path, OpenFlags::ReadWrite | OpenFlags::Creat).expect("open with ext2 failed");
+        open_ext2(&path, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
     }
     let mut ext2_clone = ext2.try_clone().unwrap();
     for entry in ext2.iter_entries(2).expect("iter entries failed") {
         dbg!(entry);
-        dbg!(ext2_clone.get_inode(entry.0.inode).unwrap());
+        dbg!(ext2_clone.get_inode(entry.0.get_inode()).unwrap());
     }
     for path in paths.iter() {
         eprintln!("free: {:?}", path);
         ext2.unlink(&path).expect("unlink failed");
         assert_eq!(
-            open_ext2(&path, OpenFlags::ReadWrite).unwrap_err(),
+            open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
             Errno::Enoent
         );
     }

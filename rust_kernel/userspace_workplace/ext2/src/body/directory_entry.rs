@@ -1,5 +1,6 @@
 //! This file describe all the Directory Entry Header model
 
+use crate::disk::Disk;
 use crate::tools::{Errno, IoResult};
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
@@ -23,7 +24,7 @@ use core::mem::size_of;
 /// Directory Entry base structure
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(packed)]
-pub struct DirectoryEntry {
+pub struct DirectoryEntryHeader {
     /// Inode
     /*0 	3 	4*/
     pub inode: u32,
@@ -36,9 +37,24 @@ pub struct DirectoryEntry {
     /// Type indicator (only if the feature bit for "directory entries have file type byte" is set, else this is the most-significant 8 bits of the Name Length)
     /*7 	7 	1*/
     type_indicator: DirectoryEntryType,
-    /// N 	Name characters
-    /*8 	8+N-1*/
+}
+
+#[derive(Copy, Clone, PartialEq)]
+#[repr(packed)]
+pub struct DirectoryEntry {
+    pub header: DirectoryEntryHeader,
     filename: Filename,
+}
+
+impl fmt::Debug for DirectoryEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "filename: {:?}\nheader: {:#?}",
+            unsafe { self.get_filename() },
+            self.header
+        )
+    }
 }
 
 /// Type of file
@@ -60,23 +76,46 @@ pub enum DirectoryEntryType {
 impl DirectoryEntry {
     pub fn new(filename: &str, type_indicator: DirectoryEntryType, inode: u32) -> IoResult<Self> {
         Ok(Self {
-            inode,
-            size: size_of::<DirectoryEntry>() as u16,
-            name_length: filename.len() as u8,
-            type_indicator,
+            header: DirectoryEntryHeader {
+                inode,
+                size: size_of::<DirectoryEntry>() as u16,
+                name_length: filename.len() as u8,
+                type_indicator,
+            },
             filename: filename.try_into()?,
         })
     }
 
     /// Get the file name
     pub unsafe fn get_filename(&self) -> &str {
-        let slice: &[u8] =
-            core::slice::from_raw_parts(&self.filename.0 as *const u8, self.name_length as usize);
+        let slice: &[u8] = core::slice::from_raw_parts(
+            &self.filename.0 as *const u8,
+            self.header.name_length as usize,
+        );
         core::str::from_utf8_unchecked(slice)
     }
 
+    pub fn get_inode(&self) -> u32 {
+        self.header.inode
+    }
+
+    pub fn get_size(&self) -> u16 {
+        self.header.size
+    }
+
     pub fn size(&self) -> u16 {
-        self.name_length as u16 + size_of::<Self>() as u16 - size_of::<Filename>() as u16
+        self.header.name_length as u16 + size_of::<DirectoryEntryHeader>() as u16
+    }
+
+    pub fn set_size(&mut self, new_size: u16) {
+        self.header.size = new_size;
+    }
+
+    pub fn write_on_disk(&self, addr: u64, disk: &mut Disk) {
+        disk.write_struct(addr, &self.header);
+        disk.write_buffer(addr + size_of::<DirectoryEntryHeader>() as u64, unsafe {
+            self.get_filename().as_bytes()
+        });
     }
 }
 

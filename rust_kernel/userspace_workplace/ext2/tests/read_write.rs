@@ -8,7 +8,7 @@ fn read_write_of_size(size: usize) {
     //create a disk of size of the file + a little space for metadata
     let filename = format!("simple_file, {}", random::<usize>());
 
-    open_ext2(&filename, OpenFlags::ReadWrite | OpenFlags::Creat).expect("open with ext2 failed");
+    open_ext2(&filename, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
     // CREATE with the std
     // mount_disk();
     // {
