@@ -1,6 +1,6 @@
 //! This file describe all the Directory Entry Header model
 
-use crate::ext2_filesystem::tools::{Errno, IoResult};
+use crate::tools::{Errno, IoResult};
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;

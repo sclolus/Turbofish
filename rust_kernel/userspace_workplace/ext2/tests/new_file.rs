@@ -1,7 +1,7 @@
 mod common;
 use common::*;
 
-use ext2::ext2_filesystem::OpenFlags;
+use ext2::OpenFlags;
 use std::fs::File;
 
 #[test]

@@ -1,6 +1,6 @@
 mod common;
 use common::*;
-use ext2::ext2_filesystem::OpenFlags;
+use ext2::OpenFlags;
 use rand::prelude::*;
 use std::fs::File;
 

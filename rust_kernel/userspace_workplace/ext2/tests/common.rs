@@ -1,4 +1,4 @@
-use ext2::ext2_filesystem::{Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::{File, OpenOptions};
 use std::process::Command;
 
@@ -79,7 +79,7 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
 }
 
 #[allow(dead_code)]
-pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::ext2_filesystem::File> {
+pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::File> {
     let f = OpenOptions::new()
         .read(true)
         .write(true)

@@ -1,4 +1,4 @@
-use ext2::ext2_filesystem::Ext2Filesystem;
+use ext2::Ext2Filesystem;
 use std::fs::OpenOptions;
 mod common;
 use common::*;

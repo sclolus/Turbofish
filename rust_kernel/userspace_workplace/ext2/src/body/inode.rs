@@ -1,7 +1,7 @@
 //! This file describe all the Inode model
 
 use super::Block;
-use crate::ext2_filesystem::tools::IoResult;
+use crate::tools::IoResult;
 use bitflags::bitflags;
 use core::mem::size_of;
 

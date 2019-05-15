@@ -1,4 +1,4 @@
-use ext2::ext2_filesystem::{Errno, Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{Errno, Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::OpenOptions;
 mod common;
 use common::*;
