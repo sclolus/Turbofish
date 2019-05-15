@@ -147,14 +147,14 @@ impl IdtGateEntry {
     /// This sets the DPL (Descriptor Privilege Level) of the entry.
     /// If the privilege level of the current user is not atleast of DPL (0 being the highest), a General Protection Fault will be thrown.
     pub fn set_privilege_level(&mut self, dpl: u8) -> &mut Self {
-        self.type_attr.set_bits(4..6, dpl);
+        self.type_attr.set_bits(5..7, dpl);
         self
     }
 
     /// Gets the DPL (Descriptor Privilege Level) of the entry.
     /// If the privilege level of the current user is not atleast of DPL (0 being the highest), a General Protection Fault will be thrown.
     pub fn get_privilege_level(&self) -> u8 {
-        self.type_attr.get_bits(4..6)
+        self.type_attr.get_bits(5..7)
     }
 
     /// Sets the Selector of the entry. This is the selector in the GDT (or LDT) containing the handler for the interrupt.
