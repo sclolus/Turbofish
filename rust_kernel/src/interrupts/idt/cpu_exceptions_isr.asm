@@ -5,12 +5,22 @@
 
 %macro PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET 0
 	pushad
+
+	mov eax, [ebp]        ; get stored ebp
+	mov [esp + 8], eax
+
+	mov eax, [ebp + 20]   ; esp
+	mov [esp + 12], eax
 	push dword [ebp + 16] ; eflags
 	push dword [ebp + 12] ; cs
 	push dword [ebp + 8]  ; eip
+
+	; TODO seems to work correctly only from ring 3 mode
+	mov ax, [ebp + 24]    ; ss
+	and eax, 0xffff
+	push eax
+
 	xor eax, eax
-	mov [esp - 4], eax
-	push ss
 	mov [esp - 4], eax
 	push gs
 	mov [esp - 4], eax
@@ -23,12 +33,22 @@
 
 %macro PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET 0
 	pushad
+
+	mov eax, [ebp]        ; get stored ebp
+	mov [esp + 8], eax
+
+	mov eax, [ebp + 16]   ; esp
+	mov [esp + 12], eax
 	push dword [ebp + 12] ; eflags
 	push dword [ebp + 8]  ; cs
 	push dword [ebp + 4]  ; eip
+
+	; TODO seems to work correctly only from ring 3 mode
+	mov ax, [ebp + 20]    ; ss
+	and eax, 0xffff
+	push eax
+
 	xor eax, eax
-	mov [esp - 4], eax
-	push ss
 	mov [esp - 4], eax
 	push gs
 	mov [esp - 4], eax

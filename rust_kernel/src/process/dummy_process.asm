@@ -10,10 +10,16 @@ _dummy_process_code:
 	push ebp
 	mov ebp, esp
 
-	mov eax, esp
-	mov ebx, ebp
-	mov ecx, 0x42
-	mov edx, 0x84
+	push eax
+
+	mov eax, 1
+	mov ebx, 2
+	mov ecx, 3
+	mov edx, 4
+
+	mov esi, 0x42
+	mov edi, 0x84
+
 	ud2
 	jmp $
 
