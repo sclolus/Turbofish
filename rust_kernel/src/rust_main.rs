@@ -74,20 +74,53 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     watch_dog();
 
-    syscall::init();
-    scheduler::init();
-
-    use crate::process::tss::Tss;
-    let t = unsafe { Tss::init(0x42, 0x84) };
-    Tss::display();
+    // Ceate a Dummy process Page directory
+    use crate::memory::allocator::VirtualPageAllocator;
+    let mut v = unsafe { VirtualPageAllocator::new_for_process() };
     unsafe {
-        (*t).reset(0x10, 0x20);
+        v.context_switch();
     }
-    Tss::display();
+
+    use crate::memory::tools::{AllocFlags, NbrPages};
+
+    // Allocate one page for code segment of the Dummy process
+    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+    println!("processus address allocated: {:x?}", addr);
+
+    // Copy dummy code for the process
+    unsafe {
+        ft_memcpy(addr, &_dummy_process_code, _dummy_process_len);
+    }
+
+    // Check is data has been correctly copied
+    let slice = unsafe { core::slice::from_raw_parts(addr, _dummy_process_len) };
+    for i in slice.iter() {
+        println!("{:#X?}", *i);
+    }
+
+    //loop {}
 
     crate::shell::shell();
     loop {}
 }
+
+extern "C" {
+    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
+
+    static _dummy_process_code: u8;
+    static _dummy_process_len: usize;
+}
+
+// syscall::init();
+// scheduler::init();
+
+// use crate::process::tss::Tss;
+// let t = unsafe { Tss::init(0x42, 0x84) };
+// Tss::display();
+// unsafe {
+//     (*t).reset(0x10, 0x20);
+// }
+// Tss::display();
 
 // use crate::memory::allocator::VirtualPageAllocator;
 // let v = unsafe { VirtualPageAllocator::new_for_process() };

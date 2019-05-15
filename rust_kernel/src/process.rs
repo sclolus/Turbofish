@@ -22,7 +22,7 @@ pub struct CpuState {
     /// current eip
     pub eip: u32,
     /// current segment of code
-    pub segment: u32,
+    pub cs: u32,
     /// current eflags
     pub eflags: Eflags,
     /// current esp
@@ -59,7 +59,7 @@ impl Process {
                 // stack go downwards set esp to the end of the allocation
                 esp: base_stack.add(STACK_SIZE.into()) as u32,
                 registers: Default::default(),
-                segment: 0x8,
+                cs: 0x8,
                 eflags,
             },
             base_stack: base_stack as u32,

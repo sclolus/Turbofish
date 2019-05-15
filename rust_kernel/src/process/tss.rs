@@ -36,7 +36,7 @@ pub struct Tss {
 
 #[allow(unused)]
 impl Tss {
-    /// For software switch, only on TSS structure is required for each cpu
+    /// For software switch, only one TSS structure is required for each cpu
     const TSS_MEMORY_ADDRESS: u32 = 0x1800;
 
     /// Init a new TSS descriptor at TSS_MEMORY_ADDRESS (must be unique)

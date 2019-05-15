@@ -69,7 +69,7 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += load_tss
+SRC_ASM_KERNEL += load_tss dummy_process
 VPATH += src/process
 
 OBJ_DIR := objs
