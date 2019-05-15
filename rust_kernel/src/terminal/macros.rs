@@ -126,8 +126,10 @@ macro_rules! eprint {
 #[macro_export]
 macro_rules! eprintln {
     () => ($crate::eprint!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::eprint!($fmt, $($arg)*));
-    ($fmt:expr) => ($crate::eprint!($fmt));
+    // ($fmt:expr, $($arg:tt)*) => ($crate::eprint!($fmt, $($arg)*));
+    // ($fmt:expr) => ($crate::eprint!($fmt));
+    ($fmt:expr, $($arg:tt)*) => ($crate::eprint!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ($crate::eprint!(concat!($fmt, "\n")));
 }
 
 /// eprintln! with UART

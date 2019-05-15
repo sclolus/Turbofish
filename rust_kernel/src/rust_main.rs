@@ -98,6 +98,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         println!("{:#X?}", *i);
     }
 
+    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments ?
+    use crate::process::tss::Tss;
+    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x10) };
+    Tss::display();
+
+    // Switch to ring 3
+    unsafe {
+        _ring3_switch(0x28 + 3, addr.add(4096) as u32, 0x20 + 3, addr as u32);
+    }
     //loop {}
 
     crate::shell::shell();
@@ -109,7 +118,12 @@ extern "C" {
 
     static _dummy_process_code: u8;
     static _dummy_process_len: usize;
+
+    static kernel_stack: u8;
+
+    fn _ring3_switch(ss: u16, esp: u32, cs: u16, eip: u32);
 }
+
 
 // syscall::init();
 // scheduler::init();

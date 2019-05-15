@@ -56,7 +56,7 @@ impl Tss {
     pub fn display() {
         let tss: *mut Tss = Self::TSS_MEMORY_ADDRESS as *mut Tss;
         unsafe {
-            println!("{:#?}", *tss);
+            println!("{:#X?}", *tss);
         }
     }
 }
