@@ -6,7 +6,7 @@ use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
-use crate::process::scheduler;
+// use crate::process::scheduler;
 use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
@@ -73,6 +73,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::error!("this is an example of error");
 
     watch_dog();
+
+    // Initialize Syscall system
+    syscall::init();
 
     // Ceate a Dummy process Page directory
     use crate::memory::allocator::VirtualPageAllocator;

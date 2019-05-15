@@ -6,7 +6,7 @@ pub use test_syscall::*;
 mod mmap;
 
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
-use crate::process::scheduler::SCHEDULER;
+// use crate::process::scheduler::SCHEDULER;
 use crate::process::CpuState;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
@@ -29,28 +29,31 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> i32 {
 }
 
 /// Exit from a process
-fn sys_exit(status: i32) -> i32 {
-    SCHEDULER.lock().exit(status);
+fn sys_exit(_status: i32) -> i32 {
+    unimplemented!();
+    // SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 fn sys_fork() -> i32 {
-    SCHEDULER.lock().fork()
+    unimplemented!();
+    // SCHEDULER.lock().fork()
 }
 
 /// Global syscall interrupt handler called from assembly code
 #[no_mangle]
-pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> ! {
-    SCHEDULER.lock().save_process_state(cpu_state);
+// pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> ! {
+pub extern "C" fn syscall_interrupt_handler(cpu_state: CpuState) -> i32 {
+    // SCHEDULER.lock().save_process_state(cpu_state);
     let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
-    let return_value = match eax {
+    match eax {
         0x1 => sys_exit(ebx as i32),
         0x2 => sys_fork(),
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         _ => panic!("wrong syscall"),
-    };
-    SCHEDULER.lock().return_from_syscall(return_value);
+    }
+    // SCHEDULER.lock().return_from_syscall(return_value);
 }
 
 /// Initialize all the syscall system by creation of a new IDT entry at 0x80
