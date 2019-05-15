@@ -81,11 +81,16 @@ segment .text
 _isr_page_fault:
 	push ebp
 	mov ebp, esp
+	; push all the purposes registers
 	PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+	; push the error code
+	mov eax, [ebp + 4]
+	push eax
+	; push the fault address
 	mov eax, cr2
 	push eax
 	call cpu_page_fault_handler
-	add esp, 32 + 4 ; to be on the pushad
+	add esp, 32 + 4 + 4; to be on the pushad
 	popad
 	pop ebp
 	add esp, 4 ; to be on the eip
