@@ -42,7 +42,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(200.).unwrap();
+    PIT0.lock().start_at_frequency(1000.).unwrap();
 
     match Acpi::init() {
         Ok(()) => match ACPI.lock().unwrap().enable() {
@@ -93,7 +93,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     // Copy dummy code for the process
     unsafe {
-        ft_memcpy(addr, &_dummy_process_code, _dummy_process_len);
+        //ft_memcpy(addr, &_dummy_asm_process_code, _dummy_asm_process_len);
+        ft_memcpy(addr, &dummy_c_process, 4096);
     }
 
     // Check is data has been correctly copied
@@ -122,14 +123,16 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
 #[no_mangle]
 pub extern "C" fn print_something() {
-    eprintln!("Tick");
+//    eprintln!("Tick");
 }
 
 extern "C" {
     fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
 
-    static _dummy_process_code: u8;
-    static _dummy_process_len: usize;
+    // static _dummy_asm_process_code: u8;
+    // static _dummy_asm_process_len: usize;
+
+    static dummy_c_process: u8;
 
     static kernel_stack: u8;
 

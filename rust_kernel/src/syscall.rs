@@ -47,7 +47,7 @@ fn sys_fork() -> i32 {
 pub extern "C" fn syscall_interrupt_handler(base_registers: BaseRegisters) -> i32 {
     // SCHEDULER.lock().save_process_state(cpu_state);
     // let BaseRegisters { eax, ebx, ecx, edx, .. } = cpu_state.registers;
-    eprintln!("{:#X?}", base_registers);
+    // eprintln!("{:#X?}", base_registers);
     let BaseRegisters { eax, ebx, ecx, edx, .. } = base_registers;
     match eax {
         0x1 => sys_exit(ebx as i32),

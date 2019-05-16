@@ -69,7 +69,8 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += load_tss dummy_process
+SRC_C_KERNEL += dummy_c_process
+SRC_ASM_KERNEL += load_tss launch_ring3 dummy_asm_process
 VPATH += src/process
 
 OBJ_DIR := objs

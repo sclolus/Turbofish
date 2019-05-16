@@ -16,6 +16,7 @@ global _isr_syscall
 _isr_syscall:
 	; save all registers (except ESP, SS, EFLAGS, EIP and CS (changed by interrupt: Handled by IRQ & TSS))
 	; TODO: I think the exploitation of a stackframe here could be very difficult
+	push ebp
 	mov ebp, esp
 
 	push ds
@@ -39,6 +40,8 @@ _isr_syscall:
 	pop fs
 	pop es
 	pop ds
+
+	pop ebp
 
 	; After IRET, ESP, SS, EFLAGS, EIP and CS will be return as process values
 	iret
