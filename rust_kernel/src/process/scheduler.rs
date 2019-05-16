@@ -18,7 +18,7 @@ type Pid = u32;
 
 /// the pit handler
 #[no_mangle]
-unsafe extern "C" fn timer_interrupt_handler(cpu_state: CpuState) -> ! {
+unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: CpuState) -> ! {
     let mut scheduler = SCHEDULER.lock();
     scheduler.save_process_state(cpu_state);
     scheduler.switch_next_process();

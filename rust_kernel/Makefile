@@ -69,9 +69,15 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_C_KERNEL += dummy_c_process
-SRC_ASM_KERNEL += load_tss launch_ring3 dummy_asm_process
+SRC_ASM_KERNEL += launch_ring3
 VPATH += src/process
+
+SRC_ASM_KERNEL += switch_process
+VPATH += src/process/scheduler
+
+SRC_C_KERNEL += dummy_c_process
+SRC_ASM_KERNEL += dummy_asm_process
+VPATH += src/process/tests
 
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
