@@ -1,11 +1,10 @@
-use ext2::{Errno, Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{Errno, Ext2Filesystem, OpenFlags};
 use rand::prelude::*;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
 mod common;
 use common::*;
-use std::fs::DirBuilder;
 
 #[test]
 fn unlink() {
@@ -17,10 +16,10 @@ fn unlink() {
         .open(DISK_NAME)
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    open_ext2(&path, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
+    open_ext2(&path, OpenFlags::O_RDWR | OpenFlags::O_CREAT).expect("open with ext2 failed");
     ext2.unlink(&path).expect("unlink failed");
     assert_eq!(
-        open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
+        open_ext2(&path, OpenFlags::O_RDWR).unwrap_err(),
         Errno::Enoent
     );
 }
@@ -41,13 +40,13 @@ fn unlink_multiple() {
         .map(|i| format!("simple_file, {}", i))
         .collect();
     for path in paths.iter() {
-        open_ext2(&path, OpenFlags::READWRITE | OpenFlags::CREAT).expect("open with ext2 failed");
+        open_ext2(&path, OpenFlags::O_RDWR | OpenFlags::O_CREAT).expect("open with ext2 failed");
     }
     for path in paths.iter() {
         eprintln!("free: {:?}", path);
         ext2.unlink(&path).expect("unlink failed");
         assert_eq!(
-            open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
+            open_ext2(&path, OpenFlags::O_RDWR).unwrap_err(),
             Errno::Enoent
         );
     }
@@ -82,7 +81,7 @@ fn unlink_big_files() {
 
         ext2.unlink(&filename).expect("unlink failed");
         assert_eq!(
-            open_ext2(&filename, OpenFlags::READWRITE).unwrap_err(),
+            open_ext2(&filename, OpenFlags::O_RDWR).unwrap_err(),
             Errno::Enoent
         );
     }

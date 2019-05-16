@@ -1,7 +1,8 @@
 //! This file describe all the Directory Entry Header model
 
 use crate::disk::Disk;
-use crate::tools::{Errno, IoResult};
+use crate::syscall::Errno;
+use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;

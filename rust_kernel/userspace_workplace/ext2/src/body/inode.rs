@@ -19,7 +19,7 @@ use core::mem::size_of;
 
 /// Inode Data Structure
 #[derive(Debug, Copy, Clone, Default)]
-#[repr(packed)]
+#[repr(C)]
 pub struct Inode {
     /// Type and Permissions (see below)
     /*0 	1       2*/

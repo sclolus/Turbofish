@@ -1,4 +1,4 @@
-use ext2::{Errno, Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{Errno, Ext2Filesystem, OpenFlags};
 use std::fs::OpenOptions;
 mod common;
 use common::*;
@@ -52,7 +52,7 @@ fn rmdir_multiple() {
         eprintln!("free: {:?}", path);
         ext2.rmdir(path).expect("rmdir failed");
         assert_eq!(
-            open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
+            open_ext2(&path, OpenFlags::O_RDWR).unwrap_err(),
             Errno::Enoent
         );
     }

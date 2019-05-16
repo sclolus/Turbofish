@@ -1,8 +1,8 @@
-use ext2::{Errno, Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{Ext2Filesystem, OpenFlags};
 use std::fs::OpenOptions;
 mod common;
 use common::*;
-use std::fs::{read_dir, DirBuilder};
+use std::fs::read_dir;
 
 #[test]
 fn mkdir_simple() {
@@ -14,7 +14,7 @@ fn mkdir_simple() {
         .open(DISK_NAME)
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    ext2.mkdir(path).expect("mkdir failed");
+    ext2.mkdir(path, 0o644).expect("mkdir failed");
     mount_disk();
     {
         let path_mounted = DISK_MOUNTED_NAME.to_owned() + path;
@@ -40,8 +40,8 @@ fn mkdir_multiple() {
         .map(|i| format!("simple_file, {}", i))
         .collect();
     for path in paths.iter() {
-        ext2.mkdir(path).expect("mkdir failed");
-        open_ext2(&path, OpenFlags::READWRITE).unwrap();
+        ext2.mkdir(path, 0o644).expect("mkdir failed");
+        open_ext2(&path, OpenFlags::O_RDWR).unwrap();
     }
     mount_disk();
     {

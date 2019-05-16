@@ -1,16 +1,18 @@
 //! this module contains a ext2 driver
 //! see [osdev](https://wiki.osdev.org/Ext2)
 
-#![allow(dead_code)]
+#![deny(missing_docs)]
 
 mod disk;
 pub mod syscall;
+pub use syscall::Errno;
+pub use syscall::OpenFlags;
+
 mod tools;
 use disk::Disk;
-pub use tools::{align_next, div_rounded_up, err_if_zero, Block, Errno, IoResult};
+pub use tools::{align_next, div_rounded_up, err_if_zero, Block, IoResult};
 
 use bit_field::BitField;
-use bitflags::bitflags;
 mod header;
 use header::{BlockGroupDescriptor, SuperBlock};
 
@@ -54,7 +56,7 @@ impl<'a> Iterator for EntryIter<'a> {
     }
 }
 
-/// Local file structure
+/// The Kernel side FileDescriptor struct
 #[derive(Debug, Copy, Clone)]
 pub struct File {
     inode_nbr: u32,
@@ -62,6 +64,7 @@ pub struct File {
 }
 
 impl File {
+    /// The future seek syscall ?
     pub fn seek(&mut self, s: SeekFrom) {
         match s {
             SeekFrom::Start(n) => {
@@ -80,19 +83,6 @@ pub struct Ext2Filesystem {
     disk: Disk,
     nbr_block_grp: u32,
     block_size: u32,
-}
-
-bitflags! {
-    pub struct OpenFlags : u32 {
-        #[allow(dead_code)]
-        const APPEND = 1 << 0;
-        #[allow(dead_code)]
-        const READONLY = 1 << 1;
-        #[allow(dead_code)]
-        const READWRITE = 1 << 2;
-        #[allow(dead_code)]
-        const CREAT = 1 << 3;
-    }
 }
 
 impl Ext2Filesystem {
@@ -137,6 +127,13 @@ impl Ext2Filesystem {
         Ok((parent_inode_nbr, entry))
     }
 
+    /// go through all filesystem to find the Inode corresponding to path
+    pub fn find_inode(&mut self, path: &str) -> IoResult<(Inode, u64)> {
+        let (_parent_inode_nbr, entry) = self.find_path(path)?;
+        let inode_nbr = entry.0.get_inode();
+        self.get_inode(inode_nbr)
+    }
+
     /// Try to clone the Ext2Filesystem instance
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self {
@@ -160,7 +157,7 @@ impl Ext2Filesystem {
         let curr_size = self.to_block_addr(size - 1);
 
         for block_off in (new_size_block.0..=curr_size.0).rev() {
-            self.inode_free_block((inode, inode_addr), dbg!(Block(block_off)))
+            self.inode_free_block((inode, inode_addr), Block(block_off))
                 .unwrap();
         }
         inode.update_size(new_size, self.block_size);
@@ -203,7 +200,6 @@ impl Ext2Filesystem {
     /// decrement link count of the inode and delete it if it becomes < 2
     pub fn unlink_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        dbg!(inode);
         if (inode.is_a_directory() && inode.nbr_hard_links <= 2)
             || (inode.is_a_regular_file() && inode.nbr_hard_links <= 1)
         {
@@ -244,7 +240,6 @@ impl Ext2Filesystem {
                     if let Some(mut next_entry) =
                         self.find_entry((&mut inode, inode_addr), next_entry_off as u64)
                     {
-                        //TODO: doesnt work because filename is 256 bytes
                         let entry_addr = self
                             .inode_data((&mut inode, inode_addr), curr_offset as u64)
                             .unwrap();
@@ -356,11 +351,12 @@ impl Ext2Filesystem {
         Ok(inode_nbr)
     }
 
+    /// create a file, return the new inode nbr of that file
     fn create_file(
         &mut self,
         filename: &str,
         parent_inode_nbr: u32,
-        flags: OpenFlags,
+        _flags: OpenFlags,
     ) -> IoResult<u32> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
@@ -407,7 +403,7 @@ impl Ext2Filesystem {
 
         let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
         // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry);
-        let entry_size = entry.size() as u64; // TODO: Why that -> dbg!(entry.size()); doesn't work
+        let entry_size = entry.size() as u64;
 
         let new_offset = {
             let new_offset = align_next(offset + entry_size, 4);
@@ -442,7 +438,7 @@ impl Ext2Filesystem {
     /// iter of the entries of inodes if inode is a directory
     pub fn iter_entries<'a>(&'a mut self, inode: u32) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
-        if unsafe { !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) } {
+        if !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
             return Err(Errno::Enotdir);
         }
         Ok(EntryIter {
@@ -454,7 +450,13 @@ impl Ext2Filesystem {
 
     /// read the block group descriptor address from the block group number starting at 0
     pub fn block_grp_descriptor_addr(&self, n: u32) -> u64 {
-        // The table is located in the block immediately following the Superblock. So if the block size (determined from a field in the superblock) is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. For any other block size, it will begin at block 1. Remember that blocks are numbered starting at 0, and that block numbers don't usually correspond to physical block addresses.
+        // The table is located in the block immediately following the
+        // Superblock. So if the block size (determined from a field
+        // in the superblock) is 1024 bytes per block, the Block Group
+        // Descriptor Table will begin at block 2. For any other block
+        // size, it will begin at block 1. Remember that blocks are
+        // numbered starting at 0, and that block numbers don't
+        // usually correspond to physical block addresses.
         assert!(n <= self.nbr_block_grp);
         let offset = if self.block_size == 1024 { 2 } else { 1 };
 
@@ -613,7 +615,7 @@ impl Ext2Filesystem {
                 err_if_zero(self.disk.read_struct(addr_pointer_to_pointer))?;
             let off = (block_off - offset_start) % blocknumber_per_block as u64;
 
-            self.free_pointer(self.to_addr(pointer_to_pointer) + off * size_of::<Block>() as u64);
+            self.free_pointer(self.to_addr(pointer_to_pointer) + off * size_of::<Block>() as u64)?;
 
             if off == 0 {
                 self.free_pointer(addr_pointer_to_pointer)?;
@@ -676,35 +678,24 @@ impl Ext2Filesystem {
             }
             return Ok(());
         }
-        panic!("out of file bound");
+        Err(Errno::Efbig)
     }
+
     /// Get the file location at offset 'offset'
     fn inode_data_may_alloc(
         &mut self,
         (inode, inode_addr): (&mut Inode, u64),
         offset: u64,
         alloc: bool,
-    ) -> Result<u64, Errno> {
+    ) -> IoResult<u64> {
         let block_off = offset / self.block_size as u64;
         let blocknumber_per_block = self.block_size as usize / size_of::<Block>();
-
-        // let mut alloc_on_inode =
-        //     |block_addr: &mut Block, field_offset: u32| -> Result<Block, Errno> {
-        //         err_if_zero({
-        //             if alloc && *block_addr == Block(0) {
-        //                 *block_addr = self.alloc_block().ok_or(Errno::Enomem)?;
-        //                 self.disk
-        //                     .write_struct(inode_addr + field_offset, block_addr);
-        //             }
-        //             *block_addr
-        //         })
-        //     };
 
         /* SIMPLE ADDRESSING */
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
-            if alloc && unsafe { inode.direct_block_pointers[block_off as usize] == Block(0) } {
+            if alloc && inode.direct_block_pointers[block_off as usize] == Block(0) {
                 inode.direct_block_pointers[block_off as usize] =
                     self.alloc_block().ok_or(Errno::Enomem)?;
                 self.disk.write_struct(inode_addr, inode);
@@ -724,23 +715,13 @@ impl Ext2Filesystem {
             let off = block_off - offset_start;
 
             let singly_indirect = err_if_zero({
-                if alloc && unsafe { inode.singly_indirect_block_pointers == Block(0) } {
+                if alloc && inode.singly_indirect_block_pointers == Block(0) {
                     inode.singly_indirect_block_pointers =
                         self.alloc_block().ok_or(Errno::Enomem)?;
                     self.disk.write_struct(inode_addr, inode);
                 }
                 inode.singly_indirect_block_pointers
             })?;
-            // let singly_indirect = {
-            //     let off = unsafe {
-            //         &inode.singly_indirect_block_pointers as *const _ as u32
-            //             - &inode as *const _ as u32
-            //     };
-            //     alloc_on_inode(
-            //         unsafe { &mut inode.singly_indirect_block_pointers },
-            //         off,
-            //     )?
-            // };
             let pointer: Block = self.alloc_pointer(
                 self.to_addr(singly_indirect) + off * size_of::<Block>() as u64,
                 alloc,
@@ -757,7 +738,7 @@ impl Ext2Filesystem {
             // dbg!("doubly indirect addressing");
             let off = (block_off - offset_start) / blocknumber_per_block as u64;
             let doubly_indirect = err_if_zero({
-                if alloc && unsafe { inode.doubly_indirect_block_pointers == Block(0) } {
+                if alloc && inode.doubly_indirect_block_pointers == Block(0) {
                     inode.doubly_indirect_block_pointers =
                         self.alloc_block().ok_or(Errno::Enomem)?;
                     self.disk.write_struct(inode_addr, inode);
@@ -787,7 +768,7 @@ impl Ext2Filesystem {
                 (block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u64;
 
             let tripply_indirect = err_if_zero({
-                if alloc && unsafe { inode.triply_indirect_block_pointers == Block(0) } {
+                if alloc && inode.triply_indirect_block_pointers == Block(0) {
                     inode.triply_indirect_block_pointers =
                         self.alloc_block().ok_or(Errno::Enomem)?;
                     self.disk.write_struct(inode_addr, inode);
@@ -817,6 +798,6 @@ impl Ext2Filesystem {
 
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
-        panic!("out of file bound");
+        Err(Errno::Efbig)
     }
 }

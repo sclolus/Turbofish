@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+//! to run tests, to prevent multithreading bugs, you have to run:
+//! sudo RUST_TEST_TASKS=1 RUST_TEST_THREADS=1 cargo  test
+
 use ext2::{Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::{File, OpenOptions};
 use std::process::Command;
@@ -44,26 +48,21 @@ pub fn umount_disk() {
     exec_shell(&format!("umount {}", DISK_MOUNTED_NAME));
 }
 
-#[allow(dead_code)]
 pub const DIRECT_MAX_SIZE: usize = 12 * 1024;
-#[allow(dead_code)]
 pub const SINGLY_MAX_SIZE: usize = DIRECT_MAX_SIZE + (1024 / 4) * 1024;
-#[allow(dead_code)]
 pub const DOUBLY_MAX_SIZE: usize = SINGLY_MAX_SIZE + (1024 / 4) * (1024 / 4) * 1024;
 
-#[allow(dead_code)]
 pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
     let f = File::open(DISK_NAME).expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
     let mut file = ext2
-        .open(filename, OpenFlags::READWRITE)
+        .open(filename, OpenFlags::O_RDWR, 0o644)
         .expect("open on filesystem failed");
 
     ext2.read(&mut file, buf)
         .expect("read on filesystem failed") as usize
 }
 
-#[allow(dead_code)]
 pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
     let f = OpenOptions::new()
         .read(true)
@@ -72,13 +71,12 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
     let mut file = ext2
-        .open(filename, OpenFlags::READWRITE)
+        .open(filename, OpenFlags::O_RDWR, 0o644)
         .expect("open on filesystem failed");
     ext2.write(&mut file, buf)
         .expect("write on filesystem failed") as usize
 }
 
-#[allow(dead_code)]
 pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::File> {
     let f = OpenOptions::new()
         .read(true)
@@ -86,7 +84,7 @@ pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::File> {
         .open(DISK_NAME)
         .expect("open filesystem failed");
     let mut ext2 = Ext2Filesystem::new(f);
-    ext2.open(path, open_flags)
+    ext2.open(path, open_flags, 0o644)
 }
 
 pub fn debug_fs() {

@@ -159,11 +159,6 @@ impl SuperBlock {
         Block(self.block_per_block_grp)
     }
 
-    // /// Get the superblock official inode per block group
-    // pub fn get_inode_per_block_grp(&self) -> u32 {
-    //     self.inodes_per_block_grp
-    // }
-
     /// Get the log2 (block size) - 10. (In other words, the number to shift 1,024 to the left by to obtain the block size)
     pub fn get_log2_block_size(&self) -> u32 {
         self.log2_block_size
