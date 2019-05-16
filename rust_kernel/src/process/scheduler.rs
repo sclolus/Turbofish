@@ -1,5 +1,5 @@
 use crate::process::{CpuState, Process};
-use crate::registers::Eflags;
+// use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
 use crate::syscall::{_user_exit, _user_fork};
 use alloc::vec;
@@ -41,8 +41,9 @@ impl Scheduler {
     // create a new scheduler for tests
     unsafe fn new() -> Self {
         let test_process = vec![
-            Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
-            Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
+            Process::new(0 as *mut u8, 0),
+            // Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
+            // Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(fork_process, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(fork_bomb, Eflags::get_eflags().set_interrupt_flag(true)),
@@ -105,31 +106,32 @@ impl Scheduler {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
     }
 
-    pub fn fork(&mut self) -> i32 {
-        let curr_process = self.curr_process_mut();
+    // /// Perform a fork
+    // pub fn fork(&mut self) -> i32 {
+    //     let curr_process = self.curr_process_mut();
 
-        match curr_process.fork() {
-            Ok(child) => {
-                let child_pid = child.pid;
-                self.running_process.push(child_pid);
-                self.all_process.insert(child_pid, child);
-                child_pid as i32
-            }
-            Err(e) => {
-                eprintln!("{:?}", e);
-                -1
-            }
-        }
-    }
+    //     match curr_process.fork() {
+    //         Ok(child) => {
+    //             let child_pid = child.pid;
+    //             self.running_process.push(child_pid);
+    //             self.all_process.insert(child_pid, child);
+    //             child_pid as i32
+    //         }
+    //         Err(e) => {
+    //             eprintln!("{:?}", e);
+    //             -1
+    //         }
+    //     }
+    // }
 
-    /// perform the exit syscall
-    /// (remove the process from the list of running process and schedule to an other process)
-    pub fn exit(&mut self, status: i32) -> ! {
-        self.curr_process_mut().exit(status);
-        self.running_process.remove(self.curr_process_index);
-        self.switch_next_process();
-        self.return_to_process()
-    }
+    // /// Perform the exit syscall
+    // /// remove the process from the list of running process and schedule to an other process
+    // pub fn exit(&mut self, status: i32) -> ! {
+    //     self.curr_process_mut().exit(status);
+    //     self.running_process.remove(self.curr_process_index);
+    //     self.switch_next_process();
+    //     self.return_to_process()
+    // }
 }
 
 lazy_static! {

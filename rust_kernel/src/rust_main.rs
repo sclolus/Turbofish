@@ -78,32 +78,24 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // Initialize Syscall system
     syscall::init();
 
-    // Ceate a Dummy process Page directory
-    use crate::memory::allocator::VirtualPageAllocator;
-    let mut v = unsafe { VirtualPageAllocator::new_for_process() };
+    use crate::process::Process;
+
+    // Create an entire C dummy process
+    let p1 = unsafe { Process::new(&dummy_c_process, 4096) };
+    println!("{:#X?}", p1);
+
+    // Create an entire ASM dummy process
+    let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
+    println!("{:#X?}", p2);
+
+    let selected_process = &p2;
+
+    // Switch to process Page Directory
     unsafe {
-        v.context_switch();
+        selected_process.virtual_allocator.context_switch();
     }
 
-    use crate::memory::tools::{AllocFlags, NbrPages};
-
-    // Allocate one page for code segment of the Dummy process
-    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
-    println!("processus address allocated: {:x?}", addr);
-
-    // Copy dummy code for the process
-    unsafe {
-        //ft_memcpy(addr, &_dummy_asm_process_code, _dummy_asm_process_len);
-        ft_memcpy(addr, &dummy_c_process, 4096);
-    }
-
-    // Check is data has been correctly copied
-    // let slice = unsafe { core::slice::from_raw_parts(addr, _dummy_process_len) };
-    // for i in slice.iter() {
-    //     println!("{:#X?}", *i);
-    // }
-
-    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments ?
+    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments AND premptivity ?
     use crate::process::tss::Tss;
     let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
@@ -113,9 +105,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // user CS segment is defined as 0x20
     // user DATA segment is defined as 0x28
     unsafe {
-        _ring3_switch(0x30 + 3, addr.add(4096) as u32, 0x20 + 3, addr as u32);
+        _ring3_switch(0x30 + 3, selected_process.cpu_state.esp, 0x20 + 3, selected_process.cpu_state.eip);
     }
-    //loop {}
 
     crate::shell::shell();
     loop {}
@@ -123,14 +114,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
 #[no_mangle]
 pub extern "C" fn print_something() {
-//    eprintln!("Tick");
+    //    eprintln!("Tick");
 }
 
 extern "C" {
-    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
-
-    // static _dummy_asm_process_code: u8;
-    // static _dummy_asm_process_len: usize;
+    static _dummy_asm_process_code: u8;
+    static _dummy_asm_process_len: usize;
 
     static dummy_c_process: u8;
 
