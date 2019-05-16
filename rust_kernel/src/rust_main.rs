@@ -112,10 +112,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     loop {}
 }
 
-#[no_mangle]
-pub extern "C" fn print_something() {
-    //    eprintln!("Tick");
-}
+// scheduler::init();
 
 extern "C" {
     static _dummy_asm_process_code: u8;
@@ -127,38 +124,3 @@ extern "C" {
 
     fn _ring3_switch(ss: u16, esp: u32, cs: u16, eip: u32);
 }
-
-// syscall::init();
-// scheduler::init();
-
-// use crate::process::tss::Tss;
-// let t = unsafe { Tss::init(0x42, 0x84) };
-// Tss::display();
-// unsafe {
-//     (*t).reset(0x10, 0x20);
-// }
-// Tss::display();
-
-// use crate::memory::allocator::VirtualPageAllocator;
-// let v = unsafe { VirtualPageAllocator::new_for_process() };
-// unsafe {
-//    v.context_switch();
-// }
-
-// use crate::memory::tools::*;
-// println!("before alloc");
-
-// let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
-
-// let slice = unsafe { core::slice::from_raw_parts_mut(addr, NbrPages::_1MB.into()) };
-// for i in slice.iter_mut() {
-//     *i = 42;
-// }
-// println!("processus address allocated: {:x?}", addr);
-// let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
-// println!("processus address allocated: {:x?}", addr);
-
-// let s = "write that";
-// unsafe {
-//     crate::syscall::_user_write(1, s.as_ptr(), s.len());
-// }

@@ -33,10 +33,6 @@ _isr_timer:
 	; PIT time
 	lock inc dword [_pic_time]
 
-	pushad
-	call print_something
-	popad
-
 	push eax
 	mov al, 0x20
 	out 0x20, al
