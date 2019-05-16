@@ -1,10 +1,10 @@
-use core::ops::{Add, Mul};
+use core::ops::{Add, Mul, Sub};
 use num_traits::Num;
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
 /// The size of blocks need not be the same size as the sector size of the disk the file system resides on.
 /// The size of blocks can be determined by reading the field starting at byte 24 in the Superblock.
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Default, PartialOrd)]
 #[repr(transparent)]
 pub struct Block(pub u32);
 
@@ -18,6 +18,13 @@ impl Add<Self> for Block {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
+    }
+}
+
+impl Sub<Self> for Block {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
     }
 }
 

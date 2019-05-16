@@ -1,5 +1,8 @@
 use ext2::{Errno, Ext2Filesystem, IoResult, OpenFlags};
+use rand::prelude::*;
+use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::Write;
 mod common;
 use common::*;
 use std::fs::DirBuilder;
@@ -47,5 +50,50 @@ fn unlink_multiple() {
             open_ext2(&path, OpenFlags::READWRITE).unwrap_err(),
             Errno::Enoent
         );
+    }
+}
+
+#[test]
+fn unlink_big_files() {
+    fn unlink_of_size(size: usize) {
+        //create a disk of size of the file + a little space for metadata
+        create_disk(size + 1024 * 1024 * 10);
+        let filename = "simple_write";
+
+        /* CREATE with the std */
+        mount_disk();
+        {
+            let filename_mounted = DISK_MOUNTED_NAME.to_owned() + "/" + filename;
+            let mut file = File::create(&filename_mounted).expect(&format!(
+                "open on mouted filesystem failed {}",
+                &filename_mounted
+            ));
+            let v: Vec<u8> = (0..(size)).map(|_| random::<u8>()).collect();
+            file.write_all(&v).expect("write failed");
+        }
+        umount_disk();
+
+        let f = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(DISK_NAME)
+            .expect("open filesystem failed");
+        let mut ext2 = Ext2Filesystem::new(f);
+
+        ext2.unlink(&filename).expect("unlink failed");
+        assert_eq!(
+            open_ext2(&filename, OpenFlags::READWRITE).unwrap_err(),
+            Errno::Enoent
+        );
+    }
+
+    let sizes = &[
+        42,
+        DIRECT_MAX_SIZE + 42,
+        SINGLY_MAX_SIZE + 42,
+        DOUBLY_MAX_SIZE + 42,
+    ];
+    for size in sizes {
+        unlink_of_size(*size);
     }
 }

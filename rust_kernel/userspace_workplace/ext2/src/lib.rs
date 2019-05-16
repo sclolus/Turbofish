@@ -136,6 +136,7 @@ impl Ext2Filesystem {
         }
         Ok((parent_inode_nbr, entry))
     }
+
     /// Try to clone the Ext2Filesystem instance
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self {
@@ -150,13 +151,17 @@ impl Ext2Filesystem {
         (inode, inode_addr): (&mut Inode, u64),
         new_size: u64,
     ) -> IoResult<()> {
-        let mut curr_offset = align_next(new_size, self.block_size as u64);
-        while let Some(d) = self
-            .inode_data((inode, inode_addr), curr_offset as u64)
-            .ok()
-        {
-            curr_offset += self.block_size as u64;
-            self.free_block(self.to_block(d)).unwrap();
+        let size = inode.get_size();
+        assert!(new_size <= size);
+        if size == 0 {
+            return Ok(());
+        }
+        let new_size_block = self.to_block_addr(new_size);
+        let curr_size = self.to_block_addr(size - 1);
+
+        for block_off in (new_size_block.0..=curr_size.0).rev() {
+            self.inode_free_block((inode, inode_addr), dbg!(Block(block_off)))
+                .unwrap();
         }
         inode.update_size(new_size, self.block_size);
         self.disk.write_struct(inode_addr, inode);
@@ -251,11 +256,10 @@ impl Ext2Filesystem {
                             next_entry.set_size(entry.get_size());
                             next_entry.write_on_disk(entry_addr, &mut self.disk);
                         } else {
-                            self.set_as_last_entry(
+                            return self.set_as_last_entry(
                                 (&mut inode, inode_addr),
                                 (&mut next_entry, curr_offset),
                             );
-                            return Ok(());
                         };
                     }
                 }
@@ -268,6 +272,11 @@ impl Ext2Filesystem {
     /// convert a block to an address
     pub fn to_addr(&self, block_number: Block) -> u64 {
         self.block_size as u64 * block_number.0 as u64
+    }
+
+    /// convert an address to a number of block
+    pub fn to_block_addr(&self, size: u64) -> Block {
+        Block((size / self.block_size as u64) as u32)
     }
 
     /// convert an address to a number of block
@@ -501,13 +510,17 @@ impl Ext2Filesystem {
         let block_grp = (block_nbr.0 - 1) / self.superblock.get_block_per_block_grp().0;
         let index = (block_nbr.0 as u64 - 1) % self.superblock.get_block_per_block_grp().0 as u64;
 
-        let (block_dtr, _) = self.get_block_grp_descriptor(block_grp);
+        let (mut block_dtr, block_dtr_addr) = self.get_block_grp_descriptor(block_grp);
         let bitmap_addr = self.to_addr(block_dtr.block_usage_bitmap);
         let mut bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8);
-        // assert!(bitmap.get_bit((index % 8) as usize));
+        assert!(bitmap.get_bit((index % 8) as usize));
         bitmap.set_bit((index % 8) as usize, false);
         self.disk.write_struct(bitmap_addr + index / 8, &bitmap);
-        // TODO: change nbr block count ?
+        block_dtr.nbr_free_blocks += 1;
+        self.disk.write_struct(block_dtr_addr, &block_dtr);
+        self.superblock.nbr_free_blocks += 1;
+        self.disk
+            .write_struct(self.superblock_addr, &self.superblock);
         Ok(())
     }
 
@@ -535,6 +548,136 @@ impl Ext2Filesystem {
         })
     }
 
+    /// alloc a pointer (used by the function inode_data_alloc)
+    fn free_pointer(&mut self, pointer_addr: u64) -> IoResult<()> {
+        let pointer = self.disk.read_struct(pointer_addr);
+        if pointer == Block(0) {
+            Err(Errno::Ebadf)
+        } else {
+            self.disk.write_struct(pointer_addr, &Block(0));
+            self.free_block(pointer)
+        }
+    }
+
+    /// Get the file location at offset 'offset'
+    fn inode_free_block(
+        &mut self,
+        (inode, inode_addr): (&mut Inode, u64),
+        block_off: Block,
+    ) -> IoResult<()> {
+        let blocknumber_per_block = (self.block_size as usize / size_of::<Block>()) as u32;
+        let block_off = block_off.0 as u64;
+
+        /* SIMPLE ADDRESSING */
+        let mut offset_start = 0;
+        let mut offset_end = 12;
+        if block_off >= offset_start && block_off < offset_end {
+            let pointer = err_if_zero(inode.direct_block_pointers[block_off as usize])?;
+            self.free_block(pointer)?;
+            inode.direct_block_pointers[block_off as usize] = Block(0);
+            self.disk.write_struct(inode_addr, inode);
+            return Ok(());
+        }
+
+        /* SINGLY INDIRECT ADDRESSING */
+        // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
+        offset_start = offset_end;
+        offset_end += blocknumber_per_block as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            let off = (block_off - offset_start) as u64;
+            let pointer = err_if_zero(inode.singly_indirect_block_pointers)?;
+
+            self.free_pointer(self.to_addr(pointer) + off * size_of::<Block>() as u64)?;
+
+            if block_off == offset_start {
+                let pointer = err_if_zero(inode.singly_indirect_block_pointers)?;
+                self.free_block(pointer)?;
+                inode.singly_indirect_block_pointers = Block(0);
+                self.disk.write_struct(inode_addr, inode);
+            }
+            return Ok(());
+        }
+
+        /* DOUBLY INDIRECT ADDRESSING */
+        offset_start = offset_end;
+        offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            // dbg!("doubly indirect addressing");
+            let doubly_indirect = err_if_zero(inode.doubly_indirect_block_pointers)?;
+
+            let off_doubly = (block_off - offset_start) / blocknumber_per_block as u64;
+            let addr_pointer_to_pointer =
+                self.to_addr(doubly_indirect) + off_doubly * size_of::<Block>() as u64;
+
+            let pointer_to_pointer: Block =
+                err_if_zero(self.disk.read_struct(addr_pointer_to_pointer))?;
+            let off = (block_off - offset_start) % blocknumber_per_block as u64;
+
+            self.free_pointer(self.to_addr(pointer_to_pointer) + off * size_of::<Block>() as u64);
+
+            if off == 0 {
+                self.free_pointer(addr_pointer_to_pointer)?;
+            }
+
+            if block_off == offset_start {
+                let pointer = err_if_zero(inode.doubly_indirect_block_pointers)?;
+                self.free_block(pointer)?;
+                inode.doubly_indirect_block_pointers = Block(0);
+                self.disk.write_struct(inode_addr, inode);
+            }
+            return Ok(());
+        }
+
+        /* TRIPLY INDIRECT ADDRESSING */
+        offset_start = offset_end;
+        offset_end +=
+            (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            // dbg!("triply indirect addressing");
+            let off_triply =
+                (block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u64;
+
+            let tripply_indirect = err_if_zero(inode.triply_indirect_block_pointers)?;
+
+            let addr_pointer_to_pointer_to_pointer =
+                self.to_addr(tripply_indirect) + off_triply * size_of::<Block>() as u64;
+            let pointer_to_pointer_to_pointer: Block =
+                err_if_zero(self.disk.read_struct(addr_pointer_to_pointer_to_pointer))?;
+
+            let off_doubly = (((block_off - offset_start)
+                % (blocknumber_per_block * blocknumber_per_block) as u64)
+                / blocknumber_per_block as u64) as u64;
+
+            let addr_pointer_to_pointer = self.to_addr(pointer_to_pointer_to_pointer)
+                + off_doubly * size_of::<Block>() as u64;
+
+            let pointer_to_pointer: Block =
+                err_if_zero(self.disk.read_struct(addr_pointer_to_pointer))?;
+
+            let off = (((block_off - offset_start)
+                % (blocknumber_per_block * blocknumber_per_block) as u64)
+                % blocknumber_per_block as u64) as u64;
+
+            self.free_pointer(self.to_addr(pointer_to_pointer) + off * size_of::<Block>() as u64)?;
+
+            if off == 0 {
+                self.free_pointer(addr_pointer_to_pointer)?;
+            }
+
+            if off_doubly == 0 {
+                self.free_pointer(addr_pointer_to_pointer_to_pointer)?;
+            }
+
+            if block_off == offset_start {
+                let pointer = err_if_zero(inode.triply_indirect_block_pointers)?;
+                self.free_block(pointer)?;
+                inode.triply_indirect_block_pointers = Block(0);
+                self.disk.write_struct(inode_addr, inode);
+            }
+            return Ok(());
+        }
+        panic!("out of file bound");
+    }
     /// Get the file location at offset 'offset'
     fn inode_data_may_alloc(
         &mut self,
@@ -634,7 +777,7 @@ impl Ext2Filesystem {
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
 
-        // Triply Indirect Addressing
+        /* TRIPLY INDIRECT ADDRESSING */
         offset_start = offset_end;
         offset_end +=
             (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
