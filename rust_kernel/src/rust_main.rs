@@ -31,8 +31,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().disable_all_irqs();
         init_keyboard_driver();
 
-        PIT0.lock().configure(OperatingMode::RateGenerator);
-        PIT0.lock().start_at_frequency(1000.).unwrap();
         watch_dog();
         interrupts::enable();
 
@@ -42,6 +40,9 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
     println!("TTY system initialized");
+
+    PIT0.lock().configure(OperatingMode::RateGenerator);
+    PIT0.lock().start_at_frequency(200.).unwrap();
 
     match Acpi::init() {
         Ok(()) => match ACPI.lock().unwrap().enable() {
@@ -96,10 +97,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     }
 
     // Check is data has been correctly copied
-    let slice = unsafe { core::slice::from_raw_parts(addr, _dummy_process_len) };
-    for i in slice.iter() {
-        println!("{:#X?}", *i);
-    }
+    // let slice = unsafe { core::slice::from_raw_parts(addr, _dummy_process_len) };
+    // for i in slice.iter() {
+    //     println!("{:#X?}", *i);
+    // }
 
     // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments ?
     use crate::process::tss::Tss;
@@ -117,6 +118,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     crate::shell::shell();
     loop {}
+}
+
+#[no_mangle]
+pub extern "C" fn print_something() {
+    eprintln!("Tick");
 }
 
 extern "C" {

@@ -51,8 +51,11 @@ _dummy_process_code:
 	mov ecx, 0x400100
 	mov edx, 29
 
+.loop:
 	int 80h
+	jmp .loop
 
+.ud2
 	ud2
 
 	jmp $
@@ -76,7 +79,7 @@ _ring3_switch:
 	pushf
 	pop eax
 	; Reactivation of interruption when we go in ring 3
-	;or eax, 0x200
+	or eax, 0x200
 	push eax
 
 	; Push CS then EIP
