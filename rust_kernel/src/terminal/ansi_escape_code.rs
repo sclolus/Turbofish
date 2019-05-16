@@ -17,7 +17,7 @@ pub enum EscapedCode {
 }
 
 ///Comand Sequence Introducer
-const CSI: &str = "\x1b[";
+pub const CSI: &str = "\x1b[";
 
 ///Iterator on escape sequence
 pub fn iter_escaped<'a>(s: &'a str) -> IterEscaped<'a> {
