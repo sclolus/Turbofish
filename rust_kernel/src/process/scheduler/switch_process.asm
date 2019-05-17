@@ -1,63 +1,54 @@
 [BITS 32]
 
 extern scheduler_interrupt_handler
-extern kernel_stack
 
 segment .data
-_eax: dd 0
 
-_esp: dd 0
-_eflags: dd 0
-_cs: dd 0
 _eip: dd 0
+_eflags: dd 0
+_esp: dd 0
 
 segment .text
 
-; Get process values, move to kernel_stack and launch schedule
-global _prepare_switch
-_prepare_switch:
-	; Get EIP, CS and EFLAGS of current process before interrupt
-	; TODO from ring 3: SS & ESP must be taken
+;; Get process values, move to kernel_stack and launch schedule
+;; Scheduler MUST be not interruptible !
+global _schedule_next
+_schedule_next:
+	; Get EIP, EFLAGS and ESP of current process before switch
 	pop dword [_eip]
-	pop dword [_cs]
-	pop dword [_eflags]
-
-	; Save the process stack and change stack to kernel stack
-	mov [_eax], eax
-	mov eax, esp
-	mov [_esp], eax
-	mov eax, [_eax]
-	; TODO With TSS segment, it will be useless to manually set the kernel stack pointer
-	mov esp, kernel_stack
-
-	; Push all the process purpose registers
-	pushad
-	push dword [_esp]
-	push dword [_eflags]
-	push dword [_cs]
-	push dword [_eip]
-
-	call scheduler_interrupt_handler
-
-; fn _switch_process(CpuState {eip: u32, cs: u32, eflags: u32, esp: u32, registers: BaseRegisters}) -> !;
-global _switch_process
-_switch_process:
-	push ebp
-	mov ebp, esp
-
-	; Get all the passed arguments
-	add esp, 8
-	pop dword [_eip]
-	pop dword [_cs]
+	add esp, 4 					; CS is present here
 	pop dword [_eflags]
 	pop dword [_esp]
+	; pop dword [_ss]
+
+	sub esp, 16
+
+	; Generate the struct CpuState on the stack :)
+	pushad
+	push dword [_eflags]
+	push dword [_esp]
+	push dword [_eip]
+	; --- MUST PASS POINTER TO THAT STRUCTURE ---
+	push esp
+	call scheduler_interrupt_handler
+	; Skip last arg
+	add esp, 4
+
+	; Recover all the newest states for the next process
+	pop dword [_eip]
+	pop dword [_esp]
+	pop dword [_eflags]
 	popad
 
-	mov esp, [_esp]
+	; Apply the coordinates of the new process for below IRET
+	push eax
+	mov eax, [_eip]
+	mov [esp + 4], eax
+	mov eax, [_eflags]
+	mov [esp + 12], eax
+	mov eax, [_esp]
+	mov [esp + 16], eax
+	pop eax
 
-	; Do the IRET switch
-	; WARNING: IRET does not handle SS & ESP ?
-	push dword [_eflags]
-	push dword [_cs]
-	push dword [_eip]
+	; Return contains now new registers, new eflags, new esp and new eip
 	iret

@@ -1,5 +1,5 @@
 use crate::process::{CpuState, Process};
-// use crate::registers::Eflags;
+//use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
 use crate::syscall::{_user_exit, _user_fork};
 use alloc::vec;
@@ -7,10 +7,9 @@ use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 // use hashmap_core::map::HashMap;
 use lazy_static::lazy_static;
+// use crate::system::BaseRegisters;
 
 extern "C" {
-    /// set all processor state to its arguments and iret to eip
-    fn _switch_process(cpu_state: CpuState) -> !;
     static mut SCHEDULER_ACTIVE: bool;
 }
 
@@ -18,11 +17,24 @@ type Pid = u32;
 
 /// the pit handler
 #[no_mangle]
-unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: CpuState) -> ! {
+unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) {
+    // TODO: Put real content of the next process here (instead of simple copy)
+    let c: CpuState = CpuState {
+        eip: (*cpu_state).eip,
+        esp: (*cpu_state).esp,
+        registers: (*cpu_state).registers,
+        eflags: (*cpu_state).eflags,
+    };
+    // Associate next process content
+    *cpu_state = c;
+    // println!("{:#X?}", *cpu_state);
+
+    /*
     let mut scheduler = SCHEDULER.lock();
     scheduler.save_process_state(cpu_state);
     scheduler.switch_next_process();
     scheduler.return_to_process()
+    */
 }
 
 pub struct Scheduler {
@@ -38,6 +50,11 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
+    // Start to schedule
+    pub unsafe fn start() {
+        SCHEDULER_ACTIVE = true;
+    }
+
     // create a new scheduler for tests
     unsafe fn new() -> Self {
         let test_process = vec![
@@ -69,6 +86,7 @@ impl Scheduler {
         self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
     }
 
+    #[allow(dead_code)]
     /// get current process
     fn curr_process(&self) -> &Process {
         self.all_process.get(&self.running_process[self.curr_process_index]).unwrap()
@@ -85,22 +103,23 @@ impl Scheduler {
     }
 
     /// return to the process after a syscall which has return value `return value`
-    pub fn return_from_syscall(&mut self, return_value: i32) -> ! {
-        self.curr_process_mut().cpu_state.registers.eax = return_value as u32;
-        self.return_to_process()
-    }
+    // pub fn return_from_syscall(&mut self, return_value: i32) -> ! {
+    //     self.curr_process_mut().cpu_state.registers.eax = return_value as u32;
+    //     self.return_to_process()
+    // }
 
-    /// return at the execution of the current process
-    pub fn return_to_process(&self) -> ! {
-        let next_process = self.curr_process();
-        // eprintln!("{:X?}", &next_process);
-        unsafe {
-            next_process.virtual_allocator.context_switch();
-            SCHEDULER.force_unlock();
-            _switch_process(next_process.cpu_state);
-        }
-    }
+    // /// return at the execution of the current process
+    // pub fn return_to_process(&self) -> ! {
+    //     let next_process = self.curr_process();
+    //     // eprintln!("{:X?}", &next_process);
+    //     unsafe {
+    //         next_process.virtual_allocator.context_switch();
+    //         SCHEDULER.force_unlock();
+    //         _switch_process(next_process.cpu_state);
+    //     }
+    // }
 
+    #[allow(dead_code)]
     /// set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
@@ -147,12 +166,6 @@ static MAX_PID: AtomicU32 = AtomicU32::new(0);
 pub fn get_available_pid() -> u32 {
     //TODO: handle when overflow to 0
     MAX_PID.fetch_add(1, Ordering::Relaxed)
-}
-
-pub fn init() {
-    unsafe {
-        SCHEDULER_ACTIVE = true;
-    }
 }
 
 /// stupid kernel space process a

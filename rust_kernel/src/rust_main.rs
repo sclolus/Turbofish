@@ -6,7 +6,7 @@ use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
-// use crate::process::scheduler;
+use crate::process::scheduler::Scheduler;
 use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
@@ -78,6 +78,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // Initialize Syscall system
     syscall::init();
 
+    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments AND premptivity ?
+    use crate::process::tss::Tss;
+    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
+    Tss::display();
+
+    unsafe {
+        Scheduler::start();
+    }
+
     use crate::process::Process;
 
     // Create an entire C dummy process
@@ -88,17 +97,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p2);
 
-    let selected_process = &p2;
+    let selected_process = &p1;
 
     // Switch to process Page Directory
     unsafe {
         selected_process.virtual_allocator.context_switch();
     }
-
-    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments AND premptivity ?
-    use crate::process::tss::Tss;
-    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
-    Tss::display();
 
     // Switch to ring 3
     // user SS segment is defined as 0x30

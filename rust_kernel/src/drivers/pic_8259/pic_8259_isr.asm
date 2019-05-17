@@ -4,9 +4,8 @@
 ;; See https://wiki.osdev.org/ISR
 
 extern generic_interrupt_handler
-extern debug_pit
-
 extern keyboard_interrupt_handler
+extern _schedule_next
 
 segment .data
 _pic_time dd 0
@@ -14,8 +13,6 @@ _pic_time dd 0
 ; bool for activation of scheduler
 global SCHEDULER_ACTIVE
 SCHEDULER_ACTIVE: db 0
-
-extern _prepare_switch
 
 segment .text
 global _isr_timer
@@ -28,11 +25,9 @@ _isr_timer:
 	out 0x20, al
 	pop eax
 	cmp byte [SCHEDULER_ACTIVE], 1
-	je .prepare_switch
+	je _schedule_next
 	; Return to kernel if scheduler not actif
 	iret
-.prepare_switch:
-	call _prepare_switch
 
 global _get_pic_time
 _get_pic_time:
