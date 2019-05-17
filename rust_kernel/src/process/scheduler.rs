@@ -1,4 +1,4 @@
-use crate::process::{CpuState, Process};
+use super::{CpuState, Process, ProcessType};
 //use crate::registers::Eflags;
 use crate::spinlock::Spinlock;
 use crate::syscall::{_user_exit, _user_fork};
@@ -64,7 +64,7 @@ impl Scheduler {
     // create a new scheduler for tests
     unsafe fn new() -> Self {
         let test_process = vec![
-            Process::new(0 as *mut u8, 0),
+            Process::new(0 as *mut u8, 0, ProcessType::Ring3),
             // Process::new(process_a, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(process_b, Eflags::get_eflags().set_interrupt_flag(true)),
             // Process::new(diyng_process, Eflags::get_eflags().set_interrupt_flag(true)),

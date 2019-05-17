@@ -16,7 +16,7 @@ use crate::timer::Rtc;
 use crate::watch_dog;
 use core::time::Duration;
 
-use crate::process::CpuState;
+use crate::process::{CpuState, ProcessType};
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
@@ -93,11 +93,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     use crate::process::Process;
 
     // Create an entire C dummy process
-    let p1 = unsafe { Process::new(&dummy_c_process, 4096) };
+    let p1 = unsafe { Process::new(&dummy_c_process, 4096, ProcessType::Ring3) };
     println!("{:#X?}", p1);
 
     // Create an entire ASM dummy process
-    let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
+    let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len, ProcessType::Ring3) };
     println!("{:#X?}", p2);
 
     let selected_process = &p1;

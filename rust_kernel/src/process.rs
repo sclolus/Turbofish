@@ -53,48 +53,69 @@ pub struct Process {
     pub pid: u32,
     /// The state of the process
     pub state: State,
+    /// Type of the process, ring3 or kernel
+    pub process_type: ProcessType,
 }
 
-extern "C" {
-    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
+/// Ring3 basic or a kernel process
+#[derive(Debug, Copy, Clone)]
+pub enum ProcessType {
+    Kernel,
+    Ring3,
 }
 
+/// Main implementatio of Process
 impl Process {
+    const _KERNEL_CODE_SEGMENT: u32 = 0x8;
+    const _KERNEL_DATA_SEGMENT: u32 = 0x10;
+    const _KERNEL_STACK_SRGMENT: u32 = 0x18;
+    const _KERNEL_DPL: u32 = 0b00;
+    const RING3_CODE_SEGMENT: u32 = 0x20;
+    const RING3_DATA_SEGMENT: u32 = 0x28;
+    const RING3_STACK_SEGMENT: u32 = 0x30;
+    const RING3_DPL: u32 = 0b11;
     const PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
 
-    /// create a new process
-    pub unsafe fn new(code: *const u8, code_len: usize) -> Self {
-        let old_cr3 = _read_cr3();
-        // Ceate a Dummy process Page directory
-        let mut v = VirtualPageAllocator::new_for_process();
-        // Switch to this process Page Directory
-        v.context_switch();
-        // Allocate one page for code segment of the Dummy process
-        let base_addr = v.alloc(Self::PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
-        // stack go downwards set esp to the end of the allocation
-        let esp = base_addr.add(Self::PROCESS_MAX_SIZE.into()) as u32;
-        let res = Self {
-            cpu_state: CpuState {
-                registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
-                ds: 0x28 + 3,
-                es: 0x28 + 3,
-                fs: 0x28 + 3,
-                gs: 0x28 + 3,
-                eip: base_addr as u32,
-                cs: 0x20 + 3,
-                eflags: Eflags::get_eflags().set_interrupt_flag(true),
-                esp,
-                ss: 0x30 + 3,
-            },
-            virtual_allocator: v,
-            pid: scheduler::get_available_pid(), // TODO: Is it a correct design that scheduler provide PID ?
-            state: State::New,
-        };
-        // Copy the code segment
-        ft_memcpy(base_addr, code, code_len);
-        // When non-fork, return to Kernel PD, when forking, return to father PD
-        _enable_paging(old_cr3);
-        res
+    /// create a new process: TODO: Kernel process - No MMU changes NOR memcpy
+    pub unsafe fn new(code: *const u8, code_len: usize, process_type: ProcessType) -> Self {
+        match process_type {
+            ProcessType::Kernel => unimplemented!(),
+            ProcessType::Ring3 => {
+                let old_cr3 = _read_cr3();
+                // Ceate a Dummy process Page directory
+                let mut v = VirtualPageAllocator::new_for_process();
+                // Switch to this process Page Directory
+                v.context_switch();
+                // Allocate one page for code segment of the Dummy process
+                let base_addr =
+                    v.alloc(Self::PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+                // stack go downwards set esp to the end of the allocation
+                let esp = base_addr.add(Self::PROCESS_MAX_SIZE.into()) as u32;
+                let res = Self {
+                    cpu_state: CpuState {
+                        registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+                        ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                        es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                        fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                        gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                        eip: base_addr as u32,
+                        cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
+                        eflags: Eflags::get_eflags().set_interrupt_flag(true),
+                        esp,
+                        ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
+                    },
+                    virtual_allocator: v,
+                    pid: scheduler::get_available_pid(), // TODO: Is it a correct design that scheduler provide PID ?
+                    state: State::New,
+                    process_type,
+                };
+                // Copy the code segment
+                ft_memcpy(base_addr, code, code_len);
+                // When non-fork, return to Kernel PD, when forking, return to father PD
+                _enable_paging(old_cr3);
+                res
+            }
+        }
     }
 
     // pub fn fork(&self) -> crate::memory::tools::Result<Self> {
@@ -114,4 +135,8 @@ impl Process {
     //     self.state = State::Terminated { status };
     // TODO: free resource
     // }
+}
+
+extern "C" {
+    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
 }

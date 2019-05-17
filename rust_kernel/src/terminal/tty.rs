@@ -5,7 +5,6 @@ use alloc::collections::vec_deque::VecDeque;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt::Arguments;
 use core::fmt::Write;
 
 /// Description of a TTY buffer
