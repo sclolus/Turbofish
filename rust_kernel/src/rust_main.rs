@@ -16,6 +16,9 @@ use crate::timer::Rtc;
 use crate::watch_dog;
 use core::time::Duration;
 
+use crate::registers::Eflags;
+use crate::system::BaseRegisters;
+
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
     #[cfg(feature = "serial-eprintln")]
@@ -109,7 +112,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // user CS segment is defined as 0x20
     // user DATA segment is defined as 0x28
     unsafe {
-        _ring3_switch(0x30 + 3, selected_process.cpu_state.esp, 0x20 + 3, selected_process.cpu_state.eip);
+        _launch_process(
+            0x30 + 3,
+            selected_process.cpu_state.esp,
+            0x20 + 3,
+            selected_process.cpu_state.eip,
+            0x28 + 3,
+            selected_process.cpu_state.eflags,
+            &selected_process.cpu_state.registers,
+        );
     }
 
     crate::shell::shell();
@@ -126,5 +137,13 @@ extern "C" {
 
     static kernel_stack: u8;
 
-    fn _ring3_switch(ss: u16, esp: u32, cs: u16, eip: u32);
+    fn _launch_process(
+        ss: u16,
+        esp: u32,
+        cs: u16,
+        eip: u32,
+        data_segment: u32,
+        eflags: Eflags,
+        registers: *const BaseRegisters,
+    );
 }
