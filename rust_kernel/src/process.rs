@@ -88,7 +88,7 @@ impl Process {
             },
             virtual_allocator: v,
             pid: scheduler::get_available_pid(), // TODO: Is it a correct design that scheduler provide PID ?
-            state: State::Running,
+            state: State::New,
         };
         // Copy the code segment
         ft_memcpy(base_addr, code, code_len);

@@ -16,8 +16,7 @@ use crate::timer::Rtc;
 use crate::watch_dog;
 use core::time::Duration;
 
-use crate::registers::Eflags;
-use crate::system::BaseRegisters;
+use crate::process::CpuState;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
@@ -86,6 +85,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
 
+    // Start to schedule
     unsafe {
         Scheduler::start();
     }
@@ -112,22 +112,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // user CS segment is defined as 0x20
     // user DATA segment is defined as 0x28
     unsafe {
-        _launch_process(
-            0x30 + 3,
-            selected_process.cpu_state.esp,
-            0x20 + 3,
-            selected_process.cpu_state.eip,
-            0x28 + 3,
-            selected_process.cpu_state.eflags,
-            &selected_process.cpu_state.registers,
-        );
+        _launch_process(&selected_process.cpu_state);
     }
 
     crate::shell::shell();
     loop {}
 }
-
-// scheduler::init();
 
 extern "C" {
     static _dummy_asm_process_code: u8;
@@ -137,13 +127,5 @@ extern "C" {
 
     static kernel_stack: u8;
 
-    fn _launch_process(
-        ss: u16,
-        esp: u32,
-        cs: u16,
-        eip: u32,
-        data_segment: u32,
-        eflags: Eflags,
-        registers: *const BaseRegisters,
-    );
+    fn _launch_process(cpu_state: *const CpuState);
 }

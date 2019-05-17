@@ -29,7 +29,7 @@ segment .text
 ;; | REGS   |
 ;; |    ... |
 ;; |    ... |
-;; v        v ... ---> pointer to CpuState Structure
+;; +--------+ ---> pointer to CpuState Structure
 global _schedule_next
 _schedule_next:
 	; Generate the struct CpuState on the stack :)
