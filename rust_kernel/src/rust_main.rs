@@ -7,6 +7,7 @@ use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::process::scheduler::Scheduler;
+use crate::process::Process;
 use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
@@ -16,10 +17,10 @@ use crate::timer::Rtc;
 use crate::watch_dog;
 use core::time::Duration;
 
-use crate::process::{CpuState, ProcessType};
+use crate::process::ProcessType;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::drivers::UART_16550.init() };
@@ -44,7 +45,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(1000.).unwrap();
+    PIT0.lock().start_at_frequency(20.).unwrap();
 
     match Acpi::init() {
         Ok(()) => match ACPI.lock().unwrap().enable() {
@@ -80,7 +81,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     // Initialize Syscall system
     syscall::init();
 
-    // Initialize the TSS segment: TODO: What about DS/ES/FS/GS segments AND premptivity ?
+    // Initialize the TSS segment (necessary for ring3 switch)
     use crate::process::tss::Tss;
     let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
@@ -90,33 +91,36 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         Scheduler::start();
     }
 
-    use crate::process::Process;
-
     // Create an entire C dummy process
-    let p1 = unsafe { Process::new(&dummy_c_process, 4096, ProcessType::Ring3) };
+    let p1 = unsafe { Process::new(&dummy_c_process, Some(4096), ProcessType::Ring3) };
     println!("{:#X?}", p1);
 
     // Create an entire ASM dummy process
-    let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len, ProcessType::Ring3) };
+    let p2 = unsafe { Process::new(&_dummy_asm_process_code, Some(_dummy_asm_process_len), ProcessType::Ring3) };
     println!("{:#X?}", p2);
 
-    let selected_process = &p1;
+    use crate::process::tests::dummy_rust_kernel_processes::*;
 
-    // Switch to process Page Directory
+    // Create an entire kernel dummy process who make a true syscall
+    let p3 = unsafe { Process::new(process_zero as *const fn() as *const u8, None, ProcessType::Kernel) };
+    println!("{:#X?}", p3);
+
+    // Create an entire kernel dummy process who get the stack value
+    let p4 = unsafe { Process::new(get_stack as *const fn() as *const u8, None, ProcessType::Kernel) };
+    println!("{:#X?}", p4);
+
+    // Create a entire kernel shell process
+    let p5 = unsafe { Process::new(crate::shell::shell as *const fn() as *const u8, None, ProcessType::Kernel) };
+    println!("{:#X?}", p5);
+
+    // Select the choosen process
+    let selected_process = &p5;
+
+    // Launch the process
     unsafe {
-        selected_process.virtual_allocator.context_switch();
+        selected_process.launch();
     }
-
-    // Switch to ring 3
-    // user SS segment is defined as 0x30
-    // user CS segment is defined as 0x20
-    // user DATA segment is defined as 0x28
-    unsafe {
-        _launch_process(&selected_process.cpu_state);
-    }
-
-    crate::shell::shell();
-    loop {}
+    0
 }
 
 extern "C" {
@@ -126,6 +130,4 @@ extern "C" {
     static dummy_c_process: u8;
 
     static kernel_stack: u8;
-
-    fn _launch_process(cpu_state: *const CpuState);
 }

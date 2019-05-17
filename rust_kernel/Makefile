@@ -69,11 +69,14 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += switch_process launch_process
+SRC_ASM_KERNEL += launch_process
+VPATH += src/process
+
+SRC_ASM_KERNEL += switch_process
 VPATH += src/process/scheduler
 
 SRC_C_KERNEL += dummy_c_process
-SRC_ASM_KERNEL += dummy_asm_process
+SRC_ASM_KERNEL += dummy_asm_process asm_tools
 VPATH += src/process/tests
 
 OBJ_DIR := objs
