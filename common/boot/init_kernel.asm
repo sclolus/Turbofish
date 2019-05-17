@@ -65,3 +65,4 @@ align 16
 resb 1 << 20
 global kernel_stack
 kernel_stack:
+times 2 dd 0 ; Kernel stack guard (necessary for TSS/IRQ from Kernel)

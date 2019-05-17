@@ -10,24 +10,36 @@ pub mod tss;
 /// state of a process
 #[derive(Debug, Clone)]
 pub enum State {
+    New,
     Terminated { status: i32 },
     Running,
     Waiting,
 }
 
 /// Represent all cpu state needed to continue the execution of a process
-/// CS, SS, DS, ES, FS, GS will be identicals for each process (CS: 0x23, DS, ES, FS. GS: 0x2B, SS: 0x33)
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct CpuState {
-    /// current eip
-    pub eip: u32,
-    /// current esp
-    pub esp: u32,
-    /// current eflags
-    pub eflags: Eflags,
     /// current registers
     pub registers: BaseRegisters,
+    /// current data DS
+    pub ds: u32,
+    /// current data ES
+    pub es: u32,
+    /// current data FS
+    pub fs: u32,
+    /// current data GS
+    pub gs: u32,
+    /// current eip
+    pub eip: u32,
+    /// current CS
+    pub cs: u32,
+    /// current eflag
+    pub eflags: Eflags,
+    /// current esp
+    pub esp: u32,
+    /// current SS
+    pub ss: u32,
 }
 
 /// This structure represent an entire process
@@ -63,10 +75,16 @@ impl Process {
         let esp = base_addr.add(Self::PROCESS_MAX_SIZE.into()) as u32;
         let res = Self {
             cpu_state: CpuState {
-                eip: base_addr as u32,
-                esp,
                 registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+                ds: 0x28 + 3,
+                es: 0x28 + 3,
+                fs: 0x28 + 3,
+                gs: 0x28 + 3,
+                eip: base_addr as u32,
+                cs: 0x20 + 3,
                 eflags: Eflags::get_eflags().set_interrupt_flag(true),
+                esp,
+                ss: 0x30 + 3,
             },
             virtual_allocator: v,
             pid: scheduler::get_available_pid(), // TODO: Is it a correct design that scheduler provide PID ?

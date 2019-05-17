@@ -10,16 +10,16 @@ segment .text
 ;; This function can be launched by the scheduler for each new process
 ;; It prepares a IRET stack frame witch contains new process coordinates and set that data segments, eflags and base registers
 ;;
-;; +--------+
-;; | SS     |
-;; +--------+                   * Illustration of the kernel stack just before IRET
-;; | ESP    |
-;; +--------+
-;; | EFLAGS |
-;; +--------+
-;; | CS     |
-;; +--------+
-;; | EIP    | <---- ESP
+;; +--------+               ^ (to high memory)
+;; | SS     |               |
+;; +--------+               |     * Illustration of the kernel stack just before IRET
+;; | ESP    |               |
+;; +--------+               |
+;; | EFLAGS |               |
+;; +--------+               |
+;; | CS     |               |
+;; +--------+               |
+;; | EIP    | <---- ESP     +
 ;; +--------+
 ;;
 ;; fn _launch_process(ss: u16, esp: u32, cs: u16, eip: u32, data_segment: u32, eflags: u32, registers: *BaseRegisters);

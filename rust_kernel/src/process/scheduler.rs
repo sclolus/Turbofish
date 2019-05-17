@@ -20,14 +20,20 @@ type Pid = u32;
 unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) {
     // TODO: Put real content of the next process here (instead of simple copy)
     let c: CpuState = CpuState {
-        eip: (*cpu_state).eip,
-        esp: (*cpu_state).esp,
         registers: (*cpu_state).registers,
+        ds: (*cpu_state).ds,
+        es: (*cpu_state).es,
+        fs: (*cpu_state).fs,
+        gs: (*cpu_state).gs,
+        eip: (*cpu_state).eip,
+        cs: (*cpu_state).cs,
         eflags: (*cpu_state).eflags,
+        esp: (*cpu_state).esp,
+        ss: (*cpu_state).ss,
     };
+    //eprintln!("{:#X?}", *cpu_state);
     // Associate next process content
     *cpu_state = c;
-    // println!("{:#X?}", *cpu_state);
 
     /*
     let mut scheduler = SCHEDULER.lock();
