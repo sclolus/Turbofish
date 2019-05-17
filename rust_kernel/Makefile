@@ -69,10 +69,7 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += launch_ring3
-VPATH += src/process
-
-SRC_ASM_KERNEL += switch_process
+SRC_ASM_KERNEL += switch_process launch_process
 VPATH += src/process/scheduler
 
 SRC_C_KERNEL += dummy_c_process
