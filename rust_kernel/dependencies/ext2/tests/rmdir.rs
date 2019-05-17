@@ -1,5 +1,4 @@
-use ext2::{Errno, Ext2Filesystem, OpenFlags};
-use std::fs::OpenOptions;
+use ext2::{Errno, OpenFlags};
 mod common;
 use common::*;
 use std::fs::DirBuilder;
@@ -15,12 +14,7 @@ fn rmdir() {
         DirBuilder::new().create(&path_mounted).unwrap();
     }
     umount_disk();
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2 = new_ext2_readable_writable();
     ext2.rmdir(path).expect("rmdir failed");
 }
 
@@ -29,13 +23,7 @@ const NB_TESTS: usize = 10;
 #[test]
 fn rmdir_multiple() {
     create_disk(1024 * 1024);
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
-
+    let mut ext2 = new_ext2_readable_writable();
     let paths: Vec<String> = (0..NB_TESTS)
         .map(|i| format!("simple_file, {}", i))
         .collect();

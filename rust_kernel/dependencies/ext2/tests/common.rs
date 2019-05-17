@@ -2,12 +2,51 @@
 //! to run tests, to prevent multithreading bugs, you have to run:
 //! sudo RUST_TEST_TASKS=1 RUST_TEST_THREADS=1 cargo  test
 
-use ext2::{Ext2Filesystem, IoResult, OpenFlags};
+use ext2::{DiskIo, Errno, Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::{File, OpenOptions};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::process::Command;
 
 pub const DISK_NAME: &str = "disk";
 pub const DISK_MOUNTED_NAME: &str = "disk_mounted/";
+
+#[derive(Debug)]
+pub struct StdDiskIo {
+    pub f: File,
+}
+
+impl DiskIo for StdDiskIo {
+    fn flush(&mut self) -> IoResult<()> {
+        self.f.flush().map_err(|_| Errno::Eio)
+    }
+    fn write_buffer(&mut self, offset: u64, buf: &[u8]) -> IoResult<u64> {
+        self.f
+            .seek(SeekFrom::Start(offset))
+            .map_err(|_| Errno::Eio)?;
+        self.f.write(buf).map_err(|_| Errno::Eio).map(|x| x as u64)
+    }
+    fn read_buffer(&mut self, offset: u64, buf: &mut [u8]) -> IoResult<u64> {
+        self.f
+            .seek(SeekFrom::Start(offset))
+            .map_err(|_| Errno::Eio)?;
+        self.f.read(buf).map_err(|_| Errno::Eio).map(|x| x as u64)
+    }
+}
+
+impl StdDiskIo {
+    pub fn new_readable() -> Self {
+        let f = File::open(DISK_NAME).expect("open filesystem failed");
+        Self { f }
+    }
+    pub fn new_readable_writable() -> Self {
+        let f = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(DISK_NAME)
+            .expect("open filesystem failed");
+        Self { f }
+    }
+}
 
 pub fn exec_shell(cmd: &str) {
     let exit_code = Command::new("bash")
@@ -48,13 +87,22 @@ pub fn umount_disk() {
     exec_shell(&format!("umount {}", DISK_MOUNTED_NAME));
 }
 
+pub fn new_ext2_readable() -> Ext2Filesystem {
+    let f = StdDiskIo::new_readable();
+    Ext2Filesystem::new(Box::new(f)).expect("init ext2 filesystem failed")
+}
+
+pub fn new_ext2_readable_writable() -> Ext2Filesystem {
+    let f = StdDiskIo::new_readable_writable();
+    dbg!(Ext2Filesystem::new(Box::new(f)).expect("init ext2 filesystem failed"))
+}
+
 pub const DIRECT_MAX_SIZE: usize = 12 * 1024;
 pub const SINGLY_MAX_SIZE: usize = DIRECT_MAX_SIZE + (1024 / 4) * 1024;
 pub const DOUBLY_MAX_SIZE: usize = SINGLY_MAX_SIZE + (1024 / 4) * (1024 / 4) * 1024;
 
 pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
-    let f = File::open(DISK_NAME).expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2 = new_ext2_readable_writable();
     let mut file = ext2
         .open(filename, OpenFlags::O_RDWR, 0o644)
         .expect("open on filesystem failed");
@@ -64,12 +112,7 @@ pub fn read_ext2(filename: &str, buf: &mut [u8]) -> usize {
 }
 
 pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2 = new_ext2_readable_writable();
     let mut file = ext2
         .open(filename, OpenFlags::O_RDWR, 0o644)
         .expect("open on filesystem failed");
@@ -78,19 +121,13 @@ pub fn write_ext2(filename: &str, buf: &[u8]) -> usize {
 }
 
 pub fn open_ext2(path: &str, open_flags: OpenFlags) -> IoResult<ext2::File> {
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2 = new_ext2_readable_writable();
     ext2.open(path, open_flags, 0o644)
 }
 
 pub fn debug_fs() {
-    let f = File::open(DISK_NAME).expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
-    let mut ext2_clone = ext2.try_clone().unwrap();
+    let mut ext2 = new_ext2_readable();
+    let ext2_clone: &mut Ext2Filesystem = unsafe { &mut *(&mut ext2 as *mut _) };
     for entry in ext2.iter_entries(2).expect("iter entries failed") {
         dbg!(entry);
         dbg!(ext2_clone.get_inode(entry.0.get_inode()).unwrap());

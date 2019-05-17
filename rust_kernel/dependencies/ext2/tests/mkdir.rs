@@ -1,5 +1,4 @@
-use ext2::{Ext2Filesystem, OpenFlags};
-use std::fs::OpenOptions;
+use ext2::OpenFlags;
 mod common;
 use common::*;
 use std::fs::read_dir;
@@ -8,12 +7,7 @@ use std::fs::read_dir;
 fn mkdir_simple() {
     create_disk(1024 * 1024);
     let path = "simple_dir";
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
+    let mut ext2 = new_ext2_readable_writable();
     ext2.mkdir(path, 0o644).expect("mkdir failed");
     mount_disk();
     {
@@ -29,13 +23,7 @@ const NB_TESTS: usize = 10;
 #[test]
 fn mkdir_multiple() {
     create_disk(1024 * 1024);
-    let f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(DISK_NAME)
-        .expect("open filesystem failed");
-    let mut ext2 = Ext2Filesystem::new(f);
-
+    let mut ext2 = new_ext2_readable_writable();
     let paths: Vec<String> = (0..NB_TESTS)
         .map(|i| format!("simple_file, {}", i))
         .collect();

@@ -112,11 +112,11 @@ impl DirectoryEntry {
         self.header.size = new_size;
     }
 
-    pub fn write_on_disk(&self, addr: u64, disk: &mut Disk) {
-        disk.write_struct(addr, &self.header);
-        disk.write_buffer(addr + size_of::<DirectoryEntryHeader>() as u64, unsafe {
+    pub fn write_on_disk(&self, addr: u64, disk: &mut Disk) -> IoResult<()> {
+        disk.write_struct(addr, &self.header)?;
+        disk.write_all(addr + size_of::<DirectoryEntryHeader>() as u64, unsafe {
             self.get_filename().as_bytes()
-        });
+        })
     }
 }
 

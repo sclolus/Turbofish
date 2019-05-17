@@ -41,14 +41,15 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         interrupts::enable();
 
         let device_map = get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+            .expect("init memory system failed");
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
     println!("TTY system initialized");
 
     match Acpi::init() {
-        Ok(()) => match ACPI.lock().unwrap().enable() {
+        Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
             Ok(()) => log::info!("ACPI driver initialized"),
             Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
         },
@@ -81,14 +82,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     use crate::memory::tools::*;
     println!("before alloc");
 
-    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).expect("valloc failed").to_addr().0 as *mut u8;
 
     let slice = unsafe { core::slice::from_raw_parts_mut(addr, NbrPages::_1MB.into()) };
     for i in slice.iter_mut() {
         *i = 42;
     }
     println!("processus address allocated: {:x?}", addr);
-    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).expect("alloc failed").to_addr().0 as *mut u8;
     println!("processus address allocated: {:x?}", addr);
 
     log::error!("this is an example of error");
@@ -123,22 +124,21 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
             }
             Err(_) => {}
         }
     }
 
-    let b = BiosInt13h::new((multiboot_info.boot_device >> 24) as u8);
-    dbg_hex!(b.unwrap());
+    let b = BiosInt13h::new((multiboot_info.boot_device >> 24) as u8).expect("bios_int_13 init failed");
 
     use alloc::vec;
     use alloc::vec::Vec;
@@ -146,7 +146,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let size_read = NbrSectors(1);
     let mut v1: Vec<u8> = vec![0; size_read.into()];
-    b.unwrap().read(Sector(0x0), size_read, v1.as_mut_ptr()).unwrap();
+    b.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("bios read failed");
 
     let mut a = [0; 512];
     for (i, elem) in a.iter_mut().enumerate() {

@@ -163,7 +163,7 @@ impl Ext2Filesystem {
         );
         let data_read = self
             .disk
-            .read_buffer(data_address, &mut buf[0..offset as usize]);
+            .read_buffer(data_address, &mut buf[0..offset as usize])?;
         file.curr_offset += data_read as u64;
         if data_read < offset {
             return Ok(file.curr_offset - file_curr_offset_start);
@@ -174,7 +174,7 @@ impl Ext2Filesystem {
                 .inode_data((&mut inode, inode_addr), file.curr_offset)
                 .unwrap();
             let offset = min((inode.get_size() - file.curr_offset) as usize, chunk.len());
-            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset]);
+            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset])?;
             file.curr_offset += data_read as u64;
             if data_read < chunk.len() as u64 {
                 return Ok(file.curr_offset - file_curr_offset_start);
@@ -200,11 +200,11 @@ impl Ext2Filesystem {
         );
         let data_write = self
             .disk
-            .write_buffer(data_address, &buf[0..offset as usize]);
+            .write_buffer(data_address, &buf[0..offset as usize])?;
         file.curr_offset += data_write as u64;
         if inode.get_size() < file.curr_offset {
             inode.update_size(file.curr_offset, self.block_size);
-            self.disk.write_struct(inode_addr, &inode);
+            self.disk.write_struct(inode_addr, &inode)?;
         }
         if data_write < offset {
             return Ok(file.curr_offset - file_curr_offset_start);
@@ -212,11 +212,11 @@ impl Ext2Filesystem {
 
         for chunk in buf[offset as usize..].chunks(self.block_size as usize) {
             let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
-            let data_write = self.disk.write_buffer(data_address, &chunk);
+            let data_write = self.disk.write_buffer(data_address, &chunk)?;
             file.curr_offset += data_write as u64;
             if inode.get_size() < file.curr_offset {
                 inode.update_size(file.curr_offset, self.block_size);
-                self.disk.write_struct(inode_addr, &inode);
+                self.disk.write_struct(inode_addr, &inode)?;
             }
             if data_write < chunk.len() as u64 {
                 return Ok(file.curr_offset - file_curr_offset_start);
