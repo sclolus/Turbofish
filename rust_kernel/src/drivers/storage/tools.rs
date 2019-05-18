@@ -29,6 +29,12 @@ impl Sub<NbrSectors> for NbrSectors {
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Sector(pub u64);
 
+impl From<u64> for Sector {
+    fn from(u: u64) -> Self {
+        Self(u / SECTOR_SIZE as u64)
+    }
+}
+
 /// Add boilerplate for Sector + NbrSectors
 impl Add<NbrSectors> for Sector {
     type Output = Sector;

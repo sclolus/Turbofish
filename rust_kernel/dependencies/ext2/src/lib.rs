@@ -14,7 +14,7 @@ pub use syscall::Errno;
 pub use syscall::OpenFlags;
 
 mod tools;
-pub use tools::{align_next, div_rounded_up, err_if_zero, Block, IoResult};
+pub use tools::{align_next, align_prev, div_rounded_up, err_if_zero, Block, IoResult};
 
 use bit_field::BitField;
 mod header;
@@ -118,7 +118,7 @@ impl Ext2Filesystem {
         let mut inode_nbr = 2;
         let mut parent_inode_nbr = 2;
         let mut entry = unsafe { core::mem::uninitialized() };
-        for p in path.split('/') {
+        for p in path.split('/').filter(|x| x != &"") {
             parent_inode_nbr = inode_nbr;
             entry = self
                 .iter_entries(inode_nbr)?

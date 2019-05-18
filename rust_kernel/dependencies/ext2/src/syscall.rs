@@ -11,20 +11,22 @@ impl Ext2Filesystem {
     /// The access() function shall check the file named by the
     /// pathname pointed to by the path argument for accessibility
     /// according to the bit pattern contained in amode
-    pub fn access(&mut self, path: &str, amode: i32) -> IoResult<File> {
-        unimplemented!();
+    pub fn access(&mut self, path: &str, amode: i32) -> IoResult<()> {
+        //TODO: check rights
+        let inode = self.find_inode(path)?;
+        Ok(())
     }
 
     /// The chown() function shall change the user and group ownership
     /// of a file.
-    pub fn chown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<File> {
+    pub fn chown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<()> {
         unimplemented!();
     }
 
     /// The lchown() function shall be equivalent to chown(), except
     /// in the case where the named file is a symbolic link. In this
     /// case, lchown() shall change the ownership of the symbolic link
-    pub fn lchown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<File> {
+    pub fn lchown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<()> {
         unimplemented!();
     }
 

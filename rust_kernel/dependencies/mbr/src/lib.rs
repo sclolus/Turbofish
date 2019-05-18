@@ -9,14 +9,14 @@ use raw_data::define_raw_data;
 pub struct Mbr {
     physical_mbr: PhysicalMbr,
     bootable: bool,
-    parts: [Partition; 4],
+    pub parts: [Partition; 4],
 }
 
 #[derive(Debug, Copy, Clone)]
-struct Partition {
+pub struct Partition {
     part_type: PartitionType,
-    start: u32,
-    size: u32,
+    pub start: u32,
+    pub size: u32,
 }
 
 #[derive(Debug, Copy, Clone)]

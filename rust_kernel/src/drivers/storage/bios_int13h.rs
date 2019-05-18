@@ -40,6 +40,12 @@ pub struct BiosInt13h {
     /// Version
     version: u16,
 }
+pub static mut BIOS_INT13H: Option<BiosInt13h> = None;
+
+pub unsafe fn init(boot_device: u8) -> DiskResult<()> {
+    BIOS_INT13H = Some(BiosInt13h::new(boot_device)?);
+    Ok(())
+}
 
 // Check extension result
 bitflags! {

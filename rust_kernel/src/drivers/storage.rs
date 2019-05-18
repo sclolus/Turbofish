@@ -13,10 +13,12 @@ pub mod sata_controller;
 pub use sata_controller::SataController;
 
 pub mod bios_int13h;
-pub use bios_int13h::BiosInt13h;
+pub use bios_int13h::{BiosInt13h, BIOS_INT13H};
 
 pub mod tools;
 pub use tools::{NbrSectors, Sector};
+
+pub mod ext2;
 
 pub type DiskResult<T> = core::result::Result<T, DiskError>;
 

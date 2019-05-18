@@ -1,5 +1,7 @@
-use crate::drivers::{ACPI, PCI};
+use crate::drivers::{storage::ext2::EXT2, ACPI, PCI};
 use crate::system::i8086_payload_apm_shutdown;
+use alloc::format;
+use alloc::string::String;
 use core::time::Duration;
 use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 
@@ -107,9 +109,58 @@ pub fn yes(args: &[&str]) -> u8 {
     }
 }
 
+use crate::Spinlock;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    /// current working directory
+    pub static ref CWD: Spinlock<String> = Spinlock::new(String::from("/"));
+}
+
 /// list all files
 pub fn ls(_args: &[&str]) -> u8 {
-    println!("fuck you !");
+    match unsafe { EXT2.as_mut() } {
+        None => {
+            println!("ext2 not init");
+            1
+        }
+        Some(ext2) => {
+            let (_, dir_entry) = ext2.find_path(&*CWD.lock()).unwrap();
+            for (e, _) in ext2.iter_entries(dir_entry.0.get_inode()).unwrap() {
+                print!("{} ", unsafe { e.get_filename() });
+            }
+            print!("\n");
+            0
+        }
+    }
+}
+
+pub fn cd(args: &[&str]) -> u8 {
+    if args[0] == "" {
+        return 1;
+    }
+    let new_cwd = format!("{}{}", *CWD.lock(), args[0]);
+    match unsafe { EXT2.as_mut() } {
+        None => {
+            println!("ext2 not init");
+            1
+        }
+        Some(ext2) => match ext2.access(&new_cwd, 0o644) {
+            Err(e) => {
+                println!("{:?}", e);
+                1
+            }
+            Ok(_) => {
+                CWD.lock().push_str(args[0]);
+                0
+            }
+        },
+    }
+}
+
+pub fn pwd(_args: &[&str]) -> u8 {
+    let s: &str = &*CWD.lock();
+    println!("{}", s);
     0
 }
 

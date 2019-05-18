@@ -67,5 +67,18 @@ where
     }
 }
 
+#[inline(always)]
+/// align the num t on the next multiple of on
+pub fn align_prev<T>(t: T, on: T) -> T
+where
+    T: Copy + Num,
+{
+    if is_aligned_on(t, on) {
+        t
+    } else {
+        t - (t % on)
+    }
+}
+
 /// Local Result structure
 pub type IoResult<T> = core::result::Result<T, Errno>;
