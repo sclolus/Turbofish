@@ -3,6 +3,8 @@
 pub mod tss;
 
 use alloc::boxed::Box;
+use alloc::vec;
+use alloc::vec::Vec;
 
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -36,20 +38,31 @@ pub struct CpuState {
     /// current eflag
     eflags: Eflags,
     /// current esp
-    esp: u32,
+    pub esp: u32,
     /// current SS
     ss: u32,
 }
 
+/// Just a boilerplate for fun
+type KernelStack = Vec<u8>;
+
 /// This structure represents an entire process
-#[derive(Debug)]
 pub struct Process {
     /// represent the state of the processor when the process was last stopped
     cpu_state: CpuState,
-    /// allocator for the process
-    pub virtual_allocator: VirtualPageAllocator,
+    /// Page directory of the process (only ring 3 process implements that)
+    pub virtual_allocator: Option<VirtualPageAllocator>,
+    /// Kernel Stack of each processes (TODO: Implenment it in ring3 for premptif scheduler)
+    pub kernel_stack: KernelStack,
     /// Type of the process, ring3 or kernel
     pub process_type: ProcessType,
+}
+
+/// Custom debug definition for Process
+impl core::fmt::Debug for Process {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "cpu_state: {:#X?}\nproces_type: {:?}", self.cpu_state, self.process_type)
+    }
 }
 
 /// Ring3 basic or a kernel process
@@ -74,20 +87,14 @@ impl Process {
 
     /// Create a new process
     pub unsafe fn new(code: *const u8, code_len: Option<usize>, process_type: ProcessType) -> Box<Self> {
-        // Store kernel CR3
-        let old_cr3 = _read_cr3();
-        // Create a Dummy process Page directory
-        let mut v = VirtualPageAllocator::new_for_process();
-        // Switch to this process Page Directory
-        v.context_switch();
-        let res;
+        eprintln!("begin");
         if process_type == ProcessType::Kernel {
-            // Allocate a chunk for process stack (Ring0 process dont use TSS segment so it share stack when IRQ pop)
-            let stack_addr =
-                v.alloc(Self::KERNEL_PROCESS_STACK_SIZE, AllocFlags::KERNEL_MEMORY).unwrap().to_addr().0 as *mut u8;
+            let kernel_stack: KernelStack = vec![0; 1 << 20];
+
             // stack go downwards set esp to the end of the allocation
-            let esp = stack_addr.add(Self::KERNEL_PROCESS_STACK_SIZE.into()) as u32;
-            res = Self {
+            let esp = (&kernel_stack[0] as *const u8).add(Self::KERNEL_PROCESS_STACK_SIZE.into()) as u32
+                - core::mem::size_of::<CpuState>() as u32;
+            let res = Self {
                 cpu_state: CpuState {
                     registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
                     ds: Self::KERNEL_DATA_SEGMENT + Self::KERNEL_DPL,
@@ -100,16 +107,48 @@ impl Process {
                     esp,
                     ss: Self::KERNEL_STACK_SEGMENT + Self::KERNEL_DPL,
                 },
-                virtual_allocator: v,
+                virtual_allocator: None,
+                kernel_stack,
                 process_type,
             };
+
+            /*
+             * Kernel process dont use TSS segment, so there are many implications
+             * - When a IRQ pop (syscall or schedule etc...), the stack pointer is not changed
+             * - So each kernel process must have their own kernel stacks (like as preemptif scheme)
+             *
+             *                        Overview of Kernel Process Stack
+             *   (<- to low addr)                                          esp_start        esp max
+             *                                                                 |               |
+             * <---------------------------------------------------------------v---------------|
+             *                                                                 |     struct    |
+             *                           <---- stack size ---->                |      cpu      |
+             *                                                                 |     state     |
+             * <---------------------------------------------------------------+---------------+
+             *                                              inc esp while call +-------------> IRET
+             * After IRET instruction, the process use his own stack according to his current ESP value
+             * The struct cpu_state must be copied into the high part of the process stack to do the launch
+             */
+
+            // Initialise process by copying cpu_states into his own stack (prepare the first launch)
+            ft_memcpy(esp as *mut u8, &res.cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
+            // When non-fork, return to Kernel PD, when forking, return to father PD
+            Box::new(res)
         } else {
+            // Store kernel CR3
+            let old_cr3 = _read_cr3();
+            // Create a Dummy process Page directory
+            let mut v = VirtualPageAllocator::new_for_process();
+            // Switch to this process Page Directory
+            v.context_switch();
+
             // Allocate one page for code segment of the Dummy process
             let base_addr =
                 v.alloc(Self::RING3_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
             // stack go downwards set esp to the end of the allocation
+            let kernel_stack: KernelStack = vec![0; 1 << 20];
             let esp = base_addr.add(Self::RING3_PROCESS_MAX_SIZE.into()) as u32;
-            res = Self {
+            let res = Self {
                 cpu_state: CpuState {
                     registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
                     ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
@@ -122,48 +161,30 @@ impl Process {
                     esp,
                     ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
                 },
-                virtual_allocator: v,
+                virtual_allocator: Some(v),
+                kernel_stack,
                 process_type,
             };
             // Copy the code segment
             ft_memcpy(base_addr, code, code_len.unwrap());
+            _enable_paging(old_cr3);
+            // When non-fork, return to Kernel PD, when forking, return to father PD
+            Box::new(res)
         }
-        // When non-fork, return to Kernel PD, when forking, return to father PD
-        _enable_paging(old_cr3);
-        Box::new(res)
     }
 
     /// Launch a process
     pub unsafe fn launch(&self) {
-        // Switch to process Page Directory
-        self.virtual_allocator.context_switch();
         match self.process_type {
             ProcessType::Kernel => {
-                /*
-                 * Kernel process dont use TSS segment, so there are many implications
-                 * - When a IRQ pop (syscall or schedule etc...), the stack pointer is not changed
-                 * - So each kernel process must have their own kernel stacks (like as preemptif scheme)
-                 *
-                 *                        Overview of Kernel Process Stack
-                 *   (<- to low addr)                                          esp_start        esp max
-                 *                                                                 |               |
-                 * <---------------------------------------------------------------v---------------|
-                 *                                                                 |     struct    |
-                 *                           <---- stack size ---->                |      cpu      |
-                 *                                                                 |     state     |
-                 * <---------------------------------------------------------------+---------------+
-                 *                                              inc esp while call +-------------> IRET
-                 * After IRET instruction, the process use his own stack according to his current ESP value
-                 * The struct cpu_state must be copied into the high part of the process stack to do the launch
-                 */
-                let len = core::mem::size_of::<CpuState>();
-                let esp_start = self.cpu_state.esp - len as u32;
-                ft_memcpy(esp_start as *mut u8, &self.cpu_state as *const _ as *const u8, len);
-
-                // Launch the process
-                _launch_process(esp_start as *const CpuState);
+                // Launch the kernel process
+                _launch_process(self.cpu_state.esp as *const CpuState);
             }
             ProcessType::Ring3 => {
+                // Switch to process Page Directory
+                self.virtual_allocator.as_ref().unwrap().context_switch();
+
+                // Launch the ring3 process
                 _launch_process(&self.cpu_state);
             }
         }
@@ -174,7 +195,11 @@ impl Process {
     pub fn fork(&self) -> crate::memory::tools::Result<Box<Self>> {
         let mut child = Self {
             cpu_state: self.cpu_state,
-            virtual_allocator: self.virtual_allocator.fork()?,
+            virtual_allocator: match self.virtual_allocator.as_ref() {
+                Some(v) => Some(v.fork()?),
+                None => None,
+            },
+            kernel_stack: vec![0; 1 << 20], // TODO, copy kernel stack content
             process_type: self.process_type,
         };
         child.cpu_state.registers.eax = 0;

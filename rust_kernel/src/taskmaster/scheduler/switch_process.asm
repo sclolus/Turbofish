@@ -8,9 +8,9 @@ segment .text
 ;; Scheduler MUST be not interruptible !
 ;;
 ;; +--------+               ^ (to high memory)
-;; | SS     |               |
+;; | SS     | TSS ONLY      |
 ;; +--------+                    * Illustration of the kernel stack just before IRET
-;; | ESP    |
+;; | ESP    | TSS ONLY
 ;; +--------+
 ;; | EFLAGS |
 ;; +--------+
@@ -49,8 +49,8 @@ _schedule_next:
 	; --- MUST PASS POINTER TO THAT STRUCTURE ---
 	push esp
 	call scheduler_interrupt_handler
-	; Skip last arg
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
 
 	; Recover all purpose registers
 	popad

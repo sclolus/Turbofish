@@ -6,9 +6,9 @@ segment .text
 ;; It prepares a IRET stack frame witch contains new process coordinates and set that data segments, eflags and base registers
 ;;
 ;; +--------+               ^ (to high memory)
-;; | SS     |               |
+;; | SS     | TSS ONLY      |
 ;; +--------+                    * Illustration of the kernel stack just before IRET
-;; | ESP    |
+;; | ESP    | TSS ONLY
 ;; +--------+
 ;; | EFLAGS |
 ;; +--------+
