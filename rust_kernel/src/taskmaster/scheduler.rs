@@ -1,9 +1,13 @@
-use super::{CpuState, Process, ProcessType};
-use crate::spinlock::Spinlock;
+//! this file contains the scheduler description
+
+use super::{CpuState, Process, ProcessType, TaskMode};
+
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use lazy_static::lazy_static;
+
+use crate::spinlock::Spinlock;
 
 extern "C" {
     static mut SCHEDULER_ACTIVE: bool;
@@ -103,8 +107,8 @@ impl Scheduler {
         self.all_process.get_mut(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
     }
 
-    // TODO: A simple ADD CALL from the syscall fork could be a better solution
     /// Perform a fork
+    #[allow(dead_code)]
     pub fn fork(&mut self) -> i32 {
         let curr_process = self.curr_process_mut();
 
@@ -124,12 +128,15 @@ impl Scheduler {
 }
 
 /// Start the whole scheduler
-pub unsafe fn start() -> ! {
+pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
     asm!("cli");
 
-    // Mark the scheduler as active: Remote that to get just on mono-task kernel of process 0
-    SCHEDULER_ACTIVE = true;
+    // Mark the scheduler as active if multitasking is enable
+    SCHEDULER_ACTIVE = match task_mode {
+        TaskMode::Mono => false,
+        TaskMode::Multi => true,
+    };
 
     // Initialise the first process and get a reference on it
     let p = SCHEDULER.lock().init_process_zero();

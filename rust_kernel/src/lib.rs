@@ -36,8 +36,7 @@ pub mod interrupts;
 
 #[macro_use]
 pub mod system;
-#[macro_use]
-pub mod syscall;
+pub mod taskmaster;
 #[macro_use]
 pub mod drivers;
 pub mod math;
@@ -66,5 +65,3 @@ use crate::memory::allocator::RustGlobalAlloc;
 #[global_allocator]
 static MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc;
 pub mod test_helpers;
-
-pub mod process;

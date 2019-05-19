@@ -1,14 +1,14 @@
+//! This file contains the process description
+
+pub mod tss;
+
+use alloc::boxed::Box;
+
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages};
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
-
-use alloc::boxed::Box;
-
-pub mod scheduler;
-pub mod tests;
-pub mod tss;
 
 extern "C" {
     fn _launch_process(cpu_state: *const CpuState);
@@ -47,9 +47,9 @@ pub struct Process {
     /// represent the state of the processor when the process was last stopped
     cpu_state: CpuState,
     /// allocator for the process
-    virtual_allocator: VirtualPageAllocator,
+    pub virtual_allocator: VirtualPageAllocator,
     /// Type of the process, ring3 or kernel
-    process_type: ProcessType,
+    pub process_type: ProcessType,
 }
 
 /// Ring3 basic or a kernel process
@@ -170,6 +170,7 @@ impl Process {
     }
 
     /// Fork a process
+    #[allow(dead_code)]
     pub fn fork(&self) -> crate::memory::tools::Result<Box<Self>> {
         let mut child = Self {
             cpu_state: self.cpu_state,
@@ -181,6 +182,7 @@ impl Process {
     }
 
     /// Destroy a process
+    #[allow(dead_code)]
     pub fn exit(&mut self) {
         // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
         drop(self);

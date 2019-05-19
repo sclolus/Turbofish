@@ -55,7 +55,7 @@ _dummy_asm_process_code:
 	int 80h
 	jmp .loop
 
-.ud2
+.ud2:
 	ud2
 
 	jmp $

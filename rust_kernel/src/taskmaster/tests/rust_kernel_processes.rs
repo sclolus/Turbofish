@@ -1,12 +1,14 @@
-use crate::syscall::{_user_exit, _user_fork};
+use super::{_user_exit, _user_fork};
 
 /// Just a stupid kernel funnction which get the stack value
 #[allow(dead_code)]
 pub fn get_stack() {
-    for _i in 0..1000000 {
-        eprintln!("get stack: {:#X?}", unsafe { _get_stack() });
+    unsafe {
+        for _i in 0..1000000 {
+            user_eprintln!("get stack: {:#X?}", _get_stack());
+        }
+        loop {}
     }
-    loop {}
 }
 
 extern "C" {
