@@ -1,12 +1,13 @@
 use super::{NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
 use alloc::boxed::Box;
+use core::cmp::min;
 use core::fmt::{self, Debug};
 use mbr::Mbr;
 
 use ext2::DiskIo;
+use ext2::Errno;
 use ext2::Ext2Filesystem;
 use ext2::IoResult;
-use ext2::{align_next, align_prev, Errno};
 
 pub struct DiskIoBios {
     start_of_partition: u64,
@@ -33,39 +34,57 @@ impl DiskIo for DiskIoBios {
 
     //pub fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
     //pub fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> DiskResult<()> {
-    fn write_buffer(&mut self, offset: u64, buf: &[u8]) -> IoResult<u64> {
-        // if offset.
+    fn write_buffer(&mut self, mut offset: u64, mut buf: &[u8]) -> IoResult<u64> {
         let len = buf.len();
-        // let first_chunk_off = (SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize;
-        // let prev = align_prev(offset, SECTOR_SIZE as u64);
-        // let next = align_next(offset, SECTOR_SIZE as u64);
+        loop {
+            let size_read = min((SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize, buf.len());
 
-        let sector = Sector::from(offset + self.start_of_partition);
-        unsafe {
-            BIOS_INT13H.as_mut().unwrap().read(sector, NbrSectors(1), self.buf.as_mut_ptr()).map_err(|_| Errno::Eio)?;
-        }
-        for (x, b) in self.buf[(offset % SECTOR_SIZE as u64) as usize..].iter_mut().zip(buf.iter()) {
-            *x = *b;
-        }
-        unsafe {
-            BIOS_INT13H.as_mut().unwrap().write(sector, NbrSectors(1), self.buf.as_ptr()).map_err(|_| Errno::Eio)?;
+            let sector = Sector::from(offset + self.start_of_partition);
+            unsafe {
+                BIOS_INT13H
+                    .as_mut()
+                    .unwrap()
+                    .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                    .map_err(|_| Errno::Eio)?;
+            }
+            let target_read = (offset % SECTOR_SIZE as u64) as usize;
+            self.buf[target_read..target_read + size_read].copy_from_slice(&buf[0..size_read]);
+            if size_read == buf.len() {
+                break;
+            }
+            unsafe {
+                BIOS_INT13H
+                    .as_mut()
+                    .unwrap()
+                    .write(sector, NbrSectors(1), self.buf.as_ptr())
+                    .map_err(|_| Errno::Eio)?;
+            }
+            buf = &buf[size_read..];
+            offset += size_read as u64;
         }
         Ok(len as u64)
     }
 
-    fn read_buffer(&mut self, offset: u64, buf: &mut [u8]) -> IoResult<u64> {
-        // if offset.
+    fn read_buffer(&mut self, mut offset: u64, mut buf: &mut [u8]) -> IoResult<u64> {
         let len = buf.len();
-        // let first_chunk_off = (SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize;
-        let _prev = align_prev(offset, SECTOR_SIZE as u64);
-        let _next = align_next(offset, SECTOR_SIZE as u64);
+        loop {
+            let size_read = min((SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize, buf.len());
 
-        let sector = Sector::from(offset + self.start_of_partition);
-        unsafe {
-            BIOS_INT13H.as_mut().unwrap().read(sector, NbrSectors(1), self.buf.as_mut_ptr()).map_err(|_| Errno::Eio)?;
-        }
-        for (x, b) in self.buf[(offset % SECTOR_SIZE as u64) as usize..].iter().zip(buf.iter_mut()) {
-            *b = *x;
+            let sector = Sector::from(offset + self.start_of_partition);
+            unsafe {
+                BIOS_INT13H
+                    .as_mut()
+                    .unwrap()
+                    .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                    .map_err(|_| Errno::Eio)?;
+            }
+            let target_read = (offset % SECTOR_SIZE as u64) as usize;
+            buf[0..size_read].copy_from_slice(&self.buf[target_read..target_read + size_read]);
+            if size_read == buf.len() {
+                break;
+            }
+            buf = &mut buf[size_read..];
+            offset += size_read as u64;
         }
         Ok(len as u64)
     }

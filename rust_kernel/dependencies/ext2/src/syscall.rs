@@ -71,7 +71,7 @@ impl Ext2Filesystem {
     /// file and a file descriptor.
     pub fn open(&mut self, path: &str, flags: OpenFlags, mode: mode_t) -> IoResult<File> {
         let mut inode_nbr = 2;
-        let mut iter_path = path.split('/').peekable();
+        let mut iter_path = path.split('/').filter(|x| x != &"").peekable();
         while let Some(p) = iter_path.next() {
             let entry = self
                 .iter_entries(inode_nbr)?
