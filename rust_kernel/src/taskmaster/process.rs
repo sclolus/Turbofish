@@ -72,6 +72,7 @@ pub enum ProcessType {
 }
 
 /// Main implementation of Process
+/// Kernel process are just made for testing features. They will be trashed on future
 impl Process {
     const KERNEL_CODE_SEGMENT: u32 = 0x8;
     const KERNEL_DATA_SEGMENT: u32 = 0x10;
