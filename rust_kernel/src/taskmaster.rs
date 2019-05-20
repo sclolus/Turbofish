@@ -11,8 +11,10 @@ use tests::{rust_kernel_processes::*, *};
 
 /// MonoTasking or MultiTasking configuration
 pub enum TaskMode {
+    /// MonoTasking mode
     Mono,
-    Multi,
+    /// MultiTasking mode, param: frequency
+    Multi(f32),
 }
 
 /// Main function of taskMaster Initialisation
@@ -52,5 +54,5 @@ pub fn start() -> ! {
     SCHEDULER.lock().add_process(p5);
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi) }
+    unsafe { scheduler::start(TaskMode::Multi(20.)) }
 }

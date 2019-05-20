@@ -7,10 +7,11 @@ use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use lazy_static::lazy_static;
 
+use crate::drivers::PIT0;
 use crate::spinlock::Spinlock;
 
 extern "C" {
-    static mut SCHEDULER_ACTIVE: bool;
+    static mut SCHEDULER_COUNTER: i32;
 }
 
 type Pid = u32;
@@ -53,6 +54,9 @@ extern "C" fn kernel_scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u3
 #[no_mangle]
 extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let mut scheduler = SCHEDULER.lock();
+    unsafe {
+        SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
+    }
     if scheduler.curr_process().process.process_type == ProcessType::Kernel {
         scheduler.set_kernel_esp(cpu_state as u32);
     } else {
@@ -88,13 +92,15 @@ pub struct Scheduler {
     all_process: HashMap<Pid, Item>,
     /// index in the vector of the current running process
     curr_process_index: Option<usize>, // TODO: May be better if we use PID instead ?
+    /// time interval in PIT tics between two schedules
+    time_interval: Option<i32>,
 }
 
 /// Base Scheduler implementation
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: None }
+        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: None, time_interval: None }
     }
 
     /// Add a process into the scheduler (transfert ownership)
@@ -181,11 +187,24 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
     asm!("cli");
 
-    // Mark the scheduler as active if multitasking is enable
-    SCHEDULER_ACTIVE = match task_mode {
-        TaskMode::Mono => false,
-        TaskMode::Multi => true,
+    // Set the PIT divisor if multitasking is enable
+    let t = match task_mode {
+        TaskMode::Mono => {
+            log::info!("Scheduler initialised at mono-task");
+            (-1, None)
+        }
+        TaskMode::Multi(scheduler_frequency) => {
+            log::info!("Scheduler initialised at frequency: {:?} hz", scheduler_frequency);
+            let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as i32;
+            if period == 0 {
+                (1, Some(1))
+            } else {
+                (period, Some(period))
+            }
+        }
     };
+    SCHEDULER_COUNTER = t.0;
+    SCHEDULER.lock().time_interval = t.1;
 
     // Initialise the first process and get a reference on it
     let p = SCHEDULER.lock().init_process_zero();

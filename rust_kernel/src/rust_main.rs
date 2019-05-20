@@ -40,7 +40,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(20.).unwrap();
+    PIT0.lock().start_at_frequency(1000.).unwrap();
+    log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
     match Acpi::init() {
         Ok(()) => match ACPI.lock().unwrap().enable() {

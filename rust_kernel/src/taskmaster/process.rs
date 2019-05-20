@@ -87,10 +87,9 @@ impl Process {
 
     /// Create a new process
     pub unsafe fn new(code: *const u8, code_len: Option<usize>, process_type: ProcessType) -> Box<Self> {
-        eprintln!("begin");
-        if process_type == ProcessType::Kernel {
-            let kernel_stack: KernelStack = vec![0; 1 << 20];
+        let kernel_stack: KernelStack = vec![0; 1 << 20];
 
+        if process_type == ProcessType::Kernel {
             // stack go downwards set esp to the end of the allocation
             let esp = (&kernel_stack[0] as *const u8).add(Self::KERNEL_PROCESS_STACK_SIZE.into()) as u32
                 - core::mem::size_of::<CpuState>() as u32;
@@ -146,7 +145,6 @@ impl Process {
             let base_addr =
                 v.alloc(Self::RING3_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
             // stack go downwards set esp to the end of the allocation
-            let kernel_stack: KernelStack = vec![0; 1 << 20];
             let esp = base_addr.add(Self::RING3_PROCESS_MAX_SIZE.into()) as u32;
             let res = Self {
                 cpu_state: CpuState {

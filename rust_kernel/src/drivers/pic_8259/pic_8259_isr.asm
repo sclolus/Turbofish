@@ -10,9 +10,9 @@ extern _schedule_next
 segment .data
 _pic_time dd 0
 
-; bool for activation of scheduler
-global SCHEDULER_ACTIVE
-SCHEDULER_ACTIVE: db 0
+; i32 for activation/divisor of scheduler
+global SCHEDULER_COUNTER
+SCHEDULER_COUNTER: dd 0
 
 segment .text
 global _isr_timer
@@ -24,9 +24,14 @@ _isr_timer:
 	mov al, 0x20
 	out 0x20, al
 	pop eax
-	cmp byte [SCHEDULER_ACTIVE], 1
-	je _schedule_next
+	cmp dword [SCHEDULER_COUNTER], 0
+	jl .end ; perform an signed comparaison: if SCHEDULER_COUNTER < 0, scheduler is not active
+
 	; Return to kernel if scheduler not actif
+	dec dword [SCHEDULER_COUNTER]
+	jz _schedule_next
+
+.end:
 	iret
 
 global _get_pic_time
