@@ -2,7 +2,6 @@
 
 use super::{CpuState, Process, ProcessType, TaskMode};
 
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use lazy_static::lazy_static;
@@ -81,7 +80,7 @@ struct Item {
     state: ProcessState,
     /// Current ESP value kernel side stack: Necessary for ring0 processes
     kernel_esp: Option<u32>,
-    process: Box<Process>,
+    process: Process,
 }
 
 /// Scheduler structure
@@ -104,14 +103,14 @@ impl Scheduler {
     }
 
     /// Add a process into the scheduler (transfert ownership)
-    pub fn add_process(&mut self, process: Box<Process>) {
+    pub fn add_process(&mut self, process: Process) {
         let pid = get_available_pid();
         self.all_process.insert(pid, Item { state: ProcessState::Running, process, kernel_esp: None });
         self.running_process.push(pid);
     }
 
     /// Initialize the first processs and get a pointer to it)
-    fn init_process_zero(&mut self) -> *const Box<Process> {
+    fn init_process_zero(&mut self) -> *const Process {
         // Check if we got some processes to launch
         assert!(self.all_process.len() != 0);
 

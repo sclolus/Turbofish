@@ -2,7 +2,6 @@
 
 pub mod tss;
 
-use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -86,7 +85,7 @@ impl Process {
     const RING3_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
 
     /// Create a new process
-    pub unsafe fn new(code: *const u8, code_len: Option<usize>, process_type: ProcessType) -> Box<Self> {
+    pub unsafe fn new(code: *const u8, code_len: Option<usize>, process_type: ProcessType) -> Self {
         let kernel_stack: KernelStack = vec![0; 1 << 20];
 
         if process_type == ProcessType::Kernel {
@@ -132,7 +131,7 @@ impl Process {
             // Initialise process by copying cpu_states into his own stack (prepare the first launch)
             ft_memcpy(esp as *mut u8, &res.cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
             // When non-fork, return to Kernel PD, when forking, return to father PD
-            Box::new(res)
+            res
         } else {
             // Store kernel CR3
             let old_cr3 = _read_cr3();
@@ -167,7 +166,7 @@ impl Process {
             ft_memcpy(base_addr, code, code_len.unwrap());
             _enable_paging(old_cr3);
             // When non-fork, return to Kernel PD, when forking, return to father PD
-            Box::new(res)
+            res
         }
     }
 
@@ -190,7 +189,7 @@ impl Process {
 
     /// Fork a process
     #[allow(dead_code)]
-    pub fn fork(&self) -> crate::memory::tools::Result<Box<Self>> {
+    pub fn fork(&self) -> crate::memory::tools::Result<Self> {
         let mut child = Self {
             cpu_state: self.cpu_state,
             virtual_allocator: match self.virtual_allocator.as_ref() {
@@ -201,7 +200,7 @@ impl Process {
             process_type: self.process_type,
         };
         child.cpu_state.registers.eax = 0;
-        Ok(Box::new(child))
+        Ok(child)
     }
 
     /// Destroy a process
