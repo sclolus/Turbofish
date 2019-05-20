@@ -1,6 +1,6 @@
 //! this file contains the scheduler description
 
-use super::{CpuState, Process, ProcessType, TaskMode};
+use super::{CpuState, Process, TaskMode};
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -24,10 +24,12 @@ enum ProcessState {
 }
 
 /// The pit handler (cpu_state represents a pointer to esp)
-/// It is a draft for schedule between RING3 tasks
 #[no_mangle]
-extern "C" fn ring3_scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let mut scheduler = SCHEDULER.lock();
+    unsafe {
+        SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
+    }
     scheduler.set_process_state(cpu_state);
     scheduler.switch_next_process();
     unsafe {
@@ -36,50 +38,9 @@ extern "C" fn ring3_scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32
     cpu_state as u32
 }
 
-/// The pit handler (cpu_state represents a pointer to esp)
-/// It is a draft for schedule between KERNEL tasks
-#[no_mangle]
-extern "C" fn kernel_scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
-    let mut scheduler = SCHEDULER.lock();
-    scheduler.set_kernel_esp(cpu_state as u32);
-    scheduler.switch_next_process();
-    match scheduler.get_kernel_esp() {
-        Some(esp) => esp,
-        None => unsafe { (*(scheduler.get_process_state())).esp },
-    }
-}
-
-/// The pit handler (cpu_state represents a pointer to esp) => RING3 + KERNEL
-#[no_mangle]
-extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
-    let mut scheduler = SCHEDULER.lock();
-    unsafe {
-        SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    }
-    if scheduler.curr_process().process.process_type == ProcessType::Kernel {
-        scheduler.set_kernel_esp(cpu_state as u32);
-    } else {
-        scheduler.set_process_state(cpu_state);
-    }
-    scheduler.switch_next_process();
-    if scheduler.curr_process().process.process_type == ProcessType::Kernel {
-        match scheduler.get_kernel_esp() {
-            Some(esp) => esp,
-            None => unsafe { (*(scheduler.get_process_state())).esp },
-        }
-    } else {
-        unsafe {
-            *cpu_state = *scheduler.get_process_state();
-        }
-        cpu_state as u32
-    }
-}
-
 struct Item {
     #[allow(dead_code)]
     state: ProcessState,
-    /// Current ESP value kernel side stack: Necessary for ring0 processes
-    kernel_esp: Option<u32>,
     process: Process,
 }
 
@@ -105,7 +66,7 @@ impl Scheduler {
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_process(&mut self, process: Process) {
         let pid = get_available_pid();
-        self.all_process.insert(pid, Item { state: ProcessState::Running, process, kernel_esp: None });
+        self.all_process.insert(pid, Item { state: ProcessState::Running, process });
         self.running_process.push(pid);
     }
 
@@ -129,24 +90,12 @@ impl Scheduler {
         self.curr_process_mut().process.get_process_state()
     }
 
-    /// Set in the current process the kernel esp
-    fn set_kernel_esp(&mut self, kernel_esp: u32) {
-        self.curr_process_mut().kernel_esp = Some(kernel_esp);
-    }
-
-    /// Get in the current process the kernel esp
-    fn get_kernel_esp(&mut self) -> Option<u32> {
-        self.curr_process_mut().kernel_esp
-    }
-
     /// Set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
         self.curr_process_index = Some((self.curr_process_index.unwrap() + 1) % self.running_process.len());
         // Dont forget to switch the Page diectory to the next process
-        if self.curr_process().process.process_type == ProcessType::Ring3 {
-            unsafe {
-                self.curr_process().process.virtual_allocator.as_ref().unwrap().context_switch();
-            }
+        unsafe {
+            self.curr_process().process.virtual_allocator.context_switch();
         }
     }
 
@@ -168,9 +117,8 @@ impl Scheduler {
         match curr_process.process.fork() {
             Ok(child) => {
                 let child_pid = get_available_pid();
-                let kernel_esp = self.get_kernel_esp();
                 self.running_process.push(child_pid);
-                self.all_process.insert(child_pid, Item { state: ProcessState::Running, kernel_esp, process: child });
+                self.all_process.insert(child_pid, Item { state: ProcessState::Running, process: child });
                 child_pid as i32
             }
             Err(e) => {

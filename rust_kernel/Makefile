@@ -79,9 +79,6 @@ SRC_C_KERNEL += c_processes
 SRC_ASM_KERNEL += asm_processes asm_tools
 VPATH += src/taskmaster/tests
 
-SRC_ASM_KERNEL += syscall
-VPATH += src/taskmaster/tests/klibc
-
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
 OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_KERNEL)))))
