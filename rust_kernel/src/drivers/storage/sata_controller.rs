@@ -4,6 +4,7 @@ use super::{MassStorageControllerSubClass, PciDeviceClass, PciType0, SerialAtaPr
 
 use crate::memory::allocator::{map, unmap};
 use core::mem::size_of;
+use raw_data::define_raw_data;
 
 use alloc::vec::Vec;
 

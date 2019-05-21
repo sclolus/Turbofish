@@ -21,8 +21,12 @@ bit_field = "0.9.0"
 bitflags = "1.0.4"
 log = "0.4.6"
 lock_api = "0.1.5"
-io = { path = "src/io" }
-keyboard = { path = "src/drivers/keyboard" }
+io = { path = "dependencies/io" }
+keyboard = { path = "dependencies/keyboard" }
+mbr = { path = "dependencies/mbr" }
+raw_data = { path = "dependencies/raw_data" }
+const_assert = { path = "dependencies/const_assert" }
+ext2 = { path = "dependencies/ext2" }
 
 [dependencies.lazy_static]
 version = "1.3.0"

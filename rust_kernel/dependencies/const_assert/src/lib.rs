@@ -1,9 +1,12 @@
+#![no_std]
 /// This file contains the macros for making constant assertions that fails at compile time.
 
 /// This macro enable us to make assertions that are evaluated at compile time, if a constant assertion is false, then the compilation fails.
 /// This macro can be used with any constant expressions, fonctions can be used if they are const qualified.
 /// This macro is directly taken from the static_assertions crate.
+
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! const_assert {
     ($($xs:expr),+ $(,)*) => {
         #[allow(unknown_lints, eq_op)]
