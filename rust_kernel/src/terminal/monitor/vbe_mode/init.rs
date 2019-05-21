@@ -5,6 +5,7 @@ use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::tools::{Phys, Virt};
 use crate::registers::real_mode_op;
 use crate::system::BaseRegisters;
+use raw_data::define_raw_data;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
@@ -139,13 +140,13 @@ pub struct CrtcInfo {
 
 define_raw_data!(CrtcInfoReserved, 40);
 
-fn vbe_real_mode_op(reg: BaseRegisters, bios_int: u16) -> core::result::Result<(), VbeError> {
+fn vbe_real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> core::result::Result<(), VbeError> {
     /*
      ** AL == 4Fh: ** Function is supported
      ** AH == 00h: Function call successful
      */
     unsafe {
-        let res = real_mode_op(reg, bios_int);
+        let res = real_mode_op(&mut reg as *mut BaseRegisters, bios_int);
         if res & 0xFF != 0x4F || res & 0xFF00 != 0x00 {
             Err(res.into())
         } else {

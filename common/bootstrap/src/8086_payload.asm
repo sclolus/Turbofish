@@ -253,8 +253,8 @@ begin_sub_sequence:
 
 .payload:
 	times PAYLOAD_MAX_LEN nop
-	; Disable interupt
 
+	; Disable interupt
 	cli
 
 	; Load caller idt and caller gdt

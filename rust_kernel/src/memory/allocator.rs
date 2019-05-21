@@ -1,4 +1,4 @@
-mod kernel;
+pub mod kernel;
 pub use kernel::*;
 
 mod physical;

@@ -1,0 +1,12 @@
+[package]
+name = "mbr"
+version = "0.1.0"
+authors = ["mordak <bmickael@student.42.fr>"]
+edition = "2018"
+license = "GPL3"
+description = "A tiny MBR tool for OS developement"
+documentation = "cargo doc --open"
+homepage = "index.html"
+
+[dependencies]
+raw_data = { path = "../raw_data" }

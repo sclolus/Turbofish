@@ -6,7 +6,8 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Kernel(a) => {
-                if layout.size() <= PAGE_SIZE {
+                if layout.size() <= PAGE_SIZE && layout.align() <= 16 {
+                    // TODO: Handle the align layout in SlabAllocator then remove 16
                     a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
                 } else {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR
@@ -25,7 +26,8 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Kernel(a) => {
-                if layout.size() <= PAGE_SIZE {
+                if layout.size() <= PAGE_SIZE && layout.align() <= 16 {
+                    // TODO: Handle the align layout in SlabAllocator then remove 16
                     a.free_with_size(Virt(ptr as usize), layout.size());
                 } else {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(ptr as usize))).unwrap()

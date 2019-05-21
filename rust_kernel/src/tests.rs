@@ -20,3 +20,15 @@ mod reexport_test_kmalloc {
     pub mod kmalloc;
     pub mod standard_sodomizer;
 }
+
+#[cfg(feature = "native-test-hard-drive-read-pio")]
+pub mod hard_drive_read_pio;
+
+#[cfg(feature = "native-test-hard-drive-write-pio")]
+pub mod hard_drive_write_pio;
+
+#[cfg(feature = "native-test-hard-drive-read-bios")]
+pub mod hard_drive_read_bios;
+
+#[cfg(feature = "native-test-hard-drive-write-bios")]
+pub mod hard_drive_write_bios;

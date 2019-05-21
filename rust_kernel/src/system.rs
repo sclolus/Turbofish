@@ -2,11 +2,10 @@ pub mod rings;
 pub use rings::PrivilegeLevel;
 
 pub mod i8086_payload;
-pub use i8086_payload::i8086_payload_apm_shutdown;
+pub use i8086_payload::{i8086_payload, i8086_payload_apm_shutdown};
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
-#[repr(packed)]
 #[derive(Default)]
 pub struct BaseRegisters {
     /*0        |*/ pub edi: u32,
@@ -22,7 +21,6 @@ pub struct BaseRegisters {
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-#[repr(packed)]
 pub struct ExtendedRegisters {
     /*0       |*/ pub ds: u32,
     /*4       |*/ pub es: u32,
@@ -46,31 +44,29 @@ pub struct ExtendedRegisters {
 
 impl core::fmt::Debug for ExtendedRegisters {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        unsafe {
-            write!(
-                f,
-                "cs: {:#X?}, ds: {:#X?}, es: {:#X?}, fs: {:#X?}, gs: {:#X?}, ss: {:#X?}\n\
-                 esi: {:#010X?}, edi: {:#010X?}, ebp: {:#010X?}, esp: {:#010X?}\n\
-                 eax: {:#010X?}, ebx: {:#010X?}, ecx: {:#010X?}, edx: {:#010X?}\n\
-                 eip: {:#010X?}, eflags => {:#010X?}",
-                self.cs,
-                self.ds,
-                self.es,
-                self.fs,
-                self.gs,
-                self.ss,
-                self.esi,
-                self.edi,
-                self.new_ebp,
-                self.esp,
-                self.eax,
-                self.ebx,
-                self.ecx,
-                self.edx,
-                self.eip,
-                self.eflags
-            )
-        }
+        write!(
+            f,
+            "cs: {:#X?}, ds: {:#X?}, es: {:#X?}, fs: {:#X?}, gs: {:#X?}, ss: {:#X?}\n\
+             esi: {:#010X?}, edi: {:#010X?}, ebp: {:#010X?}, esp: {:#010X?}\n\
+             eax: {:#010X?}, ebx: {:#010X?}, ecx: {:#010X?}, edx: {:#010X?}\n\
+             eip: {:#010X?}, eflags => {:#010X?}",
+            self.cs,
+            self.ds,
+            self.es,
+            self.fs,
+            self.gs,
+            self.ss,
+            self.esi,
+            self.edi,
+            self.new_ebp,
+            self.esp,
+            self.eax,
+            self.ebx,
+            self.ecx,
+            self.edx,
+            self.eip,
+            self.eflags
+        )
     }
 }
 

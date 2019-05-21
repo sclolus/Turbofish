@@ -141,3 +141,14 @@ pub unsafe extern "C" fn unmap(virt_addr: *mut u8, size: usize) -> i32 {
         KernelAllocator::Bootstrap(_) => panic!("Unmapping memory while in bootstrap allocator is unsafe"),
     }
 }
+
+/// get the physical addr which is map to virtual addr `addr`
+/// TODO: Should call get_physical_addr on the current process allocator and not the kernel_virtual_allocator
+pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
+    unsafe {
+        match &mut KERNEL_ALLOCATOR {
+            KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(addr),
+            KernelAllocator::Bootstrap(_) => panic!("call to get_physical_addr while in bootstrap allocator "),
+        }
+    }
+}

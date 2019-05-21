@@ -206,7 +206,7 @@ extern "C" {
 /// values before calling _real_mode_op.
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
 
-pub unsafe fn real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> u16 {
+pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
     use crate::drivers::{pic_8259, PIC_8259};
 
     without_interrupts!({
@@ -214,11 +214,11 @@ pub unsafe fn real_mode_op(mut reg: BaseRegisters, bios_int: u16) -> u16 {
         // check if PIC is initialized
         let mut pic_8259 = PIC_8259.lock();
         match pic_8259.is_initialized() {
-            false => ret = _int8086(&mut reg as *mut BaseRegisters, bios_int),
+            false => ret = _int8086(reg, bios_int),
             true => {
                 let imrs = pic_8259.reset_to_default();
 
-                ret = _int8086(&mut reg as *mut BaseRegisters, bios_int);
+                ret = _int8086(reg, bios_int);
 
                 pic_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
                 pic_8259.set_masks(imrs);

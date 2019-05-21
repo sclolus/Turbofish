@@ -5,4 +5,4 @@ authors = ["mordak <bmickael@student.42.fr>"]
 edition = "2018"
 
 [dependencies]
-io = { path = "../../io" }
+io = { path = "../io" }

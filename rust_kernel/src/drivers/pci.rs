@@ -1,9 +1,12 @@
 //! See [PCI](https://wiki.osdev.org/PCI)
 use crate::Spinlock;
+
+use core::mem::{size_of, transmute_copy};
 use io::{Io, Pio};
 use lazy_static::lazy_static;
 
 use bit_field::BitField;
+use bitflags::bitflags;
 
 pub struct Pci {
     pub devices_list: CustomPciDeviceAllocator,
@@ -63,6 +66,30 @@ fill_struct_with_io!(
     #[derive(Debug, Copy, Clone)]
     #[repr(C)]
     struct PciDeviceRegistersRaw {
+        l4: u32,
+        l5: u32,
+        l6: u32,
+        l7: u32,
+        l8: u32,
+        l9: u32,
+        l10: u32,
+        l11: u32,
+        l12: u32,
+        l13: u32,
+        l14: u32,
+        l15: u32,
+    }
+);
+
+// Rust Abstract of Complete Pci Device
+fill_struct_with_io!(
+    #[derive(Debug, Copy, Clone)]
+    #[repr(C)]
+    struct PciDeviceRaw {
+        l0: u32,
+        l1: u32,
+        l2: u32,
+        l3: u32,
         l4: u32,
         l5: u32,
         l6: u32,
@@ -190,6 +217,98 @@ struct PciDeviceType2 {
 /*44       |*/ b16_pc_card_legacy_mode_base_address: u32,
  */
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct PciType0 {
+    /*0        |*/ pub vendor_id: u16,
+    /*2        |*/ pub device_id: u16,
+    /*4        |*/ pub command: u16,
+    /*6        |*/ pub status: u16,
+    /*8        |*/ pub revision_id: u8,
+    /*9        |*/ pub prog_if: u8,
+    /*a        |*/ pub sub_class: u8,
+    /*b        |*/ pub class_code: u8,
+    /*c        |*/ pub cache_line_size: u8,
+    /*d        |*/ pub latency_timer: u8,
+    /*e        |*/ pub header_type: u8,
+    /*f        |*/ pub bist: u8,
+    /*10       |*/ pub bar0: u32,
+    /*14       |*/ pub bar1: u32,
+    /*18       |*/ pub bar2: u32,
+    /*1c       |*/ pub bar3: u32,
+    /*20       |*/ pub bar4: u32,
+    /*24       |*/ pub bar5: u32,
+    /*28       |*/ pub cardbus_cis_pointer: u32,
+    /*2c       |*/ pub subsystem_vendor_id: u16,
+    /*2e       |*/ pub subsystem_id: u16,
+    /*30       |*/ pub expansion_rom_base_address: u32,
+    /*34       |*/ pub capabilities_pointer: u8,
+    /*35       |*/ pub reserved: [u8; 7],
+    /*3c       |*/ pub interrupt_line: u8,
+    /*3d       |*/ pub interrupt_pin: u8,
+    /*3e       |*/ pub min_grant: u8,
+    /*3f       |*/ pub max_latency: u8,
+}
+
+// List of PCI commands
+bitflags! {
+    pub struct PciCommand: u16 {
+        const INTERRUPT_DISABLE = 1 << 10; // If set to 1 the assertion of the devices INTx# signal is disabled; otherwise, assertion of the signal is enabled.
+        const FAST_BACK_TO_BACK_ENABLE = 1 << 9; // If set to 1 indicates a device is allowed to generate fast back-to-back transactions; otherwise, fast back-to-back transactions are only allowed to the same agent.
+        const SERR_ENABLE = 1 << 8; // If set to 1 the SERR# driver is enabled; otherwise, the driver is disabled.
+        const BIT_7 = 1 << 7; // As of revision 3.0 of the PCI local bus specification this bit is hardwired to 0. In earlier versions of the specification this bit was used by devices and may have been hardwired to 0, 1, or implemented as a read/write bit.
+        const PARITY_ERROR_RESPONDE = 1 << 6; // If set to 1 the device will take its normal action when a parity error is detected; otherwise, when an error is detected, the device will set bit 15 of the Status register (Detected Parity Error Status Bit), but will not assert the PERR# (Parity Error) pin and will continue operation as normal.
+        const VGA_PALETTE_SNOOP = 1 << 5; // If set to 1 the device does not respond to palette register writes and will snoop the data; otherwise, the device will trate palette write accesses like all other accesses.
+        const MEMORY_WRITE_AND_INVALIDABLE_ENABLE = 1 << 4; // If set to 1 the device can generate the Memory Write and Invalidate command; otherwise, the Memory Write command must be used.
+        const SPECIAL_CYCLES = 1 << 3; // If set to 1 the device can monitor Special Cycle operations; otherwise, the device will ignore them.
+        const BUS_MASTER = 1 << 2; // If set to 1 the device can behave as a bus master; otherwise, the device can not generate PCI accesses.
+        const MEMORY_SPACE = 1 << 1;  // If set to 1 the device can respond to Memory Space accesses; otherwise, the device's response is disabled.
+        const IO_SPACE = 1 << 0;  // If set to 1 the device can respond to I/O Space accesses; otherwise, the device's response is disabled.
+    }
+}
+
+// List of PCI status
+bitflags! {
+    pub struct PciStatus: u16 {
+        const INTERRUPT_STATUS = 1 << 3; // Represents the state of the device's INTx# signal. If set to 1 and bit 10 of the Command register (Interrupt Disable bit) is set to 0 the signal will be asserted; otherwise, the signal will be ignored.
+        const CAPABILITIES_LIST = 1 << 4; // If set to 1 the device implements the pointer for a New Capabilities Linked list at offset 0x34; otherwise, the linked list is not available
+        const MHZ_66_CAPABLE = 1 << 5; // If set to 1 the device is capable of running at 66 MHz; otherwise, the device runs at 33 MHz.
+        const FAST_BACK_TO_BACK_CAPABLE = 1 << 7; // If set to 1 the device can accept fast back-to-back transactions that are not from the same agent; otherwise, transactions can only be accepted from the same agent.
+        const MASTER_DATA_PARITY_ERROR = 1 << 8; //  This bit is only set when the following some conditions are met. The bus agent asserted PERR# on a read or observed an assertion of PERR# on a write, the agent setting the bit acted as the bus master for the operation in which the error occurred, and bit 6 of the Command register (Parity Error Response bit) is set to 1.
+        const DEVSEL_TIMING = (1 << 9) | (1 << 10); // Read only bits that represent the slowest time that a device will assert DEVSEL# for any bus command except Configuration Space read and writes. Where a value of 0x00 represents fast timing, a value of 0x01 represents medium timing, and a value of 0x02 represents slow timing.
+        const SIGNALED_TARGET_ABORT = 1 << 11; // This bit will be set to 1 whenever a target device terminates a transaction with Target-Abort.
+        const RECEIVED_TARGET_ABORT = 1 << 12; // This bit will be set to 1, by a master device, whenever its transaction is terminated with Target-Abort.
+        const RECEIVED_MASTER_ABORT = 1 << 13; // This bit will be set to 1, by a master device, whenever its transaction (except for Special Cycle transactions) is terminated with Master-Abort.
+        const SIGNALED_SYSTEM_ERROR = 1 << 14; // This bit will be set to 1 whenever the device asserts SERR#
+        const DETECTED_PARITY_ERROR = 1 << 15; // This bit will be set to 1 whenever the device detects a parity error, even if parity error handling is disabled.
+    }
+}
+
+/// PCI boilerplate
+impl PciType0 {
+    /// Apply a command into PCI bus
+    pub fn set_command(&self, command: PciCommand, state: bool, pci_location: u32) {
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        let l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
+
+        let c = match state {
+            true => PciCommand { bits: l1 as u16 } | command,
+            false => PciCommand { bits: l1 as u16 } & !command,
+        };
+
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        Pio::<u16>::new(Pci::CONFIG_DATA).write(c.bits);
+    }
+
+    /// Get the status of the PCI bus
+    pub fn get_status(&self, pci_location: u32) -> PciStatus {
+        Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
+        let l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
+
+        PciStatus { bits: (l1 >> 16) as u16 }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 enum PciDeviceRegisters {
@@ -206,9 +325,20 @@ pub struct PciDevice {
     header_body: PciDeviceHeaderBody,
     registers: PciDeviceRegisters,
     class: PciDeviceClass,
+    address_space: AddressSpace,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct AddressSpace {
     bus: u8,
     slot: u8,
     function: u8,
+}
+
+impl AddressSpace {
+    pub fn get_location(&self) -> u32 {
+        0x80000000 + ((self.bus as u32) << 16) + ((self.slot as u32) << 11) + ((self.function as u32) << 8)
+    }
 }
 
 /// Custom debug definition for PCI device
@@ -219,7 +349,11 @@ impl core::fmt::Display for PciDevice {
             PciDeviceRegisters::PciType1(_) => "Pci to Pci bridge",
             PciDeviceRegisters::PciType2(_) => "Pci to CardBus bridge",
         };
-        write!(f, "{:02X?}:{:02X?}.{:X?} {:?} {:?}", self.bus, self.slot, self.function, self.class, device_type)
+        write!(
+            f,
+            "{:02X?}:{:02X?}.{:X?} {:?} {:?}",
+            self.address_space.bus, self.address_space.slot, self.address_space.function, self.class, device_type
+        )
     }
 }
 
@@ -278,11 +412,18 @@ impl<'a> Iterator for CustomPciDeviceAllocatorIterator<'a> {
 
 impl Pci {
     /// PCI configuration address
-    const CONFIG_ADDRESS: u16 = 0x0CF8;
-    const CONFIG_DATA: u16 = 0x0CFC;
+    pub const CONFIG_ADDRESS: u16 = 0x0CF8;
+    pub const CONFIG_DATA: u16 = 0x0CFC;
 
     pub const fn new() -> Pci {
         Pci { devices_list: CustomPciDeviceAllocator::new() }
+    }
+
+    pub fn query_device<T: Copy + core::fmt::Debug>(&mut self, device_class: PciDeviceClass) -> Option<(T, u32)> {
+        let dev = self.devices_list.iter().find(|d| d.class == device_class)?;
+        let location = dev.address_space.get_location();
+        let dev = unsafe { transmute_copy::<PciDeviceRaw, T>(&PciDeviceRaw::fill(location)) };
+        Some((dev, location))
     }
 
     /// Output all connected pci devices
@@ -334,8 +475,6 @@ impl Pci {
     /// Take a device location as argument and check if a device exists here
     /// return PciDevice on success
     fn check_device(&self, bus: u8, slot: u8, function: u8) -> Option<PciDevice> {
-        use core::mem::{size_of, transmute_copy};
-
         let mut location: u32 = 0x80000000;
         location += (bus as u32) << 16;
         location += (slot as u32) << 11;
@@ -369,9 +508,7 @@ impl Pci {
                     header_body: header_body,
                     registers: registers,
                     class: get_pci_device(header_body.class_code, header_body.sub_class, header_body.prog_if),
-                    bus: bus,
-                    slot: slot,
-                    function: function,
+                    address_space: AddressSpace { bus, slot, function },
                 })
             }
         }
@@ -776,7 +913,7 @@ fn get_pci_device(id: u8, subclass: u8, prog_if: u8) -> PciDeviceClass {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciDeviceClass {
     Unclassified(UnclassifiedSubClass),
     MassStorageController(MassStorageControllerSubClass),
@@ -805,14 +942,14 @@ pub enum PciDeviceClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UnclassifiedSubClass {
     NonVgaCompatibleDevice,
     VgaCompatibleDevice,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MassStorageControllerSubClass {
     ScsiBusController,
     IdeController(IdeControllerProgIf),
@@ -827,7 +964,7 @@ pub enum MassStorageControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IdeControllerProgIf {
     IsaCompatibilityModeOnlyController,
     PciNativeModeOnlyController,
@@ -840,14 +977,14 @@ pub enum IdeControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AtaControllerProgIf {
     SingleDma,
     ChainedDma,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialAtaProgIf {
     VendorSpecificInterface,
     Ahci1,
@@ -855,21 +992,21 @@ pub enum SerialAtaProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialAttachedScsiProgIf {
     Sas,
     SerialStorageBus,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NonVolatileMemoryControllerProgIf {
     Nvmhci,
     NvmExpress,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum NetworkControllerSubClass {
     EthernetController,
     TokenRingController,
@@ -884,7 +1021,7 @@ pub enum NetworkControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DisplayControllerSubClass {
     VgaCompatibleController(VgaCompatibleControllerProgIf),
     XgaController,
@@ -893,14 +1030,14 @@ pub enum DisplayControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum VgaCompatibleControllerProgIf {
     VgaController,
     Compatible8514Controller,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MultimediaControllerSubClass {
     MultimediaVideoController,
     MultimediaAudioController,
@@ -910,7 +1047,7 @@ pub enum MultimediaControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MemoryControllerSubClass {
     RamController,
     FlashController,
@@ -918,7 +1055,7 @@ pub enum MemoryControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum BridgeDeviceSubClass {
     HostBridge,
     IsaBridge,
@@ -935,28 +1072,28 @@ pub enum BridgeDeviceSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciToPciBridgeProgIf {
     NormalDecode,
     SubtractiveDecode,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum RaceWayBridgeProgIf {
     TransparentMode,
     EndpointMode,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PciToPciBridge2ProgIf {
     SemiTransparentPrimaryBusTowardsHostCPU,
     SemiTransparentSecondaryBusTowardsHostCPU,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SimpleCommunicationControllerSubClass {
     SerialController(SerialControllerProgIf),
     ParallelController(ParallelControllerProgIf),
@@ -968,7 +1105,7 @@ pub enum SimpleCommunicationControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialControllerProgIf {
     CompatibleGenericXT,
     Compatible16450,
@@ -980,7 +1117,7 @@ pub enum SerialControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ParallelControllerProgIf {
     StandardParallelPort,
     BiDirectionalParallelPort,
@@ -990,7 +1127,7 @@ pub enum ParallelControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ModemProgIf {
     GenericModem,
     Hayes16450CompatibleInterface,
@@ -1000,7 +1137,7 @@ pub enum ModemProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum BaseSystemPeripheralSubClass {
     Pic(PicProgIf),
     DmaController(DmaControllerProgIf),
@@ -1013,7 +1150,7 @@ pub enum BaseSystemPeripheralSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PicProgIf {
     Generic8259Compatible,
     ISACompatible,
@@ -1023,7 +1160,7 @@ pub enum PicProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DmaControllerProgIf {
     Generic8237Compatible,
     ISACompatible,
@@ -1031,7 +1168,7 @@ pub enum DmaControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TimerProgIf {
     Generic8254Compatible,
     ISACompatible,
@@ -1040,14 +1177,14 @@ pub enum TimerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum RtcControllerProgIf {
     GenericRTC,
     ISACompatible,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum InputDeviceControllerSubClass {
     KeyboardController,
     DigitizerPen,
@@ -1058,21 +1195,21 @@ pub enum InputDeviceControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum GameportControllerProgIf {
     Generic,
     Extended,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DockingStationSubClass {
     Generic,
     Other,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ProcessorSubClass {
     I386,
     I486,
@@ -1084,7 +1221,7 @@ pub enum ProcessorSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SerialBusControllerSubClass {
     FireWireIeee1394Controller(FireWireIeee1394ControllerProgIf),
     AccessBus,
@@ -1099,14 +1236,14 @@ pub enum SerialBusControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FireWireIeee1394ControllerProgIf {
     Generic,
     OHCI,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum UsbControllerProgIf {
     UHCIController,
     OHCIController,
@@ -1117,7 +1254,7 @@ pub enum UsbControllerProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IpmiInterfaceProgIf {
     SMIC,
     KeyboardControllerStyle,
@@ -1125,7 +1262,7 @@ pub enum IpmiInterfaceProgIf {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WirelessControllerSubClass {
     IrdaCompatibleController,
     ConsumerIrController,
@@ -1138,13 +1275,13 @@ pub enum WirelessControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum IntelligentControllerSubClass {
     I20,
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SatelliteCommunicationControllerSubClass {
     SatelliteTVController,
     SatelliteAudioController,
@@ -1153,7 +1290,7 @@ pub enum SatelliteCommunicationControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EncryptionControllerSubClass {
     NetworkAndComputingEncrpytionDecryption,
     EntertainmentEncryptionDecryption,
@@ -1161,7 +1298,7 @@ pub enum EncryptionControllerSubClass {
     Unknown,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SignalProcessingControllerSubClass {
     DpioModules,
     PerformanceCounters,

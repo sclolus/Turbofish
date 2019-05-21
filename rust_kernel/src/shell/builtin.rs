@@ -1,6 +1,9 @@
-use crate::drivers::{ACPI, PCI};
+use crate::drivers::{storage::ext2::EXT2, ACPI, PCI};
 use crate::system::i8086_payload_apm_shutdown;
+use alloc::format;
+use alloc::string::String;
 use core::time::Duration;
+use ext2::syscall::OpenFlags;
 use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 
 /// Halt the PC
@@ -107,10 +110,83 @@ pub fn yes(args: &[&str]) -> u8 {
     }
 }
 
+use crate::Spinlock;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    /// current working directory
+    pub static ref CWD: Spinlock<String> = Spinlock::new(String::from("/"));
+}
+
 /// list all files
 pub fn ls(_args: &[&str]) -> u8 {
-    println!("fuck you !");
+    match unsafe { EXT2.as_mut() } {
+        None => {
+            println!("ext2 not init");
+            1
+        }
+        Some(ext2) => {
+            let (_, dir_entry) = ext2.find_path(&*CWD.lock()).unwrap();
+            for (e, _) in ext2.iter_entries(dir_entry.0.get_inode()).unwrap() {
+                print!("{} ", unsafe { e.get_filename() });
+            }
+            print!("\n");
+            0
+        }
+    }
+}
+
+pub fn cd(args: &[&str]) -> u8 {
+    if args[0] == "" {
+        return 1;
+    }
+    let new_cwd = format!("{}/{}", *CWD.lock(), args[0]);
+    match unsafe { EXT2.as_mut() } {
+        None => {
+            println!("ext2 not init");
+            1
+        }
+        Some(ext2) => match ext2.access(&new_cwd, 0o644) {
+            Err(e) => {
+                println!("{:?}", e);
+                1
+            }
+            Ok(_) => {
+                CWD.lock().push_str(args[0]);
+                0
+            }
+        },
+    }
+}
+
+pub fn pwd(_args: &[&str]) -> u8 {
+    let s: &str = &*CWD.lock();
+    println!("{}", s);
     0
+}
+
+pub fn cat(args: &[&str]) -> u8 {
+    pub fn cat_result(args: &[&str]) -> Result<(), &'static str> {
+        let filename = format!("{}/{}", *CWD.lock(), args[0]);
+        let ext2 = unsafe { EXT2.as_mut().ok_or("ext2 not init")? };
+        let mut file = dbg!(ext2.open(dbg!(&filename), OpenFlags::O_RDONLY, 0)).map_err(|_| "open failed")?;
+        let buf: &mut [u8; 1024] = &mut [0; 1024];
+
+        loop {
+            let size_read = ext2.read(&mut file, &mut buf[..]).map_err(|_| "read failed")?;
+            if size_read == 0 {
+                return Ok(());
+            }
+            print!("{}", core::str::from_utf8(&buf[0..size_read as usize]).map_err(|_| "not valid utf8")?);
+        }
+    }
+    match cat_result(args) {
+        Ok(()) => 0,
+        Err(e) => {
+            println!("{}", e);
+            1
+        }
+    }
 }
 
 /// enumerate all pci devices

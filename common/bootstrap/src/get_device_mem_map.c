@@ -12,6 +12,7 @@ struct base_registers {
 #define DEVICE_MAP_PTR_ADDR 0x40000
 
 extern int _i8086_payload(struct base_registers *regs, void *payload, size_t payload_len);
+
 extern void payload_get_mem_map(void);
 extern size_t payload_get_mem_map_len;
 

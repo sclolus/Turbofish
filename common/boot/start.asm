@@ -13,9 +13,9 @@ extern alt_init_paging
 %define MULTIBOOT_INFOS_LEN 128
 
 ; Declare constants used for creating a multiboot header.
-%define ALIGN     (1 << 0)
-%define MEMINFO   (1 << 1)
-%define FLAGS     (ALIGN | MEMINFO)
+%define MEMINFO   (1 << 0)
+%define BOOTDISK  (1 << 1)
+%define FLAGS     (MEMINFO | BOOTDISK)
 %define MAGIC     0x1BADB002
 %define CHECKSUM  - (MAGIC + FLAGS)
 

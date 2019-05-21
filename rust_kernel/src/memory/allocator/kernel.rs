@@ -10,7 +10,7 @@ use bootstrap::*;
 mod rust_global_alloc;
 pub use rust_global_alloc::RustGlobalAlloc;
 
-mod ffi;
+pub mod ffi;
 pub use ffi::*;
 
 pub static mut KERNEL_ALLOCATOR: KernelAllocator = KernelAllocator::Bootstrap(BootstrapKernelAllocator::new());
