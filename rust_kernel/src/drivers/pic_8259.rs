@@ -70,6 +70,7 @@ lazy_static! {
     pub static ref PIC_8259: Spinlock<Pic8259> = Spinlock::new(Pic8259::new());
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Irq {
     /// The System timer, (PIT: Programmable Interval Timer) IRQ.
     SystemTimer = 0,

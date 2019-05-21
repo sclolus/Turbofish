@@ -3,7 +3,7 @@ use getopts::Options;
 use std::env;
 use std::fs::File;
 use std::io::Read;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::time::Duration;
 use toml::Value;
 use wait_timeout::ChildExt;
@@ -18,6 +18,15 @@ fn print_usage(program: &str, opts: Options) {
 enum TestError {
     Failed,
     Timeout,
+    CompilationFailed,
+}
+
+/// Execute a command with specifics arguments
+fn exec_command(cmd: &str, args: &[&str]) -> ExitStatus {
+    let mut cmd = Command::new(cmd);
+    cmd.args(args);
+    println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
+    cmd.status().expect("failed to execute process")
 }
 
 fn main() {
@@ -38,9 +47,7 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
-    let all_tests = if !matches.free.is_empty() {
-        matches.free.clone()
-    } else {
+    let tests: Vec<String> = {
         let mut file = File::open("./Cargo.toml").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
@@ -49,37 +56,86 @@ fn main() {
             Value::Table(btree) => btree,
             _ => panic!("not a btree"),
         };
-        btree.into_iter().filter_map(|f| if f.0.starts_with("test-") { Some(f.0.clone()) } else { None }).collect()
+        let all_tests: Vec<String> = btree
+            .into_iter()
+            .filter_map(|f| {
+                if f.0.starts_with("test-") || f.0.starts_with("native-test-") {
+                    Some(f.0.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !matches.free.is_empty() {
+            for test in matches.free.iter() {
+                if !all_tests.iter().find(|&x| x == test).is_some() {
+                    eprintln!("invalid test name{}", test);
+                    eprintln!("possible tests are: {:?}", all_tests);
+                    std::process::exit(1);
+                }
+            }
+            matches.free.clone()
+        } else {
+            all_tests
+        }
     };
-    println!("running {} tests", all_tests.len());
-    let all_result: Vec<Result<(), TestError>> = all_tests
+    println!("running {} tests", tests.len());
+    let all_result: Vec<Result<(), TestError>> = tests
         .iter()
         .map(|feature| {
-            println!("test: {}", (*feature).clone().magenta().bold());
-            let compilation_output = {
-                let mut cmd = Command::new("make");
-                cmd.args(&[
+            let native = if feature.starts_with("native-test-") { true } else { false };
+            println!("test: {} native_mode: {}", (*feature).clone().magenta().bold(), native);
+
+            let exit_status = exec_command(
+                "make",
+                &[
+                    "-C",
+                    if native { "../" } else { "./" },
                     "DEBUG=yes",
                     &format!(
                         "cargo_flags=--features {},test,{}",
                         feature,
                         if matches.opt_present("g") { "" } else { "serial-eprintln,exit-on-panic" }
                     ),
-                ]);
+                ],
+            );
+            if !exit_status.success() {
+                println!("{}", "Compilation Failed".red().bold());
+                return Err(TestError::CompilationFailed);
+            }
 
-                println!("{} {:?}", "EXECUTING".blue().bold(), cmd);
-                cmd.output().expect("failed to execute process")
-            };
-            println!("COMPILATION stdout {}", String::from_utf8_lossy(&compilation_output.stdout));
-            println!("COMPILATION stderr {}", String::from_utf8_lossy(&compilation_output.stderr));
+            if native && feature.contains("hard-drive") {
+                // Compiling generate C programm
+                exec_command("gcc", &["src/tests/generate.c", "-o", "generate", "--verbose"]);
+
+                // Generating a Rainbow disk of 16mo
+                exec_command("./generate", &["../rainbow_disk.img", "16777216"]);
+
+                // Clean executable
+                exec_command("rm", &["generate", "-v"]);
+            }
+
             let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
-                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M", "-kernel", "build/kernel.elf"])
+                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
                     .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() });
+
+                match native {
+                    true => {
+                        if feature.contains("hard-drive") {
+                            qemu_command
+                                .args(&["-drive", "format=raw,file=../image_disk.img"])
+                                .args(&["-drive", "format=raw,file=../rainbow_disk.img"])
+                        } else {
+                            qemu_command.args(&["-drive", "format=raw,file=../image_disk.img"])
+                        }
+                    }
+                    false => qemu_command.args(&["-kernel", "build/kernel.elf"]),
+                };
                 println!("{}: {:?}", "EXECUTING".blue().bold(), qemu_command);
                 qemu_command.spawn().expect("failed to execute process")
             };
@@ -119,7 +175,7 @@ fn main() {
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(
         "test result: {} {} passed; {} failed",
-        if total_succeed == all_tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
+        if total_succeed == tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
         total_succeed,
         total_failed
     );

@@ -82,18 +82,16 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
     let virtual_page_allocator = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap() };
     if let Err(e) = virtual_page_allocator.valloc_handle_page_fault(cr2) {
         use bit_field::BitField;
-        let page_fault_cause = unsafe {
-            match ext_reg.eflags.get_bits(0..3) {
-                0b000 => "Supervisory process tried to read a non-present page entry",
-                0b001 => "Supervisory process tried to read a page and caused a protection fault",
-                0b010 => "Supervisory process tried to write to a non-present page entry",
-                0b011 => "Supervisory process tried to write a page and caused a protection fault",
-                0b100 => "User process tried to read a non-present page entry",
-                0b101 => "User process tried to read a page and caused a protection fault",
-                0b110 => "User process tried to write to a non-present page entry",
-                0b111 => "User process tried to write a page and caused a protection fault",
-                _ => "WTF",
-            }
+        let page_fault_cause = match ext_reg.eflags.get_bits(0..3) {
+            0b000 => "Supervisory process tried to read a non-present page entry",
+            0b001 => "Supervisory process tried to read a page and caused a protection fault",
+            0b010 => "Supervisory process tried to write to a non-present page entry",
+            0b011 => "Supervisory process tried to write a page and caused a protection fault",
+            0b100 => "User process tried to read a non-present page entry",
+            0b101 => "User process tried to read a page and caused a protection fault",
+            0b110 => "User process tried to write to a non-present page entry",
+            0b111 => "User process tried to write a page and caused a protection fault",
+            _ => "WTF",
         };
 
         eprintln!("{}", page_fault_cause);
@@ -102,27 +100,17 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
         eprintln!("{:X?}\n", ext_reg);
 
         trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+        qemu_check();
         loop {}
     };
 }
 
-#[cfg(not(feature = "exit-on-panic"))] //for integration test when not in graphical
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
-
     trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    qemu_check();
     loop {}
-}
-
-#[cfg(feature = "exit-on-panic")] //for integration test when not in graphical
-#[no_mangle]
-pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
-    eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
-
-    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
-    use crate::tests::helpers::exit_qemu;
-    exit_qemu(1);
 }
 
 #[allow(dead_code)]
@@ -136,20 +124,18 @@ pub fn panic_sa_mere(info: &PanicInfo) {
 }
 
 #[panic_handler]
-#[cfg(not(feature = "exit-on-panic"))]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {
     panic_sa_mere(info);
+    qemu_check();
     loop {}
 }
 
-#[panic_handler]
-#[cfg(feature = "exit-on-panic")] //for integration test when not in graphical
-#[no_mangle]
-fn panic(info: &PanicInfo) -> ! {
-    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
-    panic_sa_mere(info);
-    use crate::tests::helpers::exit_qemu;
-    exit_qemu(1);
-    loop {}
+fn qemu_check() {
+    #[cfg(feature = "exit-on-panic")]
+    {
+        // for integration test
+        use crate::tests::helpers::exit_qemu;
+        exit_qemu(1);
+    }
 }

@@ -6,6 +6,7 @@
 pub mod tools;
 
 pub mod allocator;
+pub use allocator::kernel::ffi::*;
 
 pub mod init;
 pub use init::init_memory_system;
