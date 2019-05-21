@@ -9,8 +9,7 @@ use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
 extern "C" {
-    fn _launch_process(cpu_state: *const CpuState);
-    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize);
+    fn _launch_process(cpu_state: *const CpuState) -> !;
 }
 
 /// Represent all cpu state needed to continue the execution of a process
@@ -85,19 +84,19 @@ impl Process {
             virtual_allocator: v,
         };
         // Copy the code segment
-        ft_memcpy(base_addr, code, code_len);
+        base_addr.copy_from(code, code_len);
         _enable_paging(old_cr3);
         // When non-fork, return to Kernel PD, when forking, return to father PD
         res
     }
 
     /// Launch a process
-    pub unsafe fn launch(&self) {
+    pub unsafe fn launch(&self) -> ! {
         // Switch to process Page Directory
         self.virtual_allocator.context_switch();
 
         // Launch the ring3 process
-        _launch_process(&self.cpu_state);
+        _launch_process(&self.cpu_state)
     }
 
     /// Fork a process
@@ -112,16 +111,17 @@ impl Process {
     #[allow(dead_code)]
     pub fn exit(&mut self) {
         // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
-        drop(self);
+        unimplemented!();
+        // drop(*self);
     }
 
     /// Save all the cpu_state of a process
-    pub fn set_process_state(&mut self, cpu_state: *const CpuState) {
-        self.cpu_state = unsafe { *cpu_state };
+    pub fn set_process_state(&mut self, cpu_state: CpuState) {
+        self.cpu_state = cpu_state;
     }
 
     /// Get all the cpu_state of a process
-    pub fn get_process_state(&self) -> *const CpuState {
-        &self.cpu_state
+    pub fn get_process_state(&self) -> CpuState {
+        self.cpu_state
     }
 }

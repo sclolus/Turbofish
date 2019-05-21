@@ -25,16 +25,12 @@ enum ProcessState {
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
-extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let mut scheduler = SCHEDULER.lock();
-    unsafe {
-        SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    }
-    scheduler.set_process_state(cpu_state);
+    SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
+    scheduler.set_process_state(*cpu_state);
     scheduler.switch_next_process();
-    unsafe {
-        *cpu_state = *scheduler.get_process_state();
-    }
+    *cpu_state = scheduler.get_process_state();
     cpu_state as u32
 }
 
@@ -64,30 +60,30 @@ impl Scheduler {
     }
 
     /// Add a process into the scheduler (transfert ownership)
-    pub fn add_process(&mut self, process: Process) {
+    pub fn add_process(&mut self, process: Process) -> Pid {
         let pid = get_available_pid();
         self.all_process.insert(pid, Item { state: ProcessState::Running, process });
         self.running_process.push(pid);
+        pid
     }
 
     /// Initialize the first processs and get a pointer to it)
-    fn init_process_zero(&mut self) -> *const Process {
+    fn init_process_zero(&mut self) -> &Process {
         // Check if we got some processes to launch
         assert!(self.all_process.len() != 0);
 
         self.curr_process_index = Some(0);
-        let p = self.curr_process_mut();
-        &p.process
+        &self.curr_process().process
     }
 
     /// Set in the current process the cpu_state
-    fn set_process_state(&mut self, cpu_state: *const CpuState) {
+    fn set_process_state(&mut self, cpu_state: CpuState) {
         self.curr_process_mut().process.set_process_state(cpu_state)
     }
 
     /// Get in the current process the cpu_state
-    fn get_process_state(&mut self) -> *const CpuState {
-        self.curr_process_mut().process.get_process_state()
+    fn get_process_state(&self) -> CpuState {
+        self.curr_process().process.get_process_state()
     }
 
     /// Set current process to the next process in the list of running process
@@ -115,12 +111,7 @@ impl Scheduler {
         let curr_process = self.curr_process_mut();
 
         match curr_process.process.fork() {
-            Ok(child) => {
-                let child_pid = get_available_pid();
-                self.running_process.push(child_pid);
-                self.all_process.insert(child_pid, Item { state: ProcessState::Running, process: child });
-                child_pid as i32
-            }
+            Ok(child) => self.add_process(child) as i32,
             Err(e) => {
                 eprintln!("{:?}", e);
                 -1
@@ -151,15 +142,16 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         }
     };
     SCHEDULER_COUNTER = t.0;
-    SCHEDULER.lock().time_interval = t.1;
+    let mut scheduler = SCHEDULER.lock();
+    scheduler.time_interval = t.1;
 
     // Initialise the first process and get a reference on it
-    let p = SCHEDULER.lock().init_process_zero();
+    let p = scheduler.init_process_zero();
 
+    // force unlock the scheduler as process borrows it and we won't get out of scope
+    SCHEDULER.force_unlock();
     // After futur IRET for final process creation, interrupt must be re-enabled
-    (*p).launch();
-
-    panic!("Unreachable");
+    p.launch()
 }
 
 lazy_static! {
