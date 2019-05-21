@@ -150,6 +150,9 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
+
+    println!("Lancement du ou des processes en ring 3:");
+
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.launch()
 }

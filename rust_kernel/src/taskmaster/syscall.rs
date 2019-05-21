@@ -26,7 +26,10 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> i32 {
 
 /// Exit from a process
 fn sys_exit(_status: i32) -> i32 {
-    unimplemented!();
+    eprintln!("SYS_EXIT Called !");
+    loop {}
+
+    // unimplemented!();
     // SCHEDULER.lock().exit(status);
 }
 

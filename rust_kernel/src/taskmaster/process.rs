@@ -112,7 +112,13 @@ impl Process {
                 println!("{:X?}", h);
                 let segment = {
                     let _segment_addr = v
-                        .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
+                        // .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
+                        // TODO: Easy fix must be removed
+                        .alloc_on(
+                            Page::containing(Virt(h.vaddr as usize)),
+                            (h.memsz as usize).into(),
+                            AllocFlags::USER_MEMORY,
+                        )?
                         .to_addr()
                         .0 as *mut u8;
                     slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
