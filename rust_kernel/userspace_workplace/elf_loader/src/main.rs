@@ -1,11 +1,10 @@
-#![feature(try_from)]
-
 #[macro_use]
 extern crate bitflags;
 use core::convert::TryFrom;
 use core::mem;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum ElfParseError {
     BadMagic,
     InvalidHeader,
@@ -449,6 +448,7 @@ impl core::fmt::Debug for ProgramHeader {
     }
 }
 
+// TODO: There are some stranges values in this enum
 #[derive(Debug)]
 enum SectionHeaderType {
     Null,
@@ -475,20 +475,21 @@ enum SectionHeaderType {
     GnuLibList,
     Checksum,
     Losunw,
-    SunwMove,
+    // SunwMove,
     SunwComdat,
     SunwSyminfo,
     GnuVerdef,
     GnuVerneed,
     GnuVersym,
-    Hisunw,
-    Hios,
+    // Hisunw,
+    // Hios,
     LoProc,
     HiProc,
     LoUser,
     HiUser,
 }
 
+// TODO: There are some stranges values in this enum
 impl TryFrom<u32> for SectionHeaderType {
     type Error = ElfParseError;
 
@@ -519,14 +520,14 @@ impl TryFrom<u32> for SectionHeaderType {
             0x6ffffff7 => GnuLibList,
             0x6ffffff8 => Checksum,
             0x6ffffffa => Losunw,
-            0x6ffffffa => SunwMove,
+            // 0x6ffffffa => SunwMove,
             0x6ffffffb => SunwComdat,
             0x6ffffffc => SunwSyminfo,
             0x6ffffffd => GnuVerdef,
             0x6ffffffe => GnuVerneed,
             0x6fffffff => GnuVersym,
-            0x6fffffff => Hisunw,
-            0x6fffffff => Hios,
+            // 0x6fffffff => Hisunw,
+            // 0x6fffffff => Hios,
             0x70000000 => LoProc,
             0x7fffffff => HiProc,
             0x80000000 => LoUser,
@@ -678,7 +679,7 @@ fn main() {
         println!("\nSection header table:");
         for (index, section_header) in section_header_table.iter().enumerate() {
             let sheader = SectionHeader::from_bytes(section_header as &[u8]).unwrap();
-            // println!("{:02}: {:?}", index, sheader);
+            println!("{:02}: {:?}", index, sheader);
             sh_table.push(sheader);
         }
     }
