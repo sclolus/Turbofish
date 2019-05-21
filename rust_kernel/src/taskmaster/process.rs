@@ -2,10 +2,10 @@
 
 pub mod tss;
 
-// use crate::elf_loader::load_elf;
+use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
-use crate::memory::tools::{AllocFlags, NbrPages};
+use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
@@ -56,6 +56,8 @@ impl Process {
     const RING3_DPL: u32 = 0b11;
     const RING3_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
 
+    const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
+
     /// Create a new process
     pub unsafe fn new(code: *const u8, code_len: usize) -> Self {
         // Store kernel CR3
@@ -90,14 +92,18 @@ impl Process {
         // When non-fork, return to Kernel PD, when forking, return to father PD
         res
     }
-    /*
+
     /// Load a real process
-    pub unsafe fn load(eflags: Eflags) -> crate::memory::tools::Result<Self> {
+    pub unsafe fn load() -> crate::memory::tools::Result<Self> {
+        // Store kernel CR3
         let old_cr3 = _read_cr3();
+        // Create a Dummy process Page directory
         let mut v = VirtualPageAllocator::new_for_process();
+        // Switch to this process Page Directory
         v.context_switch();
 
-        let content: &[u8] = &include_bytes!("./Charles")[..];
+        // Elf loader stuff
+        let content: &[u8] = &include_bytes!("../Charles")[..];
         let elf = load_elf();
         for h in &elf.program_header_table {
             use core::slice;
@@ -121,27 +127,32 @@ impl Process {
             }
         }
 
-        let base_stack = v.alloc(STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+        // Allocate one page for stack segment of the process
+        let stack_addr =
+            v.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+        // stack go downwards set esp to the end of the allocation
+        let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
         let res = Self {
             cpu_state: CpuState {
-                eip: elf.header.entry_point,
-                // stack go downwards set esp to the end of the allocation
-                esp: dbg_hex!(base_stack.add(STACK_SIZE.into()) as u32 - 16),
-                registers: Default::default(),
-                segment: 0x8,
-                eflags,
+                registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+                ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+                eip: elf.header.entry_point as u32, // Set on ELF entry point
+                cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
+                eflags: Eflags::get_eflags().set_interrupt_flag(true),
+                esp,
+                ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
             },
-            base_stack: base_stack as u32 - 16,
             virtual_allocator: v,
-            pid: scheduler::get_available_pid(),
-            state: State::Running,
         };
 
         _enable_paging(old_cr3);
-
+        // When non-fork, return to Kernel PD, when forking, return to father PD
         Ok(res)
     }
-    */
+
     /// Launch a process
     pub unsafe fn launch(&self) -> ! {
         // Switch to process Page Directory

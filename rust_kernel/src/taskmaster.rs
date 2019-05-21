@@ -34,10 +34,15 @@ pub fn start() -> ! {
     let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p2);
 
+    // Create a real process
+    let p3 = unsafe { Process::load().unwrap() };
+    println!("{:#X?}", p3);
+
     // Load some processes into the scheduler
-    SCHEDULER.lock().add_process(p1);
-    SCHEDULER.lock().add_process(p2);
+    // SCHEDULER.lock().add_process(p1);
+    // SCHEDULER.lock().add_process(p2);
+    SCHEDULER.lock().add_process(p3);
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(20.)) }
+    unsafe { scheduler::start(TaskMode::Mono) }
 }

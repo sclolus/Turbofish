@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use core::mem;
 use elf_loader::*;
 
+#[derive(Debug)]
 pub struct Elf {
     pub header: ElfHeader,
     pub program_header_table: Vec<ProgramHeader>,

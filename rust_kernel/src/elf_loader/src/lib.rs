@@ -291,31 +291,6 @@ impl TryFrom<&[u8]> for ElfHeader {
     }
 }
 
-// impl core::fmt::Display for ElfHeader {
-//     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-//         Ok(write!(fmt, "Class: {:?}, Format: {:?}, version: {}, ABI: {:?}, abi_version: {}, type: {:?}, machine: {:?}, entry_point_point_address: {:08x}, start_ph: {}, start_sh: {}, flags: {}, header_size: {}, size_of_ph: {}, nbr_ph: {}, size_sh: {}, nbr_sh: {}, section header string table index: {}",
-//                   self.format,
-//                   self.endian,
-//                   self.e_version,
-//                   self.target_abi,
-//                   self.abi_version,
-//                   self.e_type,
-//                   self.e_machine,
-//                   self.e_entry_point,
-//                   self.program_header_table_offset,
-//                   self.section_header_table_offset,
-//                   self.e_flags,
-//                   self.e_ehsize,
-//                   self.e_phentsize,
-//                   self.nbr_program_header,
-//                   self.e_shentsize,
-//                   self.nbr_section_header,
-//                   self.e_shstrndx,
-
-//         )?)
-//     }
-// }
-
 #[derive(Debug, PartialEq)]
 pub enum SegmentType {
     Null,
