@@ -5,7 +5,7 @@ mod scheduler;
 mod syscall;
 mod tests;
 
-use process::{tss::Tss, CpuState, Process};
+use process::{tss::Tss, CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
 use tests::*;
 
@@ -27,11 +27,11 @@ pub fn start() -> ! {
     Tss::display();
 
     // Create an ASM dummy process based on a simple function
-    let p1 = unsafe { Process::new_from_raw(&_dummy_asm_process_code, _dummy_asm_process_len) };
+    let p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
     println!("{:#X?}", p1);
 
     // Create a real rust process based on an ELF file
-    let p2 = unsafe { Process::new_from_elf(&include_bytes!("./vincent")[..]).unwrap() };
+    let p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("./vincent")[..])).unwrap() };
     println!("{:#X?}", p2);
 
     // Load some processes into the scheduler
