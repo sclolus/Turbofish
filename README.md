@@ -1,4 +1,4 @@
-# Kernel From Scratch
+# Turbo fish - Kernel From Scratch
 
 ## You can test that kernel only on a linux machine
 

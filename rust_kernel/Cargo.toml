@@ -1,5 +1,5 @@
 [package]
-name = "undefined_behavior"
+name = "turbo_fish"
 version = "0.0.2"
 authors = ["Vincent Combey <vcombey@student.42.fr>", "Mickael Billod <bmickael@student.42.fr>", "Sebastien Clolus <sclolus@student.42.fr>"]
 edition = "2018"

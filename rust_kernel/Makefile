@@ -1,6 +1,6 @@
 arch := ivybridge_cpu
 kernel := build/kernel.elf
-name := undefined_behavior
+name := turbo_fish
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 QEMU_ARGS = --enable-kvm -cpu IvyBridge -m 128M -kernel $(kernel)
 # These rustc flags are defined in json xbuild file.
