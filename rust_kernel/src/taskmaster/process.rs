@@ -65,7 +65,7 @@ impl Process {
     pub unsafe fn new_from_raw(code: *const u8, code_len: usize) -> Self {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
-        // Create a Dummy process Page directory
+        // Create the process Page directory
         let mut v = VirtualPageAllocator::new_for_process();
         // Switch to this process Page Directory
         v.context_switch();
@@ -91,7 +91,7 @@ impl Process {
     pub unsafe fn new_from_elf(content: &[u8]) -> crate::memory::tools::Result<Self> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
-        // Create a Dummy process Page directory
+        // Create the process Page directory
         let mut v = VirtualPageAllocator::new_for_process();
         // Switch to this process Page Directory
         v.context_switch();
@@ -113,12 +113,8 @@ impl Process {
                         .0 as *mut u8;
                     slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
                 };
-
-                for (dest, src) in
-                    segment.iter_mut().zip(content[h.offset as usize..h.offset as usize + h.filez as usize].iter())
-                {
-                    *dest = *src;
-                }
+                segment[0..h.filez as usize]
+                    .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
             }
         }
 
