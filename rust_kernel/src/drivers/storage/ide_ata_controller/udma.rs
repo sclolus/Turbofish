@@ -124,7 +124,7 @@ impl Udma {
             }
         }
 
-        dbg_hex!(prdt.as_mut());
+        // dbg_hex!(prdt.as_mut());
 
         Self { memory, channel, prdt, bus_mastered_register }
     }
