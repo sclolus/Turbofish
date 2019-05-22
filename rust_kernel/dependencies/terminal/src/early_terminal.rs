@@ -1,8 +1,8 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
 //! It may be used on VBE with low feature in case of debuging request and panic displaying
 
-use crate::terminal::ansi_escape_code::AnsiColor;
-use crate::terminal::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use super::ansi_escape_code::AnsiColor;
+use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 
 use super::Cursor;
 use super::Pos;

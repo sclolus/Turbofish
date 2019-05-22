@@ -1,14 +1,16 @@
 //! impl write on the [Serial Ports](https://wiki.osdev.org/Serial_ports)
+use bitflags::bitflags;
 use core::fmt;
 use io::{Io, Pio};
 
-struct LineStsFlags {
-    data: u8,
-}
-
-impl LineStsFlags {
-    gen_builder_pattern_bitfields_methods!(#[doc=""], #[doc=""], input_full, set_input_full, 0, data);
-    gen_builder_pattern_bitfields_methods!(#[doc=""], #[doc=""], output_empty, set_output_empty, 5, data);
+bitflags! {
+    /// Line status flags
+    struct LineStsFlags: u8 {
+        const INPUT_FULL = 1;
+        // 1 to 4 unknown
+        const OUTPUT_EMPTY = 1 << 5;
+        // 6 and 7 unknown
+    }
 }
 
 pub struct Uart16550 {
@@ -44,11 +46,11 @@ impl Uart16550 {
     }
 
     fn line_sts(&self) -> LineStsFlags {
-        LineStsFlags { data: self.line_sts.read() }
+        LineStsFlags::from_bits_truncate(self.line_sts.read())
     }
 
     pub fn send(&mut self, byte: u8) {
-        while !self.line_sts().output_empty() {}
+        while !self.line_sts().contains(LineStsFlags::OUTPUT_EMPTY) {}
         self.data.write(byte);
     }
 }
@@ -71,7 +73,7 @@ macro_rules! serial_print {
         match format_args!($($arg)*) {
             a => {
                 #[allow(unused_unsafe)]
-                core::fmt::write(unsafe {&mut $crate::drivers::uart_16550::UART_16550}, a).unwrap();
+                core::fmt::write(unsafe {&mut $crate::uart_16550::UART_16550}, a).unwrap();
             }
         }
     }

@@ -1,7 +1,7 @@
 //! this module contains a ext2 driver
 //! see [osdev](https://wiki.osdev.org/Ext2)
 
-#![no_std]
+#![cfg_attr(all(not(test), not(feature = "test")), no_std)]
 #![deny(missing_docs)]
 #![feature(alloc)]
 
@@ -22,6 +22,10 @@ use header::{BlockGroupDescriptor, SuperBlock};
 
 mod body;
 use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
+
+#[cfg(not(feature = "test"))]
+#[macro_use]
+extern crate terminal;
 
 extern crate alloc;
 use alloc::boxed::Box;
@@ -454,6 +458,7 @@ impl Ext2Filesystem {
         // size, it will begin at block 1. Remember that blocks are
         // numbered starting at 0, and that block numbers don't
         // usually correspond to physical block addresses.
+        println!("{}", n);
         assert!(n <= self.nbr_block_grp);
         let offset = if self.block_size == 1024 { 2 } else { 1 };
 

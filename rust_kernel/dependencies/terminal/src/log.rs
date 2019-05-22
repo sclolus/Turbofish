@@ -1,7 +1,7 @@
 use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 
-use crate::terminal::ansi_escape_code::color::Colored;
+use super::ansi_escape_code::color::Colored;
 
 struct SimpleLogger;
 

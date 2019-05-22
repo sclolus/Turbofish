@@ -1,14 +1,13 @@
 //! Uselfull tools to read BMP files
 
 use super::{IoError, IoResult};
-use crate::ffi::c_char;
 use core::slice;
 
 /// Basic header of a BMP image
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
 pub struct BmpImage {
-    /*0  */ signature: [c_char; 2],
+    /*0  */ signature: [u8; 2],
     /*2  */ filesize: u32,
     /*6  */ reserved: u32,
     /*10 */ fileoffset_to_pixelarray: u32,

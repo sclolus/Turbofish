@@ -8,9 +8,9 @@ macro_rules! print {
             a => {
                 #[allow(unused_unsafe)]
                 unsafe {
-                    match $crate::terminal::TERMINAL.as_mut() {
+                    match $crate::TERMINAL.as_mut() {
                         None => {
-                            use crate::terminal::EARLY_TERMINAL;
+                            use $crate::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         Some(term) => term.get_tty(1).write_fmt(a).unwrap(),
@@ -32,11 +32,11 @@ macro_rules! print_bypass_mutex {
             a => {
                 unsafe {
                     // For national security, force unlock this mutex
-                    crate::terminal::monitor::SCREEN_MONAD.force_unlock();
+                    $crate::monitor::SCREEN_MONAD.force_unlock();
 
-                    match $crate::terminal::TERMINAL.as_mut() {
+                    match $crate::TERMINAL.as_mut() {
                         None => {
-                            use crate::terminal::EARLY_TERMINAL;
+                            use $crate::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
                         // I consider it's works !
@@ -67,7 +67,7 @@ macro_rules! print_syslog {
         match format_args!($($arg)*) {
             a => {
                 use core::fmt::Write;
-                unsafe {$crate::terminal::TERMINAL.as_mut().unwrap().get_tty(0).write_fmt(a).unwrap();}
+                unsafe {$crate::TERMINAL.as_mut().unwrap().get_tty(0).write_fmt(a).unwrap();}
             }
         }
     })
@@ -80,11 +80,11 @@ macro_rules! printfixed {
         match format_args!($($arg)*) {
             a => {
                 unsafe {
-                    match {$crate::terminal::TERMINAL.as_mut()} {
+                    match {$crate::TERMINAL.as_mut()} {
                         None => {},
                         Some(term) => {
-                            use crate::terminal::WriteMode;
-                            use crate::terminal::Pos;
+                            use $crate::WriteMode;
+                            use $crate::Pos;
                             use core::fmt::Write;
 
                             let btty = term.get_tty(1);

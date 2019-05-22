@@ -1,11 +1,11 @@
 use super::standard_sodomizer::make_somization;
-use crate::drivers::UART_16550;
 use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
 use crate::memory::allocator::{vfree, vmalloc, vsize};
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
+use crate::terminal::UART_16550;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]

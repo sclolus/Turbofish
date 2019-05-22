@@ -1,5 +1,5 @@
 //! RGB and [AnsiColor rgb values](https://jonasjacek.github.io/colors/)
-use crate::terminal::ansi_escape_code::AnsiColor;
+use crate::ansi_escape_code::AnsiColor;
 
 #[derive(Debug, Copy, Clone)]
 pub struct RGB(pub u32);

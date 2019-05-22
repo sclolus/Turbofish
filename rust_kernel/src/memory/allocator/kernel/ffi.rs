@@ -24,6 +24,23 @@ pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> *mut u8 {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
+        KernelAllocator::Kernel(_) => {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .reserve(Virt(virt as usize).into(), Phys(phys as usize).into(), size.into())
+                .map(|_| Page::containing(Virt(virt as usize)))
+                .unwrap_or(Page::containing(Virt(0x0)))
+                .to_addr()
+                .0 as *mut u8
+        }
+    }
+}
+
 /// FFI safe function: De-allocate Kernel physical Memory
 #[no_mangle]
 pub unsafe extern "C" fn kfree(addr: *mut u8) {

@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 /// implement debug for tuple struct slice
 #[macro_export(local_inner_macros)]
 macro_rules! impl_raw_data {

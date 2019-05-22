@@ -29,15 +29,17 @@ raw_data = { path = "dependencies/raw_data" }
 const_assert = { path = "dependencies/const_assert" }
 ext2 = { path = "dependencies/ext2" }
 elf_loader = { path = "src/elf_loader" }
+terminal = { path = "dependencies/terminal" }
+registers = { path = "dependencies/registers" }
+spinlock = { path = "dependencies/spinlock" }
 
 [dependencies.lazy_static]
 version = "1.3.0"
 features = ["spin_no_std"]
 
-[dev-dependencies]
 [features]
-exit-on-panic = []
-serial-eprintln = []
+exit-on-panic = ["terminal/exit-on-panic"]
+serial-eprintln = ["terminal/serial-eprintln"]
 #test-succeed= []
 #test-failed= []
 test-sodo-allocator= []
@@ -48,3 +50,16 @@ native-test-hard-drive-write-pio = []
 native-test-hard-drive-read-bios = []
 native-test-hard-drive-write-bios = []
 test = []
+
+[workspace]
+members = [
+"dependencies/io",
+"dependencies/mbr",
+"dependencies/raw_data",
+"dependencies/const_assert",
+"dependencies/ext2",
+"dependencies/terminal",
+"dependencies/registers",
+"dependencies/spinlock",
+]
+exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

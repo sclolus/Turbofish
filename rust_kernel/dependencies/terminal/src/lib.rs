@@ -1,7 +1,11 @@
 //! Kernel tty manager
+#![feature(alloc)]
+#![feature(copy_within)]
+#![cfg_attr(not(test), no_std)]
 
-#![deny(missing_docs)]
+extern crate alloc;
 
+#[cfg(not(test))]
 #[macro_use]
 mod macros;
 
@@ -20,10 +24,14 @@ pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
 
 mod log;
 
+#[macro_use]
+pub mod uart_16550;
+pub use uart_16550::UART_16550;
+
 use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
-use crate::terminal::monitor::{AdvancedGraphic, Drawer};
+use crate::monitor::{AdvancedGraphic, Drawer};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;

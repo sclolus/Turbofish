@@ -4,10 +4,10 @@ pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
 use super::cursor::Pos;
-use crate::terminal::ansi_escape_code::AnsiColor;
+use crate::ansi_escape_code::AnsiColor;
 
-use crate::Spinlock;
 use lazy_static::lazy_static;
+use spinlock::Spinlock;
 use vbe_mode::*;
 use vga_text_mode::*;
 

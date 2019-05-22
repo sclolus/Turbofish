@@ -41,7 +41,7 @@ VPATH += src/boot
 
 SRC_C_KERNEL += vga_cpy
 SRC_ASM_KERNEL += vbe_font
-VPATH += src/terminal/monitor
+VPATH += src/terminal/src/monitor
 
 SRC_C_KERNEL += panic
 

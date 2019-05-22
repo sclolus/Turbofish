@@ -4,10 +4,9 @@ use super::{CpuState, Process, TaskMode};
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
-use lazy_static::lazy_static;
 
 use crate::drivers::PIT0;
-use crate::spinlock::Spinlock;
+use spinlock::Spinlock;
 
 extern "C" {
     static mut SCHEDULER_COUNTER: i32;

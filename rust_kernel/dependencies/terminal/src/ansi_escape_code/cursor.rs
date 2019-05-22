@@ -1,6 +1,6 @@
 //! Ansi cursor move
 use super::CSI;
-use crate::{terminal, terminal::Pos};
+use crate::Pos;
 use core::str::FromStr;
 use core::{fmt, fmt::Display};
 
@@ -32,7 +32,7 @@ impl Display for CursorMove {
             Forward(x) => write!(f, "{}{}C", CSI, x),
             Backward(x) => write!(f, "{}{}D", CSI, x),
             HorizontalAbsolute(x) => write!(f, "{}{}G", CSI, x),
-            Pos(terminal::Pos { line, column }) => write!(f, "{}{};{}H", CSI, line, column),
+            Pos(crate::Pos { line, column }) => write!(f, "{}{};{}H", CSI, line, column),
         }
     }
 }
@@ -55,7 +55,7 @@ impl FromStr for CursorMove {
                     return Err(ParseCursorError);
                 }
                 let column: usize = s[off + 1..s.len() - 1].parse().map_err(|_e| ParseCursorError)?;
-                Ok(Pos(terminal::Pos { line, column }))
+                Ok(Pos(crate::Pos { line, column }))
             }),
             _ => {
                 let nb: usize = s[2..s.len() - 1].parse().map_err(|_e| ParseCursorError)?;
@@ -83,7 +83,7 @@ mod test {
         // println!("{}", Forward(10));
 
         let cursors = [
-            Pos(terminal::Pos { line: 1, column: 42 }),
+            Pos(crate::Pos { line: 1, column: 42 }),
             Up(10),
             Down(32),
             Forward(84),

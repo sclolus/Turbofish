@@ -1,6 +1,6 @@
-use crate::terminal::ansi_escape_code::{AnsiColor, CursorMove, CSI};
-use crate::terminal::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
-use crate::terminal::{Cursor, Pos};
+use super::ansi_escape_code::{AnsiColor, CursorMove, CSI};
+use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use super::{Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::string::String;
 use alloc::vec;
@@ -315,7 +315,7 @@ impl Write for Tty {
             self.print_screen(self.scroll_offset);
         }
 
-        use crate::terminal::ansi_escape_code::*;
+        use super::ansi_escape_code::*;
         use EscapedItem::*;
         for e in iter_escaped(s) {
             match e {

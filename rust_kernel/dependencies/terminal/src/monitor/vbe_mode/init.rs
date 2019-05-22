@@ -1,20 +1,21 @@
 use super::VbeMode;
 
-use crate::ffi::c_char;
-use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
-use crate::memory::tools::{Phys, Virt};
-use crate::registers::real_mode_op;
-use crate::system::BaseRegisters;
 use raw_data::define_raw_data;
+use registers::BaseRegisters;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 
 const LINEAR_FRAMEBUFFER_VIRTUAL_ADDR: *mut u8 = 0xf0000000 as *mut u8;
 
+extern "C" {
+    pub fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16;
+    pub fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> *mut u8;
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C, packed)]
 pub struct VbeInfo {
-    /*0  */ pub vbe_signature: [c_char; 4], //db 'VESA' ; VBE Signature
+    /*0  */ pub vbe_signature: [u8; 4], //db 'VESA' ; VBE Signature
     /*4  */ pub vbe_version: u16, //dw 0300h ; vbe version
     /*6  */ pub oem_string_offset: u32, //dd ? ; vbe_far_offset to oem string
     /*10 */ pub capabilities: u32, //db 4 dup (?) ; capabilities of graphics controller
@@ -191,17 +192,14 @@ pub fn init_graphic_mode(mode: u16) -> Result<VbeMode, VbeError> {
         let _vbe_info = save_vbe_info()?;
         let mode_info: ModeInfo = query_mode_info(mode)?;
 
-        KERNEL_VIRTUAL_PAGE_ALLOCATOR
-            .as_mut()
-            .unwrap()
-            .reserve(
-                Virt(LINEAR_FRAMEBUFFER_VIRTUAL_ADDR as usize).into(),
-                Phys(mode_info.phys_base_ptr as usize).into(),
-                (mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize
-                    / 8)
-                .into(),
-            )
-            .unwrap();
+        if kreserve(
+            LINEAR_FRAMEBUFFER_VIRTUAL_ADDR,
+            mode_info.phys_base_ptr as *mut u8,
+            mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize / 8,
+        ) == 0 as *mut u8
+        {
+            panic!("reserve failed")
+        }
 
         /*
          * Make all Dynamics allocations before switching to new graphic mode
