@@ -8,8 +8,7 @@ pub struct Elf {
     pub program_header_table: Vec<ProgramHeader>,
 }
 
-pub fn load_elf() -> Elf {
-    let content = &include_bytes!("./Charles")[..];
+pub fn load_elf(content: &[u8]) -> Elf {
     let header = ElfHeader::from_bytes(&content).unwrap();
 
     let program_header_table = {

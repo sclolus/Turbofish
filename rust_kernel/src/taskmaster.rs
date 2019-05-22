@@ -34,8 +34,8 @@ pub fn start() -> ! {
     let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p2);
 
-    // Create a real process
-    let p3 = unsafe { Process::load().unwrap() };
+    // Create a real rust process
+    let p3 = unsafe { Process::load(&include_bytes!("./richard")[..]).unwrap() };
     println!("{:#X?}", p3);
 
     // Load some processes into the scheduler

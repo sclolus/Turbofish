@@ -94,7 +94,7 @@ impl Process {
     }
 
     /// Load a real process
-    pub unsafe fn load() -> crate::memory::tools::Result<Self> {
+    pub unsafe fn load(content: &[u8]) -> crate::memory::tools::Result<Self> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create a Dummy process Page directory
@@ -103,8 +103,7 @@ impl Process {
         v.context_switch();
 
         // Elf loader stuff
-        let content: &[u8] = &include_bytes!("../Charles")[..];
-        let elf = load_elf();
+        let elf = load_elf(content);
         for h in &elf.program_header_table {
             use core::slice;
             use elf_loader::SegmentType;
@@ -154,6 +153,7 @@ impl Process {
             virtual_allocator: v,
         };
 
+        println!("entry point is at: {:#X?}", elf.header.entry_point);
         _enable_paging(old_cr3);
         // When non-fork, return to Kernel PD, when forking, return to father PD
         Ok(res)
