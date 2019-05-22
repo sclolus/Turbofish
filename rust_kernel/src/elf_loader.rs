@@ -1,13 +1,15 @@
 use alloc::vec::Vec;
 use core::mem;
-use elf_loader::*;
+use elf_loader::{ElfHeader, ProgramHeader};
 
+/// This structure is the result of the parsing of a ELF file
 #[derive(Debug)]
 pub struct Elf {
     pub header: ElfHeader,
     pub program_header_table: Vec<ProgramHeader>,
 }
 
+/// Parse a ELF file from a slice
 pub fn load_elf(content: &[u8]) -> Elf {
     let header = ElfHeader::from_bytes(&content).unwrap();
 
@@ -31,20 +33,4 @@ pub fn load_elf(content: &[u8]) -> Elf {
         ph_table
     };
     Elf { header, program_header_table }
-
-    // let section_header_table: &[[u8; mem::size_of::<SectionHeader>()]] = unsafe {
-    //     slice::from_raw_parts(
-    //         &content[header.section_header_table_offset as usize] as *const u8 as *const _,
-    //         header.nbr_section_header as usize,
-    //     )
-    // };
-
-    // let mut sh_table = Vec::new();
-
-    // println!("\nSection header table:");
-    // for (index, section_header) in section_header_table.iter().enumerate() {
-    //     let sheader = SectionHeader::from_bytes(section_header as &[u8]).unwrap();
-    //     println!("{:02}: {:?}", index, sheader);
-    //     sh_table.push(sheader);
-    // }
 }

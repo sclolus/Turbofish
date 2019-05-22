@@ -27,15 +27,15 @@ pub fn start() -> ! {
     Tss::display();
 
     // Create an entire C dummy process
-    let p1 = unsafe { Process::new(&dummy_c_process, 4096) };
+    let p1 = unsafe { Process::new_from_raw(&dummy_c_process, 4096) };
     println!("{:#X?}", p1);
 
     // Create an entire ASM dummy process
-    let p2 = unsafe { Process::new(&_dummy_asm_process_code, _dummy_asm_process_len) };
+    let p2 = unsafe { Process::new_from_raw(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p2);
 
     // Create a real rust process
-    let p3 = unsafe { Process::load(&include_bytes!("./richard")[..]).unwrap() };
+    let p3 = unsafe { Process::new_from_elf(&include_bytes!("./richard")[..]).unwrap() };
     println!("{:#X?}", p3);
 
     // Load some processes into the scheduler

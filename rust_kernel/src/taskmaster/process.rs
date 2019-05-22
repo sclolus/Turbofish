@@ -2,6 +2,10 @@
 
 pub mod tss;
 
+use core::slice;
+
+use elf_loader::SegmentType;
+
 use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -54,12 +58,11 @@ impl Process {
     const RING3_DATA_SEGMENT: u32 = 0x28;
     const RING3_STACK_SEGMENT: u32 = 0x30;
     const RING3_DPL: u32 = 0b11;
-    const RING3_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
 
-    const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
+    const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
 
-    /// Create a new process
-    pub unsafe fn new(code: *const u8, code_len: usize) -> Self {
+    /// Create a new dummy process restricted to just one function
+    pub unsafe fn new_from_raw(code: *const u8, code_len: usize) -> Self {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create a Dummy process Page directory
@@ -68,33 +71,24 @@ impl Process {
         v.context_switch();
 
         // Allocate one page for code segment of the Dummy process
-        let base_addr = v.alloc(Self::RING3_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+        let base_addr =
+            v.alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
         // stack go downwards set esp to the end of the allocation
-        let esp = base_addr.add(Self::RING3_PROCESS_MAX_SIZE.into()) as u32;
-        let res = Self {
-            cpu_state: CpuState {
-                registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
-                ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                eip: base_addr as u32,
-                cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
-                eflags: Eflags::get_eflags().set_interrupt_flag(true),
-                esp,
-                ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
-            },
-            virtual_allocator: v,
-        };
+        let esp = base_addr.add(Self::RING3_RAW_PROCESS_MAX_SIZE.into()) as u32;
+        // Create the process identity
+        let res = Self::get_ring3_process(base_addr as u32, esp, v);
         // Copy the code segment
         base_addr.copy_from(code, code_len);
+        // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
         // When non-fork, return to Kernel PD, when forking, return to father PD
         res
     }
 
-    /// Load a real process
-    pub unsafe fn load(content: &[u8]) -> crate::memory::tools::Result<Self> {
+    const RING3_ELF_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
+
+    /// Create a real process from an ELF slice
+    pub unsafe fn new_from_elf(content: &[u8]) -> crate::memory::tools::Result<Self> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create a Dummy process Page directory
@@ -102,13 +96,10 @@ impl Process {
         // Switch to this process Page Directory
         v.context_switch();
 
-        // Elf loader stuff
+        // Parse Elf and generate stuff
         let elf = load_elf(content);
         for h in &elf.program_header_table {
-            use core::slice;
-            use elf_loader::SegmentType;
             if h.segment_type == SegmentType::Load {
-                println!("{:X?}", h);
                 let segment = {
                     let _segment_addr = v
                         // .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
@@ -123,7 +114,6 @@ impl Process {
                     slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
                 };
 
-                println!("segment: {:X?}", segment.as_ptr());
                 for (dest, src) in
                     segment.iter_mut().zip(content[h.offset as usize..h.offset as usize + h.filez as usize].iter())
                 {
@@ -134,29 +124,34 @@ impl Process {
 
         // Allocate one page for stack segment of the process
         let stack_addr =
-            v.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+            v.alloc(Self::RING3_ELF_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
         // stack go downwards set esp to the end of the allocation
-        let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
-        let res = Self {
+        let esp = stack_addr.add(Self::RING3_ELF_PROCESS_STACK_SIZE.into()) as u32;
+        // Create the process identity
+        let res = Self::get_ring3_process(elf.header.entry_point as u32, esp, v);
+        // Re-enable kernel virtual space memory
+        _enable_paging(old_cr3);
+        // When non-fork, return to Kernel PD, when forking, return to father PD
+        Ok(res)
+    }
+
+    /// Return a ring3 process identity
+    fn get_ring3_process(eip: u32, esp: u32, virtual_allocator: VirtualPageAllocator) -> Self {
+        Self {
             cpu_state: CpuState {
                 registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
                 ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
                 es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
                 fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
                 gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                eip: elf.header.entry_point as u32, // Set on ELF entry point
+                eip,
                 cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
                 eflags: Eflags::get_eflags().set_interrupt_flag(true),
                 esp,
                 ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
             },
-            virtual_allocator: v,
-        };
-
-        println!("entry point is at: {:#X?}", elf.header.entry_point);
-        _enable_paging(old_cr3);
-        // When non-fork, return to Kernel PD, when forking, return to father PD
-        Ok(res)
+            virtual_allocator,
+        }
     }
 
     /// Launch a process
