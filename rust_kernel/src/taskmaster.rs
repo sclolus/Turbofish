@@ -26,22 +26,17 @@ pub fn start() -> ! {
     let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
 
-    // Create an entire C dummy process
-    let p1 = unsafe { Process::new_from_raw(&dummy_c_process, 4096) };
+    // Create an entire ASM dummy process
+    let p1 = unsafe { Process::new_from_raw(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p1);
 
-    // Create an entire ASM dummy process
-    let p2 = unsafe { Process::new_from_raw(&_dummy_asm_process_code, _dummy_asm_process_len) };
-    println!("{:#X?}", p2);
-
     // Create a real rust process
-    let p3 = unsafe { Process::new_from_elf(&include_bytes!("./richard")[..]).unwrap() };
-    println!("{:#X?}", p3);
+    let p2 = unsafe { Process::new_from_elf(&include_bytes!("./richard")[..]).unwrap() };
+    println!("{:#X?}", p2);
 
     // Load some processes into the scheduler
     // SCHEDULER.lock().add_process(p1);
-    // SCHEDULER.lock().add_process(p2);
-    SCHEDULER.lock().add_process(p3);
+    SCHEDULER.lock().add_process(p2);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Mono) }

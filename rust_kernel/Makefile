@@ -75,8 +75,7 @@ VPATH += src/taskmaster/scheduler
 SRC_ASM_KERNEL += syscall_isr
 VPATH += src/taskmaster/syscall
 
-SRC_C_KERNEL += c_processes
-SRC_ASM_KERNEL += asm_processes asm_tools
+SRC_ASM_KERNEL += asm_processes
 VPATH += src/taskmaster/tests
 
 SRC_ASM_KERNEL += payload_13h_extended
