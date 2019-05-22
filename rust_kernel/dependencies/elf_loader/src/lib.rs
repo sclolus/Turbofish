@@ -1,7 +1,11 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(all(not(test), not(feature = "test")), no_std)]
 use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
+
+#[cfg(not(feature = "test"))]
+#[macro_use]
+extern crate terminal;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ElfParseError {

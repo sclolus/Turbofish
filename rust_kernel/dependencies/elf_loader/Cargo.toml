@@ -6,3 +6,10 @@ edition = "2018"
 
 [dependencies]
 bitflags = "1.0.4"
+
+[target.'cfg(not(test))'.dependencies]
+terminal = { path = "../terminal" }
+
+[features]
+test = []
+std-print = []
