@@ -154,8 +154,8 @@ impl Process {
         }
     }
 
-    /// Launch a process
-    pub unsafe fn launch(&self) -> ! {
+    /// Start a process
+    pub unsafe fn start(&self) -> ! {
         // Switch to process Page Directory
         self.virtual_allocator.context_switch();
 

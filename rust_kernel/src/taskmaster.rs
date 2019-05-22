@@ -26,11 +26,11 @@ pub fn start() -> ! {
     let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
     Tss::display();
 
-    // Create an entire ASM dummy process
+    // Create an ASM dummy process based on a simple function
     let p1 = unsafe { Process::new_from_raw(&_dummy_asm_process_code, _dummy_asm_process_len) };
     println!("{:#X?}", p1);
 
-    // Create a real rust process
+    // Create a real rust process based on an ELF file
     let p2 = unsafe { Process::new_from_elf(&include_bytes!("./richard")[..]).unwrap() };
     println!("{:#X?}", p2);
 
