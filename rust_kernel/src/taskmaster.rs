@@ -31,7 +31,7 @@ pub fn start() -> ! {
     println!("{:#X?}", p1);
 
     // Create a real rust process based on an ELF file
-    let p2 = unsafe { Process::new_from_elf(&include_bytes!("./richard")[..]).unwrap() };
+    let p2 = unsafe { Process::new_from_elf(&include_bytes!("./vincent")[..]).unwrap() };
     println!("{:#X?}", p2);
 
     // Load some processes into the scheduler
