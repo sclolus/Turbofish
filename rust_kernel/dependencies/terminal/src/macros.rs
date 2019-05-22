@@ -1,6 +1,7 @@
 /// common print method
 #[macro_export]
 #[cfg(not(test))]
+#[cfg(not(feature = "std-print"))]
 macro_rules! print {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
@@ -54,6 +55,7 @@ macro_rules! print_bypass_mutex {
 /// common println method
 #[macro_export]
 #[cfg(not(test))]
+#[cfg(not(feature = "std-print"))]
 macro_rules! println {
     () => (print!("\n"));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
@@ -107,6 +109,7 @@ macro_rules! printfixed {
 /// eprint! without UART, dumping data in some active TTY
 #[cfg(not(feature = "serial-eprintln"))]
 #[cfg(not(test))]
+#[cfg(not(feature = "std-print"))]
 #[macro_export]
 macro_rules! eprint {
     ($($arg:tt)*) => ($crate::print_bypass_mutex!($($arg)*))
@@ -123,6 +126,7 @@ macro_rules! eprint {
 /// eprintln! without UART, dumping data in some active TTY
 #[cfg(not(feature = "serial-eprintln"))]
 #[cfg(not(test))]
+#[cfg(not(feature = "std-print"))]
 #[macro_export]
 macro_rules! eprintln {
     () => ($crate::eprint!("\n"));

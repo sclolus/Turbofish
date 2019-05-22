@@ -1,7 +1,7 @@
 //! this module contains a ext2 driver
 //! see [osdev](https://wiki.osdev.org/Ext2)
 
-#![cfg_attr(all(not(test), not(feature = "test")), no_std)]
+#![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 #![deny(missing_docs)]
 #![feature(alloc)]
 
@@ -23,7 +23,7 @@ use header::{BlockGroupDescriptor, SuperBlock};
 mod body;
 use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
 
-#[cfg(not(feature = "test"))]
+#[cfg(not(feature = "std-print"))]
 #[macro_use]
 extern crate terminal;
 
