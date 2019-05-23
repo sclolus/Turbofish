@@ -5,7 +5,6 @@
 
 extern crate alloc;
 
-#[cfg(not(test))]
 #[macro_use]
 mod macros;
 

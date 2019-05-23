@@ -1,9 +1,9 @@
-#![cfg_attr(all(not(test), not(feature = "test")), no_std)]
+#![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
 
-#[cfg(not(feature = "test"))]
+#[cfg(not(feature = "std-print"))]
 #[macro_use]
 extern crate terminal;
 
