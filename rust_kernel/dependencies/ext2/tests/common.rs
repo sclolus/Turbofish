@@ -6,7 +6,7 @@ use errno::Errno;
 use ext2::{DiskIo, Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 pub const DISK_NAME: &str = "disk";
 pub const DISK_MOUNTED_NAME: &str = "disk_mounted/";
@@ -53,6 +53,8 @@ pub fn exec_shell(cmd: &str) {
     let exit_code = Command::new("bash")
         .args(&["-c"])
         .args(&[cmd])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .unwrap();
     if !exit_code.success() {

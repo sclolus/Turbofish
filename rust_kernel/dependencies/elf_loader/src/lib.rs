@@ -4,6 +4,8 @@ use core::convert::TryFrom;
 use core::mem;
 
 #[cfg(not(feature = "std-print"))]
+#[allow(unused_imports)]
+#[macro_use]
 extern crate terminal;
 
 #[derive(Debug, Copy, Clone)]

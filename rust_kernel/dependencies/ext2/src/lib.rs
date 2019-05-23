@@ -24,6 +24,7 @@ mod body;
 use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
 
 #[cfg(not(feature = "std-print"))]
+#[allow(unused_imports)]
 #[macro_use]
 extern crate terminal;
 
