@@ -108,6 +108,7 @@ impl VirtualPageAllocator {
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
         let entry = Entry::from(flags) | Entry::PRESENT;
 
+        println!("alloc on {:#X?} pages {:?}", vaddr.to_addr(), size);
         self.virt.reserve_exact(vaddr, order)?;
         unsafe {
             let paddr = physical_allocator.alloc(size, flags).map_err(|e| {

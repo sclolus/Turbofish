@@ -4,36 +4,57 @@ extern syscall_interrupt_handler
 
 segment .text
 
+;; +--------+               ^ (to high memory)
+;; | SS     | TSS ONLY      |
+;; +--------+                    * Illustration of the kernel stack just before IRET
+;; | ESP    | TSS ONLY
+;; +--------+
+;; | EFLAGS |
+;; +--------+
+;; | CS     |
+;; +--------+
+;; | EIP    | <---- ESP on the first instruction ---
+;; +--------+
+;; | DS     |
+;; +--------+
+;; | ES     |
+;; +--------+
+;; | FS     |
+;; +--------+
+;; | GS     |
+;; +--------+
+;; | REGS   |
+;; |    ... |
+;; |    ... |
+;; +--------+ ---> pointer to CpuState Structure
+
 global _isr_syscall
 _isr_syscall:
-	; save all registers (except ESP, SS, EFLAGS, EIP and CS (changed by interrupt: Handled by IRQ & TSS))
-	; TODO: I think the exploitation of a stackframe here could be very difficult
-	push ebp
-	mov ebp, esp
-
+	; Generate the struct CpuState on the stack :)
 	push ds
 	push es
 	push fs
 	push gs
-	; We will use this pushad as main argument for syscall_interrupt_handler
 	pushad
 
+	; Assign kernel data segments
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
 
+	; --- MUST PASS POINTER TO THAT STRUCTURE ---
+	push esp
 	call syscall_interrupt_handler
+	add esp, 4
 
-	; Restore all registers
+	; Recover all purpose registers
 	popad
 	pop gs
 	pop fs
 	pop es
 	pop ds
 
-	pop ebp
-
-	; After that iret op, ESP, SS, EFLAGS, EIP and CS will be return as process values
+	; Return contains now new registers, new eflags, new esp and new eip
 	iret

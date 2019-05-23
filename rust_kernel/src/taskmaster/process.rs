@@ -22,7 +22,7 @@ extern "C" {
 #[repr(C)]
 pub struct CpuState {
     /// current registers
-    registers: BaseRegisters,
+    pub registers: BaseRegisters,
     /// current data DS
     ds: u32,
     /// current data ES
@@ -79,6 +79,7 @@ impl Process {
         // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
+        let mut i = 0;
         let eip = match origin {
             TaskOrigin::Elf(content) => {
                 // Parse Elf and generate stuff
@@ -91,13 +92,15 @@ impl Process {
                                 // TODO: Easy fix must be removed
                                 .alloc_on(
                                     Page::containing(Virt(h.vaddr as usize)),
-                                    (h.memsz as usize).into(),
+                                    (h.memsz as usize + 4096).into(),
                                     AllocFlags::USER_MEMORY,
                                 )?
                                 .to_addr()
                                 .0 as *mut u8;
                             slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
                         };
+                        println!("{:?}: {:#x?}", i, h);
+                        i += 1;
                         segment[0..h.filez as usize]
                             .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
                     }
@@ -156,9 +159,8 @@ impl Process {
     }
 
     /// Fork a process
-    #[allow(dead_code)]
-    pub fn fork(&self) -> crate::memory::tools::Result<Self> {
-        let mut child = Self { cpu_state: self.cpu_state, virtual_allocator: self.virtual_allocator.fork()? };
+    pub fn fork(&self, cpu_state: CpuState) -> crate::memory::tools::Result<Self> {
+        let mut child = Self { cpu_state, virtual_allocator: self.virtual_allocator.fork()? };
         child.cpu_state.registers.eax = 0;
         Ok(child)
     }

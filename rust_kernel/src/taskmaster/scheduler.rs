@@ -105,11 +105,10 @@ impl Scheduler {
     }
 
     /// Perform a fork
-    #[allow(dead_code)]
-    pub fn fork(&mut self) -> i32 {
+    pub fn fork(&mut self, cpu_state: CpuState) -> i32 {
         let curr_process = self.curr_process_mut();
 
-        match curr_process.process.fork() {
+        match curr_process.process.fork(cpu_state) {
             Ok(child) => self.add_process(child) as i32,
             Err(e) => {
                 eprintln!("{:?}", e);
