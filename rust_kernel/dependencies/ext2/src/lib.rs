@@ -93,6 +93,10 @@ pub struct Ext2Filesystem {
     block_size: u32,
 }
 
+type OffsetDirEntry = u32;
+type InodeAddr = u64;
+type InodeNbr = u32;
+
 impl Ext2Filesystem {
     /// Invocation of a new FileSystem instance: take a FD and his reader as parameter
     pub fn new(disk: Box<dyn DiskIo>) -> IoResult<Self> {
@@ -119,10 +123,17 @@ impl Ext2Filesystem {
     }
 
     /// go through all filesystem to find the Parent Inode and the entry of path
-    pub fn find_path(&mut self, path: &str) -> IoResult<(u32, (DirectoryEntry, u32))> {
+    pub fn find_path(
+        &mut self,
+        mut path: &str,
+    ) -> IoResult<(InodeNbr, (DirectoryEntry, OffsetDirEntry))> {
         let mut inode_nbr = 2;
         let mut parent_inode_nbr = 2;
         let mut entry = unsafe { core::mem::uninitialized() };
+        path = path.trim();
+        if path == "/" {
+            path = "/.";
+        }
         for p in path.split('/').filter(|x| x != &"") {
             parent_inode_nbr = inode_nbr;
             entry = self
@@ -136,7 +147,7 @@ impl Ext2Filesystem {
     }
 
     /// go through all filesystem to find the Inode corresponding to path
-    pub fn find_inode(&mut self, path: &str) -> IoResult<(Inode, u64)> {
+    pub fn find_inode(&mut self, path: &str) -> IoResult<(Inode, InodeAddr)> {
         let (_parent_inode_nbr, entry) = self.find_path(path)?;
         let inode_nbr = entry.0.get_inode();
         self.get_inode(inode_nbr)
@@ -145,7 +156,7 @@ impl Ext2Filesystem {
     /// truncate inode to the size `new_size` deleting all data blocks above
     pub fn truncate_inode(
         &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
+        (inode, inode_addr): (&mut Inode, InodeAddr),
         new_size: u64,
     ) -> IoResult<()> {
         let size = inode.get_size();
@@ -168,7 +179,7 @@ impl Ext2Filesystem {
     /// delete inode `inode_nbr`
     pub fn free_inode(
         &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
+        (inode, inode_addr): (&mut Inode, InodeAddr),
         inode_nbr: u32,
     ) -> IoResult<()> {
         assert!(inode_nbr >= 1);
@@ -282,7 +293,7 @@ impl Ext2Filesystem {
     }
 
     /// get inode nbr inode and return the Inode and it's address
-    pub fn get_inode(&mut self, inode: u32) -> IoResult<(Inode, u64)> {
+    pub fn get_inode(&mut self, inode: u32) -> IoResult<(Inode, InodeAddr)> {
         assert!(inode >= 1);
         let block_grp = (inode - 1) / self.superblock.inodes_per_block_grp;
         let index = (inode as u64 - 1) % self.superblock.inodes_per_block_grp as u64;
@@ -302,7 +313,7 @@ impl Ext2Filesystem {
 
     //TODO: better handle disk error
     /// try to allocate a new inode on block group n and return the inode number
-    fn alloc_inode_on_grp(&mut self, n: u32) -> Option<u32> {
+    fn alloc_inode_on_grp(&mut self, n: u32) -> Option<InodeNbr> {
         let (mut block_dtr, block_dtr_addr) = self.get_block_grp_descriptor(n).ok()?;
         if block_dtr.nbr_free_inodes == 0 {
             return None;
@@ -332,7 +343,7 @@ impl Ext2Filesystem {
     }
 
     /// try to allocate a new inode anywhere on the filesystem and return the inode number
-    fn alloc_inode(&mut self) -> Option<u32> {
+    fn alloc_inode(&mut self) -> Option<InodeNbr> {
         for n in 0..self.nbr_block_grp {
             if let Some(n) = self.alloc_inode_on_grp(n) {
                 return Some(n);
@@ -342,7 +353,7 @@ impl Ext2Filesystem {
     }
 
     /// create a directory entry and an inode on the Directory inode: `inode_nbr`, return the new inode nbr
-    fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<u32> {
+    fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<InodeNbr> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::DIRECTORY);
@@ -359,7 +370,7 @@ impl Ext2Filesystem {
         filename: &str,
         parent_inode_nbr: u32,
         _flags: OpenFlags,
-    ) -> IoResult<u32> {
+    ) -> IoResult<InodeNbr> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
@@ -374,8 +385,8 @@ impl Ext2Filesystem {
     /// the the entry at offset entry_offset the last entry of the directory
     pub fn set_as_last_entry(
         &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
-        (entry, entry_offset): (&mut DirectoryEntry, u32),
+        (inode, inode_addr): (&mut Inode, InodeAddr),
+        (entry, entry_offset): (&mut DirectoryEntry, OffsetDirEntry),
     ) -> IoResult<()> {
         let entry_addr = self.inode_data_alloc((inode, inode_addr), entry_offset as u64)?;
 
@@ -438,7 +449,7 @@ impl Ext2Filesystem {
     }
 
     /// iter of the entries of inodes if inode is a directory
-    pub fn iter_entries<'a>(&'a mut self, inode: u32) -> IoResult<EntryIter<'a>> {
+    pub fn iter_entries<'a>(&'a mut self, inode: InodeNbr) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
         if !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
             return Err(Errno::Enotdir);
@@ -459,7 +470,6 @@ impl Ext2Filesystem {
         // size, it will begin at block 1. Remember that blocks are
         // numbered starting at 0, and that block numbers don't
         // usually correspond to physical block addresses.
-        println!("{}", n);
         assert!(n <= self.nbr_block_grp);
         let offset = if self.block_size == 1024 { 2 } else { 1 };
 
@@ -569,7 +579,7 @@ impl Ext2Filesystem {
     /// Get the file location at offset 'offset'
     fn inode_free_block(
         &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
+        (inode, inode_addr): (&mut Inode, InodeAddr),
         block_off: Block,
     ) -> IoResult<()> {
         let blocknumber_per_block = (self.block_size as usize / size_of::<Block>()) as u32;
@@ -689,7 +699,7 @@ impl Ext2Filesystem {
     /// Get the file location at offset 'offset'
     fn inode_data_may_alloc(
         &mut self,
-        (inode, inode_addr): (&mut Inode, u64),
+        (inode, inode_addr): (&mut Inode, InodeAddr),
         offset: u64,
         alloc: bool,
     ) -> IoResult<u64> {

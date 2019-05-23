@@ -152,7 +152,7 @@ pub fn cd(args: &[&str]) -> u8 {
                 1
             }
             Ok(_) => {
-                CWD.lock().push_str(args[0]);
+                *CWD.lock() = new_cwd;
                 0
             }
         },
