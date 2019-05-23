@@ -1,7 +1,7 @@
-use crate::syscall::Errno;
 use crate::tools::IoResult;
 use core::fmt::Debug;
 use core::mem::size_of;
+use errno::Errno;
 extern crate alloc;
 use alloc::boxed::Box;
 

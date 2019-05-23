@@ -10,7 +10,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-pub use syscall::Errno;
+use errno::Errno;
 pub use syscall::OpenFlags;
 
 mod tools;

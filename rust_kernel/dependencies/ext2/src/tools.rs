@@ -1,5 +1,5 @@
-use crate::syscall::Errno;
 use core::ops::{Add, Mul, Sub};
+use errno::Errno;
 use num_traits::Num;
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.

@@ -28,10 +28,11 @@ mbr = { path = "dependencies/mbr" }
 raw_data = { path = "dependencies/raw_data" }
 const_assert = { path = "dependencies/const_assert" }
 ext2 = { path = "dependencies/ext2" }
-elf_loader = { path = "src/elf_loader" }
 terminal = { path = "dependencies/terminal" }
 registers = { path = "dependencies/registers" }
 spinlock = { path = "dependencies/spinlock" }
+elf_loader = { path = "dependencies/elf_loader" }
+errno = { path = "dependencies/errno" }
 
 [dependencies.lazy_static]
 version = "1.3.0"
@@ -62,5 +63,7 @@ members = [
 "dependencies/terminal",
 "dependencies/registers",
 "dependencies/spinlock",
+"dependencies/elf_loader",
+"dependencies/errno"
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

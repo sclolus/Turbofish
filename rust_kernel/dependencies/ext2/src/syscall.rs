@@ -4,8 +4,9 @@ use crate::tools::IoResult;
 use crate::{Ext2Filesystem, File};
 use core::cmp::min;
 pub mod data;
+pub use data::OpenFlags;
 pub use data::*;
-pub use data::{Errno, OpenFlags};
+use errno::Errno;
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the

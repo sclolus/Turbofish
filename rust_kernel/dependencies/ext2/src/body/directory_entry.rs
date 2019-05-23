@@ -1,11 +1,11 @@
 //! This file describe all the Directory Entry Header model
 
 use crate::disk::Disk;
-use crate::syscall::Errno;
 use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
+use errno::Errno;
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
