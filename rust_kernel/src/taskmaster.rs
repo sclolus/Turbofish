@@ -31,8 +31,8 @@ pub fn start() -> ! {
     println!("{:#X?}", p1);
 
     // Create a real rust process based on an ELF file
-    // let p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("./vincent")[..])).unwrap() };
-    // println!("{:#X?}", p2);
+    let p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("./vincent")[..])).unwrap() };
+    println!("{:#X?}", p2);
 
     // Create a real rust process based on an ELF file
     let p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("./fork_me_baby")[..])).unwrap() };
@@ -40,6 +40,7 @@ pub fn start() -> ! {
 
     // Load some processes into the scheduler
     // SCHEDULER.lock().add_process(p1);
+    // SCHEDULER.lock().add_process(p2);
     SCHEDULER.lock().add_process(p3);
 
     // Launch the scheduler
