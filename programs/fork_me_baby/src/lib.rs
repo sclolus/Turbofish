@@ -15,7 +15,6 @@ fn main() -> i32 {
     } else {
         println!("i am a proud father of child with pid({})", fork_res);
     }
-    loop {}
     0
 }
 

@@ -2,9 +2,12 @@
 
 pub mod tss;
 
+use super::SysResult;
+
 use core::slice;
 
 use elf_loader::SegmentType;
+use errno::Errno;
 
 use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
@@ -156,17 +159,18 @@ impl Process {
     }
 
     /// Fork a process
-    pub fn fork(&self, cpu_state: CpuState) -> crate::memory::tools::Result<Self> {
-        let mut child = Self { cpu_state, virtual_allocator: self.virtual_allocator.fork()? };
+    pub fn fork(&self, cpu_state: CpuState) -> SysResult<Self> {
+        let mut child =
+            Self { cpu_state, virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)? };
         child.cpu_state.registers.eax = 0;
         Ok(child)
     }
 
     /// Destroy a process
     #[allow(dead_code)]
-    pub fn exit(&mut self) {
-        // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
+    pub fn delete(&mut self) {
         unimplemented!();
+        // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
         // drop(*self);
     }
 

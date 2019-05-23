@@ -1,6 +1,8 @@
 //! this file contains the scheduler description
 
-use super::{CpuState, Process, TaskMode};
+use super::{CpuState, Process, SysResult, TaskMode};
+
+// use errno::Errno;
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -17,9 +19,10 @@ type Pid = u32;
 /// State of a process
 #[derive(Debug, Clone)]
 enum ProcessState {
-    // Terminated { status: i32 },
+    /// The process is currently on running state
     Running,
-    // Waiting,
+    /// The process is terminated and wait to deliver his testament to his father
+    Zombie { status: i32 },
 }
 
 /// The pit handler (cpu_state represents a pointer to esp)
@@ -105,15 +108,38 @@ impl Scheduler {
     }
 
     /// Perform a fork
-    pub fn fork(&mut self, cpu_state: CpuState) -> i32 {
+    pub fn fork(&mut self, cpu_state: CpuState) -> SysResult<i32> {
         let curr_process = self.curr_process_mut();
 
-        match curr_process.process.fork(cpu_state) {
-            Ok(child) => self.add_process(child) as i32,
-            Err(e) => {
-                eprintln!("{:?}", e);
-                -1
-            }
+        curr_process.process.fork(cpu_state).map(|child| self.add_process(child) as i32)
+    }
+
+    // TODO: Send a status signal to the father
+    // TODO: fflush process ressources
+    // TODO: Remove completely process from scheduler after death attestation
+    /// Exit form a process and change the current process
+    pub fn exit(&mut self, status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
+        eprintln!(
+            "exit called for process with PID: {:?} STATUS: {:?}",
+            self.running_process[self.curr_process_index.unwrap()],
+            status
+        );
+        // Mark current process as Zombie
+        self.curr_process_mut().state = ProcessState::Zombie { status };
+        // Remove process from the running process list
+        self.running_process.remove(self.curr_process_index.unwrap());
+        // Check if there is altmost one process
+        if self.running_process.len() == 0 {
+            eprintln!("no more process !");
+            loop {}
+        }
+        // Switch to the next process
+        unsafe {
+            SCHEDULER_COUNTER = self.time_interval.unwrap();
+            self.curr_process().process.virtual_allocator.context_switch();
+            *cpu_state = self.get_curr_process_state();
+            // Don't modify EAX of the current process (syscall ret)
+            Ok((*cpu_state).registers.eax as i32)
         }
     }
 }
@@ -168,17 +194,3 @@ static MAX_PID: AtomicU32 = AtomicU32::new(0);
 fn get_available_pid() -> Pid {
     MAX_PID.fetch_add(1, Ordering::Relaxed) // TODO: handle when overflow to 0
 }
-
-// /// Perform the exit syscall (TODO: NEED TO BE REIMPLEMENTED)
-// /// remove the process from the list of running process and schedule to an other process
-// pub fn exit(&mut self, status: i32) -> ! {
-//     self.curr_process_mut().exit(status);
-//     self.running_process.remove(self.curr_process_index);
-//     self.switch_next_process(); I THINK IT IS BETTER TO PROGRAM THE DEAD AND WAIT THE NEXT SCHEDULE TICK
-//     self.return_to_process() WTF
-// }
-
-// pub fn exit(&mut self, status: i32) (HERITANCE FROM PROCESS)
-//     self.state = State::Terminated { status };
-//     TODO: free resource
-// }
