@@ -5,12 +5,22 @@
 
 %macro PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET 0
 	pushad
+
+	mov eax, [ebp]        ; get stored ebp
+	mov [esp + 8], eax
+
+	mov eax, [ebp + 20]   ; esp
+	mov [esp + 12], eax
 	push dword [ebp + 16] ; eflags
 	push dword [ebp + 12] ; cs
 	push dword [ebp + 8]  ; eip
+
+	; TODO seems to work correctly only from ring 3 mode
+	mov ax, [ebp + 24]    ; ss
+	and eax, 0xffff
+	push eax
+
 	xor eax, eax
-	mov [esp - 4], eax
-	push ss
 	mov [esp - 4], eax
 	push gs
 	mov [esp - 4], eax
@@ -23,12 +33,22 @@
 
 %macro PUSH_ALL_REGISTERS_WITHOUT_ERRCODE_OFFSET 0
 	pushad
+
+	mov eax, [ebp]        ; get stored ebp
+	mov [esp + 8], eax
+
+	mov eax, [ebp + 16]   ; esp
+	mov [esp + 12], eax
 	push dword [ebp + 12] ; eflags
 	push dword [ebp + 8]  ; cs
 	push dword [ebp + 4]  ; eip
+
+	; TODO seems to work correctly only from ring 3 mode
+	mov ax, [ebp + 20]    ; ss
+	and eax, 0xffff
+	push eax
+
 	xor eax, eax
-	mov [esp - 4], eax
-	push ss
 	mov [esp - 4], eax
 	push gs
 	mov [esp - 4], eax
@@ -40,7 +60,6 @@
 %endmacro
 
 extern cpu_panic_handler
-extern _align_stack
 
 %macro CREATE_ISR 3
 segment .data
@@ -52,9 +71,7 @@ _isr_%1:
 	mov ebp, esp
 	%3
 	push isr_%1_str
-	push 72
-	push cpu_panic_handler
-	call _align_stack
+	call cpu_panic_handler
 %endmacro
 
 extern cpu_page_fault_handler
@@ -64,13 +81,16 @@ segment .text
 _isr_page_fault:
 	push ebp
 	mov ebp, esp
+	; push all the purposes registers
 	PUSH_ALL_REGISTERS_WITH_ERRCODE_OFFSET
+	; push the error code
+	mov eax, [ebp + 4]
+	push eax
+	; push the fault address
 	mov eax, cr2
 	push eax
-	push 72
-	push cpu_page_fault_handler
-	call _align_stack
-	add esp, 32 + 12 ; to be on the pushad
+	call cpu_page_fault_handler
+	add esp, 32 + 4 + 4; to be on the pushad
 	popad
 	pop ebp
 	add esp, 4 ; to be on the eip

@@ -1,16 +1,12 @@
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
-use crate::drivers::storage::ide_ata_controller::{Hierarchy, IdeAtaController, Rank};
-use crate::drivers::storage::{self, bios_int13h, NbrSectors, SataController, Sector, BIOS_INT13H};
-
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
+use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
-use crate::shell::shell;
-use crate::syscall;
 use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
 use crate::terminal::monitor::Drawer;
@@ -20,7 +16,7 @@ use crate::watch_dog;
 use core::time::Duration;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::drivers::UART_16550.init() };
@@ -34,9 +30,6 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().disable_all_irqs();
         init_keyboard_driver();
 
-        PIT0.lock().configure(OperatingMode::RateGenerator);
-        PIT0.lock().start_at_frequency(1000.).unwrap();
-
         watch_dog();
         interrupts::enable();
 
@@ -47,6 +40,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
     println!("TTY system initialized");
+
+    PIT0.lock().configure(OperatingMode::RateGenerator);
+    PIT0.lock().start_at_frequency(1000.).unwrap();
+    log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
     match Acpi::init() {
         Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
@@ -74,95 +71,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
     println!("{}", date);
-    use crate::memory::allocator::VirtualPageAllocator;
-    let mut v = unsafe { VirtualPageAllocator::new_for_process() };
-    unsafe {
-        v.context_switch();
-    }
-    use crate::memory::tools::*;
-    println!("before alloc");
-
-    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).expect("valloc failed").to_addr().0 as *mut u8;
-
-    let slice = unsafe { core::slice::from_raw_parts_mut(addr, NbrPages::_1MB.into()) };
-    for i in slice.iter_mut() {
-        *i = 42;
-    }
-    println!("processus address allocated: {:x?}", addr);
-    let addr = v.alloc(NbrPages::_1MB, AllocFlags::USER_MEMORY).expect("alloc failed").to_addr().0 as *mut u8;
-    println!("processus address allocated: {:x?}", addr);
 
     log::error!("this is an example of error");
 
     watch_dog();
 
-    syscall::init();
-
-    match SataController::init() {
-        Some(sata_controller) => {
-            println!("{:#X?}", sata_controller);
-            sata_controller.dump_hba();
-        }
-        None => {}
-    }
-
-    let s = "write that";
-    unsafe {
-        crate::syscall::_write(1, s.as_ptr(), s.len());
-    }
-
-    let mut disk = IdeAtaController::new();
-
-    println!("{:#X?}", disk);
-    if let Some(d) = disk.as_mut() {
-        match d.select_drive(Rank::Primary(Hierarchy::Master)) {
-            Ok(drive) => {
-                println!("Selecting drive: {:#X?}", drive);
-
-                use alloc::vec;
-                use alloc::vec::Vec;
-
-                let size_read = NbrSectors(1);
-                let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
-
-                let size_read = NbrSectors(1);
-                let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
-
-                let size_read = NbrSectors(1);
-                let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
-            }
-            Err(_) => {}
-        }
-    }
-
-    unsafe {
-        bios_int13h::init((multiboot_info.boot_device >> 24) as u8).expect("bios_int_13 init failed");
-    }
-    // let b = BiosInt13h::new((multiboot_info.boot_device >> 24) as u8).expect("bios_int_13 init failed");
-
-    use alloc::vec;
-    use alloc::vec::Vec;
-    use mbr::Mbr;
-
-    let size_read = NbrSectors(1);
-    let mut v1: Vec<u8> = vec![0; size_read.into()];
-    unsafe {
-        BIOS_INT13H.as_mut().unwrap().read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("bios read failed");
-    }
-
-    let mut a = [0; 512];
-    for (i, elem) in a.iter_mut().enumerate() {
-        *elem = v1[i];
-    }
-    let mbr = unsafe { dbg!(Mbr::new(&a)) };
-    // let disk_io = DiskIoBios::new(dbg!(mbr.parts[0].start as u64 * 512), mbr.parts[0].size as u64 * 512);
-    // let ext2 = Ext2Filesystem::new(Box::new(disk_io));
-    // dbg!(ext2);
-    storage::ext2::init(&mbr).expect("init ext2 failed");
-
-    shell();
-    0
+    // crate::taskmaster::start();
+    crate::drivers::storage::init(&multiboot_info);
+    crate::shell::shell();
 }

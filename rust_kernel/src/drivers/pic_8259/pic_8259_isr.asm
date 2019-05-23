@@ -3,11 +3,9 @@
 ;; This file contains all asm code regarding the interrupt service routines of the 8259 PIC
 ;; See https://wiki.osdev.org/ISR
 
-extern _align_stack
 extern generic_interrupt_handler
-extern debug_pit
-
 extern keyboard_interrupt_handler
+extern _schedule_next
 
 extern primary_hard_disk_interrupt_handler
 extern secondary_hard_disk_interrupt_handler
@@ -15,16 +13,28 @@ extern secondary_hard_disk_interrupt_handler
 segment .data
 _pic_time dd 0
 
+; i32 for activation/divisor of scheduler
+global SCHEDULER_COUNTER
+SCHEDULER_COUNTER: dd 0
+
 segment .text
 global _isr_timer
 _isr_timer:
-	push eax
+	; PIT time
 	lock inc dword [_pic_time]
-	; send EOI master pic, irq0
 
+	push eax
 	mov al, 0x20
 	out 0x20, al
 	pop eax
+	cmp dword [SCHEDULER_COUNTER], 0
+	jl .end ; perform an signed comparaison: if SCHEDULER_COUNTER < 0, scheduler is not active
+
+	; Return to kernel if scheduler not actif
+	dec dword [SCHEDULER_COUNTER]
+	jz _schedule_next
+
+.end:
 	iret
 
 global _get_pic_time
@@ -68,10 +78,8 @@ _isr_%2:
 	mov ebp, esp
 	pushad
 	push isr_%2_str
-	push 4
-	push %4
-	call _align_stack
-	add esp, 12 ;pop interrupt string
+	call %4
+	add esp, 4 ;pop interrupt string
 	%1
 	popad
 	pop ebp

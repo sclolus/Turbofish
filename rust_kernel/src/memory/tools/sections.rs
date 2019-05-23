@@ -22,17 +22,6 @@ extern "C" {
     pub static kernel_physical_start: u8;
     pub static kernel_physical_end: u8;
 }
-
-/// get the symbol addr
-#[macro_use]
-macro_rules! symbol_addr {
-    ($ident: ident) => {
-        #[allow(unused_unsafe)]
-        unsafe {
-            &$ident as *const _ as usize
-        }
-    };
-}
 // #[macro_use]
 // macro_rules! print_section {
 //     ($ident: ident) => {

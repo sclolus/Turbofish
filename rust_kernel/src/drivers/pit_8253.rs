@@ -21,8 +21,8 @@ pub struct Pit {
     /// stock configured operating mode
     operating_mode: Option<OperatingMode>,
 
-    /// period between 2 interrupts in s
-    pub period: f32,
+    /// period between 2 interrupts in s or 'None' for inactive PIT
+    pub period: Option<f32>,
 }
 
 lazy_static! {
@@ -88,7 +88,7 @@ impl Pit {
             channel,
             data: Pio::new(Self::CHANEL0_PORT + (channel as u16)),
             operating_mode: None,
-            period: 0.,
+            period: None,
         }
     }
 
@@ -141,7 +141,7 @@ impl Pit {
         } else if divisor == 0 {
             divisor = 1;
         }
-        self.period = Self::PERIOD_MIN * divisor as f32;
+        self.period = Some(Self::PERIOD_MIN * divisor as f32);
         self.data.write(divisor.get_bits(0..8) as u8);
         self.data.write(divisor.get_bits(8..16) as u8);
         unsafe {
@@ -157,9 +157,17 @@ impl Pit {
         use crate::math::convert::Convert;
 
         let ms = duration.as_millis();
-        let next_tic = ms as f32 / 1000 as f32 / self.period;
+        let next_tic = ms as f32 / 1000 as f32 / self.period.unwrap();
         unsafe {
             _sleep(next_tic.round() as u32);
+        }
+    }
+
+    /// Get the PIT frequency
+    pub fn get_frequency(&self) -> Option<f32> {
+        match self.period {
+            Some(period) => Some(1. / period),
+            None => None,
         }
     }
 }

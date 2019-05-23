@@ -12,6 +12,12 @@ pub struct Eflags {
 }
 
 impl Eflags {
+    pub fn new(inner: u32) -> Self {
+        Self { inner }
+    }
+    pub fn inner(&self) -> u32 {
+        self.inner
+    }
     #[cfg(test)]
     /// Placeholder for get_eflags in 64-bit mode. Panics.
     pub fn get_eflags() -> Self {
@@ -64,6 +70,12 @@ impl Eflags {
     /// Returns the state of the interrupt flag.
     pub fn interrupt_flag(&self) -> bool {
         self.inner.get_bit(9)
+    }
+
+    /// set the state of the interrupt flag.
+    pub fn set_interrupt_flag(&mut self, value: bool) -> Self {
+        self.inner.set_bit(9, value);
+        *self
     }
 
     /// Returns the state of the direction.

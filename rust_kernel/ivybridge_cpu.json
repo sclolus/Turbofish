@@ -28,7 +28,6 @@
   "target-family": "unix",
   "target-pointer-width": "32",
   "vendor": "unknown",
-  "features_simd": "-fma,-fma4,-3dnow,-3dnowa,-avx2",
-  "features": "-sse,-avx,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-fma,-fma4,-3dnow,-3dnowa,-avx2",
+  "features": "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-3dnow,-3dnowa,-fma,-fma4",
   "disable-redzone": true
 }

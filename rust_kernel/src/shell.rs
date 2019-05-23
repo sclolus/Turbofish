@@ -143,7 +143,7 @@ fn read_line() -> String {
 }
 
 /// Shell is a blocked function, it display prompt and wait for a command
-pub fn shell() {
+pub fn shell() -> ! {
     loop {
         // Display prompt
         print!("{}", PROMPT);

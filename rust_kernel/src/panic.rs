@@ -78,11 +78,11 @@ extern "C" {
 use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 #[no_mangle]
-pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -> () {
+pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: ExtendedRegisters) -> () {
     let virtual_page_allocator = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap() };
     if let Err(e) = virtual_page_allocator.valloc_handle_page_fault(cr2) {
         use bit_field::BitField;
-        let page_fault_cause = match ext_reg.eflags.get_bits(0..3) {
+        let page_fault_cause = match err_code.get_bits(0..3) {
             0b000 => "Supervisory process tried to read a non-present page entry",
             0b001 => "Supervisory process tried to read a page and caused a protection fault",
             0b010 => "Supervisory process tried to write to a non-present page entry",
@@ -93,13 +93,17 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
             0b111 => "User process tried to write a page and caused a protection fault",
             _ => "WTF",
         };
-
+        eprintln!("err_code: {:X}", err_code);
         eprintln!("{}", page_fault_cause);
         eprintln!("cr2: 0x{:x}", cr2);
         eprintln!("{:?}", e);
         eprintln!("{:X?}\n", ext_reg);
 
-        trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+        if ext_reg.cs == 0x08 {
+            trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+        } else {
+            eprintln!("Cannot display backtrace from a non-kernel routine !");
+        }
         qemu_check();
         loop {}
     };
@@ -108,7 +112,12 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, ext_reg: ExtendedRegisters) -
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
-    trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+
+    if ext_reg.cs == 0x08 {
+        trace_back((ext_reg.eip, ext_reg.old_ebp as *const u32));
+    } else {
+        eprintln!("Cannot display backtrace from a non-kernel routine !");
+    }
     qemu_check();
     loop {}
 }

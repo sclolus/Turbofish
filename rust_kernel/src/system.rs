@@ -69,3 +69,14 @@ impl core::fmt::Debug for ExtendedRegisters {
         )
     }
 }
+
+/// get the symbol addr
+#[macro_use]
+macro_rules! symbol_addr {
+    ($ident: ident) => {
+        #[allow(unused_unsafe)]
+        unsafe {
+            &$ident as *const _ as usize
+        }
+    };
+}

@@ -1,9 +1,10 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
 use super::page_table::PageTable;
-use super::Entry;
-use crate::memory::allocator::PHYSICAL_ALLOCATOR;
+use super::{Entry, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
+use crate::memory::allocator::{KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
 use crate::memory::tools::*;
+use alloc::boxed::Box;
 use core::mem::size_of;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
@@ -21,6 +22,68 @@ impl PageDirectory {
     pub const fn new() -> Self {
         Self { entries: [Entry::new(); 1024] }
     }
+
+    /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
+    pub fn new_for_process() -> Box<Self> {
+        // map the kenel pages tables
+        let mut pd = Box::new(Self::new());
+        unsafe {
+            pd.set_page_tables(0, &BIOS_PAGE_TABLE);
+            pd.set_page_tables(768, &PAGE_TABLES);
+
+            // get the physical addr of the page directory for the tricks
+            let phys_pd: Phys = {
+                let raw_pd = pd.as_mut() as *mut PageDirectory;
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+            };
+
+            pd.self_map_tricks(phys_pd);
+        }
+        pd
+    }
+
+    pub unsafe fn context_switch(&self) {
+        let phys_pd = {
+            let raw_pd = self as *const Self;
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+        };
+        _enable_paging(phys_pd);
+    }
+
+    // dummy fork for the moment ( no copy on write and a lot of context switch )
+    pub unsafe fn fork(&self) -> Result<Box<Self>> {
+        #[allow(unused_assignments)]
+        let mut mem_tmp = [0; PAGE_SIZE];
+        let mut child = Self::new_for_process();
+
+        // parcour the user page directory
+        for i in 1..768 {
+            let page = Page::new(i * 1024);
+            if self[i].contains(Entry::PRESENT) {
+                let page_table = self.get_page_table_trick(page).expect("can't happen");
+
+                // parcour the user page table
+                for j in 0..1024 {
+                    let entry = page_table[j];
+                    if entry.contains(Entry::PRESENT) {
+                        // get the memory
+                        let virt = page + NbrPages(j);
+                        let mem = virt.to_addr().0 as *mut [u8; PAGE_SIZE];
+                        mem_tmp = *mem;
+
+                        child.as_ref().context_switch();
+                        let phys =
+                            PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)?;
+                        child.map_page(virt, phys, entry)?;
+                        *(virt.to_addr().0 as *mut [u8; PAGE_SIZE]) = mem_tmp;
+                        self.context_switch();
+                    }
+                }
+            }
+        }
+        Ok(child)
+    }
+
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .
     /// The idea is that the last Entry points to self, viewed as a Page Table.
     /// See [Osdev](https://wiki.osdev.org/Memory_Management_Unit)
@@ -213,6 +276,7 @@ impl Drop for PageDirectory {
         for i in 1..768 {
             if self[i].contains(Entry::PRESENT) {
                 unsafe {
+                    //TODO: invalid page ?
                     PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
                 }
             }

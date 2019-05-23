@@ -111,13 +111,18 @@ _init:
 	mov fs, ax
 	mov gs, ax
 
-	; Set up the stack segment
+	; Set up the kernel stack segment
 	mov ax, 0x18
 	mov ss, ax
 
 	; Set up the code segment
 	jmp 0x8: .set_protected_cs
 .set_protected_cs:
+
+	; load the TSS segment
+	; Will be used when will switch to ring 0 from ring 3
+	mov ax, 0x38
+	ltr ax
 
 	; Set up a early IDT
 	; reserve 8 bytes for structure pointer (need six bytes)

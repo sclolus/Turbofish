@@ -57,9 +57,6 @@ VPATH += src/interrupts/idt
 SRC_ASM_KERNEL += pic_8259_isr
 VPATH += src/drivers/pic_8259
 
-SRC_ASM_KERNEL += syscall_isr test_syscall
-VPATH += src/syscall
-
 SRC_ASM_KERNEL += 8087
 VPATH += src/math
 
@@ -68,6 +65,19 @@ VPATH += medias
 
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
+
+SRC_ASM_KERNEL += launch_process
+VPATH += src/taskmaster/process
+
+SRC_ASM_KERNEL += switch_process
+VPATH += src/taskmaster/scheduler
+
+SRC_ASM_KERNEL += syscall_isr
+VPATH += src/taskmaster/syscall
+
+SRC_C_KERNEL += c_processes
+SRC_ASM_KERNEL += asm_processes asm_tools
+VPATH += src/taskmaster/tests
 
 SRC_ASM_KERNEL += payload_13h_extended
 VPATH += src/drivers/storage/bios_int13h
