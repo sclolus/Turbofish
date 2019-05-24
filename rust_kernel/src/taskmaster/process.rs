@@ -184,3 +184,10 @@ impl Process {
         self.cpu_state
     }
 }
+
+/// Remove this code one day: Just to test if processus are implicitely droped by scheduler !
+impl Drop for Process {
+    fn drop(&mut self) {
+        eprintln!("process droped !");
+    }
+}

@@ -2,8 +2,6 @@
 
 use super::{CpuState, Process, SysResult, TaskMode};
 
-// use errno::Errno;
-
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
@@ -16,15 +14,6 @@ extern "C" {
 
 type Pid = u32;
 
-/// State of a process
-#[derive(Debug, Clone)]
-enum ProcessState {
-    /// The process is currently on running state
-    Running,
-    /// The process is terminated and wait to deliver his testament to his father
-    Zombie { status: i32 },
-}
-
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
@@ -36,18 +25,21 @@ unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u3
     cpu_state as u32
 }
 
-struct Item {
-    #[allow(dead_code)]
-    state: ProcessState,
-    process: Process,
+#[derive(Debug)]
+enum ProcessState {
+    /// The process is currently on running state
+    Running(Process),
+    /// The process is terminated and wait to deliver his testament to his father
+    Zombie(i32),
 }
 
+#[derive(Debug)]
 /// Scheduler structure
 pub struct Scheduler {
     /// contains pids of all runing process
     running_process: Vec<Pid>,
     /// contains a hashmap of pid, process
-    all_process: HashMap<Pid, Item>,
+    all_process: HashMap<Pid, ProcessState>,
     /// index in the vector of the current running process
     curr_process_index: Option<usize>, // TODO: May be better if we use PID instead ?
     /// time interval in PIT tics between two schedules
@@ -64,7 +56,7 @@ impl Scheduler {
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_process(&mut self, process: Process) -> Pid {
         let pid = get_available_pid();
-        self.all_process.insert(pid, Item { state: ProcessState::Running, process });
+        self.all_process.insert(pid, ProcessState::Running(process));
         self.running_process.push(pid);
         pid
     }
@@ -75,17 +67,27 @@ impl Scheduler {
         assert!(self.all_process.len() != 0);
 
         self.curr_process_index = Some(0);
-        &self.curr_process().process
+
+        match self.curr_process() {
+            ProcessState::Running(process) => &process,
+            ProcessState::Zombie(_) => panic!("no running process"),
+        }
     }
 
     /// Set in the current process the cpu_state
     fn set_curr_process_state(&mut self, cpu_state: CpuState) {
-        self.curr_process_mut().process.set_process_state(cpu_state)
+        match self.curr_process_mut() {
+            ProcessState::Running(process) => process.set_process_state(cpu_state),
+            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
+        }
     }
 
     /// Get in the current process the cpu_state
     fn get_curr_process_state(&self) -> CpuState {
-        self.curr_process().process.get_process_state()
+        match self.curr_process() {
+            ProcessState::Running(process) => process.get_process_state(),
+            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
+        }
     }
 
     /// Set current process to the next process in the list of running process
@@ -93,25 +95,30 @@ impl Scheduler {
         self.curr_process_index = Some((self.curr_process_index.unwrap() + 1) % self.running_process.len());
         // Dont forget to switch the Page diectory to the next process
         unsafe {
-            self.curr_process().process.virtual_allocator.context_switch();
+            match self.curr_process() {
+                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
+                ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
+            };
         }
     }
 
     /// Get current process
-    fn curr_process(&self) -> &Item {
+    fn curr_process(&self) -> &ProcessState {
         self.all_process.get(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
     }
 
     /// Get current process mutably
-    fn curr_process_mut(&mut self) -> &mut Item {
+    fn curr_process_mut(&mut self) -> &mut ProcessState {
         self.all_process.get_mut(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
     }
 
     /// Perform a fork
     pub fn fork(&mut self, cpu_state: CpuState) -> SysResult<i32> {
-        let curr_process = self.curr_process_mut();
-
-        curr_process.process.fork(cpu_state).map(|child| self.add_process(child) as i32)
+        let curr_process = match self.curr_process_mut() {
+            ProcessState::Running(process) => process,
+            ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
+        };
+        curr_process.fork(cpu_state).map(|child| self.add_process(child) as i32)
     }
 
     // TODO: Send a status signal to the father
@@ -124,8 +131,9 @@ impl Scheduler {
             self.running_process[self.curr_process_index.unwrap()],
             status
         );
-        // Mark current process as Zombie
-        self.curr_process_mut().state = ProcessState::Zombie { status };
+        // Modifie the status of the process to zombie with status (drop process implicitely)
+        let pid = self.running_process[self.curr_process_index.unwrap()];
+        self.all_process.insert(pid, ProcessState::Zombie(status));
         // Remove process from the running process list
         self.running_process.remove(self.curr_process_index.unwrap());
         // Check if there is altmost one process
@@ -133,10 +141,16 @@ impl Scheduler {
             eprintln!("no more process !");
             loop {}
         }
+        self.curr_process_index = Some(self.curr_process_index.unwrap() % self.running_process.len());
         // Switch to the next process
         unsafe {
             SCHEDULER_COUNTER = self.time_interval.unwrap();
-            self.curr_process().process.virtual_allocator.context_switch();
+
+            match self.curr_process() {
+                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
+                ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
+            };
+
             *cpu_state = self.get_curr_process_state();
             // Don't modify EAX of the current process (syscall ret)
             Ok((*cpu_state).registers.eax as i32)
