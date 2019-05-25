@@ -42,6 +42,19 @@ fn sys_fork(cpu_state: CpuState) -> SysResult<i32> {
     SCHEDULER.lock().fork(cpu_state)
 }
 
+/// Preemptif coherency check
+fn sys_rainbow() -> SysResult<i32> {
+    if unsafe { _sys_rainbow() } == 0 {
+        Ok(0)
+    } else {
+        Err(Errno::Eperm)
+    }
+}
+
+extern "C" {
+    fn _sys_rainbow() -> i32;
+}
+
 /// Global syscall interrupt handler called from assembly code
 #[no_mangle]
 pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
@@ -53,6 +66,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x2 => sys_fork(*cpu_state),
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        0x80000000 => sys_rainbow(),
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),

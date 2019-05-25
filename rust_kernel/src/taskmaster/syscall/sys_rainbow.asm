@@ -6,8 +6,8 @@ res: dd 0
 
 segment .text
 
-global rainbow
-rainbow:
+global _sys_rainbow
+_sys_rainbow:
 	push ebp
 	mov ebp, esp
 
@@ -40,16 +40,5 @@ rainbow:
 
 .success:
 	xor eax, eax
-	pop ebp
-	ret
-
-global user_rainbow
-user_rainbow:
-	push ebp
-	mov ebp, esp
-
-	mov eax, 0x80000000
-	int 80h
-
 	pop ebp
 	ret

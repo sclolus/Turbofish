@@ -12,6 +12,9 @@ fn main() -> i32 {
         if unsafe { rainbow() } != 0 {
             break;
         }
+        if unsafe { user_rainbow() } != 0 {
+            break;
+        }
     }
     println!("rainbow error");
     -1
@@ -19,6 +22,7 @@ fn main() -> i32 {
 
 extern "C" {
     fn rainbow() -> i32;
+    fn user_rainbow() -> i32;
 }
 
 pub struct Writer {}
