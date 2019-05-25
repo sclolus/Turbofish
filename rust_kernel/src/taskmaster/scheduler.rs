@@ -140,6 +140,8 @@ impl Scheduler {
         if self.running_process.len() == 0 {
             eprintln!("no more process !");
             loop {}
+        } else {
+            eprintln!("Stay {:?} processes in game", self.running_process.len());
         }
         self.curr_process_index = Some(self.curr_process_index.unwrap() % self.running_process.len());
         // Switch to the next process

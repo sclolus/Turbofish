@@ -47,11 +47,21 @@ pub fn start() -> ! {
     let p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
     println!("{:#X?}", p4);
 
+    // Create a real rust process based on an ELF file
+    let p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    println!("{:#X?}", p5);
+
+    // Create a real rust process based on an ELF file
+    let p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    println!("{:#X?}", p6);
+
     // Load some processes into the scheduler
     // SCHEDULER.lock().add_process(p1);
     SCHEDULER.lock().add_process(p2);
     SCHEDULER.lock().add_process(p3);
     SCHEDULER.lock().add_process(p4);
+    SCHEDULER.lock().add_process(p5);
+    SCHEDULER.lock().add_process(p6);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }
