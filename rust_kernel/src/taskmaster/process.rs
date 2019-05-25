@@ -51,8 +51,6 @@ pub struct CpuState {
 
 /// This structure represents an entire process
 pub struct Process {
-    /// represent the state of the processor when the process was last stopped
-    cpu_state: CpuState,
     /// kernel stack
     kernel_stack: Vec<u8>,
     /// Current process ESP on kernel stack
@@ -64,7 +62,7 @@ pub struct Process {
 /// Debug boilerplate for Process
 impl core::fmt::Debug for Process {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "{:#X?}, {:#X?} and a kernel_stack", self.cpu_state, self.virtual_allocator)
+        write!(f, "{:#X?} and a kernel_stack", self.virtual_allocator)
     }
 }
 
@@ -149,26 +147,23 @@ impl Process {
         let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
 
         // Create the process identity
-        let res = Self {
-            cpu_state: CpuState {
-                registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
-                ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                eip,
-                cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
-                eflags: Eflags::get_eflags().set_interrupt_flag(true),
-                esp,
-                ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
-            },
-            kernel_stack,
-            kernel_esp,
-            virtual_allocator,
+        let cpu_state: CpuState = CpuState {
+            registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+            ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            eip,
+            cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
+            eflags: Eflags::get_eflags().set_interrupt_flag(true),
+            esp,
+            ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
         };
 
+        let res: Process = Process { kernel_stack, kernel_esp, virtual_allocator };
+
         // Fill the kernel stack of the new process with start cpu states.
-        ft_memcpy(kernel_esp as *mut u8, &res.cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
+        ft_memcpy(kernel_esp as *mut u8, &cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
@@ -193,7 +188,7 @@ impl Process {
     }
 
     /// Fork a process
-    pub fn fork(&self, cpu_state: CpuState) -> SysResult<Self> {
+    pub fn fork(&self, _cpu_state: CpuState) -> SysResult<Self> {
         // Create the child kernel stack
         let mut kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
         kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
@@ -201,14 +196,12 @@ impl Process {
         // Set the kernel ESP of the child. Relative to kernel ESP of the father
         let kernel_esp = self.kernel_esp - self.kernel_stack.as_ptr() as u32 + kernel_stack.as_ptr() as u32;
 
-        let mut child = Self {
-            cpu_state,
+        Ok(Self {
             kernel_stack,
             kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
-        };
-        child.cpu_state.registers.eax = 0;
-        Ok(child)
+        })
+        // child.cpu_state.registers.eax = 0;
     }
 
     /// Destroy a process
@@ -217,16 +210,6 @@ impl Process {
         unimplemented!();
         // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
         // drop(*self);
-    }
-
-    /// Save all the cpu_state of a process
-    pub fn set_process_state(&mut self, cpu_state: CpuState) {
-        self.cpu_state = cpu_state;
-    }
-
-    /// Get all the cpu_state of a process
-    pub fn get_process_state(&self) -> CpuState {
-        self.cpu_state
     }
 }
 

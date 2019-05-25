@@ -100,22 +100,6 @@ impl Scheduler {
         }
     }
 
-    /// Set in the current process the cpu_state
-    fn set_curr_process_state(&mut self, cpu_state: CpuState) {
-        match self.curr_process_mut() {
-            ProcessState::Running(process) => process.set_process_state(cpu_state),
-            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
-        }
-    }
-
-    /// Get in the current process the cpu_state
-    fn get_curr_process_state(&self) -> CpuState {
-        match self.curr_process() {
-            ProcessState::Running(process) => process.get_process_state(),
-            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
-        }
-    }
-
     /// Set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
         self.curr_process_index = Some((self.curr_process_index.unwrap() + 1) % self.running_process.len());
