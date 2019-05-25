@@ -46,13 +46,14 @@ _dummy_asm_process_code:
 	STO '!'
 	STO 10
 
-	mov eax, 4
 	mov ebx, 1
 	mov ecx, 0x400100
 	mov edx, 29
 
 .loop:
+	mov eax, 4
 	int 80h
+
 	jmp .loop
 
 .ud2:

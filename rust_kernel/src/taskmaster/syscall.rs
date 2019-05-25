@@ -35,11 +35,9 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
 }
 
 /// Exit from a process
-unsafe fn sys_exit(status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
+unsafe fn sys_exit(status: i32) -> ! {
     asm!("cli");
-    let res = SCHEDULER.lock().exit(status, cpu_state);
-    asm!("sti");
-    res
+    SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
@@ -70,7 +68,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     let BaseRegisters { eax, ebx, ecx, edx, esi, edi, ebp, .. } = (*cpu_state).registers;
 
     let result = match eax {
-        0x1 => sys_exit(ebx as i32, cpu_state),
+        0x1 => sys_exit(ebx as i32), // This syscall doesn't return !
         0x2 => sys_fork(*cpu_state),
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),

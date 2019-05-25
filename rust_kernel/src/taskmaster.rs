@@ -56,9 +56,9 @@ pub fn start() -> ! {
     println!("{:#X?}", p7);
 
     // Load some processes into the scheduler
-    // SCHEDULER.lock().add_process(p1);
-    // SCHEDULER.lock().add_process(p2);
-    // SCHEDULER.lock().add_process(p3);
+    SCHEDULER.lock().add_process(p1);
+    SCHEDULER.lock().add_process(p2);
+    SCHEDULER.lock().add_process(p3);
     // SCHEDULER.lock().add_process(p4);
     SCHEDULER.lock().add_process(p5);
     SCHEDULER.lock().add_process(p6);

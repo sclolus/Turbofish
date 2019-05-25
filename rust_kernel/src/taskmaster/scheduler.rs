@@ -10,6 +10,8 @@ use spinlock::Spinlock;
 
 extern "C" {
     static mut SCHEDULER_COUNTER: i32;
+
+    fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
 }
 
 type Pid = u32;
@@ -39,9 +41,14 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
         ProcessState::Running(process) => process.kernel_esp,
         ProcessState::Zombie(_) => panic!("WTF"),
     }
+}
 
-    // scheduler.set_curr_process_state(*cpu_state);
-    // *cpu_state = scheduler.get_curr_process_state();
+/// Remove ressources of the exited process and note his exit status
+#[no_mangle]
+unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
+    SCHEDULER.force_unlock();
+
+    SCHEDULER.lock().all_process.insert(process_to_free, ProcessState::Zombie(status));
 }
 
 #[derive(Debug)]
@@ -148,17 +155,15 @@ impl Scheduler {
     // TODO: Send a status signal to the father
     // TODO: fflush process ressources
     // TODO: Remove completely process from scheduler after death attestation
-    /// Exit form a process and change the current process
-    pub fn exit(&mut self, status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
+    /// Exit form a process and go to the current process
+    pub fn exit(&mut self, status: i32) -> ! {
         eprintln!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.curr_process_index.unwrap()],
             status
         );
-        // Modifie the status of the process to zombie with status (drop process implicitely)
+        // Get the current process's PID
         let pid = self.running_process[self.curr_process_index.unwrap()];
-        // TODO: Destroying process kernel stack may panic the entire kernel here !
-        // self.all_process.insert(pid, ProcessState::Zombie(status));
         // Remove process from the running process list
         self.running_process.remove(self.curr_process_index.unwrap());
         // Check if there is altmost one process
@@ -174,14 +179,17 @@ impl Scheduler {
             SCHEDULER_COUNTER = self.time_interval.unwrap();
 
             match self.curr_process() {
-                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
-                ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
+                ProcessState::Running(process) => {
+                    // Switch to the new process PD
+                    process.virtual_allocator.context_switch();
+                    // Re-init the TSS block for the new process
+                    process.init_tss();
+                    // Follow the kernel stack of the new process
+                    _exit_resume(process.kernel_esp, pid, status);
+                }
+                ProcessState::Zombie(_) => panic!("WTF"),
             };
-
-            *cpu_state = self.get_curr_process_state();
-            // Don't modify EAX of the current process (syscall ret)
-            Ok((*cpu_state).registers.eax as i32)
-        }
+        };
     }
 }
 

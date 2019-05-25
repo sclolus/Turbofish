@@ -52,6 +52,7 @@ _schedule_next:
 	; Set the new stack pointer
 	mov esp, eax
 
+schedule_return:
 	; Recover all purpose registers
 	popad
 	pop gs
@@ -61,3 +62,26 @@ _schedule_next:
 
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
+
+; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)
+extern scheduler_exit_resume
+
+; fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
+global _exit_resume
+_exit_resume:
+	push ebp
+	mov ebp, esp
+
+	mov ecx, dword [ebp + 12] 	; get PID of process to free
+	mov edx, dword [ebp + 16]	; get return status of process to free
+
+	; Go to the stack of the new current process
+	mov esp, [ebp + 8]
+
+	push edx
+	push ecx
+	; Free the ressources of the existed process
+	call scheduler_exit_resume
+	add esp, 8
+
+	jmp schedule_return
