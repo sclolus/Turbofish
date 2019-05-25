@@ -4,6 +4,7 @@ pub mod tss;
 
 use super::SysResult;
 
+use alloc::vec::Vec;
 use core::slice;
 
 use elf_loader::SegmentType;
@@ -47,12 +48,20 @@ pub struct CpuState {
 }
 
 /// This structure represents an entire process
-#[derive(Debug)]
 pub struct Process {
     /// represent the state of the processor when the process was last stopped
     cpu_state: CpuState,
+    /// kernel stack
+    kernel_stack: Vec<u8>,
     /// Page directory of the process
     pub virtual_allocator: VirtualPageAllocator,
+}
+
+/// Debug boilerplate for Process
+impl core::fmt::Debug for Process {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:#X?}, {:#X?} and a kernel_stack", self.cpu_state, self.virtual_allocator)
+    }
 }
 
 /// This enum describe the origin of the proces
@@ -72,6 +81,7 @@ impl Process {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: usize = 1 << 20;
 
     /// Create a new process
     pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
@@ -120,6 +130,9 @@ impl Process {
             }
         };
 
+        // Allocte the kernel stack of the process
+        let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+
         // Allocate one page for stack segment of the process
         let stack_addr =
             virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0
@@ -141,6 +154,7 @@ impl Process {
                 esp,
                 ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
             },
+            kernel_stack,
             virtual_allocator,
         };
 
@@ -160,8 +174,15 @@ impl Process {
 
     /// Fork a process
     pub fn fork(&self, cpu_state: CpuState) -> SysResult<Self> {
-        let mut child =
-            Self { cpu_state, virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)? };
+        // Create the child kernel stack
+        let mut kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+        kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
+
+        let mut child = Self {
+            cpu_state,
+            kernel_stack,
+            virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
+        };
         child.cpu_state.registers.eax = 0;
         Ok(child)
     }
