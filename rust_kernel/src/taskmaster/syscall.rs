@@ -8,7 +8,7 @@ use errno::Errno;
 
 use core::ffi::c_void;
 
-use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 
 extern "C" {
@@ -94,7 +94,7 @@ pub fn init() {
         .set_storage_segment(false)
         .set_privilege_level(3)
         .set_selector(1 << 3)
-        .set_gate_type(InterruptGate32);
+        .set_gate_type(TrapGate32);
     gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
 }

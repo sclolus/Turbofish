@@ -40,7 +40,7 @@ pub struct CpuState {
     /// current eip
     eip: u32,
     /// current CS
-    cs: u32,
+    pub cs: u32,
     /// current eflag
     eflags: Eflags,
     /// current esp

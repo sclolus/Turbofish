@@ -19,6 +19,10 @@ type Pid = u32;
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
 
+    let cpu_state: *const CpuState = kernel_esp as *const CpuState;
+    if (*cpu_state).cs == 0x08 {
+        eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
+    }
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
 
     // Backup of the current process kernel_esp
