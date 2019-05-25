@@ -16,13 +16,28 @@ type Pid = u32;
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
-unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
+
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    // scheduler.set_curr_process_state(*cpu_state);
+
+    // Backup of the current process kernel_esp
+    match scheduler.curr_process_mut() {
+        ProcessState::Running(process) => process.kernel_esp = kernel_esp,
+        ProcessState::Zombie(_) => panic!("WTF"),
+    };
+
+    // Switch between processes
     scheduler.switch_next_process();
+
+    // Restore kernel_esp for the new process
+    match scheduler.curr_process() {
+        ProcessState::Running(process) => process.kernel_esp,
+        ProcessState::Zombie(_) => panic!("WTF"),
+    }
+
+    // scheduler.set_curr_process_state(*cpu_state);
     // *cpu_state = scheduler.get_curr_process_state();
-    cpu_state as u32
 }
 
 #[derive(Debug)]
@@ -96,7 +111,12 @@ impl Scheduler {
         // Dont forget to switch the Page diectory to the next process
         unsafe {
             match self.curr_process() {
-                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
+                ProcessState::Running(process) => {
+                    // Switch to the new process PD
+                    process.virtual_allocator.context_switch();
+                    // Re-init the TSS block for the new process
+                    process.init_tss();
+                }
                 ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
             };
         }
