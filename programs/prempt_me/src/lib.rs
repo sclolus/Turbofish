@@ -83,16 +83,3 @@ extern "C" {
     fn user_exit(return_value: i32) -> !;
     // fn user_fork() -> i32;
 }
-
-// execve("./fork_me_baby", ["./fork_me_baby"], [/* 39 vars */]) = 0
-// strace: [ Process PID=20530 runs in 32 bit mode. ]
-// write(1, "i am a the fork process\n", 24i am a the fork process
-// ) = 24
-// fork()                                  = 20531
-// i am a gentle child
-// --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=20531, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
-// write(1, "i am a proud father of child wit"..., 38i am a proud father of child with pid() = 38
-// write(1, "20531", 520531)                    = 5
-// write(1, ")\n", 2)
-// )                      = 2
-// exit(0)

@@ -21,7 +21,9 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
+            asm!("cli");
             eprint!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
+            asm!("sti");
         }
         Ok(count as i32)
     }
@@ -33,13 +35,19 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
 }
 
 /// Exit from a process
-fn sys_exit(status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
-    SCHEDULER.lock().exit(status, cpu_state)
+unsafe fn sys_exit(status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
+    asm!("cli");
+    let res = SCHEDULER.lock().exit(status, cpu_state);
+    asm!("sti");
+    res
 }
 
 /// Fork a process
-fn sys_fork(cpu_state: CpuState) -> SysResult<i32> {
-    SCHEDULER.lock().fork(cpu_state)
+unsafe fn sys_fork(cpu_state: CpuState) -> SysResult<i32> {
+    asm!("cli");
+    let res = SCHEDULER.lock().fork(cpu_state);
+    asm!("sti");
+    res
 }
 
 /// Preemptif coherency check
