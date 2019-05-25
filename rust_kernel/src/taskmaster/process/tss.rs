@@ -1,11 +1,13 @@
 //! Process TSS manager
 
+use spinlock::Spinlock;
+
 /// Base TSS structure
 #[allow(unused)]
 #[derive(Default, Debug)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 #[repr(C)]
-pub struct Tss {
+struct TssBlock {
     /*0x00*/ link: u16, _reserved1: u16,
     /*0x04*/ esp0: u32,                   // Need to be set for software switch
     /*0x08*/ ss0: u16, _reserved2: u16,   // Need to be set for software switch
@@ -34,29 +36,44 @@ pub struct Tss {
     /*0x64*/ debug_flag: u16, io_map: u16,
 }
 
-#[allow(unused)]
+/// Necessary for LazyStatic
+unsafe impl core::marker::Send for Tss {}
+
+/// Definition of the TSS structure
+pub struct Tss {
+    block_ptr: *mut TssBlock,
+}
+
+/// Main TSS implementation
 impl Tss {
     /// For software switch, only one TSS structure is required for each cpu
     const TSS_MEMORY_ADDRESS: u32 = 0x1800;
 
-    /// Init a new TSS descriptor at TSS_MEMORY_ADDRESS (must be unique)
-    pub unsafe fn init(esp: u32, ss: u16) -> *mut Self {
-        let tss: *mut Tss = Self::TSS_MEMORY_ADDRESS as *mut Tss;
-        *tss = Tss { ss0: ss, esp0: esp, ..Default::default() };
-        tss
+    /// Create a new TSS instance
+    fn new() -> Self {
+        let block_ptr = Self::TSS_MEMORY_ADDRESS as *mut TssBlock;
+        unsafe {
+            *block_ptr = TssBlock { ..Default::default() };
+        }
+        Self { block_ptr }
     }
 
-    /// Reassign stack values for the TSS descriptor, usefull for premptif scheduler
-    pub fn reset(&mut self, esp: u32, ss: u16) {
-        self.ss0 = ss;
-        self.esp0 = esp;
+    /// Init a the TSS with new SS and ESP values
+    pub unsafe fn init(&mut self, esp: u32, ss: u16) {
+        (*self.block_ptr).ss0 = ss;
+        (*self.block_ptr).esp0 = esp;
     }
 
     /// Display the current TSS segment
-    pub fn display() {
-        let tss: *mut Tss = Self::TSS_MEMORY_ADDRESS as *mut Tss;
+    #[allow(dead_code)]
+    pub fn display(&self) {
+        let tss_block: *mut TssBlock = self.block_ptr as *mut TssBlock;
         unsafe {
-            println!("{:#X?}", *tss);
+            println!("{:#X?}", *tss_block);
         }
     }
+}
+
+lazy_static! {
+    pub static ref TSS: Spinlock<Tss> = Spinlock::new(Tss::new());
 }

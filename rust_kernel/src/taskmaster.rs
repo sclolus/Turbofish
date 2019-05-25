@@ -5,7 +5,7 @@ mod scheduler;
 mod syscall;
 mod tests;
 
-use process::{tss::Tss, CpuState, Process, TaskOrigin};
+use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
 use tests::*;
 
@@ -26,10 +26,6 @@ pub enum TaskMode {
 pub fn start() -> ! {
     // Initialize Syscall system
     syscall::init();
-
-    // Initialize the TSS segment (necessary for ring3 switch)
-    let _t = unsafe { Tss::init(&kernel_stack as *const u8 as u32, 0x18) };
-    Tss::display();
 
     // Create an ASM dummy process based on a simple function
     let p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
@@ -57,10 +53,10 @@ pub fn start() -> ! {
 
     // Load some processes into the scheduler
     // SCHEDULER.lock().add_process(p1);
-    SCHEDULER.lock().add_process(p2);
-    SCHEDULER.lock().add_process(p3);
-    SCHEDULER.lock().add_process(p4);
-    SCHEDULER.lock().add_process(p5);
+    // SCHEDULER.lock().add_process(p2);
+    // SCHEDULER.lock().add_process(p3);
+    // SCHEDULER.lock().add_process(p4);
+    // SCHEDULER.lock().add_process(p5);
     SCHEDULER.lock().add_process(p6);
 
     // Launch the scheduler

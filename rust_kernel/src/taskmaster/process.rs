@@ -1,6 +1,7 @@
 //! This file contains the process description
 
-pub mod tss;
+mod tss;
+use tss::TSS;
 
 use super::SysResult;
 
@@ -18,7 +19,8 @@ use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
 extern "C" {
-    fn _launch_process(cpu_state: *const CpuState) -> !;
+    fn _launch_process(kernel_esp: u32) -> !;
+    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize) -> *mut u8;
 }
 
 /// Represent all cpu state needed to continue the execution of a process
@@ -53,6 +55,8 @@ pub struct Process {
     cpu_state: CpuState,
     /// kernel stack
     kernel_stack: Vec<u8>,
+    /// Current process ESP on kernel stack
+    pub kernel_esp: u32,
     /// Page directory of the process
     pub virtual_allocator: VirtualPageAllocator,
 }
@@ -133,6 +137,10 @@ impl Process {
         // Allocte the kernel stack of the process
         let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
 
+        // Generate the start kernel ESP of the new process
+        let kernel_esp =
+            kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE - core::mem::size_of::<CpuState>()) as u32;
+
         // Allocate one page for stack segment of the process
         let stack_addr =
             virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0
@@ -155,12 +163,21 @@ impl Process {
                 ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
             },
             kernel_stack,
+            kernel_esp,
             virtual_allocator,
         };
+
+        // Fill the kernel stack of the new process with start cpu states.
+        ft_memcpy(kernel_esp as *mut u8, &res.cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
         Ok(res)
+    }
+
+    /// Initialize the TSS segment (necessary for ring3 switch)
+    pub unsafe fn init_tss(&self) {
+        TSS.lock().init(self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32, 0x18);
     }
 
     /// Start a process
@@ -168,8 +185,11 @@ impl Process {
         // Switch to process Page Directory
         self.virtual_allocator.context_switch();
 
-        // Launch the ring3 process
-        _launch_process(&self.cpu_state)
+        // Init the TSS segment
+        self.init_tss();
+
+        // Launch the ring3 process on its own kernel stack
+        _launch_process(self.kernel_esp)
     }
 
     /// Fork a process
@@ -178,9 +198,13 @@ impl Process {
         let mut kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
         kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
 
+        // Set the kernel ESP of the child. Relative to kernel ESP of the father
+        let kernel_esp = self.kernel_esp - self.kernel_stack.as_ptr() as u32 + kernel_stack.as_ptr() as u32;
+
         let mut child = Self {
             cpu_state,
             kernel_stack,
+            kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         };
         child.cpu_state.registers.eax = 0;

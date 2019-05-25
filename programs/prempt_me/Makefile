@@ -1,6 +1,6 @@
 TARGET = prempt_me
 
-SRC_ASM += minilibc preemp
+SRC_ASM += start minilibc preemp
 VPATH += src
 
 arch := ivybridge_cpu

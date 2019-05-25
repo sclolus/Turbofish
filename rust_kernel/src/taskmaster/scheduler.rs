@@ -19,9 +19,9 @@ type Pid = u32;
 unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let mut scheduler = SCHEDULER.lock();
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    scheduler.set_curr_process_state(*cpu_state);
+    // scheduler.set_curr_process_state(*cpu_state);
     scheduler.switch_next_process();
-    *cpu_state = scheduler.get_curr_process_state();
+    // *cpu_state = scheduler.get_curr_process_state();
     cpu_state as u32
 }
 
@@ -133,7 +133,8 @@ impl Scheduler {
         );
         // Modifie the status of the process to zombie with status (drop process implicitely)
         let pid = self.running_process[self.curr_process_index.unwrap()];
-        self.all_process.insert(pid, ProcessState::Zombie(status));
+        // TODO: Destroying process kernel stack may panic the entire kernel here !
+        // self.all_process.insert(pid, ProcessState::Zombie(status));
         // Remove process from the running process list
         self.running_process.remove(self.curr_process_index.unwrap());
         // Check if there is altmost one process
