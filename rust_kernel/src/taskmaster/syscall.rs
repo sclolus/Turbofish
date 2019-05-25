@@ -13,6 +13,7 @@ use crate::system::BaseRegisters;
 
 extern "C" {
     fn _isr_syscall();
+    fn _sys_test() -> i32;
 }
 
 /// Write something into the screen
@@ -48,17 +49,13 @@ unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
     res
 }
 
-/// Preemptif coherency check
-fn sys_rainbow() -> SysResult<i32> {
-    if unsafe { _sys_rainbow() } == 0 {
+/// Preemptif coherency checker
+unsafe fn sys_test() -> SysResult<i32> {
+    if _sys_test() == 0 {
         Ok(0)
     } else {
         Err(Errno::Eperm)
     }
-}
-
-extern "C" {
-    fn _sys_rainbow() -> i32;
 }
 
 /// Global syscall interrupt handler called from assembly code
@@ -72,7 +69,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        0x80000000 => sys_rainbow(),
+        0x80000000 => sys_test(),
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),

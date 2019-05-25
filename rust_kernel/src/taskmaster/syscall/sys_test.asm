@@ -6,8 +6,8 @@ res: dd 0
 
 segment .text
 
-global _sys_rainbow
-_sys_rainbow:
+global _sys_test
+_sys_test:
 	push ebp
 	mov ebp, esp
 

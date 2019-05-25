@@ -72,7 +72,7 @@ VPATH += src/taskmaster/process
 SRC_ASM_KERNEL += switch_process
 VPATH += src/taskmaster/scheduler
 
-SRC_ASM_KERNEL += syscall_isr sys_rainbow
+SRC_ASM_KERNEL += syscall_isr sys_test
 VPATH += src/taskmaster/syscall
 
 SRC_ASM_KERNEL += asm_processes

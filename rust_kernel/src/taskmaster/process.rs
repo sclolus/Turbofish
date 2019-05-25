@@ -20,10 +20,9 @@ use crate::system::BaseRegisters;
 
 extern "C" {
     fn _launch_process(kernel_esp: u32) -> !;
-    fn ft_memcpy(dst: *mut u8, src: *const u8, len: usize) -> *mut u8;
 }
 
-/// Represent all cpu state needed to continue the execution of a process
+/// Represent all the cpu states of a process according to the TSS context
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct CpuState {
@@ -71,7 +70,7 @@ impl core::fmt::Debug for Process {
     }
 }
 
-/// This enum describe the origin of the proces
+/// This enum describe the origin of the process
 pub enum TaskOrigin {
     /// ELF file
     Elf(&'static [u8]),
@@ -81,6 +80,8 @@ pub enum TaskOrigin {
 
 /// Main implementation of Process
 impl Process {
+    const RING0_STACK_SEGMENT: u16 = 0x18;
+
     const RING3_CODE_SEGMENT: u32 = 0x20;
     const RING3_DATA_SEGMENT: u32 = 0x28;
     const RING3_STACK_SEGMENT: u32 = 0x30;
@@ -137,7 +138,7 @@ impl Process {
             }
         };
 
-        // Allocte the kernel stack of the process
+        // Allocate the kernel stack of the process
         let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
 
         // Generate the start kernel ESP of the new process
@@ -165,7 +166,7 @@ impl Process {
             ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
         };
         // Fill the kernel stack of the new process with start cpu states.
-        ft_memcpy(kernel_esp as *mut u8, &cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
+        (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
@@ -175,7 +176,10 @@ impl Process {
 
     /// Initialize the TSS segment (necessary for ring3 switch)
     pub unsafe fn init_tss(&self) {
-        TSS.lock().init(self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32, 0x18);
+        TSS.lock().init(
+            self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32,
+            Self::RING0_STACK_SEGMENT,
+        );
     }
 
     /// Start a process
@@ -199,6 +203,7 @@ impl Process {
         // Set the kernel ESP of the child. Relative to kernel ESP of the father
         let child_kernel_esp = kernel_esp - self.kernel_stack.as_ptr() as u32 + child_kernel_stack.as_ptr() as u32;
 
+        // Mark child syscall return as 0
         let child_cpu_state: *mut CpuState = child_kernel_esp as *mut CpuState;
         unsafe {
             (*child_cpu_state).registers.eax = 0;
@@ -209,20 +214,5 @@ impl Process {
             kernel_esp: child_kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         })
-    }
-
-    /// Destroy a process
-    #[allow(dead_code)]
-    pub fn delete(&mut self) {
-        unimplemented!();
-        // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
-        // drop(*self);
-    }
-}
-
-/// Remove this code one day: Just to test if processus are implicitely droped by scheduler !
-impl Drop for Process {
-    fn drop(&mut self) {
-        eprintln!("process droped !");
     }
 }
