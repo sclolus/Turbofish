@@ -40,11 +40,11 @@ pub fn start() -> ! {
     println!("{:#X?}", p3);
 
     // Create a real rust process based on an ELF file
-    let p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
+    let p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
     println!("{:#X?}", p4);
 
     // Create a real rust process based on an ELF file
-    let p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    let p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
     println!("{:#X?}", p5);
 
     // Create a real rust process based on an ELF file
@@ -55,6 +55,14 @@ pub fn start() -> ! {
     let p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
     println!("{:#X?}", p7);
 
+    // Create a real rust process based on an ELF file
+    let p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    println!("{:#X?}", p8);
+
+    // Create a real rust process based on an ELF file
+    let p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
+    println!("{:#X?}", p9);
+
     // Load some processes into the scheduler
     SCHEDULER.lock().add_process(p1);
     SCHEDULER.lock().add_process(p2);
@@ -63,6 +71,8 @@ pub fn start() -> ! {
     SCHEDULER.lock().add_process(p5);
     SCHEDULER.lock().add_process(p6);
     SCHEDULER.lock().add_process(p7);
+    SCHEDULER.lock().add_process(p8);
+    SCHEDULER.lock().add_process(p9);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

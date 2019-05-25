@@ -67,7 +67,7 @@ pub struct Scheduler {
     /// contains a hashmap of pid, process
     all_process: HashMap<Pid, ProcessState>,
     /// index in the vector of the current running process
-    curr_process_index: Option<usize>, // TODO: May be better if we use PID instead ?
+    curr_process_index: usize, // TODO: May be better if we use PID instead ?
     /// time interval in PIT tics between two schedules
     time_interval: Option<i32>,
 }
@@ -76,14 +76,15 @@ pub struct Scheduler {
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: None, time_interval: None }
+        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: 0, time_interval: None }
     }
 
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_process(&mut self, process: Process) -> Pid {
         let pid = get_available_pid();
         self.all_process.insert(pid, ProcessState::Running(process));
-        self.running_process.push(pid);
+        self.running_process.insert(self.curr_process_index, pid);
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
         pid
     }
 
@@ -91,8 +92,6 @@ impl Scheduler {
     fn init_process_zero(&mut self) -> &Process {
         // Check if we got some processes to launch
         assert!(self.all_process.len() != 0);
-
-        self.curr_process_index = Some(0);
 
         match self.curr_process() {
             ProcessState::Running(process) => &process,
@@ -102,7 +101,7 @@ impl Scheduler {
 
     /// Set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
-        self.curr_process_index = Some((self.curr_process_index.unwrap() + 1) % self.running_process.len());
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
         // Dont forget to switch the Page diectory to the next process
         unsafe {
             match self.curr_process() {
@@ -119,12 +118,12 @@ impl Scheduler {
 
     /// Get current process
     fn curr_process(&self) -> &ProcessState {
-        self.all_process.get(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
+        self.all_process.get(&self.running_process[self.curr_process_index]).unwrap()
     }
 
     /// Get current process mutably
     fn curr_process_mut(&mut self) -> &mut ProcessState {
-        self.all_process.get_mut(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
+        self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
     }
 
     /// Perform a fork
@@ -133,7 +132,7 @@ impl Scheduler {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
         };
-        curr_process.fork(kernel_esp).map(|child| self.add_process(child) as i32)
+        Ok(curr_process.fork(kernel_esp).map(|child| self.add_process(child))? as i32)
     }
 
     // TODO: Send a status signal to the father
@@ -143,13 +142,12 @@ impl Scheduler {
     pub fn exit(&mut self, status: i32) -> ! {
         eprintln!(
             "exit called for process with PID: {:?} STATUS: {:?}",
-            self.running_process[self.curr_process_index.unwrap()],
-            status
+            self.running_process[self.curr_process_index], status
         );
         // Get the current process's PID
-        let pid = self.running_process[self.curr_process_index.unwrap()];
+        let pid = self.running_process[self.curr_process_index];
         // Remove process from the running process list
-        self.running_process.remove(self.curr_process_index.unwrap());
+        self.running_process.remove(self.curr_process_index);
         // Check if there is altmost one process
         if self.running_process.len() == 0 {
             eprintln!("no more process !");
@@ -157,7 +155,7 @@ impl Scheduler {
         } else {
             eprintln!("Stay {:?} processes in game", self.running_process.len());
         }
-        self.curr_process_index = Some(self.curr_process_index.unwrap() % self.running_process.len());
+        self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
             SCHEDULER_COUNTER = self.time_interval.unwrap();
