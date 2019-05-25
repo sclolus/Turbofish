@@ -128,12 +128,12 @@ impl Scheduler {
     }
 
     /// Perform a fork
-    pub fn fork(&mut self, cpu_state: CpuState) -> SysResult<i32> {
+    pub fn fork(&mut self, kernel_esp: u32) -> SysResult<i32> {
         let curr_process = match self.curr_process_mut() {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
         };
-        curr_process.fork(cpu_state).map(|child| self.add_process(child) as i32)
+        curr_process.fork(kernel_esp).map(|child| self.add_process(child) as i32)
     }
 
     // TODO: Send a status signal to the father

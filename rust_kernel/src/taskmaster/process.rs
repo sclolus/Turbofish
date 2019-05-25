@@ -30,23 +30,23 @@ pub struct CpuState {
     /// current registers
     pub registers: BaseRegisters,
     /// current data DS
-    ds: u32,
+    pub ds: u32,
     /// current data ES
-    es: u32,
+    pub es: u32,
     /// current data FS
-    fs: u32,
+    pub fs: u32,
     /// current data GS
-    gs: u32,
+    pub gs: u32,
     /// current eip
-    eip: u32,
+    pub eip: u32,
     /// current CS
     pub cs: u32,
     /// current eflag
-    eflags: Eflags,
+    pub eflags: Eflags,
     /// current esp
-    esp: u32,
+    pub esp: u32,
     /// current SS
-    ss: u32,
+    pub ss: u32,
 }
 
 /// This structure represents an entire process
@@ -62,7 +62,12 @@ pub struct Process {
 /// Debug boilerplate for Process
 impl core::fmt::Debug for Process {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "{:#X?} and a kernel_stack", self.virtual_allocator)
+        write!(
+            f,
+            "{:#X?} {:#X?} and a kernel_stack",
+            unsafe { *(self.kernel_esp as *const CpuState) },
+            self.virtual_allocator
+        )
     }
 }
 
@@ -159,15 +164,13 @@ impl Process {
             esp,
             ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
         };
-
-        let res: Process = Process { kernel_stack, kernel_esp, virtual_allocator };
-
         // Fill the kernel stack of the new process with start cpu states.
         ft_memcpy(kernel_esp as *mut u8, &cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
-        Ok(res)
+
+        Ok(Process { kernel_stack, kernel_esp, virtual_allocator })
     }
 
     /// Initialize the TSS segment (necessary for ring3 switch)
@@ -188,20 +191,24 @@ impl Process {
     }
 
     /// Fork a process
-    pub fn fork(&self, _cpu_state: CpuState) -> SysResult<Self> {
+    pub fn fork(&self, kernel_esp: u32) -> SysResult<Self> {
         // Create the child kernel stack
-        let mut kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
-        kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
+        let mut child_kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+        child_kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
 
         // Set the kernel ESP of the child. Relative to kernel ESP of the father
-        let kernel_esp = self.kernel_esp - self.kernel_stack.as_ptr() as u32 + kernel_stack.as_ptr() as u32;
+        let child_kernel_esp = kernel_esp - self.kernel_stack.as_ptr() as u32 + child_kernel_stack.as_ptr() as u32;
+
+        let child_cpu_state: *mut CpuState = child_kernel_esp as *mut CpuState;
+        unsafe {
+            (*child_cpu_state).registers.eax = 0;
+        }
 
         Ok(Self {
-            kernel_stack,
-            kernel_esp,
+            kernel_stack: child_kernel_stack,
+            kernel_esp: child_kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         })
-        // child.cpu_state.registers.eax = 0;
     }
 
     /// Destroy a process

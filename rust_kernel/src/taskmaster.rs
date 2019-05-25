@@ -7,7 +7,7 @@ mod tests;
 
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
-use tests::*;
+use tests::{_dummy_asm_process_code, _dummy_asm_process_len};
 
 use errno::Errno;
 
@@ -56,13 +56,13 @@ pub fn start() -> ! {
     println!("{:#X?}", p7);
 
     // Load some processes into the scheduler
-    SCHEDULER.lock().add_process(p1);
+    // SCHEDULER.lock().add_process(p1);
     SCHEDULER.lock().add_process(p2);
     SCHEDULER.lock().add_process(p3);
-    // SCHEDULER.lock().add_process(p4);
-    SCHEDULER.lock().add_process(p5);
-    SCHEDULER.lock().add_process(p6);
-    SCHEDULER.lock().add_process(p7);
+    SCHEDULER.lock().add_process(p4);
+    // SCHEDULER.lock().add_process(p5);
+    // SCHEDULER.lock().add_process(p6);
+    // SCHEDULER.lock().add_process(p7);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

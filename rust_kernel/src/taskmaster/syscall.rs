@@ -41,9 +41,9 @@ unsafe fn sys_exit(status: i32) -> ! {
 }
 
 /// Fork a process
-unsafe fn sys_fork(cpu_state: CpuState) -> SysResult<i32> {
+unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
     asm!("cli");
-    let res = SCHEDULER.lock().fork(cpu_state);
+    let res = SCHEDULER.lock().fork(kernel_esp);
     asm!("sti");
     res
 }
@@ -68,8 +68,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     let BaseRegisters { eax, ebx, ecx, edx, esi, edi, ebp, .. } = (*cpu_state).registers;
 
     let result = match eax {
-        0x1 => sys_exit(ebx as i32), // This syscall doesn't return !
-        0x2 => sys_fork(*cpu_state),
+        0x1 => sys_exit(ebx as i32),       // This syscall doesn't return !
+        0x2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         0x80000000 => sys_rainbow(),
