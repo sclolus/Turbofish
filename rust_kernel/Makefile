@@ -66,7 +66,7 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += launch_process
+SRC_ASM_KERNEL += start_process
 VPATH += src/taskmaster/process
 
 SRC_ASM_KERNEL += switch_process

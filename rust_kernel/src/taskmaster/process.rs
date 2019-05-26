@@ -19,7 +19,7 @@ use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
 extern "C" {
-    fn _launch_process(kernel_esp: u32) -> !;
+    fn _start_process(kernel_esp: u32) -> !;
 }
 
 /// Represent all the cpu states of a process according to the TSS context
@@ -194,7 +194,7 @@ impl Process {
         self.init_tss();
 
         // Launch the ring3 process on its own kernel stack
-        _launch_process(self.kernel_esp)
+        _start_process(self.kernel_esp)
     }
 
     /// Fork a process

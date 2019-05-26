@@ -4,7 +4,7 @@ extern scheduler_interrupt_handler
 
 segment .text
 
-;; Simple and Basic schedule function (not premptive at all !)
+;; Preemptive schedule beacon
 ;; Scheduler MUST be not interruptible !
 ;;
 ;; +--------+               ^ (to high memory)
@@ -31,7 +31,7 @@ segment .text
 ;; |    ... |
 ;; +--------+
 ;; | 0x0    |
-;; +--------+ ---> pointer to CpuState Structure
+;; +--------+ ---> pointer to CpuState Structure (kernel_esp)
 global _schedule_next
 _schedule_next:
 	; Generate the struct CpuState on the stack :)
@@ -53,13 +53,13 @@ _schedule_next:
 
 	; --- MUST PASS POINTER TO THAT STRUCTURE ---
 	push esp
-	mov ebp, esp				; set the backtrace endpoint
+	mov ebp, esp                ; set the backtrace endpoint
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
 
 schedule_return:
-	add esp, 4					; skip stack reserved field
+	add esp, 4                  ; skip stack reserved field
 
 	; Recover all purpose registers
 	popad
@@ -80,8 +80,8 @@ _exit_resume:
 	push ebp
 	mov ebp, esp
 
-	mov ecx, dword [ebp + 12] 	; get PID of process to free
-	mov edx, dword [ebp + 16]	; get return status of process to free
+	mov ecx, dword [ebp + 12]   ; get PID of process to free
+	mov edx, dword [ebp + 16]   ; get return status of process to free
 
 	; Go to the stack of the new current process
 	mov esp, [ebp + 8]

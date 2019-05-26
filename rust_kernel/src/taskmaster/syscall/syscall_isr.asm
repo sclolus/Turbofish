@@ -28,7 +28,7 @@ segment .text
 ;; |    ... |
 ;; +--------+
 ;; | 0x0    |
-;; +--------+ ---> pointer to CpuState Structure
+;; +--------+ ---> pointer to CpuState Structure (kernel_esp)
 global _isr_syscall
 _isr_syscall:
 	; Generate the struct CpuState on the stack :)
@@ -50,11 +50,11 @@ _isr_syscall:
 
 	; --- MUST PASS POINTER TO THAT STRUCTURE ---
 	push esp
-	mov ebp, esp				; set the backtrace endpoint
+	mov ebp, esp                ; set the backtrace endpoint
 	call syscall_interrupt_handler
 	add esp, 4
 
-	add esp, 4					; skip stack reserved field
+	add esp, 4                  ; skip stack reserved field
 
 	; Recover all purpose registers
 	popad
