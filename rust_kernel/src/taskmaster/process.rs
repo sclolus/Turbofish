@@ -26,6 +26,8 @@ extern "C" {
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct CpuState {
+    /// reserved for back trace
+    stack_reserved: u32,
     /// current registers
     pub registers: BaseRegisters,
     /// current data DS
@@ -154,6 +156,7 @@ impl Process {
 
         // Create the process identity
         let cpu_state: CpuState = CpuState {
+            stack_reserved: 0,
             registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
             ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
             es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,

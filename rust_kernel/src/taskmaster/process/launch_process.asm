@@ -27,6 +27,8 @@ segment .text
 ;; | REGS   |
 ;; |    ... |
 ;; |    ... |
+;; +--------+
+;; | 0x0    |
 ;; +--------+ ---> pointer to CpuState Structure (arg n~1 of this function)
 ;;
 ;; fn _launch_process(cpu_state: *const CpuState);
@@ -40,6 +42,8 @@ _launch_process:
 
 	; Follow the CpuState pointer (pass to breaking stack context)
 	mov esp, [ebp + 8]
+
+	add esp, 4 					; skip stack_reserved field
 
 	; Recover all purpose registers
 	popad

@@ -29,6 +29,8 @@ segment .text
 ;; | REGS   |
 ;; |    ... |
 ;; |    ... |
+;; +--------+
+;; | 0x0    |
 ;; +--------+ ---> pointer to CpuState Structure
 global _schedule_next
 _schedule_next:
@@ -39,6 +41,9 @@ _schedule_next:
 	push gs
 	pushad
 
+	; Push 0x0 for backtrace endpoint
+	push dword 0
+
 	; Assign kernel data segments
 	mov ax, 0x10
 	mov ds, ax
@@ -48,11 +53,14 @@ _schedule_next:
 
 	; --- MUST PASS POINTER TO THAT STRUCTURE ---
 	push esp
+	mov ebp, esp				; set the backtrace endpoint
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
 
 schedule_return:
+	add esp, 4					; skip stack reserved field
+
 	; Recover all purpose registers
 	popad
 	pop gs
