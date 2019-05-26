@@ -40,6 +40,13 @@ impl VirtualPageAllocator {
         Ok(Self::new(buddy, pd))
     }
 
+    /// Flush all the occupied user ressources
+    pub fn free_user_ressources(&mut self) {
+        unsafe {
+            self.mmu.free_user_ressources();
+        }
+    }
+
     /// get the physical mapping of virtual address `v`
     pub unsafe fn get_physical_addr(&self, v: Virt) -> Option<Phys> {
         let offset = v.offset();

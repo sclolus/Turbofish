@@ -50,7 +50,7 @@ impl PageDirectory {
         _enable_paging(phys_pd);
     }
 
-    // dummy fork for the moment ( no copy on write and a lot of context switch )
+    // Very very dummy fork ( no copy on write, a lot of context switch and a page per page approach )
     pub unsafe fn fork(&self) -> Result<Box<Self>> {
         #[allow(unused_assignments)]
         let mut mem_tmp = [0; PAGE_SIZE];
@@ -82,6 +82,35 @@ impl PageDirectory {
             }
         }
         Ok(child)
+    }
+
+    /// Free the user ressources of a process by following its Page Directory (Cannot work with valloc)
+    pub unsafe fn free_user_ressources(&mut self) {
+        let mut remaining_pages: NbrPages = NbrPages(0);
+        let mut temporary_addr: Phys = Phys(0);
+
+        for i in 1..768 {
+            let page = Page::new(i * 1024);
+            if self[i].contains(Entry::PRESENT) {
+                let page_table = self.get_page_table_trick(page).expect("can't happen");
+                for j in 0..1024 {
+                    if page_table[j].contains(Entry::PRESENT) {
+                        if page_table[j].entry_addr() != temporary_addr || remaining_pages == NbrPages(0) {
+                            // This point may signify the end of the previous block and the begin of the next
+                            temporary_addr = page_table[j].entry_addr();
+                            // A physical block of size max NbrPages(remaining_pages) is detected, liberate it
+                            remaining_pages =
+                                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(page_table[j].entry_addr().into()).unwrap();
+                        }
+                        remaining_pages -= NbrPages(1);
+                        temporary_addr += PAGE_SIZE;
+                    } else {
+                        // This point may signify the end of the previous block
+                        remaining_pages = NbrPages(0);
+                    }
+                }
+            }
+        }
     }
 
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .

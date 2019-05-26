@@ -136,7 +136,6 @@ impl Scheduler {
     }
 
     // TODO: Send a status signal to the father
-    // TODO: fflush process ressources
     // TODO: Remove completely process from scheduler after death attestation
     /// Exit form a process and go to the current process
     pub fn exit(&mut self, status: i32) -> ! {
@@ -146,6 +145,13 @@ impl Scheduler {
         );
         // Get the current process's PID
         let pid = self.running_process[self.curr_process_index];
+
+        // Flush the process's virtual allocator (until we are in his CR3)
+        match self.curr_process_mut() {
+            ProcessState::Running(process) => process.free_user_ressources(),
+            ProcessState::Zombie(_) => panic!("WTF"),
+        };
+
         // Remove process from the running process list
         self.running_process.remove(self.curr_process_index);
         // Check if there is altmost one process
