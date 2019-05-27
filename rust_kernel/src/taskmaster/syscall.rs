@@ -61,7 +61,9 @@ unsafe fn sys_test() -> SysResult<i32> {
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
+    asm!("cli");
     eprintln!("Stack overflow syscall on the fly: v = {:?}", a + b + c + d + e + f);
+    asm!("sti");
     Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 
