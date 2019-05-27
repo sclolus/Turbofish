@@ -5,8 +5,9 @@ use core::fmt;
 use core::fmt::Debug;
 use core::ops::{Add, IndexMut, Sub};
 use fallible_collections::try_vec;
+use try_clone_derive::TryClone;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, TryClone, PartialEq)]
 pub struct BuddyAllocator<T: Address> {
     addr: Page<T>,
     /// In number of pages.
@@ -23,8 +24,13 @@ impl<T: Address> BuddyAllocator<T> {
         let max_order: Order = size.into();
         let nbr_buddies: usize = Self::nbr_buddies(max_order.0);
 
-        let new =
-            Self { addr, size, max_order, buddies: try_vec![0; BuddyAllocator::<Virt>::metadata_size(size)].map_err(|_| MemoryError::OutOfMem)?, nbr_buddies };
+        let new = Self {
+            addr,
+            size,
+            max_order,
+            buddies: try_vec![0; BuddyAllocator::<Virt>::metadata_size(size)].map_err(|_| MemoryError::OutOfMem)?,
+            nbr_buddies,
+        };
 
         // let normalized_size = size.0.next_power_of_two();
         // let unavailable_range = size.0..normalized_size;
@@ -339,7 +345,7 @@ impl<'a> Buddy<'a> {
 /// represent the order of a buddy:
 /// order 0 <=> the smallest alloc <=> the liefes of the tree
 /// order `max_order` <=> the greatest alloc <=> the root of the tree
-#[derive(Debug, Copy, Clone, PartialEq, Ord, PartialOrd, Eq)]
+#[derive(Debug, Copy, Clone, TryClone, PartialEq, Ord, PartialOrd, Eq)]
 pub struct Order(pub usize);
 
 impl Sub<Self> for Order {

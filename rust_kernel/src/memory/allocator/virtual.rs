@@ -3,6 +3,7 @@ use crate::memory::mmu::{invalidate_page, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
+use fallible_collections::TryClone;
 
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
@@ -33,7 +34,7 @@ impl VirtualPageAllocator {
 
     /// the process forker must be the current cr3
     pub fn fork(&self) -> Result<Self> {
-        let buddy = self.virt.clone();
+        let buddy = self.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
 
         let pd = unsafe { self.mmu.fork()? };
 

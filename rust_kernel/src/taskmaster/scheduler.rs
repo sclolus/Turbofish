@@ -5,6 +5,10 @@ use super::{CpuState, Process, SysResult, TaskMode};
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
+use alloc::collections::CollectionAllocErr;
+
+use errno::Errno;
+
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
 
@@ -80,12 +84,14 @@ impl Scheduler {
     }
 
     /// Add a process into the scheduler (transfert ownership)
-    pub fn add_process(&mut self, process: Process) -> Pid {
+    pub fn add_process(&mut self, process: Process) -> Result<Pid, CollectionAllocErr> {
         let pid = get_available_pid();
+        self.all_process.try_reserve(1)?;
+        self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, ProcessState::Running(process));
         self.running_process.insert(self.curr_process_index, pid);
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
-        pid
+        Ok(pid)
     }
 
     /// Initialize the first processs and get a pointer to it)
@@ -135,7 +141,7 @@ impl Scheduler {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
         };
-        Ok(curr_process.fork(kernel_esp).map(|child| self.add_process(child))? as i32)
+        Ok(curr_process.fork(kernel_esp).and_then(|child| self.add_process(child).map_err(|_| Errno::Enomem))? as i32)
     }
 
     // TODO: Send a status signal to the father

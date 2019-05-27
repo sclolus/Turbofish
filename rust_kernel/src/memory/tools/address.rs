@@ -4,6 +4,8 @@ use super::PAGE_SIZE;
 use bit_field::BitField;
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Range, RangeInclusive, Sub, SubAssign};
+use fallible_collections::TryClone;
+use try_clone_derive::TryClone;
 
 /// trait address common to physical and virtual address
 pub trait Address:
@@ -20,6 +22,7 @@ pub trait Address:
     + Clone
     + Ord
     + Eq
+    + TryClone
 {
     /// size must be a power of two
     #[inline(always)]
@@ -60,7 +63,7 @@ pub trait Address:
 
 /// New type representing a Virtual Adress
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, TryClone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Virt(pub usize);
 
 impl Virt {
@@ -138,7 +141,7 @@ impl Address for Virt {}
 
 /// New type representing a Physical Adress
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, TryClone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Phys(pub usize);
 
 impl Into<usize> for Phys {
@@ -207,6 +210,12 @@ pub struct Page<T: Address> {
     /// the page number
     pub number: usize,
     _phantom: core::marker::PhantomData<T>,
+}
+
+impl<T: Address> fallible_collections::TryClone for Page<T> {
+    fn try_clone(&self) -> core::result::Result<Self, alloc::collections::CollectionAllocErr> {
+        Ok(*self)
+    }
 }
 
 impl<T: Address> Page<T> {

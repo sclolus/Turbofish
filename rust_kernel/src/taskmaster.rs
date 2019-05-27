@@ -75,18 +75,18 @@ pub fn start() -> ! {
     println!("{:#X?}", p12);
 
     // Load some processes into the scheduler
-    // SCHEDULER.lock().add_process(p1);
-    // SCHEDULER.lock().add_process(p2);
-    // SCHEDULER.lock().add_process(p3);
-    // SCHEDULER.lock().add_process(p4);
-    // SCHEDULER.lock().add_process(p5);
-    // SCHEDULER.lock().add_process(p6);
-    // SCHEDULER.lock().add_process(p7);
-    // SCHEDULER.lock().add_process(p8);
-    // SCHEDULER.lock().add_process(p9);
-    // SCHEDULER.lock().add_process(p10);
-    // SCHEDULER.lock().add_process(p11);
-    SCHEDULER.lock().add_process(p12);
+    // SCHEDULER.lock().add_process(p1).unwrap();
+    // SCHEDULER.lock().add_process(p2).unwrap();
+    // SCHEDULER.lock().add_process(p3).unwrap();
+    // SCHEDULER.lock().add_process(p4).unwrap();
+    // SCHEDULER.lock().add_process(p5).unwrap();
+    // SCHEDULER.lock().add_process(p6).unwrap();
+    // SCHEDULER.lock().add_process(p7).unwrap();
+    // SCHEDULER.lock().add_process(p8).unwrap();
+    // SCHEDULER.lock().add_process(p9).unwrap();
+    // SCHEDULER.lock().add_process(p10).unwrap();
+    // SCHEDULER.lock().add_process(p11).unwrap();
+    SCHEDULER.lock().add_process(p12).unwrap();
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

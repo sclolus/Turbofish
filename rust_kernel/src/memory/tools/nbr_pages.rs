@@ -1,9 +1,10 @@
 //! this module contains a new type `NbrPages` to represent a number of pages
 use super::PAGE_SIZE;
 use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
+use try_clone_derive::TryClone;
 
 /// new type representing a number of page
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Copy, Clone, TryClone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrPages(pub usize);
 
 impl NbrPages {
