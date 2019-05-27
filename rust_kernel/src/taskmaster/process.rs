@@ -91,7 +91,7 @@ impl Process {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    const RING3_PROCESS_KERNEL_STACK_SIZE: usize = 1 << 20;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: usize = 1 << 16;
 
     /// Create a new process
     pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
@@ -140,6 +140,10 @@ impl Process {
 
         // Allocate the kernel stack of the process
         let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+
+        // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
+        virtual_allocator
+            .modify_page_entry(Virt(kernel_stack.as_ptr() as usize), AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY);
 
         // Generate the start kernel ESP of the new process
         let kernel_esp =

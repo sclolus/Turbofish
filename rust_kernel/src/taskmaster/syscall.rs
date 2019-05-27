@@ -58,6 +58,13 @@ unsafe fn sys_test() -> SysResult<i32> {
     }
 }
 
+/// Do a stack overflow on the kernel stack
+#[allow(unconditional_recursion)]
+unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
+    eprintln!("Stack overflow syscall on the fly: v = {:?}", a + b + c + d + e + f);
+    Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
+}
+
 /// Global syscall interrupt handler called from assembly code
 #[no_mangle]
 pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
@@ -70,6 +77,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         0x80000000 => sys_test(),
+        0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
