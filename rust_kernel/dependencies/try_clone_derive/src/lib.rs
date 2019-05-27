@@ -1,6 +1,7 @@
 extern crate proc_macro;
 use syn::spanned::Spanned;
 use syn::Data::{Enum, Struct};
+use syn::GenericParam;
 use syn::{parse_macro_input, DeriveInput, Fields};
 extern crate proc_quote;
 use proc_quote::quote;
@@ -14,8 +15,15 @@ pub fn derive_try_clone(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     // Used in the quasi-quotation below as `#name`.
     let name = input.ident;
 
+    let impl_generic = input.generics.clone();
+    let generic = input.generics.params.into_iter().map(|x| match x {
+        GenericParam::Type(type_param) => type_param.ident,
+        _ => panic!("unhandled generic param"),
+    });
+    // dbg!(&impl_generic);
     let expanded = match input.data {
         Struct(datastruct) => {
+            // dbg!(&datastruct);
             let all_names = match datastruct.fields {
                 Fields::Named(fields) => {
                     let fields = fields.named.iter().map(|x| x.ident.clone());
@@ -28,7 +36,7 @@ pub fn derive_try_clone(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                 }
             };
             quote!(
-                impl fallible_collections::TryClone for #name {
+                impl#impl_generic fallible_collections::TryClone for #name<#(#generic),*> {
                     fn try_clone(&self) -> core::result::Result<Self,alloc::collections::CollectionAllocErr> {
                         Ok(
                                 #all_names
