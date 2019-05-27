@@ -63,17 +63,22 @@ pub fn start() -> ! {
     let p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
     println!("{:#X?}", p9);
 
+    // Create a real rust process based on an ELF file
+    let p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
+    println!("{:#X?}", p10);
+
     // Load some processes into the scheduler
-    SCHEDULER.lock().add_process(p1);
-    SCHEDULER.lock().add_process(p2);
-    SCHEDULER.lock().add_process(p3);
-    SCHEDULER.lock().add_process(p4);
-    SCHEDULER.lock().add_process(p5);
-    SCHEDULER.lock().add_process(p6);
-    SCHEDULER.lock().add_process(p7);
-    SCHEDULER.lock().add_process(p8);
-    SCHEDULER.lock().add_process(p9);
+    // SCHEDULER.lock().add_process(p1);
+    // SCHEDULER.lock().add_process(p2);
+    // SCHEDULER.lock().add_process(p3);
+    // SCHEDULER.lock().add_process(p4);
+    // SCHEDULER.lock().add_process(p5);
+    // SCHEDULER.lock().add_process(p6);
+    // SCHEDULER.lock().add_process(p7);
+    // SCHEDULER.lock().add_process(p8);
+    // SCHEDULER.lock().add_process(p9);
+    SCHEDULER.lock().add_process(p10);
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(20.)) }
+    unsafe { scheduler::start(TaskMode::Mono) }
 }

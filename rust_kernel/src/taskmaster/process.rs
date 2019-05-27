@@ -90,7 +90,7 @@ impl Process {
     const RING3_DPL: u32 = 0b11;
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
-    const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
+    const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_KERNEL_STACK_SIZE: usize = 1 << 20;
 
     /// Create a new process
