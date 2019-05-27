@@ -47,6 +47,11 @@ impl VirtualPageAllocator {
         }
     }
 
+    /// Modify the alloc flags for a specific and existing virtual address
+    pub fn modify_page_entry(&mut self, addr: Virt, alloc_flags: AllocFlags) {
+        self.mmu.modify_page_entry(addr, alloc_flags);
+    }
+
     /// get the physical mapping of virtual address `v`
     pub unsafe fn get_physical_addr(&self, v: Virt) -> Option<Phys> {
         let offset = v.offset();

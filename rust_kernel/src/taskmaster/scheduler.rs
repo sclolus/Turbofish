@@ -128,6 +128,9 @@ impl Scheduler {
 
     /// Perform a fork
     pub fn fork(&mut self, kernel_esp: u32) -> SysResult<i32> {
+        if self.time_interval == None {
+            panic!("It'a illogical to fork a process when we are in monotask mode");
+        }
         let curr_process = match self.curr_process_mut() {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),

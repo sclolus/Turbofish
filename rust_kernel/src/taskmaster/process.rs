@@ -109,13 +109,11 @@ impl Process {
                 for h in &elf.program_header_table {
                     if h.segment_type == SegmentType::Load {
                         let segment = {
-                            let _segment_addr = virtual_allocator
-                                // .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
-                                // TODO: Easy fix must be removed
+                            virtual_allocator
                                 .alloc_on(
                                     Page::containing(Virt(h.vaddr as usize)),
                                     (h.memsz as usize).into(),
-                                    AllocFlags::USER_MEMORY,
+                                    Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
                                 )?
                                 .to_addr()
                                 .0 as *mut u8;
@@ -151,6 +149,10 @@ impl Process {
         let stack_addr =
             virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0
                 as *mut u8;
+
+        // Mark the first entry of the user stack as read-only, this prevent user stack overflow
+        virtual_allocator.modify_page_entry(Virt(stack_addr as usize), AllocFlags::READ_ONLY | AllocFlags::USER_MEMORY);
+
         // stack go downwards set esp to the end of the allocation
         let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
 

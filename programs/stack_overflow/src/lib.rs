@@ -2,8 +2,15 @@
 
 #[no_mangle]
 fn main() -> i32 {
-    println!("Stack overflow program, do recursive");
-    stack_overflow(42, 42, 42, 42, 42, 42)
+    println!("Stack overflow program, do recursive for child");
+    let fork_res = unsafe { user_fork() };
+    if fork_res == 0 {
+        println!("i am a gentle child");
+        stack_overflow(42, 42, 42, 42, 42, 42);
+    } else {
+        println!("i am a proud father of child with pid({})", fork_res);
+    }
+    0
 }
 
 #[allow(unconditional_recursion)]
@@ -67,5 +74,5 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 extern "C" {
     fn user_write(fd: i32, s: *const u8, len: usize) -> i32;
-    // fn user_fork() -> i32;
+    fn user_fork() -> i32;
 }
