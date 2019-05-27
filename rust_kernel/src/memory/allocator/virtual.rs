@@ -22,13 +22,13 @@ impl VirtualPageAllocator {
         Self { virt, mmu }
     }
 
-    pub unsafe fn new_for_process() -> Self {
-        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB);
+    pub unsafe fn new_for_process() -> Result<Self> {
+        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB)?;
         buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).unwrap();
 
-        let pd = PageDirectory::new_for_process();
+        let pd = PageDirectory::new_for_process()?;
 
-        Self::new(buddy, pd)
+        Ok(Self::new(buddy, pd))
     }
 
     /// the process forker must be the current cr3

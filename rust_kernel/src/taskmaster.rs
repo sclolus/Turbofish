@@ -71,18 +71,22 @@ pub fn start() -> ! {
     let p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
     println!("{:#X?}", p11);
 
+    let p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
+    println!("{:#X?}", p12);
+
     // Load some processes into the scheduler
-    SCHEDULER.lock().add_process(p1);
-    SCHEDULER.lock().add_process(p2);
-    SCHEDULER.lock().add_process(p3);
-    SCHEDULER.lock().add_process(p4);
-    SCHEDULER.lock().add_process(p5);
-    SCHEDULER.lock().add_process(p6);
-    SCHEDULER.lock().add_process(p7);
-    SCHEDULER.lock().add_process(p8);
-    SCHEDULER.lock().add_process(p9);
+    // SCHEDULER.lock().add_process(p1);
+    // SCHEDULER.lock().add_process(p2);
+    // SCHEDULER.lock().add_process(p3);
+    // SCHEDULER.lock().add_process(p4);
+    // SCHEDULER.lock().add_process(p5);
+    // SCHEDULER.lock().add_process(p6);
+    // SCHEDULER.lock().add_process(p7);
+    // SCHEDULER.lock().add_process(p8);
+    // SCHEDULER.lock().add_process(p9);
     // SCHEDULER.lock().add_process(p10);
-    SCHEDULER.lock().add_process(p11);
+    // SCHEDULER.lock().add_process(p11);
+    SCHEDULER.lock().add_process(p12);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

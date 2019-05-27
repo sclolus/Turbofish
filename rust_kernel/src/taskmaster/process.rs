@@ -11,6 +11,8 @@ use core::slice;
 use elf_loader::SegmentType;
 use errno::Errno;
 
+use fallible_collections::try_vec;
+
 use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -98,7 +100,7 @@ impl Process {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
-        let mut virtual_allocator = VirtualPageAllocator::new_for_process();
+        let mut virtual_allocator = VirtualPageAllocator::new_for_process()?;
         // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
@@ -206,7 +208,7 @@ impl Process {
     /// Fork a process
     pub fn fork(&self, kernel_esp: u32) -> SysResult<Self> {
         // Create the child kernel stack
-        let mut child_kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE].map_err(|_| Errno::Enomem)?;
         child_kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
 
         // Set the kernel ESP of the child. Relative to kernel ESP of the father

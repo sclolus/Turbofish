@@ -8,7 +8,7 @@ pub struct PhysicalPageAllocator {
 
 impl PhysicalPageAllocator {
     pub fn new(phys_start: Page<Phys>, size: NbrPages) -> Self {
-        Self { allocator: BuddyAllocator::new(phys_start, size) }
+        Self { allocator: BuddyAllocator::new(phys_start, size).expect("new physical buddy failed") }
     }
 
     pub fn alloc(&mut self, size: NbrPages, _flags: AllocFlags) -> Result<Page<Phys>> {

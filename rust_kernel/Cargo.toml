@@ -33,6 +33,8 @@ registers = { path = "dependencies/registers" }
 spinlock = { path = "dependencies/spinlock" }
 elf_loader = { path = "dependencies/elf_loader" }
 errno = { path = "dependencies/errno" }
+try_clone_derive = { path = "dependencies/try_clone_derive" }
+fallible_collections = { path = "dependencies/fallible_collections" }
 
 [dependencies.lazy_static]
 version = "1.3.0"
@@ -64,6 +66,8 @@ members = [
 "dependencies/registers",
 "dependencies/spinlock",
 "dependencies/elf_loader",
-"dependencies/errno"
+"dependencies/errno",
+"dependencies/try_clone_derive",
+"dependencies/fallible_collections"
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

@@ -8,6 +8,7 @@ use alloc::boxed::Box;
 use core::mem::size_of;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
+use fallible_collections::FallibleBox;
 
 /// This is the representation of the topmost paging structure.
 /// It is composed of 1024 Entry.
@@ -24,9 +25,9 @@ impl PageDirectory {
     }
 
     /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
-    pub fn new_for_process() -> Box<Self> {
+    pub fn new_for_process() -> Result<Box<Self>>  {
         // map the kenel pages tables
-        let mut pd = Box::new(Self::new());
+        let mut pd = Box::try_new(Self::new()).map_err(|_| MemoryError::OutOfMem)?;
         unsafe {
             pd.set_page_tables(0, &BIOS_PAGE_TABLE);
             pd.set_page_tables(768, &PAGE_TABLES);
@@ -39,7 +40,7 @@ impl PageDirectory {
 
             pd.self_map_tricks(phys_pd);
         }
-        pd
+        Ok(pd)
     }
 
     pub unsafe fn context_switch(&self) {
@@ -54,7 +55,7 @@ impl PageDirectory {
     pub unsafe fn fork(&self) -> Result<Box<Self>> {
         #[allow(unused_assignments)]
         let mut mem_tmp = [0; PAGE_SIZE];
-        let mut child = Self::new_for_process();
+        let mut child = Self::new_for_process()?;
 
         // parcour the user page directory
         for i in 1..768 {

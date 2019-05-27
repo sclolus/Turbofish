@@ -40,6 +40,6 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
 
 #[alloc_error_handler]
 #[cfg(not(test))]
-fn out_of_memory(_: core::alloc::Layout) -> ! {
-    panic!("Out of memory: Failed to allocate a rust data structure");
+fn out_of_memory(layout: core::alloc::Layout) -> ! {
+    panic!("Out of memory: Failed to allocate a rust data structure {:?}", layout);
 }
