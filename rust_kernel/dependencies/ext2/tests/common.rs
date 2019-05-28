@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 //! to run tests, to prevent multithreading bugs, you have to run:
-//! sudo RUST_TEST_TASKS=1 RUST_TEST_THREADS=1 cargo  test
+//! $ sudo RUST_TEST_TASKS=1 RUST_TEST_THREADS=1 RUST_BACKTRACE=1 cargo  test --features std-print
 
 use ext2::{DiskIo, Errno, Ext2Filesystem, IoResult, OpenFlags};
 use std::fs::{File, OpenOptions};

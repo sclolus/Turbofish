@@ -1,0 +1,6 @@
+!.gitignore
+richard
+target
+*.orig
+!.xbuild_toolchain
+!.rust_toolchain

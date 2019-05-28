@@ -21,18 +21,27 @@ fn sys_write(_fd: i32, buf: *const u8, count: usize) -> i32 {
 
 /// Read something from a file descriptor
 fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> i32 {
-    unimplemented!();
+    eprintln!("SYS_READ Called !");
+    loop {}
+
+    // unimplemented!();
 }
 
 /// Exit from a process
 fn sys_exit(_status: i32) -> i32 {
-    unimplemented!();
+    eprintln!("SYS_EXIT Called !");
+    loop {}
+
+    // unimplemented!();
     // SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 fn sys_fork() -> i32 {
-    unimplemented!();
+    eprintln!("SYS_FORK Called !");
+    loop {}
+
+    // unimplemented!();
     // SCHEDULER.lock().fork()
 }
 
@@ -45,7 +54,9 @@ pub extern "C" fn syscall_interrupt_handler(base_registers: BaseRegisters) -> i3
         0x2 => sys_fork(),
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        _ => panic!("wrong syscall"),
+        // set thread area: WTF
+        0xf3 => -1,
+        sysnum => panic!("wrong syscall {}", sysnum),
     }
 }
 

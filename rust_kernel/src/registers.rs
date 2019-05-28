@@ -206,6 +206,7 @@ extern "C" {
 /// values before calling _real_mode_op.
 /// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
 
+#[no_mangle]
 pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
     use crate::drivers::{pic_8259, PIC_8259};
 

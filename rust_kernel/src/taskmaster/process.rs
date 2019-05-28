@@ -2,9 +2,14 @@
 
 pub mod tss;
 
+use core::slice;
+
+use elf_loader::SegmentType;
+
+use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
-use crate::memory::tools::{AllocFlags, NbrPages};
+use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
@@ -47,27 +52,79 @@ pub struct Process {
     pub virtual_allocator: VirtualPageAllocator,
 }
 
+/// This enum describe the origin of the proces
+pub enum TaskOrigin {
+    /// ELF file
+    Elf(&'static [u8]),
+    /// Just a dummy function
+    Raw(*const u8, usize),
+}
+
 /// Main implementation of Process
 impl Process {
     const RING3_CODE_SEGMENT: u32 = 0x20;
     const RING3_DATA_SEGMENT: u32 = 0x28;
     const RING3_STACK_SEGMENT: u32 = 0x30;
     const RING3_DPL: u32 = 0b11;
-    const RING3_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
+
+    const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
+    const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_1MB;
 
     /// Create a new process
-    pub unsafe fn new(code: *const u8, code_len: usize) -> Self {
+    pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
-        // Create a Dummy process Page directory
-        let mut v = VirtualPageAllocator::new_for_process();
+        // Create the process Page directory
+        let mut virtual_allocator = VirtualPageAllocator::new_for_process();
         // Switch to this process Page Directory
-        v.context_switch();
+        virtual_allocator.context_switch();
 
-        // Allocate one page for code segment of the Dummy process
-        let base_addr = v.alloc(Self::RING3_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0 as *mut u8;
+        let eip = match origin {
+            TaskOrigin::Elf(content) => {
+                // Parse Elf and generate stuff
+                let elf = load_elf(content);
+                for h in &elf.program_header_table {
+                    if h.segment_type == SegmentType::Load {
+                        let segment = {
+                            let _segment_addr = virtual_allocator
+                                // .alloc_on(Page::containing(Virt(h.vaddr as usize)), (h.memsz as usize).into(), h.flags.into())?
+                                // TODO: Easy fix must be removed
+                                .alloc_on(
+                                    Page::containing(Virt(h.vaddr as usize)),
+                                    (h.memsz as usize).into(),
+                                    AllocFlags::USER_MEMORY,
+                                )?
+                                .to_addr()
+                                .0 as *mut u8;
+                            slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
+                        };
+                        segment[0..h.filez as usize]
+                            .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
+                    }
+                }
+                elf.header.entry_point as u32
+            }
+            TaskOrigin::Raw(code, code_len) => {
+                // Allocate one page for code segment of the Dummy process
+                let base_addr = virtual_allocator
+                    .alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)
+                    .unwrap()
+                    .to_addr()
+                    .0 as *mut u8;
+                // Copy the code segment
+                base_addr.copy_from(code, code_len);
+                base_addr as u32
+            }
+        };
+
+        // Allocate one page for stack segment of the process
+        let stack_addr =
+            virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0
+                as *mut u8;
         // stack go downwards set esp to the end of the allocation
-        let esp = base_addr.add(Self::RING3_PROCESS_MAX_SIZE.into()) as u32;
+        let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
+
+        // Create the process identity
         let res = Self {
             cpu_state: CpuState {
                 registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
@@ -75,23 +132,22 @@ impl Process {
                 es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
                 fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
                 gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-                eip: base_addr as u32,
+                eip,
                 cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
                 eflags: Eflags::get_eflags().set_interrupt_flag(true),
                 esp,
                 ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
             },
-            virtual_allocator: v,
+            virtual_allocator,
         };
-        // Copy the code segment
-        base_addr.copy_from(code, code_len);
+
+        // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
-        // When non-fork, return to Kernel PD, when forking, return to father PD
-        res
+        Ok(res)
     }
 
-    /// Launch a process
-    pub unsafe fn launch(&self) -> ! {
+    /// Start a process
+    pub unsafe fn start(&self) -> ! {
         // Switch to process Page Directory
         self.virtual_allocator.context_switch();
 

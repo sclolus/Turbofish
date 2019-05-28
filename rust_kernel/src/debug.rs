@@ -24,6 +24,7 @@ macro_rules! function {
 /// copy of std dbg! macro
 #[allow(unused_macros)]
 #[macro_export]
+#[cfg(not(feature = "std-print"))]
 macro_rules! dbg {
     ($val: expr) => {
         match $val {

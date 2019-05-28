@@ -1,6 +1,6 @@
 arch := ivybridge_cpu
 kernel := build/kernel.elf
-name := undefined_behavior
+name := turbo_fish
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 QEMU_ARGS = --enable-kvm -cpu IvyBridge -m 128M -kernel $(kernel)
 # These rustc flags are defined in json xbuild file.
@@ -41,7 +41,7 @@ VPATH += src/boot
 
 SRC_C_KERNEL += vga_cpy
 SRC_ASM_KERNEL += vbe_font
-VPATH += src/terminal/monitor
+VPATH += src/terminal/src/monitor
 
 SRC_C_KERNEL += panic
 
@@ -75,8 +75,7 @@ VPATH += src/taskmaster/scheduler
 SRC_ASM_KERNEL += syscall_isr
 VPATH += src/taskmaster/syscall
 
-SRC_C_KERNEL += c_processes
-SRC_ASM_KERNEL += asm_processes asm_tools
+SRC_ASM_KERNEL += asm_processes
 VPATH += src/taskmaster/tests
 
 SRC_ASM_KERNEL += payload_13h_extended

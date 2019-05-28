@@ -4,10 +4,9 @@ use super::{CpuState, Process, TaskMode};
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
-use lazy_static::lazy_static;
 
 use crate::drivers::PIT0;
-use crate::spinlock::Spinlock;
+use spinlock::Spinlock;
 
 extern "C" {
     static mut SCHEDULER_COUNTER: i32;
@@ -28,9 +27,9 @@ enum ProcessState {
 unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let mut scheduler = SCHEDULER.lock();
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    scheduler.set_process_state(*cpu_state);
+    scheduler.set_curr_process_state(*cpu_state);
     scheduler.switch_next_process();
-    *cpu_state = scheduler.get_process_state();
+    *cpu_state = scheduler.get_curr_process_state();
     cpu_state as u32
 }
 
@@ -77,12 +76,12 @@ impl Scheduler {
     }
 
     /// Set in the current process the cpu_state
-    fn set_process_state(&mut self, cpu_state: CpuState) {
+    fn set_curr_process_state(&mut self, cpu_state: CpuState) {
         self.curr_process_mut().process.set_process_state(cpu_state)
     }
 
     /// Get in the current process the cpu_state
-    fn get_process_state(&self) -> CpuState {
+    fn get_curr_process_state(&self) -> CpuState {
         self.curr_process().process.get_process_state()
     }
 
@@ -150,8 +149,11 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
+
+    println!("Starting processes:");
+
     // After futur IRET for final process creation, interrupt must be re-enabled
-    p.launch()
+    p.start()
 }
 
 lazy_static! {

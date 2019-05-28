@@ -1,8 +1,8 @@
-use crate::drivers::UART_16550;
 use crate::interrupts;
 use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
+use crate::terminal::UART_16550;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]

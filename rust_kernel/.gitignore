@@ -1,3 +1,4 @@
 *.map
 nm_map_gen
 target
+*.orig

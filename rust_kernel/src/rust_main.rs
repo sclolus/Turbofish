@@ -19,7 +19,7 @@ use core::time::Duration;
 pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
     #[cfg(feature = "serial-eprintln")]
     {
-        unsafe { crate::drivers::UART_16550.init() };
+        unsafe { crate::terminal::UART_16550.init() };
         eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
@@ -76,7 +76,10 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     watch_dog();
 
-    // crate::taskmaster::start();
-    crate::drivers::storage::init(&multiboot_info);
-    crate::shell::shell();
+    // crate::drivers::storage::init(&multiboot_info);
+    // let elf = crate::elf_loader::load_elf();
+    // println!("{:#X?}", elf);
+    // crate::shell::shell();
+
+    crate::taskmaster::start();
 }

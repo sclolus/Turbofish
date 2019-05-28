@@ -21,6 +21,12 @@ extern crate keyboard;
 extern crate mbr;
 
 #[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate terminal;
+
+#[macro_use]
 pub mod utils;
 
 #[macro_use]
@@ -28,9 +34,6 @@ pub mod debug;
 
 #[macro_use]
 pub mod ffi;
-
-#[macro_use]
-pub mod terminal;
 
 #[macro_use]
 pub mod interrupts;
@@ -56,8 +59,8 @@ pub use watch_dog::*;
 
 pub mod shell;
 
-pub mod spinlock;
 pub use spinlock::{Spinlock, SpinlockGuard};
+pub mod elf_loader;
 
 use crate::memory::allocator::RustGlobalAlloc;
 
