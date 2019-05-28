@@ -5,24 +5,54 @@ use super::{CpuState, Process, SysResult, TaskMode};
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
+use alloc::collections::CollectionAllocErr;
+
+use errno::Errno;
+
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
 
 extern "C" {
     static mut SCHEDULER_COUNTER: i32;
+
+    fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
 }
 
 type Pid = u32;
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
-unsafe extern "C" fn scheduler_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
+
+    let cpu_state: *const CpuState = kernel_esp as *const CpuState;
+    if (*cpu_state).cs == 0x08 {
+        eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
+    }
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
-    scheduler.set_curr_process_state(*cpu_state);
+
+    // Backup of the current process kernel_esp
+    match scheduler.curr_process_mut() {
+        ProcessState::Running(process) => process.kernel_esp = kernel_esp,
+        ProcessState::Zombie(_) => panic!("WTF"),
+    };
+
+    // Switch between processes
     scheduler.switch_next_process();
-    *cpu_state = scheduler.get_curr_process_state();
-    cpu_state as u32
+
+    // Restore kernel_esp for the new process
+    match scheduler.curr_process() {
+        ProcessState::Running(process) => process.kernel_esp,
+        ProcessState::Zombie(_) => panic!("WTF"),
+    }
+}
+
+/// Remove ressources of the exited process and note his exit status
+#[no_mangle]
+unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
+    SCHEDULER.force_unlock();
+
+    SCHEDULER.lock().all_process.insert(process_to_free, ProcessState::Zombie(status));
 }
 
 #[derive(Debug)]
@@ -41,7 +71,7 @@ pub struct Scheduler {
     /// contains a hashmap of pid, process
     all_process: HashMap<Pid, ProcessState>,
     /// index in the vector of the current running process
-    curr_process_index: Option<usize>, // TODO: May be better if we use PID instead ?
+    curr_process_index: usize, // TODO: May be better if we use PID instead ?
     /// time interval in PIT tics between two schedules
     time_interval: Option<i32>,
 }
@@ -50,15 +80,18 @@ pub struct Scheduler {
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: None, time_interval: None }
+        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: 0, time_interval: None }
     }
 
     /// Add a process into the scheduler (transfert ownership)
-    pub fn add_process(&mut self, process: Process) -> Pid {
+    pub fn add_process(&mut self, process: Process) -> Result<Pid, CollectionAllocErr> {
         let pid = get_available_pid();
+        self.all_process.try_reserve(1)?;
+        self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, ProcessState::Running(process));
-        self.running_process.push(pid);
-        pid
+        self.running_process.insert(self.curr_process_index, pid);
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+        Ok(pid)
     }
 
     /// Initialize the first processs and get a pointer to it)
@@ -66,37 +99,24 @@ impl Scheduler {
         // Check if we got some processes to launch
         assert!(self.all_process.len() != 0);
 
-        self.curr_process_index = Some(0);
-
         match self.curr_process() {
             ProcessState::Running(process) => &process,
             ProcessState::Zombie(_) => panic!("no running process"),
         }
     }
 
-    /// Set in the current process the cpu_state
-    fn set_curr_process_state(&mut self, cpu_state: CpuState) {
-        match self.curr_process_mut() {
-            ProcessState::Running(process) => process.set_process_state(cpu_state),
-            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
-        }
-    }
-
-    /// Get in the current process the cpu_state
-    fn get_curr_process_state(&self) -> CpuState {
-        match self.curr_process() {
-            ProcessState::Running(process) => process.get_process_state(),
-            ProcessState::Zombie(_) => panic!("Zombie have not process state"),
-        }
-    }
-
     /// Set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
-        self.curr_process_index = Some((self.curr_process_index.unwrap() + 1) % self.running_process.len());
+        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
         // Dont forget to switch the Page diectory to the next process
         unsafe {
             match self.curr_process() {
-                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
+                ProcessState::Running(process) => {
+                    // Switch to the new process PD
+                    process.virtual_allocator.context_switch();
+                    // Re-init the TSS block for the new process
+                    process.init_tss();
+                }
                 ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
             };
         }
@@ -104,57 +124,69 @@ impl Scheduler {
 
     /// Get current process
     fn curr_process(&self) -> &ProcessState {
-        self.all_process.get(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
+        self.all_process.get(&self.running_process[self.curr_process_index]).unwrap()
     }
 
     /// Get current process mutably
     fn curr_process_mut(&mut self) -> &mut ProcessState {
-        self.all_process.get_mut(&self.running_process[self.curr_process_index.unwrap()]).unwrap()
+        self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
     }
 
     /// Perform a fork
-    pub fn fork(&mut self, cpu_state: CpuState) -> SysResult<i32> {
+    pub fn fork(&mut self, kernel_esp: u32) -> SysResult<i32> {
+        if self.time_interval == None {
+            panic!("It'a illogical to fork a process when we are in monotask mode");
+        }
         let curr_process = match self.curr_process_mut() {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
         };
-        curr_process.fork(cpu_state).map(|child| self.add_process(child) as i32)
+        Ok(curr_process.fork(kernel_esp).and_then(|child| self.add_process(child).map_err(|_| Errno::Enomem))? as i32)
     }
 
     // TODO: Send a status signal to the father
-    // TODO: fflush process ressources
     // TODO: Remove completely process from scheduler after death attestation
-    /// Exit form a process and change the current process
-    pub fn exit(&mut self, status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
+    /// Exit form a process and go to the current process
+    pub fn exit(&mut self, status: i32) -> ! {
         eprintln!(
             "exit called for process with PID: {:?} STATUS: {:?}",
-            self.running_process[self.curr_process_index.unwrap()],
-            status
+            self.running_process[self.curr_process_index], status
         );
-        // Modifie the status of the process to zombie with status (drop process implicitely)
-        let pid = self.running_process[self.curr_process_index.unwrap()];
-        self.all_process.insert(pid, ProcessState::Zombie(status));
+        // Get the current process's PID
+        let pid = self.running_process[self.curr_process_index];
+
+        // Flush the process's virtual allocator (until we are in his CR3)
+        match self.curr_process_mut() {
+            ProcessState::Running(process) => process.free_user_ressources(),
+            ProcessState::Zombie(_) => panic!("WTF"),
+        };
+
         // Remove process from the running process list
-        self.running_process.remove(self.curr_process_index.unwrap());
+        self.running_process.remove(self.curr_process_index);
         // Check if there is altmost one process
         if self.running_process.len() == 0 {
             eprintln!("no more process !");
             loop {}
+        } else {
+            eprintln!("Stay {:?} processes in game", self.running_process.len());
         }
-        self.curr_process_index = Some(self.curr_process_index.unwrap() % self.running_process.len());
+        self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
             SCHEDULER_COUNTER = self.time_interval.unwrap();
 
             match self.curr_process() {
-                ProcessState::Running(process) => process.virtual_allocator.context_switch(),
-                ProcessState::Zombie(_) => panic!("Zombie have not page directory"),
+                ProcessState::Running(process) => {
+                    // Switch to the new process PD
+                    process.virtual_allocator.context_switch();
+                    // Re-init the TSS block for the new process
+                    process.init_tss();
+                    // Follow the kernel stack of the new process
+                    _exit_resume(process.kernel_esp, pid, status);
+                }
+                ProcessState::Zombie(_) => panic!("WTF"),
             };
-
-            *cpu_state = self.get_curr_process_state();
-            // Don't modify EAX of the current process (syscall ret)
-            Ok((*cpu_state).registers.eax as i32)
-        }
+        };
     }
 }
 

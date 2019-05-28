@@ -111,6 +111,9 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: Exten
 
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
+    unsafe {
+        asm!("cli");
+    }
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
 
     if ext_reg.cs == 0x08 {
@@ -124,6 +127,9 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 
 #[allow(dead_code)]
 pub fn panic_sa_mere(info: &PanicInfo) {
+    unsafe {
+        asm!("cli");
+    }
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;
     unsafe {

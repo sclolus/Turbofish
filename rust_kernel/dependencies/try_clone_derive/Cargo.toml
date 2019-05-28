@@ -1,0 +1,19 @@
+[package]
+name = "try_clone_derive"
+version = "0.1.0"
+authors = ["vcombey <vcombey@student.42.fr>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fallible_collections = { path = "../fallible_collections" }
+proc-macro2 = "0.4.30"
+proc-quote = "0.2.2"
+
+[dependencies.syn]
+features = ["extra-traits"]
+version = "0.15.34"

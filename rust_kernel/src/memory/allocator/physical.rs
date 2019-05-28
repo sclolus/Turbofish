@@ -8,7 +8,7 @@ pub struct PhysicalPageAllocator {
 
 impl PhysicalPageAllocator {
     pub fn new(phys_start: Page<Phys>, size: NbrPages) -> Self {
-        Self { allocator: BuddyAllocator::new(phys_start, size) }
+        Self { allocator: BuddyAllocator::new(phys_start, size).expect("new physical buddy failed") }
     }
 
     pub fn alloc(&mut self, size: NbrPages, _flags: AllocFlags) -> Result<Page<Phys>> {
@@ -28,10 +28,11 @@ impl PhysicalPageAllocator {
         self.allocator.reserve_exact(addr, size)
     }
 
-    pub fn free(&mut self, paddr: Page<Phys>) -> Result<()> {
-        let order = self.ksize(paddr)?.into();
-
-        Ok(self.allocator.free(paddr, order)?)
+    pub fn free(&mut self, paddr: Page<Phys>) -> Result<NbrPages> {
+        let nbr_pages = self.ksize(paddr)?;
+        let order = nbr_pages.into();
+        self.allocator.free(paddr, order)?;
+        Ok(nbr_pages)
     }
 
     pub fn ksize(&mut self, paddr: Page<Phys>) -> Result<NbrPages> {

@@ -8,11 +8,12 @@ use errno::Errno;
 
 use core::ffi::c_void;
 
-use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 
 extern "C" {
     fn _isr_syscall();
+    fn _sys_test() -> i32;
 }
 
 /// Write something into the screen
@@ -21,7 +22,9 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
+            asm!("cli");
             eprint!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
+            asm!("sti");
         }
         Ok(count as i32)
     }
@@ -33,13 +36,33 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
 }
 
 /// Exit from a process
-fn sys_exit(status: i32, cpu_state: *mut CpuState) -> SysResult<i32> {
-    SCHEDULER.lock().exit(status, cpu_state)
+unsafe fn sys_exit(status: i32) -> ! {
+    asm!("cli");
+    SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
-fn sys_fork(cpu_state: CpuState) -> SysResult<i32> {
-    SCHEDULER.lock().fork(cpu_state)
+unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
+    asm!("cli");
+    let res = SCHEDULER.lock().fork(kernel_esp);
+    asm!("sti");
+    res
+}
+
+/// Preemptif coherency checker
+unsafe fn sys_test() -> SysResult<i32> {
+    if _sys_test() == 0 {
+        Ok(0)
+    } else {
+        Err(Errno::Eperm)
+    }
+}
+
+/// Do a stack overflow on the kernel stack
+#[allow(unconditional_recursion)]
+unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
+    eprintln!("Stack overflow syscall on the fly: v = {:?}", a + b + c + d + e + f);
+    Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 
 /// Global syscall interrupt handler called from assembly code
@@ -49,10 +72,12 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     let BaseRegisters { eax, ebx, ecx, edx, esi, edi, ebp, .. } = (*cpu_state).registers;
 
     let result = match eax {
-        0x1 => sys_exit(ebx as i32, cpu_state),
-        0x2 => sys_fork(*cpu_state),
+        0x1 => sys_exit(ebx as i32),       // This syscall doesn't return !
+        0x2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        0x80000000 => sys_test(),
+        0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
@@ -72,7 +97,7 @@ pub fn init() {
         .set_storage_segment(false)
         .set_privilege_level(3)
         .set_selector(1 << 3)
-        .set_gate_type(InterruptGate32);
+        .set_gate_type(TrapGate32);
     gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
 }

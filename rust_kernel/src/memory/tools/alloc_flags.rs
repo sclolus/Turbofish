@@ -15,12 +15,11 @@ bitflags! {
     }
 }
 
+/// Convert flags from ELF loader into MMU AllocFlags
 impl From<ProgramHeaderFlags> for AllocFlags {
     fn from(flags: ProgramHeaderFlags) -> AllocFlags {
         let mut entry = AllocFlags::default();
-
-        if !flags.contains(ProgramHeaderFlags::Writable) && !flags.contains(ProgramHeaderFlags::Executable) {
-            // TODO: Change that
+        if !flags.contains(ProgramHeaderFlags::Writable) && flags.contains(ProgramHeaderFlags::Readable) {
             entry |= AllocFlags::READ_ONLY;
         }
         entry

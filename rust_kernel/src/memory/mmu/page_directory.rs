@@ -8,6 +8,7 @@ use alloc::boxed::Box;
 use core::mem::size_of;
 use core::ops::{Index, IndexMut};
 use core::slice::SliceIndex;
+use fallible_collections::FallibleBox;
 
 /// This is the representation of the topmost paging structure.
 /// It is composed of 1024 Entry.
@@ -24,9 +25,9 @@ impl PageDirectory {
     }
 
     /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
-    pub fn new_for_process() -> Box<Self> {
+    pub fn new_for_process() -> Result<Box<Self>>  {
         // map the kenel pages tables
-        let mut pd = Box::new(Self::new());
+        let mut pd = Box::try_new(Self::new()).map_err(|_| MemoryError::OutOfMem)?;
         unsafe {
             pd.set_page_tables(0, &BIOS_PAGE_TABLE);
             pd.set_page_tables(768, &PAGE_TABLES);
@@ -39,7 +40,7 @@ impl PageDirectory {
 
             pd.self_map_tricks(phys_pd);
         }
-        pd
+        Ok(pd)
     }
 
     pub unsafe fn context_switch(&self) {
@@ -50,11 +51,11 @@ impl PageDirectory {
         _enable_paging(phys_pd);
     }
 
-    // dummy fork for the moment ( no copy on write and a lot of context switch )
+    // Very very dummy fork ( no copy on write, a lot of context switch and a page per page approach )
     pub unsafe fn fork(&self) -> Result<Box<Self>> {
         #[allow(unused_assignments)]
         let mut mem_tmp = [0; PAGE_SIZE];
-        let mut child = Self::new_for_process();
+        let mut child = Self::new_for_process()?;
 
         // parcour the user page directory
         for i in 1..768 {
@@ -82,6 +83,51 @@ impl PageDirectory {
             }
         }
         Ok(child)
+    }
+
+    /// Free the user ressources of a process by following its Page Directory (Cannot work with valloc)
+    pub unsafe fn free_user_ressources(&mut self) {
+        let mut remaining_pages: NbrPages = NbrPages(0);
+        let mut temporary_addr: Phys = Phys(0);
+
+        for i in 1..768 {
+            let page = Page::new(i * 1024);
+            if self[i].contains(Entry::PRESENT) {
+                let page_table = self.get_page_table_trick(page).expect("can't happen");
+                for j in 0..1024 {
+                    if page_table[j].contains(Entry::PRESENT) {
+                        if page_table[j].entry_addr() != temporary_addr || remaining_pages == NbrPages(0) {
+                            // This point may signify the end of the previous block and the begin of the next
+                            temporary_addr = page_table[j].entry_addr();
+                            // A physical block of size max NbrPages(remaining_pages) is detected, liberate it
+                            remaining_pages =
+                                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(page_table[j].entry_addr().into()).unwrap();
+                        }
+                        remaining_pages -= NbrPages(1);
+                        temporary_addr += PAGE_SIZE;
+                    } else {
+                        // This point may signify the end of the previous block
+                        remaining_pages = NbrPages(0);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Modify the alloc flags for a specific and existing virtual address
+    pub fn modify_page_entry(&mut self, addr: Virt, alloc_flags: AllocFlags) {
+        let pd_index = addr.pd_index();
+        let page = Page::new(pd_index * 1024);
+        assert!(self[pd_index].contains(Entry::PRESENT));
+
+        let pt_index = addr.pt_index();
+        let page_table = self.get_page_table_trick(page).expect("can't happen");
+        assert!(page_table[pt_index].contains(Entry::PRESENT));
+
+        // Be careful, reseting the flags of a page_table[pt_index] remove automaticely its physical entry addr (seems to be a dev error)
+        let entry_addr = page_table[pt_index].entry_addr();
+        page_table[pt_index] = Into::<Entry>::into(alloc_flags) | Entry::PRESENT;
+        page_table[pt_index].set_entry_addr(entry_addr);
     }
 
     /// This is a trick that ensures that the page tables are mapped into virtual memory at address 0xFFC00000 .

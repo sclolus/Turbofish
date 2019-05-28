@@ -1,0 +1,6 @@
+!.gitignore
+stack_overflow
+target
+*.orig
+!.xbuild_toolchain
+!.rust_toolchain

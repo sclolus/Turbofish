@@ -3,6 +3,7 @@ use crate::memory::mmu::{invalidate_page, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
+use fallible_collections::TryClone;
 
 /// A Physical Allocator must be registered to work
 pub struct VirtualPageAllocator {
@@ -22,22 +23,34 @@ impl VirtualPageAllocator {
         Self { virt, mmu }
     }
 
-    pub unsafe fn new_for_process() -> Self {
-        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB);
+    pub unsafe fn new_for_process() -> Result<Self> {
+        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB)?;
         buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).unwrap();
 
-        let pd = PageDirectory::new_for_process();
+        let pd = PageDirectory::new_for_process()?;
 
-        Self::new(buddy, pd)
+        Ok(Self::new(buddy, pd))
     }
 
     /// the process forker must be the current cr3
     pub fn fork(&self) -> Result<Self> {
-        let buddy = self.virt.clone();
+        let buddy = self.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
 
         let pd = unsafe { self.mmu.fork()? };
 
         Ok(Self::new(buddy, pd))
+    }
+
+    /// Flush all the occupied user ressources
+    pub fn free_user_ressources(&mut self) {
+        unsafe {
+            self.mmu.free_user_ressources();
+        }
+    }
+
+    /// Modify the alloc flags for a specific and existing virtual address
+    pub fn modify_page_entry(&mut self, addr: Virt, alloc_flags: AllocFlags) {
+        self.mmu.modify_page_entry(addr, alloc_flags);
     }
 
     /// get the physical mapping of virtual address `v`
