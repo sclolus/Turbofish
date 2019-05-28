@@ -91,9 +91,9 @@ impl Process {
     const RING3_STACK_SEGMENT: u32 = 0x30;
     const RING3_DPL: u32 = 0b11;
 
-    const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_1MB;
+    const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    const RING3_PROCESS_KERNEL_STACK_SIZE: usize = 1 << 16;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
 
     /// Create a new process
     pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
@@ -147,7 +147,7 @@ impl Process {
         };
 
         // Allocate the kernel stack of the process
-        let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
+        let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()];
 
         // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
         virtual_allocator.modify_page_entry(
@@ -156,8 +156,10 @@ impl Process {
         );
 
         // Generate the start kernel ESP of the new process
-        let kernel_esp =
-            kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE - core::mem::size_of::<CpuState>()) as u32;
+        let kernel_esp = kernel_stack
+            .as_ptr()
+            .add(Into::<usize>::into(Self::RING3_PROCESS_KERNEL_STACK_SIZE) - core::mem::size_of::<CpuState>())
+            as u32;
 
         // Allocate one page for stack segment of the process
         let stack_addr =
@@ -197,7 +199,7 @@ impl Process {
     /// Initialize the TSS segment (necessary for ring3 switch)
     pub unsafe fn init_tss(&self) {
         TSS.lock().init(
-            self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32,
+            self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()) as u32,
             Self::RING0_STACK_SEGMENT,
         );
     }
@@ -217,7 +219,7 @@ impl Process {
     /// Fork a process
     pub fn fork(&self, kernel_esp: u32) -> SysResult<Self> {
         // Create the child kernel stack
-        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE].map_err(|_| Errno::Enomem)?;
+        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()].map_err(|_| (0, Errno::Enomem)?;
         child_kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
 
         // Set the kernel ESP of the child. Relative to kernel ESP of the father
