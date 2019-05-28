@@ -3,12 +3,14 @@
 use super::{CpuState, SysResult, SCHEDULER};
 
 mod mmap;
+use mmap::{sys_mmap, sys_munmap, MmapFlags, MmapProt};
 
 use errno::Errno;
 
 use core::ffi::c_void;
 
 use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
+use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 
 extern "C" {
@@ -79,6 +81,15 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        0x9 => sys_mmap(
+            Virt(ebx as usize),
+            ecx as usize,
+            MmapProt::from_bits_truncate(edx),
+            MmapFlags::from_bits_truncate(esi),
+            edi as i32,
+            ebp as usize,
+        ),
+        0xB => sys_munmap(Virt(ebx as usize), ecx as usize),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF
