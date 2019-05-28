@@ -1,4 +1,5 @@
-use ext2::{Errno, OpenFlags};
+use errno::Errno;
+use ext2::OpenFlags;
 use rand::prelude::*;
 use std::fs::File;
 use std::io::Write;

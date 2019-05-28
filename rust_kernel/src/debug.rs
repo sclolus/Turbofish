@@ -21,35 +21,6 @@ macro_rules! function {
     }};
 }
 
-/// copy of std dbg! macro
-#[allow(unused_macros)]
-#[macro_export]
-#[cfg(not(feature = "std-print"))]
-macro_rules! dbg {
-    ($val: expr) => {
-        match $val {
-            tmp => {
-                println!("[{}:{}] {} = {:#?}", file!(), line!(), stringify!($val), &tmp);
-                tmp
-            }
-        }
-    };
-}
-
-/// copy of std dbg! macro
-#[allow(unused_macros)]
-#[macro_export]
-macro_rules! dbg_hex {
-    ($val: expr) => {
-        match $val {
-            tmp => {
-                println!("[{}:{}] {} = {:#X?}", file!(), line!(), stringify!($val), &tmp);
-                tmp
-            }
-        }
-    };
-}
-
 extern "C" {
     fn _get_pic_time() -> u32;
 }

@@ -2,10 +2,10 @@ use super::{NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
 use alloc::boxed::Box;
 use core::cmp::min;
 use core::fmt::{self, Debug};
+use errno::Errno;
 use mbr::Mbr;
 
 use ext2::DiskIo;
-use ext2::Errno;
 use ext2::Ext2Filesystem;
 use ext2::IoResult;
 

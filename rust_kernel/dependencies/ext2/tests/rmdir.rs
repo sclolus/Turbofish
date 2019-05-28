@@ -1,4 +1,5 @@
-use ext2::{Errno, OpenFlags};
+use errno::Errno;
+use ext2::OpenFlags;
 mod common;
 use common::*;
 use std::fs::DirBuilder;

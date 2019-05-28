@@ -10,7 +10,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-pub use syscall::Errno;
+use errno::Errno;
 pub use syscall::OpenFlags;
 
 mod tools;
@@ -24,6 +24,7 @@ mod body;
 use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
 
 #[cfg(not(feature = "std-print"))]
+#[allow(unused_imports)]
 #[macro_use]
 extern crate terminal;
 
