@@ -36,11 +36,9 @@ fn main() -> i32 {
 
     use crate::math::random::{srand, srand_init};;
 
-    fn make_somization<T: Fn() -> usize>(nb_tests: usize, max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
-        const MAX_ALLOCATION_ARRAY_SIZE: usize = 1 << 16;
-        if max_alloc > MAX_ALLOCATION_ARRAY_SIZE {
-            return Err(());
-        }
+    fn make_somization<T: Fn() -> usize>(max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
+        const MAX_ALLOCATION_ARRAY_SIZE: usize = 1024;
+        const NB_TESTS: usize = 1024;
 
         #[derive(Debug, Clone, PartialEq, Eq)]
         struct Allocation {
@@ -48,7 +46,6 @@ fn main() -> i32 {
             random_u8: u8,
             v: Vec<u8>,
         }
-
         let mut s: [Option<Allocation>; MAX_ALLOCATION_ARRAY_SIZE] = unsafe { core::mem::zeroed() };
 
         // this is a default for Rust to initialize as None when zeroed. but we cannot ensure that it will be always true in future
@@ -63,7 +60,7 @@ fn main() -> i32 {
 
         let mut nb_allocations: usize = 0;
 
-        for _i in 0..nb_tests {
+        for _i in 0..NB_TESTS {
             match srand::<bool>(true) {
                 true => {
                     if max_alloc != nb_allocations {
@@ -99,15 +96,15 @@ fn main() -> i32 {
 
     srand_init(42).unwrap();
 
-    make_somization(1024, 1000, || srand::<u32>(512) as usize).expect("failed sodo 0");
+    make_somization(1024, || srand::<u32>(512) as usize).expect("failed sodo 0");
     println!("test 1 passed");
-    make_somization(1024, 1000, || srand::<u32>(16) as usize * 128).expect("failed sodo 1");
+    make_somization(1024, || srand::<u32>(16) as usize * 128).expect("failed sodo 1");
     println!("test 2 passed");
-    make_somization(1024, 1000, || srand::<u32>(32) as usize * 128).expect("failed sodo 2");
+    make_somization(1024, || srand::<u32>(32) as usize * 128).expect("failed sodo 2");
     println!("test 3 passed");
-    make_somization(1024, 1000, || srand::<u32>(64) as usize * 128).expect("failed sodo 3");
+    make_somization(1024, || srand::<u32>(64) as usize * 128).expect("failed sodo 3");
     println!("test 4 passed");
-    make_somization(1024, 1000 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
+    make_somization(1024 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
     println!("test 5 passed");
 
     0

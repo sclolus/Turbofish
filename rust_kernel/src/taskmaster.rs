@@ -38,6 +38,7 @@ pub fn start() -> ! {
     let _p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
     let _p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
     let _p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
+    let _p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
     let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
 
     // Load some processes into the scheduler
@@ -52,8 +53,8 @@ pub fn start() -> ! {
     // SCHEDULER.lock().add_process(_p9).unwrap();
     // SCHEDULER.lock().add_process(_p10).unwrap();
     // SCHEDULER.lock().add_process(_p11).unwrap();
-    // SCHEDULER.lock().add_process(_p12).unwrap();
-    SCHEDULER.lock().add_process(_p13).unwrap();
+    SCHEDULER.lock().add_process(_p12).unwrap();
+    // SCHEDULER.lock().add_process(_p13).unwrap();
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }
