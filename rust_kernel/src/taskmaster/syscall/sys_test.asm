@@ -42,3 +42,8 @@ _sys_test:
 	xor eax, eax
 	pop ebp
 	ret
+
+global _get_esp
+_get_esp:
+	mov eax, esp
+	ret

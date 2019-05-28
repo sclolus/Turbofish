@@ -45,6 +45,11 @@ _init_kernel:
 	call _set_avx
 	call _set_fpu
 
+	; Enable Write-Protection on pages: CR0.BIT16 When set, the CPU can't write to read-only pages when privilege level is 0
+	mov eax, cr0
+	or eax, 0x00010000
+	mov cr0, eax
+
 	; Ask watchdog if all is okay
 	call alt_check_all
 

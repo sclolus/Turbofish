@@ -115,7 +115,7 @@ impl Process {
                                 .alloc_on(
                                     Page::containing(Virt(h.vaddr as usize)),
                                     (h.memsz as usize).into(),
-                                    Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
+                                    AllocFlags::USER_MEMORY,
                                 )?
                                 .to_addr()
                                 .0 as *mut u8;
@@ -123,6 +123,12 @@ impl Process {
                         };
                         segment[0..h.filez as usize]
                             .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
+                        // Modify the rights on pages by following the ELF specific restrictions
+                        virtual_allocator.modify_range_page_entry(
+                            Page::containing(Virt(h.vaddr as usize)),
+                            (h.memsz as usize).into(),
+                            Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
+                        );
                     }
                 }
                 elf.header.entry_point as u32
@@ -144,8 +150,10 @@ impl Process {
         let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE];
 
         // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
-        virtual_allocator
-            .modify_page_entry(Virt(kernel_stack.as_ptr() as usize), AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY);
+        virtual_allocator.modify_page_entry(
+            Virt(kernel_stack.as_ptr() as usize).into(),
+            AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY,
+        );
 
         // Generate the start kernel ESP of the new process
         let kernel_esp =
@@ -157,7 +165,8 @@ impl Process {
                 as *mut u8;
 
         // Mark the first entry of the user stack as read-only, this prevent user stack overflow
-        virtual_allocator.modify_page_entry(Virt(stack_addr as usize), AllocFlags::READ_ONLY | AllocFlags::USER_MEMORY);
+        virtual_allocator
+            .modify_page_entry(Virt(stack_addr as usize).into(), AllocFlags::READ_ONLY | AllocFlags::USER_MEMORY);
 
         // stack go downwards set esp to the end of the allocation
         let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
