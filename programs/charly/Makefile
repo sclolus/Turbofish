@@ -10,7 +10,7 @@ CC = gcc
 
 ASFLAGS = -f elf
 CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
-LDFLAGS = -m elf_i386
+LDFLAGS = -T linker.ld -m elf_i386
 ifeq ($(LDMAP),yes)
     LDFLAGS += -M
 endif

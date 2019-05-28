@@ -1,34 +1,60 @@
 //! contain the standard errno definition
 #![cfg_attr(not(test), no_std)]
 
+/// Standard error errno
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, PartialEq)]
-/// standard error errno
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub enum Errno {
+    /// Operation not permitted.
+    Eperm = 1,
+    /// No such file or directory
+    Enoent = 2,
+    /// No such process.
+    Esrch = 3,
+    /// Interrupted system call.
+    Eintr = 4,
+    /// I/O error.
+    Eio = 5,
+    /// No such device or address.
+    Enxio = 6,
     /// Argument list too long.
-    E2Big,
+    E2Big = 7,
+    /// No such file or directory.
+    Enoexec = 8,
+    /// Bad file descriptor.
+    Ebadf = 9,
+    /// No child processes.
+    Echild = 10,
+    /// Resource unavailable, try again (may be the same value as [EWOULDBLOCK]).
+    Eagain = 11,
+    /// Out of memory.
+    Enomem = 12,
     /// Permission denied.
-    Eacces,
+    Eacces = 13,
+    /// Bad address.
+    Efault = 14,
+    /// Block device required
+    Enotblk = 15,
+    /// Device or resource busy.
+    Ebusy = 16,
+    /// File exists.
+    Eexist = 17,
+    /// Cross-device link.
+    Exdev = 18,
+    // TODO SORT NEXT ERRORS BY NUMBER
     /// Address in use.
     Eaddrinuse,
     /// Address not available.
     Eaddrnotavail,
     /// Address family not supported.
     Eafnosupport,
-    /// Resource unavailable, try again (may be the same value as [EWOULDBLOCK]).
-    Eagain,
     /// Connection already in progress.
     Ealready,
-    /// Bad file descriptor.
-    Ebadf,
     /// Bad message.
     Ebadmsg,
-    /// Device or resource busy.
-    Ebusy,
     /// Operation canceled.
     Ecanceled,
-    /// No child processes.
-    Echild,
     /// Connection aborted.
     Econnaborted,
     /// Connection refused.
@@ -43,10 +69,6 @@ pub enum Errno {
     Edom,
     /// Reserved.
     Edquot,
-    /// File exists.
-    Eexist,
-    /// Bad address.
-    Efault,
     /// File too large.
     Efbig,
     /// Host is unreachable.
@@ -57,12 +79,8 @@ pub enum Errno {
     Eilseq,
     /// Operation in progress.
     Einprogress,
-    /// Interrupted function.
-    Eintr,
     /// Invalid argument.
     Einval,
-    /// I/O error.
-    Eio,
     /// Socket is connected.
     Eisconn,
     /// Is a directory.
@@ -93,16 +111,10 @@ pub enum Errno {
     Enodata,
     /// No such device.
     Enodev,
-    /// No such file or directory.
-    Enoent,
-    /// Executable file format error.
-    Enoexec,
     /// No locks available.
     Enolck,
     /// Reserved.
     Enolink,
-    /// Not enough space.
-    Enomem,
     /// No message of the desired type.
     Enomsg,
     /// Protocol not available.
@@ -129,16 +141,12 @@ pub enum Errno {
     Enotsup,
     /// Inappropriate I/O control operation.
     Enotty,
-    /// No such device or address.
-    Enxio,
     /// Operation not supported on socket (may be the same value as [ENOTSUP]).
     Eopnotsupp,
     /// Value too large to be stored in data type.
     Eoverflow,
     /// Previous owner died.
     Eownerdead,
-    /// Operation not permitted.
-    Eperm,
     /// Broken pipe.
     Epipe,
     /// Protocol error.
@@ -153,8 +161,6 @@ pub enum Errno {
     Erofs,
     /// Invalid seek.
     Espipe,
-    /// No such process.
-    Esrch,
     /// Reserved.
     Estale,
     /// [OB XSR] [Option Start] Stream ioctl() timeout. [Option End]
@@ -165,6 +171,4 @@ pub enum Errno {
     Etxtbsy,
     /// Operation would block (may be the same value as [EAGAIN]).
     Ewouldblock,
-    /// Cross-device link.
-    Exdev,
 }

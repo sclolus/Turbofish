@@ -6,7 +6,7 @@ VPATH += src
 AS = nasm
 
 ASFLAGS = -f elf
-LDFLAGS = -m elf_i386
+LDFLAGS = -T linker.ld -m elf_i386
 ifeq ($(LDMAP),yes)
     LDFLAGS += -M
 endif

@@ -2,9 +2,12 @@
 
 pub mod tss;
 
+use super::SysResult;
+
 use core::slice;
 
 use elf_loader::SegmentType;
+use errno::Errno;
 
 use crate::elf_loader::load_elf;
 use crate::memory::allocator::VirtualPageAllocator;
@@ -22,7 +25,7 @@ extern "C" {
 #[repr(C)]
 pub struct CpuState {
     /// current registers
-    registers: BaseRegisters,
+    pub registers: BaseRegisters,
     /// current data DS
     ds: u32,
     /// current data ES
@@ -156,18 +159,18 @@ impl Process {
     }
 
     /// Fork a process
-    #[allow(dead_code)]
-    pub fn fork(&self) -> crate::memory::tools::Result<Self> {
-        let mut child = Self { cpu_state: self.cpu_state, virtual_allocator: self.virtual_allocator.fork()? };
+    pub fn fork(&self, cpu_state: CpuState) -> SysResult<Self> {
+        let mut child =
+            Self { cpu_state, virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)? };
         child.cpu_state.registers.eax = 0;
         Ok(child)
     }
 
     /// Destroy a process
     #[allow(dead_code)]
-    pub fn exit(&mut self) {
-        // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
+    pub fn delete(&mut self) {
         unimplemented!();
+        // TODO: free all memory allocations by following the virtual_allocator keys 4mb-3g area
         // drop(*self);
     }
 
@@ -179,5 +182,12 @@ impl Process {
     /// Get all the cpu_state of a process
     pub fn get_process_state(&self) -> CpuState {
         self.cpu_state
+    }
+}
+
+/// Remove this code one day: Just to test if processus are implicitely droped by scheduler !
+impl Drop for Process {
+    fn drop(&mut self) {
+        eprintln!("process droped !");
     }
 }
