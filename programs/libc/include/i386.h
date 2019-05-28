@@ -24,7 +24,7 @@ typedef unsigned int off_t;
 typedef int bool;
 
 #define false 0
-#define true 0
+#define true 1
 #define NULL 0
 
 #endif
