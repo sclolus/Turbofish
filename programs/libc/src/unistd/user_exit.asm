@@ -7,27 +7,12 @@
 ;
 ; Scratch Registers | Preserved Registers       | Call List
 ; eax, ecx, edx       ebx, esi, edi, ebp, esp     ebp
+;
+; Syscall convention INT 80H. INTEL => Parameters are passed by registers. SysNum: EAX
+; Parameters registers order: EBX, ECX, EDX, ESI, EDI, EBP
+; Return on EAX (no carry flag feature)
 
 segment .text
-
-global user_write
-user_write:
-	push ebp
-	mov ebp, esp
-
-	push ebx
-
-	mov edx, [ebp + 16]
-	mov ecx, [ebp + 12]
-	mov ebx, [ebp + 8]
-
-	mov eax, 4 ; system call number (sys_write)
-	int 80h
-
-	pop ebx
-
-	pop ebp
-	ret
 
 global user_exit
 user_exit:
@@ -38,30 +23,3 @@ user_exit:
 
 	mov eax, 1 ; system call number (sys_exit)
 	int 80h
-
-global user_fork
-user_fork:
-	push ebp
-	mov ebp, esp
-
-	mov eax, 0x2
-	int 0x80
-
-	pop ebp
-	ret
-
-global user_mmap
-user_mmap:
-	push ebp
-	mov ebp, esp
-
-	pop ebp
-	ret
-
-global user_munmap
-user_munmap:
-	push ebp
-	mov ebp, esp
-
-	pop ebp
-	ret

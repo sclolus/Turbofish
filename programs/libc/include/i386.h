@@ -12,10 +12,10 @@ typedef unsigned short uint16_t;
 typedef signed int s32;
 typedef signed int int32_t;
 typedef signed int ssize_t;
-typedef signed int off_t;
 typedef unsigned int u32;
 typedef unsigned int uint32_t;
 typedef unsigned int size_t;
+typedef unsigned int off_t;
 
 #define INT_MIN -2147483648
 #define INT_MAX 2147483647

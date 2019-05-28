@@ -1,6 +1,7 @@
 TARGET = libc.a
 
 IFLAGS = -Iinclude
+HEADERS = include/i386.h
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
@@ -11,13 +12,14 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	putchar putstr putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero
 VPATH += src/string
+HEADERS += include/string.h
 
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme
-VPATH += src/printf
-HEADERS += internal_printf.h
+VPATH += src/stdio/printf
+HEADERS += include/stdio.h internal_printf.h
 
 SRC_C += ctor mem_syscall \
 	size_fn \
@@ -37,20 +39,13 @@ SRC_C += ctor mem_syscall \
 	alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
 	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
 	alloc_btree_get_neighbours
-VPATH += src/alloc src/alloc/alloc_btree
-HEADERS += main_headers.h alloc_btree_internal_header.h
+VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
+HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += write
+SRC_C += write exit fork mmap munmap mprotect
+SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect
 VPATH += src/unistd
 HEADERS += include/unistd.h
-
-SRC_C += mmap munmap
-VPATH += src/stdlib
-HEADERS += include/stdlib.h
-
-SRC_ASM += syscalls
-VPATH += src
-HEADERS +=
 
 AS = nasm
 CC = gcc
