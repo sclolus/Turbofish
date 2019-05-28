@@ -11,8 +11,8 @@ use tests::{_dummy_asm_process_code, _dummy_asm_process_len};
 
 use errno::Errno;
 
-/// SysResult is just made to handle module errors
-pub type SysResult<T> = core::result::Result<T, Errno>;
+/// SysResult is just made to handle module errors. Return optional return and errno
+pub type SysResult<T> = core::result::Result<T, (i32, Errno)>;
 
 /// MonoTasking or MultiTasking configuration
 pub enum TaskMode {
