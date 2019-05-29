@@ -25,7 +25,7 @@ impl PageDirectory {
     }
 
     /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
-    pub fn new_for_process() -> Result<Box<Self>>  {
+    pub fn new_for_process() -> Result<Box<Self>> {
         // map the kenel pages tables
         let mut pd = Box::try_new(Self::new()).map_err(|_| MemoryError::OutOfMem)?;
         unsafe {

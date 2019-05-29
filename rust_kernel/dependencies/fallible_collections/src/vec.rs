@@ -144,20 +144,12 @@ impl<T: TryClone> ExtendWith<T> for TryExtendElement<T> {
 }
 
 trait TryExtend<T> {
-    fn try_extend_with<E: ExtendWith<T>>(
-        &mut self,
-        n: usize,
-        value: E,
-    ) -> Result<(), CollectionAllocErr>;
+    fn try_extend_with<E: ExtendWith<T>>(&mut self, n: usize, value: E) -> Result<(), CollectionAllocErr>;
 }
 
 impl<T> TryExtend<T> for Vec<T> {
     /// Extend the vector by `n` values, using the given generator.
-    fn try_extend_with<E: ExtendWith<T>>(
-        &mut self,
-        n: usize,
-        mut value: E,
-    ) -> Result<(), CollectionAllocErr> {
+    fn try_extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) -> Result<(), CollectionAllocErr> {
         self.try_reserve(n)?;
 
         unsafe {
@@ -296,7 +288,7 @@ mod tests {
         let v = vec![42; 100];
         assert_eq!(v.try_clone().unwrap(), v);
     }
-    
+
     // #[test]
     // fn try_out_of_mem() {
     //     let v = try_vec![42_u8; 1000000000];

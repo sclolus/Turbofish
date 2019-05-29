@@ -27,66 +27,33 @@ pub fn start() -> ! {
     // Initialize Syscall system
     syscall::init();
 
-    // Create an ASM dummy process based on a simple function
-    let p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
-    println!("{:#X?}", p1);
-
-    // Create a real rust process based on an ELF file
-    let p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
-    println!("{:#X?}", p2);
-
-    // Create a real rust process based on an ELF file
-    let p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
-    println!("{:#X?}", p3);
-
-    // Create a real rust process based on an ELF file
-    let p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    println!("{:#X?}", p4);
-
-    // Create a real rust process based on an ELF file
-    let p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
-    println!("{:#X?}", p5);
-
-    // Create a real rust process based on an ELF file
-    let p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p6);
-
-    // Create a real rust process based on an ELF file
-    let p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p7);
-
-    // Create a real rust process based on an ELF file
-    let p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p8);
-
-    // Create a real rust process based on an ELF file
-    let p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    println!("{:#X?}", p9);
-
-    // Create a real rust process based on an ELF file
-    let p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
-    println!("{:#X?}", p10);
-
-    // Create a real rust process based on an ELF file
-    let p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
-    println!("{:#X?}", p11);
-
-    let p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
-    println!("{:#X?}", p12);
+    let _p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
+    let _p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
+    let _p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
+    let _p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
+    let _p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
+    let _p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    let _p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    let _p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    let _p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
+    let _p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
+    let _p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
+    let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
 
     // Load some processes into the scheduler
-    // SCHEDULER.lock().add_process(p1).unwrap();
-    // SCHEDULER.lock().add_process(p2).unwrap();
-    // SCHEDULER.lock().add_process(p3).unwrap();
-    // SCHEDULER.lock().add_process(p4).unwrap();
-    // SCHEDULER.lock().add_process(p5).unwrap();
-    // SCHEDULER.lock().add_process(p6).unwrap();
-    // SCHEDULER.lock().add_process(p7).unwrap();
-    // SCHEDULER.lock().add_process(p8).unwrap();
-    // SCHEDULER.lock().add_process(p9).unwrap();
-    // SCHEDULER.lock().add_process(p10).unwrap();
-    // SCHEDULER.lock().add_process(p11).unwrap();
-    SCHEDULER.lock().add_process(p12).unwrap();
+    // SCHEDULER.lock().add_process(_p1).unwrap();
+    // SCHEDULER.lock().add_process(_p2).unwrap();
+    // SCHEDULER.lock().add_process(_p3).unwrap();
+    // SCHEDULER.lock().add_process(_p4).unwrap();
+    // SCHEDULER.lock().add_process(_p5).unwrap();
+    // SCHEDULER.lock().add_process(_p6).unwrap();
+    // SCHEDULER.lock().add_process(_p7).unwrap();
+    // SCHEDULER.lock().add_process(_p8).unwrap();
+    // SCHEDULER.lock().add_process(_p9).unwrap();
+    // SCHEDULER.lock().add_process(_p10).unwrap();
+    // SCHEDULER.lock().add_process(_p11).unwrap();
+    // SCHEDULER.lock().add_process(_p12).unwrap();
+    SCHEDULER.lock().add_process(_p13).unwrap();
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

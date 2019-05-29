@@ -140,7 +140,8 @@ impl Scheduler {
             ProcessState::Running(process) => process,
             ProcessState::Zombie(_) => panic!("Zombie cannot be forked"),
         };
-        Ok(curr_process.fork(kernel_esp).and_then(|child| self.add_process(child).map_err(|_| Errno::Enomem))? as i32)
+        Ok(curr_process.fork(kernel_esp).and_then(|child| self.add_process(child).map_err(|_| Errno::Enomem))?
+            as i32)
     }
 
     // TODO: Send a status signal to the father
