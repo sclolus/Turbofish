@@ -79,7 +79,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     crate::drivers::storage::init(&multiboot_info);
     // let elf = crate::elf_loader::load_elf();
     // println!("{:#X?}", elf);
-    crate::shell::shell();
+    // crate::shell::shell();
 
-    // crate::taskmaster::start();
+    crate::taskmaster::start();
 }

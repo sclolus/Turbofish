@@ -2,13 +2,14 @@ use super::SysResult;
 
 use errno::Errno;
 
-use crate::memory::tools::{address::Virt, NbrPages};
+use super::SCHEDULER;
+use crate::memory::tools::{AllocFlags, NbrPages, Virt};
 use bitflags::bitflags;
 
 /// This structure is the argument structure of the mmap syscall
 #[derive(Debug, Copy, Clone)]
 pub struct MmapArgStruct {
-    virt_addr: Virt,
+    virt_addr: Virt, // Virt has the same sizeof of an address (newtype based on usize)
     length: usize,
     prot: MmapProt,
     flags: MmapFlags,
@@ -20,16 +21,22 @@ pub struct MmapArgStruct {
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
     asm!("cli");
 
-    eprintln!("size: {:?}", core::mem::size_of::<MmapArgStruct>());
     // TODO: Check if pointer exist in user virtual address space
     eprintln!("{:#X?}", *mmap_arg);
+    eprintln!("mmap called !");
+    let mut scheduler = SCHEDULER.lock();
+    let process = scheduler.get_current_running_process();
 
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
 
-    // TODO: Allocate xD
+    eprintln!("alloc request for len: {:?} to nbrPages {:?}", length, Into::<NbrPages>::into(length));
+    let addr = process.virtual_allocator.alloc(length.into(), AllocFlags::USER_MEMORY).unwrap();
+    eprintln!("alloc done");
+
     asm!("sti");
-    Err((0xffffff80 as u32 as i32, Errno::Efault))
+    Ok(addr.to_addr().0 as i32)
+    //Err((0xffffff80 as u32 as i32, Errno::Efault))
 }
 
 /// Map files or devices into memory
@@ -50,7 +57,8 @@ pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
     asm!("cli");
     // TODO: Unallocate
     asm!("sti");
-    Err((0, Errno::Eperm))
+    Ok(0)
+    //Err((0, Errno::Eperm))
 }
 
 /// Set protection on a region of memory

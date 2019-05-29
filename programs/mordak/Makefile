@@ -9,8 +9,12 @@ VPATH += src/math
 arch := ivybridge_cpu
 target := $(arch)
 custom_target := $(arch).json
-cargo_flags += --release
-rust_archive := target/$(target)/release/lib$(TARGET).a
+ifeq ($(DEBUG),yes)
+	rust_archive = target/$(target)/debug/lib$(TARGET).a
+else
+	cargo_flags += --release
+	rust_archive = target/$(target)/release/lib$(TARGET).a
+endif
 
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 

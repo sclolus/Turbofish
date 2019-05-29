@@ -55,7 +55,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 }
 
 #[derive(Debug)]
-enum ProcessState {
+pub enum ProcessState {
     /// The process is currently on running state
     Running(Process),
     /// The process is terminated and wait to deliver his testament to his father
@@ -93,17 +93,6 @@ impl Scheduler {
         Ok(pid)
     }
 
-    /// Initialize the first processs and get a pointer to it)
-    fn init_process_zero(&mut self) -> &Process {
-        // Check if we got some processes to launch
-        assert!(self.all_process.len() != 0);
-
-        match self.curr_process() {
-            ProcessState::Running(process) => &process,
-            ProcessState::Zombie(_) => panic!("no running process"),
-        }
-    }
-
     /// Set current process to the next process in the list of running process
     fn switch_next_process(&mut self) {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
@@ -129,6 +118,17 @@ impl Scheduler {
     /// Get current process mutably
     fn curr_process_mut(&mut self) -> &mut ProcessState {
         self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
+    }
+
+    /// Get the current running process (usefull for syscalls)
+    pub fn get_current_running_process(&mut self) -> &mut Process {
+        // Check if we got some processes to launch
+        assert!(self.all_process.len() != 0);
+
+        match self.curr_process_mut() {
+            ProcessState::Running(process) => process,
+            ProcessState::Zombie(_) => panic!("no running process"),
+        }
     }
 
     /// Perform a fork
@@ -218,7 +218,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     scheduler.time_interval = t.1;
 
     // Initialise the first process and get a reference on it
-    let p = scheduler.init_process_zero();
+    let p = scheduler.get_current_running_process();
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

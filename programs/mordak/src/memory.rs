@@ -18,7 +18,7 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         assert!(layout.align() <= 16);
-        calloc(layout.size())
+        calloc(1, layout.size())
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
@@ -35,7 +35,7 @@ fn out_of_memory(_: core::alloc::Layout) -> ! {
 
 extern "C" {
     fn malloc(len: usize) -> *mut u8;
-    fn calloc(len: usize) -> *mut u8;
+    fn calloc(count: usize, len: usize) -> *mut u8;
     fn realloc(addr: *mut u8, new_size: usize) -> *mut u8;
     fn free(addr: *mut u8);
 }
