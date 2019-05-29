@@ -54,7 +54,7 @@ pub fn start() -> ! {
     // SCHEDULER.lock().add_process(_p9).unwrap();
     // SCHEDULER.lock().add_process(_p10).unwrap();
     // SCHEDULER.lock().add_process(_p11).unwrap();
-    SCHEDULER.lock().add_process(_p12).unwrap();
+    SCHEDULER.lock().add_process(None, _p12).unwrap();
     // SCHEDULER.lock().add_process(_p13).unwrap();
 
     // let process_list = unsafe {
@@ -74,7 +74,7 @@ pub fn start() -> ! {
     // };
     // for (i, p) in process_list.into_iter().enumerate() {
     //     println!("pocess no: {} : {:?}", i, p);
-    //     SCHEDULER.lock().add_process(p).unwrap();
+    //     SCHEDULER.lock().add_process(None, p).unwrap();
     // }
 
     // Launch the scheduler

@@ -204,6 +204,13 @@ impl Process {
         );
     }
 
+    pub unsafe fn context_switch(&self) {
+        // Switch to the new process PD
+        self.virtual_allocator.context_switch();
+        // Re-init the TSS block for the new process
+        self.init_tss();
+    }
+
     /// Start a process
     pub unsafe fn start(&self) -> ! {
         // Switch to process Page Directory
