@@ -1,8 +1,12 @@
+//! This module manage println! and print! rust macros
+
 use core::fmt::Write;
 
+/// Main Writer structure
 pub struct Writer {}
 
 impl Writer {
+    /// Void new declaration
     pub const fn new() -> Self {
         Self {}
     }
@@ -14,6 +18,7 @@ impl Write for Writer {
     }
 }
 
+/// Main Writer Globale
 pub static mut WRITER: Writer = Writer::new();
 
 /// common print method

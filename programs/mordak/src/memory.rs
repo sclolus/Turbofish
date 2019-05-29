@@ -1,5 +1,8 @@
+//! Rust Global Alloc stuff
+
 use core::alloc::{GlobalAlloc, Layout};
 
+/// Main GlobalAlloc structure
 pub struct RustGlobalAlloc;
 
 unsafe impl GlobalAlloc for RustGlobalAlloc {

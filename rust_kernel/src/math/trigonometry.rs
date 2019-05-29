@@ -1,7 +1,12 @@
+//! this module provides some dummy trigonometry functions
+
 /// Trigonometry main implementation
 pub trait Trigonometry {
+    /// generic function cos with classic syntax
     fn cos(self) -> Self;
+    /// generic function sin with classic syntax
     fn sin(self) -> Self;
+    /// generic function tan with classic syntax
     fn tan(self) -> Self;
 }
 

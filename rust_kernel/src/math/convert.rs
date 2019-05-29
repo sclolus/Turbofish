@@ -1,3 +1,6 @@
+//! This module provides convertion functions
+
+/// Convert trait implementation
 pub trait Convert {
     /// trunc a decimal number
     fn trunc(self) -> Self;
