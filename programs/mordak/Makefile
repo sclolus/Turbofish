@@ -25,7 +25,7 @@ endif
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 
-.PHONY = all clean fclean re exec build_rust
+.PHONY = all clean fclean re exec build_rust test test-all
 
 all: .rust_toolchain .xbuild_toolchain build_rust build_libc $(TARGET)
 
@@ -49,6 +49,9 @@ build_rust:
 
 build_libc:
 	make -C libc all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+
+test:
+	cargo test --target i686-unknown-linux-gnu
 
 clean:
 	cargo clean

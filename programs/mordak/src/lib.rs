@@ -5,9 +5,11 @@
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
 #![feature(asm)]
+#![feature(core_intrinsics)]
 #![warn(missing_docs)]
 
 pub mod memory;
+#[cfg(not(test))]
 use crate::memory::RustGlobalAlloc;
 
 /// As a matter of fact, we can't declare the MemoryManager inside a submodule.
@@ -23,6 +25,7 @@ pub use writer::*;
 
 pub mod math;
 
+#[cfg(not(test))]
 #[panic_handler]
 #[no_mangle]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -30,6 +33,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 fn main() -> i32 {
     println!("initialise Mordak's Sodo-test");
