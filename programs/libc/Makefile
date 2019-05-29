@@ -1,7 +1,11 @@
 TARGET = libc.a
 
 IFLAGS = -Iinclude
-HEADERS = include/i386.h include/errno.h
+HEADERS = include/i386.h
+
+SRC_C += errno
+VPATH += src/errno
+HEADERS += include/errno.h
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \

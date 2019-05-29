@@ -1,8 +1,13 @@
 #include "unistd.h"
 
 extern int user_munmap(void *addr, size_t length);
+extern int errno;
 
 int munmap(void *addr, size_t length)
 {
-	return user_munmap(addr, length);
+	int ret = user_munmap(addr, length);
+	if (ret < 0) {
+		errno = -ret;
+	}
+	return ret;
 }
