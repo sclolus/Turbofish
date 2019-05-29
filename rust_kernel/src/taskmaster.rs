@@ -22,6 +22,7 @@ pub enum TaskMode {
     Multi(f32),
 }
 
+// Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start() -> ! {
     // Initialize Syscall system
@@ -55,6 +56,26 @@ pub fn start() -> ! {
     // SCHEDULER.lock().add_process(_p11).unwrap();
     SCHEDULER.lock().add_process(_p12).unwrap();
     // SCHEDULER.lock().add_process(_p13).unwrap();
+
+    // let process_list = unsafe {
+    //     vec![
+    //         Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+    //         // Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+    //         // Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
+    //     ]
+    // };
+    // for (i, p) in process_list.into_iter().enumerate() {
+    //     println!("pocess no: {} : {:?}", i, p);
+    //     SCHEDULER.lock().add_process(p).unwrap();
+    // }
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }
