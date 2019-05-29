@@ -55,7 +55,14 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 }
 
 #[derive(Debug)]
-pub enum ProcessState {
+struct Task {
+    process_state: ProcessState,
+    child: Vec<Pid>,
+    parent: Pid,
+}
+
+#[derive(Debug)]
+enum ProcessState {
     /// The process is currently on running state
     Running(Process),
     /// The process is terminated and wait to deliver his testament to his father
@@ -156,10 +163,7 @@ impl Scheduler {
         let pid = self.running_process[self.curr_process_index];
 
         // Flush the process's virtual allocator (until we are in his CR3)
-        match self.curr_process_mut() {
-            ProcessState::Running(process) => process.free_user_ressources(),
-            ProcessState::Zombie(_) => panic!("WTF"),
-        };
+        // *self.curr_process_mut() = ProcessState::Zombie(status);
 
         // Remove process from the running process list
         self.running_process.remove(self.curr_process_index);

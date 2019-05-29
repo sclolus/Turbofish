@@ -41,13 +41,6 @@ impl VirtualPageAllocator {
         Ok(Self::new(buddy, pd))
     }
 
-    /// Flush all the occupied user ressources
-    pub fn free_user_ressources(&mut self) {
-        unsafe {
-            self.mmu.free_user_ressources();
-        }
-    }
-
     /// Modify the allocFlags for a specific and existing Page
     #[inline(always)]
     pub fn modify_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {

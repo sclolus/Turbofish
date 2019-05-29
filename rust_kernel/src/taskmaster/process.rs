@@ -238,9 +238,4 @@ impl Process {
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| (0, Errno::Enomem))?,
         })
     }
-
-    /// Exit from the process (flush Virtual Allocator)
-    pub fn free_user_ressources(&mut self) {
-        self.virtual_allocator.free_user_ressources();
-    }
 }
