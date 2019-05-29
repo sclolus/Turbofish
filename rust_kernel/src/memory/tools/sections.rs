@@ -21,6 +21,8 @@ extern "C" {
     pub static kernel_virtual_end: u8;
     pub static kernel_physical_start: u8;
     pub static kernel_physical_end: u8;
+    pub static stack_overflow_zone: u8;
+    pub static kernel_stack: u8;
 }
 // #[macro_use]
 // macro_rules! print_section {

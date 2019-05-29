@@ -253,3 +253,13 @@ pub fn more_fish(_args: &[&str]) -> u8 {
     crate::test_helpers::fish2();
     0
 }
+
+pub fn stack_overflow(_args: &[&str]) -> u8 {
+    fn dummy_factorial(n: usize) -> usize {
+        if n == 0 {
+            return 1;
+        }
+        n.wrapping_mul(dummy_factorial(n - 1))
+    }
+    dummy_factorial(100000000) as u8
+}

@@ -1,6 +1,6 @@
 //! this file contains the scheduler description
 
-use super::{CpuState, Process, SysResult, TaskMode};
+use super::{Process, SysResult, TaskMode};
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -24,11 +24,10 @@ type Pid = u32;
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
-
-    let cpu_state: *const CpuState = kernel_esp as *const CpuState;
-    if (*cpu_state).cs == 0x08 {
-        eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
-    }
+    // let cpu_state: *const super::CpuState = kernel_esp as *const super::CpuState;
+    // if (*cpu_state).cs == 0x08 {
+    //     eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
+    // }
     SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
 
     // Backup of the current process kernel_esp
@@ -148,10 +147,10 @@ impl Scheduler {
     // TODO: Remove completely process from scheduler after death attestation
     /// Exit form a process and go to the current process
     pub fn exit(&mut self, status: i32) -> ! {
-        eprintln!(
-            "exit called for process with PID: {:?} STATUS: {:?}",
-            self.running_process[self.curr_process_index], status
-        );
+        // eprintln!(
+        //     "exit called for process with PID: {:?} STATUS: {:?}",
+        //     self.running_process[self.curr_process_index], status
+        // );
         // Get the current process's PID
         let pid = self.running_process[self.curr_process_index];
 
@@ -167,9 +166,10 @@ impl Scheduler {
         if self.running_process.len() == 0 {
             eprintln!("no more process !");
             loop {}
-        } else {
-            eprintln!("Stay {:?} processes in game", self.running_process.len());
         }
+        // } else {
+        //     eprintln!("Stay {:?} processes in game", self.running_process.len());
+        // }
         self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
@@ -181,6 +181,7 @@ impl Scheduler {
                     process.virtual_allocator.context_switch();
                     // Re-init the TSS block for the new process
                     process.init_tss();
+                    // eprintln!("calling exit_resume");
                     // Follow the kernel stack of the new process
                     _exit_resume(process.kernel_esp, pid, status);
                 }

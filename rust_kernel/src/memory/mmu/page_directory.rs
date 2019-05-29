@@ -75,7 +75,8 @@ impl PageDirectory {
                         child.as_ref().context_switch();
                         let phys =
                             PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)?;
-                        child.map_page(virt, phys, entry)?;
+                        // TODO: Respect the origin layout
+                        child.map_page(virt, phys, Entry::PRESENT | Entry::READ_WRITE | Entry::USER)?;
                         *(virt.to_addr().0 as *mut [u8; PAGE_SIZE]) = mem_tmp;
                         self.context_switch();
                     }
@@ -114,19 +115,16 @@ impl PageDirectory {
         }
     }
 
-    /// Modify the alloc flags for a specific and existing virtual address
-    pub fn modify_page_entry(&mut self, addr: Virt, alloc_flags: AllocFlags) {
-        let pd_index = addr.pd_index();
-        let page = Page::new(pd_index * 1024);
-        assert!(self[pd_index].contains(Entry::PRESENT));
-
-        let pt_index = addr.pt_index();
+    /// Modify the alloc flags for a specific and existing page
+    #[inline(always)]
+    pub fn modify_page_entry(&mut self, page: Page<Virt>, entry: Entry) {
+        let pt_index = page.pt_index();
         let page_table = self.get_page_table_trick(page).expect("can't happen");
         assert!(page_table[pt_index].contains(Entry::PRESENT));
 
         // Be careful, reseting the flags of a page_table[pt_index] remove automaticely its physical entry addr (seems to be a dev error)
         let entry_addr = page_table[pt_index].entry_addr();
-        page_table[pt_index] = Into::<Entry>::into(alloc_flags) | Entry::PRESENT;
+        page_table[pt_index] = entry | Entry::PRESENT;
         page_table[pt_index].set_entry_addr(entry_addr);
     }
 
@@ -242,6 +240,12 @@ impl PageDirectory {
                 .and_then(|page_table| page_table.map_page(virtp, physp, entry))?
         }
         Ok(())
+    }
+
+    pub unsafe fn unmap_page_init(&mut self, virtp: Page<Virt>) -> Result<()> {
+        self.get_page_table_init(virtp)
+            .ok_or(MemoryError::PageTableNotPresent)
+            .and_then(|page_table| page_table.unmap_page(virtp))
     }
 
     pub unsafe fn unmap_page(&mut self, virtp: Page<Virt>) -> Result<()> {

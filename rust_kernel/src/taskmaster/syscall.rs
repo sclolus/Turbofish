@@ -14,6 +14,7 @@ use crate::system::BaseRegisters;
 extern "C" {
     fn _isr_syscall();
     fn _sys_test() -> i32;
+    fn _get_esp() -> u32;
 }
 
 /// Write something into the screen
@@ -61,7 +62,9 @@ unsafe fn sys_test() -> SysResult<i32> {
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
-    eprintln!("Stack overflow syscall on the fly: v = {:?}", a + b + c + d + e + f);
+    asm!("cli");
+    eprintln!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
+    asm!("sti");
     Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 

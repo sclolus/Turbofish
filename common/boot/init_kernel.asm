@@ -45,6 +45,11 @@ _init_kernel:
 	call _set_avx
 	call _set_fpu
 
+	; Enable Write-Protection on pages: CR0.BIT16 When set, the CPU can't write to read-only pages when privilege level is 0
+	mov eax, cr0
+	or eax, 0x00010000
+	mov cr0, eax
+
 	; Ask watchdog if all is okay
 	call alt_check_all
 
@@ -59,8 +64,11 @@ _init_kernel:
 	jmp .idle
 
 segment .bss
-align 16
-
+align 4096
+global stack_overflow_zone
+global kernel_stack
+stack_overflow_zone:
+resb 1 << 12
 ; 1mo for the main kernel stack
 resb 1 << 20
 global kernel_stack

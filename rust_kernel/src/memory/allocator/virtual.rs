@@ -48,9 +48,17 @@ impl VirtualPageAllocator {
         }
     }
 
-    /// Modify the alloc flags for a specific and existing virtual address
-    pub fn modify_page_entry(&mut self, addr: Virt, alloc_flags: AllocFlags) {
-        self.mmu.modify_page_entry(addr, alloc_flags);
+    /// Modify the allocFlags for a specific and existing Page
+    #[inline(always)]
+    pub fn modify_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
+        self.mmu.modify_page_entry(page, Into::<Entry>::into(flags));
+    }
+
+    /// Modify the AllocFlags of a given range of existing Virtual pages
+    pub fn modify_range_page_entry(&mut self, start_page: Page<Virt>, nbr_pages: NbrPages, flags: AllocFlags) {
+        for i in 0..nbr_pages.0 {
+            self.modify_page_entry(start_page + NbrPages(i), flags);
+        }
     }
 
     /// get the physical mapping of virtual address `v`
@@ -137,6 +145,7 @@ impl VirtualPageAllocator {
         }
         Ok(vaddr.into())
     }
+
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
