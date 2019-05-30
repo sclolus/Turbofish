@@ -93,7 +93,7 @@ impl Process {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_128K;
 
     /// Create a new process
     pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
@@ -123,6 +123,8 @@ impl Process {
                         };
                         segment[0..h.filez as usize]
                             .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
+                        // With BSS (so a NOBITS section), the memsz value exceed the filesz. Setting next bytes as 0
+                        segment[h.filez as usize..h.memsz as usize].as_mut_ptr().write_bytes(0, h.memsz as usize - h.filez as usize);
                         // Modify the rights on pages by following the ELF specific restrictions
                         virtual_allocator.modify_range_page_entry(
                             Page::containing(Virt(h.vaddr as usize)),

@@ -78,5 +78,5 @@ pub fn start() -> ! {
     // }
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(180.)) }
+    unsafe { scheduler::start(TaskMode::Multi(20.)) }
 }
