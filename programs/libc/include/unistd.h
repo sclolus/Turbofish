@@ -5,8 +5,12 @@
 
 int write(int fd, const char *s, size_t len);
 
+typedef int pid_t;
+
 int fork();
 void exit(int status);
+pid_t wait(int *stat_loc);
+
 
 #define MAP_FAILED 0xFFFFFFFF
 

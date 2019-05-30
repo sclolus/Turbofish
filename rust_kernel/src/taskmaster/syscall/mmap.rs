@@ -19,8 +19,16 @@ pub struct MmapArgStruct {
 }
 
 /// Map files or devices into memory
-pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
+pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
     // TODO: Check if pointer exists in user virtual address space
+    asm!("cli" :::: "volatile");
+
+    // TODO: Check if pointer exist in user virtual address space
+    println!("{:#X?}", *mmap_arg);
+    println!("mmap called !");
+    let mut scheduler = SCHEDULER.lock();
+    let process = scheduler.curr_process_mut().unwrap_running_mut();
+
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
 
@@ -28,7 +36,8 @@ pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
     println!("{:#X?}", *mmap_arg);
     let addr = SCHEDULER
         .lock()
-        .get_current_running_process()
+        .curr_process_mut()
+        .unwrap_running_mut()
         .virtual_allocator
         .alloc(length.into(), AllocFlags::USER_MEMORY)
         .unwrap()
@@ -37,7 +46,8 @@ pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
     interruptible();
 
     bzero(addr as *mut u8, length);
-    Ok(addr as i32)
+    asm!("sti" :::: "volatile");
+    Ok(addr as u32)
 }
 
 /// Map files or devices into memory
@@ -54,7 +64,7 @@ pub unsafe fn sys_mmap2(
 }
 
 /// Unmap files or devices into memory
-pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
+pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<u32> {
     uninterruptible();
     // TODO: Unallocate
     interruptible();
@@ -63,7 +73,7 @@ pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
 }
 
 /// Set protection on a region of memory
-pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<i32> {
+pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<u32> {
     uninterruptible();
     // TODO: Change Entry range
     interruptible();

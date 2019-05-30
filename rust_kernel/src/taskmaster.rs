@@ -8,6 +8,7 @@ mod tests;
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
 pub use scheduler::{interruptible, uninterruptible};
+
 use tests::*;
 
 use errno::Errno;
@@ -29,58 +30,55 @@ pub fn start() -> ! {
     // Initialize Syscall system
     syscall::init();
 
-    let _p0 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap() };
-    let _p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap() };
-    let _p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
-    let _p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
-    let _p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    let _p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
-    let _p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    let _p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    let _p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    let _p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    let _p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
-    let _p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
-    let _p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
-    let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
-    let _p14 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
+    // let _p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
+    // let _p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
+    // let _p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
+    // let _p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
+    // let _p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
+    // let _p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    // let _p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    // let _p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
+    // let _p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
+    // let _p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
+    // let _p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
+    // let _p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
+    // let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
 
     // Load some processes into the scheduler
-    SCHEDULER.lock().add_process(None, _p0).unwrap();
-    SCHEDULER.lock().add_process(None, _p1).unwrap();
-    SCHEDULER.lock().add_process(None, _p2).unwrap();
-    SCHEDULER.lock().add_process(None, _p3).unwrap();
-    SCHEDULER.lock().add_process(None, _p4).unwrap();
-    SCHEDULER.lock().add_process(None, _p5).unwrap();
-    SCHEDULER.lock().add_process(None, _p6).unwrap();
-    SCHEDULER.lock().add_process(None, _p7).unwrap();
-    SCHEDULER.lock().add_process(None, _p8).unwrap();
-    SCHEDULER.lock().add_process(None, _p9).unwrap();
-    // SCHEDULER.lock().add_process(None, _p10).unwrap();
-    SCHEDULER.lock().add_process(None, _p11).unwrap();
-    SCHEDULER.lock().add_process(None, _p12).unwrap();
-    SCHEDULER.lock().add_process(None, _p13).unwrap();
-    // SCHEDULER.lock().add_process(None, _p14).unwrap();
+    // SCHEDULER.lock().add_process(_p1).unwrap();
+    // SCHEDULER.lock().add_process(_p2).unwrap();
+    // SCHEDULER.lock().add_process(_p3).unwrap();
+    // SCHEDULER.lock().add_process(_p4).unwrap();
+    // SCHEDULER.lock().add_process(_p5).unwrap();
+    // SCHEDULER.lock().add_process(_p6).unwrap();
+    // SCHEDULER.lock().add_process(_p7).unwrap();
+    // SCHEDULER.lock().add_process(_p8).unwrap();
+    // SCHEDULER.lock().add_process(_p9).unwrap();
+    // SCHEDULER.lock().add_process(_p10).unwrap();
+    // SCHEDULER.lock().add_process(_p11).unwrap();
+    // SCHEDULER.lock().add_process(None, _p12).unwrap();
+    // SCHEDULER.lock().add_process(_p13).unwrap();
 
-    // let process_list = unsafe {
-    //     vec![
-    //         Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-    //         Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
-    //         // Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
-    //         // Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
-    //     ]
-    // };
-    // for (i, p) in process_list.into_iter().enumerate() {
-    //     println!("pocess no: {} : {:?}", i, p);
-    //     SCHEDULER.lock().add_process(None, p).unwrap();
-    // }
+    let process_list = unsafe {
+        vec![
+            Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
+            Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
+        ]
+    };
+    for (i, p) in process_list.into_iter().enumerate() {
+        println!("pocess no: {} : {:?}", i, p);
+        SCHEDULER.lock().add_process(None, p).unwrap();
+    }
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }

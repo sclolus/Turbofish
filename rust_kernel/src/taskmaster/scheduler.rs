@@ -6,6 +6,10 @@ use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
 use alloc::collections::CollectionAllocErr;
+use core::mem;
+use fallible_collections::FallibleVec;
+
+use errno::Errno;
 
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
@@ -49,6 +53,14 @@ pub fn interruptible() {
     }
 }
 
+pub fn schedule() {
+    println!("scheduling");
+    unsafe {
+        SCHEDULER.force_unlock();
+        asm!("int 0x81" :::: "volatile","intel");
+    }
+}
+
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
@@ -80,7 +92,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 }
 
 #[derive(Debug)]
-struct Task {
+pub struct Task {
     process_state: ProcessState,
     child: Vec<Pid>,
     parent: Option<Pid>,
@@ -90,26 +102,75 @@ impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
         Self { process_state, child: Vec::new(), parent }
     }
+
     pub fn unwrap_running_mut(&mut self) -> &mut Process {
         match &mut self.process_state {
-            ProcessState::Running(process) => process,
-            ProcessState::Zombie(_) => panic!("WTF"),
+            ProcessState::Waiting(process) | ProcessState::Running(process) => process,
+            _ => panic!("WTF"),
         }
     }
+
     pub fn unwrap_running(&self) -> &Process {
         match &self.process_state {
             ProcessState::Running(process) => process,
-            ProcessState::Zombie(_) => panic!("WTF"),
+            _ => panic!("WTF"),
         }
+    }
+
+    pub fn is_zombie(&self) -> bool {
+        match self.process_state {
+            ProcessState::Zombie(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_waiting(&self) -> bool {
+        match self.process_state {
+            ProcessState::Waiting(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn set_waiting(&mut self) {
+        let uninit = unsafe { mem::uninitialized() };
+        let prev = mem::replace(&mut self.process_state, uninit);
+        let next = prev.set_waiting();
+        let uninit = mem::replace(&mut self.process_state, next);
+        mem::forget(uninit);
+    }
+
+    pub fn set_running(&mut self) {
+        let uninit = unsafe { mem::uninitialized() };
+        let prev = mem::replace(&mut self.process_state, uninit);
+        let next = prev.set_running();
+        let uninit = mem::replace(&mut self.process_state, next);
+        mem::forget(uninit);
     }
 }
 
 #[derive(Debug)]
-enum ProcessState {
+pub enum ProcessState {
     /// The process is currently on running state
     Running(Process),
+    /// The process is currently waiting for the die of its childrens
+    Waiting(Process),
     /// The process is terminated and wait to deliver his testament to his father
     Zombie(i32),
+}
+
+impl ProcessState {
+    pub fn set_waiting(self) -> Self {
+        match self {
+            ProcessState::Running(p) => ProcessState::Waiting(p),
+            _ => panic!("already waiting"),
+        }
+    }
+    pub fn set_running(self) -> Self {
+        match self {
+            ProcessState::Waiting(p) => ProcessState::Running(p),
+            _ => panic!("already running"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -120,7 +181,8 @@ pub struct Scheduler {
     /// contains a hashmap of pid, process
     all_process: HashMap<Pid, Task>,
     /// index in the vector of the current running process
-    curr_process_index: usize, // TODO: May be better if we use PID instead ?
+    curr_process_pid: Pid,
+    curr_process_index: usize,
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
 }
@@ -129,7 +191,13 @@ pub struct Scheduler {
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        Self { running_process: Vec::new(), all_process: HashMap::new(), curr_process_index: 0, time_interval: None }
+        Self {
+            running_process: Vec::new(),
+            all_process: HashMap::new(),
+            curr_process_index: 0,
+            curr_process_pid: 0,
+            time_interval: None,
+        }
     }
 
     /// Add a process into the scheduler (transfert ownership)
@@ -138,45 +206,32 @@ impl Scheduler {
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
-        self.running_process.insert(self.curr_process_index, pid);
-        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+        self.running_process.push(pid);
         Ok(pid)
     }
 
     /// Advance to the next process
     fn advance_next_process(&mut self) {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+        self.curr_process_pid = self.running_process[self.curr_process_index];
     }
 
     /// Get current process
     fn curr_process(&self) -> &Task {
-        self.all_process.get(&self.running_process[self.curr_process_index]).unwrap()
+        self.all_process.get(&self.curr_process_pid).unwrap()
     }
 
     /// Get current process mutably
-    fn curr_process_mut(&mut self) -> &mut Task {
-        self.all_process.get_mut(&self.running_process[self.curr_process_index]).unwrap()
-    }
-
-    /// Get the current running process (usefull for syscalls)
-    pub fn get_current_running_process(&mut self) -> &mut Process {
-        // Check if we got some processes to launch
-        assert!(self.all_process.len() != 0);
-
-        self.curr_process_mut().unwrap_running_mut()
-    }
-
-    /// Get the current process PID
-    fn curr_process_pid(&self) -> Pid {
-        self.running_process[self.curr_process_index]
+    pub fn curr_process_mut(&mut self) -> &mut Task {
+        self.all_process.get_mut(&self.curr_process_pid).unwrap()
     }
 
     /// Perform a fork
-    pub fn fork(&mut self, kernel_esp: u32) -> SysResult<i32> {
+    pub fn fork(&mut self, kernel_esp: u32) -> SysResult<u32> {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
-        let father_pid = self.curr_process_pid();
+        let father_pid = self.curr_process_pid;
         let curr_process = self.curr_process_mut();
 
         // try reserve a place for child pid
@@ -187,7 +242,16 @@ impl Scheduler {
         self.curr_process_mut().child.push(child_pid);
         // dbg!(self.curr_process());
 
-        Ok(child_pid as i32)
+        Ok(child_pid)
+    }
+    pub fn remove_curr_running(&mut self) {
+        // Remove process from the running process list
+        self.running_process.remove(self.curr_process_index);
+        // Check if there is altmost one process
+        if self.running_process.len() == 0 {
+            eprintln!("no more process !");
+            loop {}
+        }
     }
 
     // TODO: Send a status signal to the father
@@ -200,19 +264,23 @@ impl Scheduler {
         //     self.running_process[self.curr_process_index], status
         // );
         // Get the current process's PID
-        let pid = self.curr_process_pid();
-
-        // Remove process from the running process list
-        self.running_process.remove(self.curr_process_index);
-        // Check if there is altmost one process
-        if self.running_process.len() == 0 {
-            eprintln!("no more process !");
-            loop {}
+        let p = self.curr_process();
+        if let Some(father_pid) = p.parent {
+            let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
+            if father.is_waiting() {
+                self.running_process.try_push(father_pid).unwrap();
+                dbg!("exit father set running");
+                father.set_running();
+            }
         }
+        let pid = self.curr_process_pid;
+        self.remove_curr_running();
+
+        self.curr_process_index = self.curr_process_index % self.running_process.len();
+        self.curr_process_pid = self.running_process[self.curr_process_index];
         // } else {
         //     eprintln!("Stay {:?} processes in game", self.running_process.len());
         // }
-        self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
@@ -222,6 +290,26 @@ impl Scheduler {
 
             _exit_resume(p.kernel_esp, pid, status);
         };
+    }
+
+    pub fn wait(&mut self) -> SysResult<Pid> {
+        let mut p = self.all_process.remove(&self.curr_process_pid).unwrap();
+        if p.child.is_empty() {
+            return Err(Errno::Echild);
+        }
+        // TODO: Solve Borrow
+        if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
+            p.set_waiting();
+            dbg!("set waiting");
+            self.all_process.insert(self.curr_process_pid, p);
+            self.remove_curr_running();
+            schedule();
+            dbg!("return to live after schedule");
+        }
+        // if let Some(child) = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
+        //     child.exit_status
+        // }
+        Ok(0)
     }
 }
 
@@ -261,7 +349,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     scheduler.time_interval = t;
 
     // Initialise the first process and get a reference on it
-    let p = scheduler.get_current_running_process();
+    let p = scheduler.curr_process_mut().unwrap_running_mut();
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

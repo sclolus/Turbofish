@@ -9,7 +9,7 @@ use errno::Errno;
 
 use core::ffi::c_void;
 
-use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
+use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use crate::taskmaster::{interruptible, uninterruptible};
@@ -24,8 +24,7 @@ extern "C" {
 }
 
 /// Write something into the screen
-#[no_mangle]
-fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
+fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
     if fd != 1 {
         Err(Errno::Ebadf)
     } else {
@@ -39,12 +38,12 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
             );
             interruptible();
         }
-        Ok(count as i32)
+        Ok(count as u32)
     }
 }
 
 /// Read something from a file descriptor
-fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
+fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
     unimplemented!();
 }
 
@@ -54,8 +53,16 @@ unsafe fn sys_exit(status: i32) -> ! {
     SCHEDULER.lock().exit(status);
 }
 
+/// Exit from a process
+unsafe fn sys_wait(stat_loc: *mut i32) -> SysResult<u32> {
+    uninterruptible();
+    let res = SCHEDULER.lock().wait();
+    interruptible();
+    res
+}
+
 /// Fork a process
-unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
+unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
     uninterruptible();
     let res = SCHEDULER.lock().fork(kernel_esp);
     interruptible();
@@ -63,7 +70,7 @@ unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
 }
 
 /// Preemptif coherency checker
-unsafe fn sys_test() -> SysResult<i32> {
+unsafe fn sys_test() -> SysResult<u32> {
     if _sys_test() == 0 {
         Ok(0)
     } else {
@@ -73,7 +80,7 @@ unsafe fn sys_test() -> SysResult<i32> {
 
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
-unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
+unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
     uninterruptible();
     println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
     interruptible();
@@ -94,9 +101,11 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
+        114 => sys_wait(ebx as *mut i32),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
+
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
@@ -109,6 +118,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     };
 }
 
+extern "C" {
+    fn _schedule_next();
+}
+
 /// Initialize all the syscall system by creation of a new IDT entry at 0x80
 pub fn init() {
     let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
@@ -117,7 +130,15 @@ pub fn init() {
         .set_storage_segment(false)
         .set_privilege_level(3)
         .set_selector(1 << 3)
-        .set_gate_type(TrapGate32);
+        .set_gate_type(GateType::TrapGate32);
     gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
+
+    let mut gate_entry = *IdtGateEntry::new()
+        .set_storage_segment(false)
+        .set_privilege_level(3)
+        .set_selector(1 << 3)
+        .set_gate_type(GateType::InterruptGate32);
+    gate_entry.set_handler(_schedule_next as *const c_void as u32);
+    interrupt_table[0x81] = gate_entry;
 }
