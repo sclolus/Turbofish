@@ -66,7 +66,7 @@ pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysR
     asm!("cli");
     // TODO: Change Entry range
     asm!("sti");
-    Err((0, Errno::Eperm))
+    Err(Errno::Eperm)
 }
 
 bitflags! {

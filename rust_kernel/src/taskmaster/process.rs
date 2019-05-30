@@ -226,8 +226,7 @@ impl Process {
     /// Fork a process
     pub fn fork(&self, kernel_esp: u32) -> SysResult<Self> {
         // Create the child kernel stack
-        let mut child_kernel_stack =
-            try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()].map_err(|_| (0, Errno::Enomem))?;
+        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
         child_kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
 
         // Set the kernel ESP of the child. Relative to kernel ESP of the father
@@ -242,7 +241,7 @@ impl Process {
         Ok(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
-            virtual_allocator: self.virtual_allocator.fork().map_err(|_| (0, Errno::Enomem))?,
+            virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         })
     }
 }

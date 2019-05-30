@@ -22,7 +22,7 @@ extern "C" {
 /// Write something into the screen
 fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
     if fd != 1 {
-        Err((0, Errno::Ebadf))
+        Err(Errno::Ebadf)
     } else {
         unsafe {
             asm!("cli");
@@ -57,7 +57,7 @@ unsafe fn sys_test() -> SysResult<i32> {
     if _sys_test() == 0 {
         Ok(0)
     } else {
-        Err((0, Errno::Eperm))
+        Err(Errno::Eperm)
     }
 }
 
@@ -88,16 +88,14 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF
-        0xf3 => Err((0, Errno::Eperm)),
+        0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
     // Return value will be on EAX. Errno always represents the low 7 bits
     (*cpu_state).registers.eax = match result {
         Ok(return_value) => return_value as u32,
-        Err((optional_return_value, errno)) => {
-            (optional_return_value as u32 & 0xffffff80) | ((errno as i32 * -1) as u32 & 0x7F)
-        }
+        Err(errno) => (-(errno as i32)) as u32,
     };
 }
 

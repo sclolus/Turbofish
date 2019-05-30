@@ -7,8 +7,6 @@ use hashmap_core::fnv::FnvHashMap as HashMap;
 
 use alloc::collections::CollectionAllocErr;
 
-use errno::Errno;
-
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
 
@@ -150,9 +148,9 @@ impl Scheduler {
         let curr_process = self.curr_process_mut();
 
         // try reserve a place for child pid
-        curr_process.child.try_reserve(1).map_err(|_| (0, Errno::Enomem))?;
-        let child = curr_process.unwrap_running().fork(kernel_esp).map_err(|_| (0, Errno::Enomem))?;
-        let child_pid = self.add_process(Some(father_pid), child).map_err(|_| (0, Errno::Enomem))?;
+        curr_process.child.try_reserve(1)?;
+        let child = curr_process.unwrap_running().fork(kernel_esp)?;
+        let child_pid = self.add_process(Some(father_pid), child)?;
 
         self.curr_process_mut().child.push(child_pid);
         // dbg!(self.curr_process());
