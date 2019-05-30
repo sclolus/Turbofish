@@ -43,19 +43,19 @@ pub fn start() -> ! {
     let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
 
     // Load some processes into the scheduler
-    // SCHEDULER.lock().add_process(_p1).unwrap();
-    // SCHEDULER.lock().add_process(_p2).unwrap();
-    // SCHEDULER.lock().add_process(_p3).unwrap();
-    // SCHEDULER.lock().add_process(_p4).unwrap();
-    // SCHEDULER.lock().add_process(_p5).unwrap();
-    // SCHEDULER.lock().add_process(_p6).unwrap();
-    // SCHEDULER.lock().add_process(_p7).unwrap();
-    // SCHEDULER.lock().add_process(_p8).unwrap();
-    // SCHEDULER.lock().add_process(_p9).unwrap();
-    // SCHEDULER.lock().add_process(_p10).unwrap();
-    // SCHEDULER.lock().add_process(_p11).unwrap();
+    SCHEDULER.lock().add_process(None, _p1).unwrap();
+    SCHEDULER.lock().add_process(None, _p2).unwrap();
+    SCHEDULER.lock().add_process(None, _p3).unwrap();
+    SCHEDULER.lock().add_process(None, _p4).unwrap();
+    SCHEDULER.lock().add_process(None, _p5).unwrap();
+    SCHEDULER.lock().add_process(None, _p6).unwrap();
+    SCHEDULER.lock().add_process(None, _p7).unwrap();
+    SCHEDULER.lock().add_process(None, _p8).unwrap();
+    SCHEDULER.lock().add_process(None, _p9).unwrap();
+    // SCHEDULER.lock().add_process(None, _p10).unwrap();
+    SCHEDULER.lock().add_process(None, _p11).unwrap();
     SCHEDULER.lock().add_process(None, _p12).unwrap();
-    // SCHEDULER.lock().add_process(_p13).unwrap();
+    // SCHEDULER.lock().add_process(None, _p13).unwrap();
 
     // let process_list = unsafe {
     //     vec![
@@ -78,5 +78,5 @@ pub fn start() -> ! {
     // }
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(20.)) }
+    unsafe { scheduler::start(TaskMode::Multi(180.)) }
 }

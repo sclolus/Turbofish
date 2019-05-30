@@ -195,7 +195,7 @@ impl Scheduler {
 /// Start the whole scheduler
 pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
-    asm!("cli");
+    asm!("cli" :::: "volatile");
 
     // Set the PIT divisor if multitasking is enable
     let t = match task_mode {

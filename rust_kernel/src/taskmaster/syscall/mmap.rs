@@ -19,23 +19,25 @@ pub struct MmapArgStruct {
 
 /// Map files or devices into memory
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
 
     // TODO: Check if pointer exist in user virtual address space
-    eprintln!("{:#X?}", *mmap_arg);
-    eprintln!("mmap called !");
+    println!("{:#X?}", *mmap_arg);
+    println!("mmap called !");
     let mut scheduler = SCHEDULER.lock();
     let process = scheduler.get_current_running_process();
 
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
 
-    eprintln!("alloc request for len: {:?} to nbrPages {:?}", length, Into::<NbrPages>::into(length));
-    let addr = process.virtual_allocator.alloc(length.into(), AllocFlags::USER_MEMORY).unwrap();
-    eprintln!("alloc done");
+    println!("alloc request for len: {:?} to nbrPages {:?}", length, Into::<NbrPages>::into(length));
+    let addr = process.virtual_allocator.alloc(length.into(), AllocFlags::USER_MEMORY).unwrap().to_addr().0;
+    println!("alloc done");
 
-    asm!("sti");
-    Ok(addr.to_addr().0 as i32)
+    bzero(addr as *mut u8, length);
+    SCHEDULER.force_unlock();
+    asm!("sti" :::: "volatile");
+    Ok(addr as i32)
     //Err((0xffffff80 as u32 as i32, Errno::Efault))
 }
 
@@ -54,18 +56,18 @@ pub unsafe fn sys_mmap2(
 
 /// Unmap files or devices into memory
 pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
     // TODO: Unallocate
-    asm!("sti");
+    asm!("sti" :::: "volatile");
     Ok(0)
     //Err((0, Errno::Eperm))
 }
 
 /// Set protection on a region of memory
 pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<i32> {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
     // TODO: Change Entry range
-    asm!("sti");
+    asm!("sti" :::: "volatile");
     Err(Errno::Eperm)
 }
 
@@ -216,4 +218,8 @@ bitflags! {
         /// where one has complete control of the contents of user memory).
         const MAP_UNINITIALIZED = 0x4000000;
     }
+}
+
+extern "C" {
+    fn bzero(addr: *mut u8, length: usize) -> *mut u8;
 }

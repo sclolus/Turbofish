@@ -25,9 +25,9 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
-            asm!("cli");
+            asm!("cli" :::: "volatile");
             print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
-            asm!("sti");
+            asm!("sti" :::: "volatile");
         }
         Ok(count as i32)
     }
@@ -40,15 +40,15 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
 
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
     SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
     let res = SCHEDULER.lock().fork(kernel_esp);
-    asm!("sti");
+    asm!("sti" :::: "volatile");
     res
 }
 
@@ -64,9 +64,9 @@ unsafe fn sys_test() -> SysResult<i32> {
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
-    asm!("cli");
+    asm!("cli" :::: "volatile");
     println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
-    asm!("sti");
+    asm!("sti" :::: "volatile");
     Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 
