@@ -18,6 +18,24 @@ impl Debug for VirtualPageAllocator {
     }
 }
 
+/// Functionnal paradigm for boolean type
+trait Boolinator: Sized {
+    fn ok_or<E>(self, err: E) -> core::result::Result<(), E>;
+}
+
+/// Boolinator trait implementation
+impl Boolinator for bool {
+    #[inline]
+    /// Cast bool into Result
+    fn ok_or<E>(self, err: E) -> core::result::Result<(), E> {
+        if self {
+            Ok(())
+        } else {
+            Err(err)
+        }
+    }
+}
+
 impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
@@ -25,7 +43,7 @@ impl VirtualPageAllocator {
 
     pub unsafe fn new_for_process() -> Result<Self> {
         let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB)?;
-        buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).unwrap();
+        buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).expect("User Buddy won't collaborate");
 
         let pd = PageDirectory::new_for_process()?;
 
@@ -52,6 +70,18 @@ impl VirtualPageAllocator {
         for i in 0..nbr_pages.0 {
             self.modify_page_entry(start_page + NbrPages(i), flags);
         }
+    }
+
+    /// Check if the contraint in flags are satisfied into a chunk of pages
+    pub fn check_page_range(&self, start_page: Page<Virt>, end_page: Page<Virt>, flags: AllocFlags) -> Result<()> {
+        for page in (start_page..=end_page).iter() {
+            self.mmu
+                .get_entry(page)
+                .ok_or::<MemoryError>(MemoryError::PageNotPresent)?
+                .intersects(flags.into())
+                .ok_or::<MemoryError>(MemoryError::NotSatisfied)?;
+        }
+        Ok(())
     }
 
     /// get the physical mapping of virtual address `v`
@@ -98,7 +128,7 @@ impl VirtualPageAllocator {
         unsafe {
             // map this virtual chunk with the associated physical address
             self.mmu.map_range_page(vaddr, paddr, order.into(), Entry::READ_WRITE | Entry::PRESENT).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
+                self.virt.free(vaddr, order).expect("Could not free memory on VirtualPageAllocator");
                 e
             })?;
         }
@@ -131,8 +161,8 @@ impl VirtualPageAllocator {
                 e
             })?;
             self.mmu.map_range_page(vaddr, paddr, order.into(), entry).map_err(|e| {
-                self.virt.free_reserve(vaddr, order).unwrap();
-                physical_allocator.free(paddr).unwrap();
+                self.virt.free_reserve(vaddr, order).expect("Could not free memory reserved on VirtualPageAllocator");
+                physical_allocator.free(paddr).expect("Could not free memory on PhysicalAllocator");
                 e
             })?;
         }
@@ -153,8 +183,8 @@ impl VirtualPageAllocator {
                 e
             })?;
             self.mmu.map_range_page(vaddr, paddr, order.into(), entry).map_err(|e| {
-                self.virt.free(vaddr, order).unwrap();
-                physical_allocator.free(paddr).unwrap();
+                self.virt.free(vaddr, order).expect("Could not free memory on VirtualPageAllocator");
+                physical_allocator.free(paddr).expect("Could not free memory on PhysicalAllocator");
                 e
             })?;
         }
@@ -205,7 +235,7 @@ impl VirtualPageAllocator {
             if entry.contains(Entry::VALLOC) {
                 // Free of Valloced memory
                 for virtp in (vaddr..vaddr + size).iter() {
-                    let entry = self.mmu.get_entry_mut(virtp).unwrap();
+                    let entry = self.mmu.get_entry_mut(virtp).expect("Could not find valloced page entry");
                     if entry.contains(Entry::PRESENT) {
                         physical_allocator.free(entry.entry_page())?;
                         invalidate_page(virtp);

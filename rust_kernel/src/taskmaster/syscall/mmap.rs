@@ -1,11 +1,11 @@
-use super::SysResult;
+use super::{interruptible, uninterruptible};
+use super::{SysResult, SCHEDULER};
 
+use bitflags::bitflags;
 use errno::Errno;
 
-use super::SCHEDULER;
-use super::{interruptible, uninterruptible};
+use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::tools::{AllocFlags, NbrPages, Virt};
-use bitflags::bitflags;
 
 /// This structure is the argument structure of the mmap syscall
 #[derive(Debug, Copy, Clone)]
@@ -18,36 +18,36 @@ pub struct MmapArgStruct {
     offset: usize,
 }
 
+/// Check is a pointer given by user process is not bullshit
+fn check_user_ptr<T>(ptr: *const T, v: &VirtualPageAllocator) -> SysResult<()> {
+    let start_ptr = Virt(ptr as usize);
+    let end_ptr = Virt((ptr as usize).checked_add(core::mem::size_of::<T>() - 1).ok_or::<Errno>(Errno::Efault)?);
+
+    Ok(v.check_page_range(start_ptr.into(), end_ptr.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Efault)?)
+}
+
 /// Map files or devices into memory
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
-    // TODO: Check if pointer exists in user virtual address space
-    asm!("cli" :::: "volatile");
-
-    // TODO: Check if pointer exist in user virtual address space
-    println!("{:#X?}", *mmap_arg);
-    println!("mmap called !");
-    let mut scheduler = SCHEDULER.lock();
-    let _process = scheduler.curr_process_mut().unwrap_running_mut();
-
-    #[allow(unused_variables)]
-    let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
-
     uninterruptible();
-    println!("{:#X?}", *mmap_arg);
-    let addr = SCHEDULER
-        .lock()
-        .curr_process_mut()
-        .unwrap_running_mut()
-        .virtual_allocator
-        .alloc(length.into(), AllocFlags::USER_MEMORY)
-        .unwrap()
-        .to_addr()
-        .0;
-    interruptible();
+    let res: SysResult<(*mut u8, usize)> = {
+        let mut scheduler = SCHEDULER.lock();
 
-    bzero(addr as *mut u8, length);
-    asm!("sti" :::: "volatile");
-    Ok(addr as u32)
+        let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+
+        // Check if pointer exists in user virtual address space
+        check_user_ptr::<MmapArgStruct>(mmap_arg, v)?;
+
+        #[allow(unused_variables)]
+        let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
+
+        let addr = v.alloc(length.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Enomem)?.to_addr().0;
+        Ok((addr as *mut u8, length))
+    };
+    interruptible();
+    res.map(|(addr, length)| {
+        addr.write_bytes(0, length);
+        Ok(addr as u32)
+    })?
 }
 
 /// Map files or devices into memory
@@ -227,8 +227,4 @@ bitflags! {
         /// where one has complete control of the contents of user memory).
         const MAP_UNINITIALIZED = 0x4000000;
     }
-}
-
-extern "C" {
-    fn bzero(addr: *mut u8, length: usize) -> *mut u8;
 }

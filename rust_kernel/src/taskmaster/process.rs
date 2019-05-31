@@ -75,6 +75,7 @@ impl core::fmt::Debug for Process {
 }
 
 /// This enum describe the origin of the process
+#[allow(unused)]
 pub enum TaskOrigin {
     /// ELF file
     Elf(&'static [u8]),

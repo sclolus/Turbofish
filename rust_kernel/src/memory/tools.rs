@@ -30,8 +30,12 @@ pub enum MemoryError {
     NotPhysicallyMapped,
     /// Used to indicate the page fault handler that it is realy a page fault in vmalloc handle page fault
     PageFault,
+    /// The specified page is marked as non-present
+    PageNotPresent,
     PageTableNotPresent,
     NotAllocated,
+    /// All conditions are not satisfied
+    NotSatisfied,
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
