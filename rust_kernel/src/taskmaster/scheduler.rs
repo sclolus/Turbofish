@@ -17,36 +17,36 @@ extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
 
     pub fn _get_pit_time() -> u32;
-    pub fn _get_next_quantum() -> u32;
+    pub fn _get_process_end_time() -> u32;
 
-    fn _update_next_quantum(update: u32);
+    fn _update_process_end_time(update: u32);
 
-    pub fn _no_interruptible();
+    pub fn _uninterruptible();
     pub fn _interruptible();
     pub fn _schedule_force_preempt();
 }
 
 type Pid = u32;
 
-#[macro_export]
-macro_rules! no_interruptible {
-    () => {
-        crate::taskmaster::scheduler::_no_interruptible()
-    };
+#[inline(always)]
+pub fn uninterruptible() {
+    unsafe {
+        crate::taskmaster::scheduler::_uninterruptible();
+    }
 }
 
-#[macro_export]
-macro_rules! interruptible {
-    () => ({
+#[inline(always)]
+pub fn interruptible() {
+    unsafe {
         // Check if the Time to live of the current process is expired
         // TODO: If scheduler is disable, the kernel will crash
         // TODO: After Exit, the next process seems to be skiped !
-        if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_next_quantum() {
+        if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
             asm!("int 0x81" :::: "intel", "volatile");
         } else {
-            crate::taskmaster::scheduler::_interruptible()
+            crate::taskmaster::scheduler::_interruptible();
         }
-    });
+    }
 }
 
 /// The pit handler (cpu_state represents a pointer to esp)
@@ -57,7 +57,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // if (*cpu_state).cs == 0x08 {
     //     eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
     // }
-    _update_next_quantum(scheduler.time_interval.unwrap());
+    _update_process_end_time(scheduler.time_interval.unwrap());
 
     // Backup of the current process kernel_esp
     scheduler.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
@@ -76,7 +76,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
-    interruptible!();
+    interruptible();
 }
 
 #[derive(Debug)]
@@ -189,6 +189,7 @@ impl Scheduler {
 
         Ok(child_pid as i32)
     }
+
     // TODO: Send a status signal to the father
     // TODO: Remove completely process from scheduler after death attestation
     /// Exit form a process and go to the current process
@@ -214,7 +215,7 @@ impl Scheduler {
         self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
-            _update_next_quantum(self.time_interval.unwrap());
+            _update_process_end_time(self.time_interval.unwrap());
 
             let p = self.curr_process().unwrap_running();
             p.context_switch();
@@ -268,11 +269,11 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     println!("Starting processes:");
 
     match t {
-        Some(v) => _update_next_quantum(v),
-        None => _update_next_quantum(-1 as i32 as u32),
+        Some(v) => _update_process_end_time(v),
+        None => _update_process_end_time(-1 as i32 as u32),
     }
 
-    interruptible!();
+    interruptible();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }

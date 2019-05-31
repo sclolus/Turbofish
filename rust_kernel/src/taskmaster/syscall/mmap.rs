@@ -4,6 +4,7 @@ use errno::Errno;
 
 use super::SCHEDULER;
 use crate::memory::tools::{AllocFlags, NbrPages, Virt};
+use crate::taskmaster::{interruptible, uninterruptible};
 use bitflags::bitflags;
 
 /// This structure is the argument structure of the mmap syscall
@@ -19,29 +20,24 @@ pub struct MmapArgStruct {
 
 /// Map files or devices into memory
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
-    no_interruptible!();
-
-    // TODO: Check if pointer exist in user virtual address space
-    println!("{:#X?}", *mmap_arg);
-    println!("mmap called !");
-    let mut scheduler = SCHEDULER.lock();
-    let process = scheduler.get_current_running_process();
-
+    // TODO: Check if pointer exists in user virtual address space
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
 
-    println!("alloc request for len: {:?} to nbrPages {:?}", length, Into::<NbrPages>::into(length));
-    let addr = process.virtual_allocator.alloc(length.into(), AllocFlags::USER_MEMORY).unwrap().to_addr().0;
-    println!("alloc done");
+    uninterruptible();
+    println!("{:#X?}", *mmap_arg);
+    let addr = SCHEDULER
+        .lock()
+        .get_current_running_process()
+        .virtual_allocator
+        .alloc(length.into(), AllocFlags::USER_MEMORY)
+        .unwrap()
+        .to_addr()
+        .0;
+    interruptible();
 
     bzero(addr as *mut u8, length);
-
-    SCHEDULER.force_unlock();
-
-    interruptible!();
-
     Ok(addr as i32)
-    //Err((0xffffff80 as u32 as i32, Errno::Efault))
 }
 
 /// Map files or devices into memory
@@ -59,18 +55,18 @@ pub unsafe fn sys_mmap2(
 
 /// Unmap files or devices into memory
 pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
-    no_interruptible!();
+    uninterruptible();
     // TODO: Unallocate
-    interruptible!();
+    interruptible();
     Ok(0)
     //Err((0, Errno::Eperm))
 }
 
 /// Set protection on a region of memory
 pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<i32> {
-    no_interruptible!();
+    uninterruptible();
     // TODO: Change Entry range
-    interruptible!();
+    interruptible();
     Err(Errno::Eperm)
 }
 

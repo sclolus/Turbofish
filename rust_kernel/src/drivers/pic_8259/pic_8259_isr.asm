@@ -18,7 +18,7 @@ _pit_time dd 0
 ; The scheduler handler is not called until setting its variable to UNLOCKED
 _interruptible_state dd LOCKED
 
-_next_quantum dd 0
+_process_end_time dd 0
 
 ;                __ISR_TIMER__
 ;       PIT ACK ------|
@@ -29,7 +29,7 @@ _next_quantum dd 0
 ;    +----- NO Is_scheduler_interruptible ?     _interruptible_state == UNLOCKED
 ;    |            YES |
 ;    |                v
-;    +----- NO Is_process_time_expired ?        _pit_time >= next_quantum
+;    +----- NO Is_process_time_expired ?        _pit_time >= process_end_time
 ;    |            YES |
 ;    |                v
 ;    |            SCHEDULE_NEXT                 goto _schedule_next
@@ -61,21 +61,21 @@ _isr_timer:
 	; Is_process_time_expired
 	push eax
 	push edx
-	lock cmpxchg dword [_pit_time], eax
+	call _get_pit_time
 	mov edx, eax
-	lock cmpxchg dword [_next_quantum], eax
+	call _get_process_end_time
 	cmp edx, eax
 	pop edx
 	pop eax
-	; The schedule_next function MUST set the new _next_quantum value
+	; The schedule_next function MUST set the new _process_end_time value
 	jae _schedule_next
 
 .end:
 	iret
 
 ; Avoid Atomically the preemptive call of the scheduler
-global _no_interruptible
-_no_interruptible:
+global _uninterruptible
+_uninterruptible:
 	lock or dword [_interruptible_state], LOCKED
 	ret
 
@@ -91,23 +91,19 @@ _get_pit_time:
 	lock cmpxchg dword [_pit_time], eax
 	ret
 
-; Get atomically the actual next_quantum
-global _get_next_quantum
-_get_next_quantum:
-	lock cmpxchg dword [_next_quantum], eax
+; Get atomically the actual process_end_time
+global _get_process_end_time
+_get_process_end_time:
+	lock cmpxchg dword [_process_end_time], eax
 	ret
 
-; Update Atomically the next_quantum value
-global _update_next_quantum
-_update_next_quantum:
+; Update Atomically the process_end_time value
+; _process_end_time = _pit_time + arg
+global _update_process_end_time
+_update_process_end_time:
 	call _get_pit_time
 	add eax, dword [esp + 4]
-	mov edx, eax
-	call _get_next_quantum
-	sub edx, eax
-
-	; Update the next quantum
-	lock add dword [_next_quantum], edx
+	lock xchg dword [_process_end_time], eax
 
 	ret
 

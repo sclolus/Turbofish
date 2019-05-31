@@ -12,6 +12,7 @@ use core::ffi::c_void;
 use crate::interrupts::idt::{GateType::TrapGate32, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
+use crate::taskmaster::{interruptible, uninterruptible};
 
 extern "C" {
     fn _isr_syscall();
@@ -19,7 +20,7 @@ extern "C" {
     fn _get_esp() -> u32;
 
     fn _get_pit_time() -> u32;
-    fn _get_next_quantum() -> u32;
+    fn _get_process_end_time() -> u32;
 }
 
 /// Write something into the screen
@@ -29,14 +30,14 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<i32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
-            no_interruptible!();
+            uninterruptible();
             print!(
                 "{:?} / {:?} : {}",
                 _get_pit_time(),
-                _get_next_quantum(),
+                _get_process_end_time(),
                 core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
             );
-            interruptible!();
+            interruptible();
         }
         Ok(count as i32)
     }
@@ -49,15 +50,15 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<i32> {
 
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
-    no_interruptible!();
+    uninterruptible();
     SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<i32> {
-    no_interruptible!();
+    uninterruptible();
     let res = SCHEDULER.lock().fork(kernel_esp);
-    interruptible!();
+    interruptible();
     res
 }
 
@@ -73,9 +74,9 @@ unsafe fn sys_test() -> SysResult<i32> {
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<i32> {
-    no_interruptible!();
+    uninterruptible();
     println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
-    interruptible!();
+    interruptible();
     Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 

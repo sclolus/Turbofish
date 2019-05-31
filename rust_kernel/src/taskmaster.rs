@@ -1,13 +1,13 @@
 //! This file contains the task manager
 
 mod process;
-#[macro_use]
 mod scheduler;
 mod syscall;
 mod tests;
 
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
+pub use scheduler::{interruptible, uninterruptible};
 use tests::*;
 
 use errno::Errno;
