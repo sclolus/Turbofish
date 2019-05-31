@@ -34,6 +34,7 @@ segment .text
 ;; +--------+ ---> pointer to CpuState Structure (kernel_esp)
 global _schedule_next
 _schedule_next:
+%macro STORE_CONTEXT 0
 	; Generate the struct CpuState on the stack :)
 	push ds
 	push es
@@ -54,11 +55,13 @@ _schedule_next:
 	; --- MUST PASS POINTER TO THAT STRUCTURE ---
 	push esp
 	mov ebp, esp                ; set the backtrace endpoint
+%endmacro
+	STORE_CONTEXT
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
-
 schedule_return:
+%macro LOAD_CONTEXT 0
 	add esp, 4                  ; skip stack reserved field
 
 	; Recover all purpose registers
@@ -67,8 +70,23 @@ schedule_return:
 	pop fs
 	pop es
 	pop ds
-
+%endmacro
+	LOAD_CONTEXT
 	; Return contains now new registers, new eflags, new esp and new eip
+	iret
+
+extern _interruptible
+
+; It is identical to the above its mark system as scheduler-interruptible
+; This function MUST be used only in a INTGATE context
+global _schedule_force_preempt
+_schedule_force_preempt:
+	STORE_CONTEXT
+	call _interruptible
+	call scheduler_interrupt_handler
+    ; Set the new stack pointer
+	mov esp, eax
+	LOAD_CONTEXT
 	iret
 
 ; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)

@@ -19,7 +19,7 @@ pub struct MmapArgStruct {
 
 /// Map files or devices into memory
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
-    asm!("cli" :::: "volatile");
+    no_interruptible!();
 
     // TODO: Check if pointer exist in user virtual address space
     println!("{:#X?}", *mmap_arg);
@@ -35,8 +35,11 @@ pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<i32> {
     println!("alloc done");
 
     bzero(addr as *mut u8, length);
+
     SCHEDULER.force_unlock();
-    asm!("sti" :::: "volatile");
+
+    interruptible!();
+
     Ok(addr as i32)
     //Err((0xffffff80 as u32 as i32, Errno::Efault))
 }
@@ -56,18 +59,18 @@ pub unsafe fn sys_mmap2(
 
 /// Unmap files or devices into memory
 pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<i32> {
-    asm!("cli" :::: "volatile");
+    no_interruptible!();
     // TODO: Unallocate
-    asm!("sti" :::: "volatile");
+    interruptible!();
     Ok(0)
     //Err((0, Errno::Eperm))
 }
 
 /// Set protection on a region of memory
 pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<i32> {
-    asm!("cli" :::: "volatile");
+    no_interruptible!();
     // TODO: Change Entry range
-    asm!("sti" :::: "volatile");
+    interruptible!();
     Err(Errno::Eperm)
 }
 

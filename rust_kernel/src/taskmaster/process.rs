@@ -124,7 +124,9 @@ impl Process {
                         segment[0..h.filez as usize]
                             .copy_from_slice(&content[h.offset as usize..h.offset as usize + h.filez as usize]);
                         // With BSS (so a NOBITS section), the memsz value exceed the filesz. Setting next bytes as 0
-                        segment[h.filez as usize..h.memsz as usize].as_mut_ptr().write_bytes(0, h.memsz as usize - h.filez as usize);
+                        segment[h.filez as usize..h.memsz as usize]
+                            .as_mut_ptr()
+                            .write_bytes(0, h.memsz as usize - h.filez as usize);
                         // Modify the rights on pages by following the ELF specific restrictions
                         virtual_allocator.modify_range_page_entry(
                             Page::containing(Virt(h.vaddr as usize)),

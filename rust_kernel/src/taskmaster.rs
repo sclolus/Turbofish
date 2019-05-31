@@ -1,13 +1,14 @@
 //! This file contains the task manager
 
 mod process;
+#[macro_use]
 mod scheduler;
 mod syscall;
 mod tests;
 
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
-use tests::{_dummy_asm_process_code, _dummy_asm_process_len};
+use tests::*;
 
 use errno::Errno;
 
@@ -28,7 +29,8 @@ pub fn start() -> ! {
     // Initialize Syscall system
     syscall::init();
 
-    let _p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
+    let _p0 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap() };
+    let _p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap() };
     let _p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
     let _p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
     let _p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
@@ -40,9 +42,11 @@ pub fn start() -> ! {
     let _p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
     let _p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
     let _p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
-    let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
+    let _p13 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap() };
+    let _p14 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
 
     // Load some processes into the scheduler
+    SCHEDULER.lock().add_process(None, _p0).unwrap();
     SCHEDULER.lock().add_process(None, _p1).unwrap();
     SCHEDULER.lock().add_process(None, _p2).unwrap();
     SCHEDULER.lock().add_process(None, _p3).unwrap();
@@ -55,7 +59,8 @@ pub fn start() -> ! {
     // SCHEDULER.lock().add_process(None, _p10).unwrap();
     SCHEDULER.lock().add_process(None, _p11).unwrap();
     SCHEDULER.lock().add_process(None, _p12).unwrap();
-    // SCHEDULER.lock().add_process(None, _p13).unwrap();
+    SCHEDULER.lock().add_process(None, _p13).unwrap();
+    // SCHEDULER.lock().add_process(None, _p14).unwrap();
 
     // let process_list = unsafe {
     //     vec![

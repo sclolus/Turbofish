@@ -10,13 +10,44 @@ use alloc::collections::CollectionAllocErr;
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
 
-extern "C" {
-    static mut SCHEDULER_COUNTER: i32;
+use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+use core::ffi::c_void;
 
+extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
+
+    pub fn _get_pit_time() -> u32;
+    pub fn _get_next_quantum() -> u32;
+
+    fn _update_next_quantum(update: u32);
+
+    pub fn _no_interruptible();
+    pub fn _interruptible();
+    pub fn _schedule_force_preempt();
 }
 
 type Pid = u32;
+
+#[macro_export]
+macro_rules! no_interruptible {
+    () => {
+        crate::taskmaster::scheduler::_no_interruptible()
+    };
+}
+
+#[macro_export]
+macro_rules! interruptible {
+    () => ({
+        // Check if the Time to live of the current process is expired
+        // TODO: If scheduler is disable, the kernel will crash
+        // TODO: After Exit, the next process seems to be skiped !
+        if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_next_quantum() {
+            asm!("int 0x81" :::: "intel", "volatile");
+        } else {
+            crate::taskmaster::scheduler::_interruptible()
+        }
+    });
+}
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
@@ -26,7 +57,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // if (*cpu_state).cs == 0x08 {
     //     eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
     // }
-    SCHEDULER_COUNTER = scheduler.time_interval.unwrap();
+    _update_next_quantum(scheduler.time_interval.unwrap());
 
     // Backup of the current process kernel_esp
     scheduler.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
@@ -45,6 +76,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
+    interruptible!();
 }
 
 #[derive(Debug)]
@@ -90,7 +122,7 @@ pub struct Scheduler {
     /// index in the vector of the current running process
     curr_process_index: usize, // TODO: May be better if we use PID instead ?
     /// time interval in PIT tics between two schedules
-    time_interval: Option<i32>,
+    time_interval: Option<u32>,
 }
 
 /// Base Scheduler implementation
@@ -182,7 +214,7 @@ impl Scheduler {
         self.curr_process_index = self.curr_process_index % self.running_process.len();
         // Switch to the next process
         unsafe {
-            SCHEDULER_COUNTER = self.time_interval.unwrap();
+            _update_next_quantum(self.time_interval.unwrap());
 
             let p = self.curr_process().unwrap_running();
             p.context_switch();
@@ -197,25 +229,35 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
     asm!("cli" :::: "volatile");
 
+    // Register a new IDT entry in 81h for force preempting
+    let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+
+    let mut gate_entry = *IdtGateEntry::new()
+        .set_storage_segment(false)
+        .set_privilege_level(0)
+        .set_selector(1 << 3)
+        .set_gate_type(InterruptGate32);
+    gate_entry.set_handler(_schedule_force_preempt as *const c_void as u32);
+    interrupt_table[0x81] = gate_entry;
+
     // Set the PIT divisor if multitasking is enable
     let t = match task_mode {
         TaskMode::Mono => {
             log::info!("Scheduler initialised at mono-task");
-            (-1, None)
+            None
         }
         TaskMode::Multi(scheduler_frequency) => {
             log::info!("Scheduler initialised at frequency: {:?} hz", scheduler_frequency);
-            let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as i32;
+            let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
             if period == 0 {
-                (1, Some(1))
+                Some(1)
             } else {
-                (period, Some(period))
+                Some(period)
             }
         }
     };
-    SCHEDULER_COUNTER = t.0;
     let mut scheduler = SCHEDULER.lock();
-    scheduler.time_interval = t.1;
+    scheduler.time_interval = t;
 
     // Initialise the first process and get a reference on it
     let p = scheduler.get_current_running_process();
@@ -225,6 +267,12 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
     println!("Starting processes:");
 
+    match t {
+        Some(v) => _update_next_quantum(v),
+        None => _update_next_quantum(-1 as i32 as u32),
+    }
+
+    interruptible!();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }
