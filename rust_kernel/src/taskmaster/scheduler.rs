@@ -2,11 +2,13 @@
 
 use super::{Process, SysResult, TaskMode};
 
+mod task;
+use task::{ProcessState, Task};
+
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
 use alloc::collections::CollectionAllocErr;
-use core::mem;
 use fallible_collections::FallibleVec;
 
 use errno::Errno;
@@ -89,88 +91,6 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
     interruptible();
-}
-
-#[derive(Debug)]
-pub struct Task {
-    process_state: ProcessState,
-    child: Vec<Pid>,
-    parent: Option<Pid>,
-}
-
-impl Task {
-    pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent }
-    }
-
-    pub fn unwrap_running_mut(&mut self) -> &mut Process {
-        match &mut self.process_state {
-            ProcessState::Waiting(process) | ProcessState::Running(process) => process,
-            _ => panic!("WTF"),
-        }
-    }
-
-    pub fn unwrap_running(&self) -> &Process {
-        match &self.process_state {
-            ProcessState::Running(process) => process,
-            _ => panic!("WTF"),
-        }
-    }
-
-    pub fn is_zombie(&self) -> bool {
-        match self.process_state {
-            ProcessState::Zombie(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_waiting(&self) -> bool {
-        match self.process_state {
-            ProcessState::Waiting(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn set_waiting(&mut self) {
-        let uninit = unsafe { mem::uninitialized() };
-        let prev = mem::replace(&mut self.process_state, uninit);
-        let next = prev.set_waiting();
-        let uninit = mem::replace(&mut self.process_state, next);
-        mem::forget(uninit);
-    }
-
-    pub fn set_running(&mut self) {
-        let uninit = unsafe { mem::uninitialized() };
-        let prev = mem::replace(&mut self.process_state, uninit);
-        let next = prev.set_running();
-        let uninit = mem::replace(&mut self.process_state, next);
-        mem::forget(uninit);
-    }
-}
-
-#[derive(Debug)]
-pub enum ProcessState {
-    /// The process is currently on running state
-    Running(Process),
-    /// The process is currently waiting for the die of its childrens
-    Waiting(Process),
-    /// The process is terminated and wait to deliver his testament to his father
-    Zombie(i32),
-}
-
-impl ProcessState {
-    pub fn set_waiting(self) -> Self {
-        match self {
-            ProcessState::Running(p) => ProcessState::Waiting(p),
-            _ => panic!("already waiting"),
-        }
-    }
-    pub fn set_running(self) -> Self {
-        match self {
-            ProcessState::Waiting(p) => ProcessState::Running(p),
-            _ => panic!("already running"),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -300,11 +220,11 @@ impl Scheduler {
         // TODO: Solve Borrow
         if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
             p.set_waiting();
-            dbg!("set waiting");
+            // dbg!("set waiting");
             self.all_process.insert(self.curr_process_pid, p);
             self.remove_curr_running();
             schedule();
-            dbg!("return to live after schedule");
+            // dbg!("return to live after schedule");
         }
         // if let Some(child) = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
         //     child.exit_status
