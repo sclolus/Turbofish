@@ -63,7 +63,7 @@ pub mod shell;
 pub use spinlock::{Spinlock, SpinlockGuard};
 pub mod elf_loader;
 
-use crate::memory::allocator::RustGlobalAlloc;
+use crate::memory::RustGlobalAlloc;
 
 /// As a matter of fact, we can't declare the MemoryManager inside a submodule.
 #[cfg(not(test))]

@@ -4,8 +4,8 @@ use super::{SysResult, SCHEDULER};
 use bitflags::bitflags;
 use errno::Errno;
 
-use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::tools::{AllocFlags, NbrPages, Virt};
+use crate::memory::VirtualPageAllocator;
 
 /// This structure is the argument structure of the mmap syscall
 #[derive(Debug, Copy, Clone)]

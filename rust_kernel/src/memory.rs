@@ -6,7 +6,9 @@
 pub mod tools;
 
 pub mod allocator;
-pub use allocator::kernel::ffi::*;
+pub use allocator::kernel::RustGlobalAlloc;
+pub use allocator::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
+pub use allocator::kernel::ffi;
 
 pub mod init;
 pub use init::init_memory_system;

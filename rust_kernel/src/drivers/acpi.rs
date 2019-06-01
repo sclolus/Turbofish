@@ -4,7 +4,7 @@
 
 use crate::ffi::c_char;
 
-use crate::memory::allocator::{map, unmap};
+use crate::memory::ffi::{map, unmap};
 
 use core::mem::size_of;
 

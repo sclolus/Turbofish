@@ -14,9 +14,9 @@ use errno::Errno;
 use fallible_collections::try_vec;
 
 use crate::elf_loader::load_elf;
-use crate::memory::allocator::VirtualPageAllocator;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
+use crate::memory::VirtualPageAllocator;
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 

@@ -75,7 +75,7 @@ extern "C" {
     fn _read_cr2() -> u32;
 }
 
-use crate::memory::allocator::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 #[no_mangle]
 pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: ExtendedRegisters) -> () {
