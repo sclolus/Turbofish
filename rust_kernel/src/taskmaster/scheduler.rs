@@ -55,7 +55,7 @@ pub fn interruptible() {
     }
 }
 
-pub fn schedule() {
+fn schedule() {
     println!("scheduling");
     unsafe {
         SCHEDULER.force_unlock();
@@ -131,9 +131,10 @@ impl Scheduler {
     }
 
     /// Advance to the next process
-    fn advance_next_process(&mut self) {
+    fn advance_next_process(&mut self) -> &mut Task {
         self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
         self.curr_process_pid = self.running_process[self.curr_process_index];
+        self.curr_process_mut()
     }
 
     /// Get current process
@@ -189,7 +190,7 @@ impl Scheduler {
             let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
             if father.is_waiting() {
                 self.running_process.try_push(father_pid).unwrap();
-                dbg!("exit father set running");
+                // dbg!("exit father set running");
                 father.set_running();
             }
         }

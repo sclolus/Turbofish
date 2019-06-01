@@ -7,7 +7,7 @@ mod tests;
 
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
-pub use scheduler::{interruptible, uninterruptible};
+use scheduler::{interruptible, uninterruptible};
 
 use tests::*;
 

@@ -9,10 +9,10 @@ use errno::Errno;
 
 use core::ffi::c_void;
 
+use super::{interruptible, uninterruptible};
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
-use crate::taskmaster::{interruptible, uninterruptible};
 
 extern "C" {
     fn _isr_syscall();
@@ -133,12 +133,4 @@ pub fn init() {
         .set_gate_type(GateType::TrapGate32);
     gate_entry.set_handler(_isr_syscall as *const c_void as u32);
     interrupt_table[0x80] = gate_entry;
-
-    let mut gate_entry = *IdtGateEntry::new()
-        .set_storage_segment(false)
-        .set_privilege_level(3)
-        .set_selector(1 << 3)
-        .set_gate_type(GateType::InterruptGate32);
-    gate_entry.set_handler(_schedule_next as *const c_void as u32);
-    interrupt_table[0x81] = gate_entry;
 }

@@ -93,7 +93,7 @@ impl Process {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_128K;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
 
     /// Create a new process
     pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {

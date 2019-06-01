@@ -3,8 +3,8 @@ use super::SysResult;
 use errno::Errno;
 
 use super::SCHEDULER;
+use super::{interruptible, uninterruptible};
 use crate::memory::tools::{AllocFlags, NbrPages, Virt};
-use crate::taskmaster::{interruptible, uninterruptible};
 use bitflags::bitflags;
 
 /// This structure is the argument structure of the mmap syscall
