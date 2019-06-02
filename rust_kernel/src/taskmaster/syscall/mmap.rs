@@ -1,3 +1,4 @@
+use super::tools::check_user_ptr;
 use super::{interruptible, uninterruptible};
 use super::{SysResult, SCHEDULER};
 
@@ -5,7 +6,6 @@ use bitflags::bitflags;
 use errno::Errno;
 
 use crate::memory::tools::{AllocFlags, NbrPages, Virt};
-use crate::memory::VirtualPageAllocator;
 
 /// This structure is the argument structure of the mmap syscall
 #[derive(Debug, Copy, Clone)]
@@ -16,14 +16,6 @@ pub struct MmapArgStruct {
     flags: MmapFlags,
     fd: i32,
     offset: usize,
-}
-
-/// Check is a pointer given by user process is not bullshit
-fn check_user_ptr<T>(ptr: *const T, v: &VirtualPageAllocator) -> SysResult<()> {
-    let start_ptr = Virt(ptr as usize);
-    let end_ptr = Virt((ptr as usize).checked_add(core::mem::size_of::<T>() - 1).ok_or::<Errno>(Errno::Efault)?);
-
-    Ok(v.check_page_range(start_ptr.into(), end_ptr.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Efault)?)
 }
 
 /// Map files or devices into memory

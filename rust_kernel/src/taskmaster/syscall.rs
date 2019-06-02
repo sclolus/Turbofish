@@ -1,5 +1,6 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
+use super::tools;
 use super::{CpuState, SysResult, SCHEDULER};
 
 mod mmap;

@@ -4,6 +4,7 @@ mod process;
 mod scheduler;
 mod syscall;
 mod tests;
+mod tools;
 
 use process::{CpuState, Process, TaskOrigin};
 use scheduler::SCHEDULER;
@@ -46,6 +47,8 @@ pub fn start() -> ! {
             // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
             // Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
             // Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
             Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
             // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
             // Process::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
