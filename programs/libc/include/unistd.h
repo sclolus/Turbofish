@@ -31,4 +31,8 @@ int mprotect(void *addr, size_t length, int prot);
 
 unsigned int sleep(unsigned int seconds);
 
+typedef u32 useconds_t;
+
+int usleep(useconds_t usec);
+
 #endif
