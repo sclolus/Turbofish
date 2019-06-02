@@ -54,7 +54,7 @@ unsafe fn sys_exit(status: i32) -> ! {
 }
 
 /// Exit from a process
-unsafe fn sys_wait(stat_loc: *mut i32) -> SysResult<u32> {
+unsafe fn sys_wait(_stat_loc: *mut i32) -> SysResult<u32> {
     uninterruptible();
     let res = SCHEDULER.lock().wait();
     interruptible();

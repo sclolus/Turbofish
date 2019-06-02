@@ -41,6 +41,14 @@ extern _schedule_next
 
 segment .text
 
+%macro GET_PIT_TIME 0
+	lock cmpxchg dword [_pit_time], eax
+%endmacro
+
+%macro GET_PROCESS_END_TIME 0
+	lock cmpxchg dword [_process_end_time], eax
+%endmacro
+
 ; This function is automatically called when Interrupt are enable and PIC irq 0 is enabled
 global _isr_timer
 _isr_timer:
@@ -61,9 +69,9 @@ _isr_timer:
 	; Is_process_time_expired
 	push eax
 	push edx
-	call _get_pit_time
+	GET_PIT_TIME
 	mov edx, eax
-	call _get_process_end_time
+	GET_PROCESS_END_TIME
 	cmp edx, eax
 	pop edx
 	pop eax
@@ -88,20 +96,20 @@ _interruptible:
 ; Get atomically the actual pit time
 global _get_pit_time
 _get_pit_time:
-	lock cmpxchg dword [_pit_time], eax
+	GET_PIT_TIME
 	ret
 
 ; Get atomically the actual process_end_time
 global _get_process_end_time
 _get_process_end_time:
-	lock cmpxchg dword [_process_end_time], eax
+	GET_PROCESS_END_TIME
 	ret
 
 ; Update Atomically the process_end_time value
 ; _process_end_time = _pit_time + arg
 global _update_process_end_time
 _update_process_end_time:
-	call _get_pit_time
+	GET_PIT_TIME
 	add eax, dword [esp + 4]
 	lock xchg dword [_process_end_time], eax
 
@@ -114,13 +122,13 @@ _sleep:
 	mov ebp, esp
 
 	mov edx, [ebp + 8]
-	call _get_pit_time
+	GET_PIT_TIME
 	add edx, eax
 
 .loop:
 	hlt
 
-	call _get_pit_time
+	GET_PIT_TIME
 	cmp eax, edx
 
 	jb .loop

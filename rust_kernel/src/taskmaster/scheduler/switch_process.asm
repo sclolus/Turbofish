@@ -57,10 +57,12 @@ _schedule_next:
 	mov ebp, esp                ; set the backtrace endpoint
 %endmacro
 	STORE_CONTEXT
+
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
 schedule_return:
+
 %macro LOAD_CONTEXT 0
 	add esp, 4                  ; skip stack reserved field
 
@@ -84,7 +86,7 @@ _schedule_force_preempt:
 	STORE_CONTEXT
 	call _interruptible
 	call scheduler_interrupt_handler
-    ; Set the new stack pointer
+	; Set the new stack pointer
 	mov esp, eax
 	LOAD_CONTEXT
 	iret
@@ -102,7 +104,7 @@ _exit_resume:
 	mov edx, dword [ebp + 16]   ; get return status of process to free
 
 	; Go to the stack of the new current process
-	mov esp, [ebp + 8]
+	mov esp, dword [ebp + 8]
 
 	push edx
 	push ecx

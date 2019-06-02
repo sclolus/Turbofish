@@ -27,7 +27,7 @@ pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
     println!("{:#X?}", *mmap_arg);
     println!("mmap called !");
     let mut scheduler = SCHEDULER.lock();
-    let process = scheduler.curr_process_mut().unwrap_running_mut();
+    let _process = scheduler.curr_process_mut().unwrap_running_mut();
 
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
