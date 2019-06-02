@@ -56,6 +56,11 @@ SRC_ASM += user_nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
+SRC_C += signal
+SRC_ASM += user_sigaction
+VPATH += src/signal
+HEADERS += include/signal.h
+
 AS = nasm
 CC = gcc
 
