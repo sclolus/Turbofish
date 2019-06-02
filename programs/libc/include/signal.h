@@ -67,7 +67,6 @@ struct siginfo {
 	int      si_fd;          /* Descripteur de fichier   */
 };
 
-
 /*
  * SA_FLAGS values:
  *
