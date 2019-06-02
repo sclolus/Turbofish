@@ -33,15 +33,9 @@ pid_t waitpid(pid_t pid, int *wstatus, int options)
  */
 pid_t wait(int *wstatus)
 {
-	pid_t p = waitpid(-1, wstatus, 0);
 	/*
 	 * on success, returns the process ID of the terminated child;
 	 * on error, -1 is returned.
 	 */
-	if (p < 0) {
-		errno = -p;
-		return -1;
-	} else {
-		return p;
-	}
+	return waitpid(-1, wstatus, 0);
 }
