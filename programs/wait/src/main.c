@@ -11,7 +11,8 @@ int main(void)
 		exit(1);
 	}
 	if (pid == 0) {
-		printf("I love train\n");
+		printf("I am on the rails, I love train and i sleep now for 3 seconds !\n");
+		sleep(3);
 		exit(0);
 	} else {
 		int stat_loc;
@@ -21,7 +22,7 @@ int main(void)
 			printf("wait failed\n");
 			exit(1);
 		}
-		printf("I ended waiting\n");
+		printf("I ended waiting, my son %i is dead, but i am happy for him\n", child_pid);
 	}
 	return 0;
 }
