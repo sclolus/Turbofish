@@ -1,7 +1,7 @@
 
-#include "../libc/include/unistd.h"
-#include "../libc/include/stdio.h"
-#include "../libc/include/errno.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
 
 int main(void)
 {

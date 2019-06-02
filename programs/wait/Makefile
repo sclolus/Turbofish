@@ -13,6 +13,7 @@ LDFLAGS = -T linker.ld -m elf_i386
 ifeq ($(LDMAP),yes)
     LDFLAGS += -M
 endif
+IFLAGS += -Ilibc/include
 
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
@@ -29,7 +30,7 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
 
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
