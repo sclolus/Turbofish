@@ -29,7 +29,7 @@ fn check_user_ptr<T>(ptr: *const T, v: &VirtualPageAllocator) -> SysResult<()> {
 /// Map files or devices into memory
 pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
     uninterruptible();
-    let res: SysResult<(*mut u8, usize)> = {
+    let res: SysResult<u32> = {
         let mut scheduler = SCHEDULER.lock();
 
         let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
@@ -41,13 +41,11 @@ pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
         let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
 
         let addr = v.alloc(length.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Enomem)?.to_addr().0;
-        Ok((addr as *mut u8, length))
+        (addr as *mut u8).write_bytes(0, length);
+        Ok(addr as u32)
     };
     interruptible();
-    res.map(|(addr, length)| {
-        addr.write_bytes(0, length);
-        Ok(addr as u32)
-    })?
+    res
 }
 
 /// Map files or devices into memory

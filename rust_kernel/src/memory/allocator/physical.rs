@@ -48,7 +48,9 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
 
     let mut pallocator = PhysicalPageAllocator::new(Page::new(0), system_memory_amount);
 
-    pallocator.reserve(Page::new(0), (symbol_addr!(kernel_physical_end) - 0).into()).unwrap();
+    pallocator
+        .reserve(Page::new(0), (symbol_addr!(kernel_physical_end) - 0).into())
+        .expect("Failed to reserve kernel code area in physical allocator");
     // Reserve in memory the regions that are not usable according to the device_map slice,
     // making them effectively unusable by the memory system.
     for region in device_map.iter() {

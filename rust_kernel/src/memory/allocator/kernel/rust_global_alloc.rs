@@ -30,7 +30,11 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
                     // TODO: Handle the align layout in SlabAllocator then remove 16
                     a.free_with_size(Virt(ptr as usize), layout.size());
                 } else {
-                    KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(ptr as usize))).unwrap()
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .free(Page::containing(Virt(ptr as usize)))
+                        .expect("Cannot dealloc page");
                 }
             }
             KernelAllocator::Bootstrap(_) => panic!("Attempting to free while in bootstrap allocator"),

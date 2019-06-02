@@ -368,7 +368,7 @@ impl Cache {
         let new = if current_page_number < new_page_number {
             mmap(new_page_number).map(|addr| addr as *mut Node<Option<Slab>>).ok_or(())?
         } else {
-            self.data.unwrap()
+            self.data.ok_or(())?
         };
         let slice = unsafe { core::slice::from_raw_parts_mut(new, nbr_slabs) };
         let mut new_list = unsafe { LinkedList::in_place_construction(slice) };
@@ -408,15 +408,14 @@ impl Cache {
         Ok(())
     }
 
-    pub fn allocate_new_slab(&mut self) -> Option<&mut Slab> {
+    pub fn allocate_new_slab(&mut self) -> core::result::Result<&mut Slab, ()> {
         match self.slabs.iter_mut().find(|node| node.content.is_none()) {
-            // unsafe unwrap.
             Some(node) => {
-                node.content = Some(Slab::new(self.elem_size, 128)?);
-                Some(node.content.as_mut().unwrap())
+                node.content = Some(Slab::new(self.elem_size, 128).ok_or(())?);
+                Ok(node.content.as_mut().ok_or(())?)
             }
             None => {
-                self.allocate_metadata(self.nbr_slabs * 2).ok()?;
+                self.allocate_metadata(self.nbr_slabs * 2).ok().ok_or(())?;
                 assert!(self.slabs.iter_mut().any(|x| x.content.is_none()));
                 self.allocate_new_slab()
             }
@@ -428,11 +427,11 @@ impl Cache {
         node.content = None;
     }
 
-    pub fn new(elem_size: usize) -> Self {
+    pub fn new(elem_size: usize) -> core::result::Result<Self, ()> {
         let mut new = Cache { elem_size, nbr_slabs: 0, slabs: LinkedList::new(), data: None };
 
-        new.allocate_metadata(Self::BASE_NBR_SLABS).unwrap();
-        new
+        new.allocate_metadata(Self::BASE_NBR_SLABS)?;
+        Ok(new)
     }
 
     pub fn take_slab<F: Fn(&Slab) -> bool>(&mut self, predicate: F) -> Option<*mut Node<Option<Slab>>> {
@@ -440,7 +439,7 @@ impl Cache {
             .slabs
             .iter_mut()
             .filter(|node| node.content.is_some())
-            .find(|node| predicate(node.content.as_ref().unwrap()));
+            .find(|node| predicate(node.content.as_ref().expect("Can't fail")));
 
         found.map(|node| {
             let node_addr = node as *mut Node<Option<Slab>>;
@@ -454,7 +453,7 @@ impl Cache {
         let node = self.take_slab(|slab| slab.status != SlabStatus::Full);
 
         if let Some(node) = node {
-            let slab = unsafe { (*node).content.as_mut().unwrap() }; // Can't fail.
+            let slab = unsafe { (*node).content.as_mut().expect("Can't fail") }; // Can't fail.
             let addr = slab.alloc();
             let node = node as *mut Node<Option<Slab>>;
 
@@ -465,8 +464,10 @@ impl Cache {
             }
             addr
         } else {
-            self.allocate_new_slab()?;
-            self.alloc()
+            match self.allocate_new_slab() {
+                Ok(_) => self.alloc(),
+                Err(_) => None,
+            }
         }
 
         // This code is more elegant but slower, however, this is not the bottleneck.
@@ -489,9 +490,9 @@ impl Cache {
             .iter_mut()
             .enumerate()
             .filter(|(_, node)| node.content.is_some())
-            .find(|(_, node)| node.content.as_ref().unwrap().contains(addr))
+            .find(|(_, node)| node.content.as_ref().expect("Can't fail").contains(addr))
         {
-            let slab = node.content.as_mut().unwrap();
+            let slab = node.content.as_mut().expect("Can't fail");
 
             slab.free(addr);
             if slab.status() == SlabStatus::Empty {
@@ -528,14 +529,14 @@ pub struct SlabAllocator {
 impl SlabAllocator {
     pub fn new() -> Self {
         let caches = [
-            Cache::new(32),
-            Cache::new(64),
-            Cache::new(128),
-            Cache::new(256),
-            Cache::new(512),
-            Cache::new(1024),
-            Cache::new(2048),
-            Cache::new(4096),
+            Cache::new(32).expect("Failed to allocate Slab cache for length of 32"),
+            Cache::new(64).expect("Failed to allocate Slab cache for length of 64"),
+            Cache::new(128).expect("Failed to allocate Slab cache for length of 128"),
+            Cache::new(256).expect("Failed to allocate Slab cache for length of 256"),
+            Cache::new(512).expect("Failed to allocate Slab cache for length of 512"),
+            Cache::new(1024).expect("Failed to allocate Slab cache for length of 1024"),
+            Cache::new(2048).expect("Failed to allocate Slab cache for length of 2048"),
+            Cache::new(4096).expect("Failed to allocate Slab cache for length of 4096"),
             // Cache::new(1 << 13),
             // Cache::new(1 << 14),
             // Cache::new(1 << 15),
