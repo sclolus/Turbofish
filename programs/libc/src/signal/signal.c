@@ -24,17 +24,12 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 	}
 }
 
-#include "stdio.h"
-
 /*
  * signal - ANSI C signal handling
  */
 sighandler_t signal(int signum, sighandler_t handler)
 {
 	struct sigaction sig;
-
-	printf("size of the big struct %lu\n", sizeof(struct sigaction));
-	printf("size of struct %lu\n", sizeof(sigset_t));
 
 	ft_memset(&sig, 0, sizeof(struct sigaction));
 	sig.sa_handler = handler;

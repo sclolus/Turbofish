@@ -44,7 +44,7 @@ typedef void (*sighandler_t)(int);
 
 sighandler_t signal(int signum, sighandler_t handler);
 
-// TODO: Verify that before implemting sigaction
+// TODO: Verify that before implementing sigaction
 typedef u32 pid_t;
 typedef u32 uid_t;
 typedef u32 clock_t;
