@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <wait.h>
 
 int main(void)
 {
