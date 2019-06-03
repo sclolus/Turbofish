@@ -1,11 +1,47 @@
 TARGET = mordak
 
-SRC_ASM += start
-VPATH += src
-
 SRC_ASM += 8087
 VPATH += src/math
 
+# --- Preserve this above part. It is stricly system ---
+ifeq ($(GNU),yes)
+SRC_ASM +=
+else
+SRC_ASM += start
+endif
+
+VPATH += src
+
+AS = nasm
+CC = gcc
+
+ifeq ($(GNU),yes)
+CFLAGS += -m32
+# Add GNU libc includes
+LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
+else
+CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
+LDFLAGS = -T linker.ld -m elf_i386
+endif
+ASFLAGS = -f elf
+CFLAGS += -m32
+ifeq ($(LDMAP),yes)
+    LDFLAGS += -M
+endif
+
+ifeq ($(GNU),yes)
+	IFLAGS +=
+else
+	IFLAGS += -Ilibc/include
+endif
+
+OBJ_DIR = obj
+OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
+OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+
+.PHONY = all clean fclean re exec build_libc build_rust test
+
+# Rust stuff here:
 arch := ivybridge_cpu
 target := $(arch)
 custom_target := $(arch).json
@@ -18,21 +54,6 @@ endif
 
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 
-AS = nasm
-
-ASFLAGS = -f elf
-LDFLAGS = -T linker.ld -m elf_i386
-ifeq ($(LDMAP),yes)
-    LDFLAGS += -M
-endif
-
-OBJ_DIR = obj
-OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
-
-.PHONY = all clean fclean re exec build_rust test test-all
-
-all: .rust_toolchain .xbuild_toolchain build_rust build_libc $(TARGET)
-
 .rust_toolchain: rust-toolchain
 	rustup component add rust-src
 	rustup component add rustfmt
@@ -42,20 +63,25 @@ all: .rust_toolchain .xbuild_toolchain build_rust build_libc $(TARGET)
 	cargo install --version $(CARGO_XBUILD_VERSION) cargo-xbuild --force
 	echo "Updated" > .xbuild_toolchain
 
-$(TARGET): $(OBJ_ASM) $(rust_archive) libc/libc.a linker.ld
-	$(LD) $(LDFLAGS) -o $@ $^
+ifeq ($(GNU),yes)
+all: .rust_toolchain .xbuild_toolchain build_rust $(TARGET)
+else
+all: .rust_toolchain .xbuild_toolchain build_rust build_libc $(TARGET)
+endif
 
-$(OBJ_DIR)/%.o: %.asm Makefile
+ifeq ($(GNU),yes)
+$(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
+	$(LD) $(LDFLAGS) -o $@ $^
+else
+$(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive) libc/libc.a
+	$(LD) $(LDFLAGS) -o $@ $^
+endif
+
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(AS) $(ASFLAGS) -o $@ $<
 
-build_rust:
-	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
-
-build_libc:
-	make -C libc all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-
-test:
-	cargo test --target i686-unknown-linux-gnu
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
+	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
 
 clean:
 	cargo clean
@@ -65,6 +91,15 @@ fclean: clean
 	rm -f $(TARGET)
 
 re: fclean all
+
+build_rust:
+	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
+
+build_libc:
+	make -C libc all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+
+test:
+	cargo test --target i686-unknown-linux-gnu
 
 exec: all
 	./$(TARGET)
