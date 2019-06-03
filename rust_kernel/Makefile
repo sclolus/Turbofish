@@ -75,8 +75,8 @@ VPATH += src/taskmaster/scheduler
 SRC_ASM_KERNEL += syscall_isr sys_test
 VPATH += src/taskmaster/syscall
 
-SRC_ASM_KERNEL += asm_processes
-VPATH += src/taskmaster/tests
+SRC_ASM_KERNEL += asm_processes idle_process
+VPATH += src/taskmaster/tests src/taskmaster/process
 
 SRC_ASM_KERNEL += payload_13h_extended
 VPATH += src/drivers/storage/bios_int13h

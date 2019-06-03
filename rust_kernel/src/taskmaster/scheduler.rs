@@ -1,6 +1,6 @@
 //! this file contains the scheduler description
 
-use super::{Process, SysResult, TaskMode, UserProcess};
+use super::{KernelProcess, Process, SysResult, TaskMode, UserProcess};
 
 mod task;
 use task::{ProcessState, Task, WaitingState};
@@ -109,6 +109,8 @@ pub struct Scheduler {
     curr_process_index: usize,
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
+    /// The scheduler must have an idle kernel proces if all the user process are waiting
+    kernel_idle_process: Option<Box<KernelProcess>>,
 }
 
 /// Base Scheduler implementation
@@ -121,6 +123,7 @@ impl Scheduler {
             curr_process_index: 0,
             curr_process_pid: 0,
             time_interval: None,
+            kernel_idle_process: None,
         }
     }
 
@@ -150,6 +153,12 @@ impl Scheduler {
         self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
         self.running_process.push(pid);
         Ok(pid)
+    }
+
+    /// Set the idle process for the scheduler
+    pub fn set_idle_process(&mut self, idle_process: Box<KernelProcess>) -> Result<(), ()> {
+        self.kernel_idle_process = Some(idle_process);
+        Ok(())
     }
 
     /// Get current process

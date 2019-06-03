@@ -59,6 +59,20 @@ pub fn start() -> ! {
         SCHEDULER.lock().add_user_process(None, p).unwrap();
     }
 
+    // Set the scheduler idle process
+    SCHEDULER
+        .lock()
+        .set_idle_process(unsafe {
+            KernelProcess::new(TaskOrigin::Raw(&_idle_process_code as *const _ as *const u8, _idle_process_len))
+                .unwrap()
+        })
+        .unwrap();
+
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }
+}
+
+extern "C" {
+    fn _idle_process_code();
+    static _idle_process_len: usize;
 }
