@@ -1,10 +1,11 @@
 //! this file contains the scheduler description
 
-use super::{SysResult, TaskMode, UserProcess};
+use super::{Process, SysResult, TaskMode, UserProcess};
 
 mod task;
 use task::{ProcessState, Task, WaitingState};
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
@@ -141,7 +142,7 @@ impl Scheduler {
     pub fn add_user_process(
         &mut self,
         father_pid: Option<Pid>,
-        process: UserProcess,
+        process: Box<UserProcess>,
     ) -> Result<Pid, CollectionAllocErr> {
         let pid = get_available_pid();
         self.all_process.try_reserve(1)?;

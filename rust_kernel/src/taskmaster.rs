@@ -6,7 +6,7 @@ mod syscall;
 mod tests;
 mod tools;
 
-use process::{CpuState, TaskOrigin, UserProcess};
+use process::{CpuState, Process, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
 use scheduler::{interruptible, uninterruptible};
 

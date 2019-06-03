@@ -5,6 +5,7 @@ use tss::TSS;
 
 use super::SysResult;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::slice;
 
@@ -14,6 +15,7 @@ use errno::Errno;
 use fallible_collections::try_vec;
 
 use crate::elf_loader::load_elf;
+use crate::memory;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::VirtualPageAllocator;
@@ -50,6 +52,21 @@ pub struct CpuState {
     pub esp: u32,
     /// current SS
     pub ss: u32,
+}
+
+/// Declaration of shared Process trait. Kernel and User processes must implements these methods
+pub trait Process {
+    /// Return a new process
+    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>>;
+    /// TSS initialisation method (necessary for ring3 switch)
+    unsafe fn init_tss(&self);
+    /// Start the process
+    unsafe fn start(&self) -> !;
+    /// Switch to the current process PD
+    unsafe fn context_switch(&self);
+
+    /// Fork the process and return his child
+    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>>;
 }
 
 /// This structure represents an entire process
@@ -91,7 +108,7 @@ pub enum TaskOrigin {
     Raw(*const u8, usize),
 }
 
-/// Main implementation of Process
+/// Main implementation of UserProcess
 impl UserProcess {
     const RING0_STACK_SEGMENT: u16 = 0x18;
 
@@ -103,9 +120,14 @@ impl UserProcess {
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
+}
 
-    /// Create a new process
-    pub unsafe fn new(origin: TaskOrigin) -> crate::memory::tools::Result<Self> {
+/// Main implementation of KernalProcess
+impl KernelProcess {}
+
+/// Main implementation of process trait for UserProcess
+impl Process for UserProcess {
+    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
@@ -206,26 +228,24 @@ impl UserProcess {
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
 
-        Ok(UserProcess { kernel_stack, kernel_esp, virtual_allocator })
+        Ok(Box::new(UserProcess { kernel_stack, kernel_esp, virtual_allocator }))
     }
 
-    /// Initialize the TSS segment (necessary for ring3 switch)
-    pub unsafe fn init_tss(&self) {
+    unsafe fn init_tss(&self) {
         TSS.lock().init(
             self.kernel_stack.as_ptr().add(Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()) as u32,
             Self::RING0_STACK_SEGMENT,
         );
     }
 
-    pub unsafe fn context_switch(&self) {
+    unsafe fn context_switch(&self) {
         // Switch to the new process PD
         self.virtual_allocator.context_switch();
         // Re-init the TSS block for the new process
         self.init_tss();
     }
 
-    /// Start a process
-    pub unsafe fn start(&self) -> ! {
+    unsafe fn start(&self) -> ! {
         // Switch to process Page Directory
         self.virtual_allocator.context_switch();
 
@@ -236,8 +256,7 @@ impl UserProcess {
         _start_process(self.kernel_esp)
     }
 
-    /// Fork a process
-    pub fn fork(&self, kernel_esp: u32) -> SysResult<Self> {
+    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>> {
         // Create the child kernel stack
         let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
         child_kernel_stack.as_mut_slice().copy_from_slice(self.kernel_stack.as_slice());
@@ -251,10 +270,33 @@ impl UserProcess {
             (*child_cpu_state).registers.eax = 0;
         }
 
-        Ok(Self {
+        Ok(Box::new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
-        })
+        }))
+    }
+}
+
+/// Main implementation of a KernelProcess
+impl Process for KernelProcess {
+    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>> {
+        unimplemented!();
+    }
+
+    unsafe fn init_tss(&self) {
+        unimplemented!();
+    }
+
+    unsafe fn start(&self) -> ! {
+        unimplemented!();
+    }
+
+    unsafe fn context_switch(&self) {
+        unimplemented!();
+    }
+
+    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>> {
+        unimplemented!();
     }
 }

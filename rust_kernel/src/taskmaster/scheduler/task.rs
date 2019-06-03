@@ -1,6 +1,7 @@
 use super::Pid;
 use super::UserProcess;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::mem;
 
@@ -72,9 +73,9 @@ pub enum WaitingState {
 #[derive(Debug)]
 pub enum ProcessState {
     /// The process is currently on running state
-    Running(UserProcess),
+    Running(Box<UserProcess>),
     /// The process is currently waiting for the die of its childrens
-    Waiting(UserProcess, WaitingState),
+    Waiting(Box<UserProcess>, WaitingState),
     /// The process is terminated and wait to deliver his testament to his father
     Zombie(i32),
 }
