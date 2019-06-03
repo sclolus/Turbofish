@@ -51,8 +51,8 @@ SRC_ASM +=
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += write fork mmap munmap mprotect sleep getuid
-SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid
+SRC_C += write fork mmap munmap mprotect sleep getuid getpid
+SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid user_getpid
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
