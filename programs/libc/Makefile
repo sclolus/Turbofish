@@ -46,7 +46,12 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += write exit fork mmap munmap mprotect sleep getuid
+SRC_C += exit
+SRC_ASM +=
+VPATH += src/stdlib
+HEADERS += include/stdlib.h
+
+SRC_C += write fork mmap munmap mprotect sleep getuid
 SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid
 VPATH += src/unistd
 HEADERS += include/unistd.h

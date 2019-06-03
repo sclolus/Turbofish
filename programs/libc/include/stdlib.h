@@ -3,6 +3,8 @@
 
 #include "i386.h"
 
+void exit(int status);
+
 void *malloc(size_t size);
 int free(void *ptr);
 void *calloc(size_t count, size_t size);

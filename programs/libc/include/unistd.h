@@ -6,11 +6,9 @@
 int write(int fd, const char *s, size_t len);
 
 typedef int pid_t;
+typedef int uid_t;
 
-int fork();
-void exit(int status);
-pid_t wait(int *stat_loc);
-
+pid_t fork();
 
 #define MAP_FAILED 0xFFFFFFFF
 
@@ -34,8 +32,6 @@ unsigned int sleep(unsigned int seconds);
 typedef u32 useconds_t;
 
 int usleep(useconds_t usec);
-
-typedef u32 uid_t;
 
 uid_t getuid(void);
 

@@ -1,13 +1,23 @@
+
 #include "unistd.h"
 
-extern int user_fork();
+extern pid_t user_fork();
 extern int errno;
 
-int fork()
+/*
+ * fork - create a child process
+ */
+pid_t fork()
 {
-	int ret = user_fork();
+	pid_t ret = user_fork();
+	/*
+	 * On success, the PID of the child process is returned in the parent,
+	 * and 0 is returned in the child.  On failure, -1 is returned in the
+	 * parent, no child process is created, and errno is set appropriately.
+	 */
 	if (ret < 0) {
-		errno = -ret;
+		errno = -(int)ret;
+		return -1;
 	}
 	return ret;
 }

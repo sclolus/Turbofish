@@ -19,7 +19,7 @@ user_fork:
 	push ebp
 	mov ebp, esp
 
-	mov eax, 0x2 ; system call number (sys_fork)
+	mov eax, 2 ; system call number (sys_fork)
 	int 0x80
 
 	pop ebp
