@@ -18,7 +18,7 @@ use crate::elf_loader::load_elf;
 use crate::memory;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
-use crate::memory::VirtualPageAllocator;
+use crate::memory::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
@@ -123,7 +123,14 @@ impl UserProcess {
 }
 
 /// Main implementation of KernalProcess
-impl KernelProcess {}
+impl KernelProcess {
+    const RING0_CODE_SEGMENT: u32 = 0x08;
+    const RING0_DATA_SEGMENT: u32 = 0x10;
+    const RING0_DPL: u32 = 0b0;
+
+    const KERNEL_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
+    const KERNEL_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
+}
 
 /// Main implementation of process trait for UserProcess
 impl Process for UserProcess {
@@ -278,25 +285,81 @@ impl Process for UserProcess {
     }
 }
 
+// Note: It is very really tricky to exit from a kernel process about possibles memory leaks or code corruption
+// The using of Syscalls from a kernel process can lead to a lot of undefined behavior. please avoid it
+// Maybe we need to check CS of the caller of the TSS segment in the syscall handler to unallow use of them.
 /// Main implementation of a KernelProcess
 impl Process for KernelProcess {
     unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>> {
-        unimplemented!();
+        let eip = match origin {
+            TaskOrigin::Elf(_content) => {
+                unimplemented!();
+            }
+            TaskOrigin::Raw(code, code_len) => {
+                // Allocate a chunk of memory for the process code
+                let base_addr = KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .alloc(Self::KERNEL_RAW_PROCESS_MAX_SIZE, AllocFlags::KERNEL_MEMORY)
+                    .unwrap()
+                    .to_addr()
+                    .0 as *mut u8;
+                // Copy the code segment
+                base_addr.copy_from(code, code_len);
+                base_addr as u32
+            }
+        };
+
+        // Allocate the kernel stack of the process
+        let kernel_stack = vec![0; Self::KERNEL_PROCESS_STACK_SIZE.into()];
+
+        // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().modify_page_entry(
+            Virt(kernel_stack.as_ptr() as usize).into(),
+            AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY,
+        );
+
+        // Generate the start kernel ESP of the new process
+        let kernel_esp = kernel_stack
+            .as_ptr()
+            .add(Into::<usize>::into(Self::KERNEL_PROCESS_STACK_SIZE) - core::mem::size_of::<CpuState>())
+            as u32;
+
+        // Create the process identity
+        let cpu_state: CpuState = CpuState {
+            stack_reserved: 0,
+            registers: BaseRegisters { esp: kernel_esp, ..Default::default() }, // Be carefull, never trust ESP
+            ds: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
+            es: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
+            fs: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
+            gs: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
+            eip,
+            cs: Self::RING0_CODE_SEGMENT + Self::RING0_DPL,
+            eflags: Eflags::get_eflags().set_interrupt_flag(true),
+            esp: 0, // Unused for a kernel task switch
+            ss: 0,  // Unused for a kernel task switch
+        };
+        // Fill the kernel stack of the new process with start cpu states.
+        (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
+
+        Ok(Box::new(KernelProcess { kernel_stack, kernel_esp }))
     }
 
     unsafe fn init_tss(&self) {
-        unimplemented!();
+        // Initialize the TSS segment is not necessary for a kernel process
     }
 
     unsafe fn start(&self) -> ! {
-        unimplemented!();
+        // Launch the kerne; process on its own kernel stack
+        _start_process(self.kernel_esp)
     }
 
     unsafe fn context_switch(&self) {
-        unimplemented!();
+        // Context_switch is not necessary for a kernel process
     }
 
-    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>> {
+    // Note: Forking from a kernel process seams not to be a good idea
+    fn fork(&self, _kernel_esp: u32) -> SysResult<Box<Self>> {
         unimplemented!();
     }
 }
