@@ -53,7 +53,7 @@ pub struct CpuState {
 }
 
 /// This structure represents an entire process
-pub struct Process {
+pub struct UserProcess {
     /// kernel stack
     kernel_stack: Vec<u8>,
     /// Current process ESP on kernel stack
@@ -62,8 +62,16 @@ pub struct Process {
     pub virtual_allocator: VirtualPageAllocator,
 }
 
+/// This structure represents an entire kernel process
+pub struct KernelProcess {
+    /// kernel stack
+    kernel_stack: Vec<u8>,
+    /// Current process ESP on kernel stack
+    pub kernel_esp: u32,
+}
+
 /// Debug boilerplate for Process
-impl core::fmt::Debug for Process {
+impl core::fmt::Debug for UserProcess {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
@@ -84,7 +92,7 @@ pub enum TaskOrigin {
 }
 
 /// Main implementation of Process
-impl Process {
+impl UserProcess {
     const RING0_STACK_SEGMENT: u16 = 0x18;
 
     const RING3_CODE_SEGMENT: u32 = 0x20;
@@ -198,7 +206,7 @@ impl Process {
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
 
-        Ok(Process { kernel_stack, kernel_esp, virtual_allocator })
+        Ok(UserProcess { kernel_stack, kernel_esp, virtual_allocator })
     }
 
     /// Initialize the TSS segment (necessary for ring3 switch)

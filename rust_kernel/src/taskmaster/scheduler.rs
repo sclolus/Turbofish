@@ -1,9 +1,9 @@
 //! this file contains the scheduler description
 
-use super::{Process, SysResult, TaskMode};
+use super::{SysResult, TaskMode, UserProcess};
 
 mod task;
-use task::{ProcessState, Task};
+use task::{ProcessState, Task, WaitingState};
 
 use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -75,11 +75,13 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Backup of the current process kernel_esp
     scheduler.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
+
     // Switch between processes
     scheduler.advance_next_process();
 
     let p = scheduler.curr_process().unwrap_running();
     p.context_switch();
+
     // Restore kernel_esp for the new process
     p.kernel_esp
 }
@@ -102,6 +104,7 @@ pub struct Scheduler {
     all_process: HashMap<Pid, Task>,
     /// index in the vector of the current running process
     curr_process_pid: Pid,
+    /// current process index in the running_process vector
     curr_process_index: usize,
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
@@ -120,21 +123,32 @@ impl Scheduler {
         }
     }
 
+    /// Advance until a next elligible process was found
+    fn advance_next_process(&mut self) {
+        loop {
+            self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
+            self.curr_process_pid = self.running_process[self.curr_process_index];
+
+            match &self.curr_process().process_state {
+                ProcessState::Running(p) => break,
+                ProcessState::Waiting(p, waiting_state) => {}
+                ProcessState::Zombie(_) => panic!("WTF"),
+            };
+        }
+    }
+
     /// Add a process into the scheduler (transfert ownership)
-    pub fn add_process(&mut self, father_pid: Option<Pid>, process: Process) -> Result<Pid, CollectionAllocErr> {
+    pub fn add_user_process(
+        &mut self,
+        father_pid: Option<Pid>,
+        process: UserProcess,
+    ) -> Result<Pid, CollectionAllocErr> {
         let pid = get_available_pid();
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
         self.running_process.push(pid);
         Ok(pid)
-    }
-
-    /// Advance to the next process
-    fn advance_next_process(&mut self) -> &mut Task {
-        self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
-        self.curr_process_pid = self.running_process[self.curr_process_index];
-        self.curr_process_mut()
     }
 
     /// Get current process
@@ -158,7 +172,7 @@ impl Scheduler {
         // try reserve a place for child pid
         curr_process.child.try_reserve(1)?;
         let child = curr_process.unwrap_running().fork(kernel_esp)?;
-        let child_pid = self.add_process(Some(father_pid), child)?;
+        let child_pid = self.add_user_process(Some(father_pid), child)?;
 
         self.curr_process_mut().child.push(child_pid);
         // dbg!(self.curr_process());
@@ -220,7 +234,7 @@ impl Scheduler {
         }
         // TODO: Solve Borrow
         if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
-            p.set_waiting();
+            p.set_waiting(WaitingState::ChildDeath);
             // dbg!("set waiting");
             self.all_process.insert(self.curr_process_pid, p);
             self.remove_curr_running();

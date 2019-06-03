@@ -6,7 +6,7 @@ mod syscall;
 mod tests;
 mod tools;
 
-use process::{CpuState, Process, TaskOrigin};
+use process::{CpuState, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
 use scheduler::{interruptible, uninterruptible};
 
@@ -33,30 +33,30 @@ pub fn start() -> ! {
     syscall::init();
 
     // Load some processes into the scheduler
-    let process_list = unsafe {
+    let user_process_list = unsafe {
         vec![
-            // Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
-            // Process::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
-            Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
-            Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
-            Process::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
-            // Process::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
         ]
     };
-    for (i, p) in process_list.into_iter().enumerate() {
-        println!("pocess no: {} : {:?}", i, p);
-        SCHEDULER.lock().add_process(None, p).unwrap();
+    for (i, p) in user_process_list.into_iter().enumerate() {
+        println!("user pocess no: {} : {:?}", i, p);
+        SCHEDULER.lock().add_user_process(None, p).unwrap();
     }
 
     // Launch the scheduler
