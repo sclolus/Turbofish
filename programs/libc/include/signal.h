@@ -111,4 +111,6 @@ struct sigaction {
 // TODO: This function is on dummy state: Use signal instead of sigaction
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
 
+int kill(pid_t pid, int sig);
+
 #endif

@@ -46,8 +46,8 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += write exit fork mmap munmap mprotect sleep
-SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect
+SRC_C += write exit fork mmap munmap mprotect sleep getuid
+SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
@@ -56,8 +56,8 @@ SRC_ASM += user_nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal
-SRC_ASM += user_sigaction
+SRC_C += signal kill
+SRC_ASM += user_sigaction user_kill
 VPATH += src/signal
 HEADERS += include/signal.h
 

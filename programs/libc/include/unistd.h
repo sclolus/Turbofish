@@ -35,4 +35,8 @@ typedef u32 useconds_t;
 
 int usleep(useconds_t usec);
 
+typedef u32 uid_t;
+
+uid_t getuid(void);
+
 #endif
