@@ -230,7 +230,10 @@ impl Task {
         Ok(0)
     }
 
+    /// check if there is pending sigals, and tricks the stack to execute it on return
     pub fn check_pending_signals(&mut self) {
+        /// helper to push on the stack
+        /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
             if size_of::<T>() % 4 != 0 {
                 panic!("size not multiple of 4");
@@ -241,6 +244,8 @@ impl Task {
             }
         }
 
+        /// helper to push on the stack
+        /// same as push_esp but buf a `buf` of size `size`
         fn push_buff_esp(esp: &mut u32, buf: *mut u8, size: usize) {
             // align size
             let size = align_on(size, 4);
@@ -254,19 +259,28 @@ impl Task {
             if let Some(signum) = self.signal_queue.pop_front() {
                 match self.signal_actions[signum] {
                     Sigaction::Handler(f) => {
-                        // let mut cpu_state: CpuState = Default::default();
                         let kernel_esp = self.unwrap_running().kernel_esp;
-                        // dbg_hex!(kernel_esp);
                         unsafe {
                             let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
-                            push_esp(&mut (*cpu_state).esp, *cpu_state);
+                            let user_esp = &mut (*cpu_state).esp;
+
+                            // push the current cpu_state on the user stack
+                            push_esp(user_esp, *cpu_state);
+                            // push the trampoline code on the user stack
                             push_buff_esp(
-                                &mut (*cpu_state).esp,
+                                user_esp,
                                 symbol_addr!(_trampoline) as *mut u8,
                                 symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline),
                             );
-                            let esp_trampoline = (*cpu_state).esp;
-                            push_esp(&mut (*cpu_state).esp, esp_trampoline);
+                            // push the address of start of trampoline code stack on the user stack
+                            let esp_trampoline = *user_esp;
+                            push_esp(user_esp, esp_trampoline);
+
+                            // set a fresh cpu state to execute the handler
+                            let mut new_cpu_state = CpuState::new(*user_esp, f as u32);
+                            new_cpu_state.eip = f as u32;
+
+                            (*cpu_state) = new_cpu_state;
                             (*cpu_state).eip = f as u32;
                         }
                         self.set_signaled();
@@ -276,7 +290,11 @@ impl Task {
             }
         }
     }
+
+    /// sigreturn syscall
     pub fn sigreturn(&mut self, cpu_state: *mut CpuState) -> SysResult<u32> {
+        /// helper to push on the stack
+        /// imitate pop instruction return the T present at esp
         fn pop_esp<T: Copy>(esp: &mut u32) -> T {
             if size_of::<T>() % 4 != 0 {
                 panic!("size not multiple of 4");
@@ -292,11 +310,14 @@ impl Task {
             panic!("can't call sigreturn when not interrupted");
         }
         unsafe {
+            // skip the trampoline code
             (*cpu_state).esp += align_on(symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline), 4) as u32;
+            // get back the old cpu state and set it as the current cpu_state
             let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
             *cpu_state = old_cpu_state;
 
             self.set_running();
+            // return current eax to keep it's value at the syscall return
             Ok((*cpu_state).registers.eax)
         }
     }

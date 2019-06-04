@@ -23,7 +23,7 @@ macro_rules! try_vec {
 pub trait FallibleVec<T> {
     /// see reserve
     fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
-    /// see push, return the elem if allocation failed
+    /// see push
     fn try_push(&mut self, elem: T) -> Result<(), CollectionAllocErr>;
     /// try push and give back ownership in case of error
     fn try_push_give_back(&mut self, elem: T) -> Result<(), (T, CollectionAllocErr)>;

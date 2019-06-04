@@ -114,6 +114,7 @@ _exit_resume:
 
 	jmp schedule_return
 
+; trampoline code, just do a sygreturn syscall
 global _trampoline
 global _trampoline_end
 _trampoline:
