@@ -1,32 +1,169 @@
+use super::process::{CpuState, UserProcess};
 use super::Pid;
-use super::UserProcess;
+use super::{Errno, SysResult};
 
 use alloc::boxed::Box;
+use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
+
+use core::convert::TryFrom;
 use core::mem;
+use core::mem::{size_of, transmute};
+use core::ops::{Index, IndexMut};
+
+extern "C" {
+    static _trampoline: u8;
+    static _trampoline_end: u8;
+}
+fn align_on(t: usize, on: usize) -> usize {
+    if t % on == 0 {
+        t
+    } else {
+        t + (on - (t % on))
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+#[repr(u32)]
+pub enum Signum {
+    SigNull = 0,
+    /// Hangup (POSIX).
+    Sighup = 1,
+    /// Interrupt (ANSI).
+    Sigint = 2,
+    /// Quit (POSIX).
+    Sigquit = 3,
+    /// Illegal instruction (ANSI).
+    Sigill = 4,
+    /// Trace trap (POSIX).
+    Sigtrap = 5,
+    /// Abort (ANSI).
+    Sigabrt = 6,
+    /// BUS error (4.2 BSD).
+    Sigbus = 7,
+    /// Floating-point exception (ANSI).
+    Sigfpe = 8,
+    /// Kill, unblockable (POSIX).
+    Sigkill = 9,
+    /// User-defined signal 1 (POSIX).
+    Sigusr1 = 10,
+    /// Segmentation violation (ANSI).
+    Sigsegv = 11,
+    /// User-defined signal 2 (POSIX).
+    Sigusr2 = 12,
+    /// Broken pipe (POSIX).
+    Sigpipe = 13,
+    /// Alarm clock (POSIX).
+    Sigalrm = 14,
+    /// Termination (ANSI).
+    Sigterm = 15,
+    /// Stack fault.
+    Sigstkflt = 16,
+    /// Child status has changed (POSIX).
+    Sigchld = 17,
+    /// Continue (POSIX).
+    Sigcont = 18,
+    /// Stop, unblockable (POSIX).
+    Sigstop = 19,
+    /// Keyboard stop (POSIX).
+    Sigtstp = 20,
+    /// Background read from tty (POSIX).
+    Sigttin = 21,
+    /// Background write to tty (POSIX).
+    Sigttou = 22,
+    /// Urgent condition on socket (4.2 BSD).
+    Sigurg = 23,
+    /// CPU limit exceeded (4.2 BSD).
+    Sigxcpu = 24,
+    /// File size limit exceeded (4.2 BSD).
+    Sigxfsz = 25,
+    /// Virtual alarm clock (4.2 BSD).
+    Sigvtalrm = 26,
+    /// Profiling alarm clock (4.2 BSD).
+    Sigprof = 27,
+    /// Window size change (4.3 BSD, Sun).
+    Sigwinch = 28,
+    /// I/O now possible (4.2 BSD).
+    Sigio = 29,
+    /// Power failure restart (System V).
+    Sigpwr = 30,
+    /// Bad system call.
+    Sigsys = 31,
+}
+
+#[derive(Debug)]
+pub struct InvalidSignum;
+
+impl TryFrom<u32> for Signum {
+    type Error = InvalidSignum;
+    fn try_from(n: u32) -> Result<Self, Self::Error> {
+        if n >= 32 {
+            return Err(InvalidSignum);
+        } else {
+            Ok(unsafe { transmute(n) })
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+#[allow(dead_code)]
+pub enum Sigaction {
+    SigDfl,
+    SigIgn,
+    Handler(extern "C" fn(i32)),
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct SignalActions(pub [Sigaction; 32]);
+
+impl IndexMut<Signum> for SignalActions {
+    fn index_mut(&mut self, index: Signum) -> &mut Sigaction {
+        &mut self.0[index as usize]
+    }
+}
+
+impl Index<Signum> for SignalActions {
+    type Output = Sigaction;
+    fn index(&self, index: Signum) -> &Sigaction {
+        &self.0[index as usize]
+    }
+}
 
 #[derive(Debug)]
 pub struct Task {
     pub process_state: ProcessState,
     pub child: Vec<Pid>,
     pub parent: Option<Pid>,
+    pub signal_actions: SignalActions,
+    pub signal_queue: VecDeque<Signum>,
 }
 
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent }
+        Self {
+            process_state,
+            child: Vec::new(),
+            parent,
+            signal_actions: SignalActions([Sigaction::SigDfl; 32]),
+            signal_queue: VecDeque::new(),
+        }
     }
 
     pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
-            ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
+            ProcessState::Waiting(process, _) | ProcessState::Signaled(process) | ProcessState::Running(process) => {
+                process
+            }
             _ => panic!("WTF"),
         }
     }
 
     pub fn unwrap_running(&self) -> &UserProcess {
         match &self.process_state {
-            ProcessState::Running(process) => process,
+            ProcessState::Running(process) | ProcessState::Signaled(process) | ProcessState::Waiting(process, _) => {
+                process
+            }
             _ => panic!("WTF"),
         }
     }
@@ -41,6 +178,13 @@ impl Task {
     pub fn is_waiting(&self) -> bool {
         match self.process_state {
             ProcessState::Waiting(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_signaled(&self) -> bool {
+        match self.process_state {
+            ProcessState::Signaled(_) => true,
             _ => false,
         }
     }
@@ -60,6 +204,102 @@ impl Task {
         let uninit = mem::replace(&mut self.process_state, next);
         mem::forget(uninit);
     }
+
+    pub fn set_signaled(&mut self) {
+        let uninit = unsafe { mem::uninitialized() };
+        let prev = mem::replace(&mut self.process_state, uninit);
+        let next = prev.set_signaled();
+        let uninit = mem::replace(&mut self.process_state, next);
+        mem::forget(uninit);
+    }
+
+    pub fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+        let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
+        let former = mem::replace(&mut self.signal_actions[signum], Sigaction::Handler(handler));
+        match former {
+            Sigaction::Handler(h) => Ok(h as u32),
+            _ => Ok(0),
+        }
+    }
+
+    pub fn kill(&mut self, signum: u32) -> SysResult<u32> {
+        let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
+        self.signal_queue.try_reserve(1)?;
+        self.signal_queue.push_back(signum);
+
+        Ok(0)
+    }
+
+    pub fn check_pending_signals(&mut self) {
+        fn push_esp<T: Copy>(esp: &mut u32, t: T) {
+            if size_of::<T>() % 4 != 0 {
+                panic!("size not multiple of 4");
+            }
+            *esp -= size_of::<T>() as u32;
+            unsafe {
+                (*esp as *mut T).write(t);
+            }
+        }
+
+        fn push_buff_esp(esp: &mut u32, buf: *mut u8, size: usize) {
+            // align size
+            let size = align_on(size, 4);
+            *esp -= size as u32;
+            unsafe {
+                (*esp as *mut u8).copy_from(buf, size);
+            }
+        }
+
+        if !self.is_signaled() {
+            if let Some(signum) = self.signal_queue.pop_front() {
+                match self.signal_actions[signum] {
+                    Sigaction::Handler(f) => {
+                        // let mut cpu_state: CpuState = Default::default();
+                        let kernel_esp = self.unwrap_running().kernel_esp;
+                        // dbg_hex!(kernel_esp);
+                        unsafe {
+                            let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
+                            push_esp(&mut (*cpu_state).esp, *cpu_state);
+                            push_buff_esp(
+                                &mut (*cpu_state).esp,
+                                symbol_addr!(_trampoline) as *mut u8,
+                                symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline),
+                            );
+                            let esp_trampoline = (*cpu_state).esp;
+                            push_esp(&mut (*cpu_state).esp, esp_trampoline);
+                            (*cpu_state).eip = f as u32;
+                        }
+                        self.set_signaled();
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    pub fn sigreturn(&mut self, cpu_state: *mut CpuState) -> SysResult<u32> {
+        fn pop_esp<T: Copy>(esp: &mut u32) -> T {
+            if size_of::<T>() % 4 != 0 {
+                panic!("size not multiple of 4");
+            }
+            unsafe {
+                let t = *(*esp as *mut T);
+                *esp += size_of::<T>() as u32;
+                t
+            }
+        }
+
+        if !self.is_signaled() {
+            panic!("can't call sigreturn when not interrupted");
+        }
+        unsafe {
+            (*cpu_state).esp += align_on(symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline), 4) as u32;
+            let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
+            *cpu_state = old_cpu_state;
+
+            self.set_running();
+            Ok((*cpu_state).registers.eax)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -77,6 +317,8 @@ pub enum ProcessState {
     /// The process is currently waiting for the die of its childrens
     Waiting(Box<UserProcess>, WaitingState),
     /// The process is terminated and wait to deliver his testament to his father
+    Signaled(Box<UserProcess>),
+    /// The process is terminated and wait to deliver his testament to his father
     Zombie(i32),
 }
 
@@ -89,7 +331,13 @@ impl ProcessState {
     }
     pub fn set_running(self) -> Self {
         match self {
-            ProcessState::Waiting(p, _) => ProcessState::Running(p),
+            ProcessState::Waiting(p, _) | ProcessState::Signaled(p) => ProcessState::Running(p),
+            _ => panic!("already running"),
+        }
+    }
+    pub fn set_signaled(self) -> Self {
+        match self {
+            ProcessState::Running(p) => ProcessState::Signaled(p),
             _ => panic!("already running"),
         }
     }

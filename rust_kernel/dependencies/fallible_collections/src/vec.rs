@@ -24,7 +24,9 @@ pub trait FallibleVec<T> {
     /// see reserve
     fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
     /// see push, return the elem if allocation failed
-    fn try_push(&mut self, elem: T) -> Result<(), (T, CollectionAllocErr)>;
+    fn try_push(&mut self, elem: T) -> Result<(), CollectionAllocErr>;
+    /// try push and give back ownership in case of error
+    fn try_push_give_back(&mut self, elem: T) -> Result<(), (T, CollectionAllocErr)>;
     /// see with capacity, (Self must be sized by the constraint of Result)
     fn try_with_capacity(capacity: usize) -> Result<Self, CollectionAllocErr>
     where
@@ -55,7 +57,11 @@ impl<T> FallibleVec<T> for Vec<T> {
     fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
         self.try_reserve(additional)
     }
-    fn try_push(&mut self, elem: T) -> Result<(), (T, CollectionAllocErr)> {
+    fn try_push(&mut self, elem: T) -> Result<(), CollectionAllocErr> {
+        self.try_reserve(1)?;
+        Ok(self.push(elem))
+    }
+    fn try_push_give_back(&mut self, elem: T) -> Result<(), (T, CollectionAllocErr)> {
         if let Err(e) = self.try_reserve(1) {
             return Err((elem, e));
         }

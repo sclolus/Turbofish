@@ -53,6 +53,7 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            Process::new(TaskOrigin::Elf(&include_bytes!("userland/csignal")[..])).unwrap(),
         ]
     };
     for (i, p) in user_process_list.into_iter().enumerate() {

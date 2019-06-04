@@ -1,5 +1,6 @@
 //! this file contains the scheduler description
 
+use super::process;
 use super::{KernelProcess, Process, SysResult, TaskMode, UserProcess};
 
 pub mod task;
@@ -33,7 +34,7 @@ extern "C" {
     pub fn _schedule_force_preempt();
 }
 
-type Pid = u32;
+pub type Pid = u32;
 
 #[inline(always)]
 pub fn uninterruptible() {
@@ -81,6 +82,11 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context();
+
+    if scheduler.idle_mode == false {
+        let p = scheduler.curr_process_mut();
+        p.check_pending_signals();
+    }
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -171,7 +177,7 @@ impl Scheduler {
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
             match &self.curr_process().process_state {
-                ProcessState::Running(_) => return,
+                ProcessState::Running(_) | ProcessState::Signaled(_) => return,
                 ProcessState::Waiting(_, waiting_state) => match waiting_state {
                     WaitingState::Sleeping(time) => unsafe {
                         let now = _get_pit_time();
@@ -205,14 +211,27 @@ impl Scheduler {
         }
     }
 
+    /// Get current process pid
+    pub fn curr_process_pid(&self) -> Pid {
+        self.curr_process_pid
+    }
+
     /// Get current process
     fn curr_process(&self) -> &Task {
-        self.all_process.get(&self.curr_process_pid).unwrap()
+        self.get_process(self.curr_process_pid).unwrap()
     }
 
     /// Get current process mutably
     pub fn curr_process_mut(&mut self) -> &mut Task {
-        self.all_process.get_mut(&self.curr_process_pid).unwrap()
+        self.get_process_mut(self.curr_process_pid).unwrap()
+    }
+
+    pub fn get_process(&self, pid: Pid) -> Option<&Task> {
+        self.all_process.get(&pid)
+    }
+
+    pub fn get_process_mut(&mut self, pid: Pid) -> Option<&mut Task> {
+        self.all_process.get_mut(&pid)
     }
 
     /// Remove the current running process

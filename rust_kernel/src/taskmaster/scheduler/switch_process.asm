@@ -113,3 +113,10 @@ _exit_resume:
 	add esp, 8
 
 	jmp schedule_return
+
+global _trampoline
+global _trampoline_end
+_trampoline:
+	mov eax, 200
+	int 0x80
+_trampoline_end:

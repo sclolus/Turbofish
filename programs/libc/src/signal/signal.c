@@ -1,8 +1,8 @@
 
 #include "signal.h"
-#include "string.h"
 
 extern int user_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+extern int user_signal(int signum, sighandler_t handler);
 extern int errno;
 
 /*
@@ -29,20 +29,16 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
  */
 sighandler_t signal(int signum, sighandler_t handler)
 {
-	struct sigaction sig;
-
-	ft_memset(&sig, 0, sizeof(struct sigaction));
-	sig.sa_handler = handler;
-
-	int ret = sigaction(signum, &sig, NULL);
+	int ret = user_signal(signum, handler);
 	/*
 	 * signal() returns the previous value of the signal handler, or SIG_ERR on error.
 	 * In the event of an error, errno is set to indicate the cause.
 	 */
 	if (ret < 0) {
+		errno = -ret;
+		// TODO: Put SIG_ERR here
 		return (sighandler_t)-1;
 	} else {
-		// TODO: What is the previous value of the signal handler ?
 		return handler;
 	}
 }

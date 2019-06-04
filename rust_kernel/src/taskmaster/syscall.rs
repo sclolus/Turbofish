@@ -4,11 +4,13 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler;
+use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{interruptible, uninterruptible};
 use super::tools;
 
 mod mmap;
+use core::mem::transmute;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
 
 mod nanosleep;
@@ -89,6 +91,34 @@ unsafe fn sys_test() -> SysResult<u32> {
     }
 }
 
+unsafe fn sys_getpid() -> SysResult<u32> {
+    uninterruptible();
+    let res = SCHEDULER.lock().curr_process_pid();
+    interruptible();
+    Ok(res)
+}
+
+unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
+    uninterruptible();
+    let res = SCHEDULER.lock().get_process_mut(pid).ok_or(Errno::Esrch)?.kill(signum);
+    interruptible();
+    res
+}
+
+unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+    uninterruptible();
+    let res = SCHEDULER.lock().curr_process_mut().signal(signum, handler);
+    interruptible();
+    res
+}
+
+unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
+    uninterruptible();
+    let res = SCHEDULER.lock().curr_process_mut().sigreturn(cpu_state);
+    interruptible();
+    res
+}
+
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
@@ -106,18 +136,21 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     let BaseRegisters { eax, ebx, ecx, edx, esi, edi, ebp, .. } = (*cpu_state).registers;
 
     let result = match eax {
-        0x1 => sys_exit(ebx as i32),       // This syscall doesn't return !
-        0x2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
-        0x3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
-        0x4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        1 => sys_exit(ebx as i32),       // This syscall doesn't return !
+        2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
+        3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
+        4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        20 => sys_getpid(),
+        37 => sys_kill(ebx as Pid, ecx as u32),
+        48 => sys_signal(ebx as u32, transmute(ecx as usize)),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         114 => sys_wait(ebx as *mut i32),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
+        200 => sys_sigreturn(cpu_state),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
-
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),

@@ -26,7 +26,7 @@ extern "C" {
 }
 
 /// Represent all the cpu states of a process according to the TSS context
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 #[repr(C)]
 pub struct CpuState {
     /// reserved for back trace
@@ -66,6 +66,24 @@ pub trait Process {
 
     /// Fork the process and return his child
     fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>>;
+}
+
+impl CpuState {
+    pub fn new(esp: u32, eip: u32) -> Self {
+        Self {
+            stack_reserved: 0,
+            registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+            ds: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
+            es: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
+            fs: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
+            gs: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
+            eip,
+            cs: UserProcess::RING3_CODE_SEGMENT + UserProcess::RING3_DPL,
+            eflags: Eflags::get_eflags().set_interrupt_flag(true), // TODO: Change that get_eflags is for sure an error
+            esp,
+            ss: UserProcess::RING3_STACK_SEGMENT + UserProcess::RING3_DPL,
+        }
+    }
 }
 
 /// This structure represents an entire process
@@ -228,19 +246,7 @@ impl Process for UserProcess {
         let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
 
         // Create the process identity
-        let cpu_state: CpuState = CpuState {
-            stack_reserved: 0,
-            registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
-            ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-            es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-            fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-            gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
-            eip,
-            cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
-            eflags: Eflags::get_eflags().set_interrupt_flag(true),
-            esp,
-            ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
-        };
+        let cpu_state = CpuState::new(esp, eip);
         // Fill the kernel stack of the new process with start cpu states.
         (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 

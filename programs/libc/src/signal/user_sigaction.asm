@@ -32,3 +32,21 @@ user_sigaction:
 
 	pop ebp
 	ret
+
+global user_signal
+user_signal:
+	push ebp
+	mov ebp, esp
+
+	push ebx
+
+	mov ecx, [ebp + 12]
+	mov ebx, [ebp + 8]
+
+	mov eax, 48 ; system call number (sys_sigaction)
+	int 80h
+
+	pop ebx
+
+	pop ebp
+	ret
