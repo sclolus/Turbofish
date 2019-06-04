@@ -6,9 +6,8 @@ mod syscall;
 mod tests;
 mod tools;
 
-use process::{CpuState, KernelProcess, Process, TaskOrigin, UserProcess};
+use process::{KernelProcess, Process, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
-use scheduler::{interruptible, uninterruptible};
 
 #[allow(unused)]
 use tests::*;
@@ -37,8 +36,8 @@ pub fn start() -> ! {
         vec![
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
@@ -52,6 +51,8 @@ pub fn start() -> ! {
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
         ]
     };
     for (i, p) in user_process_list.into_iter().enumerate() {

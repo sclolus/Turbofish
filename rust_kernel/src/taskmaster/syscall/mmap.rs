@@ -1,6 +1,10 @@
+//! sys_mmap / sys_munmap / sys_mprotect implementations
+
+use super::SysResult;
+
+use super::scheduler::SCHEDULER;
+use super::scheduler::{interruptible, uninterruptible};
 use super::tools::check_user_ptr;
-use super::{interruptible, uninterruptible};
-use super::{SysResult, SCHEDULER};
 
 use bitflags::bitflags;
 use errno::Errno;
@@ -18,26 +22,35 @@ pub struct MmapArgStruct {
     offset: usize,
 }
 
+fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
+    let mut scheduler = SCHEDULER.lock();
+
+    let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+
+    // Check if pointer exists in user virtual address space
+    check_user_ptr::<MmapArgStruct>(mmap_arg, v)?;
+
+    #[allow(unused_variables)]
+    let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = unsafe { *mmap_arg };
+
+    let addr = v.alloc(length.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Enomem)?.to_addr().0 as *mut u8;
+    Ok((addr, length))
+}
+
 /// Map files or devices into memory
-pub unsafe fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
+pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
     uninterruptible();
-    let res: SysResult<u32> = {
-        let mut scheduler = SCHEDULER.lock();
 
-        let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+    let res = mmap(mmap_arg);
 
-        // Check if pointer exists in user virtual address space
-        check_user_ptr::<MmapArgStruct>(mmap_arg, v)?;
-
-        #[allow(unused_variables)]
-        let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = *mmap_arg;
-
-        let addr = v.alloc(length.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Enomem)?.to_addr().0;
-        (addr as *mut u8).write_bytes(0, length);
-        Ok(addr as u32)
-    };
     interruptible();
-    res
+
+    res.map(|(address, length)| {
+        unsafe {
+            address.write_bytes(0, length);
+        }
+        address as u32
+    })
 }
 
 /// Map files or devices into memory

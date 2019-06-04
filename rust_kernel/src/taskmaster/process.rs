@@ -12,7 +12,7 @@ use core::slice;
 use elf_loader::SegmentType;
 use errno::Errno;
 
-use fallible_collections::try_vec;
+use fallible_collections::{try_vec, FallibleBox};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -247,7 +247,7 @@ impl Process for UserProcess {
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
 
-        Ok(Box::new(UserProcess { kernel_stack, kernel_esp, virtual_allocator }))
+        Ok(Box::try_new(UserProcess { kernel_stack, kernel_esp, virtual_allocator }).map_err(|_| Errno::Enomem)?)
     }
 
     unsafe fn init_tss(&self) {
@@ -290,11 +290,12 @@ impl Process for UserProcess {
             (*child_cpu_state).registers.eax = 0;
         }
 
-        Ok(Box::new(Self {
+        Ok(Box::try_new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
-        }))
+        })
+        .map_err(|_| Errno::Enomem)?)
     }
 }
 
@@ -356,7 +357,7 @@ impl Process for KernelProcess {
         // Fill the kernel stack of the new process with start cpu states.
         (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
-        Ok(Box::new(KernelProcess { kernel_stack, kernel_esp }))
+        Ok(Box::try_new(KernelProcess { kernel_stack, kernel_esp }).map_err(|_| Errno::Enomem)?)
     }
 
     unsafe fn init_tss(&self) {

@@ -1,16 +1,23 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
+use super::SysResult;
+
+use super::process::CpuState;
+use super::scheduler;
+use super::scheduler::SCHEDULER;
+use super::scheduler::{interruptible, uninterruptible};
 use super::tools;
-use super::{CpuState, SysResult, SCHEDULER};
 
 mod mmap;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
+
+mod nanosleep;
+use nanosleep::{sys_nanosleep, TimeSpec};
 
 use errno::Errno;
 
 use core::ffi::c_void;
 
-use super::{interruptible, uninterruptible};
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
@@ -31,12 +38,15 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
     } else {
         unsafe {
             uninterruptible();
+            /*
             print!(
                 "{:?} / {:?} : {}",
                 _get_pit_time(),
                 _get_process_end_time(),
                 core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
             );
+             */
+            print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
             interruptible();
         }
         Ok(count as u32)
@@ -104,6 +114,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         114 => sys_wait(ebx as *mut i32),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
+        162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
 

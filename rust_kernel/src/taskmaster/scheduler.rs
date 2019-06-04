@@ -2,8 +2,8 @@
 
 use super::{KernelProcess, Process, SysResult, TaskMode, UserProcess};
 
-mod task;
-use task::{ProcessState, Task, WaitingState};
+pub mod task;
+pub use task::{ProcessState, Task, WaitingState};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -56,8 +56,7 @@ pub fn interruptible() {
     }
 }
 
-fn schedule() {
-    println!("scheduling");
+pub fn auto_preempt() {
     unsafe {
         SCHEDULER.force_unlock();
         asm!("int 0x81" :::: "volatile","intel");
@@ -294,7 +293,8 @@ impl Scheduler {
             // dbg!("set waiting");
             self.all_process.insert(self.curr_process_pid, p);
             self.remove_curr_running();
-            schedule();
+
+            auto_preempt();
             // dbg!("return to live after schedule");
         }
         // if let Some(child) = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
