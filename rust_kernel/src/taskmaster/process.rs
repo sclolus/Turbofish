@@ -133,6 +133,7 @@ impl UserProcess {
 impl KernelProcess {
     const RING0_CODE_SEGMENT: u32 = 0x08;
     const RING0_DATA_SEGMENT: u32 = 0x10;
+    const RING0_STACK_SEGMENT: u32 = 0x18;
     const RING0_DPL: u32 = 0b0;
 
     const KERNEL_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
@@ -346,8 +347,8 @@ impl Process for KernelProcess {
             eip,
             cs: Self::RING0_CODE_SEGMENT + Self::RING0_DPL,
             eflags: Eflags::get_eflags().set_interrupt_flag(true),
-            esp: 0, // Unused for a kernel task switch
-            ss: 0,  // Unused for a kernel task switch
+            esp: kernel_esp,
+            ss: Self::RING0_STACK_SEGMENT + Self::RING0_DPL,
         };
         // Fill the kernel stack of the new process with start cpu states.
         (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());

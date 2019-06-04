@@ -74,17 +74,17 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // }
     _update_process_end_time(scheduler.time_interval.unwrap());
 
-    // Backup of the current process kernel_esp
-    scheduler.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
+    // Store the current kernel stack pointer
+    scheduler.store_kernel_esp(kernel_esp);
 
     // Switch between processes
-    scheduler.advance_next_process();
+    scheduler.get_next_process(1);
 
-    let p = scheduler.curr_process().unwrap_running();
-    p.context_switch();
+    // Set all the context of the illigible process
+    let new_kernel_esp = scheduler.load_new_context();
 
-    // Restore kernel_esp for the new process
-    p.kernel_esp
+    // Restore kernel_esp for the new process/
+    new_kernel_esp
 }
 
 /// Remove ressources of the exited process and note his exit status
@@ -111,6 +111,8 @@ pub struct Scheduler {
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
     kernel_idle_process: Option<Box<KernelProcess>>,
+    /// Indicate if the scheduler is on idle mode. TODO: Use the boolinator xD
+    idle_mode: bool,
 }
 
 /// Base Scheduler implementation
@@ -124,20 +126,7 @@ impl Scheduler {
             curr_process_pid: 0,
             time_interval: None,
             kernel_idle_process: None,
-        }
-    }
-
-    /// Advance until a next elligible process was found
-    fn advance_next_process(&mut self) {
-        loop {
-            self.curr_process_index = (self.curr_process_index + 1) % self.running_process.len();
-            self.curr_process_pid = self.running_process[self.curr_process_index];
-
-            match &self.curr_process().process_state {
-                ProcessState::Running(p) => break,
-                ProcessState::Waiting(p, waiting_state) => {}
-                ProcessState::Zombie(_) => panic!("WTF"),
-            };
+            idle_mode: false,
         }
     }
 
@@ -161,6 +150,53 @@ impl Scheduler {
         Ok(())
     }
 
+    /// Backup of the current process kernel_esp
+    fn store_kernel_esp(&mut self, kernel_esp: u32) {
+        match self.idle_mode {
+            true => {
+                self.kernel_idle_process.as_mut().expect("No idle mode process").kernel_esp = kernel_esp;
+                self.idle_mode = false;
+            }
+            false => {
+                self.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
+            }
+        }
+    }
+
+    /// Advance until a next elligible process was found
+    fn get_next_process(&mut self, offset: usize) {
+        let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
+
+        for idx in next_process_index..next_process_index + self.running_process.len() {
+            self.curr_process_index = idx % self.running_process.len();
+            self.curr_process_pid = self.running_process[self.curr_process_index];
+
+            match &self.curr_process().process_state {
+                ProcessState::Running(p) => return,
+                ProcessState::Waiting(p, waiting_state) => {}
+                ProcessState::Zombie(_) => panic!("WTF"),
+            };
+        }
+        self.idle_mode = true;
+    }
+
+    /// Prepare the context for the new illigible process
+    fn load_new_context(&mut self) -> u32 {
+        match self.idle_mode {
+            true => {
+                let process = self.kernel_idle_process.as_ref();
+                process.expect("No idle mode process").kernel_esp
+            }
+            false => {
+                let process = self.curr_process().unwrap_running();
+                unsafe {
+                    process.context_switch();
+                }
+                process.kernel_esp
+            }
+        }
+    }
+
     /// Get current process
     fn curr_process(&self) -> &Task {
         self.all_process.get(&self.curr_process_pid).unwrap()
@@ -169,6 +205,17 @@ impl Scheduler {
     /// Get current process mutably
     pub fn curr_process_mut(&mut self) -> &mut Task {
         self.all_process.get_mut(&self.curr_process_pid).unwrap()
+    }
+
+    /// Remove the current running process
+    fn remove_curr_running(&mut self) {
+        // Remove process from the running process list
+        self.running_process.remove(self.curr_process_index);
+        // Check if there is altmost one process
+        if self.running_process.len() == 0 {
+            eprintln!("no more process !");
+            loop {}
+        }
     }
 
     /// Perform a fork
@@ -189,15 +236,6 @@ impl Scheduler {
 
         Ok(child_pid)
     }
-    pub fn remove_curr_running(&mut self) {
-        // Remove process from the running process list
-        self.running_process.remove(self.curr_process_index);
-        // Check if there is altmost one process
-        if self.running_process.len() == 0 {
-            eprintln!("no more process !");
-            loop {}
-        }
-    }
 
     // TODO: Send a status signal to the father
     // TODO: Remove completely process from scheduler after death attestation
@@ -210,6 +248,7 @@ impl Scheduler {
         // );
         // Get the current process's PID
         let p = self.curr_process();
+
         if let Some(father_pid) = p.parent {
             let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
             if father.is_waiting() {
@@ -219,24 +258,22 @@ impl Scheduler {
             }
         }
         let pid = self.curr_process_pid;
+
         self.remove_curr_running();
 
-        self.curr_process_index = self.curr_process_index % self.running_process.len();
-        self.curr_process_pid = self.running_process[self.curr_process_index];
-        // } else {
-        //     eprintln!("Stay {:?} processes in game", self.running_process.len());
-        // }
+        self.get_next_process(0);
+
         // Switch to the next process
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
 
-            let p = self.curr_process().unwrap_running();
-            p.context_switch();
+            let new_kernel_esp = self.load_new_context();
 
-            _exit_resume(p.kernel_esp, pid, status);
+            _exit_resume(new_kernel_esp, pid, status);
         };
     }
 
+    // TODO: Solve Gloubiboulga
     pub fn wait(&mut self) -> SysResult<Pid> {
         let mut p = self.all_process.remove(&self.curr_process_pid).unwrap();
         if p.child.is_empty() {
