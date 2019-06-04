@@ -15,11 +15,15 @@ extern "C" {
     static _trampoline: u8;
     static _trampoline_end: u8;
 }
+
+/// allign on
+#[inline(always)]
 fn align_on(t: usize, on: usize) -> usize {
-    if t % on == 0 {
+    debug_assert!(on.is_power_of_two());
+    if t & (on - 1) == 0 {
         t
     } else {
-        t + (on - (t % on))
+        t + (on - (t & (on - 1)))
     }
 }
 
