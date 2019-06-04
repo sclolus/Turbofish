@@ -15,7 +15,7 @@ use core::ops::{Index, IndexMut};
 
 extern "C" {
     static _trampoline: u8;
-    static _trampoline_end: u8;
+    static _trampoline_len: u32;
 }
 
 /// allign on
@@ -273,11 +273,7 @@ impl Task {
                             // push the current cpu_state on the user stack
                             push_esp(user_esp, *cpu_state);
                             // push the trampoline code on the user stack
-                            push_buff_esp(
-                                user_esp,
-                                symbol_addr!(_trampoline) as *mut u8,
-                                symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline),
-                            );
+                            push_buff_esp(user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
                             // push the address of start of trampoline code stack on the user stack
                             let esp_trampoline = *user_esp;
                             push_esp(user_esp, esp_trampoline);
@@ -317,7 +313,7 @@ impl Task {
         }
         unsafe {
             // skip the trampoline code
-            (*cpu_state).esp += align_on(symbol_addr!(_trampoline_end) - symbol_addr!(_trampoline), 4) as u32;
+            (*cpu_state).esp += align_on(_trampoline_len as usize, 4) as u32;
             // get back the old cpu state and set it as the current cpu_state
             let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
             *cpu_state = old_cpu_state;
