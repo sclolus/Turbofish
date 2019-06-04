@@ -81,6 +81,7 @@ pub struct UserProcess {
 /// This structure represents an entire kernel process
 pub struct KernelProcess {
     /// kernel stack
+    #[allow(dead_code)]
     kernel_stack: Vec<u8>,
     /// Current process ESP on kernel stack
     pub kernel_esp: u32,

@@ -172,8 +172,17 @@ impl Scheduler {
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
             match &self.curr_process().process_state {
-                ProcessState::Running(p) => return,
-                ProcessState::Waiting(p, waiting_state) => {}
+                ProcessState::Running(_) => return,
+                ProcessState::Waiting(_, waiting_state) => match waiting_state {
+                    WaitingState::Sleeping(time) => unsafe {
+                        let now = _get_pit_time();
+                        if now >= *time {
+                            self.curr_process_mut().set_running();
+                            return;
+                        }
+                    },
+                    WaitingState::ChildDeath => {}
+                },
                 ProcessState::Zombie(_) => panic!("WTF"),
             };
         }
