@@ -51,20 +51,20 @@ typedef u32 clock_t;
 typedef u32 sigval_t;
 
 struct siginfo {
-	int      si_signo;       /* Numéro de signal         */
-	int      si_errno;       /* Numéro d'erreur          */
-	int      si_code;        /* Code du signal           */
-	pid_t    si_pid;         /* PID de l'émetteur        */
-	uid_t    si_uid;         /* UID réel de l'émetteur   */
-	int      si_status;      /* Valeur de sortie         */
-	clock_t  si_utime;       /* Temps utilisateur écoulé */
-	clock_t  si_stime;       /* Temps système écoulé     */
-	sigval_t si_value;       /* Valeur de signal         */
+	int      si_signo;       /* Signal number            */
+	int      si_errno;       /* Error number             */
+	int      si_code;        /* Signal code              */
+	pid_t    si_pid;         /* Transmiter PID           */
+	uid_t    si_uid;         /* Trasnmiter real UID      */
+	int      si_status;      /* Output value             */
+	clock_t  si_utime;       /* Elapsed user time        */
+	clock_t  si_stime;       /* Elapsed system time      */
+	sigval_t si_value;       /* Signal value             */
 	int      si_int;         /* Signal POSIX.1b          */
 	void    *si_ptr;         /* Signal POSIX.1b          */
-	void    *si_addr;        /* Emplacement d'erreur     */
+	void    *si_addr;        /* Error place              */
 	int      si_band;        /* Band event               */
-	int      si_fd;          /* Descripteur de fichier   */
+	int      si_fd;          /* File descriptor          */
 };
 
 /*

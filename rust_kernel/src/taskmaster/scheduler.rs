@@ -77,7 +77,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     scheduler.store_kernel_esp(kernel_esp);
 
     // Switch between processes
-    scheduler.get_next_process(1);
+    scheduler.advance_next_process(1);
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context();
@@ -163,7 +163,7 @@ impl Scheduler {
     }
 
     /// Advance until a next elligible process was found
-    fn get_next_process(&mut self, offset: usize) {
+    fn advance_next_process(&mut self, offset: usize) {
         let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
 
         for idx in next_process_index..next_process_index + self.running_process.len() {
@@ -269,7 +269,7 @@ impl Scheduler {
 
         self.remove_curr_running();
 
-        self.get_next_process(0);
+        self.advance_next_process(0);
 
         // Switch to the next process
         unsafe {
