@@ -15,7 +15,6 @@ use errno::Errno;
 use fallible_collections::try_vec;
 
 use crate::elf_loader::load_elf;
-use crate::memory;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
@@ -57,7 +56,7 @@ pub struct CpuState {
 /// Declaration of shared Process trait. Kernel and User processes must implements these methods
 pub trait Process {
     /// Return a new process
-    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>>;
+    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>>;
     /// TSS initialisation method (necessary for ring3 switch)
     unsafe fn init_tss(&self);
     /// Start the process
@@ -142,11 +141,11 @@ impl KernelProcess {
 
 /// Main implementation of process trait for UserProcess
 impl Process for UserProcess {
-    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>> {
+    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
-        let mut virtual_allocator = VirtualPageAllocator::new_for_process()?;
+        let mut virtual_allocator = VirtualPageAllocator::new_for_process().map_err(|_| Errno::Enomem)?;
         // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
@@ -162,7 +161,8 @@ impl Process for UserProcess {
                                     Page::containing(Virt(h.vaddr as usize)),
                                     (h.memsz as usize).into(),
                                     AllocFlags::USER_MEMORY,
-                                )?
+                                )
+                                .map_err(|_| Errno::Enomem)?
                                 .to_addr()
                                 .0 as *mut u8;
                             slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
@@ -187,7 +187,7 @@ impl Process for UserProcess {
                 // Allocate one page for code segment of the Dummy process
                 let base_addr = virtual_allocator
                     .alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)
-                    .unwrap()
+                    .map_err(|_| Errno::Enomem)?
                     .to_addr()
                     .0 as *mut u8;
                 // Copy the code segment
@@ -197,7 +197,7 @@ impl Process for UserProcess {
         };
 
         // Allocate the kernel stack of the process
-        let kernel_stack = vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()];
+        let kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
         assert!(kernel_stack.as_ptr() as usize & (Self::RING3_PROCESS_KERNEL_STACK_SIZE.to_bytes() - 1) == 0);
 
         // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
@@ -213,9 +213,11 @@ impl Process for UserProcess {
             as u32;
 
         // Allocate one page for stack segment of the process
-        let stack_addr =
-            virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY).unwrap().to_addr().0
-                as *mut u8;
+        let stack_addr = virtual_allocator
+            .alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY)
+            .map_err(|_| Errno::Enomem)?
+            .to_addr()
+            .0 as *mut u8;
 
         // Mark the first entry of the user stack as read-only, this prevent user stack overflow
         virtual_allocator
@@ -300,7 +302,7 @@ impl Process for UserProcess {
 // Maybe we need to check CS of the caller of the TSS segment in the syscall handler to unallow use of them.
 /// Main implementation of a KernelProcess
 impl Process for KernelProcess {
-    unsafe fn new(origin: TaskOrigin) -> memory::tools::Result<Box<Self>> {
+    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>> {
         let eip = match origin {
             TaskOrigin::Elf(_content) => {
                 unimplemented!();
@@ -311,7 +313,7 @@ impl Process for KernelProcess {
                     .as_mut()
                     .unwrap()
                     .alloc(Self::KERNEL_RAW_PROCESS_MAX_SIZE, AllocFlags::KERNEL_MEMORY)
-                    .unwrap()
+                    .map_err(|_| Errno::Enomem)?
                     .to_addr()
                     .0 as *mut u8;
                 // Copy the code segment
@@ -321,7 +323,7 @@ impl Process for KernelProcess {
         };
 
         // Allocate the kernel stack of the process
-        let kernel_stack = vec![0; Self::KERNEL_PROCESS_STACK_SIZE.into()];
+        let kernel_stack = try_vec![0; Self::KERNEL_PROCESS_STACK_SIZE.into()]?;
         assert!(kernel_stack.as_ptr() as usize & (Self::KERNEL_PROCESS_STACK_SIZE.to_bytes() - 1) == 0);
 
         // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
