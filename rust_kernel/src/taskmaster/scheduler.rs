@@ -187,7 +187,19 @@ impl Scheduler {
                             return;
                         }
                     },
-                    WaitingState::ChildDeath(_) => {}
+                    WaitingState::ChildDeath(pid_opt, _status) => {
+                        match pid_opt {
+                            None => {}
+                            // In case of PID == None, Check is the at least one child is a zombie -> Overwrite the pid_opt with child PID value
+                            // fill status field
+                            // fflush zombie (maybe later)
+                            // return;
+                            Some(_pid) => {} // In case of PID >= 0, Check is specified child PID is a zombie
+                                             // fill status field
+                                             // fflush zombie (maybe later)
+                                             // return;
+                        }
+                    }
                 },
                 ProcessState::Zombie(_) => panic!("WTF"),
             };
@@ -275,16 +287,16 @@ impl Scheduler {
         //     self.running_process[self.curr_process_index], status
         // );
         // Get the current process's PID
-        let p = self.curr_process();
+        // let p = self.curr_process();
 
-        if let Some(father_pid) = p.parent {
-            let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
-            if father.is_waiting() {
-                self.running_process.try_push(father_pid).unwrap();
-                // dbg!("exit father set running");
-                father.set_running();
-            }
-        }
+        // if let Some(father_pid) = p.parent {
+        //     let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
+        //     if father.is_waiting() {
+        //         self.running_process.try_push(father_pid).unwrap();
+        //         // dbg!("exit father set running");
+        //         father.set_running();
+        //     }
+        // }
         let pid = self.curr_process_pid;
 
         self.remove_curr_running();
@@ -299,28 +311,6 @@ impl Scheduler {
 
             _exit_resume(new_kernel_esp, pid, status);
         };
-    }
-
-    // TODO: Solve Gloubiboulga
-    pub fn wait(&mut self) -> SysResult<Pid> {
-        let mut p = self.all_process.remove(&self.curr_process_pid).unwrap();
-        if p.child.is_empty() {
-            return Err(Errno::Echild);
-        }
-        // TODO: Solve Borrow
-        if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
-            p.set_waiting(WaitingState::ChildDeath(None));
-            // dbg!("set waiting");
-            self.all_process.insert(self.curr_process_pid, p);
-            self.remove_curr_running();
-
-            auto_preempt();
-            // dbg!("return to live after schedule");
-        }
-        // if let Some(child) = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
-        //     child.exit_status
-        // }
-        Ok(0)
     }
 }
 

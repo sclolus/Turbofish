@@ -334,8 +334,8 @@ pub enum WaitingState {
     /// The Process is sleeping until pit time >= u32 value
     Sleeping(u32),
     /// The Process is looking for the death of his child
-    /// Set none for undefined PID or a child PID
-    ChildDeath(Option<Pid>),
+    /// Set none for undefined PID or a child PID. Is followed by the status field
+    ChildDeath(Option<Pid>, u32),
 }
 
 #[derive(Debug)]
@@ -347,6 +347,8 @@ pub enum ProcessState {
     /// The process is terminated and wait to deliver his testament to his father
     Signaled(Box<UserProcess>),
     /// The process is terminated and wait to deliver his testament to his father
+    // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
+    // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
     Zombie(i32),
 }
 
