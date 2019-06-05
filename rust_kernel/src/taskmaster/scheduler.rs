@@ -186,7 +186,7 @@ impl Scheduler {
                             return;
                         }
                     },
-                    WaitingState::ChildDeath => {}
+                    WaitingState::ChildDeath(_) => {}
                 },
                 ProcessState::Zombie(_) => panic!("WTF"),
             };
@@ -308,7 +308,7 @@ impl Scheduler {
         }
         // TODO: Solve Borrow
         if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
-            p.set_waiting(WaitingState::ChildDeath);
+            p.set_waiting(WaitingState::ChildDeath(None));
             // dbg!("set waiting");
             self.all_process.insert(self.curr_process_pid, p);
             self.remove_curr_running();

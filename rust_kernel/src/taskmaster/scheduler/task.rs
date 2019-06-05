@@ -332,7 +332,8 @@ pub enum WaitingState {
     /// The Process is sleeping until pit time >= u32 value
     Sleeping(u32),
     /// The Process is looking for the death of his child
-    ChildDeath,
+    /// Set none for undefined PID or a child PID
+    ChildDeath(Option<Pid>),
 }
 
 #[derive(Debug)]
