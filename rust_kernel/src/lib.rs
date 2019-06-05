@@ -12,6 +12,7 @@
 #![feature(underscore_const_names)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_reserve)]
+#![feature(vec_remove_item)]
 // #![deny(missing_docs)]
 
 extern crate alloc;

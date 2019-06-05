@@ -1,8 +1,8 @@
 //! waitpid (wait) implementations
 
-use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, interruptible, uninterruptible};
+use super::scheduler::{Pid, ProcessState, WaitingState};
 use super::tools::check_user_ptr;
 use super::SysResult;
 
@@ -35,32 +35,92 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         return Err(Errno::Einval);
     }
 
-    // Return ECHILD if not child or child PID specified is wrong
-    if pid < 0 {
+    let task = scheduler.curr_process();
+
+    // Check if the child is already dead: Return his PID if true or NONE
+    // Errno: Return ECHILD if not child or child PID specified is wrong
+    let child_pid = if pid < 0 {
         // Check if at leat one child exists
+        if task.child.len() == 0 {
+            return Err(Errno::Echild);
+        }
+        // Check is the at least one child is a already a zombie -> Return immediatly child PID
+        if let Some(&zombie_pid) = task
+            .child
+            .iter()
+            .find(|current_pid| scheduler.all_process.get(current_pid).expect("Pid must be here").is_zombie())
+        {
+            Some(zombie_pid)
+        } else {
+            None
+        }
     } else {
         // Check if specified child exists
+        if let Some(elem) = task.child.iter().find(|&&current_pid| current_pid == pid as u32) {
+            if scheduler.all_process.get(elem).expect("Pid must be here").is_zombie() {
+                Some(*elem)
+            } else {
+                None
+            }
+        } else {
+            return Err(Errno::Echild);
+        }
+    };
+
+    match child_pid {
+        Some(pid) => {
+            let child = scheduler.all_process.get(&pid).expect("Pid must be here");
+            // TODO: Manage terminated value with signal
+            if wstatus != 0x0 as *mut i32 {
+                unsafe {
+                    *wstatus = match child.process_state {
+                        ProcessState::Zombie(status) => status,
+                        _ => panic!("WTF"),
+                    };
+                }
+            }
+            // fflush zombie
+            scheduler.all_process.remove(&pid).expect("Pid must be here");
+            let task = scheduler.curr_process_mut();
+            task.child.remove_item(&pid).unwrap();
+            // Return immediatly
+            Ok(pid)
+        }
+        None => {
+            // Set process as Waiting for ChildDeath. set the PID option inside
+            scheduler
+                .curr_process_mut()
+                .set_waiting(WaitingState::ChildDeath(if pid < 0 { None } else { Some(pid as u32) }, 0));
+
+            // Auto-preempt calling
+            auto_preempt();
+
+            // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
+            uninterruptible();
+            let mut scheduler = SCHEDULER.lock();
+
+            let child_pid = match &scheduler.curr_process().process_state {
+                // Read the fields of the WaintingState::ChildDeath(x, y)
+                ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
+                    // Set wstatus pointer is not null by reading y
+                    if wstatus != 0x0 as *mut i32 {
+                        unsafe {
+                            *wstatus = *status as i32;
+                        }
+                    }
+                    let t = opt.expect("Cannot be None");
+                    scheduler.all_process.remove(&t).expect("Pid must be here");
+                    t
+                }
+                _ => panic!("WTF"),
+            };
+            // Set process as Running, Set return readen value in Ok(x)
+            scheduler.curr_process_mut().set_running();
+            let task = scheduler.curr_process_mut();
+            task.child.remove_item(&child_pid).unwrap();
+            Ok(child_pid)
+        }
     }
-
-    // Can be mixed ...
-
-    if pid < 0 {
-        // In case of PID < 0, Check is the at least one child is a already a zombie -> Return immediatly child PID
-        // fflush zombie
-    } else {
-        // In case of PID >= 0, Check is specified child PID is already a zombie -> Return immediatly child PID
-        // fflush zombie
-    }
-
-    // Set process as Waiting for ChildDeath. set the PID option inside
-
-    // Auto-preempt calling
-    auto_preempt();
-
-    // Read the fields of the WaintingState::ChildDeath(x, y)
-    // Set wstatus pointer is not null by reading y
-    // Set process as Running, Set return readen value in Ok(x)
-    Ok(0)
 }
 
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {

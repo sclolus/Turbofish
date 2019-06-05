@@ -342,7 +342,7 @@ pub enum WaitingState {
 pub enum ProcessState {
     /// The process is currently on running state
     Running(Box<UserProcess>),
-    /// The process is currently waiting for the die of its childrens
+    /// The process is currently waiting for something
     Waiting(Box<UserProcess>, WaitingState),
     /// The process is terminated and wait to deliver his testament to his father
     Signaled(Box<UserProcess>),
@@ -356,7 +356,8 @@ impl ProcessState {
     pub fn set_waiting(self, waiting_state: WaitingState) -> Self {
         match self {
             ProcessState::Running(p) => ProcessState::Waiting(p, waiting_state),
-            _ => panic!("already waiting"),
+            ProcessState::Waiting(p, _) => ProcessState::Waiting(p, waiting_state),
+            _ => panic!("Not handled by this feature"),
         }
     }
     pub fn set_running(self) -> Self {

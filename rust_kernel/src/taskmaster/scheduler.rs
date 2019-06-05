@@ -105,10 +105,10 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 #[derive(Debug)]
 /// Scheduler structure
 pub struct Scheduler {
+    /// contains a hashmap of pid, process
+    pub all_process: HashMap<Pid, Task>,
     /// contains pids of all runing process
     running_process: Vec<Pid>,
-    /// contains a hashmap of pid, process
-    all_process: HashMap<Pid, Task>,
     /// index in the vector of the current running process
     curr_process_pid: Pid,
     /// current process index in the running_process vector
@@ -187,21 +187,48 @@ impl Scheduler {
                             return;
                         }
                     },
-                    WaitingState::ChildDeath(pid_opt, _status) => {
-                        match pid_opt {
-                            None => {}
-                            // In case of PID == None, Check is the at least one child is a zombie -> Overwrite the pid_opt with child PID value
-                            // fill status field
-                            // fflush zombie (maybe later)
-                            // return;
-                            Some(_pid) => {} // In case of PID >= 0, Check is specified child PID is a zombie
-                                             // fill status field
-                                             // fflush zombie (maybe later)
-                                             // return;
+                    WaitingState::ChildDeath(pid_opt, _) => {
+                        let zombie_pid = match pid_opt {
+                            // In case of PID == None, Check is the at least one child is a zombie.
+                            None => {
+                                if let Some(&zombie_pid) = self.curr_process().child.iter().find(|current_pid| {
+                                    self.all_process.get(current_pid).expect("Hashmap corrupted").is_zombie()
+                                }) {
+                                    Some(zombie_pid)
+                                } else {
+                                    None
+                                }
+                            }
+                            // In case of PID >= 0, Check is specified child PID is a zombie.
+                            Some(pid) => {
+                                if let Some(elem) =
+                                    self.curr_process().child.iter().find(|&&current_pid| current_pid == *pid as u32)
+                                {
+                                    if self.all_process.get(elem).expect("Hashmap corrupted").is_zombie() {
+                                        Some(*elem)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                        };
+                        // If a zombie was found, write the exit status, overwrite PID if None and return
+                        if let Some(pid) = zombie_pid {
+                            let child = self.all_process.get(&pid).expect("Hashmap corrupted");
+                            match child.process_state {
+                                ProcessState::Zombie(status) => {
+                                    self.curr_process_mut()
+                                        .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
+                                    return;
+                                }
+                                _ => panic!("A zombie was found just before, but there is no zombie here"),
+                            };
                         }
                     }
                 },
-                ProcessState::Zombie(_) => panic!("WTF"),
+                ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
             };
         }
         self.idle_mode = true;
@@ -230,7 +257,7 @@ impl Scheduler {
     }
 
     /// Get current process
-    fn curr_process(&self) -> &Task {
+    pub fn curr_process(&self) -> &Task {
         self.get_process(self.curr_process_pid).unwrap()
     }
 
