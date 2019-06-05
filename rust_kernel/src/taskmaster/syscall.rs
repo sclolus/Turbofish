@@ -16,6 +16,9 @@ use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
 mod nanosleep;
 use nanosleep::{sys_nanosleep, TimeSpec};
 
+mod waitpid;
+use waitpid::sys_waitpid;
+
 use errno::Errno;
 
 use core::ffi::c_void;
@@ -64,14 +67,6 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
 unsafe fn sys_exit(status: i32) -> ! {
     uninterruptible();
     SCHEDULER.lock().exit(status);
-}
-
-/// Exit from a process
-unsafe fn sys_wait(_stat_loc: *mut i32) -> SysResult<u32> {
-    uninterruptible();
-    let res = SCHEDULER.lock().wait();
-    interruptible();
-    res
 }
 
 /// Fork a process
@@ -140,12 +135,12 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
         37 => sys_kill(ebx as Pid, ecx as u32),
         48 => sys_signal(ebx as u32, transmute(ecx as usize)),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
-        114 => sys_wait(ebx as *mut i32),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         200 => sys_sigreturn(cpu_state),

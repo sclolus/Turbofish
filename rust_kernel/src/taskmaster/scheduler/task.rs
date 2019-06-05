@@ -1,6 +1,8 @@
 use super::process::{CpuState, UserProcess};
 use super::Pid;
-use super::{Errno, SysResult};
+use super::SysResult;
+
+use errno::Errno;
 
 use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;

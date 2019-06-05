@@ -1,7 +1,8 @@
 //! this file contains the scheduler description
 
 use super::process;
-use super::{KernelProcess, Process, SysResult, TaskMode, UserProcess};
+use super::process::{KernelProcess, Process, UserProcess};
+use super::{SysResult, TaskMode};
 
 pub mod task;
 pub use task::{ProcessState, Task, WaitingState};
