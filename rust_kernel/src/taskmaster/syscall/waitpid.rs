@@ -149,3 +149,16 @@ pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> 
 //         child.exit_status
 //     }
 // }
+
+// On exit() fn
+// eprintln!("exiting {:?}", self.curr_process());
+// Get the current process's PID
+// let p = self.curr_process();
+// if let Some(father_pid) = p.parent {
+//     let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
+//     if father.is_waiting() {
+//         self.running_process.try_push(father_pid).unwrap();
+//         // dbg!("exit father set running");
+//         father.set_running();
+//     }
+// }

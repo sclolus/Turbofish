@@ -304,26 +304,28 @@ impl Scheduler {
         Ok(child_pid)
     }
 
+    const REAPER_PID: Pid = 0;
+
     // TODO: Send a status signal to the father
-    // TODO: Remove completely process from scheduler after death attestation
     /// Exit form a process and go to the current process
     pub fn exit(&mut self, status: i32) -> ! {
-        // eprintln!("exiting {:?}", self.curr_process());
-        // eprintln!(
+        // println!(
         //     "exit called for process with PID: {:?} STATUS: {:?}",
         //     self.running_process[self.curr_process_index], status
         // );
-        // Get the current process's PID
-        // let p = self.curr_process();
 
-        // if let Some(father_pid) = p.parent {
-        //     let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
-        //     if father.is_waiting() {
-        //         self.running_process.try_push(father_pid).unwrap();
-        //         // dbg!("exit father set running");
-        //         father.set_running();
-        //     }
-        // }
+        // When the father die, the process 0 adopts all his orphelans
+        if let Some(reaper) = self.all_process.get(&Self::REAPER_PID) {
+            if let ProcessState::Zombie(_) = reaper.process_state {
+                eprintln!("... the reaper is a zombie ... it is worring ...");
+            }
+            while let Some(child_pid) = self.curr_process_mut().child.pop() {
+                self.all_process.get_mut(&child_pid).expect("Hashmap corrupted").parent = Some(Self::REAPER_PID);
+            }
+        } else {
+            eprintln!("... the reaper is die ... RIP ...");
+        }
+
         let pid = self.curr_process_pid;
 
         self.remove_curr_running();
