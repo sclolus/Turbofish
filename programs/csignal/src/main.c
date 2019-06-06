@@ -14,17 +14,20 @@ int main() {
 	printf("pid of process '%u'\n", pid);
 
 	// 10 is the number of SIGUSR
-	int ret = (int)signal(10, (int)hello_signal);
+	int ret = (int)signal(10, hello_signal);
 	printf("signal function return: %i\n", ret);
 
-	printf("KILLING");
+	printf("KILLING\n");
 	ret = kill(pid, 10);
 	if (ret == -1) {
 		printf("kill failed\n");
 	}
 	printf("after kill\n");
+	ret = sleep(2);
+	if (ret != 0) {
+		printf("Ny sleep was interrupted !!! I remain %d seconds ...", ret);
+	}
 
-	while (42) {}
-
+	printf("after sleep\n");
 	return 0;
 }

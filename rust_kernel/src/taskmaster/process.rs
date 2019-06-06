@@ -26,7 +26,7 @@ extern "C" {
 }
 
 /// Represent all the cpu states of a process according to the TSS context
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Copy, Clone, Default)]
 #[repr(C)]
 pub struct CpuState {
     /// reserved for back trace
@@ -51,6 +51,40 @@ pub struct CpuState {
     pub esp: u32,
     /// current SS
     pub ss: u32,
+}
+
+use core::fmt::{self, Debug};
+
+impl Debug for CpuState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "CpuState {{
+stack_reserved: 0x{:X?},
+registers: {:#X?},
+ds: 0x{:X?},
+es: 0x{:X?},
+fs: 0x{:X?},
+gs: 0x{:X?},
+eip: 0x{:X?},
+cs: 0x{:X?},
+eflags: {:X?}
+esp: 0x{:X?},
+ss: 0x{:X?},
+}} ",
+            self.stack_reserved,
+            self.registers,
+            self.ds as u8,
+            self.es as u8,
+            self.fs as u8,
+            self.gs as u8,
+            self.eip,
+            self.cs as u8,
+            self.eflags,
+            self.esp,
+            self.ss as u8
+        )
+    }
 }
 
 /// Declaration of shared Process trait. Kernel and User processes must implements these methods
@@ -84,12 +118,15 @@ impl CpuState {
             ss: UserProcess::RING3_STACK_SEGMENT + UserProcess::RING3_DPL,
         }
     }
+    pub fn run_in_ring3(&self) -> bool {
+        self.cs == (UserProcess::RING3_CODE_SEGMENT + UserProcess::RING3_DPL)
+    }
 }
 
 /// This structure represents an entire process
 pub struct UserProcess {
     /// kernel stack
-    kernel_stack: Vec<u8>,
+    pub kernel_stack: Vec<u8>,
     /// Current process ESP on kernel stack
     pub kernel_esp: u32,
     /// Page directory of the process
@@ -248,7 +285,7 @@ impl Process for UserProcess {
         // Create the process identity
         let cpu_state = CpuState::new(esp, eip);
         // Fill the kernel stack of the new process with start cpu states.
-        (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
+        *(kernel_esp as *mut CpuState) = cpu_state;
 
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
@@ -271,11 +308,7 @@ impl Process for UserProcess {
     }
 
     unsafe fn start(&self) -> ! {
-        // Switch to process Page Directory
-        self.virtual_allocator.context_switch();
-
-        // Init the TSS segment
-        self.init_tss();
+        self.context_switch();
 
         // Launch the ring3 process on its own kernel stack
         _start_process(self.kernel_esp)
@@ -302,6 +335,12 @@ impl Process for UserProcess {
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         })
         .map_err(|_| Errno::Enomem)?)
+    }
+}
+
+impl UserProcess {
+    pub fn kernel_stack_base(&self) -> u32 {
+        self.kernel_stack.as_ptr() as u32 + Into::<usize>::into(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32
     }
 }
 

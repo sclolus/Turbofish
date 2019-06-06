@@ -58,6 +58,14 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
     }
 }
 
+struct InterruptibleOnDrop;
+
+impl Drop for InterruptibleOnDrop {
+    fn drop(&mut self) {
+        interruptible();
+    }
+}
+
 /// Read something from a file descriptor
 fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
     unimplemented!();
@@ -93,11 +101,20 @@ unsafe fn sys_getpid() -> SysResult<u32> {
     Ok(res)
 }
 
-unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
+unsafe fn sys_kill(pid: Pid, signum: u32, cpu_state: *mut CpuState) -> SysResult<u32> {
     uninterruptible();
-    let res = SCHEDULER.lock().get_process_mut(pid).ok_or(Errno::Esrch)?.kill(signum);
-    interruptible();
-    res
+    let _i = InterruptibleOnDrop;
+
+    let mut scheduler = SCHEDULER.lock();
+    let curr_process_pid = scheduler.curr_process_pid();
+    let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
+    let res = task.kill(signum)?;
+    // if this is the current process, deliver the signal
+    if res == 0 && pid == curr_process_pid {
+        (*cpu_state).registers.eax = res;
+        task.check_pending_signals();
+    }
+    Ok(res)
 }
 
 unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
@@ -137,7 +154,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
-        37 => sys_kill(ebx as Pid, ecx as u32),
+        37 => sys_kill(ebx as Pid, ecx as u32, cpu_state),
         48 => sys_signal(ebx as u32, transmute(ecx as usize)),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),

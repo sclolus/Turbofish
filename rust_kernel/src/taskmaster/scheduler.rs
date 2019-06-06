@@ -69,10 +69,6 @@ pub fn auto_preempt() {
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
-    // let cpu_state: *const super::CpuState = kernel_esp as *const super::CpuState;
-    // if (*cpu_state).cs == 0x08 {
-    //     eprintln!("Syscall interrupted for process_idx: {:?} !", scheduler.curr_process_index);
-    // }
     _update_process_end_time(scheduler.time_interval.unwrap());
 
     // Store the current kernel stack pointer
@@ -83,11 +79,6 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context();
-
-    if scheduler.idle_mode == false {
-        let p = scheduler.curr_process_mut();
-        p.check_pending_signals();
-    }
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -178,7 +169,7 @@ impl Scheduler {
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
             match &self.curr_process().process_state {
-                ProcessState::Running(_) | ProcessState::Signaled(_) => return,
+                ProcessState::Running(_) => return,
                 ProcessState::Waiting(_, waiting_state) => match waiting_state {
                     WaitingState::Sleeping(time) => unsafe {
                         let now = _get_pit_time();
@@ -186,6 +177,9 @@ impl Scheduler {
                             self.curr_process_mut().set_running();
                             return;
                         }
+                        // if self.curr_process().has_pending_signals() {
+                        //     return;
+                        // }
                     },
                     WaitingState::ChildDeath(pid_opt, _) => {
                         let zombie_pid = match pid_opt {
@@ -242,11 +236,15 @@ impl Scheduler {
                 process.expect("No idle mode process").kernel_esp
             }
             false => {
-                let process = self.curr_process().unwrap_running();
+                let p = self.curr_process_mut();
+
+                let process = p.unwrap_running();
                 unsafe {
                     process.context_switch();
                 }
-                process.kernel_esp
+                let kernel_esp = process.kernel_esp;
+                p.check_pending_signals();
+                kernel_esp
             }
         }
     }

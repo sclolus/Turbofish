@@ -143,6 +143,7 @@ pub struct Task {
     pub parent: Option<Pid>,
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
+    pub signaled: bool,
 }
 
 impl Task {
@@ -153,23 +154,20 @@ impl Task {
             parent,
             signal_actions: SignalActions([Sigaction::SigDfl; 32]),
             signal_queue: VecDeque::new(),
+            signaled: false,
         }
     }
 
     pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
-            ProcessState::Waiting(process, _) | ProcessState::Signaled(process) | ProcessState::Running(process) => {
-                process
-            }
+            ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
             _ => panic!("WTF"),
         }
     }
 
     pub fn unwrap_running(&self) -> &UserProcess {
         match &self.process_state {
-            ProcessState::Running(process) | ProcessState::Signaled(process) | ProcessState::Waiting(process, _) => {
-                process
-            }
+            ProcessState::Running(process) | ProcessState::Waiting(process, _) => process,
             _ => panic!("WTF"),
         }
     }
@@ -188,11 +186,15 @@ impl Task {
         }
     }
 
-    pub fn is_signaled(&self) -> bool {
+    pub fn is_running(&self) -> bool {
         match self.process_state {
-            ProcessState::Signaled(_) => true,
+            ProcessState::Running(_) => true,
             _ => false,
         }
+    }
+
+    pub fn is_signaled(&self) -> bool {
+        self.signaled
     }
 
     pub fn set_waiting(&mut self, waiting_state: WaitingState) {
@@ -211,12 +213,8 @@ impl Task {
         mem::forget(uninit);
     }
 
-    pub fn set_signaled(&mut self) {
-        let uninit = unsafe { mem::uninitialized() };
-        let prev = mem::replace(&mut self.process_state, uninit);
-        let next = prev.set_signaled();
-        let uninit = mem::replace(&mut self.process_state, next);
-        mem::forget(uninit);
+    pub fn set_signaled(&mut self, b: bool) {
+        self.signaled = b;
     }
 
     pub fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
@@ -234,6 +232,10 @@ impl Task {
         self.signal_queue.push_back(signum);
 
         Ok(0)
+    }
+
+    pub fn has_pending_signals(&self) -> bool {
+        !self.signal_queue.is_empty()
     }
 
     /// check if there is pending sigals, and tricks the stack to execute it on return
@@ -260,32 +262,66 @@ impl Task {
                 (*esp as *mut u8).copy_from(buf, size);
             }
         }
+        // eprintln!("check pending signals");
 
         if !self.is_signaled() {
             if let Some(signum) = self.signal_queue.pop_front() {
                 match self.signal_actions[signum] {
                     Sigaction::Handler(f) => {
                         let kernel_esp = self.unwrap_running().kernel_esp;
+                        debug_assert!(kernel_esp > self.unwrap_running().kernel_stack.as_ptr() as u32);
                         unsafe {
                             let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
-                            let user_esp = &mut (*cpu_state).esp;
 
+                            // dbg_hex!(*cpu_state);
+                            // eprintln!("{:?}", *cpu_state);
+                            // TODO: check if interruptable
+                            let mut user_esp = if !(*cpu_state).run_in_ring3() {
+                                // if in a syscall and running do not perfom signal handling
+                                if self.is_running() {
+                                    //TODO: handle that cases, panic for the moment
+                                    panic!("is running");
+                                    self.signal_queue.push_front(signum);
+                                    return;
+                                } else {
+                                    panic!("is not ring3");
+                                    // get the cpu state at the base of the kernel stack
+                                    (*cpu_state).esp = kernel_esp;
+                                    let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
+                                        - size_of::<CpuState>() as u32)
+                                        as *const CpuState);
+                                    // dbg_hex!(syscall_cpu_state);
+                                    syscall_cpu_state.esp
+                                }
+                            } else {
+                                // eprintln!("is in ring3");
+                                (*cpu_state).esp
+                            };
+                            // dbg_hex!(user_esp);
+
+                            // dbg!(cpu_state);
                             // push the current cpu_state on the user stack
-                            push_esp(user_esp, *cpu_state);
+                            push_esp(&mut user_esp, *cpu_state);
                             // push the trampoline code on the user stack
-                            push_buff_esp(user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
+                            push_buff_esp(
+                                &mut user_esp,
+                                symbol_addr!(_trampoline) as *mut u8,
+                                _trampoline_len as usize,
+                            );
                             // push the address of start of trampoline code stack on the user stack
-                            let esp_trampoline = *user_esp;
-                            push_esp(user_esp, esp_trampoline);
+                            let esp_trampoline = user_esp;
+                            push_esp(&mut user_esp, signum as u32);
+                            push_esp(&mut user_esp, esp_trampoline);
 
                             // set a fresh cpu state to execute the handler
-                            let mut new_cpu_state = CpuState::new(*user_esp, f as u32);
+                            let mut new_cpu_state = CpuState::new(user_esp, f as u32);
                             new_cpu_state.eip = f as u32;
 
                             (*cpu_state) = new_cpu_state;
                             (*cpu_state).eip = f as u32;
+                            // dbg_hex!(*cpu_state);
                         }
-                        self.set_signaled();
+                        self.set_signaled(true);
                     }
                     _ => {}
                 }
@@ -312,13 +348,17 @@ impl Task {
             panic!("can't call sigreturn when not interrupted");
         }
         unsafe {
+            eprintln!("sigreturn");
+            // dbg_hex!(*cpu_state);
             // skip the trampoline code
             (*cpu_state).esp += align_on(_trampoline_len as usize, 4) as u32;
             // get back the old cpu state and set it as the current cpu_state
+            let _signum: u32 = pop_esp(&mut (*cpu_state).esp);
             let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
+            // dbg_hex!(old_cpu_state);
             *cpu_state = old_cpu_state;
 
-            self.set_running();
+            self.set_signaled(false);
             // return current eax to keep it's value at the syscall return
             Ok((*cpu_state).registers.eax)
         }
@@ -341,7 +381,6 @@ pub enum ProcessState {
     /// The process is currently waiting for something
     Waiting(Box<UserProcess>, WaitingState),
     /// The process is terminated and wait to deliver his testament to his father
-    Signaled(Box<UserProcess>),
     /// The process is terminated and wait to deliver his testament to his father
     // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
     // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
@@ -358,13 +397,7 @@ impl ProcessState {
     }
     pub fn set_running(self) -> Self {
         match self {
-            ProcessState::Waiting(p, _) | ProcessState::Signaled(p) => ProcessState::Running(p),
-            _ => panic!("already running"),
-        }
-    }
-    pub fn set_signaled(self) -> Self {
-        match self {
-            ProcessState::Running(p) => ProcessState::Signaled(p),
+            ProcessState::Waiting(p, _) => ProcessState::Running(p),
             _ => panic!("already running"),
         }
     }
