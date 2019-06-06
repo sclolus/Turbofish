@@ -2,22 +2,18 @@
 
 use super::process;
 use super::process::{KernelProcess, Process, UserProcess};
+use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
-pub mod task;
-pub use task::{ProcessState, Task, WaitingState};
-
 use alloc::boxed::Box;
-use alloc::vec::Vec;
-use hashmap_core::fnv::FnvHashMap as HashMap;
-
 use alloc::collections::CollectionAllocErr;
-
-use crate::drivers::PIT0;
+use alloc::vec::Vec;
+use core::ffi::c_void;
+use hashmap_core::fnv::FnvHashMap as HashMap;
 use spinlock::Spinlock;
 
+use crate::drivers::PIT0;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
-use core::ffi::c_void;
 
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
@@ -165,6 +161,10 @@ impl Scheduler {
             self.curr_process_index = idx % self.running_process.len();
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
+            // Check if pending signal: Signal Can interrupt all except zombie
+            // if self.curr_process().has_pending_signals() && non-zombie
+            //     return;
+            // }
             match &self.curr_process().process_state {
                 ProcessState::Running(_) => return,
                 ProcessState::Waiting(_, waiting_state) => match waiting_state {
@@ -174,9 +174,6 @@ impl Scheduler {
                             self.curr_process_mut().set_running();
                             return;
                         }
-                        // if self.curr_process().has_pending_signals() {
-                        //     return;
-                        // }
                     },
                     WaitingState::ChildDeath(pid_opt, _) => {
                         let zombie_pid = match pid_opt {
@@ -240,7 +237,6 @@ impl Scheduler {
                     process.context_switch();
                 }
                 let kernel_esp = process.kernel_esp;
-                self.check_pending_signals(self.curr_process_pid());
                 kernel_esp
             }
         }
@@ -334,42 +330,6 @@ impl Scheduler {
 
             _exit_resume(new_kernel_esp, pid, status);
         };
-    }
-
-    /// check if there is pending sigals, and tricks the stack to execute it on return
-    pub fn check_pending_signals(&mut self, pid: Pid) {
-        use task::{signal_default_action, DefaultAction, Sigaction};
-        // eprintln!("check pending signals");
-        let task = self.get_process_mut(pid).expect("no task with that pid");
-
-        if !task.is_signaled() {
-            if let Some(signum) = task.signal_queue.pop_front() {
-                match task.signal_actions[signum] {
-                    Sigaction::Handler(f) => task.exec_signal_handler(signum, f),
-                    Sigaction::SigDfl => {
-                        use DefaultAction::*;
-                        match signal_default_action(signum) {
-                            Abort => {
-                                //TODO: Exit the process  status
-                                //self.exit(status: i32)
-                            }
-                            Terminate => {
-                                //TODO: Exit the process  status
-                                //self.exit(status: i32)
-                            }
-                            Ignore => {
-                                return self.check_pending_signals(pid);
-                            }
-                            Continue => unimplemented!(),
-                            Stop => unimplemented!(),
-                        }
-                    }
-                    Sigaction::SigIgn => {
-                        return self.check_pending_signals(pid);
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -2,7 +2,9 @@
 
 mod process;
 mod scheduler;
+mod signal;
 mod syscall;
+mod task;
 mod tests;
 mod tools;
 

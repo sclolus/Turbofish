@@ -2,9 +2,9 @@
 
 use super::SysResult;
 
-use super::scheduler::WaitingState;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, interruptible, uninterruptible};
+use super::task::WaitingState;
 use super::tools::check_user_ptr;
 
 use errno::Errno;

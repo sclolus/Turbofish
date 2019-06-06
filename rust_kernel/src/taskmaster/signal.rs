@@ -1,17 +1,15 @@
-use super::process::{CpuState, UserProcess};
-use super::Pid;
+//! This file contains signal interface
+
+use super::process::CpuState;
+use super::scheduler::Pid;
 use super::SysResult;
 
-use errno::Errno;
-
-use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;
-use alloc::vec::Vec;
-
 use core::convert::TryFrom;
 use core::mem;
 use core::mem::{size_of, transmute};
 use core::ops::{Index, IndexMut};
+use errno::Errno;
 
 extern "C" {
     static _trampoline: u8;
@@ -164,81 +162,19 @@ impl Index<Signum> for SignalActions {
 }
 
 #[derive(Debug)]
-pub struct Task {
-    pub process_state: ProcessState,
-    pub child: Vec<Pid>,
-    pub parent: Option<Pid>,
+pub struct SignalInterface {
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
     pub signaled: bool,
 }
 
-impl Task {
-    pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self {
-            process_state,
-            child: Vec::new(),
-            parent,
-            signal_actions: SignalActions([Sigaction::SigDfl; 32]),
-            signal_queue: VecDeque::new(),
-            signaled: false,
-        }
-    }
-
-    pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
-        match &mut self.process_state {
-            ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
-            _ => panic!("WTF"),
-        }
-    }
-
-    pub fn unwrap_running(&self) -> &UserProcess {
-        match &self.process_state {
-            ProcessState::Running(process) | ProcessState::Waiting(process, _) => process,
-            _ => panic!("WTF"),
-        }
-    }
-
-    pub fn is_zombie(&self) -> bool {
-        match self.process_state {
-            ProcessState::Zombie(_) => true,
-            _ => false,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn is_waiting(&self) -> bool {
-        match self.process_state {
-            ProcessState::Waiting(_, _) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_running(&self) -> bool {
-        match self.process_state {
-            ProcessState::Running(_) => true,
-            _ => false,
-        }
+impl SignalInterface {
+    pub fn new() -> Self {
+        Self { signal_actions: SignalActions([Sigaction::SigDfl; 32]), signal_queue: VecDeque::new(), signaled: false }
     }
 
     pub fn is_signaled(&self) -> bool {
         self.signaled
-    }
-
-    pub fn set_waiting(&mut self, waiting_state: WaitingState) {
-        let uninit = unsafe { mem::uninitialized() };
-        let prev = mem::replace(&mut self.process_state, uninit);
-        let next = prev.set_waiting(waiting_state);
-        let uninit = mem::replace(&mut self.process_state, next);
-        mem::forget(uninit);
-    }
-
-    pub fn set_running(&mut self) {
-        let uninit = unsafe { mem::uninitialized() };
-        let prev = mem::replace(&mut self.process_state, uninit);
-        let next = prev.set_running();
-        let uninit = mem::replace(&mut self.process_state, next);
-        mem::forget(uninit);
     }
 
     pub fn set_signaled(&mut self, b: bool) {
@@ -264,7 +200,7 @@ impl Task {
     pub fn has_pending_signals(&self) -> bool {
         !self.signal_queue.is_empty()
     }
-    pub fn exec_signal_handler(&mut self, signum: Signum, f: extern "C" fn(i32)) {
+    pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, f: extern "C" fn(i32)) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
@@ -287,8 +223,7 @@ impl Task {
                 (*esp as *mut u8).copy_from(buf, size);
             }
         }
-        let kernel_esp = self.unwrap_running().kernel_esp;
-        debug_assert!(kernel_esp > self.unwrap_running().kernel_stack.as_ptr() as u32);
+        //debug_assert!(kernel_esp > self.unwrap_running().kernel_stack.as_ptr() as u32);
         unsafe {
             let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
 
@@ -297,21 +232,22 @@ impl Task {
             // TODO: check if interruptable
             let mut user_esp = if !(*cpu_state).run_in_ring3() {
                 // if in a syscall and running do not perfom signal handling
-                if self.is_running() {
-                    //TODO: handle that cases, panic for the moment
-                    panic!("is running");
+                // if self.is_running() {
+                //TODO: handle that cases, panic for the moment
+                // panic!("is running");
                 //self.signal_queue.push_front(signum);
                 //return;
-                } else {
-                    panic!("is not ring3");
-                    // get the cpu state at the base of the kernel stack
-                    //(*cpu_state).esp = kernel_esp;
-                    //let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
-                    //    - size_of::<CpuState>() as u32)
-                    //    as *const CpuState);
-                    // dbg_hex!(syscall_cpu_state);
-                    //syscall_cpu_state.esp
-                }
+                //} else {
+                //panic!("is not ring3");
+                // get the cpu state at the base of the kernel stack
+                //(*cpu_state).esp = kernel_esp;
+                //let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
+                //    - size_of::<CpuState>() as u32)
+                //    as *const CpuState);
+                // dbg_hex!(syscall_cpu_state);
+                //syscall_cpu_state.esp
+                //}
+                0
             } else {
                 // eprintln!("is in ring3");
                 (*cpu_state).esp
@@ -372,42 +308,39 @@ impl Task {
             Ok((*cpu_state).registers.eax)
         }
     }
-}
 
-#[derive(Debug)]
-pub enum WaitingState {
-    /// The Process is sleeping until pit time >= u32 value
-    Sleeping(u32),
-    /// The Process is looking for the death of his child
-    /// Set none for undefined PID or a child PID. Is followed by the status field
-    ChildDeath(Option<Pid>, u32),
-}
+    /// check if there is pending sigals, and tricks the stack to execute it on return
+    pub fn check_pending_signals(&mut self, kernel_esp: u32, pid: Pid) {
+        // eprintln!("check pending signals");
+        // let task = self.get_process_mut(pid).expect("no task with that pid");
 
-#[derive(Debug)]
-pub enum ProcessState {
-    /// The process is currently on running state
-    Running(Box<UserProcess>),
-    /// The process is currently waiting for something
-    Waiting(Box<UserProcess>, WaitingState),
-    /// The process is terminated and wait to deliver his testament to his father
-    /// The process is terminated and wait to deliver his testament to his father
-    // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
-    // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
-    Zombie(i32),
-}
-
-impl ProcessState {
-    pub fn set_waiting(self, waiting_state: WaitingState) -> Self {
-        match self {
-            ProcessState::Running(p) => ProcessState::Waiting(p, waiting_state),
-            ProcessState::Waiting(p, _) => ProcessState::Waiting(p, waiting_state),
-            _ => panic!("Not handled by this feature"),
-        }
-    }
-    pub fn set_running(self) -> Self {
-        match self {
-            ProcessState::Waiting(p, _) => ProcessState::Running(p),
-            _ => panic!("already running"),
+        if !self.is_signaled() {
+            if let Some(signum) = self.signal_queue.pop_front() {
+                match self.signal_actions[signum] {
+                    Sigaction::Handler(f) => self.exec_signal_handler(signum, kernel_esp, f),
+                    Sigaction::SigDfl => {
+                        use DefaultAction::*;
+                        match signal_default_action(signum) {
+                            Abort => {
+                                //TODO: Exit the process  status
+                                //self.exit(status: i32)
+                            }
+                            Terminate => {
+                                //TODO: Exit the process  status
+                                //self.exit(status: i32)
+                            }
+                            Ignore => {
+                                return self.check_pending_signals(pid, kernel_esp);
+                            }
+                            Continue => unimplemented!(),
+                            Stop => unimplemented!(),
+                        }
+                    }
+                    Sigaction::SigIgn => {
+                        return self.check_pending_signals(pid, kernel_esp);
+                    }
+                }
+            }
         }
     }
 }

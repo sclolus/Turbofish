@@ -7,6 +7,7 @@ use super::scheduler;
 use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{interruptible, uninterruptible};
+use super::task;
 use super::tools;
 
 mod mmap;
@@ -101,35 +102,35 @@ unsafe fn sys_getpid() -> SysResult<u32> {
     Ok(res)
 }
 
-unsafe fn sys_kill(pid: Pid, signum: u32, cpu_state: *mut CpuState) -> SysResult<u32> {
-    uninterruptible();
-    let _i = InterruptibleOnDrop;
+// unsafe fn sys_kill(pid: Pid, signum: u32, cpu_state: *mut CpuState) -> SysResult<u32> {
+//     uninterruptible();
+//     let _i = InterruptibleOnDrop;
+//
+//     let mut scheduler = SCHEDULER.lock();
+//     let curr_process_pid = scheduler.curr_process_pid();
+//     let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
+//     let res = task.kill(signum)?;
+//     // if this is the current process, deliver the signal
+//     if res == 0 && pid == curr_process_pid {
+//         (*cpu_state).registers.eax = res;
+//         task.has_pending_signals();
+//     }
+//     Ok(res)
+// }
 
-    let mut scheduler = SCHEDULER.lock();
-    let curr_process_pid = scheduler.curr_process_pid();
-    let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
-    let res = task.kill(signum)?;
-    // if this is the current process, deliver the signal
-    if res == 0 && pid == curr_process_pid {
-        (*cpu_state).registers.eax = res;
-        task.has_pending_signals();
-    }
-    Ok(res)
-}
+// unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+//     uninterruptible();
+//     let res = SCHEDULER.lock().curr_process_mut().signal(signum, handler);
+//     interruptible();
+//     res
+// }
 
-unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
-    uninterruptible();
-    let res = SCHEDULER.lock().curr_process_mut().signal(signum, handler);
-    interruptible();
-    res
-}
-
-unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
-    uninterruptible();
-    let res = SCHEDULER.lock().curr_process_mut().sigreturn(cpu_state);
-    interruptible();
-    res
-}
+// unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
+//     uninterruptible();
+//     let res = SCHEDULER.lock().curr_process_mut().sigreturn(cpu_state);
+//     interruptible();
+//     res
+// }
 
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
@@ -154,13 +155,13 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
-        37 => sys_kill(ebx as Pid, ecx as u32, cpu_state),
-        48 => sys_signal(ebx as u32, transmute(ecx as usize)),
+        // 37 => sys_kill(ebx as Pid, ecx as u32, cpu_state),
+        // 48 => sys_signal(ebx as u32, transmute(ecx as usize)),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
-        200 => sys_sigreturn(cpu_state),
+        // 200 => sys_sigreturn(cpu_state),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF

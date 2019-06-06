@@ -2,7 +2,7 @@
 
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, interruptible, uninterruptible};
-use super::scheduler::{ProcessState, WaitingState};
+use super::task::{ProcessState, WaitingState};
 use super::tools::check_user_ptr;
 use super::SysResult;
 
