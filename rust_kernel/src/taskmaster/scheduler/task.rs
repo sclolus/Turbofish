@@ -206,7 +206,8 @@ impl Task {
         }
     }
 
-    pub fn is_waiting(&self) -> bool {
+    #[allow(dead_code)]
+    fn is_waiting(&self) -> bool {
         match self.process_state {
             ProcessState::Waiting(_, _) => true,
             _ => false,
@@ -299,17 +300,17 @@ impl Task {
                 if self.is_running() {
                     //TODO: handle that cases, panic for the moment
                     panic!("is running");
-                    self.signal_queue.push_front(signum);
-                    return;
+                //self.signal_queue.push_front(signum);
+                //return;
                 } else {
                     panic!("is not ring3");
                     // get the cpu state at the base of the kernel stack
-                    (*cpu_state).esp = kernel_esp;
-                    let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
-                        - size_of::<CpuState>() as u32)
-                        as *const CpuState);
+                    //(*cpu_state).esp = kernel_esp;
+                    //let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
+                    //    - size_of::<CpuState>() as u32)
+                    //    as *const CpuState);
                     // dbg_hex!(syscall_cpu_state);
-                    syscall_cpu_state.esp
+                    //syscall_cpu_state.esp
                 }
             } else {
                 // eprintln!("is in ring3");

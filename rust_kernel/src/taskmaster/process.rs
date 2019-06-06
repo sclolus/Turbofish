@@ -339,6 +339,7 @@ impl Process for UserProcess {
 }
 
 impl UserProcess {
+    #[allow(dead_code)]
     pub fn kernel_stack_base(&self) -> u32 {
         self.kernel_stack.as_ptr() as u32 + Into::<usize>::into(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32
     }

@@ -12,9 +12,6 @@ use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 
 use alloc::collections::CollectionAllocErr;
-use fallible_collections::FallibleVec;
-
-use errno::Errno;
 
 use crate::drivers::PIT0;
 use spinlock::Spinlock;
@@ -341,8 +338,7 @@ impl Scheduler {
 
     /// check if there is pending sigals, and tricks the stack to execute it on return
     pub fn check_pending_signals(&mut self, pid: Pid) {
-        use core::mem::size_of;
-        use task::{align_on, signal_default_action, DefaultAction, Sigaction};
+        use task::{signal_default_action, DefaultAction, Sigaction};
         // eprintln!("check pending signals");
         let task = self.get_process_mut(pid).expect("no task with that pid");
 
