@@ -20,7 +20,7 @@ extern "C" {
 
 /// allign on
 #[inline(always)]
-fn align_on(t: usize, on: usize) -> usize {
+pub fn align_on(t: usize, on: usize) -> usize {
     debug_assert!(on.is_power_of_two());
     if t & (on - 1) == 0 {
         t
@@ -96,6 +96,33 @@ pub enum Signum {
     Sigpwr = 30,
     /// Bad system call.
     Sigsys = 31,
+}
+
+pub enum DefaultAction {
+    Abort,
+    Terminate,
+    Ignore,
+    Stop,
+    Continue,
+}
+
+pub fn signal_default_action(signum: Signum) -> DefaultAction {
+    use Signum::*;
+    match signum {
+        Sigstkflt | Sigabrt | Sigbus | Sigfpe | Sigill | Sigquit | Sigsegv | Sigsys | Sigtrap | Sigxcpu | Sigxfsz => {
+            DefaultAction::Abort
+        }
+
+        Sigalrm | Sighup | Sigint | Sigkill | Sigpipe | Sigusr1 | Sigusr2 | Sigprof | Sigvtalrm | Sigterm => {
+            DefaultAction::Terminate
+        }
+
+        Sigcont => DefaultAction::Continue,
+
+        Sigio | Sigpwr | Sigwinch | SigNull | Sigchld | Sigurg => DefaultAction::Ignore,
+
+        Sigstop | Sigtstp | Sigttin | Sigttou => DefaultAction::Stop,
+    }
 }
 
 #[derive(Debug)]
@@ -230,16 +257,13 @@ impl Task {
         let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
-
         Ok(0)
     }
 
     pub fn has_pending_signals(&self) -> bool {
         !self.signal_queue.is_empty()
     }
-
-    /// check if there is pending sigals, and tricks the stack to execute it on return
-    pub fn check_pending_signals(&mut self) {
+    pub fn exec_signal_handler(&mut self, signum: Signum, f: extern "C" fn(i32)) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
@@ -262,71 +286,55 @@ impl Task {
                 (*esp as *mut u8).copy_from(buf, size);
             }
         }
-        // eprintln!("check pending signals");
+        let kernel_esp = self.unwrap_running().kernel_esp;
+        debug_assert!(kernel_esp > self.unwrap_running().kernel_stack.as_ptr() as u32);
+        unsafe {
+            let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
 
-        if !self.is_signaled() {
-            if let Some(signum) = self.signal_queue.pop_front() {
-                match self.signal_actions[signum] {
-                    Sigaction::Handler(f) => {
-                        let kernel_esp = self.unwrap_running().kernel_esp;
-                        debug_assert!(kernel_esp > self.unwrap_running().kernel_stack.as_ptr() as u32);
-                        unsafe {
-                            let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
-
-                            // dbg_hex!(*cpu_state);
-                            // eprintln!("{:?}", *cpu_state);
-                            // TODO: check if interruptable
-                            let mut user_esp = if !(*cpu_state).run_in_ring3() {
-                                // if in a syscall and running do not perfom signal handling
-                                if self.is_running() {
-                                    //TODO: handle that cases, panic for the moment
-                                    panic!("is running");
-                                    self.signal_queue.push_front(signum);
-                                    return;
-                                } else {
-                                    panic!("is not ring3");
-                                    // get the cpu state at the base of the kernel stack
-                                    (*cpu_state).esp = kernel_esp;
-                                    let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
-                                        - size_of::<CpuState>() as u32)
-                                        as *const CpuState);
-                                    // dbg_hex!(syscall_cpu_state);
-                                    syscall_cpu_state.esp
-                                }
-                            } else {
-                                // eprintln!("is in ring3");
-                                (*cpu_state).esp
-                            };
-                            // dbg_hex!(user_esp);
-
-                            // dbg!(cpu_state);
-                            // push the current cpu_state on the user stack
-                            push_esp(&mut user_esp, *cpu_state);
-                            // push the trampoline code on the user stack
-                            push_buff_esp(
-                                &mut user_esp,
-                                symbol_addr!(_trampoline) as *mut u8,
-                                _trampoline_len as usize,
-                            );
-                            // push the address of start of trampoline code stack on the user stack
-                            let esp_trampoline = user_esp;
-                            push_esp(&mut user_esp, signum as u32);
-                            push_esp(&mut user_esp, esp_trampoline);
-
-                            // set a fresh cpu state to execute the handler
-                            let mut new_cpu_state = CpuState::new(user_esp, f as u32);
-                            new_cpu_state.eip = f as u32;
-
-                            (*cpu_state) = new_cpu_state;
-                            (*cpu_state).eip = f as u32;
-                            // dbg_hex!(*cpu_state);
-                        }
-                        self.set_signaled(true);
-                    }
-                    _ => {}
+            // dbg_hex!(*cpu_state);
+            // eprintln!("{:?}", *cpu_state);
+            // TODO: check if interruptable
+            let mut user_esp = if !(*cpu_state).run_in_ring3() {
+                // if in a syscall and running do not perfom signal handling
+                if self.is_running() {
+                    //TODO: handle that cases, panic for the moment
+                    panic!("is running");
+                    self.signal_queue.push_front(signum);
+                    return;
+                } else {
+                    panic!("is not ring3");
+                    // get the cpu state at the base of the kernel stack
+                    (*cpu_state).esp = kernel_esp;
+                    let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
+                        - size_of::<CpuState>() as u32)
+                        as *const CpuState);
+                    // dbg_hex!(syscall_cpu_state);
+                    syscall_cpu_state.esp
                 }
-            }
+            } else {
+                // eprintln!("is in ring3");
+                (*cpu_state).esp
+            };
+            // dbg_hex!(user_esp);
+            // dbg!(cpu_state);
+            // push the current cpu_state on the user stack
+            push_esp(&mut user_esp, *cpu_state);
+            // push the trampoline code on the user stack
+            push_buff_esp(&mut user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
+            // push the address of start of trampoline code stack on the user stack
+            let esp_trampoline = user_esp;
+            push_esp(&mut user_esp, signum as u32);
+            push_esp(&mut user_esp, esp_trampoline);
+
+            // set a fresh cpu state to execute the handler
+            let mut new_cpu_state = CpuState::new(user_esp, f as u32);
+            new_cpu_state.eip = f as u32;
+
+            (*cpu_state) = new_cpu_state;
+            (*cpu_state).eip = f as u32;
+            // dbg_hex!(*cpu_state);
         }
+        self.set_signaled(true);
     }
 
     /// sigreturn syscall

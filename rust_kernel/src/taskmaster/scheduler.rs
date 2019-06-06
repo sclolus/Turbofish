@@ -243,7 +243,7 @@ impl Scheduler {
                     process.context_switch();
                 }
                 let kernel_esp = process.kernel_esp;
-                p.check_pending_signals();
+                self.check_pending_signals(self.curr_process_pid());
                 kernel_esp
             }
         }
@@ -329,7 +329,6 @@ impl Scheduler {
         self.remove_curr_running();
 
         self.advance_next_process(0);
-
         // Switch to the next process
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
@@ -338,6 +337,43 @@ impl Scheduler {
 
             _exit_resume(new_kernel_esp, pid, status);
         };
+    }
+
+    /// check if there is pending sigals, and tricks the stack to execute it on return
+    pub fn check_pending_signals(&mut self, pid: Pid) {
+        use core::mem::size_of;
+        use task::{align_on, signal_default_action, DefaultAction, Sigaction};
+        // eprintln!("check pending signals");
+        let task = self.get_process_mut(pid).expect("no task with that pid");
+
+        if !task.is_signaled() {
+            if let Some(signum) = task.signal_queue.pop_front() {
+                match task.signal_actions[signum] {
+                    Sigaction::Handler(f) => task.exec_signal_handler(signum, f),
+                    Sigaction::SigDfl => {
+                        use DefaultAction::*;
+                        match signal_default_action(signum) {
+                            Abort => {
+                                //TODO: Exit the process  status
+                                //self.exit(status: i32)
+                            }
+                            Terminate => {
+                                //TODO: Exit the process  status
+                                //self.exit(status: i32)
+                            }
+                            Ignore => {
+                                return self.check_pending_signals(pid);
+                            }
+                            Continue => unimplemented!(),
+                            Stop => unimplemented!(),
+                        }
+                    }
+                    Sigaction::SigIgn => {
+                        return self.check_pending_signals(pid);
+                    }
+                }
+            }
+        }
     }
 }
 

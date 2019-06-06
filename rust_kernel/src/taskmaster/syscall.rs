@@ -112,7 +112,7 @@ unsafe fn sys_kill(pid: Pid, signum: u32, cpu_state: *mut CpuState) -> SysResult
     // if this is the current process, deliver the signal
     if res == 0 && pid == curr_process_pid {
         (*cpu_state).registers.eax = res;
-        task.check_pending_signals();
+        task.has_pending_signals();
     }
     Ok(res)
 }
