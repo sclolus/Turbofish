@@ -5,7 +5,6 @@ use super::SysResult;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, interruptible, uninterruptible};
 use super::task::WaitingState;
-use super::tools::check_user_ptr;
 
 use errno::Errno;
 
@@ -28,8 +27,8 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
 
     let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
 
-    check_user_ptr::<TimeSpec>(req, v)?;
-    check_user_ptr::<TimeSpec>(rem, v)?;
+    v.check_user_ptr::<TimeSpec>(req)?;
+    v.check_user_ptr::<TimeSpec>(rem)?;
 
     let nsec = unsafe { (*req).tv_nsec };
     if nsec < 0 || nsec >= 1000000000 {

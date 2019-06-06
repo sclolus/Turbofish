@@ -39,3 +39,12 @@ pub enum MemoryError {
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
+
+use errno::Errno;
+
+impl From<MemoryError> for Errno {
+    // for the moment errno a memory error is Enomem
+    fn from(_e: MemoryError) -> Self {
+        Errno::Enomem
+    }
+}

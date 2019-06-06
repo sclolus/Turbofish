@@ -3,7 +3,6 @@
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, interruptible, uninterruptible};
 use super::task::{ProcessState, WaitingState};
-use super::tools::check_user_ptr;
 use super::SysResult;
 
 use errno::Errno;
@@ -16,7 +15,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
     // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
     if wstatus != 0x0 as *mut i32 {
-        check_user_ptr::<i32>(wstatus, v)?;
+        v.check_user_ptr::<i32>(wstatus)?;
     }
 
     // WIFEXITED(wstatus)

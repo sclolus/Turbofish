@@ -18,45 +18,9 @@ impl Debug for VirtualPageAllocator {
     }
 }
 
-/// Functionnal paradigm for boolean type
-trait Boolinator: Sized {
-    fn ok_or<E>(self, err: E) -> core::result::Result<(), E>;
-}
-
-/// Boolinator trait implementation
-impl Boolinator for bool {
-    #[inline]
-    /// Cast bool into Result
-    fn ok_or<E>(self, err: E) -> core::result::Result<(), E> {
-        if self {
-            Ok(())
-        } else {
-            Err(err)
-        }
-    }
-}
-
 impl VirtualPageAllocator {
     pub fn new(virt: BuddyAllocator<Virt>, mmu: Box<PageDirectory>) -> Self {
         Self { virt, mmu }
-    }
-
-    pub unsafe fn new_for_process() -> Result<Self> {
-        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB)?;
-        buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).expect("User Buddy won't collaborate");
-
-        let pd = PageDirectory::new_for_process()?;
-
-        Ok(Self::new(buddy, pd))
-    }
-
-    /// the process forker must be the current cr3
-    pub fn fork(&self) -> Result<Self> {
-        let buddy = self.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
-
-        let pd = unsafe { self.mmu.fork()? };
-
-        Ok(Self::new(buddy, pd))
     }
 
     /// Modify the allocFlags for a specific and existing Page
@@ -72,14 +36,15 @@ impl VirtualPageAllocator {
         }
     }
 
-    /// Check if the contraint in flags are satisfied into a chunk of pages
-    pub fn check_page_range(&self, start_page: Page<Virt>, end_page: Page<Virt>, flags: AllocFlags) -> Result<()> {
+    /// Check if the predicate is satisfied into a chunk of pages
+    pub fn check_page_range<P>(&self, start_page: Page<Virt>, end_page: Page<Virt>, predicate: P) -> Result<()>
+    where
+        P: Fn(Entry) -> bool,
+    {
         for page in (start_page..=end_page).iter() {
-            self.mmu
-                .get_entry(page)
-                .ok_or::<MemoryError>(MemoryError::PageNotPresent)?
-                .intersects(flags.into())
-                .ok_or::<MemoryError>(MemoryError::NotSatisfied)?;
+            if !predicate(self.mmu.get_entry(page).ok_or::<MemoryError>(MemoryError::PageNotPresent)?) {
+                return Err(MemoryError::NotSatisfied);
+            }
         }
         Ok(())
     }
@@ -249,5 +214,75 @@ impl VirtualPageAllocator {
             }
             Ok(())
         })
+    }
+}
+
+use crate::taskmaster::SysResult;
+
+use core::mem::size_of;
+use errno::Errno;
+
+#[derive(Debug)]
+pub struct AddressSpace(VirtualPageAllocator);
+
+impl AddressSpace {
+    pub unsafe fn try_new() -> Result<Self> {
+        let mut buddy = BuddyAllocator::new(Page::new(0x0), NbrPages::_3GB)?;
+        buddy.reserve_exact(Page::new(0x0), NbrPages::_4MB).expect("User Buddy won't collaborate");
+
+        let pd = PageDirectory::new_for_process()?;
+
+        Ok(Self(VirtualPageAllocator::new(buddy, pd)))
+    }
+
+    /// the process forker must be the current cr3
+    pub fn fork(&self) -> Result<Self> {
+        let buddy = self.0.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
+
+        let pd = unsafe { self.0.mmu.fork()? };
+
+        Ok(Self(VirtualPageAllocator::new(buddy, pd)))
+    }
+
+    /// Check if a pointer given by user process is not bullshit
+    pub fn check_user_ptr<T>(&self, ptr: *const T) -> SysResult<()> {
+        let start_ptr = Virt(ptr as usize);
+        let end_ptr = Virt((ptr as usize).checked_add(size_of::<T>() - 1).ok_or::<Errno>(Errno::Efault)?);
+
+        Ok(self
+            .0
+            .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
+                entry.intersects((AllocFlags::USER_MEMORY).into())
+            })
+            .map_err(|_| Errno::Efault)?)
+    }
+
+    pub fn alloc<N>(&mut self, length: N, alloc_flags: AllocFlags) -> Result<*mut u8>
+    where
+        N: Into<NbrPages>,
+    {
+        Ok(self.0.alloc(length.into(), alloc_flags | AllocFlags::USER_MEMORY)?.to_addr().0 as *mut u8)
+    }
+
+    pub unsafe fn context_switch(&self) {
+        self.0.context_switch()
+    }
+
+    pub fn modify_range_page_entry(&mut self, start_page: Page<Virt>, nbr_pages: NbrPages, flags: AllocFlags) {
+        //TODO: check range in user_memory
+        self.0.modify_range_page_entry(start_page, nbr_pages, flags | AllocFlags::USER_MEMORY);
+    }
+
+    pub fn alloc_on<N>(&mut self, vaddr: Page<Virt>, size: N, flags: AllocFlags) -> Result<*mut u8>
+    where
+        N: Into<NbrPages>,
+    {
+        Ok(self.0.alloc_on(vaddr, size.into(), flags | AllocFlags::USER_MEMORY)?.to_addr().0 as *mut u8)
+    }
+
+    #[inline(always)]
+    pub fn modify_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
+        //TODO: check range in user_memory
+        self.0.modify_page_entry(page, flags | AllocFlags::USER_MEMORY);
     }
 }

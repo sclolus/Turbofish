@@ -10,14 +10,14 @@ use alloc::vec::Vec;
 use core::slice;
 
 use elf_loader::SegmentType;
-use errno::Errno;
 
 use fallible_collections::{try_vec, FallibleBox};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
-use crate::memory::{VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
+use crate::memory::AddressSpace;
+use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::registers::Eflags;
 use crate::system::BaseRegisters;
 
@@ -90,7 +90,7 @@ pub struct UserProcess {
     /// Current process ESP on kernel stack
     pub kernel_esp: u32,
     /// Page directory of the process
-    pub virtual_allocator: VirtualPageAllocator,
+    pub virtual_allocator: AddressSpace,
 }
 
 /// This structure represents an entire kernel process
@@ -161,7 +161,7 @@ impl Process for UserProcess {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
-        let mut virtual_allocator = VirtualPageAllocator::new_for_process().map_err(|_| Errno::Enomem)?;
+        let mut virtual_allocator = AddressSpace::try_new()?;
         // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
@@ -172,15 +172,11 @@ impl Process for UserProcess {
                 for h in &elf.program_header_table {
                     if h.segment_type == SegmentType::Load {
                         let segment = {
-                            virtual_allocator
-                                .alloc_on(
-                                    Page::containing(Virt(h.vaddr as usize)),
-                                    (h.memsz as usize).into(),
-                                    AllocFlags::USER_MEMORY,
-                                )
-                                .map_err(|_| Errno::Enomem)?
-                                .to_addr()
-                                .0 as *mut u8;
+                            virtual_allocator.alloc_on(
+                                Page::containing(Virt(h.vaddr as usize)),
+                                h.memsz as usize,
+                                AllocFlags::USER_MEMORY,
+                            )?;
                             slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
                         };
                         segment[0..h.filez as usize]
@@ -201,11 +197,7 @@ impl Process for UserProcess {
             }
             TaskOrigin::Raw(code, code_len) => {
                 // Allocate one page for code segment of the Dummy process
-                let base_addr = virtual_allocator
-                    .alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)
-                    .map_err(|_| Errno::Enomem)?
-                    .to_addr()
-                    .0 as *mut u8;
+                let base_addr = virtual_allocator.alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)?;
                 // Copy the code segment
                 base_addr.copy_from(code, code_len);
                 base_addr as u32
@@ -229,11 +221,7 @@ impl Process for UserProcess {
             as u32;
 
         // Allocate one page for stack segment of the process
-        let stack_addr = virtual_allocator
-            .alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY)
-            .map_err(|_| Errno::Enomem)?
-            .to_addr()
-            .0 as *mut u8;
+        let stack_addr = virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY)?;
 
         // Mark the first entry of the user stack as read-only, this prevent user stack overflow
         virtual_allocator
@@ -263,7 +251,7 @@ impl Process for UserProcess {
         // Re-enable kernel virtual space memory
         _enable_paging(old_cr3);
 
-        Ok(Box::try_new(UserProcess { kernel_stack, kernel_esp, virtual_allocator }).map_err(|_| Errno::Enomem)?)
+        Ok(Box::try_new(UserProcess { kernel_stack, kernel_esp, virtual_allocator })?)
     }
 
     unsafe fn init_tss(&self) {
@@ -305,9 +293,8 @@ impl Process for UserProcess {
         Ok(Box::try_new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
-            virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
-        })
-        .map_err(|_| Errno::Enomem)?)
+            virtual_allocator: self.virtual_allocator.fork()?,
+        })?)
     }
 }
 
@@ -326,8 +313,7 @@ impl Process for KernelProcess {
                 let base_addr = KERNEL_VIRTUAL_PAGE_ALLOCATOR
                     .as_mut()
                     .unwrap()
-                    .alloc(Self::KERNEL_RAW_PROCESS_MAX_SIZE, AllocFlags::KERNEL_MEMORY)
-                    .map_err(|_| Errno::Enomem)?
+                    .alloc(Self::KERNEL_RAW_PROCESS_MAX_SIZE, AllocFlags::KERNEL_MEMORY)?
                     .to_addr()
                     .0 as *mut u8;
                 // Copy the code segment
@@ -369,7 +355,7 @@ impl Process for KernelProcess {
         // Fill the kernel stack of the new process with start cpu states.
         (kernel_esp as *mut u8).copy_from(&cpu_state as *const _ as *const u8, core::mem::size_of::<CpuState>());
 
-        Ok(Box::try_new(KernelProcess { kernel_stack, kernel_esp }).map_err(|_| Errno::Enomem)?)
+        Ok(Box::try_new(KernelProcess { kernel_stack, kernel_esp })?)
     }
 
     unsafe fn init_tss(&self) {

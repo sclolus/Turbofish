@@ -4,7 +4,6 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 use super::scheduler::{interruptible, uninterruptible};
-use super::tools::check_user_ptr;
 
 use bitflags::bitflags;
 use errno::Errno;
@@ -28,12 +27,12 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
     let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
 
     // Check if pointer exists in user virtual address space
-    check_user_ptr::<MmapArgStruct>(mmap_arg, v)?;
+    v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
 
     #[allow(unused_variables)]
     let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = unsafe { *mmap_arg };
 
-    let addr = v.alloc(length.into(), AllocFlags::USER_MEMORY).map_err(|_| Errno::Enomem)?.to_addr().0 as *mut u8;
+    let addr = v.alloc(length, AllocFlags::USER_MEMORY)?;
     Ok((addr, length))
 }
 

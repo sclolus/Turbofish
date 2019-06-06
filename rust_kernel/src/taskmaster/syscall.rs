@@ -9,7 +9,6 @@ use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
 use super::scheduler::{interruptible, uninterruptible};
 use super::task;
-use super::tools;
 
 mod mmap;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};

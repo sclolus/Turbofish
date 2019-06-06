@@ -6,7 +6,6 @@ mod signal;
 mod syscall;
 mod task;
 mod tests;
-mod tools;
 
 use process::{KernelProcess, Process, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
