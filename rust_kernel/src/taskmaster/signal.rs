@@ -96,6 +96,7 @@ pub enum Signum {
     Sigsys = 31,
 }
 
+#[allow(dead_code)]
 pub enum DefaultAction {
     Abort,
     Terminate,
@@ -104,6 +105,7 @@ pub enum DefaultAction {
     Continue,
 }
 
+#[allow(dead_code)]
 pub fn signal_default_action(signum: Signum) -> DefaultAction {
     use Signum::*;
     match signum {
@@ -197,9 +199,12 @@ impl SignalInterface {
         Ok(0)
     }
 
+    #[allow(dead_code)]
     pub fn has_pending_signals(&self) -> bool {
         !self.signal_queue.is_empty()
     }
+
+    #[allow(dead_code)]
     pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, f: extern "C" fn(i32)) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
@@ -230,28 +235,30 @@ impl SignalInterface {
             // dbg_hex!(*cpu_state);
             // eprintln!("{:?}", *cpu_state);
             // TODO: check if interruptable
-            let mut user_esp = if !(*cpu_state).run_in_ring3() {
-                // if in a syscall and running do not perfom signal handling
-                // if self.is_running() {
-                //TODO: handle that cases, panic for the moment
-                // panic!("is running");
-                //self.signal_queue.push_front(signum);
-                //return;
-                //} else {
-                //panic!("is not ring3");
-                // get the cpu state at the base of the kernel stack
-                //(*cpu_state).esp = kernel_esp;
-                //let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
-                //    - size_of::<CpuState>() as u32)
-                //    as *const CpuState);
-                // dbg_hex!(syscall_cpu_state);
-                //syscall_cpu_state.esp
-                //}
-                0
-            } else {
-                // eprintln!("is in ring3");
-                (*cpu_state).esp
-            };
+            // let mut user_esp = if !(*cpu_state).run_in_ring3()  TODO assign value
+            // {
+            // if in a syscall and running do not perfom signal handling
+            // if self.is_running() {
+            //TODO: handle that cases, panic for the moment
+            // panic!("is running");
+            //self.signal_queue.push_front(signum);
+            //return;
+            //} else {
+            //panic!("is not ring3");
+            // get the cpu state at the base of the kernel stack
+            //(*cpu_state).esp = kernel_esp;
+            //let syscall_cpu_state: CpuState = *((self.unwrap_running().kernel_stack_base()
+            //    - size_of::<CpuState>() as u32)
+            //    as *const CpuState);
+            // dbg_hex!(syscall_cpu_state);
+            //syscall_cpu_state.esp
+            //}
+            // 0
+            // } else {
+            // eprintln!("is in ring3");
+            //    (*cpu_state).esp
+            // };
+            let mut user_esp = 0;
             // dbg_hex!(user_esp);
             // dbg!(cpu_state);
             // push the current cpu_state on the user stack
@@ -264,7 +271,7 @@ impl SignalInterface {
             push_esp(&mut user_esp, esp_trampoline);
 
             // set a fresh cpu state to execute the handler
-            let mut new_cpu_state = CpuState::new(user_esp, f as u32);
+            let mut new_cpu_state: CpuState = CpuState { ..Default::default() }; //}::new(user_esp, f as u32);
             new_cpu_state.eip = f as u32;
 
             (*cpu_state) = new_cpu_state;
@@ -310,6 +317,7 @@ impl SignalInterface {
     }
 
     /// check if there is pending sigals, and tricks the stack to execute it on return
+    #[allow(dead_code)]
     pub fn check_pending_signals(&mut self, kernel_esp: u32, pid: Pid) {
         // eprintln!("check pending signals");
         // let task = self.get_process_mut(pid).expect("no task with that pid");

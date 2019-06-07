@@ -30,7 +30,7 @@ extern "C" {
 #[repr(C)]
 pub struct CpuState {
     /// reserved for back trace
-    stack_reserved: u32,
+    pub stack_reserved: u32,
     /// current registers
     pub registers: BaseRegisters,
     /// current data DS
@@ -55,34 +55,15 @@ pub struct CpuState {
 
 use core::fmt::{self, Debug};
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 impl Debug for CpuState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "CpuState {{
-stack_reserved: 0x{:X?},
-registers: {:#X?},
-ds: 0x{:X?},
-es: 0x{:X?},
-fs: 0x{:X?},
-gs: 0x{:X?},
-eip: 0x{:X?},
-cs: 0x{:X?},
-eflags: {:X?}
-esp: 0x{:X?},
-ss: 0x{:X?},
-}} ",
-            self.stack_reserved,
-            self.registers,
-            self.ds as u8,
-            self.es as u8,
-            self.fs as u8,
-            self.gs as u8,
-            self.eip,
-            self.cs as u8,
-            self.eflags,
-            self.esp,
-            self.ss as u8
+        write!(f, "CpuState {{stack_reserved: 0x{:X?}, registers: {:#X?},
+ds: 0x{:X?}, es: 0x{:X?}, fs: 0x{:X?}, gs: 0x{:X?},
+eip: 0x{:X?}, cs: 0x{:X?}, eflags: {:X?} esp: 0x{:X?}, ss: 0x{:X?},}} ",
+            self.stack_reserved, self.registers,
+            self.ds as u8, self.es as u8, self.fs as u8, self.gs as u8,
+            self.eip, self.cs as u8, self.eflags, self.esp, self.ss as u8
         )
     }
 }
@@ -100,27 +81,6 @@ pub trait Process {
 
     /// Fork the process and return his child
     fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>>;
-}
-
-impl CpuState {
-    pub fn new(esp: u32, eip: u32) -> Self {
-        Self {
-            stack_reserved: 0,
-            registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
-            ds: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
-            es: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
-            fs: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
-            gs: UserProcess::RING3_DATA_SEGMENT + UserProcess::RING3_DPL,
-            eip,
-            cs: UserProcess::RING3_CODE_SEGMENT + UserProcess::RING3_DPL,
-            eflags: Eflags::get_eflags().set_interrupt_flag(true), // TODO: Change that get_eflags is for sure an error
-            esp,
-            ss: UserProcess::RING3_STACK_SEGMENT + UserProcess::RING3_DPL,
-        }
-    }
-    pub fn run_in_ring3(&self) -> bool {
-        self.cs == (UserProcess::RING3_CODE_SEGMENT + UserProcess::RING3_DPL)
-    }
 }
 
 /// This structure represents an entire process
@@ -283,7 +243,20 @@ impl Process for UserProcess {
         let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
 
         // Create the process identity
-        let cpu_state = CpuState::new(esp, eip);
+        let cpu_state: CpuState = CpuState {
+            stack_reserved: 0,
+            registers: BaseRegisters { esp, ..Default::default() }, // Be carefull, never trust ESP
+            ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            eip,
+            cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
+            eflags: Eflags::get_eflags().set_interrupt_flag(true), // TODO: Change that get_eflags is for sure an error
+            esp,
+            ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
+        };
+
         // Fill the kernel stack of the new process with start cpu states.
         *(kernel_esp as *mut CpuState) = cpu_state;
 
@@ -335,13 +308,6 @@ impl Process for UserProcess {
             virtual_allocator: self.virtual_allocator.fork().map_err(|_| Errno::Enomem)?,
         })
         .map_err(|_| Errno::Enomem)?)
-    }
-}
-
-impl UserProcess {
-    #[allow(dead_code)]
-    pub fn kernel_stack_base(&self) -> u32 {
-        self.kernel_stack.as_ptr() as u32 + Into::<usize>::into(Self::RING3_PROCESS_KERNEL_STACK_SIZE) as u32
     }
 }
 

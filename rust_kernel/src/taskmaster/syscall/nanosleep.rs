@@ -13,6 +13,7 @@ use crate::drivers::PIT0;
 use crate::math::convert::Convert;
 
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub struct TimeSpec {
     tv_sec: u32,
     tv_nsec: i32,

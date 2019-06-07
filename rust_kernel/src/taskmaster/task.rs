@@ -1,14 +1,10 @@
 //! This file contains definition of a task
 
-use super::process::{CpuState, UserProcess};
+use super::process::UserProcess;
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
-use super::SysResult;
-
-use errno::Errno;
 
 use alloc::boxed::Box;
-use alloc::collections::vec_deque::VecDeque;
 use alloc::vec::Vec;
 
 use core::mem;
@@ -48,13 +44,14 @@ impl Task {
     }
 
     #[allow(dead_code)]
-    fn is_waiting(&self) -> bool {
+    pub fn is_waiting(&self) -> bool {
         match self.process_state {
             ProcessState::Waiting(_, _) => true,
             _ => false,
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_running(&self) -> bool {
         match self.process_state {
             ProcessState::Running(_) => true,
