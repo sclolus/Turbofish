@@ -93,32 +93,38 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .set_waiting(WaitingState::ChildDeath(if pid < 0 { None } else { Some(pid as u32) }, 0));
 
             // Auto-preempt calling
-            auto_preempt();
+            let ret = auto_preempt();
 
             // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
             uninterruptible();
             let mut scheduler = SCHEDULER.lock();
 
-            let child_pid = match &scheduler.curr_process().process_state {
-                // Read the fields of the WaintingState::ChildDeath(x, y)
-                ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
-                    // Set wstatus pointer is not null by reading y
-                    if wstatus != 0x0 as *mut i32 {
-                        unsafe {
-                            *wstatus = *status as i32;
+            if ret < 0 {
+                // Reset as running
+                scheduler.curr_process_mut().set_running();
+                return Err(Errno::Eintr);
+            } else {
+                let child_pid = match &scheduler.curr_process().process_state {
+                    // Read the fields of the WaintingState::ChildDeath(x, y)
+                    ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
+                        // Set wstatus pointer is not null by reading y
+                        if wstatus != 0x0 as *mut i32 {
+                            unsafe {
+                                *wstatus = *status as i32;
+                            }
                         }
+                        let t = opt.expect("Cannot be None");
+                        scheduler.all_process.remove(&t).expect("Pid must be here");
+                        t
                     }
-                    let t = opt.expect("Cannot be None");
-                    scheduler.all_process.remove(&t).expect("Pid must be here");
-                    t
-                }
-                _ => panic!("WTF"),
-            };
-            // Set process as Running, Set return readen value in Ok(x)
-            scheduler.curr_process_mut().set_running();
-            let task = scheduler.curr_process_mut();
-            task.child.remove_item(&child_pid).unwrap();
-            Ok(child_pid)
+                    _ => panic!("WTF"),
+                };
+                // Set process as Running, Set return readen value in Ok(x)
+                scheduler.curr_process_mut().set_running();
+                let task = scheduler.curr_process_mut();
+                task.child.remove_item(&child_pid).unwrap();
+                Ok(child_pid)
+            }
         }
     }
 }

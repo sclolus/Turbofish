@@ -69,7 +69,7 @@ VPATH += src/memory/mmu
 SRC_ASM_KERNEL += start_process
 VPATH += src/taskmaster/process
 
-SRC_ASM_KERNEL += switch_process
+SRC_ASM_KERNEL += switch_process auto_preempt
 VPATH += src/taskmaster/scheduler
 
 SRC_ASM_KERNEL += syscall_isr sys_test

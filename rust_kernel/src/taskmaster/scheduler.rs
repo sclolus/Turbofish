@@ -17,6 +17,8 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
 
+    fn _auto_preempt() -> i32;
+
     pub fn _get_pit_time() -> u32;
     pub fn _get_process_end_time() -> u32;
 
@@ -43,17 +45,17 @@ pub fn interruptible() {
         // TODO: If scheduler is disable, the kernel will crash
         // TODO: After Exit, the next process seems to be skiped !
         if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
-            asm!("int 0x81" :::: "intel", "volatile");
+            _auto_preempt();
         } else {
             crate::taskmaster::scheduler::_interruptible();
         }
     }
 }
 
-pub fn auto_preempt() {
+pub fn auto_preempt() -> i32 {
     unsafe {
         SCHEDULER.force_unlock();
-        asm!("int 0x81" :::: "volatile","intel");
+        _auto_preempt()
     }
 }
 
@@ -171,6 +173,7 @@ impl Scheduler {
                         let now = _get_pit_time();
                         if now >= *time {
                             self.curr_process_mut().set_running();
+                            self.curr_process_mut().set_return_value(0);
                             return;
                         }
                     },
@@ -208,6 +211,7 @@ impl Scheduler {
                                 ProcessState::Zombie(status) => {
                                     self.curr_process_mut()
                                         .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
+                                    self.curr_process_mut().set_return_value(0);
                                     return;
                                 }
                                 _ => panic!("A zombie was found just before, but there is no zombie here"),

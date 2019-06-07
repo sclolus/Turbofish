@@ -1,6 +1,6 @@
 //! This file contains definition of a task
 
-use super::process::UserProcess;
+use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
 
@@ -40,6 +40,14 @@ impl Task {
         match self.process_state {
             ProcessState::Zombie(_) => true,
             _ => false,
+        }
+    }
+
+    /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
+    pub fn set_return_value(&self, return_value: i32) {
+        let cpu_state = self.unwrap_running().kernel_esp as *mut CpuState;
+        unsafe {
+            (*(cpu_state)).registers.eax = return_value as u32;
         }
     }
 
