@@ -1,7 +1,7 @@
 [BITS 32]
 
 extern main
-extern user_exit
+extern exit
 
 segment .text
 
@@ -29,7 +29,7 @@ _start:
 
 .exit:
 	push eax
-	call user_exit
+	call exit
 
 ; execve("./sleepers", ["./sleepers"], [/* 39 vars */]) = 0
 ; strace: [ Process PID=4472 runs in 32 bit mode. ]

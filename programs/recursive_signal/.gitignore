@@ -1,5 +1,5 @@
 !.gitignore
-csignal
+recursive_signal
 target
 *.orig
 !.xbuild_toolchain

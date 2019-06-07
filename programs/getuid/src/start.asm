@@ -3,7 +3,7 @@
 segment .text
 
 extern main
-extern user_exit
+extern exit
 
 global _start ; must be declared for linker (ld)
 _start:       ; tell linker entry point
@@ -13,4 +13,4 @@ _start:       ; tell linker entry point
 	call main
 
 	push 0
-	call user_exit
+	call exit

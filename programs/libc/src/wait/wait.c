@@ -1,7 +1,7 @@
 
+#include "user_syscall.h"
 #include "wait.h"
 
-extern int user_waitpid(pid_t pid, int *wstatus, int options);
 extern int errno;
 
 /*
@@ -13,7 +13,7 @@ extern int errno;
  */
 pid_t waitpid(pid_t pid, int *wstatus, int options)
 {
-	pid_t p = user_waitpid(pid, wstatus, options);
+	pid_t p = _user_syscall(WAITPID, 3, pid, wstatus, options);
 	/*
 	 * on success, returns the process ID of the child whose state
 	 * has changed; if WNOHANG was specified and one or more child(ren)

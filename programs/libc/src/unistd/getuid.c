@@ -1,7 +1,6 @@
 
-#include "unistd.h"
-
-extern uid_t user_getuid(void);
+#include "signal.h"
+#include "user_syscall.h"
 
 /*
  * getuid - get user identity
@@ -11,5 +10,5 @@ uid_t getuid(void)
 	/*
 	 * This function is always successful.
 	 */
-	return user_getuid();
+	return _user_syscall(GETUID, 0);
 }

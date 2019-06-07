@@ -21,11 +21,10 @@ int main() {
 	printf("pid of process '%u'\n", pid);
 
 	// 10 is the number of SIGUSR
-    struct sigaction sa;
+	struct sigaction sa;
 
-    sa.sa_handler = hello_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_NODEFER; /* Restart functions if
+	sa.sa_handler = hello_signal;
+	sa.sa_flags = SA_NODEFER; /* Restart functions if
                                  interrupted by handler */
     if (sigaction(10, &sa, NULL) == -1) {
 		printf("sigaction failed\n");

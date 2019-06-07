@@ -1,8 +1,7 @@
 
+#include "user_syscall.h"
 #include "signal.h"
 
-extern int user_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
-extern int user_signal(int signum, sighandler_t handler);
 extern int errno;
 
 /*
@@ -10,8 +9,7 @@ extern int errno;
  */
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 {
-	int ret = user_sigaction(signum, act, oldact);
-
+	int ret = _user_syscall(SIGACTION, 3, signum, act, oldact);
 	/*
 	 * sigaction() returns 0 on success; on error, -1 is returned,
 	 * and errno is set to indicate the error.
@@ -30,7 +28,7 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
  */
 sighandler_t signal(int signum, sighandler_t handler)
 {
-	int ret = user_signal(signum, handler);
+	int ret = _user_syscall(SIGNAL, 2, signum, handler);
 	/*
 	 * signal() returns the previous value of the signal handler, or SIG_ERR on error.
 	 * In the event of an error, errno is set to indicate the cause.
