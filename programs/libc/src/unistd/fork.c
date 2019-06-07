@@ -18,6 +18,8 @@ pid_t fork()
 	if (ret < 0) {
 		errno = -(int)ret;
 		return -1;
+	} else {
+		errno = 0;
+		return ret;
 	}
-	return ret;
 }

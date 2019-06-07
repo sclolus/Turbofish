@@ -24,6 +24,7 @@ pid_t waitpid(pid_t pid, int *wstatus, int options)
 		errno = -p;
 		return -1;
 	} else {
+		errno = 0;
 		return p;
 	}
 }

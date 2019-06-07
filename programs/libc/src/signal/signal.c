@@ -20,6 +20,7 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 		errno = -ret;
 		return -1;
 	} else {
+		errno = 0;
 		return 0;
 	}
 }
@@ -39,6 +40,7 @@ sighandler_t signal(int signum, sighandler_t handler)
 		// TODO: Put SIG_ERR here
 		return (sighandler_t)-1;
 	} else {
+		errno = 0;
 		return handler;
 	}
 }

@@ -18,6 +18,7 @@ int kill(pid_t pid, int sig)
 		errno = -ret;
 		return -1;
 	} else {
+		errno = 0;
 		return 0;
 	}
 }

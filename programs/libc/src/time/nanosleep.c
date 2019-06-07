@@ -9,6 +9,8 @@ int nanosleep(const struct timespec *req, struct timespec *rem) {
 	if (ret < 0) {
 		errno = -ret;
 		return -1;
+	} else {
+		errno = 0;
+		return 0;
 	}
-	return 0;
 }

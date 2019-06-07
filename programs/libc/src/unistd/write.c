@@ -8,6 +8,8 @@ int write(int fd, const char *s, size_t len)
 	int ret = user_write(fd, s, len);
 	if (ret < 0) {
 		errno = -ret;
+	} else {
+		errno = 0;
 	}
 	return ret;
 }
