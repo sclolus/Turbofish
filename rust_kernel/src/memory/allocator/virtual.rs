@@ -217,12 +217,10 @@ impl VirtualPageAllocator {
     }
 }
 
-use crate::taskmaster::SysResult;
-
 use core::mem::size_of;
-use errno::Errno;
 
 #[derive(Debug)]
+/// Virtual Allocator Specialized for processus
 pub struct AddressSpace(VirtualPageAllocator);
 
 impl AddressSpace {
@@ -245,16 +243,16 @@ impl AddressSpace {
     }
 
     /// Check if a pointer given by user process is not bullshit
-    pub fn check_user_ptr<T>(&self, ptr: *const T) -> SysResult<()> {
+    pub fn check_user_ptr<T>(&self, ptr: *const T) -> Result<()> {
         let start_ptr = Virt(ptr as usize);
-        let end_ptr = Virt((ptr as usize).checked_add(size_of::<T>() - 1).ok_or::<Errno>(Errno::Efault)?);
+        let end_ptr = Virt((ptr as usize).checked_add(size_of::<T>() - 1).ok_or(MemoryError::BadAddr)?);
 
         Ok(self
             .0
             .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
                 entry.intersects((AllocFlags::USER_MEMORY).into())
             })
-            .map_err(|_| Errno::Efault)?)
+            .map_err(|_| MemoryError::BadAddr)?)
     }
 
     pub fn alloc<N>(&mut self, length: N, alloc_flags: AllocFlags) -> Result<*mut u8>

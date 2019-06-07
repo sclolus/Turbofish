@@ -36,6 +36,7 @@ pub enum MemoryError {
     NotAllocated,
     /// All conditions are not satisfied
     NotSatisfied,
+    BadAddr,
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
@@ -44,7 +45,10 @@ use errno::Errno;
 
 impl From<MemoryError> for Errno {
     // for the moment errno a memory error is Enomem
-    fn from(_e: MemoryError) -> Self {
-        Errno::Enomem
+    fn from(e: MemoryError) -> Self {
+        match e {
+            MemoryError::BadAddr => Errno::Efault,
+            _ => Errno::Enomem,
+        }
     }
 }
