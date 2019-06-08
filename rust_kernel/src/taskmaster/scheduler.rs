@@ -16,7 +16,6 @@ use crate::drivers::PIT0;
 use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 
-
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
 
@@ -34,6 +33,7 @@ extern "C" {
 
 pub type Pid = u32;
 
+/// Protect process again scheduler interruption
 #[inline(always)]
 pub fn unpreemptible() {
     unsafe {
@@ -41,16 +41,19 @@ pub fn unpreemptible() {
     }
 }
 
+/// Allow scheduler to interrupt process execution
 #[inline(always)]
 pub fn preemptible() {
     unsafe {
-        // Check if the Time to live of the current process is expired
-        // TODO: If scheduler is disable, the kernel will crash
-        // TODO: After Exit, the next process seems to be skiped !
-        if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
-            _auto_preempt();
-        } else {
-            crate::taskmaster::scheduler::_preemptible();
+        if INTERRUPTIBLE_LOCK == false {
+            // Check if the Time to live of the current process is expired
+            // TODO: If scheduler is disable, the kernel will crash
+            // TODO: After Exit, the next process seems to be skiped !
+            if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
+                _auto_preempt();
+            } else {
+                crate::taskmaster::scheduler::_preemptible();
+            }
         }
     }
 }
@@ -89,6 +92,26 @@ macro_rules! unpreemptible_context {
     }};
 }
 
+/// Inhibit the effect of the interruptible() function
+/// For safety reasons, this function must be used only in non-interruptible INTGATE
+#[inline(always)]
+pub fn lock_interruptible() {
+    unsafe {
+        INTERRUPTIBLE_LOCK = true;
+    }
+}
+
+/// Allow again the effect of the interruptible() function
+/// For safety reason, this function must be used only if the lock is TRUE
+#[inline(always)]
+pub fn unlock_interruptible() {
+    unsafe {
+        INTERRUPTIBLE_LOCK = false;
+    }
+}
+
+static mut INTERRUPTIBLE_LOCK: bool = false;
+
 pub fn auto_preempt() -> i32 {
     unsafe {
         SCHEDULER.force_unlock();
@@ -106,10 +129,23 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     scheduler.store_kernel_esp(kernel_esp);
 
     // Switch between processes
+    // let signal = scheduler.advance_next_process(1);
     scheduler.advance_next_process(1);
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context();
+
+    // After loading the new context:
+    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
+    // If ring0 process -> block temporary interruptible macro
+
+    // if let Some(HANDLED(_) = signal {
+    //     GET_RING(new_kernel_esp) == 3 {
+    //         APPLY_PENDING_SIGNAL(new_kernel_esp);
+    //     } else {
+    //         lock_interruptible();
+    //     }
+    // }
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -121,6 +157,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
+
     preemptible();
 }
 
@@ -200,6 +237,8 @@ impl Scheduler {
     }
 
     /// Advance until a next elligible process was found
+    // Must return signal option: Option<enum SIGTYPE>
+    // fn advance_next_process(&mut self, offset: usize) -> Option<enum SIGTYPE> {...}
     fn advance_next_process(&mut self, offset: usize) {
         let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
 
@@ -208,13 +247,27 @@ impl Scheduler {
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
             // Check if pending signal: Signal Can interrupt all except zombie
-            // if self.curr_process().has_pending_signals() && non-zombie
-            //     return;
+            // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
+            // Call immediately exit with status if DEADLY_SIGNAL (no handled OR unblockable)
+            // else create a signal var with option<Signum>
+
+            // let signal = CHECK_PENDING_SIGNAL() -> Option<enum SIGTYPE> {
+            // None, no signal or ignored internal
+            // Some(DEADLY(SIGNUM)) -> Internal call to exit(SIGNUM)
+            // Some(HANDLED(SIGNUM)) ->  continue...
             // }
             match &self.curr_process().process_state {
                 ProcessState::Running(_) => return,
                 ProcessState::Waiting(_, waiting_state) => match waiting_state {
                     WaitingState::Sleeping(time) => unsafe {
+                        // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
+
+                        // if let Some(HANDLED(SIGNUM)) = signal {
+                        //     self.curr_process_mut().set_running();
+                        //     self.curr_process_mut().set_return_value(-SIGNUM)
+                        //     return signal;
+                        // }
+
                         let now = _get_pit_time();
                         if now >= *time {
                             self.curr_process_mut().set_running();
@@ -223,6 +276,14 @@ impl Scheduler {
                         }
                     },
                     WaitingState::ChildDeath(pid_opt, _) => {
+                        // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
+
+                        // if let Some(HANDLED(SIGNUM)) = signal {
+                        //     self.curr_process_mut().set_running();
+                        //     self.curr_process_mut().set_return_value(-SIGNUM)
+                        //     return signal;
+                        // }
+
                         let zombie_pid = match pid_opt {
                             // In case of PID == None, Check is the at least one child is a zombie.
                             None => {
@@ -369,12 +430,24 @@ impl Scheduler {
 
         self.remove_curr_running();
 
+        // let signal = self.advance_next_process(0);
         self.advance_next_process(0);
         // Switch to the next process
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
 
             let new_kernel_esp = self.load_new_context();
+            // After loading the new context:
+            // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
+            // If ring0 process -> block temporary interruptible macro
+
+            // if let Some(HANDLED(_) = signal {
+            //     GET_RING(new_kernel_esp) == 3 {
+            //         APPLY_PENDING_SIGNAL(new_kernel_esp);
+            //     } else {
+            //         lock_interruptible();
+            //     }
+            // }
 
             _exit_resume(new_kernel_esp, pid, status);
         };
@@ -395,7 +468,7 @@ impl Scheduler {
             true // TODO: We don't have process groups yet so we can't implement the posix requirements
         }
 
-        let pred = |pid| { pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid) };
+        let pred = |pid| pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid);
         let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
 
         while !pred(pid) {

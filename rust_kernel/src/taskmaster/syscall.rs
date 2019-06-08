@@ -5,9 +5,9 @@ use super::SysResult;
 use super::process;
 use super::process::CpuState;
 use super::scheduler;
+use super::scheduler::unpreemptible;
 use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{unpreemptible};
 use super::task;
 
 mod mmap;
@@ -48,13 +48,13 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
         unsafe {
             unpreemptible_context!({
                 /*
-                print!(
-                "{:?} / {:?} : {}",
-                _get_pit_time(),
-                _get_process_end_time(),
-                core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
-            );
-                 */
+                    print!(
+                    "{:?} / {:?} : {}",
+                    _get_pit_time(),
+                    _get_process_end_time(),
+                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
+                );
+                     */
                 print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
             })
         }
@@ -115,6 +115,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
+        // 37 => sys_kill(ebx as Pid, ecx as u32),
         37 => sys_kill(ebx as Pid, ecx as u32, cpu_state),
         48 => sys_signal(ebx as u32, transmute(ecx as usize)),
         67 => sys_sigaction(ebx as i32, ecx as *const Sigaction, edx as *mut Sigaction),
@@ -135,6 +136,18 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         Ok(return_value) => return_value as u32,
         Err(errno) => (-(errno as i32)) as u32,
     };
+
+    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible()
+    // If ring0 process -> Can't happened normally
+
+    // uninterruptible();
+    // if GET_RING(cpu_state as u32) == 3 {
+    //     APPLY_PENDING_SIGNAL(cpu_state as u32) (must get curr_task from scheduler ...);
+    //     unlock_interruptible();
+    // } else {
+    //     panic!("Cannot apply signal after a syscall from ring0 process");
+    // }
+    // interruptible();
 }
 
 extern "C" {

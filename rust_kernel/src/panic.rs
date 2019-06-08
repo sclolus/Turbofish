@@ -1,6 +1,6 @@
 use crate::ffi::c_str;
-use crate::system::ExtendedRegisters;
 use crate::interrupts;
+use crate::system::ExtendedRegisters;
 use core::panic::PanicInfo;
 
 /*

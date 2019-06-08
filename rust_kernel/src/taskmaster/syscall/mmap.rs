@@ -37,8 +37,7 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
 
 /// Map files or devices into memory
 pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
-    unpreemptible_context!({ mmap(mmap_arg) })
-    .map(|(address, length)| {
+    unpreemptible_context!({ mmap(mmap_arg) }).map(|(address, length)| {
         unsafe {
             address.write_bytes(0, length);
         }

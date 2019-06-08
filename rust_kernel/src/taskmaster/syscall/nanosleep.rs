@@ -2,8 +2,8 @@
 
 use super::SysResult;
 
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt};
 use super::task::WaitingState;
 
 use errno::Errno;
