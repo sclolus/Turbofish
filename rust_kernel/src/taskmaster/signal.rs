@@ -10,6 +10,7 @@ use core::mem;
 use core::mem::{size_of, transmute};
 use core::ops::{Index, IndexMut};
 use errno::Errno;
+use raw_data::define_raw_data;
 
 extern "C" {
     static _trampoline: u8;
@@ -148,6 +149,19 @@ pub enum Sigaction {
 }
 
 #[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct StructSigaction {
+    pub sa_handler: usize,
+    // TODO: Must be an union with sa_handler
+    // sa_sigaction: extern "C" fn(int, siginfo_t *, void *),
+    pub sa_mask: SaMask,
+    pub sa_flags: u32,
+    pub sa_restorer: usize,
+}
+
+define_raw_data!(SaMask, 128);
+
+#[derive(Copy, Clone, Debug)]
 pub struct SignalActions(pub [Sigaction; 32]);
 
 impl IndexMut<Signum> for SignalActions {
@@ -164,6 +178,12 @@ impl Index<Signum> for SignalActions {
 }
 
 #[derive(Debug)]
+pub enum SignalStatus {
+    Handled(Signum),
+    Deadly(Signum),
+}
+
+#[derive(Debug)]
 pub struct SignalInterface {
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
@@ -173,6 +193,25 @@ pub struct SignalInterface {
 impl SignalInterface {
     pub fn new() -> Self {
         Self { signal_actions: SignalActions([Sigaction::SigDfl; 32]), signal_queue: VecDeque::new(), signaled: false }
+    }
+
+    pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
+        None
+    }
+
+    pub fn apply_pending_signals(&mut self, _process_context_ptr: u32) -> Option<SignalStatus> {
+        None
+    }
+
+    pub fn terminate_pending_signal(&mut self, _process_context_ptr: u32) {}
+
+    //pub fn new_handler(&mut self, _signum: u32, _handler: extern "C" fn(i32)) -> SysResult<u32> {
+    pub fn new_handler(&mut self, _signum: u32, _sigaction: &StructSigaction) -> SysResult<u32> {
+        Ok(0)
+    }
+
+    pub fn new_signal(&mut self, signum: u32) -> SysResult<u32> {
+        Ok(0)
     }
 
     pub fn is_signaled(&self) -> bool {
@@ -316,6 +355,7 @@ impl SignalInterface {
         }
     }
 
+    /*
     /// check if there is pending sigals, and tricks the stack to execute it on return
     #[allow(dead_code)]
     pub fn check_pending_signals(&mut self, kernel_esp: u32, pid: Pid) {
@@ -351,4 +391,5 @@ impl SignalInterface {
             }
         }
     }
+    */
 }

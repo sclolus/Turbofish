@@ -33,14 +33,18 @@ pub struct CpuState {
     pub stack_reserved: u32,
     /// current registers
     pub registers: BaseRegisters,
-    /// current data DS
-    pub ds: u32,
-    /// current data ES
-    pub es: u32,
-    /// current data FS
-    pub fs: u32,
     /// current data GS
     pub gs: u32,
+    /// current data FS
+    pub fs: u32,
+    /// current data ES
+    pub es: u32,
+    /// current data DS
+    pub ds: u32,
+    /// the number of the cpu isr (for cpu exceptions)
+    pub cpu_isr_reserved: u32,
+    /// error code reserved (for some cpu exceptions)
+    pub err_code_reserved: u32,
     /// current eip
     pub eip: u32,
     /// current CS
@@ -55,16 +59,16 @@ pub struct CpuState {
 
 use core::fmt::{self, Debug};
 
+/// Debug boilerplate for CpuState:
+/// SS & ESP may be out of kernel_stack bound, display it manually after ensure your from ring3
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl Debug for CpuState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CpuState {{stack_reserved: 0x{:X?}, registers: {:#X?},
-ds: 0x{:X?}, es: 0x{:X?}, fs: 0x{:X?}, gs: 0x{:X?},
-eip: 0x{:X?}, cs: 0x{:X?}, eflags: {:X?} esp: 0x{:X?}, ss: 0x{:X?},}} ",
-            self.stack_reserved, self.registers,
-            self.ds as u8, self.es as u8, self.fs as u8, self.gs as u8,
-            self.eip, self.cs as u8, self.eflags, self.esp, self.ss as u8
-        )
+        write!(f, "eflags: {:X?} cs: 0x{:X?} eip: 0x{:X?} err_code: 0x{:X?} isr: {:?}
+ds: 0x{:X?} es: 0x{:X?} fs: 0x{:X?} gs: 0x{:X?}
+{:X?}",
+               self.eflags, self.cs as u8, self.eip, self.err_code_reserved, self.cpu_isr_reserved,
+               self.ds as u8, self.es as u8, self.fs as u8, self.gs as u8, self.registers)
     }
 }
 
@@ -238,6 +242,8 @@ impl Process for UserProcess {
             es: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
             fs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
             gs: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
+            cpu_isr_reserved: 0,
+            err_code_reserved: 0,
             eip,
             cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
             eflags: Eflags::get_eflags().set_interrupt_flag(true), // TODO: Change that get_eflags is for sure an error
@@ -346,6 +352,8 @@ impl Process for KernelProcess {
             es: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
             fs: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
             gs: Self::RING0_DATA_SEGMENT + Self::RING0_DPL,
+            cpu_isr_reserved: 0,
+            err_code_reserved: 0,
             eip,
             cs: Self::RING0_CODE_SEGMENT + Self::RING0_DPL,
             eflags: Eflags::get_eflags().set_interrupt_flag(true),
@@ -375,4 +383,10 @@ impl Process for KernelProcess {
     fn fork(&self, _kernel_esp: u32) -> SysResult<Box<Self>> {
         unimplemented!();
     }
+}
+
+/// Return the current ring relative to cpu_state: context_ptr must be right
+pub unsafe fn get_ring(context_ptr: u32) -> u32 {
+    let cpu_state: *const CpuState = context_ptr as *const CpuState;
+    (*cpu_state).cs & 0b11
 }

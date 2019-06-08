@@ -1,6 +1,7 @@
 //! this file contains the scheduler description
 
-use super::process::{KernelProcess, Process, UserProcess};
+use super::process::{get_ring, KernelProcess, Process, UserProcess};
+use super::signal::SignalStatus;
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -45,7 +46,7 @@ pub fn unpreemptible() {
 #[inline(always)]
 pub fn preemptible() {
     unsafe {
-        if INTERRUPTIBLE_LOCK == false {
+        if SIGNAL_LOCK == false {
             // Check if the Time to live of the current process is expired
             // TODO: If scheduler is disable, the kernel will crash
             // TODO: After Exit, the next process seems to be skiped !
@@ -97,7 +98,7 @@ macro_rules! unpreemptible_context {
 #[inline(always)]
 pub fn lock_interruptible() {
     unsafe {
-        INTERRUPTIBLE_LOCK = true;
+        SIGNAL_LOCK = true;
     }
 }
 
@@ -106,16 +107,23 @@ pub fn lock_interruptible() {
 #[inline(always)]
 pub fn unlock_interruptible() {
     unsafe {
-        INTERRUPTIBLE_LOCK = false;
+        SIGNAL_LOCK = false;
     }
 }
 
-static mut INTERRUPTIBLE_LOCK: bool = false;
+/// For signal from RING0, special lock interruptible state while signal(s) is/are not applied
+pub static mut SIGNAL_LOCK: bool = false;
 
+/// Auto-preempt will cause schedule into the next process
+/// In some critical cases like signal, avoid this switch
 pub fn auto_preempt() -> i32 {
     unsafe {
         SCHEDULER.force_unlock();
-        _auto_preempt()
+        if SIGNAL_LOCK == true {
+            -1
+        } else {
+            _auto_preempt()
+        }
     }
 }
 
@@ -129,23 +137,15 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     scheduler.store_kernel_esp(kernel_esp);
 
     // Switch between processes
-    // let signal = scheduler.advance_next_process(1);
-    scheduler.advance_next_process(1);
+    let signal = scheduler.advance_next_process(1);
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context();
 
-    // After loading the new context:
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
-    // If ring0 process -> block temporary interruptible macro
-
-    // if let Some(HANDLED(_) = signal {
-    //     GET_RING(new_kernel_esp) == 3 {
-    //         APPLY_PENDING_SIGNAL(new_kernel_esp);
-    //     } else {
-    //         lock_interruptible();
-    //     }
-    // }
+    // Apply signal effects
+    if let Some(SignalStatus::Handled(_signum)) | Some(SignalStatus::Deadly(_signum)) = signal {
+        scheduler.apply_pending_signals(new_kernel_esp);
+    }
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -237,9 +237,7 @@ impl Scheduler {
     }
 
     /// Advance until a next elligible process was found
-    // Must return signal option: Option<enum SIGTYPE>
-    // fn advance_next_process(&mut self, offset: usize) -> Option<enum SIGTYPE> {...}
-    fn advance_next_process(&mut self, offset: usize) {
+    fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
         let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
 
         for idx in next_process_index..next_process_index + self.running_process.len() {
@@ -248,41 +246,34 @@ impl Scheduler {
 
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
-            // Call immediately exit with status if DEADLY_SIGNAL (no handled OR unblockable)
-            // else create a signal var with option<Signum>
+            // else create a signal var with option<SignalStatus>
+            let signal = self.curr_process_mut().signal.check_pending_signals();
 
-            // let signal = CHECK_PENDING_SIGNAL() -> Option<enum SIGTYPE> {
-            // None, no signal or ignored internal
-            // Some(DEADLY(SIGNUM)) -> Internal call to exit(SIGNUM)
-            // Some(HANDLED(SIGNUM)) ->  continue...
-            // }
             match &self.curr_process().process_state {
-                ProcessState::Running(_) => return,
+                ProcessState::Running(_) => return signal,
                 ProcessState::Waiting(_, waiting_state) => match waiting_state {
                     WaitingState::Sleeping(time) => unsafe {
                         // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-
-                        // if let Some(HANDLED(SIGNUM)) = signal {
-                        //     self.curr_process_mut().set_running();
-                        //     self.curr_process_mut().set_return_value(-SIGNUM)
-                        //     return signal;
-                        // }
+                        if let Some(SignalStatus::Handled(signum)) | Some(SignalStatus::Deadly(signum)) = signal {
+                            self.curr_process_mut().set_running();
+                            self.curr_process_mut().set_return_value(signum as i32 * -1);
+                            return signal;
+                        }
 
                         let now = _get_pit_time();
                         if now >= *time {
                             self.curr_process_mut().set_running();
                             self.curr_process_mut().set_return_value(0);
-                            return;
+                            return None;
                         }
                     },
                     WaitingState::ChildDeath(pid_opt, _) => {
                         // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-
-                        // if let Some(HANDLED(SIGNUM)) = signal {
-                        //     self.curr_process_mut().set_running();
-                        //     self.curr_process_mut().set_return_value(-SIGNUM)
-                        //     return signal;
-                        // }
+                        if let Some(SignalStatus::Handled(signum)) | Some(SignalStatus::Deadly(signum)) = signal {
+                            self.curr_process_mut().set_running();
+                            self.curr_process_mut().set_return_value(signum as i32 * -1);
+                            return signal;
+                        }
 
                         let zombie_pid = match pid_opt {
                             // In case of PID == None, Check is the at least one child is a zombie.
@@ -318,7 +309,7 @@ impl Scheduler {
                                     self.curr_process_mut()
                                         .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
                                     self.curr_process_mut().set_return_value(0);
-                                    return;
+                                    return None;
                                 }
                                 _ => panic!("A zombie was found just before, but there is no zombie here"),
                             };
@@ -329,6 +320,7 @@ impl Scheduler {
             };
         }
         self.idle_mode = true;
+        None
     }
 
     /// Prepare the context for the new illigible process
@@ -430,24 +422,18 @@ impl Scheduler {
 
         self.remove_curr_running();
 
-        // let signal = self.advance_next_process(0);
-        self.advance_next_process(0);
+        let signal = self.advance_next_process(0);
+
         // Switch to the next process
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
 
             let new_kernel_esp = self.load_new_context();
-            // After loading the new context:
-            // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
-            // If ring0 process -> block temporary interruptible macro
 
-            // if let Some(HANDLED(_) = signal {
-            //     GET_RING(new_kernel_esp) == 3 {
-            //         APPLY_PENDING_SIGNAL(new_kernel_esp);
-            //     } else {
-            //         lock_interruptible();
-            //     }
-            // }
+            // Apply signal effects
+            if let Some(SignalStatus::Handled(_signum)) | Some(SignalStatus::Deadly(_signum)) = signal {
+                self.apply_pending_signals(new_kernel_esp);
+            }
 
             _exit_resume(new_kernel_esp, pid, status);
         };
@@ -475,6 +461,25 @@ impl Scheduler {
             pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
         }
         pid
+    }
+
+    // After loading the new context:
+    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
+    // If ring0 process -> block temporary interruptible macro
+    /// This function apply signal execution. Caution: Must be private
+    fn apply_pending_signals(&mut self, process_context_ptr: u32) {
+        let ring = unsafe { get_ring(process_context_ptr) };
+
+        if ring == 3 {
+            let signal = self.curr_process_mut().signal.apply_pending_signals(process_context_ptr);
+            if let Some(SignalStatus::Deadly(signum)) = signal {
+                self.exit(signum as i32 * -1);
+            }
+        } else {
+            unsafe {
+                SIGNAL_LOCK = true;
+            }
+        }
     }
 }
 

@@ -147,7 +147,7 @@ fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
-fn qemu_check() {
+pub fn qemu_check() {
     #[cfg(feature = "exit-on-panic")]
     {
         // for integration test

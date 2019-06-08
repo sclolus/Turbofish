@@ -1,5 +1,6 @@
 //! This file contains the task manager
 
+mod cpu_isr;
 mod process;
 #[macro_use]
 mod scheduler;
@@ -30,6 +31,11 @@ pub enum TaskMode {
 // Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start() -> ! {
+    // Reassign all cpu exceptions for taskmaster
+    unsafe {
+        cpu_isr::reassign_cpu_exceptions();
+    }
+
     // Initialize Syscall system
     syscall::init();
 
@@ -46,7 +52,7 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),

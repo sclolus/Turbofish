@@ -3,66 +3,72 @@
 use super::SysResult;
 
 use super::process::CpuState;
-use super::scheduler::Pid;
-use super::scheduler::SCHEDULER;
+use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
+use super::signal::{SignalStatus, StructSigaction};
 
 use errno::Errno;
 
 #[repr(C)]
 pub struct Sigaction {}
 
-pub unsafe fn sys_sigaction(_signum: i32, _act: *const Sigaction, _old_act: *mut Sigaction) -> SysResult<u32> {
+/// Register a new handler for a specified signum with sigaction params
+pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *mut StructSigaction) -> SysResult<u32> {
     unpreemptible_context!({
-        // CHECK PTRs
-        // NEW_HANDLER(SIGNUM, other sigaction stuff)
+        let mut scheduler = SCHEDULER.lock();
+        let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
 
-        unimplemented!();
+        // Check if pointer exists in user virtual address space
+        v.check_user_ptr::<StructSigaction>(act)?;
+        if old_act as usize != 0 {
+            v.check_user_ptr::<StructSigaction>(old_act)?;
+        }
+        // TODO: Use old_act
+        scheduler.curr_process_mut().signal.new_handler(signum, act.as_ref().expect("Null PTR"))
     })
 }
 
-// pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
-pub unsafe fn sys_kill(pid: Pid, signum: u32, cpu_state: *mut CpuState) -> SysResult<u32> {
+/// Send a signal to a specified PID process
+pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
     unpreemptible_context!({
-        // Register signal for PID process
-        // scheduler.get_task_by_pid.NEW_SIGNAL(SIGNUM)
-
-        // if Pid == my_pid (auto-sodo case) {
-        //     let signal = CHECK_PENDING_SIGNAL() -> Option<enum SIGTYPE> {
-        //     None, no signal or ignored internal
-        //     Some(DEADLY(SIGNUM)) -> Scheduler call to exit(SIGNUM)
-        //     Some(HANDLED(SIGNUM)) -> {
-        //         lock_interruptibe();
-        //         continue...
-        //     }
-        // }
-
         let mut scheduler = SCHEDULER.lock();
-        let curr_process_pid = scheduler.curr_process_pid();
+
         let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
-        let res = task.signal.kill(signum)?;
-        // if this is the current process, deliver the signal
-        if res == 0 && pid == curr_process_pid {
-            (*cpu_state).registers.eax = res;
-            task.signal.has_pending_signals();
+        let res = task.signal.new_signal(signum)?;
+
+        let curr_process_pid = scheduler.curr_process_pid();
+        // auto-sodo mode
+        if curr_process_pid == pid {
+            let signal = scheduler.curr_process_mut().signal.check_pending_signals();
+            if let Some(SignalStatus::Deadly(_signum)) | Some(SignalStatus::Handled(_signum)) = signal {
+                SIGNAL_LOCK = true;
+            }
         }
         Ok(res)
     })
 }
 
+/// Register a new handler for a specified signum
 pub unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
     unpreemptible_context!({
-        // NEW_HANDLER(SIGNUM, other sigaction stuff)
+        let s: StructSigaction = StructSigaction {
+            sa_handler: handler as usize,
+            sa_mask: Default::default(),
+            sa_flags: 0, // TODO: Default for sys_signal is SA_RESTART
+            sa_restorer: 0,
+        };
 
-        SCHEDULER.lock().curr_process_mut().signal.signal(signum, handler)
+        let mut scheduler = SCHEDULER.lock();
+        scheduler.curr_process_mut().signal.new_handler(signum, &s)
     })
 }
 
+/// Must know who is the last pending signal
+/// Decrease signal frame and POP signal in list
+/// Terminate the last pending signal
 pub unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
     unpreemptible_context!({
-        // Must know who is the last pending signal
-        // Decrease signal frame and POP signal in list
-        // TERMINATE_PENDING_SIGNAL()
-
-        SCHEDULER.lock().curr_process_mut().signal.sigreturn(cpu_state)
+        let mut scheduler = SCHEDULER.lock();
+        scheduler.curr_process_mut().signal.terminate_pending_signal(cpu_state as u32);
+        Ok((*cpu_state).registers.eax)
     })
 }
