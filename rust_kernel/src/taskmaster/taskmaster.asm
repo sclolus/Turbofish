@@ -1,6 +1,6 @@
 [BITS 32]
 
-extern scheduler_interrupt_handler
+extern syscall_interrupt_handler
 
 segment .text
 
@@ -32,8 +32,10 @@ segment .text
 ;; +--------+
 ;; | 0x0    |
 ;; +--------+ ---> pointer to CpuState Structure (kernel_esp)
-global _schedule_next
-_schedule_next:
+
+global _isr_syscall
+_isr_syscall:
+
 %macro STORE_CONTEXT 0
 	; Generate the struct CpuState on the stack :)
 	push ds
@@ -56,12 +58,10 @@ _schedule_next:
 	push esp
 	mov ebp, esp                ; set the backtrace endpoint
 %endmacro
-	STORE_CONTEXT
 
-	call scheduler_interrupt_handler
-	; Set the new stack pointer
-	mov esp, eax
-schedule_return:
+	STORE_CONTEXT
+	call syscall_interrupt_handler
+	add esp, 4
 
 %macro LOAD_CONTEXT 0
 	add esp, 4                  ; skip stack reserved field
@@ -73,6 +73,37 @@ schedule_return:
 	pop es
 	pop ds
 %endmacro
+
+	LOAD_CONTEXT
+	; Return contains now new registers, new eflags, new esp and new eip
+	iret
+
+global _start_process
+_start_process:
+	push ebp
+	mov ebp, esp
+
+	; Temporary disable interrupts
+	cli
+
+	; Follow the kernel_esp pointer (pass to breaking stack context)
+	mov esp, [ebp + 8]
+
+	LOAD_CONTEXT
+	; Return contains now new registers, new eflags, new esp and new eip
+	iret
+
+extern scheduler_interrupt_handler
+
+global _schedule_next
+_schedule_next:
+	STORE_CONTEXT
+
+	call scheduler_interrupt_handler
+	; Set the new stack pointer
+	mov esp, eax
+schedule_return:
+
 	LOAD_CONTEXT
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
@@ -88,7 +119,9 @@ _schedule_force_preempt:
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
+
 	LOAD_CONTEXT
+	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
 ; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)

@@ -66,13 +66,13 @@ VPATH += medias
 SRC_ASM_KERNEL += paging
 VPATH += src/memory/mmu
 
-SRC_ASM_KERNEL += start_process
-VPATH += src/taskmaster/process
+SRC_ASM_KERNEL += taskmaster
+VPATH += src/taskmaster
 
-SRC_ASM_KERNEL += switch_process auto_preempt
+SRC_ASM_KERNEL += auto_preempt
 VPATH += src/taskmaster/scheduler
 
-SRC_ASM_KERNEL += syscall_isr sys_test
+SRC_ASM_KERNEL += sys_test
 VPATH += src/taskmaster/syscall
 
 SRC_ASM_KERNEL += trampoline
