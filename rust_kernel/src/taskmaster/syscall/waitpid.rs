@@ -10,7 +10,7 @@ use errno::Errno;
 fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+    let v = &mut scheduler.current_task_mut().unwrap_running_mut().virtual_allocator;
 
     // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
     // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
@@ -34,7 +34,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         return Err(Errno::Einval);
     }
 
-    let task = scheduler.curr_process();
+    let task = scheduler.current_task();
 
     // Check if the child is already dead: Return his PID if true or NONE
     // Errno: Return ECHILD if not child or child PID specified is wrong
@@ -80,7 +80,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             }
             // fflush zombie
             scheduler.all_process.remove(&pid).expect("Pid must be here");
-            let task = scheduler.curr_process_mut();
+            let task = scheduler.current_task_mut();
             task.child.remove_item(&pid).unwrap();
             // Return immediatly
             Ok(pid)
@@ -88,7 +88,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
-                .curr_process_mut()
+                .current_task_mut()
                 .set_waiting(WaitingState::ChildDeath(if pid < 0 { None } else { Some(pid as u32) }, 0));
 
             // Auto-preempt calling
@@ -100,10 +100,10 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
             if ret < 0 {
                 // Reset as running
-                // scheduler.curr_process_mut().set_running();
+                // scheduler.current_task_mut().set_running();
                 return Err(Errno::Eintr);
             } else {
-                let child_pid = match &scheduler.curr_process().process_state {
+                let child_pid = match &scheduler.current_task().process_state {
                     // Read the fields of the WaintingState::ChildDeath(x, y)
                     ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
                         // Set wstatus pointer is not null by reading y
@@ -119,8 +119,8 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     _ => panic!("WTF"),
                 };
                 // Set process as Running, Set return readen value in Ok(x)
-                scheduler.curr_process_mut().set_running();
-                let task = scheduler.curr_process_mut();
+                scheduler.current_task_mut().set_running();
+                let task = scheduler.current_task_mut();
                 task.child.remove_item(&child_pid).unwrap();
                 Ok(child_pid)
             }
@@ -134,7 +134,7 @@ pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> 
 
 // TODO: Solve Gloubiboulga
 // pub fn wait(&mut self) -> SysResult<Pid> {
-//     let mut p = self.all_process.remove(&self.curr_process_pid).unwrap();
+//     let mut p = self.all_process.remove(&self.current_task_pid).unwrap();
 //     if p.child.is_empty() {
 //         return Err(Errno::Echild);
 //     }
@@ -142,7 +142,7 @@ pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> 
 //         if let None = p.child.iter().find(|c| self.all_process.get(c).unwrap().is_zombie()) {
 //         p.set_waiting(WaitingState::ChildDeath(None));
 //         // dbg!("set waiting");
-//         self.all_process.insert(self.curr_process_pid, p);
+//         self.all_process.insert(self.current_task_pid, p);
 //         self.remove_curr_running();
 //         auto_preempt();
 //         dbg!("return to live after schedule");
@@ -153,9 +153,9 @@ pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> 
 // }
 
 // On exit() fn
-// eprintln!("exiting {:?}", self.curr_process());
+// eprintln!("exiting {:?}", self.current_task());
 // Get the current process's PID
-// let p = self.curr_process();
+// let p = self.current_task();
 // if let Some(father_pid) = p.parent {
 //     let father = self.all_process.get_mut(&father_pid).expect("process parent should exist");
 //     if father.is_waiting() {

@@ -3,12 +3,12 @@
 use super::SysResult;
 
 use super::process;
-use super::process::{get_ring, CpuState};
+use super::process::CpuState;
 use super::scheduler;
 use super::scheduler::unpreemptible;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
 use super::signal;
-use super::signal::{SignalStatus, StructSigaction};
+use super::signal::StructSigaction;
 use super::task;
 
 mod mmap;
@@ -71,12 +71,12 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
     unpreemptible();
-    SCHEDULER.lock().exit(status);
+    SCHEDULER.lock().current_task_exit(status);
 }
 
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
-    unpreemptible_context!({ SCHEDULER.lock().fork(kernel_esp) })
+    unpreemptible_context!({ SCHEDULER.lock().current_task_fork(kernel_esp) })
 }
 
 /// Preemptif coherency checker
@@ -89,7 +89,7 @@ unsafe fn sys_test() -> SysResult<u32> {
 }
 
 unsafe fn sys_getpid() -> SysResult<u32> {
-    Ok(unpreemptible_context!({ SCHEDULER.lock().curr_process_pid() }))
+    Ok(unpreemptible_context!({ SCHEDULER.lock().current_task_pid() }))
 }
 
 /// Do a stack overflow on the kernel stack
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         if SIGNAL_LOCK {
             SIGNAL_LOCK = false;
             let mut scheduler = SCHEDULER.lock();
-            let signal = scheduler.apply_pending_signals(cpu_state as u32);
+            scheduler.current_task_apply_pending_signals(cpu_state as u32);
         }
     })
 }

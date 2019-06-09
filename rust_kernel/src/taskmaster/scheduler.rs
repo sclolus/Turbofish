@@ -172,9 +172,9 @@ pub struct Scheduler {
     next_pid: AtomicU32,
 
     /// index in the vector of the current running process
-    curr_process_pid: Pid,
+    current_task_pid: Pid,
     /// current process index in the running_process vector
-    curr_process_index: usize,
+    current_task_index: usize,
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
@@ -191,8 +191,8 @@ impl Scheduler {
             running_process: Vec::new(),
             all_process: HashMap::new(),
             next_pid: AtomicU32::new(1),
-            curr_process_index: 0,
-            curr_process_pid: 1,
+            current_task_index: 0,
+            current_task_pid: 1,
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
@@ -227,56 +227,56 @@ impl Scheduler {
                 self.idle_mode = false;
             }
             false => {
-                self.curr_process_mut().unwrap_running_mut().kernel_esp = kernel_esp;
+                self.current_task_mut().unwrap_running_mut().kernel_esp = kernel_esp;
             }
         }
     }
 
     /// Advance until a next elligible process was found
     fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
-        let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
+        let next_process_index = (self.current_task_index + offset) % self.running_process.len();
 
         for idx in 0..self.running_process.len() {
-            self.curr_process_index = (next_process_index + idx) % self.running_process.len();
-            self.curr_process_pid = self.running_process[self.curr_process_index];
+            self.current_task_index = (next_process_index + idx) % self.running_process.len();
+            self.current_task_pid = self.running_process[self.current_task_index];
 
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
-            let p = self.curr_process_mut();
+            let p = self.current_task_mut();
             let signal = p.signal.check_pending_signals();
 
-            match &self.curr_process().process_state {
+            match &self.current_task().process_state {
                 ProcessState::Running(_) => return signal,
                 ProcessState::Waiting(_, waiting_state) => {
                     match waiting_state {
                         WaitingState::Sleeping(time) => unsafe {
                             // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
                             if signal.is_some() {
-                                self.curr_process_mut().set_running();
-                                self.curr_process_mut().set_return_value(-(Errno::Eintr as i32));
+                                self.current_task_mut().set_running();
+                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
                                 return signal;
                             }
 
                             let now = _get_pit_time();
                             if now >= *time {
-                                self.curr_process_mut().set_running();
-                                self.curr_process_mut().set_return_value(0);
+                                self.current_task_mut().set_running();
+                                self.current_task_mut().set_return_value(0);
                                 return None;
                             }
                         },
                         WaitingState::ChildDeath(pid_opt, _) => {
                             // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
                             if signal.is_some() {
-                                self.curr_process_mut().set_running();
-                                self.curr_process_mut().set_return_value(-(Errno::Eintr as i32));
+                                self.current_task_mut().set_running();
+                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
                                 return signal;
                             }
 
                             let zombie_pid = match pid_opt {
                                 // In case of PID == None, Check is the at least one child is a zombie.
                                 None => {
-                                    if let Some(&zombie_pid) = self.curr_process().child.iter().find(|current_pid| {
+                                    if let Some(&zombie_pid) = self.current_task().child.iter().find(|current_pid| {
                                         self.all_process.get(current_pid).expect("Hashmap corrupted").is_zombie()
                                     }) {
                                         Some(zombie_pid)
@@ -287,7 +287,7 @@ impl Scheduler {
                                 // In case of PID >= 0, Check is specified child PID is a zombie.
                                 Some(pid) => {
                                     if let Some(elem) = self
-                                        .curr_process()
+                                        .current_task()
                                         .child
                                         .iter()
                                         .find(|&&current_pid| current_pid == *pid as u32)
@@ -307,9 +307,9 @@ impl Scheduler {
                                 let child = self.all_process.get(&pid).expect("Hashmap corrupted");
                                 match child.process_state {
                                     ProcessState::Zombie(status) => {
-                                        self.curr_process_mut()
+                                        self.current_task_mut()
                                             .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
-                                        self.curr_process_mut().set_return_value(0);
+                                        self.current_task_mut().set_return_value(0);
                                         return None;
                                     }
                                     _ => panic!("A zombie was found just before, but there is no zombie here"),
@@ -333,7 +333,7 @@ impl Scheduler {
                 process.expect("No idle mode process").kernel_esp
             }
             false => {
-                let p = self.curr_process_mut();
+                let p = self.current_task_mut();
 
                 let process = p.unwrap_running();
                 unsafe {
@@ -346,7 +346,7 @@ impl Scheduler {
                 let ring = unsafe { get_ring(kernel_esp) };
                 if signal.is_some() {
                     if ring == 3 {
-                        self.apply_pending_signals(kernel_esp)
+                        self.current_task_apply_pending_signals(kernel_esp)
                     } else {
                         unsafe {
                             SIGNAL_LOCK = true;
@@ -360,18 +360,18 @@ impl Scheduler {
     }
 
     /// Get current process pid
-    pub fn curr_process_pid(&self) -> Pid {
-        self.curr_process_pid
+    pub fn current_task_pid(&self) -> Pid {
+        self.current_task_pid
     }
 
     /// Get current process
-    pub fn curr_process(&self) -> &Task {
-        self.get_process(self.curr_process_pid).unwrap()
+    pub fn current_task(&self) -> &Task {
+        self.get_process(self.current_task_pid).unwrap()
     }
 
     /// Get current process mutably
-    pub fn curr_process_mut(&mut self) -> &mut Task {
-        self.get_process_mut(self.curr_process_pid).unwrap()
+    pub fn current_task_mut(&mut self) -> &mut Task {
+        self.get_process_mut(self.current_task_pid).unwrap()
     }
 
     pub fn get_process(&self, pid: Pid) -> Option<&Task> {
@@ -385,7 +385,7 @@ impl Scheduler {
     /// Remove the current running process
     fn remove_curr_running(&mut self) {
         // Remove process from the running process list
-        self.running_process.remove(self.curr_process_index);
+        self.running_process.remove(self.current_task_index);
         // Check if there is altmost one process
         if self.running_process.len() == 0 {
             eprintln!("no more process !");
@@ -394,20 +394,20 @@ impl Scheduler {
     }
 
     /// Perform a fork
-    pub fn fork(&mut self, kernel_esp: u32) -> SysResult<u32> {
+    pub fn current_task_fork(&mut self, kernel_esp: u32) -> SysResult<u32> {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
-        let father_pid = self.curr_process_pid;
-        let curr_process = self.curr_process_mut();
+        let father_pid = self.current_task_pid;
+        let current_task = self.current_task_mut();
 
         // try reserve a place for child pid
-        curr_process.child.try_reserve(1)?;
-        let child = curr_process.unwrap_running().fork(kernel_esp)?;
+        current_task.child.try_reserve(1)?;
+        let child = current_task.unwrap_running().fork(kernel_esp)?;
         let child_pid = self.add_user_process(Some(father_pid), child)?;
 
-        self.curr_process_mut().child.push(child_pid);
-        // dbg!(self.curr_process());
+        self.current_task_mut().child.push(child_pid);
+        // dbg!(self.current_task());
 
         Ok(child_pid)
     }
@@ -416,10 +416,10 @@ impl Scheduler {
 
     // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
-    pub fn exit(&mut self, status: i32) -> ! {
+    pub fn current_task_exit(&mut self, status: i32) -> ! {
         println!(
             "exit called for process with PID: {:?} STATUS: {:?}",
-            self.running_process[self.curr_process_index], status
+            self.running_process[self.current_task_index], status
         );
 
         match status {
@@ -433,14 +433,14 @@ impl Scheduler {
             if let ProcessState::Zombie(_) = reaper.process_state {
                 eprintln!("... the reaper is a zombie ... it is worring ...");
             }
-            while let Some(child_pid) = self.curr_process_mut().child.pop() {
+            while let Some(child_pid) = self.current_task_mut().child.pop() {
                 self.all_process.get_mut(&child_pid).expect("Hashmap corrupted").parent = Some(Self::REAPER_PID);
             }
         } else {
             eprintln!("... the reaper is die ... RIP ...");
         }
 
-        let pid = self.curr_process_pid;
+        let pid = self.current_task_pid;
 
         self.remove_curr_running();
 
@@ -481,11 +481,11 @@ impl Scheduler {
     }
 
     /// apply pending signal, must be called when process is in ring 3
-    pub fn apply_pending_signals(&mut self, process_context_ptr: u32) {
+    pub fn current_task_apply_pending_signals(&mut self, process_context_ptr: u32) {
         debug_assert_eq!(unsafe { get_ring(process_context_ptr as u32) }, 3, "Cannot apply signal from ring0 process");
-        let signal = self.curr_process_mut().signal.apply_pending_signals(process_context_ptr);
+        let signal = self.current_task_mut().signal.apply_pending_signals(process_context_ptr);
         if let Some(SignalStatus::Deadly(signum)) = signal {
-            self.exit(signum as i32 + 128);
+            self.current_task_exit(signum as i32 + 128);
         }
     }
 }
@@ -526,7 +526,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     scheduler.time_interval = t;
 
     // Initialise the first process and get a reference on it
-    let p = scheduler.curr_process_mut().unwrap_running_mut();
+    let p = scheduler.current_task_mut().unwrap_running_mut();
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

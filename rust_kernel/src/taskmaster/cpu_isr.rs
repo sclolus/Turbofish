@@ -2,7 +2,7 @@
 
 use super::process::CpuState;
 use super::scheduler::{SCHEDULER, SIGNAL_LOCK};
-use super::signal::{SignalStatus, Signum};
+use super::signal::Signum;
 use super::syscall::signalfn::sys_kill;
 
 use core::ffi::c_void;
@@ -128,19 +128,19 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         eprintln!("Cannot display backtrace from a non-kernel routine !");
 
         // Send a kill signum to the current process: kernel-sodo mode
-        let curr_process_pid = SCHEDULER.lock().curr_process_pid();
+        let current_task_pid = SCHEDULER.lock().current_task_pid();
         let _res = match (*cpu_state).cpu_isr_reserved {
-            14 => sys_kill(curr_process_pid, Signum::Sigsegv as u32),
+            14 => sys_kill(current_task_pid, Signum::Sigsegv as u32),
             _ => {
                 eprintln!("{}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1);
-                sys_kill(curr_process_pid, Signum::Sigkill as u32)
+                sys_kill(current_task_pid, Signum::Sigkill as u32)
             }
         };
 
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
         if SIGNAL_LOCK == true {
             SIGNAL_LOCK = false;
-            SCHEDULER.lock().apply_pending_signals(cpu_state as u32);
+            SCHEDULER.lock().current_task_apply_pending_signals(cpu_state as u32);
         }
         // TODO: Remove that later
         loop {}
