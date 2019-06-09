@@ -8,7 +8,8 @@ use super::syscall::signalfn::sys_kill;
 use core::ffi::c_void;
 
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::panic::{qemu_check, trace_back};
+use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::panic::{get_page_fault_origin, qemu_check, trace_back};
 
 extern "C" {
     fn _cpu_isr_divide_by_zero() -> !;
@@ -34,7 +35,9 @@ extern "C" {
     fn _cpu_isr_virtualize_exception() -> !;
     // 21-29 reserved
     fn _cpu_isr_security_exception() -> !;
-// 31 reserved
+    // 31 reserved
+
+    fn _read_cr2() -> u32;
 }
 
 extern "C" fn reserved_exception() -> ! {
@@ -43,39 +46,39 @@ extern "C" fn reserved_exception() -> ! {
 
 /// The list of the default exception handlers.
 /// They are loaded by the `init_cpu_exceptions` method.
-const CPU_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
-    (_cpu_isr_divide_by_zero, GateType::InterruptGate32),
-    (_cpu_isr_debug, GateType::TrapGate32),
-    (_cpu_isr_non_maskable_interrupt, GateType::InterruptGate32),
-    (_cpu_isr_breakpoint, GateType::TrapGate32),
-    (_cpu_isr_overflow, GateType::TrapGate32),
-    (_cpu_isr_bound_range_exceeded, GateType::InterruptGate32),
-    (_cpu_isr_invalid_opcode, GateType::InterruptGate32),
-    (_cpu_isr_no_device, GateType::InterruptGate32),
-    (_cpu_isr_double_fault, GateType::InterruptGate32),
-    (_cpu_isr_fpu_seg_overrun, GateType::InterruptGate32),
-    (_cpu_isr_invalid_tss, GateType::InterruptGate32),
-    (_cpu_isr_seg_no_present, GateType::InterruptGate32),
-    (_cpu_isr_stack_seg_fault, GateType::InterruptGate32),
-    (_cpu_isr_general_protect_fault, GateType::InterruptGate32),
-    (_cpu_isr_page_fault, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (_cpu_isr_fpu_floating_point_exep, GateType::InterruptGate32),
-    (_cpu_isr_alignment_check, GateType::InterruptGate32),
-    (_cpu_isr_machine_check, GateType::InterruptGate32),
-    (_cpu_isr_simd_fpu_fp_exception, GateType::InterruptGate32),
-    (_cpu_isr_virtualize_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
-    (_cpu_isr_security_exception, GateType::InterruptGate32),
-    (reserved_exception, GateType::InterruptGate32),
+const CPU_EXCEPTIONS: [(unsafe extern "C" fn() -> !, &str, GateType); 32] = [
+    (_cpu_isr_divide_by_zero, "division by zero", GateType::InterruptGate32),
+    (_cpu_isr_debug, "debug", GateType::TrapGate32),
+    (_cpu_isr_non_maskable_interrupt, "non-maskable interrupt", GateType::InterruptGate32),
+    (_cpu_isr_breakpoint, "breakpoint", GateType::TrapGate32),
+    (_cpu_isr_overflow, "overflow", GateType::TrapGate32),
+    (_cpu_isr_bound_range_exceeded, "bound range exceeded", GateType::InterruptGate32),
+    (_cpu_isr_invalid_opcode, "invalid opcode", GateType::InterruptGate32),
+    (_cpu_isr_no_device, "no device", GateType::InterruptGate32),
+    (_cpu_isr_double_fault, "double fault", GateType::InterruptGate32),
+    (_cpu_isr_fpu_seg_overrun, "fpu seg overrun", GateType::InterruptGate32),
+    (_cpu_isr_invalid_tss, "invalid tss", GateType::InterruptGate32),
+    (_cpu_isr_seg_no_present, "seg no present", GateType::InterruptGate32),
+    (_cpu_isr_stack_seg_fault, "stack seg fault", GateType::InterruptGate32),
+    (_cpu_isr_general_protect_fault, "general protection fault", GateType::InterruptGate32),
+    (_cpu_isr_page_fault, "page fault", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (_cpu_isr_fpu_floating_point_exep, "fpu floating point exception", GateType::InterruptGate32),
+    (_cpu_isr_alignment_check, "alignement check", GateType::InterruptGate32),
+    (_cpu_isr_machine_check, "machine check", GateType::InterruptGate32),
+    (_cpu_isr_simd_fpu_fp_exception, "simd fpu exception", GateType::InterruptGate32),
+    (_cpu_isr_virtualize_exception, "virtualize exception", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
+    (_cpu_isr_security_exception, "security exception", GateType::InterruptGate32),
+    (reserved_exception, "reserved", GateType::InterruptGate32),
 ];
 
 /// Set the CPU exceptions vectors on the first 32 entries.
@@ -90,7 +93,7 @@ pub unsafe fn reassign_cpu_exceptions() {
         .set_selector(1 << 3)
         .set_gate_type(GateType::InterruptGate32);
 
-    for (index, &(exception, gate_type)) in CPU_EXCEPTIONS.iter().enumerate() {
+    for (index, &(exception, _, gate_type)) in CPU_EXCEPTIONS.iter().enumerate() {
         gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
 
         interrupt_table[index] = gate_entry;
@@ -100,11 +103,24 @@ pub unsafe fn reassign_cpu_exceptions() {
 #[no_mangle]
 unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
     let cs = (*cpu_state).cs;
+    // Error from ring 0
     if cs & 0b11 == 0 {
-        eprintln!("\nKernel Panic:\n{:X?}", *cpu_state);
+        // Handle kernel page fault
+        if (*cpu_state).cpu_isr_reserved == 14 {
+            let virtual_page_allocator = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap();
+            // Kernel valloc case
+            if let Ok(()) = virtual_page_allocator.valloc_handle_page_fault(_read_cr2()) {
+                return;
+            } else {
+                let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
+                eprintln!("{}", page_fault_cause);
+            }
+        }
+        eprintln!("Kernel Panic: {}\n{:X?}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1, *cpu_state);
         trace_back(((*cpu_state).eip, (*cpu_state).registers.ebp as *const u32));
         qemu_check();
         loop {}
+    // Error from ring 3
     } else if cs & 0b11 == 0b11 {
         // Temporaly display a debug
         eprintln!("\n{:X?}", *cpu_state);
@@ -115,11 +131,11 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         let curr_process_pid = SCHEDULER.lock().curr_process_pid();
         let _res = match (*cpu_state).cpu_isr_reserved {
             14 => {
-                eprintln!("Segmentation fault");
+                eprintln!("segmentation fault");
                 sys_kill(curr_process_pid, Signum::Sigsegv as u32)
             }
             _ => {
-                eprintln!("Illegal behavior");
+                eprintln!("{}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1);
                 sys_kill(curr_process_pid, Signum::Sigkill as u32)
             }
         };
@@ -134,6 +150,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         }
         // TODO: Remove that later
         loop {}
+    // Unknown ring
     } else {
         eprintln!("Stange CS value: 0x{:X?}. Cannot diaplay more informations", cs);
         qemu_check();

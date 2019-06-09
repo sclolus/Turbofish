@@ -78,22 +78,28 @@ extern "C" {
 
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
+/// Returns a string containing the description of page fault origin
+pub fn get_page_fault_origin(err_code: u32) -> &'static str {
+    use bit_field::BitField;
+
+    match err_code.get_bits(0..3) {
+        0b000 => "Supervisory process tried to read a non-present page entry",
+        0b001 => "Supervisory process tried to read a page and caused a protection fault",
+        0b010 => "Supervisory process tried to write to a non-present page entry",
+        0b011 => "Supervisory process tried to write a page and caused a protection fault",
+        0b100 => "User process tried to read a non-present page entry",
+        0b101 => "User process tried to read a page and caused a protection fault",
+        0b110 => "User process tried to write to a non-present page entry",
+        0b111 => "User process tried to write a page and caused a protection fault",
+        _ => "WTF",
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: ExtendedRegisters) -> () {
     let virtual_page_allocator = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap() };
     if let Err(e) = virtual_page_allocator.valloc_handle_page_fault(cr2) {
-        use bit_field::BitField;
-        let page_fault_cause = match err_code.get_bits(0..3) {
-            0b000 => "Supervisory process tried to read a non-present page entry",
-            0b001 => "Supervisory process tried to read a page and caused a protection fault",
-            0b010 => "Supervisory process tried to write to a non-present page entry",
-            0b011 => "Supervisory process tried to write a page and caused a protection fault",
-            0b100 => "User process tried to read a non-present page entry",
-            0b101 => "User process tried to read a page and caused a protection fault",
-            0b110 => "User process tried to write to a non-present page entry",
-            0b111 => "User process tried to write a page and caused a protection fault",
-            _ => "WTF",
-        };
+        let page_fault_cause = get_page_fault_origin(err_code);
         eprintln!("err_code: {:X}", err_code);
         eprintln!("{}", page_fault_cause);
         eprintln!("cr2: 0x{:x}", cr2);
