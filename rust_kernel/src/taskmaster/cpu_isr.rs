@@ -152,7 +152,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         loop {}
     // Unknown ring
     } else {
-        eprintln!("Stange CS value: 0x{:X?}. Cannot diaplay more informations", cs);
+        eprintln!("Stange CS value: 0x{:X?}. Cannot display more informations", cs);
         qemu_check();
         loop {}
     }

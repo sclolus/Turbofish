@@ -6,6 +6,7 @@ use super::process::CpuState;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
 use super::signal::{SignalStatus, StructSigaction};
 
+use core::convert::TryInto;
 use errno::Errno;
 
 #[repr(C)]
@@ -23,7 +24,10 @@ pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *
             v.check_user_ptr::<StructSigaction>(old_act)?;
         }
         // TODO: Use old_act
-        scheduler.curr_process_mut().signal.new_handler(signum, act.as_ref().expect("Null PTR"))
+        scheduler
+            .curr_process_mut()
+            .signal
+            .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, act.as_ref().expect("Null PTR"))
     })
 }
 
@@ -33,7 +37,7 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
         let mut scheduler = SCHEDULER.lock();
 
         let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
-        let res = task.signal.new_signal(signum)?;
+        let res = task.signal.new_signal(signum.try_into().map_err(|_| Errno::Einval)?)?;
 
         let curr_process_pid = scheduler.curr_process_pid();
         // auto-sodo mode
@@ -58,7 +62,7 @@ pub unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<
         };
 
         let mut scheduler = SCHEDULER.lock();
-        scheduler.curr_process_mut().signal.new_handler(signum, &s)
+        scheduler.curr_process_mut().signal.new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)
     })
 }
 

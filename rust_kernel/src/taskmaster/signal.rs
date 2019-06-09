@@ -1,7 +1,6 @@
 //! This file contains signal interface
 
 use super::process::CpuState;
-use super::scheduler::Pid;
 use super::SysResult;
 
 use alloc::collections::vec_deque::VecDeque;
@@ -187,42 +186,50 @@ pub enum SignalStatus {
 pub struct SignalInterface {
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
-    pub signaled: bool,
 }
 
 impl SignalInterface {
+    /// Create a new signal Inteface
     pub fn new() -> Self {
-        Self { signal_actions: SignalActions([Sigaction::SigDfl; 32]), signal_queue: VecDeque::new(), signaled: false }
+        Self { signal_actions: SignalActions([Sigaction::SigDfl; 32]), signal_queue: VecDeque::new() }
     }
 
+    /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
         None
     }
 
+    /// Apply all the checked signals: Make signals frames if no deadly. Returns DEADLY directive or first signal
     pub fn apply_pending_signals(&mut self, _process_context_ptr: u32) -> Option<SignalStatus> {
         None
     }
 
+    /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
     pub fn terminate_pending_signal(&mut self, _process_context_ptr: u32) {}
 
-    //pub fn new_handler(&mut self, _signum: u32, _handler: extern "C" fn(i32)) -> SysResult<u32> {
-    pub fn new_handler(&mut self, _signum: u32, _sigaction: &StructSigaction) -> SysResult<u32> {
+    /// Register a new handler for a specified Signum
+    pub fn new_handler(&mut self, _signum: Signum, _sigaction: &StructSigaction) -> SysResult<u32> {
         Ok(0)
     }
 
-    pub fn new_signal(&mut self, signum: u32) -> SysResult<u32> {
+    /// Register a new signal
+    pub fn new_signal(&mut self, _signum: Signum) -> SysResult<u32> {
         Ok(0)
     }
 
-    pub fn is_signaled(&self) -> bool {
-        self.signaled
+    #[allow(dead_code)]
+    fn is_signaled(&self) -> bool {
+        // self.signaled
+        true
     }
 
-    pub fn set_signaled(&mut self, b: bool) {
-        self.signaled = b;
+    #[allow(dead_code)]
+    fn set_signaled(&mut self, _b: bool) {
+        // self.signaled = b;
     }
 
-    pub fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+    #[allow(dead_code)]
+    fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
         let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
         let former = mem::replace(&mut self.signal_actions[signum], Sigaction::Handler(handler));
         match former {
@@ -231,7 +238,8 @@ impl SignalInterface {
         }
     }
 
-    pub fn kill(&mut self, signum: u32) -> SysResult<u32> {
+    #[allow(dead_code)]
+    fn kill(&mut self, signum: u32) -> SysResult<u32> {
         let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
@@ -239,12 +247,12 @@ impl SignalInterface {
     }
 
     #[allow(dead_code)]
-    pub fn has_pending_signals(&self) -> bool {
+    fn has_pending_signals(&self) -> bool {
         !self.signal_queue.is_empty()
     }
 
     #[allow(dead_code)]
-    pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, f: extern "C" fn(i32)) {
+    fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, f: extern "C" fn(i32)) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
@@ -320,8 +328,9 @@ impl SignalInterface {
         self.set_signaled(true);
     }
 
+    #[allow(dead_code)]
     /// sigreturn syscall
-    pub fn sigreturn(&mut self, cpu_state: *mut CpuState) -> SysResult<u32> {
+    fn sigreturn(&mut self, cpu_state: *mut CpuState) -> SysResult<u32> {
         /// helper to push on the stack
         /// imitate pop instruction return the T present at esp
         fn pop_esp<T: Copy>(esp: &mut u32) -> T {
