@@ -2,7 +2,7 @@ arch := ivybridge_cpu
 kernel := build/kernel.elf
 name := turbo_fish
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
-QEMU_ARGS = --enable-kvm -cpu IvyBridge -m 128M -kernel $(kernel)
+QEMU_ARGS = --enable-kvm -cpu IvyBridge -m 512M -kernel $(kernel)
 # These rustc flags are defined in json xbuild file.
 # rustc_flags := -C no-redzone -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
@@ -144,7 +144,7 @@ compile_bootstrap:
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 compile_bootstrap = make -C src/boot/bootstrap OWNED_BY_KERNEL=yes
 extract_kernel_symbols = nm -n $@ > autobuild/nm_output
-gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
+gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
 LIBS = libft/libft.a libasm_i386/libasm_i386.a

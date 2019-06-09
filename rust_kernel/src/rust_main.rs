@@ -75,11 +75,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     log::error!("this is an example of error");
 
     watch_dog();
-
-    // crate::drivers::storage::init(&multiboot_info);
+    crate::drivers::storage::init(&multiboot_info);
+    loop {}
     // let elf = crate::elf_loader::load_elf();
     // println!("{:#X?}", elf);
     // crate::shell::shell();
 
-    crate::taskmaster::start();
+    // crate::taskmaster::start();
 }
