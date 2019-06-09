@@ -139,12 +139,14 @@ impl TryFrom<u32> for Signum {
     }
 }
 
+type FunctionAddress = usize;
+
 #[derive(Copy, Clone, Debug)]
 #[allow(dead_code)]
 pub enum Sigaction {
     SigDfl,
     SigIgn,
-    Handler(extern "C" fn(i32)),
+    Handler(FunctionAddress),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -176,7 +178,7 @@ impl Index<Signum> for SignalActions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum SignalStatus {
     Handled(Signum),
     Deadly(Signum),
@@ -196,24 +198,40 @@ impl SignalInterface {
 
     /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
-        None
+        if self.signal_queue.is_empty() {
+            return None;
+        }
+        let first_signal = *self.signal_queue.get(0).expect("WTF");
+        Some(SignalStatus::Deadly(first_signal))
     }
 
     /// Apply all the checked signals: Make signals frames if no deadly. Returns DEADLY directive or first signal
     pub fn apply_pending_signals(&mut self, _process_context_ptr: u32) -> Option<SignalStatus> {
-        None
+        if self.signal_queue.is_empty() {
+            return None;
+        }
+        let first_signal = *self.signal_queue.get(0).expect("WTF");
+        Some(SignalStatus::Deadly(first_signal))
     }
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
-    pub fn terminate_pending_signal(&mut self, _process_context_ptr: u32) {}
+    pub fn terminate_pending_signal(&mut self, _process_context_ptr: u32) {
+        let _drop = self.signal_queue.pop_front().expect("Unexpected empty signal queue");
+    }
 
     /// Register a new handler for a specified Signum
-    pub fn new_handler(&mut self, _signum: Signum, _sigaction: &StructSigaction) -> SysResult<u32> {
-        Ok(0)
+    pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
+        let former = mem::replace(&mut self.signal_actions[signum], Sigaction::Handler(sigaction.sa_handler));
+        match former {
+            Sigaction::Handler(h) => Ok(h as u32),
+            _ => Ok(0),
+        }
     }
 
     /// Register a new signal
-    pub fn new_signal(&mut self, _signum: Signum) -> SysResult<u32> {
+    pub fn new_signal(&mut self, signum: Signum) -> SysResult<u32> {
+        self.signal_queue.try_reserve(1)?;
+        self.signal_queue.push_back(signum);
         Ok(0)
     }
 
@@ -228,15 +246,15 @@ impl SignalInterface {
         // self.signaled = b;
     }
 
-    #[allow(dead_code)]
-    fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
-        let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
-        let former = mem::replace(&mut self.signal_actions[signum], Sigaction::Handler(handler));
-        match former {
-            Sigaction::Handler(h) => Ok(h as u32),
-            _ => Ok(0),
-        }
-    }
+    // #[allow(dead_code)]
+    // fn signal(&mut self, signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+    //     let signum = Signum::try_from(signum).map_err(|_| Errno::Einval)?;
+    //     let former = mem::replace(&mut self.signal_actions[signum], Sigaction::Handler(handler));
+    //     match former {
+    //         Sigaction::Handler(h) => Ok(h as u32),
+    //         _ => Ok(0),
+    //     }
+    // }
 
     #[allow(dead_code)]
     fn kill(&mut self, signum: u32) -> SysResult<u32> {
