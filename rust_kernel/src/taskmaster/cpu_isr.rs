@@ -140,10 +140,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
         if SIGNAL_LOCK == true {
             SIGNAL_LOCK = false;
-            let signal = SCHEDULER.lock().curr_process_mut().signal.apply_pending_signals(cpu_state as u32);
-            if let Some(SignalStatus::Deadly(signum)) = signal {
-                SCHEDULER.lock().exit(signum as i32 + 128);
-            }
+            SCHEDULER.lock().apply_pending_signals(cpu_state as u32);
         }
         // TODO: Remove that later
         loop {}

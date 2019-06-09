@@ -10,6 +10,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicU32, Ordering};
+use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use spinlock::Spinlock;
 
@@ -140,12 +141,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let signal = scheduler.advance_next_process(1);
 
     // Set all the context of the illigible process
-    let new_kernel_esp = scheduler.load_new_context();
-
-    // Apply signal effects
-    if let Some(SignalStatus::Handled(_signum)) | Some(SignalStatus::Deadly(_signum)) = signal {
-        scheduler.apply_pending_signals(new_kernel_esp);
-    }
+    let new_kernel_esp = scheduler.load_new_context(signal);
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -240,82 +236,88 @@ impl Scheduler {
     fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
         let next_process_index = (self.curr_process_index + offset) % self.running_process.len();
 
-        for idx in next_process_index..next_process_index + self.running_process.len() {
-            self.curr_process_index = idx % self.running_process.len();
+        for idx in 0..self.running_process.len() {
+            self.curr_process_index = (next_process_index + idx) % self.running_process.len();
             self.curr_process_pid = self.running_process[self.curr_process_index];
 
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
-            let signal = self.curr_process_mut().signal.check_pending_signals();
+            let p = self.curr_process_mut();
+            let signal = p.signal.check_pending_signals();
 
             match &self.curr_process().process_state {
                 ProcessState::Running(_) => return signal,
-                ProcessState::Waiting(_, waiting_state) => match waiting_state {
-                    WaitingState::Sleeping(time) => unsafe {
-                        // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                        if let Some(SignalStatus::Handled(signum)) | Some(SignalStatus::Deadly(signum)) = signal {
-                            self.curr_process_mut().set_running();
-                            self.curr_process_mut().set_return_value(signum as i32 * -1);
-                            return signal;
-                        }
-
-                        let now = _get_pit_time();
-                        if now >= *time {
-                            self.curr_process_mut().set_running();
-                            self.curr_process_mut().set_return_value(0);
-                            return None;
-                        }
-                    },
-                    WaitingState::ChildDeath(pid_opt, _) => {
-                        // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                        if let Some(SignalStatus::Handled(signum)) | Some(SignalStatus::Deadly(signum)) = signal {
-                            self.curr_process_mut().set_running();
-                            self.curr_process_mut().set_return_value(signum as i32 * -1);
-                            return signal;
-                        }
-
-                        let zombie_pid = match pid_opt {
-                            // In case of PID == None, Check is the at least one child is a zombie.
-                            None => {
-                                if let Some(&zombie_pid) = self.curr_process().child.iter().find(|current_pid| {
-                                    self.all_process.get(current_pid).expect("Hashmap corrupted").is_zombie()
-                                }) {
-                                    Some(zombie_pid)
-                                } else {
-                                    None
-                                }
+                ProcessState::Waiting(_, waiting_state) => {
+                    match waiting_state {
+                        WaitingState::Sleeping(time) => unsafe {
+                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
+                            if signal.is_some() {
+                                self.curr_process_mut().set_running();
+                                self.curr_process_mut().set_return_value(-(Errno::Eintr as i32));
+                                return signal;
                             }
-                            // In case of PID >= 0, Check is specified child PID is a zombie.
-                            Some(pid) => {
-                                if let Some(elem) =
-                                    self.curr_process().child.iter().find(|&&current_pid| current_pid == *pid as u32)
-                                {
-                                    if self.all_process.get(elem).expect("Hashmap corrupted").is_zombie() {
-                                        Some(*elem)
+
+                            let now = _get_pit_time();
+                            if now >= *time {
+                                self.curr_process_mut().set_running();
+                                self.curr_process_mut().set_return_value(0);
+                                return None;
+                            }
+                        },
+                        WaitingState::ChildDeath(pid_opt, _) => {
+                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
+                            if signal.is_some() {
+                                self.curr_process_mut().set_running();
+                                self.curr_process_mut().set_return_value(-(Errno::Eintr as i32));
+                                return signal;
+                            }
+
+                            let zombie_pid = match pid_opt {
+                                // In case of PID == None, Check is the at least one child is a zombie.
+                                None => {
+                                    if let Some(&zombie_pid) = self.curr_process().child.iter().find(|current_pid| {
+                                        self.all_process.get(current_pid).expect("Hashmap corrupted").is_zombie()
+                                    }) {
+                                        Some(zombie_pid)
                                     } else {
                                         None
                                     }
-                                } else {
-                                    None
                                 }
-                            }
-                        };
-                        // If a zombie was found, write the exit status, overwrite PID if None and return
-                        if let Some(pid) = zombie_pid {
-                            let child = self.all_process.get(&pid).expect("Hashmap corrupted");
-                            match child.process_state {
-                                ProcessState::Zombie(status) => {
-                                    self.curr_process_mut()
-                                        .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
-                                    self.curr_process_mut().set_return_value(0);
-                                    return None;
+                                // In case of PID >= 0, Check is specified child PID is a zombie.
+                                Some(pid) => {
+                                    if let Some(elem) = self
+                                        .curr_process()
+                                        .child
+                                        .iter()
+                                        .find(|&&current_pid| current_pid == *pid as u32)
+                                    {
+                                        if self.all_process.get(elem).expect("Hashmap corrupted").is_zombie() {
+                                            Some(*elem)
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
                                 }
-                                _ => panic!("A zombie was found just before, but there is no zombie here"),
                             };
+                            // If a zombie was found, write the exit status, overwrite PID if None and return
+                            if let Some(pid) = zombie_pid {
+                                let child = self.all_process.get(&pid).expect("Hashmap corrupted");
+                                match child.process_state {
+                                    ProcessState::Zombie(status) => {
+                                        self.curr_process_mut()
+                                            .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
+                                        self.curr_process_mut().set_return_value(0);
+                                        return None;
+                                    }
+                                    _ => panic!("A zombie was found just before, but there is no zombie here"),
+                                };
+                            }
                         }
                     }
-                },
+                }
                 ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
             };
         }
@@ -324,7 +326,7 @@ impl Scheduler {
     }
 
     /// Prepare the context for the new illigible process
-    fn load_new_context(&mut self) -> u32 {
+    fn load_new_context(&mut self, signal: Option<SignalStatus>) -> u32 {
         match self.idle_mode {
             true => {
                 let process = self.kernel_idle_process.as_ref();
@@ -338,6 +340,20 @@ impl Scheduler {
                     process.context_switch();
                 }
                 let kernel_esp = process.kernel_esp;
+
+                // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
+                // If ring0 process -> block temporary interruptible macro
+                let ring = unsafe { get_ring(kernel_esp) };
+                if signal.is_some() {
+                    if ring == 3 {
+                        self.apply_pending_signals(kernel_esp)
+                    } else {
+                        unsafe {
+                            SIGNAL_LOCK = true;
+                        }
+                    }
+                }
+
                 kernel_esp
             }
         }
@@ -434,12 +450,7 @@ impl Scheduler {
         unsafe {
             _update_process_end_time(self.time_interval.unwrap());
 
-            let new_kernel_esp = self.load_new_context();
-
-            // Apply signal effects
-            if let Some(SignalStatus::Handled(_signum)) | Some(SignalStatus::Deadly(_signum)) = signal {
-                self.apply_pending_signals(new_kernel_esp);
-            }
+            let new_kernel_esp = self.load_new_context(signal);
 
             _exit_resume(new_kernel_esp, pid, status);
         };
@@ -469,22 +480,12 @@ impl Scheduler {
         pid
     }
 
-    // After loading the new context:
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
-    // If ring0 process -> block temporary interruptible macro
-    /// This function apply signal execution. Caution: Must be private
-    fn apply_pending_signals(&mut self, process_context_ptr: u32) {
-        let ring = unsafe { get_ring(process_context_ptr) };
-
-        if ring == 3 {
-            let signal = self.curr_process_mut().signal.apply_pending_signals(process_context_ptr);
-            if let Some(SignalStatus::Deadly(signum)) = signal {
-                self.exit(signum as i32 + 128);
-            }
-        } else {
-            unsafe {
-                SIGNAL_LOCK = true;
-            }
+    /// apply pending signal, must be called when process is in ring 3
+    pub fn apply_pending_signals(&mut self, process_context_ptr: u32) {
+        debug_assert_eq!(unsafe { get_ring(process_context_ptr as u32) }, 3, "Cannot apply signal from ring0 process");
+        let signal = self.curr_process_mut().signal.apply_pending_signals(process_context_ptr);
+        if let Some(SignalStatus::Deadly(signum)) = signal {
+            self.exit(signum as i32 + 128);
         }
     }
 }

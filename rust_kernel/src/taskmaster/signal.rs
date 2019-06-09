@@ -198,19 +198,13 @@ impl SignalInterface {
 
     /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
-        if self.signal_queue.is_empty() {
-            return None;
-        }
-        let first_signal = *self.signal_queue.get(0).expect("WTF");
+        let first_signal = *self.signal_queue.get(0)?;
         Some(SignalStatus::Deadly(first_signal))
     }
 
     /// Apply all the checked signals: Make signals frames if no deadly. Returns DEADLY directive or first signal
     pub fn apply_pending_signals(&mut self, _process_context_ptr: u32) -> Option<SignalStatus> {
-        if self.signal_queue.is_empty() {
-            return None;
-        }
-        let first_signal = *self.signal_queue.get(0).expect("WTF");
+        let first_signal = *self.signal_queue.get(0)?;
         Some(SignalStatus::Deadly(first_signal))
     }
 
@@ -262,11 +256,6 @@ impl SignalInterface {
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
         Ok(0)
-    }
-
-    #[allow(dead_code)]
-    fn has_pending_signals(&self) -> bool {
-        !self.signal_queue.is_empty()
     }
 
     #[allow(dead_code)]

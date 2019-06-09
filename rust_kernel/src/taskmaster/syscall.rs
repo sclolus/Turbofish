@@ -140,18 +140,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible()
     // If ring0 process -> Can't happened normally
     unpreemptible_context!({
-        if SIGNAL_LOCK == true {
+        if SIGNAL_LOCK {
             SIGNAL_LOCK = false;
-            let ring = get_ring(cpu_state as u32);
-            if ring == 3 {
-                let mut scheduler = SCHEDULER.lock();
-                let signal = scheduler.curr_process_mut().signal.apply_pending_signals(cpu_state as u32);
-                if let Some(SignalStatus::Deadly(signum)) = signal {
-                    scheduler.exit(signum as i32 + 128);
-                }
-            } else {
-                panic!("Cannot apply signal after a syscall from ring0 process");
-            }
+            let mut scheduler = SCHEDULER.lock();
+            let signal = scheduler.apply_pending_signals(cpu_state as u32);
         }
     })
 }
