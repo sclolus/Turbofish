@@ -96,7 +96,7 @@ struct siginfo {
 typedef struct siginfo siginfo_t;
 
 // TODO: Modify that dummy code
-typedef u8 sigset_t[128];
+typedef u32 sigset_t;
 
 struct sigaction {
 	union {

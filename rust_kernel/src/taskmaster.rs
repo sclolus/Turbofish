@@ -62,11 +62,15 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieAfter")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/csignal")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Timer")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SonKillFather")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/csignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Timer")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(
+            //     &include_bytes!("userland/SonKillFather")[..],
+            // ))
+            // .unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal")[..])).unwrap(),
         ]
     };
     for (i, p) in user_process_list.into_iter().enumerate() {

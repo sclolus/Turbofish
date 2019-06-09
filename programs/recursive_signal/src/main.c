@@ -24,14 +24,15 @@ int main() {
 	struct sigaction sa;
 
 	sa.sa_handler = hello_signal;
-	sa.sa_flags = SA_NODEFER; /* Restart functions if
-                                 interrupted by handler */
+	sa.sa_flags = SA_RESTART;
+	/* sa.sa_flags = SA_NODEFER; /\* Restart functions if */
+                                 /* interrupted by handler *\/ */
     if (sigaction(10, &sa, NULL) == -1) {
 		printf("sigaction failed\n");
 	}
         /* Handle error */;
 
-	printf("KILLING");
+	printf("KILLING\n");
 	int ret = kill(pid, 10);
 	if (ret == -1) {
 		printf("kill failed\n");
