@@ -20,6 +20,8 @@ pub use tools::{NbrSectors, Sector};
 
 pub mod ext2;
 
+pub mod vfs;
+
 use crate::multiboot::MultibootInfo;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -38,6 +40,8 @@ pub enum DiskError {
 }
 
 pub fn init(multiboot_info: &MultibootInfo) {
+    vfs::init();
+    loop {}
     match SataController::init() {
         Some(sata_controller) => {
             println!("{:#X?}", sata_controller);
@@ -86,4 +90,6 @@ pub fn init(multiboot_info: &MultibootInfo) {
     }
     let mbr = unsafe { Mbr::new(&a) };
     ext2::init(&mbr).expect("init ext2 failed");
+
+
 }
