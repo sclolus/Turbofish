@@ -1,3 +1,5 @@
+//! This module provides randomize functions
+
 use super::convert::Convert;
 
 use super::MathError;
@@ -15,13 +17,17 @@ use bit_field::BitField;
 /// rand is totally undetermined and use RDRAND cpu feature (ivybridge +)
 /// srand is seeded based random and use a seed algorythm
 pub trait Random {
+    /// Rand with advanced cpu feature
     fn rand(self) -> Self;
+    /// Rand based on a seed (must be initialized)
     fn srand(self) -> Self;
 }
 
 /// Enumeration of all randomize methods
 pub enum Methods {
+    /// Method with CPU feature
     Rdrand,
+    /// Seed based algrorythm
     Lfsr16,
 }
 
@@ -35,8 +41,9 @@ pub fn srand<T: Random>(x: T) -> T {
     T::srand(x)
 }
 
-/// internal trait, Randup (not roundup) is a common family name in US
+/// internal trait
 pub trait Rand {
+    /// Randup (not roundup) is a common family name in US
     fn randup(self, method: Methods) -> Self;
 }
 

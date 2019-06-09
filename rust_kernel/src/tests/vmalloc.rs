@@ -2,7 +2,7 @@ use super::standard_sodomizer::make_somization;
 use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
-use crate::memory::allocator::{vfree, vmalloc, vsize};
+use crate::memory::ffi::{vfree, vmalloc, vsize};
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::terminal::UART_16550;
@@ -25,11 +25,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     crate::watch_dog();
 
     srand_init(42).unwrap();
-    make_somization(1024, 1000, vmalloc, vfree, vsize, || 4096).expect("failed sodo 0");
-    make_somization(1024, 1000, vmalloc, vfree, vsize, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
-    make_somization(1024, 1000, vmalloc, vfree, vsize, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
-    make_somization(1024, 1000, vmalloc, vfree, vsize, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
-    make_somization(1024, 1000 * 4, vmalloc, vfree, vsize, || srand::<u32>(4096) as usize).expect("failed sodo 4");
+    make_somization(1024, vmalloc, vfree, vsize, || 4096).expect("failed sodo 0");
+    make_somization(1024, vmalloc, vfree, vsize, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
+    make_somization(1024, vmalloc, vfree, vsize, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
+    make_somization(1024, vmalloc, vfree, vsize, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
+    make_somization(1024 * 4, vmalloc, vfree, vsize, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
     crate::watch_dog();
     exit_qemu(0);

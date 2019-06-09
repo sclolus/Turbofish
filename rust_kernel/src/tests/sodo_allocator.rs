@@ -23,14 +23,12 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     use crate::math::random::srand;
 
-    fn make_somization<T: Fn() -> usize>(nb_tests: usize, max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
+    fn make_somization<T: Fn() -> usize>(max_alloc: usize, alloc_size_fn: T) -> Result<(), ()> {
         use alloc::vec;
         use alloc::vec::Vec;
 
-        const MAX_ALLOCATION_ARRAY_SIZE: usize = 1 << 16;
-        if max_alloc > MAX_ALLOCATION_ARRAY_SIZE {
-            return Err(());
-        }
+        const MAX_ALLOCATION_ARRAY_SIZE: usize = 1024;
+        const NB_TESTS: usize = 1024;
 
         #[derive(Debug, Clone, PartialEq, Eq)]
         struct Allocation {
@@ -53,7 +51,7 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         let mut nb_allocations: usize = 0;
 
-        for _i in 0..nb_tests {
+        for _i in 0..NB_TESTS {
             match srand::<bool>(true) {
                 true => {
                     if max_alloc != nb_allocations {
@@ -87,11 +85,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         Ok(())
     }
     crate::math::random::srand_init(42).unwrap();
-    make_somization(1024, 1000, || 4096).expect("failed sodo 0");
-    make_somization(1024, 1000, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
-    make_somization(1024, 1000, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
-    make_somization(1024, 1000, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
-    make_somization(1024, 1000 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
+    make_somization(1024, || 4096).expect("failed sodo 0");
+    make_somization(1024, || srand::<u32>(16) as usize * 4096).expect("failed sodo 1");
+    make_somization(1024, || srand::<u32>(32) as usize * 4096).expect("failed sodo 2");
+    make_somization(1024, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
+    make_somization(1024 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
     exit_qemu(0);
     0

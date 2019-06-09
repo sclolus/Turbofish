@@ -69,14 +69,17 @@ VPATH += src/memory/mmu
 SRC_ASM_KERNEL += start_process
 VPATH += src/taskmaster/process
 
-SRC_ASM_KERNEL += switch_process
+SRC_ASM_KERNEL += switch_process auto_preempt
 VPATH += src/taskmaster/scheduler
 
 SRC_ASM_KERNEL += syscall_isr sys_test
 VPATH += src/taskmaster/syscall
 
-SRC_ASM_KERNEL += asm_processes
-VPATH += src/taskmaster/tests
+SRC_ASM_KERNEL += trampoline
+VPATH += src/taskmaster/signal
+
+SRC_ASM_KERNEL += asm_processes idle_process
+VPATH += src/taskmaster/tests src/taskmaster/process
 
 SRC_ASM_KERNEL += payload_13h_extended
 VPATH += src/drivers/storage/bios_int13h

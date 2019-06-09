@@ -42,6 +42,18 @@ SECTIONS
 		*(.data.*)
 	}
 
+	/* WA: Read-write data */
+	.init_array BLOCK(4K) : ALIGN(4K)
+	{
+		*(.init_array)
+	}
+
+	/* WA: Read-write data */
+	.fini_array BLOCK(4K) : ALIGN(4K)
+	{
+		*(.fini_array)
+	}
+
 	/* WA: Global Offset Table */
 	.got BLOCK(4K) : ALIGN(4K)
 	{

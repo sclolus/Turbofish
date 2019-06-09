@@ -30,8 +30,25 @@ pub enum MemoryError {
     NotPhysicallyMapped,
     /// Used to indicate the page fault handler that it is realy a page fault in vmalloc handle page fault
     PageFault,
+    /// The specified page is marked as non-present
+    PageNotPresent,
     PageTableNotPresent,
     NotAllocated,
+    /// All conditions are not satisfied
+    NotSatisfied,
+    BadAddr,
 }
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
+
+use errno::Errno;
+
+impl From<MemoryError> for Errno {
+    // for the moment errno a memory error is Enomem
+    fn from(e: MemoryError) -> Self {
+        match e {
+            MemoryError::BadAddr => Errno::Efault,
+            _ => Errno::Enomem,
+        }
+    }
+}

@@ -1,5 +1,9 @@
 //! contain the standard errno definition
+#![feature(alloc)]
 #![cfg_attr(not(test), no_std)]
+#![feature(try_reserve)]
+extern crate alloc;
+use alloc::collections::CollectionAllocErr;
 
 /// Standard error errno
 #[repr(i8)]
@@ -171,4 +175,10 @@ pub enum Errno {
     Etxtbsy,
     /// Operation would block (may be the same value as [EAGAIN]).
     Ewouldblock,
+}
+
+impl From<CollectionAllocErr> for Errno {
+    fn from(_e: CollectionAllocErr) -> Self {
+        Errno::Enomem
+    }
 }

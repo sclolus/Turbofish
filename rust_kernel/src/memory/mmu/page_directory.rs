@@ -1,5 +1,6 @@
 //! This module contains the code related to the page directory and its page directory entries, which are the highest abstraction paging-related data structures (for the cpu)
 //! See https://wiki.osdev.org/Paging for relevant documentation.
+use super::_read_cr3;
 use super::page_table::PageTable;
 use super::{Entry, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::allocator::{KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
@@ -25,7 +26,7 @@ impl PageDirectory {
     }
 
     /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
-    pub fn new_for_process() -> Result<Box<Self>>  {
+    pub fn new_for_process() -> Result<Box<Self>> {
         // map the kenel pages tables
         let mut pd = Box::try_new(Self::new()).map_err(|_| MemoryError::OutOfMem)?;
         unsafe {
@@ -87,7 +88,10 @@ impl PageDirectory {
     }
 
     /// Free the user ressources of a process by following its Page Directory (Cannot work with valloc)
-    pub unsafe fn free_user_ressources(&mut self) {
+    unsafe fn free_user_ressources(&mut self) {
+        let old_cr3 = _read_cr3();
+        self.context_switch();
+
         let mut remaining_pages: NbrPages = NbrPages(0);
         let mut temporary_addr: Phys = Phys(0);
 
@@ -111,8 +115,10 @@ impl PageDirectory {
                         remaining_pages = NbrPages(0);
                     }
                 }
+                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
             }
         }
+        _enable_paging(old_cr3);
     }
 
     /// Modify the alloc flags for a specific and existing page
@@ -323,13 +329,6 @@ impl AsMut<[Entry]> for PageDirectory {
 /// call the physical allocator to free the user page tables
 impl Drop for PageDirectory {
     fn drop(&mut self) {
-        for i in 1..768 {
-            if self[i].contains(Entry::PRESENT) {
-                unsafe {
-                    //TODO: invalid page ?
-                    PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
-                }
-            }
-        }
+        unsafe { self.free_user_ressources() };
     }
 }

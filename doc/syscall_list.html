@@ -1,0 +1,1485 @@
+<HTML>
+
+<HEAD>
+<TITLE>Linux System Call Table</TITLE>
+</HEAD>
+
+<BODY BGCOLOR="#ffffff">
+
+<H2>Linux System Call Table</H2>
+
+<P>
+The following table lists the system calls for the Linux 2.2 kernel.
+It could also be thought of as an API for the interface between user
+space and kernel space.
+My motivation for making this table was to make programming in assembly
+language easier when using only system calls and not the C library
+(for more information on this topic, go to
+<A HREF="http://www.linuxassembly.org">http://www.linuxassembly.org</A>).
+On the left are the numbers of the system calls. This number will be
+put in register %eax. On the right of the table are the types of values
+to be put into the remaining registers before calling the software interrupt
+'int 0x80'. After each syscall, an integer is returned in %eax.
+</P>
+
+<P>
+For convenience, links go from the &quot;Name&quot; column to the
+man page for most of the system calls.
+Links to the kernel source file where each system call is
+located are linked to in the column labelled &quot;Source&quot;.
+(You can also <A HREF="syscall_offline.html">download</A> a version of
+this page which has links directly to the source that is installed on
+your system.)
+Links to definitions are provided for the parameters that are
+typedefs or structs.
+</P>
+
+
+<TABLE BORDER="1">
+<TR><TH><NOBR>%eax</NOBR></TH><TH>Name</TH><TH>Source</TH>
+<TH><NOBR>%ebx</NOBR></TH><TH><NOBR>%ecx</NOBR></TH><TH><NOBR>%edx</NOBR></TH><TH><NOBR>%esx</NOBR></TH><TH><NOBR>%edi</NOBR></TH></TR>
+
+<TR><TD>1</TD><TD><A HREF="man/exit.2.html">sys_exit</A></TD><TD><A HREF="src/kernel/exit.c">kernel/exit.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>2</TD><TD><A HREF="man/fork.2.html">sys_fork</A></TD><TD><A HREF="src/arch/i386/kernel/process.c">arch/i386/kernel/process.c</A></TD>
+<TD><A HREF="#pt_regs">struct pt_regs</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>3</TD><TD><A HREF="man/read.2.html">sys_read</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD>char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>4</TD><TD><A HREF="man/write.2.html">sys_write</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD>const char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>5</TD><TD><A HREF="man/open.2.html">sys_open</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>6</TD><TD><A HREF="man/close.2.html">sys_close</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>7</TD><TD><A HREF="man/waitpid.2.html">sys_waitpid</A></TD><TD><A HREF="src/kernel/exit.c">kernel/exit.c</A></TD>
+<TD>pid_t</TD><TD>unsigned int *</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>8</TD><TD><A HREF="man/creat.2.html">sys_creat</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>9</TD><TD><A HREF="man/link.2.html">sys_link</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>10</TD><TD><A HREF="man/unlink.2.html">sys_unlink</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>11</TD><TD><A HREF="man/execve.2.html">sys_execve</A></TD><TD><A HREF="src/arch/i386/kernel/process.c">arch/i386/kernel/process.c</A></TD>
+<TD><A HREF="#pt_regs">struct pt_regs</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>12</TD><TD><A HREF="man/chdir.2.html">sys_chdir</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>13</TD><TD><A HREF="man/time.2.html">sys_time</A></TD><TD><A HREF="src/kernel/time.c">kernel/time.c</A></TD>
+<TD>int *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>14</TD><TD><A HREF="man/mknod.2.html">sys_mknod</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD><A HREF="#dev_t">dev_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>15</TD><TD><A HREF="man/chmod.2.html">sys_chmod</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#mode_t">mode_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>16</TD><TD><A HREF="man/lchown.2.html">sys_lchown</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>18</TD><TD><A HREF="man/stat.2.html">sys_stat</A></TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>char *</TD><TD><A HREF="#__old_kernel_stat">struct __old_kernel_stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>19</TD><TD><A HREF="man/lseek.2.html">sys_lseek</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#off_t">off_t</A></TD><TD>unsigned int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>20</TD><TD><A HREF="man/getpid.2.html">sys_getpid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>21</TD><TD><A HREF="man/mount.2.html">sys_mount</A></TD><TD><A HREF="src/fs/super.c">fs/super.c</A></TD>
+<TD>char *</TD><TD>char *</TD><TD>char *</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>22</TD><TD>sys_oldumount</TD><TD><A HREF="src/fs/super.c">fs/super.c</A></TD>
+<TD>char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>23</TD><TD><A HREF="man/setuid.2.html">sys_setuid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#uid_t">uid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>24</TD><TD><A HREF="man/getuid.2.html">sys_getuid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>25</TD><TD><A HREF="man/stime.2.html">sys_stime</A></TD><TD><A HREF="src/kernel/time.c">kernel/time.c</A></TD>
+<TD>int *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>26</TD><TD><A HREF="man/ptrace.2.html">sys_ptrace</A></TD><TD><A HREF="src/arch/i386/kernel/ptrace.c">arch/i386/kernel/ptrace.c</A></TD>
+<TD>long</TD><TD>long</TD><TD>long</TD><TD>long</TD><TD>-</TD></TR>
+
+<TR><TD>27</TD><TD><A HREF="man/alarm.2.html">sys_alarm</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>28</TD><TD><A HREF="man/fstat.2.html">sys_fstat</A></TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#__old_kernel_stat">struct __old_kernel_stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>29</TD><TD><A HREF="man/pause.2.html">sys_pause</A></TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>30</TD><TD><A HREF="man/utime.2.html">sys_utime</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>char *</TD><TD><A HREF="#utimbuf">struct utimbuf *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>33</TD><TD><A HREF="man/access.2.html">sys_access</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>34</TD><TD><A HREF="man/nice.2.html">sys_nice</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>36</TD><TD><A HREF="man/sync.2.html">sys_sync</A></TD><TD><A HREF="src/fs/buffer.c">fs/buffer.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>37</TD><TD><A HREF="man/kill.2.html">sys_kill</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>38</TD><TD><A HREF="man/rename.2.html">sys_rename</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>39</TD><TD><A HREF="man/mkdir.2.html">sys_mkdir</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>40</TD><TD><A HREF="man/rmdir.2.html">sys_rmdir</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>41</TD><TD><A HREF="man/dup.2.html">sys_dup</A></TD><TD><A HREF="src/fs/fcntl.c">fs/fcntl.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>42</TD><TD><A HREF="man/pipe.2.html">sys_pipe</A></TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD>unsigned long *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>43</TD><TD><A HREF="man/times.2.html">sys_times</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#tms">struct tms *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>45</TD><TD><A HREF="man/brk.2.html">sys_brk</A></TD><TD><A HREF="src/mm/mmap.c">mm/mmap.c</A></TD>
+<TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>46</TD><TD><A HREF="man/setgid.2.html">sys_setgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>47</TD><TD><A HREF="man/getgid.2.html">sys_getgid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>48</TD><TD><A HREF="man/signal.2.html">sys_signal</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD><A HREF="#__sighandler_t">__sighandler_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>49</TD><TD><A HREF="man/geteuid.2.html">sys_geteuid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>50</TD><TD><A HREF="man/getegid.2.html">sys_getegid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>51</TD><TD><A HREF="man/acct.2.html">sys_acct</A></TD><TD><A HREF="src/kernel/acct.c">kernel/acct.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>52</TD><TD><A HREF="man/umount.2.html">sys_umount</A></TD><TD><A HREF="src/fs/super.c">fs/super.c</A></TD>
+<TD>char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>54</TD><TD><A HREF="man/ioctl.2.html">sys_ioctl</A></TD><TD><A HREF="src/fs/ioctl.c">fs/ioctl.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned int</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>55</TD><TD><A HREF="man/fcntl.2.html">sys_fcntl</A></TD><TD><A HREF="src/fs/fcntl.c">fs/fcntl.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned int</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>57</TD><TD><A HREF="man/setpgid.2.html">sys_setpgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD><A HREF="#pid_t">pid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>59</TD><TD><A HREF="man/olduname.2.html">sys_olduname</A></TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD><A HREF="#oldold_utsname">struct oldold_utsname *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>60</TD><TD><A HREF="man/umask.2.html">sys_umask</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>61</TD><TD><A HREF="man/chroot.2.html">sys_chroot</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>62</TD><TD><A HREF="man/ustat.2.html">sys_ustat</A></TD><TD><A HREF="src/fs/super.c">fs/super.c</A></TD>
+<TD><A HREF="#dev_t">dev_t</A></TD><TD><A HREF="#ustat">struct ustat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>63</TD><TD><A HREF="man/dup2.2.html">sys_dup2</A></TD><TD><A HREF="src/fs/fcntl.c">fs/fcntl.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>64</TD><TD><A HREF="man/getppid.2.html">sys_getppid</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>65</TD><TD><A HREF="man/getpgrp.2.html">sys_getpgrp</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>66</TD><TD><A HREF="man/setsid.2.html">sys_setsid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>67</TD><TD><A HREF="man/sigaction.2.html">sys_sigaction</A></TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD>int</TD><TD>const <A HREF="#old_sigaction">struct old_sigaction *</A></TD><TD><A HREF="#old_sigaction">struct old_sigaction *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>68</TD><TD><A HREF="man/sgetmask.2.html">sys_sgetmask</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>69</TD><TD><A HREF="man/ssetmask.2.html">sys_ssetmask</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>70</TD><TD><A HREF="man/setreuid.2.html">sys_setreuid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#uid_t">uid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>71</TD><TD><A HREF="man/setregid.2.html">sys_setregid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#gid_t">gid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>72</TD><TD><A HREF="man/sigsuspend.2.html">sys_sigsuspend</A></TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD>int</TD><TD>int</TD><TD><A HREF="#old_sigset_t">old_sigset_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>73</TD><TD><A HREF="man/sigpending.2.html">sys_sigpending</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD><A HREF="#old_sigset_t">old_sigset_t *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>74</TD><TD><A HREF="man/sethostname.2.html">sys_sethostname</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>75</TD><TD><A HREF="man/setrlimit.2.html">sys_setrlimit</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#rlimit">struct rlimit *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>76</TD><TD><A HREF="man/getrlimit.2.html">sys_getrlimit</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#rlimit">struct rlimit *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>77</TD><TD><A HREF="man/getrusage.2.html">sys_getrusage</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD><A HREF="#rusage">struct rusage *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>78</TD><TD><A HREF="man/gettimeofday.2.html">sys_gettimeofday</A></TD><TD><A HREF="src/kernel/time.c">kernel/time.c</A></TD>
+<TD><A HREF="#timeval">struct timeval *</A></TD><TD><A HREF="#timezone">struct timezone *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>79</TD><TD><A HREF="man/settimeofday.2.html">sys_settimeofday</A></TD><TD><A HREF="src/kernel/time.c">kernel/time.c</A></TD>
+<TD><A HREF="#timeval">struct timeval *</A></TD><TD><A HREF="#timezone">struct timezone *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>80</TD><TD><A HREF="man/getgroups.2.html">sys_getgroups</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD><A HREF="#gid_t">gid_t *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>81</TD><TD><A HREF="man/setgroups.2.html">sys_setgroups</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD><A HREF="#gid_t">gid_t *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>82</TD><TD>old_select</TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD><A HREF="#sel_arg_struct">struct sel_arg_struct *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>83</TD><TD><A HREF="man/symlink.2.html">sys_symlink</A></TD><TD><A HREF="src/fs/namei.c">fs/namei.c</A></TD>
+<TD>const char *</TD><TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>84</TD><TD><A HREF="man/lstat.2.html">sys_lstat</A></TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>char *</TD><TD><A HREF="#__old_kernel_stat">struct __old_kernel_stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>85</TD><TD><A HREF="man/readlink.2.html">sys_readlink</A></TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>const char *</TD><TD>char *</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>86</TD><TD><A HREF="man/uselib.2.html">sys_uselib</A></TD><TD><A HREF="src/fs/exec.c">fs/exec.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>87</TD><TD><A HREF="man/swapon.2.html">sys_swapon</A></TD><TD><A HREF="src/mm/swapfile.c">mm/swapfile.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>88</TD><TD><A HREF="man/reboot.2.html">sys_reboot</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD>int</TD><TD>int</TD><TD>void *</TD><TD>-</TD></TR>
+
+<TR><TD>89</TD><TD>old_readdir</TD><TD><A HREF="src/fs/readdir.c">fs/readdir.c</A></TD>
+<TD>unsigned int</TD><TD>void *</TD><TD>unsigned int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>90</TD><TD>old_mmap</TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD><A HREF="#mmap_arg_struct">struct mmap_arg_struct *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>91</TD><TD><A HREF="man/munmap.2.html">sys_munmap</A></TD><TD><A HREF="src/mm/mmap.c">mm/mmap.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>92</TD><TD><A HREF="man/truncate.2.html">sys_truncate</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>93</TD><TD><A HREF="man/ftruncate.2.html">sys_ftruncate</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>94</TD><TD><A HREF="man/fchmod.2.html">sys_fchmod</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#mode_t">mode_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>95</TD><TD><A HREF="man/fchown.2.html">sys_fchown</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>96</TD><TD><A HREF="man/getpriority.2.html">sys_getpriority</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>97</TD><TD><A HREF="man/setpriority.2.html">sys_setpriority</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD>int</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>99</TD><TD><A HREF="man/statfs.2.html">sys_statfs</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#statfs">struct statfs *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>100</TD><TD><A HREF="man/fstatfs.2.html">sys_fstatfs</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#statfs">struct statfs *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>101</TD><TD><A HREF="man/ioperm.2.html">sys_ioperm</A></TD><TD><A HREF="src/arch/i386/kernel/ioport.c">arch/i386/kernel/ioport.c</A></TD>
+<TD>unsigned long</TD><TD>unsigned long</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>102</TD><TD><A HREF="man/socketcall.2.html">sys_socketcall</A></TD><TD><A HREF="src/net/socket.c">net/socket.c</A></TD>
+<TD>int</TD><TD>unsigned long *</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>103</TD><TD><A HREF="man/syslog.2.html">sys_syslog</A></TD><TD><A HREF="src/kernel/printk.c">kernel/printk.c</A></TD>
+<TD>int</TD><TD>char *</TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>104</TD><TD><A HREF="man/setitimer.2.html">sys_setitimer</A></TD><TD><A HREF="src/kernel/itimer.c">kernel/itimer.c</A></TD>
+<TD>int</TD><TD><A HREF="#itimerval">struct itimerval *</A></TD><TD><A HREF="#itimerval">struct itimerval *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>105</TD><TD><A HREF="man/getitimer.2.html">sys_getitimer</A></TD><TD><A HREF="src/kernel/itimer.c">kernel/itimer.c</A></TD>
+<TD>int</TD><TD><A HREF="#itimerval">struct itimerval *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>106</TD><TD>sys_newstat</TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>char *</TD><TD><A HREF="#stat">struct stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>107</TD><TD>sys_newlstat</TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>char *</TD><TD><A HREF="#stat">struct stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>108</TD><TD>sys_newfstat</TD><TD><A HREF="src/fs/stat.c">fs/stat.c</A></TD>
+<TD>unsigned int</TD><TD><A HREF="#stat">struct stat *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>109</TD><TD><A HREF="man/uname.2.html">sys_uname</A></TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD><A HREF="#old_utsname">struct old_utsname *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>110</TD><TD><A HREF="man/iopl.2.html">sys_iopl</A></TD><TD><A HREF="src/arch/i386/kernel/ioport.c">arch/i386/kernel/ioport.c</A></TD>
+<TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>111</TD><TD><A HREF="man/vhangup.2.html">sys_vhangup</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>112</TD><TD><A HREF="man/idle.2.html">sys_idle</A></TD><TD><A HREF="src/arch/i386/kernel/process.c">arch/i386/kernel/process.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>113</TD><TD><A HREF="man/vm86.2.html">sys_vm86old</A></TD><TD><A HREF="src/arch/i386/kernel/vm86.c">arch/i386/kernel/vm86.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#vm86plus_struct">struct vm86plus_struct *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>114</TD><TD><A HREF="man/wait4.2.html">sys_wait4</A></TD><TD><A HREF="src/kernel/exit.c">kernel/exit.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD>unsigned long *</TD><TD>int options</TD><TD><A HREF="#rusage">struct rusage *</A></TD><TD>-</TD></TR>
+
+<TR><TD>115</TD><TD><A HREF="man/swapoff.2.html">sys_swapoff</A></TD><TD><A HREF="src/mm/swapfile.c">mm/swapfile.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>116</TD><TD><A HREF="man/sysinfo.2.html">sys_sysinfo</A></TD><TD><A HREF="src/kernel/info.c">kernel/info.c</A></TD>
+<TD><A HREF="#sysinfo">struct sysinfo *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>117</TD><TD>sys_ipc<A HREF="#note117">(*Note)</A></TD><TD><A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A></TD>
+<TD><A HREF="#uint">uint</A></TD><TD>int</TD><TD>int</TD><TD>int</TD><TD>void *</TD></TR>
+
+<TR><TD>118</TD><TD><A HREF="man/fsync.2.html">sys_fsync</A></TD><TD><A HREF="src/fs/buffer.c">fs/buffer.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>119</TD><TD><A HREF="man/sigreturn.2.html">sys_sigreturn</A></TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>120</TD><TD><A HREF="man/clone.2.html">sys_clone</A></TD><TD><A HREF="src/arch/i386/kernel/process.c">arch/i386/kernel/process.c</A></TD>
+<TD><A HREF="#pt_regs">struct pt_regs</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>121</TD><TD><A HREF="man/setdomainname.2.html">sys_setdomainname</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>char *</TD><TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>122</TD><TD>sys_newuname</TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#new_utsname">struct new_utsname *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>123</TD><TD><A HREF="man/modify_ldt.2.html">sys_modify_ldt</A></TD><TD><A HREF="src/arch/i386/kernel/ldt.c">arch/i386/kernel/ldt.c</A></TD>
+<TD>int</TD><TD>void *</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>124</TD><TD><A HREF="man/adjtimex.2.html">sys_adjtimex</A></TD><TD><A HREF="src/kernel/time.c">kernel/time.c</A></TD>
+<TD><A HREF="#timex">struct timex *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>125</TD><TD><A HREF="man/mprotect.2.html">sys_mprotect</A></TD><TD><A HREF="src/mm/mprotect.c">mm/mprotect.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#size_t">size_t</A></TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>126</TD><TD><A HREF="man/sigprocmask.2.html">sys_sigprocmask</A></TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD><A HREF="#old_sigset_t">old_sigset_t *</A></TD><TD><A HREF="#old_sigset_t">old_sigset_t *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>127</TD><TD><A HREF="man/create_module.2.html">sys_create_module</A></TD><TD><A HREF="src/kernel/module.c">kernel/module.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>128</TD><TD><A HREF="man/init_module.2.html">sys_init_module</A></TD><TD><A HREF="src/kernel/module.c">kernel/module.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#module">struct module *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>129</TD><TD><A HREF="man/delete_module.2.html">sys_delete_module</A></TD><TD><A HREF="src/kernel/module.c">kernel/module.c</A></TD>
+<TD>const char *</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>130</TD><TD><A HREF="man/get_kernel_syms.2.html">sys_get_kernel_syms</A></TD><TD><A HREF="src/kernel/module.c">kernel/module.c</A></TD>
+<TD><A HREF="#kernel_sym">struct kernel_sym *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>131</TD><TD><A HREF="man/quotactl.2.html">sys_quotactl</A></TD><TD><A HREF="src/fs/dquot.c">fs/dquot.c</A></TD>
+<TD>int</TD><TD>const char *</TD><TD>int</TD><TD><A HREF="#caddr_t">caddr_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>132</TD><TD><A HREF="man/getpgid.2.html">sys_getpgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>133</TD><TD><A HREF="man/fchdir.2.html">sys_fchdir</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>134</TD><TD><A HREF="man/bdflush.2.html">sys_bdflush</A></TD><TD><A HREF="src/fs/buffer.c">fs/buffer.c</A></TD>
+<TD>int</TD><TD>long</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>135</TD><TD><A HREF="man/sysfs.2.html">sys_sysfs</A></TD><TD><A HREF="src/fs/super.c">fs/super.c</A></TD>
+<TD>int</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>136</TD><TD><A HREF="man/personality.2.html">sys_personality</A></TD><TD><A HREF="src/kernel/exec_domain.c">kernel/exec_domain.c</A></TD>
+<TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>138</TD><TD><A HREF="man/setfsuid.2.html">sys_setfsuid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#uid_t">uid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>139</TD><TD><A HREF="man/setfsgid.2.html">sys_setfsgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>140</TD><TD><A HREF="man/llseek.2.html">sys_llseek</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD><A HREF="#loff_t">loff_t *</A></TD><TD>unsigned int</TD></TR>
+
+<TR><TD>141</TD><TD><A HREF="man/getdents.2.html">sys_getdents</A></TD><TD><A HREF="src/fs/readdir.c">fs/readdir.c</A></TD>
+<TD>unsigned int</TD><TD>void *</TD><TD>unsigned int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>142</TD><TD><A HREF="man/select.2.html">sys_select</A></TD><TD><A HREF="src/fs/select.c">fs/select.c</A></TD>
+<TD>int</TD><TD><A HREF="#fd_set">fd_set *</A></TD><TD><A HREF="#fd_set">fd_set *</A></TD><TD><A HREF="#fd_set">fd_set *</A></TD><TD><A HREF="#timeval">struct timeval *</A></TD></TR>
+
+<TR><TD>143</TD><TD><A HREF="man/flock.2.html">sys_flock</A></TD><TD><A HREF="src/fs/locks.c">fs/locks.c</A></TD>
+<TD>unsigned int</TD><TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>144</TD><TD><A HREF="man/msync.2.html">sys_msync</A></TD><TD><A HREF="src/mm/filemap.c">mm/filemap.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#size_t">size_t</A></TD><TD>int</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>145</TD><TD><A HREF="man/readv.2.html">sys_readv</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#iovec">const struct iovec *</A></TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>146</TD><TD><A HREF="man/writev.2.html">sys_writev</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#iovec">const struct iovec *</A></TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>147</TD><TD><A HREF="man/getsid.2.html">sys_getsid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>148</TD><TD><A HREF="man/fdatasync.2.html">sys_fdatasync</A></TD><TD><A HREF="src/fs/buffer.c">fs/buffer.c</A></TD>
+<TD>unsigned int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>149</TD><TD><A HREF="man/sysctl.2.html">sys_sysctl</A></TD><TD><A HREF="src/kernel/sysctl.c">kernel/sysctl.c</A></TD>
+<TD><A HREF="#__sysctl_args">struct __sysctl_args *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>150</TD><TD><A HREF="man/mlock.2.html">sys_mlock</A></TD><TD><A HREF="src/mm/mlock.c">mm/mlock.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>151</TD><TD><A HREF="man/munlock.2.html">sys_munlock</A></TD><TD><A HREF="src/mm/mlock.c">mm/mlock.c</A></TD>
+<TD>unsigned long</TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>152</TD><TD><A HREF="man/mlockall.2.html">sys_mlockall</A></TD><TD><A HREF="src/mm/mlock.c">mm/mlock.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>153</TD><TD><A HREF="man/munlockall.2.html">sys_munlockall</A></TD><TD><A HREF="src/mm/mlock.c">mm/mlock.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>154</TD><TD><A HREF="man/sched_setparam.2.html">sys_sched_setparam</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD><A HREF="#sched_param">struct sched_param *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>155</TD><TD><A HREF="man/sched_getparam.2.html">sys_sched_getparam</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD><A HREF="#sched_param">struct sched_param *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>156</TD><TD><A HREF="man/sched_setscheduler.2.html">sys_sched_setscheduler</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD>int</TD><TD><A HREF="#sched_param">struct sched_param *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>157</TD><TD><A HREF="man/sched_getscheduler.2.html">sys_sched_getscheduler</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>158</TD><TD><A HREF="man/sched_yield.2.html">sys_sched_yield</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>159</TD><TD><A HREF="man/sched_get_priority_max.2.html">sys_sched_get_priority_max</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>160</TD><TD><A HREF="man/sched_get_priority_min.2.html">sys_sched_get_priority_min</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD>int</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>161</TD><TD><A HREF="man/sched_rr_get_interval.2.html">sys_sched_rr_get_interval</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#pid_t">pid_t</A></TD><TD><A HREF="#timespec">struct timespec *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>162</TD><TD><A HREF="man/nanosleep.2.html">sys_nanosleep</A></TD><TD><A HREF="src/kernel/sched.c">kernel/sched.c</A></TD>
+<TD><A HREF="#timespec">struct timespec *</A></TD><TD><A HREF="#timespec">struct timespec *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>163</TD><TD><A HREF="man/mremap.2.html">sys_mremap</A></TD><TD><A HREF="src/mm/mremap.c">mm/mremap.c</A></TD>
+<TD>unsigned long</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD>-</TD></TR>
+
+<TR><TD>164</TD><TD><A HREF="man/setresuid.2.html">sys_setresuid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#uid_t">uid_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>165</TD><TD><A HREF="man/getresuid.2.html">sys_getresuid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#uid_t">uid_t *</A></TD><TD><A HREF="#uid_t">uid_t *</A></TD><TD><A HREF="#uid_t">uid_t *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>166</TD><TD><A HREF="man/vm86.2.html">sys_vm86</A></TD><TD><A HREF="src/arch/i386/kernel/vm86.c">arch/i386/kernel/vm86.c</A></TD>
+<TD><A HREF="#vm86_struct">struct vm86_struct *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>167</TD><TD><A HREF="man/query_module.2.html">sys_query_module</A></TD><TD><A HREF="src/kernel/module.c">kernel/module.c</A></TD>
+<TD>const char *</TD><TD>int</TD><TD>char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD><A HREF="#size_t">size_t *</A></TD></TR>
+
+<TR><TD>168</TD><TD><A HREF="man/poll.2.html">sys_poll</A></TD><TD><A HREF="src/fs/select.c">fs/select.c</A></TD>
+<TD><A HREF="#pollfd">struct pollfd *</A></TD><TD>unsigned int</TD><TD>long</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>169</TD><TD><A HREF="man/nfsservctl.2.html">sys_nfsservctl</A></TD><TD><A HREF="src/fs/filesystems.c">fs/filesystems.c</A></TD>
+<TD>int</TD><TD>void *</TD><TD>void *</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>170</TD><TD><A HREF="man/setresgid.2.html">sys_setresgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#gid_t">gid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>171</TD><TD><A HREF="man/getresgid.2.html">sys_getresgid</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD><A HREF="#gid_t">gid_t *</A></TD><TD><A HREF="#gid_t">gid_t *</A></TD><TD><A HREF="#gid_t">gid_t *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>172</TD><TD><A HREF="man/prctl.2.html">sys_prctl</A></TD><TD><A HREF="src/kernel/sys.c">kernel/sys.c</A></TD>
+<TD>int</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD>unsigned long</TD><TD>unsigned long</TD></TR>
+
+<TR><TD>173</TD><TD>sys_rt_sigreturn</TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>174</TD><TD>sys_rt_sigaction</TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD><A HREF="#sigaction">const struct sigaction *</A></TD><TD><A HREF="#sigaction">struct sigaction *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>175</TD><TD>sys_rt_sigprocmask</TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD><A HREF="#sigset_t">sigset_t *</A></TD><TD><A HREF="#sigset_t">sigset_t *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>176</TD><TD>sys_rt_sigpending</TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD><A HREF="#sigset_t">sigset_t *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>177</TD><TD>sys_rt_sigtimedwait</TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD><A HREF="#sigset_t">const sigset_t *</A></TD><TD><A HREF="#siginfo_t">siginfo_t *</A></TD><TD><A HREF="#timespec">const struct timespec *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>178</TD><TD>sys_rt_sigqueueinfo</TD><TD><A HREF="src/kernel/signal.c">kernel/signal.c</A></TD>
+<TD>int</TD><TD>int</TD><TD><A HREF="#siginfo_t">siginfo_t *</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>179</TD><TD>sys_rt_sigsuspend</TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD><A HREF="#sigset_t">sigset_t *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>180</TD><TD><A HREF="man/pread.2.html">sys_pread</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD>char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD><A HREF="#loff_t">loff_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>181</TD><TD><A HREF="man/pread.2.html">sys_pwrite</A></TD><TD><A HREF="src/fs/read_write.c">fs/read_write.c</A></TD>
+<TD>unsigned int</TD><TD>const char *</TD><TD><A HREF="#size_t">size_t</A></TD><TD><A HREF="#loff_t">loff_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>182</TD><TD><A HREF="man/chown.2.html">sys_chown</A></TD><TD><A HREF="src/fs/open.c">fs/open.c</A></TD>
+<TD>const char *</TD><TD><A HREF="#uid_t">uid_t</A></TD><TD><A HREF="#gid_t">gid_t</A></TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>183</TD><TD>sys_getcwd</TD><TD><A HREF="src/fs/dcache.c">fs/dcache.c</A></TD>
+<TD>char *</TD><TD>unsigned long</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>184</TD><TD><A HREF="man/capget.2.html">sys_capget</A></TD><TD><A HREF="src/kernel/capability.c">kernel/capability.c</A></TD>
+<TD><A HREF="#cap_user_header_t">cap_user_header_t</A></TD><TD><A HREF="#cap_user_data_t">cap_user_data_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>185</TD><TD><A HREF="man/capget.2.html">sys_capset</A></TD><TD><A HREF="src/kernel/capability.c">kernel/capability.c</A></TD>
+<TD><A HREF="#cap_user_header_t">cap_user_header_t</A></TD><TD><A HREF="#cap_user_data_t">const cap_user_data_t</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>186</TD><TD><A HREF="man/sigaltstack.2.html">sys_sigaltstack</A></TD><TD><A HREF="src/arch/i386/kernel/signal.c">arch/i386/kernel/signal.c</A></TD>
+<TD><A HREF="#stack_t">const stack_t *</A></TD><TD><A HREF="#stack_t">stack_t *</A></TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+<TR><TD>187</TD><TD><A HREF="man/sendfile.2.html">sys_sendfile</A></TD><TD><A HREF="src/mm/filemap.c">mm/filemap.c</A></TD>
+<TD>int</TD><TD>int</TD><TD><A HREF="#off_t">off_t *</A></TD><TD><A HREF="#size_t">size_t</A></TD><TD>-</TD></TR>
+
+<TR><TD>190</TD><TD><A HREF="man/vfork.2.html">sys_vfork</A></TD><TD><A HREF="src/arch/i386/kernel/process.c">arch/i386/kernel/process.c</A></TD>
+<TD><A HREF="#pt_regs">struct pt_regs</A></TD><TD>-</TD><TD>-</TD><TD>-</TD><TD>-</TD></TR>
+
+</TABLE>
+
+<P>
+<A NAME="note117"><B>Note for sys_ipc</B> (117)</A>: this syscall takes six arguments, so it can't fit
+into the five registers %ebx - %edi; the last parameter (not shown) is of type 'long'. This
+syscall requires a special call method where a pointer is put in %ebx which points to an array
+containing the six arguments.
+</P>
+
+
+<H2>System Call Numbers</H2>
+
+<P>
+For the numbers of the syscalls, look in
+<A HREF="src/arch/i386/kernel/entry.S">arch/i386/kernel/entry.S</A>
+for <STRONG>sys_call_table</STRONG>.
+The syscall numbers are offsets into that table.
+Several spots in the table are occupied by the syscall
+<STRONG>sys_ni_syscall</STRONG>. This is a placeholder
+that either replaces an obsolete syscall or reserves a spot for
+future syscalls.
+</P>
+
+<P> Incidentally, the system calls are called from the function
+<STRONG>system_call</STRONG> in the same file; in particular,
+they are called with the assembly instruction
+'call&nbsp;*SYMBOL_NAME(sys_call_table)(,%eax,4)'.
+The part '*SYMBOL_NAME(sys_call_table)' just gets
+replaced by a symbol name in <STRONG>sys_call_table</STRONG>.
+<STRONG>SYMBOL_NAME</STRONG> is a macro defined in
+<A HREF="/usr/src/linux/include/linux/linkage.h">include/linux/linkage.h</A>, and it just replaces
+itself with its argument.
+
+<H2>Typedefs</H2>
+
+<P>Here are the typedef declarations in the prototypes above:</P>
+
+<TABLE BORDER="1">
+
+<TR><TH VALIGN="top"><A NAME="atomic_t">atomic_t</A></TH>
+<TD>
+<A HREF="src/include/asm/atomic.h">include/asm/atomic.h</A>:<BR>
+#ifdef __SMP__<BR>
+typedef struct { volatile int counter; } atomic_t;<BR>
+#else<BR>
+typedef struct { int counter; } atomic_t;<BR>
+#endif
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="caddr_t">caddr_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef char * __kernel_caddr_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_caddr_t caddr_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="cap_user_header_t">cap_user_header_t</A></TH>
+<TD>
+<A HREF="src/include/linux/capability.h">include/linux/capability.h</A>:<BR>
+typedef struct __user_cap_header_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__u32">__u32</A> version;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int pid;<BR>
+} *cap_user_header_t;
+</TD>
+</TR>
+ 
+<TR><TH VALIGN="top"><A NAME="cap_user_data_t">cap_user_data_t</A></TH>
+<TD>
+<A HREF="src/include/linux/capability.h">include/linux/capability.h</A>:<BR>
+typedef struct __user_cap_data_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__u32">__u32</A> effective;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__u32">__u32</A> permitted;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__u32">__u32</A> inheritable;<BR>
+} *cap_user_data_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="clock_t">clock_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef long __kernel_clock_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_clock_t clock_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="dev_t">dev_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned short __kernel_dev_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_dev_t dev_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="fd_set">fd_set</A></TH>
+<TD>
+include/linux/posix_types.h<BR>
+#define __FD_SETSIZE  1024<BR>
+#define __NFDBITS     (8 * sizeof(unsigned long))<BR>
+#define __FDSET_LONGS (__FD_SETSIZE/__NFDBITS)<BR>
+(==> __FDSET_LONGS == 32)<BR>
+<BR>
+typedef struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long fds_bits [__FDSET_LONGS];<BR>
+} __kernel_fd_set;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_fd_set fd_set;<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="gid_t">gid_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned short __kernel_gid_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_gid_t gid_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__kernel_daddr_t">__kernel_daddr_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef int __kernel_daddr_t;<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__kernel_fsid_t">__kernel_fsid_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:<BR>
+typedef struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int __val[2];<BR>
+} __kernel_fsid_t;<BR>
+<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__kernel_ino_t">__kernel_ino_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned long __kernel_ino_t;<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__kernel_size_t">__kernel_size_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned int __kernel_size_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="loff_t">loff_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef long long __kernel_loff_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_loff_t loff_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="mode_t">mode_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned short __kernel_mode_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_mode_t mode_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="off_t">off_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef long __kernel_off_t;
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_off_t off_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="old_sigset_t">old_sigset_t</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:typedef unsigned long old_sigset_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="pid_t">pid_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef int __kernel_pid_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_pid_t pid_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__sighandler_t">__sighandler_t</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:typedef void (*__sighandler_t)(int);
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="siginfo_t">siginfo_t</A></TH>
+<TD>
+<A HREF="src/include/asm/siginfo.h">include/asm/siginfo.h</A>:<BR>
+#define SI_MAX_SIZE 128<BR>
+#define SI_PAD_SIZE ((SI_MAX_SIZE/sizeof(int)) - 3)<BR>
+(==> SI_PAD_SIZE == 29)<BR>
+<BR>
+typedef struct siginfo {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int si_signo;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int si_errno;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int si_code;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;union {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int _pad[SI_PAD_SIZE];<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* kill() */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#pid_t">pid_t</A> _pid; /* sender's pid */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#uid_t">uid_t</A> _uid; /* sender's uid */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _kill;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* POSIX.1b timers */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned int _timer1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned int _timer2;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _timer;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* POSIX.1b signals */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#pid_t">pid_t</A> _pid; /* sender's pid */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#uid_t">uid_t</A> _uid; /* sender's uid */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sigval_t _sigval;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _rt;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* SIGCHLD */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#pid_t">pid_t</A> _pid; /* which child */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#uid_t">uid_t</A> _uid; /* sender's uid */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int _status; /* exit code */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> _utime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> _stime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _sigchld;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* SIGILL, SIGFPE, SIGSEGV, SIGBUS */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void *_addr; /* faulting insn/memory ref. */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _sigfault;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* SIGPOLL */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int _band; /* POLL_IN, POLL_OUT, POLL_MSG */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int _fd;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _sigpoll;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} _sifields;<BR>
+} siginfo_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="sigset_t">sigset_t</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:typedef unsigned long sigset_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="size_t">size_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned int __kernel_size_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_size_t size_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="ssize_t">ssize_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef int __kernel_ssize_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_ssize_t ssize_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="stack_t">stack_t</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:<BR>
+typedef struct sigaltstack {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void *ss_sp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int ss_flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#size_t">size_t</A> ss_size;<BR>
+} stack_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="suseconds_t">suseconds_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef long __kernel_suseconds_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_suseconds_t suseconds_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="time_t">time_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef long __kernel_time_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_time_t time_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="uid_t">uid_t</A></TH>
+<TD>
+<A HREF="src/include/asm/posix_types.h">include/asm/posix_types.h</A>:typedef unsigned short __kernel_uid_t;<BR>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef __kernel_uid_t uid_t;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="uint">uint</A></TH>
+<TD>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:typedef unsigned int uint;
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__u32">__u32</A></TH>
+<TD>
+<A HREF="src/include/asm/types.h">include/asm/types.h</A>:typedef unsigned int __u32;
+</TD>
+</TR>
+
+</TABLE>
+
+<P>&nbsp;</P>
+
+<H2>Structs</H2>
+
+<P>Here are the struct declarations for the table at the top:</P>
+
+<TABLE BORDER="1">
+
+<TR><TH VALIGN="top"><A NAME="exception_table_entry">exception_table_entry</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct exception_table_entry {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long insn, fixup;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="iovec">iovec</A></TH>
+<TD>
+<A HREF="src/include/linux/uio.h">include/linux/uio.h</A>:<BR>
+struct iovec {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void *iov_base;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__kernel_size_t">__kernel_size_t</A> iov_len;
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="itimerval">itimerval</A></TH>
+<TD>
+<A HREF="src/include/linux/time.h">include/linux/time.h</A>:<BR>
+struct itimerval {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> it_interval; /* timer interval */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> it_value; /* current value */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="kernel_sym">kernel_sym</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct kernel_sym {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long value;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char name[60];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="mmap_arg_struct">mmap_arg_struct</A></TH>
+<TD>
+<A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A>:<BR>
+struct mmap_arg_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long addr;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long len;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long prot;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long fd;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long offset;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="module">module</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct module {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long size_of_struct;  /* sizeof(module) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module">struct module</A> *next;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const char *name;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long size;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;union {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#atomic_t">atomic_t</A> usecount;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long pad;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} uc;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long flags;   /* AUTOCLEAN et al */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned nsyms;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned ndeps;<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module_symbol">struct module_symbol</A> *syms;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module_ref">struct module_ref</A> *deps;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module_ref">struct module_ref</A> *refs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int (*init)(void);<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void (*cleanup)(void);<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const <A HREF="#exception_table_entry">struct exception_table_entry</A> *ex_table_start;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const <A HREF="#exception_table_entry">struct exception_table_entry</A> *ex_table_end;<BR>
+        /* Members past this point are extensions to the basic<BR>
+           module support and are optional.  Use mod_opt_member()<BR>
+           to examine them.  */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const <A HREF="#module_persist">struct module_persist</A> *persist_start;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const <A HREF="#module_persist">struct module_persist</A> *persist_end;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int (*can_unload)(void);<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="module_persist">module_persist</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct module_persist; /* yes, it's empty */
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="module_ref">module_ref</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct module_ref {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module">struct module</A> *dep;  /* &quot;parent&quot; pointer */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module">struct module</A> *ref;  /* &quot;child&quot; pointer */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#module_ref">struct module_ref</A> *next_ref;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="module_symbol">module_symbol</A></TH>
+<TD>
+<A HREF="src/include/linux/module.h">include/linux/module.h</A>:<BR>
+struct module_symbol {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long value;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const char *name;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="new_utsname">new_utsname</A></TH>
+<TD>
+<A HREF="src/include/linux/utsname.h">include/linux/utsname.h</A>:<BR>
+struct new_utsname {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char sysname[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char nodename[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char release[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char version[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char machine[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char domainname[65];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__old_kernel_stat">__old_kernel_stat</A></TH>
+<TD>
+<A HREF="src/include/asm/stat.h">include/asm/stat.h</A>:<BR>
+struct __old_kernel_stat {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_dev;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_ino;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_mode;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_nlink;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_uid;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_gid;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_rdev;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_size;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_atime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_mtime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_ctime;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="oldold_utsname">oldold_utsname</A></TH>
+<TD>
+<A HREF="src/include/linux/utsname.h">include/linux/utsname.h</A>:<BR>
+struct oldold_utsname {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char sysname[9];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char nodename[9];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char release[9];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char version[9];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char machine[9];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="old_sigaction">old_sigaction</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:<BR>
+struct old_sigaction {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__sighandler_t">__sighandler_t</A> sa_handler;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#old_sigset_t">old_sigset_t</A> sa_mask;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long sa_flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void (*sa_restorer)(void);<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="old_utsname">old_utsname</A></TH>
+<TD>
+<A HREF="src/include/linux/utsname.h">include/linux/utsname.h</A>:<BR>
+struct old_utsname {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char sysname[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char nodename[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char release[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char version[65];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char machine[65];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="pollfd">pollfd</A></TH>
+<TD>
+<A HREF="src/include/asm/poll.h">include/asm/poll.h</A>:<BR>
+struct pollfd {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int fd;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;short events;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;short revents;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="pt_regs">pt_regs</A></TH>
+<TD>
+<A HREF="src/include/asm/ptrace.h">include/asm/ptrace.h</A>:<BR>
+struct pt_regs {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ebx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ecx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long edx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long esi;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long edi;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ebp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eax;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  xds;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  xes;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long orig_eax;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eip;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  xcs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eflags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long esp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  xss;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="revectored_struct">revectored_struct</A></TH>
+<TD>
+<A HREF="src/include/asm/vm86.h">include/asm/vm86.h</A>:<BR>
+struct revectored_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long __map[8];<BR>
+};<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="rlimit">rlimit</A></TH>
+<TD>
+<A HREF="src/include/linux/resource.h">include/linux/resource.h</A>:<BR>
+struct rlimit {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long rlim_cur;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long rlim_max;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="rusage">rusage</A></TH>
+<TD>
+<A HREF="src/include/linux/resource.h">include/linux/resource.h</A>:<BR>
+struct rusage {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> ru_utime;  /* user time used */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> ru_stime;  /* system time used */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_maxrss;    /* maximum resident set size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_ixrss;     /* integral shared memory size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_idrss;     /* integral unshared data size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_isrss;     /* integral unshared stack size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_minflt;    /* page reclaims */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_majflt;    /* page faults */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_nswap;     /* swaps */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_inblock;   /* block input operations */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_oublock;   /* block output operations */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_msgsnd;    /* messages sent */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_msgrcv;    /* messages received */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_nsignals;  /* signals received */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_nvcsw;     /* voluntary context switches */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ru_nivcsw;    /* involuntary '' */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="sched_param">sched_param</A></TH>
+<TD>
+<A HREF="src/include/linux/sched.h">include/linux/sched.h</A>:<BR>
+struct sched_param {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int sched_priority;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="sel_arg_struct">sel_arg_struct</A></TH>
+<TD>
+<A HREF="src/arch/i386/kernel/sys_i386.c">arch/i386/kernel/sys_i386.c</A>:<BR>
+struct sel_arg_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long n;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#fd_set">fd_set</A> *inp, *outp, *exp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> *tvp;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="sigaction">sigaction</A></TH>
+<TD>
+<A HREF="src/include/asm/signal.h">include/asm/signal.h</A>:<BR>
+struct sigaction {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__sighandler_t">__sighandler_t</A> sa_handler;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long sa_flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void (*sa_restorer)(void);<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#sigset_t">sigset_t</A> sa_mask;  /* mask last for extensibility */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="stat">stat</A></TH>
+<TD>
+<A HREF="src/include/asm/stat.h">include/asm/stat.h</A>:<BR>
+struct stat {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_dev;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short __pad1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long st_ino;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_mode;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_nlink;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_uid;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_gid;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short st_rdev;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short __pad2;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_size;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_blksize;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_blocks;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_atime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  __unused1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_mtime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  __unused2;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  st_ctime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  __unused3;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  __unused4;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long  __unused5;<BR>
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="statfs">statfs</A></TH>
+<TD>
+<A HREF="src/include/asm/statfs.h">include/asm/statfs.h</A>:<BR>
+struct statfs {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_type;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_bsize;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_blocks;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_bfree;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_bavail;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_files;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_ffree;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__kernel_fsid_t">__kernel_fsid_t</A> f_fsid;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_namelen;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long f_spare[6];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="__sysctl_args">__sysctl_args</A></TH>
+<TD>
+include/linux/sysctl.h<BR>
+struct __sysctl_args {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int *name;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int nlen;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void *oldval;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#size_t">size_t</A> *oldlenp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;void *newval;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#size_t">size_t</A> newlen;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long __unused[4];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="sysinfo">sysinfo</A></TH>
+<TD>
+<A HREF="src/include/linux/kernel.h">include/linux/kernel.h</A>:<BR>
+struct sysinfo {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long uptime; /* Seconds since boot */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long loads[3]; /* 1, 5, and 15 minute load averages */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long totalram; /* Total usable main memory size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long freeram;  /* Available memory size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long sharedram; /* Amount of shared memory */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long bufferram; /* Memory used by buffers */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long totalswap; /* Total swap space size */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long freeswap;  /* swap space still available */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short procs;   /* Number of current processes */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char _f[22];  /* Pads structure to 64 bytes */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="timex">timex</A></TH>
+<TD>
+<A HREF="src/include/linux/timex.h">include/linux/timex.h</A>:<BR>
+struct timex {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned int modes; /* mode selector */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long offset;        /* time offset (usec) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long freq;          /* frequency offset (scaled ppm) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long maxerror;      /* maximum error (usec) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long esterror;      /* estimated error (usec) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int status;         /* clock command/status */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long constant;      /* pll time constant */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long precision;     /* clock precision (usec) (read only) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long tolerance;     /* clock frequency tolerance (ppm)<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                     * (read only)<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                     */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#timeval">struct timeval</A> time;    /* (read only) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long tick;          /* (modified) usecs between clock ticks */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ppsfreq;       /* pps frequency (scaled ppm) (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long jitter;        /* pps jitter (us) (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int shift;          /* interval duration (s) (shift) (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long stabil;        /* pps stability (scaled ppm) (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long jitcnt;        /* jitter limit exceeded (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long calcnt;        /* calibration intervals (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long errcnt;        /* calibration errors (ro) */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long stbcnt;        /* stability limit exceeded (ro) */<BR>
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  :32; int  :32; int  :32; int  :32;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  :32; int  :32; int  :32; int  :32;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int  :32; int  :32; int  :32; int  :32;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="timespec">timespec</A></TH>
+<TD>
+<A HREF="src/include/linux/time.h">include/linux/time.h</A>:<BR>
+struct timespec {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#time_t">time_t</A> tv_sec; /* seconds */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long tv_nsec;  /* nanoseconds */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="timeval">timeval</A></TH>
+<TD>
+<A HREF="src/include/linux/time.h">include/linux/time.h</A>:<BR>
+struct timeval {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#time_t">time_t</A> tv_sec; /* seconds */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#suseconds_t">suseconds_t</A> tv_usec; /* microseconds */<BR>
+};
+</TD>
+</TR>
+
+
+<TR><TH VALIGN="top"><A NAME="timezone">timezone</A></TH>
+<TD>
+<A HREF="src/include/linux/time.h">include/linux/time.h</A>:<BR>
+struct timezone {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int tz_minuteswest; /* minutes west of Greenwich */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int tz_dsttime; /* type of dst correction */<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="tms">tms</A></TH>
+<TD>
+include/linux/times.h<BR>
+struct tms {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> tms_utime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> tms_stime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> tms_cutime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#clock_t">clock_t</A> tms_cstime;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="ustat">ustat</A></TH>
+<TD>
+<A HREF="src/include/linux/types.h">include/linux/types.h</A>:<BR>
+struct ustat {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__kernel_daddr_t">__kernel_daddr_t</A> f_tfree;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#__kernel_ino_t">__kernel_ino_t</A> f_tinode;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char f_fname[6];<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char f_fpack[6];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="utimbuf">utimbuf</A></TH>
+<TD>
+<A HREF="src/include/linux/utime.h">include/linux/utime.h</A>:<BR>
+struct utimbuf {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#time_t">time_t</A> actime;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#time_t">time_t</A> modtime;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="vm86plus_info_struct">vm86plus_info_struct</A></TH>
+<TD>
+<A HREF="src/include/asm/vm86.h">include/asm/vm86.h</A>:<BR>
+struct vm86plus_info_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long force_return_for_pic:1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long vm86dbg_active:1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long vm86dbg_TFpendig:1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long unused:28;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long is_vm86pus:1;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned char vm86dbg_intxxtab[32];<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="vm86plus_struct">vm86plus_struct</A></TH>
+<TD>
+<A HREF="src/include/asm/vm86.h">include/asm/vm86.h</A>:<BR>
+struct vm86plus_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#vm86_regs">struct vm86_regs</A> regs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long screen_bitmap;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long cpu_type;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#revectored_struct">struct revectored_struct</A> int_revectored;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#revectored_struct">struct revectored_struct</A> int21_revectored;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#vm86plus_info_struct">struct vm86plus_info_struct</A> vm86plus;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="vm86_regs">vm86_regs</A></TH>
+<TD>
+<A HREF="src/include/asm/vm86.h">include/asm/vm86.h</A>:<BR>
+struct vm86_regs {<BR>
+/* normal regs, with special meaning for the segment descriptors.. */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ebx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ecx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long edx;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long esi;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long edi;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long ebp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eax;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long __null_ds;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long __null_es;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long __null_fs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long __null_gs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long orig_eax;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eip;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short cs, __csh;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long eflags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long esp;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short ss, __ssh;<BR>
+/* these are specific to v86 mode: */<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short es, __esh;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short ds, __dsh;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short fs, __fsh;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned short gs, __gsh;<BR>
+};
+</TD>
+</TR>
+
+<TR><TH VALIGN="top"><A NAME="vm86_struct">vm86_struct</A></TH>
+<TD>
+<A HREF="src/include/asm/vm86.h">include/asm/vm86.h</A>:<BR>
+struct vm86_struct {<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#vm86_regs">struct vm86_regs</A> regs;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long flags;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long screen_bitmap;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unsigned long cpu_type;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#revectored_struct">struct revectored_struct</A> int_revectored;<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="#revectored_struct">struct revectored_struct</A> int21_revectored;<BR>
+};
+</TD>
+</TR>
+
+
+</TABLE>
+
+</BODY>
+
+</HTML>
+
+
+<!--
+
+fs/open.c:int sys_utimes(char * filename, struct timeval * utimes)
+ipc/msg.c:int sys_msgsnd (int msqid, struct msgbuf *msgp, size_t msgsz, int msgflg)
+ipc/msg.c:int sys_msgrcv (int msqid, struct msgbuf *msgp, size_t msgsz,
+ipc/msg.c:int sys_msgget (key_t key, int msgflg)
+ipc/msg.c:int sys_msgctl (int msqid, int cmd, struct msqid_ds *buf)
+ipc/util.c:int sys_msgget (key_t key, int msgflg)
+ipc/util.c:int sys_msgsnd (int msqid, struct msgbuf *msgp, size_t msgsz, int msgflg)
+ipc/util.c:int sys_msgrcv (int msqid, struct msgbuf *msgp, size_t msgsz, long msgtyp,
+ipc/util.c:int sys_msgctl (int msqid, int cmd, struct msqid_ds *buf)
+ipc/sem.c:int sys_semget (key_t key, int nsems, int semflg)
+ipc/sem.c:int sys_semctl (int semid, int semnum, int cmd, union semun arg)
+ipc/sem.c:int sys_semop (int semid, struct sembuf *tsops, unsigned nsops)
+ipc/util.c:int sys_semget (key_t key, int nsems, int semflg)
+ipc/util.c:int sys_semop (int semid, struct sembuf *sops, unsigned nsops)
+ipc/util.c:int sys_semctl (int semid, int semnum, int cmd, union semun arg)
+ipc/shm.c:int sys_shmget (key_t key, int size, int shmflg)
+ipc/shm.c:int sys_shmctl (int shmid, int cmd, struct shmid_ds *buf)
+ipc/shm.c:int sys_shmat (int shmid, char *shmaddr, int shmflg, ulong *raddr)
+ipc/shm.c:int sys_shmdt (char *shmaddr)
+ipc/util.c:int sys_shmget (key_t key, int size, int flag)
+ipc/util.c:int sys_shmat (int shmid, char *shmaddr, int shmflg, ulong *addr)
+ipc/util.c:int sys_shmdt (char *shmaddr)
+ipc/util.c:int sys_shmctl (int shmid, int cmd, struct shmid_ds *buf)
+
+net/socket.c:int sys_socketpair(int family, int type, int protocol, int usockvec[2])
+net/socket.c:int sys_socket(int family, int type, int protocol)
+net/socket.c:int sys_bind(int fd, struct sockaddr *umyaddr, int addrlen)
+net/socket.c:int sys_listen(int fd, int backlog)
+net/socket.c:int sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
+net/socket.c:int sys_connect(int fd, struct sockaddr *uservaddr, int addrlen)
+net/socket.c:int sys_getsockname(int fd, struct sockaddr *usockaddr, int *usockaddr_len)
+net/socket.c:int sys_getpeername(int fd, struct sockaddr *usockaddr, int *usockaddr_len)
+net/socket.c:int sys_sendto(int fd, void * buff, size_t len, unsigned flags,
+net/socket.c:int sys_send(int fd, void * buff, size_t len, unsigned flags)
+net/socket.c:int sys_recvfrom(int fd, void * ubuf, size_t size, unsigned flags,
+net/socket.c:int sys_recv(int fd, void * ubuf, size_t size, unsigned flags)
+net/socket.c:int sys_setsockopt(int fd, int level, int optname, char *optval, int optlen)
+net/socket.c:int sys_getsockopt(int fd, int level, int optname, char *optval, int *optlen)
+net/socket.c:int sys_shutdown(int fd, int how)
+net/socket.c:int sys_sendmsg(int fd, struct msghdr *msg, unsigned flags)
+net/socket.c:int sys_recvmsg(int fd, struct msghdr *msg, unsigned int flags)
+-->

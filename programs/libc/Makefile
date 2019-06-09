@@ -1,0 +1,116 @@
+TARGET = libc.a
+
+IFLAGS = -Iinclude
+HEADERS = include/i386.h
+
+SRC_C += errno
+VPATH += src/errno
+HEADERS += include/errno.h
+
+SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
+	strlen strcpy strncpy strcat strncat strlcat \
+	strchr strrchr strstr strnstr strcmp strncmp \
+	atoi isalpha isdigit isalnum isascii isprint toupper tolower \
+	strclr striter striteri \
+	strequ strnequ \
+	putchar putstr putendl putnbr putnbr_base \
+	aligned_memcpy aligned_bzero
+VPATH += src/string
+HEADERS += include/string.h
+
+SRC_C += beacon op_main modifiers extract_args \
+	s_string s_char s_numeric_u s_numeric_i \
+	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
+	cast buffer norme
+VPATH += src/stdio/printf
+HEADERS += include/stdio.h internal_printf.h
+
+SRC_C += ctor mem_syscall \
+	size_fn \
+	index \
+	debug_show_alloc debug_display_nodes \
+	node_custom_allocator node_custom_deallocator \
+	cmp_range cmp_fixe \
+	free_record \
+	allocator \
+	reallocator \
+	deallocator \
+	main_prototypes \
+	trace \
+	sizeof_object \
+	alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
+	alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
+	alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
+	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
+	alloc_btree_get_neighbours
+VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
+HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
+
+SRC_C += exit
+SRC_ASM +=
+VPATH += src/stdlib
+HEADERS += include/stdlib.h
+
+SRC_C += write fork mmap munmap mprotect sleep getuid getpid
+SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid user_getpid
+VPATH += src/unistd
+HEADERS += include/unistd.h
+
+SRC_C += nanosleep
+SRC_ASM += user_nanosleep
+VPATH += src/time
+HEADERS += include/time.h
+
+SRC_C += signal kill
+SRC_ASM += user_sigaction user_kill
+VPATH += src/signal
+HEADERS += include/signal.h
+
+SRC_C += wait
+SRC_ASM += user_waitpid
+VPATH += src/wait
+HEADERS += include/wait.h
+
+AS = nasm
+CC = gcc
+
+ASFLAGS = -f elf
+CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc $(IFLAGS)
+ifeq ($(DEBUG),yes)
+	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
+	ASFLAGS += -g
+else ifeq ($(OPTIM),yes)
+	# -fno-omit-frame-pointer keep good call trace for panic()
+	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
+else
+	CFLAGS += -m32 -std=gnu99 -Wextra -Wall
+endif
+
+OBJ_DIR = obj
+OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
+OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+
+.PHONY = all clean fclean re exec
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ_ASM) $(OBJ_C)
+	ar rc $@ $^
+	ranlib $@
+
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+clean:
+	find $(OBJ_DIR) -type f -name '*.o' -delete
+
+fclean: clean
+	rm -f $(TARGET)
+
+re: fclean all
+
+exec: all
+	./$(TARGET)

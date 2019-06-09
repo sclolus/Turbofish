@@ -5,7 +5,7 @@ use io::{Io, Pio};
 use bitflags::bitflags;
 
 use crate::drivers::{pic_8259, PIC_8259};
-use crate::memory::get_physical_addr;
+use crate::memory::ffi::get_physical_addr;
 use crate::memory::tools::*;
 
 use alloc::boxed::Box;

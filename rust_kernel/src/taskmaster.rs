@@ -2,16 +2,20 @@
 
 mod process;
 mod scheduler;
+mod signal;
 mod syscall;
+mod task;
 mod tests;
 
-use process::{CpuState, Process, TaskOrigin};
+use process::{KernelProcess, Process, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
-use tests::{_dummy_asm_process_code, _dummy_asm_process_len};
+
+#[allow(unused)]
+use tests::*;
 
 use errno::Errno;
 
-/// SysResult is just made to handle module errors
+/// SysResult is just made to handle module errors. Return optional return and errno
 pub type SysResult<T> = core::result::Result<T, Errno>;
 
 /// MonoTasking or MultiTasking configuration
@@ -22,72 +26,56 @@ pub enum TaskMode {
     Multi(f32),
 }
 
+// Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start() -> ! {
     // Initialize Syscall system
     syscall::init();
 
-    // Create an ASM dummy process based on a simple function
-    let p1 = unsafe { Process::new(TaskOrigin::Raw(&_dummy_asm_process_code, _dummy_asm_process_len)).unwrap() };
-    println!("{:#X?}", p1);
-
-    // Create a real rust process based on an ELF file
-    let p2 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap() };
-    println!("{:#X?}", p2);
-
-    // Create a real rust process based on an ELF file
-    let p3 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap() };
-    println!("{:#X?}", p3);
-
-    // Create a real rust process based on an ELF file
-    let p4 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    println!("{:#X?}", p4);
-
-    // Create a real rust process based on an ELF file
-    let p5 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap() };
-    println!("{:#X?}", p5);
-
-    // Create a real rust process based on an ELF file
-    let p6 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p6);
-
-    // Create a real rust process based on an ELF file
-    let p7 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p7);
-
-    // Create a real rust process based on an ELF file
-    let p8 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap() };
-    println!("{:#X?}", p8);
-
-    // Create a real rust process based on an ELF file
-    let p9 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap() };
-    println!("{:#X?}", p9);
-
-    // Create a real rust process based on an ELF file
-    let p10 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap() };
-    println!("{:#X?}", p10);
-
-    // Create a real rust process based on an ELF file
-    let p11 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap() };
-    println!("{:#X?}", p11);
-
-    let p12 = unsafe { Process::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap() };
-    println!("{:#X?}", p12);
-
     // Load some processes into the scheduler
-    // SCHEDULER.lock().add_process(p1).unwrap();
-    // SCHEDULER.lock().add_process(p2).unwrap();
-    // SCHEDULER.lock().add_process(p3).unwrap();
-    // SCHEDULER.lock().add_process(p4).unwrap();
-    // SCHEDULER.lock().add_process(p5).unwrap();
-    // SCHEDULER.lock().add_process(p6).unwrap();
-    // SCHEDULER.lock().add_process(p7).unwrap();
-    // SCHEDULER.lock().add_process(p8).unwrap();
-    // SCHEDULER.lock().add_process(p9).unwrap();
-    // SCHEDULER.lock().add_process(p10).unwrap();
-    // SCHEDULER.lock().add_process(p11).unwrap();
-    SCHEDULER.lock().add_process(p12).unwrap();
+    let user_process_list = unsafe {
+        vec![
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieBefore")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieAfter")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/csignal")[..])).unwrap(),
+        ]
+    };
+    for (i, p) in user_process_list.into_iter().enumerate() {
+        println!("user pocess no: {} : {:?}", i, p);
+        SCHEDULER.lock().add_user_process(None, p).unwrap();
+    }
+
+    // Set the scheduler idle process
+    SCHEDULER
+        .lock()
+        .set_idle_process(unsafe {
+            KernelProcess::new(TaskOrigin::Raw(_idle_process_code as *const u8, _idle_process_len)).unwrap()
+        })
+        .unwrap();
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(20.)) }
+}
+
+extern "C" {
+    fn _idle_process_code();
+    static _idle_process_len: usize;
 }

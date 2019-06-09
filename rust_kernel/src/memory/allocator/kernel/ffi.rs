@@ -70,9 +70,9 @@ pub unsafe extern "C" fn ksize(addr: *mut u8) -> usize {
                     .unwrap()
                     .ksize(Page::containing(Virt(addr as usize)))
                     .map(|nbr_pages| nbr_pages.to_bytes())
-                    .unwrap()
+                    .expect("Cannot get ksize of pages chunk in VirtualPageAllocator")
             } else {
-                res.unwrap()
+                res.expect("Cannot get ksize of pages chunk in Slab allocator")
             }
         }
         KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
@@ -100,9 +100,11 @@ pub unsafe extern "C" fn vmalloc(size: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn vfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel(_) => {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))).unwrap()
-        }
+        KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .free(Page::containing(Virt(addr as usize)))
+            .expect("Cannot free Kernel virtual Memory"),
         KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement vfree()"),
     }
 }
@@ -116,7 +118,7 @@ pub unsafe extern "C" fn vsize(addr: *mut u8) -> usize {
             .unwrap()
             .ksize(Page::containing(Virt(addr as usize)))
             .map(|nbr_pages| nbr_pages.to_bytes())
-            .unwrap(),
+            .expect("Cannot get vsize of valloced allocation"),
         KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
     }
 }

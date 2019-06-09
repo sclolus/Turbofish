@@ -2,7 +2,7 @@ use crate::system::BaseRegisters;
 use bit_field::BitField;
 use core::{fmt, fmt::Display};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 #[repr(C)]
 /// The content of the EFLAGS register at the moment it was fetched.
 /// WARNING: The flags in themself are not guaranted not to have changed since the structure was fetched.

@@ -1,9 +1,10 @@
+//! see https://en.wikipedia.org/wiki/Linear-feedback_shift_register
+
 use super::MathError;
 use super::MathResult;
 
 use bit_field::BitField;
 
-/// see https://en.wikipedia.org/wiki/Linear-feedback_shift_register
 const SEQ_SIZE: usize = 1 << 11;
 
 struct LfsrFibonnaci {
