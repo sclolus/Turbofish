@@ -401,10 +401,16 @@ impl Scheduler {
     // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
     pub fn exit(&mut self, status: i32) -> ! {
-        // println!(
-        //     "exit called for process with PID: {:?} STATUS: {:?}",
-        //     self.running_process[self.curr_process_index], status
-        // );
+        println!(
+            "exit called for process with PID: {:?} STATUS: {:?}",
+            self.running_process[self.curr_process_index], status
+        );
+
+        match status {
+            139 => println!("segmentation fault"),
+            137 => println!("killed"),
+            _ => {}
+        }
 
         // When the father die, the process 0 adopts all his orphelans
         if let Some(reaper) = self.all_process.get(&Self::REAPER_PID) {
@@ -473,7 +479,7 @@ impl Scheduler {
         if ring == 3 {
             let signal = self.curr_process_mut().signal.apply_pending_signals(process_context_ptr);
             if let Some(SignalStatus::Deadly(signum)) = signal {
-                self.exit(signum as i32 * -1);
+                self.exit(signum as i32 + 128);
             }
         } else {
             unsafe {

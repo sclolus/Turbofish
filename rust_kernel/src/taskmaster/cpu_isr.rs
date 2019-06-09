@@ -130,10 +130,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         // Send a kill signum to the current process: kernel-sodo mode
         let curr_process_pid = SCHEDULER.lock().curr_process_pid();
         let _res = match (*cpu_state).cpu_isr_reserved {
-            14 => {
-                eprintln!("segmentation fault");
-                sys_kill(curr_process_pid, Signum::Sigsegv as u32)
-            }
+            14 => sys_kill(curr_process_pid, Signum::Sigsegv as u32),
             _ => {
                 eprintln!("{}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1);
                 sys_kill(curr_process_pid, Signum::Sigkill as u32)
@@ -145,7 +142,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             SIGNAL_LOCK = false;
             let signal = SCHEDULER.lock().curr_process_mut().signal.apply_pending_signals(cpu_state as u32);
             if let Some(SignalStatus::Deadly(signum)) = signal {
-                SCHEDULER.lock().exit(signum as i32 * -1);
+                SCHEDULER.lock().exit(signum as i32 + 128);
             }
         }
         // TODO: Remove that later

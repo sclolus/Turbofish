@@ -100,7 +100,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
             if ret < 0 {
                 // Reset as running
-                scheduler.curr_process_mut().set_running();
+                // scheduler.curr_process_mut().set_running();
                 return Err(Errno::Eintr);
             } else {
                 let child_pid = match &scheduler.curr_process().process_state {
