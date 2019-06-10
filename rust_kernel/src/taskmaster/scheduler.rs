@@ -12,7 +12,9 @@ use hashmap_core::fnv::FnvHashMap as HashMap;
 use spinlock::Spinlock;
 
 use crate::drivers::PIT0;
+use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+
 
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
@@ -110,7 +112,7 @@ pub struct Scheduler {
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        Self {
+        let mut new = Self {
             running_process: Vec::new(),
             all_process: HashMap::new(),
             curr_process_index: 0,
@@ -118,7 +120,10 @@ impl Scheduler {
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
-        }
+        };
+
+        new.curr_process_pid = 2;
+        new
     }
 
     /// Add a process into the scheduler (transfert ownership)
@@ -127,7 +132,7 @@ impl Scheduler {
         father_pid: Option<Pid>,
         process: Box<UserProcess>,
     ) -> Result<Pid, CollectionAllocErr> {
-        let pid = get_available_pid();
+        let pid = self.get_available_pid();
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
@@ -334,12 +339,36 @@ impl Scheduler {
             _exit_resume(new_kernel_esp, pid, status);
         };
     }
+
+    /// Gets the next available Pid for a new process.
+    /// current PID attribution depends on the existence of a pid in the `all_process` HashMap.
+    /// This is what POSIX-2018 says about it:
+    /// 4.14 Process ID Reuse
+    /// A process group ID shall not be reused by the system until the process group lifetime ends.
+    ///
+    /// A process ID shall not be reused by the system until the process lifetime ends. In addition,
+    /// if there exists a process group whose process group ID is equal to that process ID, the process
+    /// ID shall not be reused by the system until the process group lifetime ends. A process that is not
+    /// a system process shall not have a process ID of 1.
+    fn get_available_pid(&self) -> Pid {
+        fn posix_constraits(_pid: Pid) -> bool {
+            true // TODO: We don't have process groups yet so we can't implement the posix requirements
+        }
+
+        let pred = |pid| { pid > 1 && !self.all_process.contains_key(&pid) && posix_constraits(pid) };
+        let mut pid = NEXT_PID.fetch_add(1, Ordering::Relaxed);
+
+        while !pred(pid) {
+            pid = NEXT_PID.fetch_add(1, Ordering::Relaxed);
+        }
+        pid
+    }
 }
 
 /// Start the whole scheduler
 pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
-    asm!("cli" :::: "volatile");
+    interrupts::disable();
 
     // Register a new IDT entry in 81h for force preempting
     let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
@@ -374,6 +403,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Initialise the first process and get a reference on it
     let p = scheduler.curr_process_mut().unwrap_running_mut();
 
+
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
 
@@ -395,10 +425,8 @@ lazy_static! {
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
-/// represent the greatest available pid
-static MAX_PID: AtomicU32 = AtomicU32::new(0);
-
-/// get the next available pid for a new process
-fn get_available_pid() -> Pid {
-    MAX_PID.fetch_add(1, Ordering::Relaxed) // TODO: handle when overflow to 0
-}
+/// The next pid to be considered by the scheduler
+/// TODO: think about PID Reuse when SMP will be added,
+/// as current PID attribution depends on the existence of a pid in the
+/// `all_process` HashMap.
+static NEXT_PID: AtomicU32 = AtomicU32::new(1);

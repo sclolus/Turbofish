@@ -1,5 +1,6 @@
 use crate::ffi::c_str;
 use crate::system::ExtendedRegisters;
+use crate::interrupts;
 use core::panic::PanicInfo;
 
 /*
@@ -112,7 +113,7 @@ pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: Exten
 #[no_mangle]
 pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () {
     unsafe {
-        asm!("cli");
+        interrupts::disable();
     }
     eprintln!("KERNEL PANIC !\nreason {:?}\n{:X?}", s, ext_reg);
 
@@ -128,7 +129,7 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
 #[allow(dead_code)]
 pub fn panic_sa_mere(info: &PanicInfo) {
     unsafe {
-        asm!("cli");
+        interrupts::disable();
     }
     eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
     let ebp: *const u32;

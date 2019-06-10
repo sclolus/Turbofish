@@ -1,5 +1,6 @@
 use crate::drivers::{storage::ext2::EXT2, ACPI, PCI};
 use crate::system::i8086_payload_apm_shutdown;
+use crate::interrupts;
 use alloc::format;
 use alloc::string::String;
 use core::time::Duration;
@@ -9,7 +10,7 @@ use keyboard::{KeyMap, KEYBOARD_DRIVER, PS2_CONTROLER};
 /// Halt the PC
 pub fn halt(_args: &[&str]) -> u8 {
     unsafe {
-        asm!("cli" :::: "volatile");
+        interrupts::disable();
         println!("System is now halted.");
         asm!("hlt" :::: "volatile");
     }

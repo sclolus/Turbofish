@@ -6,6 +6,8 @@ use crate::ffi::c_char;
 
 use crate::memory::ffi::{map, unmap};
 
+use crate::interrupts;
+
 use core::mem::size_of;
 
 use io::{Io, Pio};
@@ -399,7 +401,7 @@ impl Acpi {
 
             if s5_obj.package_op == 0x12 {
                 // disable all interrupts
-                asm!("cli" :::: "volatile");
+                interrupts::disable();
 
                 // println!(
                 //    "ports: A -> {:#X?} B -> {:#X?}",
