@@ -112,18 +112,15 @@ pub struct Scheduler {
 impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
-        let mut new = Self {
+        Self {
             running_process: Vec::new(),
             all_process: HashMap::new(),
             curr_process_index: 0,
-            curr_process_pid: 0,
+            curr_process_pid: 2,
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
         };
-
-        new.curr_process_pid = 2;
-        new
     }
 
     /// Add a process into the scheduler (transfert ownership)
