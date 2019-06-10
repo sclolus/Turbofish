@@ -120,7 +120,7 @@ impl Scheduler {
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
-        };
+        }
     }
 
     /// Add a process into the scheduler (transfert ownership)

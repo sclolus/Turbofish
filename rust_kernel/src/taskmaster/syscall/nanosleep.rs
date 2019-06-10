@@ -3,7 +3,7 @@
 use super::SysResult;
 
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, interruptible, uninterruptible};
+use super::scheduler::{auto_preempt};
 use super::task::WaitingState;
 
 use errno::Errno;
@@ -60,10 +60,5 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
 }
 
 pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
-    uninterruptible();
-
-    let res = nanosleep(req, rem);
-
-    interruptible();
-    res
+    uninterruptible_context!({ nanosleep(req, rem) })
 }
