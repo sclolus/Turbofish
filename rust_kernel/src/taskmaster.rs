@@ -71,6 +71,7 @@ pub fn start() -> ! {
             // ))
             // .unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal_no_defer")[..])).unwrap(),
         ]
     };
     for (i, p) in user_process_list.into_iter().enumerate() {

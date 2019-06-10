@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{SignalStatus, StructSigaction};
+use super::signal::{SaFlags, SignalStatus, StructSigaction};
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -54,7 +54,7 @@ pub unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<
         let s: StructSigaction = StructSigaction {
             sa_handler: handler as usize,
             sa_mask: Default::default(),
-            sa_flags: 0, // TODO: Default for sys_signal is SA_RESTART
+            sa_flags: SaFlags::from_bits_truncate(0), // TODO: Default for sys_signal is SA_RESTART
             sa_restorer: 0,
         };
 

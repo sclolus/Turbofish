@@ -5,11 +5,11 @@ use super::SysResult;
 
 use alloc::collections::vec_deque::VecDeque;
 use bit_field::BitField;
+use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
 use core::mem::{size_of, transmute};
-use core::ops::BitOr;
-use core::ops::{Index, IndexMut};
+use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
 
 extern "C" {
     static _trampoline: u8;
@@ -163,6 +163,12 @@ impl BitOr for SaMask {
     }
 }
 
+impl BitOrAssign for SaMask {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
 const SIG_DFL: usize = 0;
 const SIG_IGN: usize = 1;
 
@@ -173,7 +179,7 @@ pub struct StructSigaction {
     // TODO: Must be an union with sa_handler
     // sa_sigaction: extern "C" fn(int, siginfo_t *, void *),
     pub sa_mask: SaMask,
-    pub sa_flags: u32,
+    pub sa_flags: SaFlags,
     pub sa_restorer: usize,
 }
 
@@ -185,10 +191,27 @@ pub struct StructSigaction {
 //         self.sa_handler == SIG_DFL
 //     }
 // }
+bitflags! {
+    pub struct SaFlags: u32 {
+        const SA_NOCLDSTOP = 0x00000001;
+        const SA_NOCLDWAIT = 0x00000002;
+        const SA_SIGINFO   = 0x00000004;
+        const SA_ONSTACK   = 0x08000000;
+        const SA_RESTART   = 0x10000000;
+        const SA_NODEFER   = 0x40000000;
+        const SA_RESETHAND = 0x80000000;
+        const SA_RESTORER  = 0x04000000;
+    }
+}
 
 impl Default for StructSigaction {
     fn default() -> Self {
-        Self { sa_handler: SIG_DFL, sa_mask: Default::default(), sa_flags: 0, sa_restorer: 0 }
+        Self {
+            sa_handler: SIG_DFL,
+            sa_mask: Default::default(),
+            sa_flags: SaFlags::from_bits_truncate(0),
+            sa_restorer: 0,
+        }
     }
 }
 
@@ -371,7 +394,10 @@ impl SignalInterface {
             (*cpu_state).esp = user_esp;
             // dbg_hex!(*cpu_state);
         }
-        self.current_sa_mask = self.current_sa_mask | sigaction.sa_mask | SaMask::from(signum);
+        self.current_sa_mask = self.current_sa_mask | sigaction.sa_mask;
+        if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
+            self.current_sa_mask |= SaMask::from(signum);
+        }
         self.signal_queue.pop_front().expect("Unexpected empty signal queue");
     }
 }
