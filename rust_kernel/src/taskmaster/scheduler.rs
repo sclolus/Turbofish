@@ -380,13 +380,19 @@ impl Scheduler {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
+        self.all_process.try_reserve(1)?;
+        self.running_process.try_reserve(1)?;
         let father_pid = self.current_task_pid;
         let current_task = self.current_task_mut();
+        current_task.child.try_reserve(1)?;
 
         // try reserve a place for child pid
-        current_task.child.try_reserve(1)?;
-        let child = current_task.unwrap_running().fork(kernel_esp)?;
-        let child_pid = self.add_user_process(Some(father_pid), child)?;
+
+        let child = current_task.fork(kernel_esp, father_pid)?;
+        let child_pid = self.get_available_pid();
+
+        self.all_process.insert(child_pid, child);
+        self.running_process.push(child_pid);
 
         self.current_task_mut().child.push(child_pid);
         // dbg!(self.current_task());

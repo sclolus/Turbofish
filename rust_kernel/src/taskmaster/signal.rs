@@ -254,6 +254,19 @@ impl SignalInterface {
             current_sa_mask: Default::default(),
         }
     }
+    pub fn fork(&self) -> Self {
+        Self {
+            signal_actions: SignalActions([Default::default(); 32]),
+            //The set of signals pending for the child process shall be
+            //initialized to the empty set.
+            signal_queue: VecDeque::new(),
+            //The signal mask for a thread shall be initialized from that of its
+            //parent or creating thread, or from the corresponding thread in the
+            //parent process if the thread was created as the result of a call to
+            //fork()
+            current_sa_mask: self.current_sa_mask,
+        }
+    }
 
     /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {

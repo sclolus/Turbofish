@@ -1,8 +1,9 @@
 //! This file contains definition of a task
 
-use super::process::{CpuState, UserProcess};
+use super::process::{CpuState, Process, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
+use super::SysResult;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -20,6 +21,18 @@ pub struct Task {
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
         Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
+    }
+
+    pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {
+        Ok(Self {
+            child: Vec::new(),
+            parent: Some(self_pid),
+            signal: self.signal.fork(),
+            process_state: match &self.process_state {
+                ProcessState::Running(p) => ProcessState::Running(p.fork(kernel_esp)?),
+                _ => panic!("Non running process should not fork"),
+            },
+        })
     }
 
     pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
