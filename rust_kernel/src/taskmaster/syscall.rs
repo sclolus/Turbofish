@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::ipc;
 use super::process;
 use super::process::CpuState;
 use super::scheduler;
@@ -22,6 +23,12 @@ use waitpid::sys_waitpid;
 
 pub mod signalfn;
 use signalfn::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
+
+mod close;
+use close::sys_close;
+
+mod socket;
+use socket::{sys_socketcall, SocketArgsPtr};
 
 use errno::Errno;
 
@@ -113,6 +120,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        6 => sys_close(ebx as u32),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
         37 => sys_kill(ebx as Pid, ecx as u32),
@@ -120,6 +128,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         67 => sys_sigaction(ebx as u32, ecx as *const StructSigaction, edx as *mut StructSigaction),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
+        102 => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         200 => sys_sigreturn(cpu_state),
