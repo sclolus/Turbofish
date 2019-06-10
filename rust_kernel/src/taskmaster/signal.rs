@@ -272,9 +272,6 @@ impl SignalInterface {
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
         let signum = *self.signal_queue.get(0)?;
 
-        if self.current_sa_mask.contains(signum) {
-            return None;
-        }
         let sigaction = self.signal_actions[signum];
         match sigaction.sa_handler {
             SIG_DFL => {
@@ -298,28 +295,45 @@ impl SignalInterface {
         process_context_ptr: u32,
         in_interruptible_syscall: bool,
     ) -> Option<SignalStatus> {
-        let signum = *self.signal_queue.get(0)?;
+        let mut i = 0;
+        loop {
+            if i == self.signal_queue.len() {
+                return None;
+            }
+            let signum = *self.signal_queue.get(i)?;
 
-        if self.current_sa_mask.contains(signum) {
-            return None;
-        }
-        let sigaction = self.signal_actions[signum];
-        match sigaction.sa_handler {
-            SIG_DFL => {
-                use DefaultAction::*;
-                match signal_default_action(signum) {
-                    Abort => Some(SignalStatus::Deadly(signum)),
-                    Terminate => Some(SignalStatus::Deadly(signum)),
-                    Ignore => unimplemented!(),
-                    Continue => unimplemented!(),
-                    Stop => unimplemented!(),
+            if self.current_sa_mask.contains(signum) {
+                i += 1;
+                continue;
+            }
+            let sigaction = self.signal_actions[signum];
+            match sigaction.sa_handler {
+                SIG_DFL => {
+                    use DefaultAction::*;
+                    match signal_default_action(signum) {
+                        Abort | Terminate => {
+                            return Some(SignalStatus::Deadly(signum));
+                        }
+                        //If the action associated with a blocked signal is to ignore the
+                        //signal and if that signal is generated for the process, it is
+                        //unspecified whether the signal is discarded immediately upon
+                        //generation or remains pending.
+                        Ignore => {
+                            self.signal_queue.remove(i);
+                            continue;
+                        }
+                        Continue => unimplemented!(),
+                        Stop => unimplemented!(),
+                    }
+                }
+                SIG_IGN => unimplemented!(),
+                _ => {
+                    self.signal_queue.remove(i);
+                    self.exec_signal_handler(signum, process_context_ptr, &sigaction, in_interruptible_syscall);
+                    return None;
                 }
             }
-            SIG_IGN => unimplemented!(),
-            _ => {
-                self.exec_signal_handler(signum, process_context_ptr, &sigaction, in_interruptible_syscall);
-                None
-            }
+            i += 1;
         }
     }
 
@@ -345,6 +359,8 @@ impl SignalInterface {
             (*cpu_state).esp += align_on(_trampoline_len as usize, 4) as u32;
             // get back the old cpu state and set it as the current cpu_state
             let _signum: u32 = pop_esp(&mut (*cpu_state).esp);
+
+            /* POP DATA SECTION */
             self.current_sa_mask = pop_esp(&mut (*cpu_state).esp);
             let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
             // dbg_hex!(old_cpu_state);
@@ -356,7 +372,6 @@ impl SignalInterface {
         //     .pop_front()
         //     .expect("Unexpected empty signal queue");
     }
-
     /// Register a new handler for a specified Signum
     pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
         let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
@@ -365,6 +380,9 @@ impl SignalInterface {
 
     /// Register a new signal
     pub fn new_signal(&mut self, signum: Signum) -> SysResult<u32> {
+        if self.signal_queue.iter().any(|&s| s == signum) {
+            return Ok(0);
+        }
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
         Ok(0)
@@ -436,6 +454,5 @@ impl SignalInterface {
         if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
             self.current_sa_mask |= SaMask::from(signum);
         }
-        self.signal_queue.pop_front().expect("Unexpected empty signal queue");
     }
 }
