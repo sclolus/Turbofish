@@ -10,6 +10,7 @@ use core::convert::TryFrom;
 use core::mem;
 use core::mem::{size_of, transmute};
 use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
+use errno::Errno;
 
 extern "C" {
     static _trampoline: u8;
@@ -27,7 +28,7 @@ pub fn align_on(t: usize, on: usize) -> usize {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
 #[repr(u32)]
 pub enum Signum {
@@ -279,7 +280,11 @@ impl SignalInterface {
     }
 
     /// Apply all the checked signals: Make signals frames if no deadly. Returns DEADLY directive or first signal
-    pub fn apply_pending_signals(&mut self, process_context_ptr: u32) -> Option<SignalStatus> {
+    pub fn apply_pending_signals(
+        &mut self,
+        process_context_ptr: u32,
+        in_interruptible_syscall: bool,
+    ) -> Option<SignalStatus> {
         let signum = *self.signal_queue.get(0)?;
 
         if self.current_sa_mask.contains(signum) {
@@ -299,7 +304,7 @@ impl SignalInterface {
             }
             SIG_IGN => unimplemented!(),
             _ => {
-                self.exec_signal_handler(signum, process_context_ptr, &sigaction);
+                self.exec_signal_handler(signum, process_context_ptr, &sigaction, in_interruptible_syscall);
                 None
             }
         }
@@ -352,7 +357,13 @@ impl SignalInterface {
         Ok(0)
     }
 
-    fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, sigaction: &StructSigaction) {
+    fn exec_signal_handler(
+        &mut self,
+        signum: Signum,
+        kernel_esp: u32,
+        sigaction: &StructSigaction,
+        in_interruptible_syscall: bool,
+    ) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
@@ -380,9 +391,23 @@ impl SignalInterface {
             // dbg_hex!(*cpu_state);
 
             let mut user_esp = (*cpu_state).esp;
+
+            if in_interruptible_syscall {
+                if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
+                    // back 2 instruction to reput eip on `int 80h` and restart the syscall
+                    (*cpu_state).eip -= 2;
+                } else {
+                    // else the syscall must return Eintr
+                    (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32;
+                }
+            }
+
+            /* PUSH DATA SECTION */
             // push the current cpu_state on the user stack
             push_esp(&mut user_esp, *cpu_state);
+            // push the sa_mask
             push_esp(&mut user_esp, self.current_sa_mask);
+
             // push the trampoline code on the user stack
             push_buff_esp(&mut user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
             // push the address of start of trampoline code stack on the user stack

@@ -1,0 +1,6 @@
+!.gitignore
+sa_restart
+target
+*.orig
+!.xbuild_toolchain
+!.rust_toolchain

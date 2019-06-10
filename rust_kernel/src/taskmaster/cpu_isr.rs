@@ -3,7 +3,7 @@
 use super::process::CpuState;
 use super::scheduler::{SCHEDULER, SIGNAL_LOCK};
 use super::signal::Signum;
-use super::syscall::signalfn::sys_kill;
+use super::syscall::sys_signal::sys_kill;
 
 use core::ffi::c_void;
 
@@ -140,7 +140,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
         if SIGNAL_LOCK == true {
             SIGNAL_LOCK = false;
-            SCHEDULER.lock().current_task_apply_pending_signals(cpu_state as u32);
+            SCHEDULER.lock().current_task_apply_pending_signals(cpu_state as u32, false);
         }
         // TODO: Remove that later
         loop {}

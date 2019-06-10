@@ -328,7 +328,7 @@ impl Scheduler {
                 let ring = unsafe { get_ring(kernel_esp) };
                 if signal.is_some() {
                     if ring == 3 {
-                        self.current_task_apply_pending_signals(kernel_esp)
+                        self.current_task_apply_pending_signals(kernel_esp, false)
                     } else {
                         unsafe {
                             SIGNAL_LOCK = true;
@@ -463,9 +463,10 @@ impl Scheduler {
     }
 
     /// apply pending signal, must be called when process is in ring 3
-    pub fn current_task_apply_pending_signals(&mut self, process_context_ptr: u32) {
+    pub fn current_task_apply_pending_signals(&mut self, process_context_ptr: u32, in_interruptible_syscall: bool) {
         debug_assert_eq!(unsafe { get_ring(process_context_ptr as u32) }, 3, "Cannot apply signal from ring0 process");
-        let signal = self.current_task_mut().signal.apply_pending_signals(process_context_ptr);
+        let signal =
+            self.current_task_mut().signal.apply_pending_signals(process_context_ptr, in_interruptible_syscall);
         if let Some(SignalStatus::Deadly(signum)) = signal {
             self.current_task_exit(signum as i32 + 128);
         }

@@ -40,7 +40,7 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
         // auto-sodo mode
         if current_task_pid == pid {
             let signal = scheduler.current_task_mut().signal.check_pending_signals();
-            if let Some(SignalStatus::Deadly(_signum)) | Some(SignalStatus::Handled(_signum)) = signal {
+            if signal.is_some() {
                 SIGNAL_LOCK = true;
             }
         }

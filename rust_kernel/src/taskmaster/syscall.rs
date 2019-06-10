@@ -11,17 +11,17 @@ use super::signal;
 use super::signal::StructSigaction;
 use super::task;
 
-mod mmap;
-use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
+mod sys_mmap;
+use sys_mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
 
-mod nanosleep;
-use nanosleep::{sys_nanosleep, TimeSpec};
+mod sys_nanosleep;
+use sys_nanosleep::{sys_nanosleep, TimeSpec};
 
-mod waitpid;
-use waitpid::sys_waitpid;
+mod sys_wait;
+use sys_wait::sys_waitpid;
 
-pub mod signalfn;
-use signalfn::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
+pub mod sys_signal;
+use sys_signal::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
 
 use errno::Errno;
 
@@ -131,21 +131,24 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
+    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible()
+    // If ring0 process -> Can't happened normally
+    unpreemptible_context! {{
+        if SIGNAL_LOCK {
+            SIGNAL_LOCK = false;
+            let mut scheduler = SCHEDULER.lock();
+            scheduler.current_task_apply_pending_signals(
+                cpu_state as u32,
+                if result == Err(Errno::Eintr) { true } else { false },
+            );
+        }
+    }}
+
     // Return value will be on EAX. Errno always represents the low 7 bits
     (*cpu_state).registers.eax = match result {
         Ok(return_value) => return_value as u32,
         Err(errno) => (-(errno as i32)) as u32,
     };
-
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible()
-    // If ring0 process -> Can't happened normally
-    unpreemptible_context!({
-        if SIGNAL_LOCK {
-            SIGNAL_LOCK = false;
-            let mut scheduler = SCHEDULER.lock();
-            scheduler.current_task_apply_pending_signals(cpu_state as u32);
-        }
-    })
 }
 
 extern "C" {
