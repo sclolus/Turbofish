@@ -10,7 +10,7 @@ use core::convert::TryFrom;
 use core::mem;
 use core::mem::{size_of, transmute};
 use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
-// use errno::Errno;
+use errno::Errno;
 
 extern "C" {
     static _trampoline: u8;
@@ -350,6 +350,12 @@ impl SignalInterface {
     }
     /// Register a new handler for a specified Signum
     pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
+        //The system shall not allow the action for the signals
+        // SIGKILL or SIGSTOP to be set to SIG_IGN.
+        if (signum == Signum::Sigkill || signum == Signum::Sigstop) && sigaction.sa_handler != SIG_DFL {
+            return Err(Errno::Einval);
+        }
+
         let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
         Ok(former.sa_handler as u32)
     }
