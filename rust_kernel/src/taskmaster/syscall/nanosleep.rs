@@ -43,7 +43,7 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
     // Set as Sleeping
     scheduler.curr_process_mut().set_waiting(WaitingState::Sleeping(next_wake));
 
-    // auto preemption mechanism set environement as interruptible
+    // auto preemption mechanism set environement as preemptible
     if auto_preempt() < 0 {
         let now = unsafe { _get_pit_time() };
         if now < next_wake {
@@ -60,5 +60,5 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
 }
 
 pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
-    uninterruptible_context!({ nanosleep(req, rem) })
+    unpreemptible_context!({ nanosleep(req, rem) })
 }

@@ -26,22 +26,22 @@ extern "C" {
 
     fn _update_process_end_time(update: u32);
 
-    pub fn _uninterruptible();
-    pub fn _interruptible();
+    pub fn _unpreemptible();
+    pub fn _preemptible();
     pub fn _schedule_force_preempt();
 }
 
 pub type Pid = u32;
 
 #[inline(always)]
-pub fn uninterruptible() {
+pub fn unpreemptible() {
     unsafe {
-        crate::taskmaster::scheduler::_uninterruptible();
+        crate::taskmaster::scheduler::_unpreemptible();
     }
 }
 
 #[inline(always)]
-pub fn interruptible() {
+pub fn preemptible() {
     unsafe {
         // Check if the Time to live of the current process is expired
         // TODO: If scheduler is disable, the kernel will crash
@@ -49,9 +49,40 @@ pub fn interruptible() {
         if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
             _auto_preempt();
         } else {
-            crate::taskmaster::scheduler::_interruptible();
+            crate::taskmaster::scheduler::_preemptible();
         }
     }
+}
+
+/// A Finalizer-pattern Struct that disables preemption upon instantiation.
+/// then reenables it at Drop time.
+pub struct PreemptionGuard;
+
+impl PreemptionGuard {
+    /// The instantiation methods that disables preemption and creates the guard.
+    pub fn new() -> Self {
+        unpreemptible();
+        Self
+    }
+}
+
+impl Drop for PreemptionGuard {
+    /// The drop implementation of the guard reenables preemption.
+    fn drop(&mut self) {
+        preemptible();
+    }
+}
+
+#[macro_export]
+/// This macro executes the block given as parameter in an unpreemptible context.
+macro_rules! unpreemptible_context {
+    ($code: block) => {{
+        use super::scheduler::PreemptionGuard;
+
+        let _guard = PreemptionGuard::new();
+
+        $code
+    }};
 }
 
 pub fn auto_preempt() -> i32 {
@@ -86,7 +117,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
-    interruptible();
+    preemptible();
 }
 
 #[derive(Debug)]
@@ -400,7 +431,6 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Initialise the first process and get a reference on it
     let p = scheduler.curr_process_mut().unwrap_running_mut();
 
-
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
 
@@ -411,7 +441,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         None => _update_process_end_time(-1 as i32 as u32),
     }
 
-    interruptible();
+    preemptible();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }

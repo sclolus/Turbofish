@@ -7,7 +7,7 @@ use super::process::CpuState;
 use super::scheduler;
 use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{uninterruptible};
+use super::scheduler::{unpreemptible};
 use super::task;
 
 mod mmap;
@@ -46,7 +46,7 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
-            uninterruptible_context!({
+            unpreemptible_context!({
                 /*
                 print!(
                 "{:?} / {:?} : {}",
@@ -69,13 +69,13 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
 
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
-    uninterruptible();
+    unpreemptible();
     SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
-    uninterruptible_context!({ SCHEDULER.lock().fork(kernel_esp) })
+    unpreemptible_context!({ SCHEDULER.lock().fork(kernel_esp) })
 }
 
 /// Preemptif coherency checker
@@ -88,13 +88,13 @@ unsafe fn sys_test() -> SysResult<u32> {
 }
 
 unsafe fn sys_getpid() -> SysResult<u32> {
-    Ok(uninterruptible_context!({ SCHEDULER.lock().curr_process_pid() }))
+    Ok(unpreemptible_context!({ SCHEDULER.lock().curr_process_pid() }))
 }
 
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
-    uninterruptible_context!({
+    unpreemptible_context!({
         println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
     });
 

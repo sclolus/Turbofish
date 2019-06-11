@@ -37,7 +37,7 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
 
 /// Map files or devices into memory
 pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
-    uninterruptible_context!({ mmap(mmap_arg) })
+    unpreemptible_context!({ mmap(mmap_arg) })
     .map(|(address, length)| {
         unsafe {
             address.write_bytes(0, length);
@@ -61,7 +61,7 @@ pub unsafe fn sys_mmap2(
 
 /// Unmap files or devices into memory
 pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<u32> {
-    uninterruptible_context!({
+    unpreemptible_context!({
         // TODO: Unallocate
     });
     Ok(0)
@@ -70,7 +70,7 @@ pub unsafe fn sys_munmap(_addr: Virt, _length: usize) -> SysResult<u32> {
 
 /// Set protection on a region of memory
 pub unsafe fn sys_mprotect(_addr: Virt, _length: usize, _prot: MmapProt) -> SysResult<u32> {
-    uninterruptible_context!({
+    unpreemptible_context!({
         // TODO: Change Entry range
     });
     Err(Errno::Eperm)

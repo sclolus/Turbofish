@@ -1,8 +1,7 @@
 //! This file contains the task manager
 
-#[macro_use]
-mod macros;
 mod process;
+#[macro_use]
 mod scheduler;
 mod signal;
 mod syscall;

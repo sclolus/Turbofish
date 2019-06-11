@@ -16,7 +16,7 @@ _pit_time dd 0
 %define LOCKED 1
 %define UNLOCKED 0
 ; The scheduler handler is not called until setting its variable to UNLOCKED
-_interruptible_state dd LOCKED
+_preemptible_state dd LOCKED
 
 _process_end_time dd 0
 
@@ -26,7 +26,7 @@ _process_end_time dd 0
 ;                inc _pit_time                  _pit_time++
 ;                     |
 ;                     v
-;    +----- NO Is_scheduler_interruptible ?     _interruptible_state == UNLOCKED
+;    +----- NO Is_scheduler_preemptible ?     _preemptible_state == UNLOCKED
 ;    |            YES |
 ;    |                v
 ;    +----- NO Is_process_time_expired ?        _pit_time >= process_end_time
@@ -60,9 +60,9 @@ _isr_timer:
 	; inc _pit_time
 	lock inc dword [_pit_time]
 
-	; Is_scheduler_interruptible ?
+	; Is_scheduler_preemptible ?
 	xor eax, eax
-	lock cmpxchg dword [_interruptible_state], eax
+	lock cmpxchg dword [_preemptible_state], eax
 	pop eax
 	jnz .end
 
@@ -82,15 +82,15 @@ _isr_timer:
 	iret
 
 ; Avoid Atomically the preemptive call of the scheduler
-global _uninterruptible
-_uninterruptible:
-	lock or dword [_interruptible_state], LOCKED
+global _unpreemptible
+_unpreemptible:
+	lock or dword [_preemptible_state], LOCKED
 	ret
 
 ; Allow Atomically the preemptive call of the scheduler
-global _interruptible
-_interruptible:
-	lock and dword [_interruptible_state], UNLOCKED
+global _preemptible
+_preemptible:
+	lock and dword [_preemptible_state], UNLOCKED
 	ret
 
 ; Get atomically the actual pit time
