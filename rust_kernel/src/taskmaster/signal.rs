@@ -10,7 +10,7 @@ use core::convert::TryFrom;
 use core::mem;
 use core::mem::{size_of, transmute};
 use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
-use errno::Errno;
+// use errno::Errno;
 
 extern "C" {
     static _trampoline: u8;
@@ -97,7 +97,7 @@ pub enum Signum {
     Sigsys = 31,
 }
 
-#[allow(dead_code)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DefaultAction {
     Abort,
     Terminate,
@@ -106,7 +106,6 @@ pub enum DefaultAction {
     Continue,
 }
 
-#[allow(dead_code)]
 pub fn signal_default_action(signum: Signum) -> DefaultAction {
     use Signum::*;
     match signum {
@@ -184,14 +183,6 @@ pub struct StructSigaction {
     pub sa_restorer: usize,
 }
 
-// impl StructSigaction {
-//     fn is_ignored(&self) -> bool {
-//         self.sa_handler == SIG_IGN
-//     }
-//     fn is_default(&self) -> bool {
-//         self.sa_handler == SIG_DFL
-//     }
-// }
 bitflags! {
     pub struct SaFlags: u32 {
         const SA_NOCLDSTOP = 0x00000001;
@@ -207,12 +198,7 @@ bitflags! {
 
 impl Default for StructSigaction {
     fn default() -> Self {
-        Self {
-            sa_handler: SIG_DFL,
-            sa_mask: Default::default(),
-            sa_flags: SaFlags::from_bits_truncate(0),
-            sa_restorer: 0,
-        }
+        Self { sa_handler: SIG_DFL, sa_mask: Default::default(), sa_flags: SaFlags::SA_RESTART, sa_restorer: 0 }
     }
 }
 
@@ -234,8 +220,10 @@ impl Index<Signum> for SignalActions {
 
 #[derive(Debug, Copy, Clone)]
 pub enum SignalStatus {
-    Handled(Signum),
+    Handled { signum: Signum, sigaction: StructSigaction },
     Deadly(Signum),
+    Continue(Signum),
+    Stop { signum: Signum, sigaction: StructSigaction },
 }
 
 #[derive(Debug)]
@@ -243,6 +231,7 @@ pub struct SignalInterface {
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
     pub current_sa_mask: SaMask,
+    pub next_signal: Option<SignalStatus>,
 }
 
 impl SignalInterface {
@@ -252,6 +241,7 @@ impl SignalInterface {
             signal_actions: SignalActions([Default::default(); 32]),
             signal_queue: VecDeque::new(),
             current_sa_mask: Default::default(),
+            next_signal: None,
         }
     }
     pub fn fork(&self) -> Self {
@@ -265,36 +255,11 @@ impl SignalInterface {
             //parent process if the thread was created as the result of a call to
             //fork()
             current_sa_mask: self.current_sa_mask,
+            next_signal: None,
         }
     }
 
-    /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
-    pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
-        let signum = *self.signal_queue.get(0)?;
-
-        let sigaction = self.signal_actions[signum];
-        match sigaction.sa_handler {
-            SIG_DFL => {
-                use DefaultAction::*;
-                match signal_default_action(signum) {
-                    Abort => Some(SignalStatus::Deadly(signum)),
-                    Terminate => Some(SignalStatus::Deadly(signum)),
-                    Ignore => unimplemented!(),
-                    Continue => unimplemented!(),
-                    Stop => unimplemented!(),
-                }
-            }
-            SIG_IGN => unimplemented!(),
-            _ => Some(SignalStatus::Handled(signum)),
-        }
-    }
-
-    /// Apply all the checked signals: Make signals frames if no deadly. Returns DEADLY directive or first signal
-    pub fn apply_pending_signals(
-        &mut self,
-        process_context_ptr: u32,
-        in_interruptible_syscall: bool,
-    ) -> Option<SignalStatus> {
+    fn pop_next_signal_to_exec(&mut self) -> Option<SignalStatus> {
         let mut i = 0;
         loop {
             if i == self.signal_queue.len() {
@@ -322,19 +287,35 @@ impl SignalInterface {
                             self.signal_queue.remove(i);
                             continue;
                         }
-                        Continue => unimplemented!(),
-                        Stop => unimplemented!(),
+                        Continue => {
+                            self.signal_queue.remove(i);
+                            return Some(SignalStatus::Continue(signum));
+                        }
+                        Stop => {
+                            self.signal_queue.remove(i);
+                            return Some(SignalStatus::Stop { signum, sigaction });
+                        }
                     }
                 }
                 SIG_IGN => unimplemented!(),
                 _ => {
                     self.signal_queue.remove(i);
-                    self.exec_signal_handler(signum, process_context_ptr, &sigaction, in_interruptible_syscall);
-                    return None;
+                    return Some(SignalStatus::Handled { signum, sigaction });
                 }
             }
-            i += 1;
         }
+    }
+
+    /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
+    pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
+        assert!(self.next_signal.is_none());
+        let next_signal = self.pop_next_signal_to_exec();
+        self.next_signal = next_signal;
+        return next_signal;
+    }
+
+    pub fn take_pending_signal(&mut self) -> Option<SignalStatus> {
+        self.next_signal.take().or_else(|| self.pop_next_signal_to_exec())
     }
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
@@ -365,12 +346,7 @@ impl SignalInterface {
             let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
             // dbg_hex!(old_cpu_state);
             *cpu_state = old_cpu_state;
-
-            // return current eax to keep it's value at the syscall return
         }
-        // self.signal_queue
-        //     .pop_front()
-        //     .expect("Unexpected empty signal queue");
     }
     /// Register a new handler for a specified Signum
     pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
@@ -379,22 +355,28 @@ impl SignalInterface {
     }
 
     /// Register a new signal
-    pub fn new_signal(&mut self, signum: Signum) -> SysResult<u32> {
+    pub fn generate_signal(&mut self, signum: Signum) -> SysResult<u32> {
         if self.signal_queue.iter().any(|&s| s == signum) {
             return Ok(0);
+        }
+        //When any stop signal (SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU) is generated
+        //for a process or thread, all pending SIGCONT signals for that process
+        //or any of the threads within that process shall be
+        //discarded. Conversely, when SIGCONT is generated for a process or
+        //thread, all pending stop signals for that process or any of the
+        //threads within that process shall be discarded
+        if signal_default_action(signum) == DefaultAction::Stop {
+            self.signal_queue.retain(|&s| s != Signum::Sigcont);
+        }
+        if signal_default_action(signum) == DefaultAction::Continue {
+            self.signal_queue.retain(|&s| signal_default_action(s) != DefaultAction::Stop);
         }
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
         Ok(0)
     }
 
-    fn exec_signal_handler(
-        &mut self,
-        signum: Signum,
-        kernel_esp: u32,
-        sigaction: &StructSigaction,
-        in_interruptible_syscall: bool,
-    ) {
+    pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, sigaction: &StructSigaction) {
         /// helper to push on the stack
         /// imitate push instruction by incrementing esp before push t
         fn push_esp<T: Copy>(esp: &mut u32, t: T) {
@@ -422,16 +404,6 @@ impl SignalInterface {
             // dbg_hex!(*cpu_state);
 
             let mut user_esp = (*cpu_state).esp;
-
-            if in_interruptible_syscall {
-                if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
-                    // back 2 instruction to reput eip on `int 80h` and restart the syscall
-                    (*cpu_state).eip -= 2;
-                } else {
-                    // else the syscall must return Eintr
-                    (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32;
-                }
-            }
 
             /* PUSH DATA SECTION */
             // push the current cpu_state on the user stack

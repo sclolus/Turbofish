@@ -10,7 +10,7 @@ use errno::Errno;
 fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.current_task_mut().unwrap_running_mut().virtual_allocator;
+    let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
     // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
     // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT

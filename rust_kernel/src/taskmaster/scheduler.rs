@@ -1,7 +1,7 @@
 //! this file contains the scheduler description
 
-use super::process::{get_ring, KernelProcess, Process, UserProcess};
-use super::signal::SignalStatus;
+use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
+use super::signal::{SaFlags, SignalStatus, StructSigaction};
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -17,6 +17,7 @@ use spinlock::Spinlock;
 use crate::drivers::PIT0;
 use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+use crate::system::PrivilegeLevel;
 
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
@@ -31,6 +32,7 @@ extern "C" {
     pub fn _unpreemptible();
     pub fn _preemptible();
     pub fn _schedule_force_preempt();
+    fn _sigstop_return(kernel_esp: u32) -> !;
 }
 
 pub type Pid = u32;
@@ -209,7 +211,7 @@ impl Scheduler {
                 self.idle_mode = false;
             }
             false => {
-                self.current_task_mut().unwrap_running_mut().kernel_esp = kernel_esp;
+                self.current_task_mut().unwrap_process_mut().kernel_esp = kernel_esp;
             }
         }
     }
@@ -298,6 +300,11 @@ impl Scheduler {
                                 };
                             }
                         }
+                        WaitingState::Stoped(_) => {
+                            if signal.is_some() {
+                                return signal;
+                            }
+                        }
                     }
                 }
                 ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
@@ -317,7 +324,7 @@ impl Scheduler {
             false => {
                 let p = self.current_task_mut();
 
-                let process = p.unwrap_running();
+                let process = p.unwrap_process();
                 unsafe {
                     process.context_switch();
                 }
@@ -327,8 +334,8 @@ impl Scheduler {
                 // If ring0 process -> block temporary interruptible macro
                 let ring = unsafe { get_ring(kernel_esp) };
                 if signal.is_some() {
-                    if ring == 3 {
-                        self.current_task_apply_pending_signals(kernel_esp, false)
+                    if ring == PrivilegeLevel::Ring3 {
+                        self.current_task_deliver_pending_signals(kernel_esp, Scheduler::NOT_IN_BLOCKED_SYSCALL)
                     } else {
                         unsafe {
                             SIGNAL_LOCK = true;
@@ -382,6 +389,7 @@ impl Scheduler {
         }
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
+        let child_pid = self.get_available_pid();
         let father_pid = self.current_task_pid;
         let current_task = self.current_task_mut();
         current_task.child.try_reserve(1)?;
@@ -389,7 +397,6 @@ impl Scheduler {
         // try reserve a place for child pid
 
         let child = current_task.fork(kernel_esp, father_pid)?;
-        let child_pid = self.get_available_pid();
 
         self.all_process.insert(child_pid, child);
         self.running_process.push(child_pid);
@@ -405,7 +412,7 @@ impl Scheduler {
     // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
     pub fn current_task_exit(&mut self, status: i32) -> ! {
-        println!(
+        eprintln!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index], status
         );
@@ -468,13 +475,53 @@ impl Scheduler {
         pid
     }
 
+    pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
     /// apply pending signal, must be called when process is in ring 3
-    pub fn current_task_apply_pending_signals(&mut self, process_context_ptr: u32, in_interruptible_syscall: bool) {
-        debug_assert_eq!(unsafe { get_ring(process_context_ptr as u32) }, 3, "Cannot apply signal from ring0 process");
-        let signal =
-            self.current_task_mut().signal.apply_pending_signals(process_context_ptr, in_interruptible_syscall);
-        if let Some(SignalStatus::Deadly(signum)) = signal {
-            self.current_task_exit(signum as i32 + 128);
+    pub fn current_task_deliver_pending_signals(&mut self, process_context_ptr: u32, in_blocked_syscall: bool) {
+        debug_assert_eq!(
+            unsafe { get_ring(process_context_ptr as u32) },
+            PrivilegeLevel::Ring3,
+            "Cannot apply signal from ring0 process"
+        );
+        let signal = self.current_task_mut().signal.take_pending_signal();
+        // self.current_task_mut().signal.deliver_pending_signals(process_context_ptr, in_interruptible_syscall);
+        let handle_interruptible_syscall = |sigaction: &StructSigaction| {
+            let cpu_state: *mut CpuState = process_context_ptr as *mut CpuState;
+            // dbg_hex!(*cpu_state);
+
+            if in_blocked_syscall {
+                if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
+                    // back 2 instruction to reput eip on `int 80h` and restart the syscall
+                    unsafe { (*cpu_state).eip -= 2 };
+                } else {
+                    // else the syscall must return Eintr
+                    unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
+                }
+            }
+        };
+        if let Some(signal) = signal {
+            match signal {
+                SignalStatus::Handled { signum, sigaction } => {
+                    handle_interruptible_syscall(&sigaction);
+                    self.current_task_mut().signal.exec_signal_handler(signum, process_context_ptr, &sigaction);
+                }
+                SignalStatus::Deadly(signum) => self.current_task_exit(signum as i32 + 128),
+                SignalStatus::Continue(_signum) => self.current_task_mut().set_running(),
+                SignalStatus::Stop { signum, sigaction } => {
+                    self.current_task_mut().unwrap_process_mut().kernel_esp = process_context_ptr;
+
+                    handle_interruptible_syscall(&sigaction);
+                    self.current_task_mut().set_waiting(WaitingState::Stoped(signum));
+                    let signal = self.advance_next_process(1);
+                    // Set all the context of the illigible process
+                    let new_kernel_esp = self.load_new_context(signal);
+                    unsafe {
+                        SCHEDULER.force_unlock();
+                        preemptible();
+                        _sigstop_return(new_kernel_esp);
+                    };
+                }
+            }
         }
     }
 }
@@ -515,7 +562,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     scheduler.time_interval = t;
 
     // Initialise the first process and get a reference on it
-    let p = scheduler.current_task_mut().unwrap_running_mut();
+    let p = scheduler.current_task_mut().unwrap_process_mut();
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

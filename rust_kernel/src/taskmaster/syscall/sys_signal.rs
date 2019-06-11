@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{SaFlags, SignalStatus, StructSigaction};
+use super::signal::{SaFlags, StructSigaction};
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -13,7 +13,7 @@ use errno::Errno;
 pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *mut StructSigaction) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
-        let v = &mut scheduler.current_task_mut().unwrap_running_mut().virtual_allocator;
+        let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
         // Check if pointer exists in user virtual address space
         v.check_user_ptr::<StructSigaction>(act)?;
@@ -34,7 +34,8 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
         let mut scheduler = SCHEDULER.lock();
 
         let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
-        let res = task.signal.new_signal(signum.try_into().map_err(|_| Errno::Einval)?)?;
+        let signum = signum.try_into().map_err(|_| Errno::Einval)?;
+        let res = task.signal.generate_signal(signum)?;
 
         let current_task_pid = scheduler.current_task_pid();
         // auto-sodo mode

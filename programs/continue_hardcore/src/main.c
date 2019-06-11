@@ -26,7 +26,7 @@ int main() {
 		printf("sigaction failed\n");
 	}
 	sa.sa_handler = hello_signal;
-	sa.sa_flags = SA_RESTART;
+	sa.sa_flags = 0;
     if (sigaction(SIGUSR1, &sa, NULL) == -1) {
 		printf("sigaction failed\n");
 	}

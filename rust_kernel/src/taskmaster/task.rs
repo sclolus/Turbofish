@@ -2,7 +2,7 @@
 
 use super::process::{CpuState, Process, UserProcess};
 use super::scheduler::Pid;
-use super::signal::SignalInterface;
+use super::signal::{SignalInterface, Signum};
 use super::SysResult;
 
 use alloc::boxed::Box;
@@ -35,14 +35,14 @@ impl Task {
         })
     }
 
-    pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
+    pub fn unwrap_process_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
             ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
             _ => panic!("WTF"),
         }
     }
 
-    pub fn unwrap_running(&self) -> &UserProcess {
+    pub fn unwrap_process(&self) -> &UserProcess {
         match &self.process_state {
             ProcessState::Running(process) | ProcessState::Waiting(process, _) => process,
             _ => panic!("WTF"),
@@ -58,7 +58,7 @@ impl Task {
 
     /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
     pub fn set_return_value(&self, return_value: i32) {
-        let cpu_state = self.unwrap_running().kernel_esp as *mut CpuState;
+        let cpu_state = self.unwrap_process().kernel_esp as *mut CpuState;
         unsafe {
             (*(cpu_state)).registers.eax = return_value as u32;
         }
@@ -104,6 +104,7 @@ pub enum WaitingState {
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Option<Pid>, u32),
+    Stoped(Signum),
 }
 
 #[derive(Debug)]

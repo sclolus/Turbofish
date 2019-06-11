@@ -19,7 +19,7 @@ use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::AddressSpace;
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::registers::Eflags;
-use crate::system::BaseRegisters;
+use crate::system::{BaseRegisters, PrivilegeLevel};
 
 extern "C" {
     fn _start_process(kernel_esp: u32) -> !;
@@ -386,7 +386,7 @@ impl Process for KernelProcess {
 }
 
 /// Return the current ring relative to cpu_state: context_ptr must be right
-pub unsafe fn get_ring(context_ptr: u32) -> u32 {
-    let cpu_state: *const CpuState = context_ptr as *const CpuState;
-    (*cpu_state).cs & 0b11
+pub unsafe fn get_ring(context_ptr: u32) -> PrivilegeLevel {
+    let cpu_state = context_ptr as *const CpuState;
+    (((*cpu_state).cs & 0b11) as u8).into()
 }

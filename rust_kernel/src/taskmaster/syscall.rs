@@ -130,25 +130,27 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
     };
-
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible()
+    let is_in_blocked_syscall = result == Err(Errno::Eintr);
+    // do not erase eax if we've just been interrupted as we must keep
+    // the syscall number contained in eax
+    if !is_in_blocked_syscall {
+        // Return value will be on EAX. Errno always represents the low 7 bits
+        (*cpu_state).registers.eax = match result {
+            Ok(return_value) => return_value as u32,
+            Err(errno) => (-(errno as i32)) as u32,
+        };
+    }
+    // If ring3 process -> Mark process on signal execution state,
+    // modify CPU state, prepare a signal frame. UNLOCK
+    // interruptible().
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
         if SIGNAL_LOCK {
             SIGNAL_LOCK = false;
             let mut scheduler = SCHEDULER.lock();
-            scheduler.current_task_apply_pending_signals(
-                cpu_state as u32,
-                if result == Err(Errno::Eintr) { true } else { false },
-            );
+            scheduler.current_task_deliver_pending_signals(cpu_state as u32, is_in_blocked_syscall);
         }
     }}
-
-    // Return value will be on EAX. Errno always represents the low 7 bits
-    (*cpu_state).registers.eax = match result {
-        Ok(return_value) => return_value as u32,
-        Err(errno) => (-(errno as i32)) as u32,
-    };
 }
 
 extern "C" {
