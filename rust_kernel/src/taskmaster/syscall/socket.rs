@@ -11,7 +11,6 @@ use errno::Errno;
 use core::convert::TryInto;
 use core::slice;
 
-use crate::ffi::c_char;
 use crate::memory::AddressSpace;
 
 /// Implements a new C style enum with his try_from boilerplate
@@ -69,6 +68,31 @@ macro_rules! raw_deferencing_struct {
     }
 }
 
+/// Implements the debug boilerplate to raw string based on byte array from C style
+macro_rules! visible_byte_array {
+    (#[$main_doc:meta]
+     $(#[$e:meta])*
+     struct $name:tt([u8; $q:ident]);
+    ) => {
+        #[$main_doc]
+        $(#[$e])*
+        struct $name([u8; $q]);
+
+        impl core::fmt::Debug for $name {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+             unsafe {
+             let ptr = self as *const _ as *const u8;
+                 let mut i = 0;
+                 while (*ptr.offset(i as isize)) != 0 {
+                     i += 1;
+                 }
+                 let slice: &[u8] = core::slice::from_raw_parts(ptr, i); // Make slice of u8 (&[u8])
+                 write!(f, "{}", core::str::from_utf8_unchecked(slice))  // Make str slice (&[str]) with &[u8]
+             }
+        }}
+    }
+}
+
 safe_convertible_enum!(
     /// This list contains the sockets associated function types
     #[derive(Debug, Copy, Clone)]
@@ -109,20 +133,24 @@ safe_convertible_enum!(
 
 const UNIX_PATHNAME_MAXSIZE: usize = 108;
 
-type PathName = [c_char; UNIX_PATHNAME_MAXSIZE];
+visible_byte_array!(
+    /// Unix pathname
+    #[derive(Copy, Clone)]
+    struct SockPathname([u8; UNIX_PATHNAME_MAXSIZE]);
+);
 
 /// This is the basic structure for exchanging packet with UNIX socket
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[repr(C)]
 struct SockaddrUnix {
     /// TypeOf Socket
     sun_family: SunFamily,
     /// Unix pathname
-    sun_path: PathName,
+    sun_path: SockPathname,
 }
 
 /// They are differents types of sockaddr
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Sockaddr {
     /// UNIX socket
     Unix(&'static SockaddrUnix),
@@ -269,8 +297,9 @@ raw_deferencing_struct!(
 
 type SockLen = usize;
 
-fn socket(_scheduler: &mut Scheduler, _domain: Domain, _socket_type: SocketType, _protocol: u32) -> SysResult<u32> {
-    Ok(0)
+fn socket(_scheduler: &mut Scheduler, domain: Domain, socket_type: SocketType, protocol: u32) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?} {:?}", function!(), domain, socket_type, protocol);
+    Ok(3)
 }
 
 raw_deferencing_struct!(
@@ -287,7 +316,8 @@ raw_deferencing_struct!(
     }
 );
 
-fn bind(_scheduler: &mut Scheduler, _socket_fd: i32, _sockaddr: Sockaddr) -> SysResult<u32> {
+fn bind(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
     Ok(0)
 }
 
@@ -305,7 +335,8 @@ raw_deferencing_struct!(
     }
 );
 
-fn connect(_scheduler: &mut Scheduler, _socket_fd: i32, _sockaddr: Sockaddr) -> SysResult<u32> {
+fn connect(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
     Ok(0)
 }
 
@@ -321,7 +352,8 @@ raw_deferencing_struct!(
     }
 );
 
-fn listen(_scheduler: &mut Scheduler, _socket_fd: i32, _backlog: i32) -> SysResult<u32> {
+fn listen(_scheduler: &mut Scheduler, socket_fd: i32, backlog: i32) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?}", function!(), socket_fd, backlog);
     Ok(0)
 }
 
@@ -340,12 +372,8 @@ raw_deferencing_struct!(
 );
 
 // This function cannot be completely safe by nature of theses functionalities.
-fn accept(
-    _scheduler: &mut Scheduler,
-    _socket_fd: i32,
-    _sockaddr: *mut u8,
-    _sockaddr_len: *mut SockLen,
-) -> SysResult<u32> {
+fn accept(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: *mut u8, sockaddr_len: *mut SockLen) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, sockaddr, sockaddr_len);
     Ok(0)
 }
 
@@ -365,7 +393,8 @@ raw_deferencing_struct!(
     }
 );
 
-fn send(_scheduler: &mut Scheduler, _socket_fd: i32, _buf: &[u8], _flags: u32) -> SysResult<u32> {
+fn send(_scheduler: &mut Scheduler, socket_fd: i32, buf: &[u8], flags: u32) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, unsafe { core::str::from_utf8_unchecked(buf) }, flags);
     Ok(0)
 }
 
@@ -385,7 +414,8 @@ raw_deferencing_struct!(
     }
 );
 
-fn recv(_scheduler: &mut Scheduler, _socket_fd: i32, _buf: &mut [u8], _flags: u32) -> SysResult<u32> {
+fn recv(_scheduler: &mut Scheduler, socket_fd: i32, buf: &mut [u8], flags: u32) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, unsafe { core::str::from_utf8_unchecked(buf) }, flags);
     Ok(0)
 }
 
@@ -411,11 +441,19 @@ raw_deferencing_struct!(
 
 fn send_to(
     _scheduler: &mut Scheduler,
-    _socket_fd: i32,
-    _buf: &[u8],
-    _flags: u32,
-    _sockaddr_opt: Option<Sockaddr>,
+    socket_fd: i32,
+    buf: &[u8],
+    flags: u32,
+    sockaddr_opt: Option<Sockaddr>,
 ) -> SysResult<u32> {
+    println!(
+        "{:?}: {:?} {:?} {:?} {:?}",
+        function!(),
+        socket_fd,
+        unsafe { core::str::from_utf8_unchecked(buf) },
+        flags,
+        sockaddr_opt
+    );
     Ok(0)
 }
 
@@ -442,12 +480,21 @@ raw_deferencing_struct!(
 // This function cannot be completely safe by nature of theses functionalities.
 fn recv_from(
     _scheduler: &mut Scheduler,
-    _socket_fd: i32,
-    _buf: &mut [u8],
-    _flags: u32,
-    _src_addr: *mut u8,
-    _addr_len: *mut SockLen,
+    socket_fd: i32,
+    buf: &mut [u8],
+    flags: u32,
+    src_addr: *mut u8,
+    addr_len: *mut SockLen,
 ) -> SysResult<u32> {
+    println!(
+        "{:?}: {:?} {:?} {:?} {:?} {:?}",
+        function!(),
+        socket_fd,
+        unsafe { core::str::from_utf8_unchecked(buf) },
+        flags,
+        src_addr,
+        addr_len
+    );
     Ok(0)
 }
 
@@ -463,6 +510,7 @@ raw_deferencing_struct!(
     }
 );
 
-fn shutdown(_scheduler: &mut Scheduler, _socket_fd: i32, _how: u32) -> SysResult<u32> {
+fn shutdown(_scheduler: &mut Scheduler, socket_fd: i32, how: u32) -> SysResult<u32> {
+    println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
     Ok(0)
 }
