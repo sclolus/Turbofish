@@ -165,14 +165,14 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         }
         SysBind => {
             v.check_user_ptr::<BindArgs>(args as *const BindArgs)?;
-            let BindArgs { socket_fd, sockaddr, sockaddr_len } = unsafe { *(args as *const BindArgs) };
-            let sockaddr = (v, sockaddr as *const u8, sockaddr_len as usize).try_into()?;
+            let BindArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const BindArgs) };
+            let sockaddr = (v, addr as *const u8, addr_len as usize).try_into()?;
             bind(&mut scheduler, socket_fd as i32, sockaddr)
         }
         SysConnect => {
             v.check_user_ptr::<ConnectArgs>(args as *const ConnectArgs)?;
-            let ConnectArgs { socket_fd, sockaddr, sockaddr_len } = unsafe { *(args as *const ConnectArgs) };
-            let sockaddr = (v, sockaddr as *const u8, sockaddr_len as usize).try_into()?;
+            let ConnectArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const ConnectArgs) };
+            let sockaddr = (v, addr as *const u8, addr_len as usize).try_into()?;
             connect(&mut scheduler, socket_fd as i32, sockaddr)
         }
         SysListen => {
@@ -182,9 +182,9 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         }
         SysAccept => {
             v.check_user_ptr::<AcceptArgs>(args as *const AcceptArgs)?;
-            let AcceptArgs { socket_fd, sockaddr, sockaddr_len } = unsafe { *(args as *const AcceptArgs) };
-            let sockaddr = (v, sockaddr as *const u8, sockaddr_len as usize).try_into()?;
-            accept(&mut scheduler, socket_fd as i32, sockaddr)
+            let AcceptArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const AcceptArgs) };
+            // UNSAFE pointers are passed to accept(). The syscall MUST check them before filling
+            accept(&mut scheduler, socket_fd as i32, addr as *mut u8, addr_len as *mut SockLen)
         }
         SysSend => {
             v.check_user_ptr::<SendArgs>(args as *const SendArgs)?;
@@ -204,31 +204,23 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         }
         SysSendTo => {
             v.check_user_ptr::<SendToArgs>(args as *const SendToArgs)?;
-            let SendToArgs { socket_fd, buf, len, flags, sockaddr, sockaddr_len } =
-                unsafe { *(args as *const SendToArgs) };
+            let SendToArgs { socket_fd, buf, len, flags, dst_addr, addr_len } = unsafe { *(args as *const SendToArgs) };
             let mem = unsafe { slice::from_raw_parts(buf as *const u8, len as usize) };
             // TODO: I am not sure that the content is tested. Maybe it just the reference...
             // check_user_ptr::<&[u8]>(&mem, v)?;
-            let sockaddr_opt: Option<Sockaddr> = if sockaddr != 0x0 {
-                Some((v, sockaddr as *const u8, sockaddr_len as usize).try_into()?)
-            } else {
-                None
-            };
+            let sockaddr_opt: Option<Sockaddr> =
+                if dst_addr != 0x0 { Some((v, dst_addr as *const u8, addr_len as usize).try_into()?) } else { None };
             send_to(&mut scheduler, socket_fd as i32, mem, flags, sockaddr_opt)
         }
         SysRecvFrom => {
             v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
-            let RecvFromArgs { socket_fd, buf, len, flags, sockaddr, sockaddr_len } =
+            let RecvFromArgs { socket_fd, buf, len, flags, src_addr, addr_len } =
                 unsafe { *(args as *const RecvFromArgs) };
             let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
             // TODO: I am not sure that the content is tested. Maybe it just the reference...
             // check_user_ptr::<&[u8]>(mem, v)?;
-            let sockaddr_opt: Option<Sockaddr> = if sockaddr != 0x0 {
-                Some((v, sockaddr as *const u8, sockaddr_len as usize).try_into()?)
-            } else {
-                None
-            };
-            recv_from(&mut scheduler, socket_fd as i32, mem, flags, sockaddr_opt)
+            // UNSAFE pointers are passed to recv_from(). The syscall MUST check them before filling
+            recv_from(&mut scheduler, socket_fd as i32, mem, flags, src_addr as *mut u8, addr_len as *mut SockLen)
         }
         SysShutdown => {
             v.check_user_ptr::<ShutdownArgs>(args as *const ShutdownArgs)?;
@@ -275,6 +267,8 @@ raw_deferencing_struct!(
     }
 );
 
+type SockLen = usize;
+
 fn socket(_scheduler: &mut Scheduler, _domain: Domain, _socket_type: SocketType, _protocol: u32) -> SysResult<u32> {
     Ok(0)
 }
@@ -287,9 +281,9 @@ raw_deferencing_struct!(
         /// Associated socket file decriptor
         socket_fd: i32,
         /// Sockaddr strucure pointer
-        sockaddr: *const Sockaddr,
+        addr: *const Sockaddr,
         /// Length of previous structure
-        sockaddr_len: SockLen,
+        addr_len: SockLen,
     }
 );
 
@@ -305,9 +299,9 @@ raw_deferencing_struct!(
         /// Associated socket file decriptor
         socket_fd: i32,
         /// Sockaddr strucure pointer
-        sockaddr: *const Sockaddr,
+        addr: *const Sockaddr,
         /// Length of previous structure
-        sockaddr_len: SockLen,
+        addr_len: SockLen,
     }
 );
 
@@ -338,14 +332,20 @@ raw_deferencing_struct!(
     struct AcceptArgs {
         /// Associated socket file decriptor
         socket_fd: i32,
-        /// Sockaddr strucure pointer
-        sockaddr: *const Sockaddr,
-        /// Length of previous structure
-        sockaddr_len: SockLen,
+        /// Sockaddr strucure pointer. Ths syscall must fill this structure if NON-NULL
+        addr: *mut Sockaddr,
+        /// Length of previous structure. The syscall must specify the length of sockaddr
+        addr_len: *mut SockLen,
     }
 );
 
-fn accept(_scheduler: &mut Scheduler, _socket_fd: i32, _sockaddr: Sockaddr) -> SysResult<u32> {
+// This function cannot be completely safe by nature of theses functionalities.
+fn accept(
+    _scheduler: &mut Scheduler,
+    _socket_fd: i32,
+    _sockaddr: *mut u8,
+    _sockaddr_len: *mut SockLen,
+) -> SysResult<u32> {
     Ok(0)
 }
 
@@ -403,9 +403,9 @@ raw_deferencing_struct!(
         /// Optional flags
         flags: u32,
         /// Sockaddr strucure pointer
-        sockaddr: *const Sockaddr,
+        dst_addr: *const Sockaddr,
         /// Length of previous structure
-        sockaddr_len: SockLen,
+        addr_len: SockLen,
     }
 );
 
@@ -432,19 +432,21 @@ raw_deferencing_struct!(
         len: usize,
         /// Optional flags
         flags: u32,
-        /// Sockaddr strucure pointer
-        sockaddr: *const Sockaddr,
-        /// Length of previous structure
-        sockaddr_len: SockLen,
+        /// Sockaddr strucure pointer. Ths syscall must fill this structure if NON-NULL
+        src_addr: *mut Sockaddr,
+        /// Length of previous structure. The syscall must specify the length of sockaddr
+        addr_len: *mut SockLen,
     }
 );
 
+// This function cannot be completely safe by nature of theses functionalities.
 fn recv_from(
     _scheduler: &mut Scheduler,
     _socket_fd: i32,
     _buf: &mut [u8],
     _flags: u32,
-    _sockaddr_opt: Option<Sockaddr>,
+    _src_addr: *mut u8,
+    _addr_len: *mut SockLen,
 ) -> SysResult<u32> {
     Ok(0)
 }

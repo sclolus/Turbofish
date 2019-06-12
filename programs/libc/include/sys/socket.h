@@ -32,6 +32,9 @@
 
 struct sockaddr;      // Opaque pointer to avoid compilation errors or warnings
 
+/*
+ * Unix socket sockaddr interface (AF_UNIX)
+ */
 struct sockaddr_un {
 	u16 sun_family;
 	u8 unix_pathname[UNIX_PATHNAME_MAXSIZE];
