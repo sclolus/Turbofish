@@ -36,4 +36,7 @@ int usleep(useconds_t usec);
 uid_t getuid(void);
 pid_t getpid(void);
 
+int close(int fd);
+int unlink(const char *pathname);
+
 #endif

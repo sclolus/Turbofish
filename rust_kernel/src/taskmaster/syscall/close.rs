@@ -2,6 +2,6 @@
 
 use super::SysResult;
 
-pub fn sys_close(_fd: u32) -> SysResult<u32> {
+pub fn sys_close(_fd: i32) -> SysResult<u32> {
     Ok(0)
 }

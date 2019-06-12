@@ -75,25 +75,25 @@ safe_convertible_enum!(
     #[repr(u32)]
     enum CallType {
         /// Create an endpoint for communication
-        SysSocket = 0,
+        SysSocket = 1,
         /// Bind a name to a socket
-        SysBind = 1,
+        SysBind = 2,
         /// Initiate a connection on a socket. Client connection-oriented
-        SysConnect = 2,
+        SysConnect = 3,
         /// Listen for connections on a socket. Server connection-oriented
-        SysListen = 3,
+        SysListen = 4,
         /// Accept a connection on a socket. Server connection-oriented
-        SysAccept = 4,
+        SysAccept = 5,
         /// Send a message on a socket. Similar to write with flags. connection-oriented
-        SysSend = 5,
+        SysSend = 9,
         /// Receive a message from a socket. Similar to read with flags. connection-oriented
-        SysRecv = 6,
+        SysRecv = 10,
         /// Send a message on a socket. The destination address is specified. connectionless
-        SysSendTo = 7,
+        SysSendTo = 11,
         /// Receive a message from a socket. The source address is specified. connectionless
-        SysRecvFrom = 8,
+        SysRecvFrom = 12,
         /// Shut down part of a full-duplex connection. connection-oriented
-        SysShutdown = 9,
+        SysShutdown = 13,
     }
 );
 
@@ -103,11 +103,11 @@ safe_convertible_enum!(
     #[repr(u16)]
     enum SunFamily {
         /// UNIX socket
-        AfUnix = 0,
+        AfUnix = 1,
     }
 );
 
-const UNIX_PATHNAME_MAXSIZE: usize = 300;
+const UNIX_PATHNAME_MAXSIZE: usize = 108;
 
 type PathName = [c_char; UNIX_PATHNAME_MAXSIZE];
 
@@ -237,7 +237,7 @@ safe_convertible_enum!(
     #[repr(u32)]
     enum Domain {
         /// Local communication. Basic unix sockets
-        AfUnix = 0,
+        AfUnix = 1,
     }
 );
 
@@ -247,9 +247,9 @@ safe_convertible_enum!(
     #[repr(u32)]
     enum SocketType {
         /// Connection-oriented
-        SockStream = 0,
+        SockStream = 1,
         /// Connectionless, unreliable messages of a fixed maximum length
-        SockDgram = 1,
+        SockDgram = 2,
     }
 );
 

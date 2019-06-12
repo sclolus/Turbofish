@@ -6,39 +6,29 @@
 /*
  * LIBC internal values for user_socketcall
  */
-#define __SOCKET      0
-#define __BIND        1
-#define __CONNECT     2
-#define __LISTEN      3
-#define __ACCEPT      4
-#define __SEND        5
-#define __RECV        6
-#define __SENDTO      7
-#define __RECVFROM    9
-#define __SHUTDOWN    9
+#define __SOCKET      1
+#define __BIND        2
+#define __CONNECT     3
+#define __LISTEN      4
+#define __ACCEPT      5
+#define __SEND        9
+#define __RECV        10
+#define __SENDTO      11
+#define __RECVFROM    12
+#define __SHUTDOWN    13
 
 /*
  * sun_family
  */
-#define AF_UNIX 0
+#define AF_UNIX 1
 
 /*
  * type
  */
-#define SOCK_STREAM 0 // Connection-oriented
-#define SOCK_DGRAM 1  // Connectionless
-
-#define UNIX_PATHNAME_MAXSIZE 300
+#define SOCK_STREAM 1 // Connection-oriented
+#define SOCK_DGRAM 2  // Connectionless
 
 struct sockaddr;      // Opaque pointer to avoid compilation errors or warnings
-
-/*
- * Unix socket sockaddr interface (AF_UNIX)
- */
-struct sockaddr_un {
-	u16 sun_family;
-	u8 unix_pathname[UNIX_PATHNAME_MAXSIZE];
-};
 
 typedef size_t socklen_t;
 

@@ -27,6 +27,9 @@ use signalfn::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
 mod close;
 use close::sys_close;
 
+mod unlink;
+use unlink::sys_unlink;
+
 mod socket;
 use socket::{sys_socketcall, SocketArgsPtr};
 
@@ -120,8 +123,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        6 => sys_close(ebx as u32),
+        6 => sys_close(ebx as i32),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
+        10 => sys_unlink(ebx as *const u8),
         20 => sys_getpid(),
         37 => sys_kill(ebx as Pid, ecx as u32),
         48 => sys_signal(ebx as u32, ecx as usize),

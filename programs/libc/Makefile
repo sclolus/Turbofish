@@ -50,7 +50,7 @@ SRC_C += exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += write fork mmap munmap mprotect sleep getuid getpid
+SRC_C += write fork mmap munmap mprotect sleep getuid getpid close unlink
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
@@ -68,7 +68,7 @@ HEADERS += include/wait.h
 
 SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
 VPATH += src/socket
-HEADERS += include/sys/socket.h
+HEADERS += include/sys/socket.h include/sys/un.h
 
 SRC_ASM += user_syscall
 VPATH += src
