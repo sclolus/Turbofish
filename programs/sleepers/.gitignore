@@ -1,6 +1,0 @@
-!.gitignore
-sleepers
-target
-*.orig
-!.xbuild_toolchain
-!.rust_toolchain

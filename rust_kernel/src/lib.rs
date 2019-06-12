@@ -49,7 +49,6 @@ pub mod drivers;
 pub mod math;
 pub mod memory;
 pub mod multiboot;
-#[cfg(not(test))]
 pub mod panic;
 pub mod registers;
 #[cfg(not(feature = "test"))]

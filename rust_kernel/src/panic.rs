@@ -145,6 +145,7 @@ pub fn panic_sa_mere(info: &PanicInfo) {
     };
 }
 
+#[cfg(not(test))]
 #[panic_handler]
 #[no_mangle]
 fn panic(info: &PanicInfo) -> ! {

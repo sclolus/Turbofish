@@ -1,6 +1,0 @@
-!.gitignore
-signal
-target
-*.orig
-!.xbuild_toolchain
-!.rust_toolchain

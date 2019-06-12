@@ -1,4 +1,4 @@
-arch := ivybridge_cpu
+arch := ivybridge-cpu
 kernel := build/kernel.elf
 name := turbo_fish
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
@@ -106,16 +106,16 @@ endif
 
 .PHONY: all clean fclean common_clean re exec $(kernel)
 
-all: .rust_toolchain .xbuild_toolchain compile_bootstrap build_rust build_libasm_i386 build_libft $(kernel)
+all: .rust-toolchain .xbuild-toolchain compile_bootstrap build_rust build_libasm_i386 build_libft $(kernel)
 
-.rust_toolchain: rust-toolchain
+.rust-toolchain: rust-toolchain
 	rustup component add rust-src
 	rustup component add rustfmt
-	echo "Updated" > .rust_toolchain
+	echo "Updated" > .rust-toolchain
 
-.xbuild_toolchain: xbuild-toolchain
+.xbuild-toolchain: xbuild-toolchain
 	cargo install --version $(CARGO_XBUILD_VERSION) cargo-xbuild --force
-	echo "Updated" > .xbuild_toolchain
+	echo "Updated" > .xbuild-toolchain
 
 common_clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete

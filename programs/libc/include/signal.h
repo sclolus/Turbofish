@@ -3,6 +3,10 @@
 
 #include "i386.h"
 
+/* Default actions. */
+#define SIG_DFL        0
+#define SIG_IGN        1
+
 /* Signals.  */
 #define SIGHUP         1       /* Hangup (POSIX).  */
 #define SIGINT         2       /* Interrupt (ANSI).  */
