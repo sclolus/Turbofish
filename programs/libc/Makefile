@@ -66,6 +66,10 @@ SRC_C += wait
 VPATH += src/wait
 HEADERS += include/wait.h
 
+SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
+VPATH += src/socket
+HEADERS += include/sys/socket.h
+
 SRC_ASM += user_syscall
 VPATH += src
 HEADERS += include/user_syscall.h
