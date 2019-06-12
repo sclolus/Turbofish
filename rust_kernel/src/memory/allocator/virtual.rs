@@ -255,6 +255,20 @@ impl AddressSpace {
             .map_err(|_| MemoryError::BadAddr)?)
     }
 
+    /// Check if a pointer given by user process is not bullshit
+    pub fn check_user_ptr_with_len<T>(&self, ptr: *const T, length: usize) -> Result<()> {
+        assert!(length != 0);
+        let start_ptr = Virt(ptr as usize);
+        let end_ptr = Virt((ptr as usize).checked_add(length - 1).ok_or(MemoryError::BadAddr)?);
+
+        Ok(self
+            .0
+            .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
+                entry.intersects((AllocFlags::USER_MEMORY).into())
+            })
+            .map_err(|_| MemoryError::BadAddr)?)
+    }
+
     pub fn alloc<N>(&mut self, length: N, alloc_flags: AllocFlags) -> Result<*mut u8>
     where
         N: Into<NbrPages>,

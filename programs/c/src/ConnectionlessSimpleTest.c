@@ -36,7 +36,7 @@ int main(void)
 		/*
 		 * Send a message to the father
 		 */
-		ssize_t ret = sendto(fd, "banane", 7, 0, (const struct sockaddr *)&dest_addr, sizeof(dest_addr));
+		ssize_t ret = sendto(fd, "banane banane banane", 20, 0, (const struct sockaddr *)&dest_addr, sizeof(dest_addr));
 		close(fd);
 		exit(0);
 	} else {
