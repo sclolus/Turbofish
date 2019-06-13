@@ -5,7 +5,7 @@ extern scheduler_interrupt_handler
 segment .text
 
 ;; Preemptive schedule beacon
-;; Scheduler MUST be not interruptible !
+;; Scheduler MUST be not preemptible !
 ;;
 ;; +--------+               ^ (to high memory)
 ;; | SS     | TSS ONLY      |
@@ -77,14 +77,14 @@ schedule_return:
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
-extern _interruptible
+extern _preemptible
 
-; It is identical to the above its mark system as scheduler-interruptible
+; It is identical to the above its mark system as scheduler-preemptible
 ; This function MUST be used only in a INTGATE context
 global _schedule_force_preempt
 _schedule_force_preempt:
 	STORE_CONTEXT
-	call _interruptible
+	call _preemptible
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax

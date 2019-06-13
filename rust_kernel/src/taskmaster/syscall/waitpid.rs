@@ -1,7 +1,7 @@
 //! waitpid (wait) implementations
 
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, interruptible, uninterruptible};
+use super::scheduler::{auto_preempt, unpreemptible};
 use super::task::{ProcessState, WaitingState};
 use super::SysResult;
 
@@ -95,7 +95,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             let ret = auto_preempt();
 
             // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
-            uninterruptible();
+            unpreemptible();
             let mut scheduler = SCHEDULER.lock();
 
             if ret < 0 {
@@ -129,10 +129,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 }
 
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
-    uninterruptible();
-    let res = waitpid(pid, wstatus, options);
-    interruptible();
-    res
+    unpreemptible_context!({ waitpid(pid, wstatus, options) })
 }
 
 // TODO: Solve Gloubiboulga

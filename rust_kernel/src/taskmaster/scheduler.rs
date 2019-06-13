@@ -8,11 +8,14 @@ use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
+use core::sync::atomic::{AtomicU32, Ordering};
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use spinlock::Spinlock;
 
 use crate::drivers::PIT0;
+use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
+
 
 extern "C" {
     fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
@@ -24,22 +27,22 @@ extern "C" {
 
     fn _update_process_end_time(update: u32);
 
-    pub fn _uninterruptible();
-    pub fn _interruptible();
+    pub fn _unpreemptible();
+    pub fn _preemptible();
     pub fn _schedule_force_preempt();
 }
 
 pub type Pid = u32;
 
 #[inline(always)]
-pub fn uninterruptible() {
+pub fn unpreemptible() {
     unsafe {
-        crate::taskmaster::scheduler::_uninterruptible();
+        crate::taskmaster::scheduler::_unpreemptible();
     }
 }
 
 #[inline(always)]
-pub fn interruptible() {
+pub fn preemptible() {
     unsafe {
         // Check if the Time to live of the current process is expired
         // TODO: If scheduler is disable, the kernel will crash
@@ -47,9 +50,43 @@ pub fn interruptible() {
         if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
             _auto_preempt();
         } else {
-            crate::taskmaster::scheduler::_interruptible();
+            crate::taskmaster::scheduler::_preemptible();
         }
     }
+}
+
+/// A Finalizer-pattern Struct that disables preemption upon instantiation.
+/// then reenables it at Drop time.
+pub struct PreemptionGuard;
+
+impl PreemptionGuard {
+    /// The instantiation methods that disables preemption and creates the guard.
+    pub fn new() -> Self {
+        unpreemptible();
+        Self
+    }
+}
+
+impl Drop for PreemptionGuard {
+    /// The drop implementation of the guard reenables preemption.
+    fn drop(&mut self) {
+        preemptible();
+    }
+}
+
+#[macro_export]
+/// This macro executes the block given as parameter in an unpreemptible context.
+macro_rules! unpreemptible_context {
+    ($code: block) => {{
+        /// You probably shouldn't use it outside of taskmaster, but we never know.
+        /// The absolute path is used not to fuck up the compilation if the parent module
+        /// does not have the module scheduler as submodule.
+        use crate::taskmaster::scheduler::PreemptionGuard;
+
+        let _guard = PreemptionGuard::new();
+
+        $code
+    }};
 }
 
 pub fn auto_preempt() -> i32 {
@@ -84,7 +121,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
-    interruptible();
+    preemptible();
 }
 
 #[derive(Debug)]
@@ -94,6 +131,13 @@ pub struct Scheduler {
     pub all_process: HashMap<Pid, Task>,
     /// contains pids of all runing process
     running_process: Vec<Pid>,
+
+    /// The next pid to be considered by the scheduler
+    /// TODO: think about PID Reuse when SMP will be added,
+    /// as current PID attribution depends on the existence of a pid in the
+    /// `all_process` HashMap.
+    next_pid: AtomicU32,
+
     /// index in the vector of the current running process
     curr_process_pid: Pid,
     /// current process index in the running_process vector
@@ -113,8 +157,9 @@ impl Scheduler {
         Self {
             running_process: Vec::new(),
             all_process: HashMap::new(),
+            next_pid: AtomicU32::new(1),
             curr_process_index: 0,
-            curr_process_pid: 0,
+            curr_process_pid: 1,
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
@@ -127,7 +172,7 @@ impl Scheduler {
         father_pid: Option<Pid>,
         process: Box<UserProcess>,
     ) -> Result<Pid, CollectionAllocErr> {
-        let pid = get_available_pid();
+        let pid = self.get_available_pid();
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
         self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
@@ -298,7 +343,7 @@ impl Scheduler {
         Ok(child_pid)
     }
 
-    const REAPER_PID: Pid = 0;
+    const REAPER_PID: Pid = 1;
 
     // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
@@ -334,12 +379,36 @@ impl Scheduler {
             _exit_resume(new_kernel_esp, pid, status);
         };
     }
+
+    /// Gets the next available Pid for a new process.
+    /// current PID attribution depends on the existence of a pid in the `all_process` HashMap.
+    /// This is what POSIX-2018 says about it:
+    /// 4.14 Process ID Reuse
+    /// A process group ID shall not be reused by the system until the process group lifetime ends.
+    ///
+    /// A process ID shall not be reused by the system until the process lifetime ends. In addition,
+    /// if there exists a process group whose process group ID is equal to that process ID, the process
+    /// ID shall not be reused by the system until the process group lifetime ends. A process that is not
+    /// a system process shall not have a process ID of 1.
+    fn get_available_pid(&self) -> Pid {
+        fn posix_constraits(_pid: Pid) -> bool {
+            true // TODO: We don't have process groups yet so we can't implement the posix requirements
+        }
+
+        let pred = |pid| { pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid) };
+        let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
+
+        while !pred(pid) {
+            pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
+        }
+        pid
+    }
 }
 
 /// Start the whole scheduler
 pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Inhibit all hardware interrupts, particulary timer.
-    asm!("cli" :::: "volatile");
+    interrupts::disable();
 
     // Register a new IDT entry in 81h for force preempting
     let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
@@ -384,21 +453,11 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         None => _update_process_end_time(-1 as i32 as u32),
     }
 
-    interruptible();
+    preemptible();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }
 
 lazy_static! {
     pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
-}
-
-use core::sync::atomic::{AtomicU32, Ordering};
-
-/// represent the greatest available pid
-static MAX_PID: AtomicU32 = AtomicU32::new(0);
-
-/// get the next available pid for a new process
-fn get_available_pid() -> Pid {
-    MAX_PID.fetch_add(1, Ordering::Relaxed) // TODO: handle when overflow to 0
 }

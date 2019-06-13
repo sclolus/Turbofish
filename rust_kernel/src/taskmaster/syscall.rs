@@ -7,7 +7,7 @@ use super::process::CpuState;
 use super::scheduler;
 use super::scheduler::Pid;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{interruptible, uninterruptible};
+use super::scheduler::{unpreemptible};
 use super::task;
 
 mod mmap;
@@ -46,17 +46,17 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
         Err(Errno::Ebadf)
     } else {
         unsafe {
-            uninterruptible();
-            /*
-            print!(
+            unpreemptible_context!({
+                /*
+                print!(
                 "{:?} / {:?} : {}",
                 _get_pit_time(),
                 _get_process_end_time(),
                 core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
             );
-             */
-            print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
-            interruptible();
+                 */
+                print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
+            })
         }
         Ok(count as u32)
     }
@@ -69,16 +69,13 @@ fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
 
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
-    uninterruptible();
+    unpreemptible();
     SCHEDULER.lock().exit(status);
 }
 
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
-    uninterruptible();
-    let res = SCHEDULER.lock().fork(kernel_esp);
-    interruptible();
-    res
+    unpreemptible_context!({ SCHEDULER.lock().fork(kernel_esp) })
 }
 
 /// Preemptif coherency checker
@@ -91,18 +88,16 @@ unsafe fn sys_test() -> SysResult<u32> {
 }
 
 unsafe fn sys_getpid() -> SysResult<u32> {
-    uninterruptible();
-    let res = SCHEDULER.lock().curr_process_pid();
-    interruptible();
-    Ok(res)
+    Ok(unpreemptible_context!({ SCHEDULER.lock().curr_process_pid() }))
 }
 
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
-    uninterruptible();
-    println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
-    interruptible();
+    unpreemptible_context!({
+        println!("Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}", a + (b + c + d + e + f) * 0, _get_esp());
+    });
+
     Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 
