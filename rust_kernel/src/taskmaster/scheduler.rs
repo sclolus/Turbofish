@@ -78,6 +78,9 @@ impl Drop for PreemptionGuard {
 /// This macro executes the block given as parameter in an unpreemptible context.
 macro_rules! unpreemptible_context {
     ($code: block) => {{
+        /// You probably shouldn't use it outside of taskmaster, but we never know.
+        /// The absolute path is used not to fuck up the compilation if the parent module
+        /// does not have the module scheduler as submodule.
         use crate::taskmaster::scheduler::PreemptionGuard;
 
         let _guard = PreemptionGuard::new();
