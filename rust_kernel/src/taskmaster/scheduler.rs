@@ -78,7 +78,7 @@ impl Drop for PreemptionGuard {
 /// This macro executes the block given as parameter in an unpreemptible context.
 macro_rules! unpreemptible_context {
     ($code: block) => {{
-        use super::scheduler::PreemptionGuard;
+        use crate::taskmaster::scheduler::PreemptionGuard;
 
         let _guard = PreemptionGuard::new();
 
