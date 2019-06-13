@@ -8,6 +8,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 
 #define EXIT          1
 #define FORK          2
+#define READ          3
 #define WRITE         4
 #define CLOSE         6
 #define WAITPID       7

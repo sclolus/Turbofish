@@ -66,6 +66,10 @@ endif
 ifeq ($(findstring ContinueHardcore,$(MAKECMDGOALS)),ContinueHardcore)
 	TARGET = ContinueHardcore
 	SRC_C = ContinueHardcore
+
+ifeq ($(findstring DummyRead,$(MAKECMDGOALS)),DummyRead)
+	TARGET = DummyRead
+	SRC_C = DummyRead
 endif
 
 # --- Preserve this above part. It is stricly system ---
