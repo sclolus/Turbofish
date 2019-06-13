@@ -8,25 +8,9 @@ use bit_field::BitField;
 use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
-use core::mem::{size_of, transmute};
+use core::mem::transmute;
 use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
 use errno::Errno;
-
-extern "C" {
-    static _trampoline: u8;
-    static _trampoline_len: u32;
-}
-
-/// allign on
-#[inline(always)]
-pub fn align_on(t: usize, on: usize) -> usize {
-    debug_assert!(on.is_power_of_two());
-    if t & (on - 1) == 0 {
-        t
-    } else {
-        t + (on - (t & (on - 1)))
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -320,34 +304,11 @@ impl SignalInterface {
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
     pub fn terminate_pending_signal(&mut self, process_context_ptr: u32) {
-        /// helper to pop on the stack
-        /// imitate pop instruction return the T present at esp
-        fn pop_esp<T: Copy>(esp: &mut u32) -> T {
-            if size_of::<T>() % 4 != 0 {
-                panic!("size not multiple of 4");
-            }
-            unsafe {
-                let t = *(*esp as *mut T);
-                *esp += size_of::<T>() as u32;
-                t
-            }
-        }
-        let cpu_state = process_context_ptr as *mut CpuState;
         unsafe {
-            // eprintln!("sigreturn");
-            // dbg_hex!(*cpu_state);
-            // skip the trampoline code
-            (*cpu_state).esp += align_on(_trampoline_len as usize, 4) as u32;
-            // get back the old cpu state and set it as the current cpu_state
-            let _signum: u32 = pop_esp(&mut (*cpu_state).esp);
-
-            /* POP DATA SECTION */
-            self.current_sa_mask = pop_esp(&mut (*cpu_state).esp);
-            let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
-            // dbg_hex!(old_cpu_state);
-            *cpu_state = old_cpu_state;
+            self.current_sa_mask = context_builder::pop(process_context_ptr as *mut CpuState);
         }
     }
+
     /// Register a new handler for a specified Signum
     pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
         //The system shall not allow the action for the signals
@@ -383,54 +344,124 @@ impl SignalInterface {
     }
 
     pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, sigaction: &StructSigaction) {
-        /// helper to push on the stack
-        /// imitate push instruction by incrementing esp before push t
-        fn push_esp<T: Copy>(esp: &mut u32, t: T) {
-            if size_of::<T>() % 4 != 0 {
-                panic!("size not multiple of 4");
-            }
-            *esp -= size_of::<T>() as u32;
-            unsafe {
-                (*esp as *mut T).write(t);
-            }
-        }
-
-        /// helper to push on the stack
-        /// same as push_esp but buf a `buf` of size `size`
-        fn push_buff_esp(esp: &mut u32, buf: *mut u8, size: usize) {
-            // align size
-            let size = align_on(size, 4);
-            *esp -= size as u32;
-            unsafe {
-                (*esp as *mut u8).copy_from(buf, size);
-            }
-        }
         unsafe {
-            let cpu_state: *mut CpuState = kernel_esp as *mut CpuState;
-            // dbg_hex!(*cpu_state);
-
-            let mut user_esp = (*cpu_state).esp;
-
-            /* PUSH DATA SECTION */
-            // push the current cpu_state on the user stack
-            push_esp(&mut user_esp, *cpu_state);
-            // push the sa_mask
-            push_esp(&mut user_esp, self.current_sa_mask);
-
-            // push the trampoline code on the user stack
-            push_buff_esp(&mut user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
-            // push the address of start of trampoline code stack on the user stack
-            let esp_trampoline = user_esp;
-            push_esp(&mut user_esp, signum as u32);
-            push_esp(&mut user_esp, esp_trampoline);
-
-            (*cpu_state).eip = sigaction.sa_handler as u32;
-            (*cpu_state).esp = user_esp;
-            // dbg_hex!(*cpu_state);
+            context_builder::push(
+                kernel_esp as *mut CpuState,
+                self.current_sa_mask,
+                signum,
+                sigaction.sa_handler as u32,
+            );
         }
         self.current_sa_mask = self.current_sa_mask | sigaction.sa_mask;
         if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
             self.current_sa_mask |= SaMask::from(signum);
         }
+    }
+}
+
+/// This module allow to create contexts for handlers and to get back from them
+mod context_builder {
+    use super::{CpuState, SaMask, Signum};
+
+    use core::mem::size_of;
+
+    /// Create a new context witch will execute a signal handler
+    pub unsafe fn push(cpu_state: *mut CpuState, sa_mask: SaMask, signum: Signum, handler_address: u32) {
+        let mut user_esp = (*cpu_state).esp;
+
+        /* PUSH DATA SECTION */
+
+        // push the current cpu_state on the user stack
+        push_esp(&mut user_esp, *cpu_state);
+
+        // push the sa_mask
+        push_esp(&mut user_esp, sa_mask);
+
+        // push the trampoline code on the user stack
+        push_buff_esp(&mut user_esp, symbol_addr!(_trampoline) as *mut u8, _trampoline_len as usize);
+
+        // push the address of start of trampoline code stack on the user stack
+        let eip_trampoline = user_esp;
+        push_esp(&mut user_esp, signum as u32);
+        push_esp(&mut user_esp, eip_trampoline);
+
+        (*cpu_state).eip = handler_address;
+        (*cpu_state).esp = user_esp;
+    }
+
+    /// Destroy a context and set execution pointer on the previous context. Return the stored SA_MASK
+    pub unsafe fn pop(cpu_state: *mut CpuState) -> SaMask {
+        // skip the trampoline code
+        (*cpu_state).esp += align_on(_trampoline_len as usize, 4) as u32;
+
+        // skip Signum: eq to `add esp, 4`
+        (*cpu_state).esp += 4;
+
+        /* POP DATA SECTION */
+
+        let sa_mask = pop_esp(&mut (*cpu_state).esp);
+
+        // secure restore stored registers (GDT selectors are exclude)
+        let old_cpu_state: CpuState = pop_esp(&mut (*cpu_state).esp);
+        (*cpu_state).registers = old_cpu_state.registers;
+        (*cpu_state).eip = old_cpu_state.eip;
+        (*cpu_state).esp = old_cpu_state.esp;
+        (*cpu_state).eflags = old_cpu_state.eflags;
+
+        // return stored sa_mask
+        sa_mask
+    }
+
+    /// helper to push on the stack
+    /// imitate push instruction by incrementing esp before push t
+    fn push_esp<T: Copy>(esp: &mut u32, t: T) {
+        if size_of::<T>() % 4 != 0 {
+            panic!("size not multiple of 4");
+        }
+        *esp -= size_of::<T>() as u32;
+        unsafe {
+            (*esp as *mut T).write(t);
+        }
+    }
+
+    /// helper to push on the stack
+    /// same as push_esp but buf a `buf` of size `size`
+    fn push_buff_esp(esp: &mut u32, buf: *mut u8, size: usize) {
+        // align size
+        let size = align_on(size, 4);
+        *esp -= size as u32;
+        unsafe {
+            (*esp as *mut u8).copy_from(buf, size);
+        }
+    }
+
+    /// helper to pop on the stack
+    /// imitate pop instruction return the T present at esp
+    fn pop_esp<T: Copy>(esp: &mut u32) -> T {
+        if size_of::<T>() % 4 != 0 {
+            panic!("size not multiple of 4");
+        }
+        unsafe {
+            let t = *(*esp as *mut T);
+            *esp += size_of::<T>() as u32;
+            t
+        }
+    }
+
+    /// align on
+    #[inline(always)]
+    fn align_on(t: usize, on: usize) -> usize {
+        debug_assert!(on.is_power_of_two());
+        if t & (on - 1) == 0 {
+            t
+        } else {
+            t + (on - (t & (on - 1)))
+        }
+    }
+
+    /// Extern ASM trampoline function for stack smaching
+    extern "C" {
+        static _trampoline: u8;
+        static _trampoline_len: u32;
     }
 }
