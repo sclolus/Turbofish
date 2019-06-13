@@ -8,6 +8,7 @@ use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
+use core::sync::atomic::{AtomicU32, Ordering};
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use spinlock::Spinlock;
 
@@ -127,6 +128,13 @@ pub struct Scheduler {
     pub all_process: HashMap<Pid, Task>,
     /// contains pids of all runing process
     running_process: Vec<Pid>,
+
+    /// The next pid to be considered by the scheduler
+    /// TODO: think about PID Reuse when SMP will be added,
+    /// as current PID attribution depends on the existence of a pid in the
+    /// `all_process` HashMap.
+    next_pid: AtomicU32,
+
     /// index in the vector of the current running process
     curr_process_pid: Pid,
     /// current process index in the running_process vector
@@ -146,8 +154,9 @@ impl Scheduler {
         Self {
             running_process: Vec::new(),
             all_process: HashMap::new(),
+            next_pid: AtomicU32::new(1),
             curr_process_index: 0,
-            curr_process_pid: 2,
+            curr_process_pid: 1,
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
@@ -331,7 +340,7 @@ impl Scheduler {
         Ok(child_pid)
     }
 
-    const REAPER_PID: Pid = 0;
+    const REAPER_PID: Pid = 1;
 
     // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
@@ -383,11 +392,11 @@ impl Scheduler {
             true // TODO: We don't have process groups yet so we can't implement the posix requirements
         }
 
-        let pred = |pid| { pid > 1 && !self.all_process.contains_key(&pid) && posix_constraits(pid) };
-        let mut pid = NEXT_PID.fetch_add(1, Ordering::Relaxed);
+        let pred = |pid| { pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid) };
+        let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
 
         while !pred(pid) {
-            pid = NEXT_PID.fetch_add(1, Ordering::Relaxed);
+            pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
         }
         pid
     }
@@ -449,11 +458,3 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 lazy_static! {
     pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
 }
-
-use core::sync::atomic::{AtomicU32, Ordering};
-
-/// The next pid to be considered by the scheduler
-/// TODO: think about PID Reuse when SMP will be added,
-/// as current PID attribution depends on the existence of a pid in the
-/// `all_process` HashMap.
-static NEXT_PID: AtomicU32 = AtomicU32::new(1);
