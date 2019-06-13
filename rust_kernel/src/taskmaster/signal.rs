@@ -290,7 +290,11 @@ impl SignalInterface {
         }
     }
 
-    /// Check all pendings signals: Sort them if necessary and return the first signal will be launched
+    /// Check all pendings signals: and return the next signal to
+    /// handle stock it internaly as a cache, you must call take
+    /// pending_signal to remove the signal from the cache
+    /// # Panic
+    /// panic if called 2 times without a call to take_pending_signal
     pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
         assert!(self.next_signal.is_none());
         let next_signal = self.pop_next_signal_to_exec();
@@ -298,6 +302,8 @@ impl SignalInterface {
         return next_signal;
     }
 
+    /// take the signal stocked by check_pending_signals or call
+    /// check_pending_signals directly if there is none
     pub fn take_pending_signal(&mut self) -> Option<SignalStatus> {
         self.next_signal.take().or_else(|| self.pop_next_signal_to_exec())
     }
