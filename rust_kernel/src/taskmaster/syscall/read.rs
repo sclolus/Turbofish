@@ -2,8 +2,8 @@
 
 use super::SysResult;
 
-use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
+use super::scheduler::{auto_preempt, unpreemptible};
 use super::task::WaitingState;
 
 use keyboard::keysymb::KeySymb;
@@ -11,13 +11,18 @@ use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 
 use errno::Errno;
 
+use crate::terminal::TERMINAL;
+
 // TODO: Fix nasty processes concurence
 static mut KEY_SYMB_OPT: Option<KeySymb> = None;
 
 /// Usefull method to stock the character from the keyboard
 pub fn stock_keysymb(keysymb: KeySymb) {
     unsafe {
-        KEY_SYMB_OPT = Some(keysymb);
+        // Check if is not a special tty control before register character
+        if !TERMINAL.as_mut().unwrap().handle_tty_control(keysymb) {
+            KEY_SYMB_OPT = Some(keysymb);
+        }
     }
 }
 
@@ -37,6 +42,7 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
         v.check_user_ptr_with_len::<u8>(buf, count)?;
 
         if fd == 0 {
+            // Auto-preempt calling
             unsafe {
                 KEY_SYMB_OPT = None;
                 // Register callback
@@ -45,18 +51,19 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
 
             scheduler.current_task_mut().set_waiting(WaitingState::Event(get_keysymb));
 
-            // Auto-preempt calling
             let ret = auto_preempt();
+
+            unpreemptible();
 
             if ret < 0 {
                 return Err(Errno::Eintr);
             } else {
                 // TODO: May be more bigger. TODO: Check size
+                // TODO: Must be sizeof of readen character
                 unsafe {
                     *buf = ret as u8;
                 }
-                // TODO: Must be sizeof of readen character
-                Ok(1)
+                return Ok(1);
             }
         } else {
             Err(Errno::Eperm)

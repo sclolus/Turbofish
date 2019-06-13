@@ -76,7 +76,7 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
                     _get_process_end_time(),
                     core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
                 );
-                     */
+                */
                 print!("{}", core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count)));
             })
         }
