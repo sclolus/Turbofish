@@ -247,6 +247,21 @@ impl Scheduler {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
                     match waiting_state {
+                        WaitingState::Event(f) => {
+                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
+                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
+                                self.current_task_mut().set_running();
+                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
+                                return action;
+                            }
+
+                            if let Some(res) = f() {
+                                self.current_task_mut().set_running();
+                                // TODO: This is a dummy implementation. If bit 31 of result is set it can lead to undefined behavior
+                                self.current_task_mut().set_return_value(res as i32);
+                                return action;
+                            }
+                        }
                         WaitingState::Sleeping(time) => unsafe {
                             // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
                             if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {

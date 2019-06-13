@@ -112,7 +112,8 @@ pub enum WaitingState {
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Option<Pid>, u32),
-    //    Stoped(Signum),
+    /// Waiting for a custom event
+    Event(fn() -> Option<u32>),
 }
 
 #[derive(Debug)]

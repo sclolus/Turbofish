@@ -33,6 +33,9 @@ use unlink::sys_unlink;
 mod socket;
 use socket::{sys_socketcall, SocketArgsPtr};
 
+mod read;
+use read::sys_read;
+
 use errno::Errno;
 
 use core::ffi::c_void;
@@ -48,6 +51,15 @@ extern "C" {
 
     fn _get_pit_time() -> u32;
     fn _get_process_end_time() -> u32;
+}
+
+/// Preemptif coherency checker
+unsafe fn sys_test() -> SysResult<u32> {
+    if _sys_test() == 0 {
+        Ok(0)
+    } else {
+        Err(Errno::Eperm)
+    }
 }
 
 /// Write something into the screen
@@ -72,11 +84,6 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
     }
 }
 
-/// Read something from a file descriptor
-fn sys_read(_fd: i32, _buf: *const u8, _count: usize) -> SysResult<u32> {
-    unimplemented!();
-}
-
 /// Exit from a process
 unsafe fn sys_exit(status: i32) -> ! {
     unpreemptible();
@@ -86,15 +93,6 @@ unsafe fn sys_exit(status: i32) -> ! {
 /// Fork a process
 unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
     unpreemptible_context!({ SCHEDULER.lock().current_task_fork(kernel_esp) })
-}
-
-/// Preemptif coherency checker
-unsafe fn sys_test() -> SysResult<u32> {
-    if _sys_test() == 0 {
-        Ok(0)
-    } else {
-        Err(Errno::Eperm)
-    }
 }
 
 unsafe fn sys_getpid() -> SysResult<u32> {
@@ -121,7 +119,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     let result = match eax {
         1 => sys_exit(ebx as i32),       // This syscall doesn't return !
         2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
-        3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
+        3 => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         6 => sys_close(ebx as i32),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
