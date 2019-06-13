@@ -9,9 +9,6 @@ use super::signal::{SignalStatus, StructSigaction};
 use core::convert::TryInto;
 use errno::Errno;
 
-#[repr(C)]
-pub struct Sigaction {}
-
 /// Register a new handler for a specified signum with sigaction params
 pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *mut StructSigaction) -> SysResult<u32> {
     unpreemptible_context!({

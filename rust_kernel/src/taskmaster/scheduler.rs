@@ -94,24 +94,6 @@ macro_rules! unpreemptible_context {
     }};
 }
 
-/// Inhibit the effect of the interruptible() function
-/// For safety reasons, this function must be used only in non-interruptible INTGATE
-#[inline(always)]
-pub fn lock_interruptible() {
-    unsafe {
-        SIGNAL_LOCK = true;
-    }
-}
-
-/// Allow again the effect of the interruptible() function
-/// For safety reason, this function must be used only if the lock is TRUE
-#[inline(always)]
-pub fn unlock_interruptible() {
-    unsafe {
-        SIGNAL_LOCK = false;
-    }
-}
-
 /// For signal from RING0, special lock interruptible state while signal(s) is/are not applied
 pub static mut SIGNAL_LOCK: bool = false;
 

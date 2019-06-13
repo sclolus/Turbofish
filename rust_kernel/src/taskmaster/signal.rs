@@ -139,8 +139,6 @@ impl TryFrom<u32> for Signum {
     }
 }
 
-type FunctionAddress = usize;
-
 #[derive(Copy, Clone, Debug, Default)]
 #[repr(transparent)]
 pub struct SaMask(u32);
