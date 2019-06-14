@@ -26,7 +26,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 	};
 	void *ret = (void *)_user_syscall(MMAP, 1, &s);
 
-	printf("mmap return %x\n", ret);
 	s8 err = (u32)ret & 0x7f;
 	if (err != 0) {
 		errno = err;

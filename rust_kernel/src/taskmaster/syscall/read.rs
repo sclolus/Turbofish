@@ -60,10 +60,13 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
             } else {
                 // TODO: May be more bigger. TODO: Check size
                 // TODO: Must be sizeof of readen character
+                // println!("{:#X?}", ret);
                 unsafe {
+                    // TODO: Fix this keysymb hack one day
                     *buf = ret as u8;
+                    *buf.add(1) = ((ret & 0xff00) >> 8) as u8;
                 }
-                return Ok(1);
+                return Ok(2);
             }
         } else {
             Err(Errno::Eperm)
