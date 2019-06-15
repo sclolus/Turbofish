@@ -2,7 +2,7 @@
 
 use super::process::{CpuState, Process, UserProcess};
 use super::scheduler::Pid;
-use super::signal::{SignalInterface, Signum};
+use super::signal::SignalInterface;
 use super::SysResult;
 
 use alloc::boxed::Box;
@@ -16,11 +16,12 @@ pub struct Task {
     pub child: Vec<Pid>,
     pub parent: Option<Pid>,
     pub signal: SignalInterface,
+    pub stoped: bool,
 }
 
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
+        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new(), stoped: false }
     }
 
     pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {
@@ -32,6 +33,7 @@ impl Task {
                 ProcessState::Running(p) => ProcessState::Running(p.fork(kernel_esp)?),
                 _ => panic!("Non running process should not fork"),
             },
+            stoped: false,
         })
     }
 
@@ -104,7 +106,7 @@ pub enum WaitingState {
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Option<Pid>, u32),
-    Stoped(Signum),
+    //    Stoped(Signum),
 }
 
 #[derive(Debug)]

@@ -101,10 +101,12 @@ pub fn signal_default_action(signum: Signum) -> DefaultAction {
             DefaultAction::Terminate
         }
 
+        // Special, may have 2 behavior: Continuing exection AND/OR execute handler. Cannot be ignored
         Sigcont => DefaultAction::Continue,
 
         Sigio | Sigpwr | Sigwinch | SigNull | Sigchld | Sigurg => DefaultAction::Ignore,
 
+        // SIGSTOP cannot be handled. For others, we can STOP process execution OR EXECUTE handler
         Sigstop | Sigtstp | Sigttin | Sigttou => DefaultAction::Stop,
     }
 }
@@ -206,8 +208,8 @@ impl Index<Signum> for SignalActions {
 pub enum SignalStatus {
     Handled { signum: Signum, sigaction: StructSigaction },
     Deadly(Signum),
-    Continue(Signum),
-    Stop { signum: Signum, sigaction: StructSigaction },
+    //    Continue(Signum),
+    //    Stop { signum: Signum, sigaction: StructSigaction },
 }
 
 #[derive(Debug)]
@@ -272,12 +274,14 @@ impl SignalInterface {
                             continue;
                         }
                         Continue => {
-                            self.signal_queue.remove(i);
-                            return Some(SignalStatus::Continue(signum));
+                            // self.signal_queue.remove(i);
+                            // return Some(SignalStatus::Continue(signum));
+                            return None;
                         }
                         Stop => {
-                            self.signal_queue.remove(i);
-                            return Some(SignalStatus::Stop { signum, sigaction });
+                            // self.signal_queue.remove(i);
+                            // return Some(SignalStatus::Stop { signum, sigaction });
+                            return None;
                         }
                     }
                 }
@@ -322,6 +326,10 @@ impl SignalInterface {
         if (signum == Signum::Sigkill || signum == Signum::Sigstop) && sigaction.sa_handler != SIG_DFL {
             return Err(Errno::Einval);
         }
+        // SIGCONT cannot be ignored (job control mandatory)
+        if signum == Signum::Sigcont && sigaction.sa_handler == SIG_IGN {
+            return Err(Errno::Einval);
+        }
 
         let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
         Ok(former.sa_handler as u32)
@@ -338,12 +346,15 @@ impl SignalInterface {
         //discarded. Conversely, when SIGCONT is generated for a process or
         //thread, all pending stop signals for that process or any of the
         //threads within that process shall be discarded
+
+        /*
         if signal_default_action(signum) == DefaultAction::Stop {
             self.signal_queue.retain(|&s| s != Signum::Sigcont);
         }
         if signal_default_action(signum) == DefaultAction::Continue {
             self.signal_queue.retain(|&s| signal_default_action(s) != DefaultAction::Stop);
         }
+        */
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
         Ok(0)

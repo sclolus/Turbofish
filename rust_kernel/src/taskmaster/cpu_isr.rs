@@ -142,8 +142,6 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             SIGNAL_LOCK = false;
             SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state as u32, Scheduler::NOT_IN_BLOCKED_SYSCALL);
         }
-        // TODO: Remove that later
-        loop {}
     // Unknown ring
     } else {
         eprintln!("Stange CS value: 0x{:X?}. Cannot display more informations", cs);

@@ -299,12 +299,13 @@ impl Scheduler {
                                     _ => panic!("A zombie was found just before, but there is no zombie here"),
                                 };
                             }
-                        }
-                        WaitingState::Stoped(_) => {
-                            if signal.is_some() {
-                                return signal;
-                            }
-                        }
+                        } /*
+                          WaitingState::Stoped(_) => {
+                              if signal.is_some() {
+                                  return signal;
+                              }
+                          }
+                          */
                     }
                 }
                 ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
@@ -476,6 +477,7 @@ impl Scheduler {
     }
 
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
+
     /// apply pending signal, must be called when process is in ring 3
     pub fn current_task_deliver_pending_signals(&mut self, process_context_ptr: u32, in_blocked_syscall: bool) {
         debug_assert_eq!(
@@ -506,7 +508,12 @@ impl Scheduler {
                     self.current_task_mut().signal.exec_signal_handler(signum, process_context_ptr, &sigaction);
                 }
                 SignalStatus::Deadly(signum) => self.current_task_exit(signum as i32 + 128),
-                SignalStatus::Continue(_signum) => self.current_task_mut().set_running(),
+                //SignalStatus::Continue(_signum) => self.current_task_mut().set_running(),
+
+                // SignalStatus::Continue => panic!("CONTINUE must not managed here"),
+                // SignalStatus::Stop => panic!("STOP must not managed here"),
+
+                /*
                 SignalStatus::Stop { signum, sigaction } => {
                     self.current_task_mut().unwrap_process_mut().kernel_esp = process_context_ptr;
 
@@ -521,6 +528,7 @@ impl Scheduler {
                         _sigstop_return(new_kernel_esp);
                     };
                 }
+                */
             }
         }
     }

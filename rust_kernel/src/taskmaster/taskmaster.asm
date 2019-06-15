@@ -136,11 +136,6 @@ _schedule_force_preempt:
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
-global _sigstop_return
-_sigstop_return:
-	mov esp, dword [esp + 4]
-	jmp schedule_return
-
 ; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)
 extern scheduler_exit_resume
 
