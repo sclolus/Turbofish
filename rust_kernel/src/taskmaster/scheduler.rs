@@ -483,6 +483,7 @@ impl Scheduler {
         pid
     }
 
+    /// Usable for external caller to announce we not go from a blocked syscall
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
@@ -494,7 +495,8 @@ impl Scheduler {
         );
         let signal = self.current_task_mut().signal.take_pending_signal();
         let handle_interruptible_syscall = |sigaction: &StructSigaction| {
-            if in_blocked_syscall {
+            // In case of blocked syscall, choose between restart or returning Eintr
+            if in_blocked_syscall == true {
                 if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
                     // back 2 instruction to reput eip on `int 80h` and restart the syscall
                     unsafe { (*cpu_state).eip -= 2 };
