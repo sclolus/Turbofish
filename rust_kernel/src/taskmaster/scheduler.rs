@@ -246,15 +246,15 @@ impl Scheduler {
             match &self.current_task().process_state {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
+                    // Check if signal var contains something, set return value as
+                    // negative (rel to SIGNUM), set process as running then return
+                    if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
+                        self.current_task_mut().set_running();
+                        self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
+                        return action;
+                    }
                     match waiting_state {
                         WaitingState::Event(f) => {
-                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
-                                self.current_task_mut().set_running();
-                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
-                                return action;
-                            }
-
                             if let Some(res) = f() {
                                 self.current_task_mut().set_running();
                                 // TODO: This is a dummy implementation. If bit 31 of result is set it can lead to undefined behavior
@@ -262,29 +262,16 @@ impl Scheduler {
                                 return action;
                             }
                         }
-                        WaitingState::Sleeping(time) => unsafe {
-                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
-                                self.current_task_mut().set_running();
-                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
-                                return action;
-                            }
-
-                            let now = _get_pit_time();
+                        WaitingState::Pause => {}
+                        WaitingState::Sleeping(time) => {
+                            let now = unsafe { _get_pit_time() };
                             if now >= *time {
                                 self.current_task_mut().set_running();
                                 self.current_task_mut().set_return_value(0);
                                 return action;
                             }
-                        },
+                        }
                         WaitingState::ChildDeath(pid_opt, _) => {
-                            // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
-                                self.current_task_mut().set_running();
-                                self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
-                                return action;
-                            }
-
                             let zombie_pid = match pid_opt {
                                 // In case of PID == None, Check is the at least one child is a zombie.
                                 None => {
@@ -356,7 +343,7 @@ impl Scheduler {
                 // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
                 // If ring0 process -> block temporary interruptible macro
                 let ring = unsafe { get_ring(kernel_esp) };
-                if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
+                if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
                     if ring == PrivilegeLevel::Ring3 {
                         self.current_task_deliver_pending_signals(
                             kernel_esp as *mut CpuState,

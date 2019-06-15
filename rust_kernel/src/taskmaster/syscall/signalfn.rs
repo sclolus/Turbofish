@@ -5,6 +5,7 @@ use super::SysResult;
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
 use super::signal::{JobAction, SaFlags, StructSigaction};
+use super::task::WaitingState;
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -46,11 +47,24 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
                 task.stoped = true;
                 // Auto-preempt calling in case of Self stop
                 auto_preempt();
-            } else if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
+            } else if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
                 SIGNAL_LOCK = true;
             }
         }
         Ok(res)
+    })
+}
+
+/// Wait for signal
+pub unsafe fn sys_pause() -> SysResult<u32> {
+    unpreemptible_context!({
+        SCHEDULER.lock().current_task_mut().set_waiting(WaitingState::Pause);
+        /*
+         * pause() returns only when a signal was caught and the signal-catching function returned.
+         * In this case, pause() returns -1, and errno is set to EINTR
+         */
+        auto_preempt();
+        Err(Errno::Eintr)
     })
 }
 

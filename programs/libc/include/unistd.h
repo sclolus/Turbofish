@@ -40,4 +40,6 @@ pid_t getpid(void);
 int close(int fd);
 int unlink(const char *pathname);
 
+int pause(void);
+
 #endif

@@ -109,6 +109,8 @@ impl Task {
 pub enum WaitingState {
     /// The Process is sleeping until pit time >= u32 value
     Sleeping(u32),
+    /// The sys_pause command was invoqued, the process is waiting for a signal
+    Pause,
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Option<Pid>, u32),

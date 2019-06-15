@@ -15,6 +15,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define UNLINK       10
 #define GETPID       20
 #define GETUID       24
+#define PAUSE        29
 #define KILL         37
 #define SIGNAL       48
 #define SIGACTION    67

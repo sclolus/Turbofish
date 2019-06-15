@@ -219,12 +219,13 @@ pub struct SignalInterface {
 }
 
 bitflags! {
+    /// The check_pending_signals function returns what to do
     #[derive(Default)]
     pub struct JobAction: u32 {
         /// A signal must be handled
-        const HANDLED = 1 << 0;
+        const INTERRUPT = 1 << 0;
         /// A deadly signal was throw
-        const DEADLY = 1 << 1;
+        const TERMINATE = 1 << 1;
         /// The job must stop
         const STOP = 1 << 2;
         /// The job must continue
@@ -242,6 +243,8 @@ impl SignalInterface {
             next_signal: None,
         }
     }
+
+    /// Fork the signal interface
     pub fn fork(&self) -> Self {
         Self {
             signal_actions: SignalActions([Default::default(); 32]),
@@ -257,13 +260,13 @@ impl SignalInterface {
         }
     }
 
-    fn pop_next_signal_to_exec(&mut self) -> Option<SignalStatus> {
+    fn pop_next_signal_to_exec(&mut self) -> (Option<SignalStatus>, JobAction) {
         let mut i = 0;
         loop {
             if i == self.signal_queue.len() {
-                return None;
+                return (None, JobAction::default());
             }
-            let signum = *self.signal_queue.get(i)?;
+            let signum = *self.signal_queue.get(i).expect("WTF");
 
             if self.current_sa_mask.contains(signum) {
                 i += 1;
@@ -271,36 +274,50 @@ impl SignalInterface {
             }
             let sigaction = self.signal_actions[signum];
             match sigaction.sa_handler {
+                SIG_IGN => {
+                    // Ignore signal. Simply remove it
+                    self.signal_queue.remove(i);
+                    continue;
+                }
                 SIG_DFL => {
                     use DefaultAction::*;
                     match signal_default_action(signum) {
+                        // Pop is useless if there is a deadly signal
                         Abort | Terminate => {
-                            return Some(SignalStatus::Deadly(signum));
+                            return (Some(SignalStatus::Deadly(signum)), JobAction::TERMINATE);
                         }
-                        //If the action associated with a blocked signal is to ignore the
-                        //signal and if that signal is generated for the process, it is
-                        //unspecified whether the signal is discarded immediately upon
-                        //generation or remains pending.
+                        // If the action associated with a blocked signal is to ignore the
+                        // signal and if that signal is generated for the process, it is
+                        // unspecified whether the signal is discarded immediately upon
+                        // generation or remains pending.
                         Ignore => {
                             self.signal_queue.remove(i);
                             continue;
                         }
+                        // Continue default: Just set job as continue
                         Continue => {
-                            // self.signal_queue.remove(i);
-                            // return Some(SignalStatus::Continue(signum));
-                            return None;
+                            self.signal_queue.remove(i);
+                            return (None, JobAction::CONTINUE);
                         }
+                        // Stop default: Just set job as Stop
                         Stop => {
-                            // self.signal_queue.remove(i);
-                            // return Some(SignalStatus::Stop { signum, sigaction });
-                            return None;
+                            self.signal_queue.remove(i);
+                            return (None, JobAction::STOP);
                         }
                     }
                 }
-                SIG_IGN => unimplemented!(),
                 _ => {
                     self.signal_queue.remove(i);
-                    return Some(SignalStatus::Handled { signum, sigaction });
+                    if signum == Signum::Sigcont {
+                        // Continue can resume program execution & Handler something
+                        return (
+                            Some(SignalStatus::Handled { signum, sigaction }),
+                            JobAction::CONTINUE | JobAction::INTERRUPT,
+                        );
+                    } else {
+                        // For others cases, including handled Sigttin, Sigtou and Sigtstp, handled it
+                        return (Some(SignalStatus::Handled { signum, sigaction }), JobAction::INTERRUPT);
+                    }
                 }
             }
         }
@@ -311,19 +328,18 @@ impl SignalInterface {
     /// pending_signal to remove the signal from the cache
     /// # Panic
     /// panic if called 2 times without a call to take_pending_signal
-    // pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
     pub fn check_pending_signals(&mut self) -> JobAction {
         assert!(self.next_signal.is_none());
-        let next_signal = self.pop_next_signal_to_exec();
+        let (next_signal, action) = self.pop_next_signal_to_exec();
         self.next_signal = next_signal;
         //return next_signal;
-        JobAction::default()
+        action
     }
 
     /// take the signal stocked by check_pending_signals or call
     /// check_pending_signals directly if there is none
     pub fn take_pending_signal(&mut self) -> Option<SignalStatus> {
-        self.next_signal.take().or_else(|| self.pop_next_signal_to_exec())
+        self.next_signal.take().or_else(|| self.pop_next_signal_to_exec().0)
     }
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
