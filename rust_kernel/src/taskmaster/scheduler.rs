@@ -343,7 +343,7 @@ impl Scheduler {
                 let ring = unsafe { get_ring(kernel_esp) };
                 if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                     if ring == PrivilegeLevel::Ring3 {
-                        self.current_task_deliver_pending_signals(kernel_esp, Scheduler::NOT_IN_BLOCKED_SYSCALL)
+                        self.current_task_deliver_pending_signals(kernel_esp as *mut CpuState, Scheduler::NOT_IN_BLOCKED_SYSCALL)
                     } else {
                         unsafe {
                             SIGNAL_LOCK = true;
@@ -486,17 +486,14 @@ impl Scheduler {
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
-    pub fn current_task_deliver_pending_signals(&mut self, process_context_ptr: u32, in_blocked_syscall: bool) {
+    pub fn current_task_deliver_pending_signals(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) {
         debug_assert_eq!(
-            unsafe { get_ring(process_context_ptr as u32) },
+            unsafe { get_ring(cpu_state as u32) },
             PrivilegeLevel::Ring3,
             "Cannot apply signal from ring0 process"
         );
         let signal = self.current_task_mut().signal.take_pending_signal();
         let handle_interruptible_syscall = |sigaction: &StructSigaction| {
-            let cpu_state: *mut CpuState = process_context_ptr as *mut CpuState;
-            // dbg_hex!(*cpu_state);
-
             if in_blocked_syscall {
                 if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
                     // back 2 instruction to reput eip on `int 80h` and restart the syscall
@@ -511,7 +508,7 @@ impl Scheduler {
             match signal {
                 SignalStatus::Handled { signum, sigaction } => {
                     handle_interruptible_syscall(&sigaction);
-                    self.current_task_mut().signal.exec_signal_handler(signum, process_context_ptr, &sigaction);
+                    self.current_task_mut().signal.exec_signal_handler(signum, cpu_state as u32, &sigaction);
                 }
                 SignalStatus::Deadly(signum) => self.current_task_exit(signum as i32 + 128),
             }

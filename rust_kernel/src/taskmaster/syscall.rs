@@ -148,7 +148,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         if SIGNAL_LOCK {
             SIGNAL_LOCK = false;
             let mut scheduler = SCHEDULER.lock();
-            scheduler.current_task_deliver_pending_signals(cpu_state as u32, is_in_blocked_syscall);
+            scheduler.current_task_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
         }
     }}
 }

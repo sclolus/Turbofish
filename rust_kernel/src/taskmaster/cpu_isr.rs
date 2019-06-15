@@ -140,7 +140,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
         if SIGNAL_LOCK == true {
             SIGNAL_LOCK = false;
-            SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state as u32, Scheduler::NOT_IN_BLOCKED_SYSCALL);
+            SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL);
         }
     // Unknown ring
     } else {
