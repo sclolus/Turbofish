@@ -3,8 +3,8 @@
 use super::SysResult;
 
 use super::process::CpuState;
-use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{SaFlags, StructSigaction};
+use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
+use super::signal::{JobAction, SaFlags, StructSigaction};
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -33,15 +33,20 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
+        let current_task_pid = scheduler.current_task_pid();
         let task = scheduler.get_process_mut(pid).ok_or(Errno::Esrch)?;
         let signum = signum.try_into().map_err(|_| Errno::Einval)?;
         let res = task.signal.generate_signal(signum)?;
 
-        let current_task_pid = scheduler.current_task_pid();
         // auto-sodo mode
         if current_task_pid == pid {
-            let signal = scheduler.current_task_mut().signal.check_pending_signals();
-            if signal.is_some() {
+            let action = task.signal.check_pending_signals();
+
+            if action.intersects(JobAction::STOP) {
+                task.stoped = true;
+                // Auto-preempt calling in case of Self stop
+                auto_preempt();
+            } else if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                 SIGNAL_LOCK = true;
             }
         }

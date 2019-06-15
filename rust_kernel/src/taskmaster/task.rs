@@ -10,12 +10,18 @@ use alloc::vec::Vec;
 
 use core::mem;
 
+/// Main Task definition
 #[derive(Debug)]
 pub struct Task {
+    /// Current process state
     pub process_state: ProcessState,
+    /// List of childs
     pub child: Vec<Pid>,
+    /// Parent
     pub parent: Option<Pid>,
+    /// Signal Interface
     pub signal: SignalInterface,
+    /// Job control status
     pub stoped: bool,
 }
 

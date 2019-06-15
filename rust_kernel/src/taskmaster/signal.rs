@@ -208,8 +208,6 @@ impl Index<Signum> for SignalActions {
 pub enum SignalStatus {
     Handled { signum: Signum, sigaction: StructSigaction },
     Deadly(Signum),
-    //    Continue(Signum),
-    //    Stop { signum: Signum, sigaction: StructSigaction },
 }
 
 #[derive(Debug)]
@@ -218,6 +216,20 @@ pub struct SignalInterface {
     pub signal_queue: VecDeque<Signum>,
     pub current_sa_mask: SaMask,
     pub next_signal: Option<SignalStatus>,
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct JobAction: u32 {
+        /// A signal must be handled
+        const HANDLED = 1 << 0;
+        /// A deadly signal was throw
+        const DEADLY = 1 << 1;
+        /// The job must stop
+        const STOP = 1 << 2;
+        /// The job must continue
+        const CONTINUE = 1 << 3;
+    }
 }
 
 impl SignalInterface {
@@ -299,11 +311,13 @@ impl SignalInterface {
     /// pending_signal to remove the signal from the cache
     /// # Panic
     /// panic if called 2 times without a call to take_pending_signal
-    pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
+    // pub fn check_pending_signals(&mut self) -> Option<SignalStatus> {
+    pub fn check_pending_signals(&mut self) -> JobAction {
         assert!(self.next_signal.is_none());
         let next_signal = self.pop_next_signal_to_exec();
         self.next_signal = next_signal;
-        return next_signal;
+        //return next_signal;
+        JobAction::default()
     }
 
     /// take the signal stocked by check_pending_signals or call
@@ -331,35 +345,39 @@ impl SignalInterface {
             return Err(Errno::Einval);
         }
 
+        // Associate a new action for a specified Signum
         let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
         Ok(former.sa_handler as u32)
     }
 
     /// Register a new signal
     pub fn generate_signal(&mut self, signum: Signum) -> SysResult<u32> {
+        // If the same signal already exists in signal queue, ignore it
         if self.signal_queue.iter().any(|&s| s == signum) {
             return Ok(0);
         }
-        //When any stop signal (SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU) is generated
-        //for a process or thread, all pending SIGCONT signals for that process
-        //or any of the threads within that process shall be
-        //discarded. Conversely, when SIGCONT is generated for a process or
-        //thread, all pending stop signals for that process or any of the
-        //threads within that process shall be discarded
 
-        /*
+        // When any stop signal (SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU) is generated
+        // for a process or thread, all pending SIGCONT signals for that process
+        // or any of the threads within that process shall be
+        // discarded.
         if signal_default_action(signum) == DefaultAction::Stop {
             self.signal_queue.retain(|&s| s != Signum::Sigcont);
         }
+
+        // Conversely, when SIGCONT is generated for a process or
+        // thread, all pending stop signals for that process or any of the
+        // threads within that process shall be discarded
         if signal_default_action(signum) == DefaultAction::Continue {
             self.signal_queue.retain(|&s| signal_default_action(s) != DefaultAction::Stop);
         }
-        */
+
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
         Ok(0)
     }
 
+    /// Execute a handler for a specific Signum
     pub fn exec_signal_handler(&mut self, signum: Signum, kernel_esp: u32, sigaction: &StructSigaction) {
         unsafe {
             context_builder::push(

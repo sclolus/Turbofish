@@ -1,7 +1,7 @@
 //! this file contains the scheduler description
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
-use super::signal::{SaFlags, SignalStatus, StructSigaction};
+use super::signal::{JobAction, SaFlags, SignalStatus, StructSigaction};
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -122,10 +122,10 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     scheduler.store_kernel_esp(kernel_esp);
 
     // Switch between processes
-    let signal = scheduler.advance_next_process(1);
+    let action = scheduler.advance_next_process(1);
 
     // Set all the context of the illigible process
-    let new_kernel_esp = scheduler.load_new_context(signal);
+    let new_kernel_esp = scheduler.load_new_context(action);
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
@@ -217,7 +217,8 @@ impl Scheduler {
     }
 
     /// Advance until a next elligible process was found
-    fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
+    // fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
+    fn advance_next_process(&mut self, offset: usize) -> JobAction {
         let next_process_index = (self.current_task_index + offset) % self.running_process.len();
 
         for idx in 0..self.running_process.len() {
@@ -228,33 +229,45 @@ impl Scheduler {
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
             let p = self.current_task_mut();
-            let signal = p.signal.check_pending_signals();
+            let action = p.signal.check_pending_signals();
+
+            // Job control
+            if action.intersects(JobAction::STOP) {
+                p.stoped = true;
+            } else if action.intersects(JobAction::CONTINUE) {
+                p.stoped = false;
+            }
+
+            // Skip current process if is in stoped state
+            if p.stoped == true {
+                continue;
+            }
 
             match &self.current_task().process_state {
-                ProcessState::Running(_) => return signal,
+                ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
                     match waiting_state {
                         WaitingState::Sleeping(time) => unsafe {
                             // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                            if signal.is_some() {
+                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                                 self.current_task_mut().set_running();
                                 self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
-                                return signal;
+                                return action;
                             }
 
                             let now = _get_pit_time();
                             if now >= *time {
                                 self.current_task_mut().set_running();
                                 self.current_task_mut().set_return_value(0);
-                                return None;
+                                return action;
                             }
                         },
                         WaitingState::ChildDeath(pid_opt, _) => {
                             // Check if signal var contains something, set return value as negative (rel to SIGNUM), set process as running then return
-                            if signal.is_some() {
+                            if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                                 self.current_task_mut().set_running();
                                 self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
-                                return signal;
+                                return action;
                             }
 
                             let zombie_pid = match pid_opt {
@@ -294,29 +307,23 @@ impl Scheduler {
                                         self.current_task_mut()
                                             .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
                                         self.current_task_mut().set_return_value(0);
-                                        return None;
+                                        return action;
                                     }
                                     _ => panic!("A zombie was found just before, but there is no zombie here"),
                                 };
                             }
-                        } /*
-                          WaitingState::Stoped(_) => {
-                              if signal.is_some() {
-                                  return signal;
-                              }
-                          }
-                          */
+                        }
                     }
                 }
                 ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
             };
         }
         self.idle_mode = true;
-        None
+        JobAction::default()
     }
 
     /// Prepare the context for the new illigible process
-    fn load_new_context(&mut self, signal: Option<SignalStatus>) -> u32 {
+    fn load_new_context(&mut self, action: JobAction) -> u32 {
         match self.idle_mode {
             true => {
                 let process = self.kernel_idle_process.as_ref();
@@ -334,7 +341,7 @@ impl Scheduler {
                 // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
                 // If ring0 process -> block temporary interruptible macro
                 let ring = unsafe { get_ring(kernel_esp) };
-                if signal.is_some() {
+                if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                     if ring == PrivilegeLevel::Ring3 {
                         self.current_task_deliver_pending_signals(kernel_esp, Scheduler::NOT_IN_BLOCKED_SYSCALL)
                     } else {
@@ -486,7 +493,6 @@ impl Scheduler {
             "Cannot apply signal from ring0 process"
         );
         let signal = self.current_task_mut().signal.take_pending_signal();
-        // self.current_task_mut().signal.deliver_pending_signals(process_context_ptr, in_interruptible_syscall);
         let handle_interruptible_syscall = |sigaction: &StructSigaction| {
             let cpu_state: *mut CpuState = process_context_ptr as *mut CpuState;
             // dbg_hex!(*cpu_state);
@@ -508,27 +514,6 @@ impl Scheduler {
                     self.current_task_mut().signal.exec_signal_handler(signum, process_context_ptr, &sigaction);
                 }
                 SignalStatus::Deadly(signum) => self.current_task_exit(signum as i32 + 128),
-                //SignalStatus::Continue(_signum) => self.current_task_mut().set_running(),
-
-                // SignalStatus::Continue => panic!("CONTINUE must not managed here"),
-                // SignalStatus::Stop => panic!("STOP must not managed here"),
-
-                /*
-                SignalStatus::Stop { signum, sigaction } => {
-                    self.current_task_mut().unwrap_process_mut().kernel_esp = process_context_ptr;
-
-                    handle_interruptible_syscall(&sigaction);
-                    self.current_task_mut().set_waiting(WaitingState::Stoped(signum));
-                    let signal = self.advance_next_process(1);
-                    // Set all the context of the illigible process
-                    let new_kernel_esp = self.load_new_context(signal);
-                    unsafe {
-                        SCHEDULER.force_unlock();
-                        preemptible();
-                        _sigstop_return(new_kernel_esp);
-                    };
-                }
-                */
             }
         }
     }
