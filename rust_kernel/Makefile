@@ -72,7 +72,7 @@ VPATH += src/taskmaster
 SRC_ASM_KERNEL += auto_preempt
 VPATH += src/taskmaster/scheduler
 
-SRC_ASM_KERNEL += sys_test
+SRC_ASM_KERNEL += test
 VPATH += src/taskmaster/syscall
 
 SRC_ASM_KERNEL += trampoline

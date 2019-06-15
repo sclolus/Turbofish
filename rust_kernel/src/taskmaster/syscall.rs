@@ -11,22 +11,21 @@ use super::signal;
 use super::signal::StructSigaction;
 use super::task;
 
-mod sys_mmap;
-use sys_mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
+mod mmap;
+use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
 
-mod sys_nanosleep;
-use sys_nanosleep::{sys_nanosleep, TimeSpec};
+mod nanosleep;
+use nanosleep::{sys_nanosleep, TimeSpec};
 
-mod sys_wait;
-use sys_wait::sys_waitpid;
+mod waitpid;
+use waitpid::sys_waitpid;
 
-pub mod sys_signal;
-use sys_signal::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
+pub mod signalfn;
+use signalfn::{sys_kill, sys_sigaction, sys_signal, sys_sigreturn};
 
 use errno::Errno;
 
 use core::ffi::c_void;
-use core::mem::transmute;
 
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
@@ -117,7 +116,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
         37 => sys_kill(ebx as Pid, ecx as u32),
-        48 => sys_signal(ebx as u32, transmute(ecx as usize)),
+        48 => sys_signal(ebx as u32, ecx as usize),
         67 => sys_sigaction(ebx as u32, ecx as *const StructSigaction, edx as *mut StructSigaction),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),

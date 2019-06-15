@@ -55,10 +55,10 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
 }
 
 /// Register a new handler for a specified signum
-pub unsafe fn sys_signal(signum: u32, handler: extern "C" fn(i32)) -> SysResult<u32> {
+pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
     unpreemptible_context!({
         let s: StructSigaction = StructSigaction {
-            sa_handler: handler as usize,
+            sa_handler: handler,
             sa_mask: Default::default(),
             sa_flags: SaFlags::from_bits_truncate(0), // TODO: Default for sys_signal is SA_RESTART
             sa_restorer: 0,

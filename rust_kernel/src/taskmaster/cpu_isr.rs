@@ -3,7 +3,7 @@
 use super::process::CpuState;
 use super::scheduler::{Scheduler, SCHEDULER, SIGNAL_LOCK};
 use super::signal::Signum;
-use super::syscall::sys_signal::sys_kill;
+use super::syscall::signalfn::sys_kill;
 
 use core::ffi::c_void;
 
