@@ -1,7 +1,7 @@
 //! this file contains the scheduler description
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
-use super::signal::{JobAction, SaFlags, SignalStatus, StructSigaction};
+use super::signal::{JobAction, SaFlags, SignalStatus, Signum, StructSigaction};
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -343,7 +343,10 @@ impl Scheduler {
                 let ring = unsafe { get_ring(kernel_esp) };
                 if action.intersects(JobAction::HANDLED) || action.intersects(JobAction::DEADLY) {
                     if ring == PrivilegeLevel::Ring3 {
-                        self.current_task_deliver_pending_signals(kernel_esp as *mut CpuState, Scheduler::NOT_IN_BLOCKED_SYSCALL)
+                        self.current_task_deliver_pending_signals(
+                            kernel_esp as *mut CpuState,
+                            Scheduler::NOT_IN_BLOCKED_SYSCALL,
+                        )
                     } else {
                         unsafe {
                             SIGNAL_LOCK = true;
@@ -417,7 +420,6 @@ impl Scheduler {
 
     const REAPER_PID: Pid = 1;
 
-    // TODO: Send a status signal to the father
     /// Exit form a process and go to the current process
     pub fn current_task_exit(&mut self, status: i32) -> ! {
         eprintln!(
@@ -444,6 +446,12 @@ impl Scheduler {
         }
 
         let pid = self.current_task_pid;
+
+        // Send a sig child signal to the father
+        if let Some(parent_pid) = self.current_task().parent {
+            let parent = self.get_process_mut(parent_pid).expect("WTF");
+            let _ret = parent.signal.generate_signal(Signum::Sigchld);
+        }
 
         self.remove_curr_running();
 
