@@ -209,7 +209,6 @@ pub struct SignalInterface {
     pub signal_actions: SignalActions,
     pub signal_queue: VecDeque<Signum>,
     pub current_sa_mask: SaMask,
-    pub depth: u32,
 }
 
 bitflags! {
@@ -220,10 +219,8 @@ bitflags! {
         const INTERRUPT = 1 << 0;
         /// A deadly signal was throw
         const TERMINATE = 1 << 1;
-        /// The job must stop
+        /// The job must stop (STOP state may be removed by SIGCONT)
         const STOP = 1 << 2;
-        /// The job must continue
-        const CONTINUE = 1 << 3;
     }
 }
 
@@ -234,7 +231,6 @@ impl SignalInterface {
             signal_actions: SignalActions([Default::default(); 32]),
             signal_queue: VecDeque::new(),
             current_sa_mask: Default::default(),
-            depth: 0,
         }
     }
 
@@ -250,7 +246,6 @@ impl SignalInterface {
             //parent process if the thread was created as the result of a call to
             //fork()
             current_sa_mask: self.current_sa_mask,
-            depth: 0,
         }
     }
 
@@ -270,25 +265,18 @@ impl SignalInterface {
                     use DefaultAction::*;
                     match signal_default_action(signum) {
                         Abort | Terminate => JobAction::TERMINATE,
-                        Continue => JobAction::CONTINUE,
                         Stop => JobAction::STOP,
-                        Ignore => JobAction::default(),
+                        _ => JobAction::default(),
                     }
                 }
-                _ => {
-                    if signum == Signum::Sigcont {
-                        JobAction::INTERRUPT | JobAction::CONTINUE
-                    } else {
-                        JobAction::INTERRUPT
-                    }
-                }
+                _ => JobAction::INTERRUPT,
             };
         }
         action
     }
 
     /// Create handler contexts and pop all the signal queue. Return Some(signum) in case of Deadly signal
-    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) -> Option<Signum> {
+    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, mut in_blocked_syscall: bool) -> Option<Signum> {
         for &signum in self.signal_queue.iter() {
             if self.current_sa_mask.contains(signum) {
                 continue;
@@ -305,7 +293,7 @@ impl SignalInterface {
                 }
                 _ => {
                     // Only the RESTART of the first signal is considered
-                    if self.depth == 0 && in_blocked_syscall {
+                    if in_blocked_syscall {
                         if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
                             // back 2 instruction to reput eip on `int 80h` and restart the syscall
                             unsafe { (*cpu_state).eip -= 2 };
@@ -313,8 +301,8 @@ impl SignalInterface {
                             // else the syscall must return Eintr
                             unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
                         }
+                        in_blocked_syscall = false;
                     }
-                    self.depth += 1;
                     unsafe {
                         context_builder::push(cpu_state, self.current_sa_mask, signum, sigaction.sa_handler as u32);
                     }
@@ -331,7 +319,6 @@ impl SignalInterface {
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
     pub fn terminate_pending_signal(&mut self, process_context_ptr: u32) {
-        self.depth -= 1;
         unsafe {
             self.current_sa_mask = context_builder::pop(process_context_ptr as *mut CpuState);
         }

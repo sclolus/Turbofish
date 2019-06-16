@@ -21,13 +21,11 @@ pub struct Task {
     pub parent: Option<Pid>,
     /// Signal Interface
     pub signal: SignalInterface,
-    /// Job control status
-    pub stoped: bool,
 }
 
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new(), stoped: false }
+        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
     }
 
     pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {
@@ -39,7 +37,6 @@ impl Task {
                 ProcessState::Running(p) => ProcessState::Running(p.fork(kernel_esp)?),
                 _ => panic!("Non running process should not fork"),
             },
-            stoped: false,
         })
     }
 

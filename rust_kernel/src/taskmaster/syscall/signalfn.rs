@@ -43,8 +43,7 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
         if current_task_pid == pid {
             let action = task.signal.get_job_action();
 
-            if action.intersects(JobAction::STOP) {
-                task.stoped = true;
+            if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
                 auto_preempt();
             } else if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {

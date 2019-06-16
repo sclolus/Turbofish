@@ -230,24 +230,20 @@ impl Scheduler {
 
             let action = p.signal.get_job_action();
 
-            // Job control: STOP lock thread, CONTINUE or TERMINATE unlock it
-            if action.intersects(JobAction::STOP) {
-                p.stoped = true;
-            } else if action.intersects(JobAction::CONTINUE) || action.intersects(JobAction::TERMINATE) {
-                p.stoped = false;
-            }
-
-            // Skip current process if is in stoped state
-            if p.stoped == true {
+            // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
+            if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
             }
 
             match &self.current_task().process_state {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
-                    // Check if signal var contains something, set return value as
-                    // negative (rel to SIGNUM), set process as running then return
-                    if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
+                    if action.intersects(JobAction::TERMINATE) {
+                        // Immediately resume blocking syscall if TERMINATE action
+                        return action;
+                    } else if action.intersects(JobAction::INTERRUPT) {
+                        // Check if signal var contains something, set return value as
+                        // negative (rel to SIGNUM), set process as running then return
                         self.current_task_mut().set_running();
                         self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
                         return action;
@@ -354,7 +350,6 @@ impl Scheduler {
                         }
                     }
                 }
-
                 kernel_esp
             }
         }

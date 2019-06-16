@@ -81,9 +81,9 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Continue")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimple")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuo")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleStopContinue")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
         ]
     };
