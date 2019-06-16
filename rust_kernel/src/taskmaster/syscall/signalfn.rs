@@ -41,7 +41,7 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
 
         // auto-sodo mode
         if current_task_pid == pid {
-            let action = task.signal.check_pending_signals();
+            let action = task.signal.get_job_action();
 
             if action.intersects(JobAction::STOP) {
                 task.stoped = true;

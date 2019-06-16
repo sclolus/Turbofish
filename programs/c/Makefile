@@ -66,10 +66,26 @@ endif
 ifeq ($(findstring ContinueHardcore,$(MAKECMDGOALS)),ContinueHardcore)
 	TARGET = ContinueHardcore
 	SRC_C = ContinueHardcore
+endif
 
 ifeq ($(findstring DummyRead,$(MAKECMDGOALS)),DummyRead)
 	TARGET = DummyRead
 	SRC_C = DummyRead
+endif
+
+ifeq ($(findstring SignalSimple,$(MAKECMDGOALS)),SignalSimple)
+    TARGET = SignalSimple
+    SRC_C = SignalSimple
+endif
+
+ifeq ($(findstring SignalSimpleDuo,$(MAKECMDGOALS)),SignalSimpleDuo)
+    TARGET = SignalSimpleDuo
+    SRC_C = SignalSimpleDuo
+endif
+
+ifeq ($(findstring SignalSimpleDuoRecurse,$(MAKECMDGOALS)),SignalSimpleDuoRecurse)
+    TARGET = SignalSimpleDuoRecurse
+    SRC_C = SignalSimpleDuoRecurse
 endif
 
 # --- Preserve this above part. It is stricly system ---

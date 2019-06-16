@@ -1,7 +1,7 @@
 //! this file contains the scheduler description
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
-use super::signal::{JobAction, SaFlags, SignalStatus, Signum, StructSigaction};
+use super::signal::{JobAction, Signum};
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -32,7 +32,6 @@ extern "C" {
     pub fn _unpreemptible();
     pub fn _preemptible();
     pub fn _schedule_force_preempt();
-    fn _sigstop_return(kernel_esp: u32) -> !;
 }
 
 pub type Pid = u32;
@@ -217,7 +216,6 @@ impl Scheduler {
     }
 
     /// Advance until a next elligible process was found
-    // fn advance_next_process(&mut self, offset: usize) -> Option<SignalStatus> {
     fn advance_next_process(&mut self, offset: usize) -> JobAction {
         let next_process_index = (self.current_task_index + offset) % self.running_process.len();
 
@@ -229,12 +227,13 @@ impl Scheduler {
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
             let p = self.current_task_mut();
-            let action = p.signal.check_pending_signals();
 
-            // Job control
+            let action = p.signal.get_job_action();
+
+            // Job control: STOP lock thread, CONTINUE or TERMINATE unlock it
             if action.intersects(JobAction::STOP) {
                 p.stoped = true;
-            } else if action.intersects(JobAction::CONTINUE) {
+            } else if action.intersects(JobAction::CONTINUE) || action.intersects(JobAction::TERMINATE) {
                 p.stoped = false;
             }
 
@@ -262,7 +261,6 @@ impl Scheduler {
                                 return action;
                             }
                         }
-                        WaitingState::Pause => {}
                         WaitingState::Sleeping(time) => {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {
@@ -315,6 +313,7 @@ impl Scheduler {
                                 };
                             }
                         }
+                        _ => {}
                     }
                 }
                 ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
@@ -503,27 +502,9 @@ impl Scheduler {
             PrivilegeLevel::Ring3,
             "Cannot apply signal from ring0 process"
         );
-        let signal = self.current_task_mut().signal.take_pending_signal();
-        let handle_interruptible_syscall = |sigaction: &StructSigaction| {
-            // In case of blocked syscall, choose between restart or returning Eintr
-            if in_blocked_syscall == true {
-                if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
-                    // back 2 instruction to reput eip on `int 80h` and restart the syscall
-                    unsafe { (*cpu_state).eip -= 2 };
-                } else {
-                    // else the syscall must return Eintr
-                    unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
-                }
-            }
-        };
-        if let Some(signal) = signal {
-            match signal {
-                SignalStatus::Handled { signum, sigaction } => {
-                    handle_interruptible_syscall(&sigaction);
-                    self.current_task_mut().signal.exec_signal_handler(signum, cpu_state as u32, &sigaction);
-                }
-                SignalStatus::Deadly(signum) => self.current_task_exit(signum as i32 + 128),
-            }
+        let signum: Option<Signum> = self.current_task_mut().signal.exec_signal_handler(cpu_state, in_blocked_syscall);
+        if let Some(signum) = signum {
+            self.current_task_exit(signum as i32 + 128);
         }
     }
 }
