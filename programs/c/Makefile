@@ -88,6 +88,16 @@ ifeq ($(findstring SignalSimpleDuoRecurse,$(MAKECMDGOALS)),SignalSimpleDuoRecurs
     SRC_C = SignalSimpleDuoRecurse
 endif
 
+ifeq ($(findstring SignalSimpleStopContinue,$(MAKECMDGOALS)),SignalSimpleStopContinue)
+    TARGET = SignalSimpleStopContinue
+    SRC_C = SignalSimpleStopContinue
+endif
+
+ifeq ($(findstring SignalStopContinueOverload,$(MAKECMDGOALS)),SignalStopContinueOverload)
+    TARGET = SignalStopContinueOverload
+    SRC_C = SignalStopContinueOverload
+endif
+
 # --- Preserve this above part. It is stricly system ---
 ifeq ($(GNU),yes)
 SRC_ASM +=

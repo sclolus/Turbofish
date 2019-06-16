@@ -63,22 +63,27 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieAfter")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Csignal")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Timer")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionlessSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionOrientedSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/DummyRead")[..])).unwrap(),
+            /*
+             * Signal tests
+             */
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Csignal")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SonKillFather")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/RecursiveSignal")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal_no_defer")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SaRestart")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/no_sa_restart")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Continue")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionlessSimpleTest")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionOrientedSimpleTest")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/DummyRead")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimple")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuo")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleStopContinue")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
         ]
     };
