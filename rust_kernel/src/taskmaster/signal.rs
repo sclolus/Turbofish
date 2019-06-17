@@ -312,9 +312,7 @@ impl SignalInterface {
     /// Create handler contexts and pop the signal queue. Return Some(signum) in case of Deadly signal
     pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) -> Option<Signum> {
         let mut i = 0;
-        let mut restart = in_blocked_syscall;
-        let mut frame_builded = 0;
-        let origin_process_esp = unsafe { (*cpu_state).esp };
+        let mut frame_build = 0;
 
         while let Some(&signum) = self.signal_queue.get(i) {
             if self.current_sa_mask.is_masked(signum) {
@@ -328,10 +326,16 @@ impl SignalInterface {
                         _ => {}
                     },
                     _ => {
-                        frame_builded += 1;
-                        if restart && !sigaction.sa_flags.intersects(SaFlags::SA_RESTART) {
-                            restart = false;
+                        if frame_build == 0 && in_blocked_syscall {
+                            if sigaction.sa_flags.intersects(SaFlags::SA_RESTART) {
+                                // Back 2 instruction to reput eip on `int 80h` and restart the syscall
+                                unsafe { (*cpu_state).eip -= 2 }
+                            } else {
+                                // Else the syscall must return Eintr
+                                unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
+                            }
                         }
+                        frame_build += 1;
                         unsafe {
                             context_builder::push(cpu_state, self.current_sa_mask, signum, sigaction.sa_handler as u32);
                         }
@@ -339,18 +343,6 @@ impl SignalInterface {
                     }
                 };
                 self.signal_queue.remove(i);
-            }
-        }
-
-        if in_blocked_syscall && frame_builded > 0 {
-            // Get back to the first stored frame on the process stack
-            let origin_cpu_state = (origin_process_esp as usize - core::mem::size_of::<CpuState>()) as *mut CpuState;
-            if restart {
-                // Back 2 instruction to reput eip on `int 80h` and restart the syscall
-                unsafe { (*origin_cpu_state).eip -= 2 };
-            } else {
-                // Else the syscall must return Eintr
-                unsafe { (*origin_cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
             }
         }
         None
