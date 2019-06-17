@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{JobAction, SaFlags, StructSigaction};
+use super::signal::{JobAction, StructSigaction};
 use super::task::WaitingState;
 
 use core::convert::TryInto;
@@ -73,7 +73,7 @@ pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
         let s: StructSigaction = StructSigaction {
             sa_handler: handler,
             sa_mask: Default::default(),
-            sa_flags: SaFlags::from_bits_truncate(0), // TODO: Default for sys_signal is SA_RESTART
+            sa_flags: Default::default(),
             sa_restorer: 0,
         };
 

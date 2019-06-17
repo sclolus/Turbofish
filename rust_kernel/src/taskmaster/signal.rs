@@ -196,21 +196,22 @@ pub struct StructSigaction {
 }
 
 bitflags! {
+    #[derive(Default)]
     pub struct SaFlags: u32 {
-        const SA_NOCLDSTOP = 0x00000001;
-        const SA_NOCLDWAIT = 0x00000002;
-        const SA_SIGINFO   = 0x00000004;
-        const SA_ONSTACK   = 0x08000000;
-        const SA_RESTART   = 0x10000000;
-        const SA_NODEFER   = 0x40000000;
-        const SA_RESETHAND = 0x80000000;
-        const SA_RESTORER  = 0x04000000;
+        const SA_NOCLDSTOP = 1 << 0;
+        const SA_NOCLDWAIT = 1 << 1;
+        const SA_SIGINFO   = 1 << 2;
+        const SA_RESTORER  = 1 << 26;
+        const SA_ONSTACK   = 1 << 27;
+        const SA_RESTART   = 1 << 28;
+        const SA_NODEFER   = 1 << 30;
+        const SA_RESETHAND = 1 << 31;
     }
 }
 
 impl Default for StructSigaction {
     fn default() -> Self {
-        Self { sa_handler: SIG_DFL, sa_mask: Default::default(), sa_flags: SaFlags::SA_RESTART, sa_restorer: 0 }
+        Self { sa_handler: SIG_DFL, sa_mask: Default::default(), sa_flags: SaFlags::default(), sa_restorer: 0 }
     }
 }
 
