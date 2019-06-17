@@ -155,7 +155,7 @@ impl SaMask {
     /// Udpdate sa_mask relative to a sigaction sa_mask and signum if no defer.
     fn update(&mut self, s: Signum, sigaction: &StructSigaction) {
         *self = *self | sigaction.sa_mask;
-        if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
+        if !sigaction.sa_flags.intersects(SaFlags::SA_NODEFER) {
             *self |= SaMask::from(s);
         }
     }
@@ -310,55 +310,51 @@ impl SignalInterface {
     }
 
     /// Create handler contexts and pop all the signal queue. Return Some(signum) in case of Deadly signal
-    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, _in_blocked_syscall: bool) -> Option<Signum> {
+    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) -> Option<Signum> {
         let mut i = 0;
+        let mut restart = in_blocked_syscall;
+        let mut frame_builded = 0;
+        let origin_process_esp = unsafe { (*cpu_state).esp };
 
-        loop {
-            if i == self.signal_queue.len() {
-                break;
-            }
-            let signum = *self.signal_queue.get(i).expect("WTF");
-
+        while let Some(&signum) = self.signal_queue.get(i) {
             if self.current_sa_mask.is_masked(signum) {
                 i += 1;
-                continue;
-            }
-
-            let sigaction = self.signal_actions[signum];
-            match sigaction.sa_handler {
-                SIG_IGN => {
-                    self.signal_queue.remove(i);
-                    continue;
-                }
-                SIG_DFL => match signum.into() {
-                    DefaultAction::Abort | DefaultAction::Terminate => return Some(signum),
+            } else {
+                let sigaction = self.signal_actions[signum];
+                match sigaction.sa_handler {
+                    SIG_IGN => {}
+                    SIG_DFL => match signum.into() {
+                        DefaultAction::Abort | DefaultAction::Terminate => return Some(signum),
+                        _ => {}
+                    },
                     _ => {
-                        self.signal_queue.remove(i);
-                        continue;
+                        frame_builded += 1;
+                        if restart && !sigaction.sa_flags.intersects(SaFlags::SA_RESTART) {
+                            restart = false;
+                        }
+                        unsafe {
+                            context_builder::push(cpu_state, self.current_sa_mask, signum, sigaction.sa_handler as u32);
+                        }
+                        self.current_sa_mask.update(signum, &sigaction);
                     }
-                },
-                _ => {
-                    unsafe {
-                        context_builder::push(cpu_state, self.current_sa_mask, signum, sigaction.sa_handler as u32);
-                    }
-                    self.current_sa_mask.update(signum, &sigaction);
-                    self.signal_queue.remove(i);
-                }
-            };
+                };
+                self.signal_queue.remove(i);
+            }
+        }
+
+        if in_blocked_syscall && frame_builded > 0 {
+            // Get back to the first stored frame on the process stack
+            let origin_cpu_state = (origin_process_esp as usize - core::mem::size_of::<CpuState>()) as *mut CpuState;
+            if restart {
+                // Back 2 instruction to reput eip on `int 80h` and restart the syscall
+                unsafe { (*origin_cpu_state).eip -= 2 };
+            } else {
+                // Else the syscall must return Eintr
+                unsafe { (*origin_cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
+            }
         }
         None
     }
-    // Only the RESTART of the first signal is considered
-    // if in_blocked_syscall {
-    //     if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
-    //         // back 2 instruction to reput eip on `int 80h` and restart the syscall
-    //         unsafe { (*cpu_state).eip -= 2 };
-    //     } else {
-    //         // else the syscall must return Eintr
-    //         unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
-    //     }
-    //     in_blocked_syscall = false;
-    // }
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
     pub fn terminate_pending_signal(&mut self, process_context_ptr: u32) {
