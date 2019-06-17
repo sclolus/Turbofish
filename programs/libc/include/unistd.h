@@ -42,4 +42,7 @@ int unlink(const char *pathname);
 
 int pause(void);
 
+int reboot(void);
+int shutdown(void);
+
 #endif

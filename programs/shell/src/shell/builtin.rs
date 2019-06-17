@@ -39,3 +39,24 @@ pub fn hello_world(_args: &[&str]) -> u8 {
     really_lazy_hello_world();
     0
 }
+
+/// display a very lazy hello world
+pub fn reboot_computer(_args: &[&str]) -> u8 {
+    unsafe {
+        reboot();
+    }
+    1
+}
+
+/// display a very lazy hello world
+pub fn shutdown_computer(_args: &[&str]) -> u8 {
+    unsafe {
+        shutdown();
+    }
+    1
+}
+
+extern "C" {
+    fn reboot() -> i32;
+    fn shutdown() -> i32;
+}

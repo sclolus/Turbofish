@@ -80,10 +80,10 @@ impl From<u8> for AnsiColor {
     fn from(c: u8) -> AnsiColor {
         use AnsiColor::*;
         match c {
-            0...7 => Standard(unsafe { core::mem::transmute(c) }),
-            8...15 => HighIntensity(c - 8),
-            16...231 => AnsiRGB(self::AnsiRGB { r: (c - 16) / (6 * 6), g: ((c - 16) / 6) % 6, b: (c - 16) % 6 }),
-            232...255 => Grey(c - 232),
+            0..=7 => Standard(unsafe { core::mem::transmute(c) }),
+            8..=15 => HighIntensity(c - 8),
+            16..=231 => AnsiRGB(self::AnsiRGB { r: (c - 16) / (6 * 6), g: ((c - 16) / 6) % 6, b: (c - 16) % 6 }),
+            232..=255 => Grey(c - 232),
         }
     }
 }

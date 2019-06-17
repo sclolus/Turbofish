@@ -36,6 +36,9 @@ use socket::{sys_socketcall, SocketArgsPtr};
 pub mod read;
 use read::sys_read;
 
+mod power;
+use power::{sys_reboot, sys_shutdown};
+
 use errno::Errno;
 
 use core::ffi::c_void;
@@ -130,12 +133,14 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         37 => sys_kill(ebx as Pid, ecx as u32),
         48 => sys_signal(ebx as u32, ecx as usize),
         67 => sys_sigaction(ebx as u32, ecx as *const StructSigaction, edx as *mut StructSigaction),
+        88 => sys_reboot(),
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         102 => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
         125 => sys_mprotect(Virt(ebx as usize), ecx as usize, MmapProt::from_bits_truncate(edx)),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         200 => sys_sigreturn(cpu_state),
+        293 => sys_shutdown(),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         // set thread area: WTF

@@ -7,7 +7,7 @@ mod key_symb;
 use key_symb::KeySymb;
 
 mod builtin;
-use builtin::{echo, fish, hello_world, ls, more_fish};
+use builtin::{echo, fish, hello_world, ls, more_fish, reboot_computer, shutdown_computer};
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -31,8 +31,15 @@ pub fn shell() -> ! {
 }
 
 /// List of some builtins
-const BUILTINS: [(&str, fn(&[&str]) -> u8); 5] =
-    [("ls", ls), ("echo", echo), ("hello_world", hello_world), ("fish", fish), ("more_fish", more_fish)];
+const BUILTINS: [(&str, fn(&[&str]) -> u8); 7] = [
+    ("ls", ls),
+    ("echo", echo),
+    ("hello_world", hello_world),
+    ("fish", fish),
+    ("more_fish", more_fish),
+    ("reboot", reboot_computer),
+    ("shutdown", shutdown_computer),
+];
 
 /// Exectution of builtin commands
 fn exec_builtin(line: &str) {

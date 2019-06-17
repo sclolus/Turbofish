@@ -50,7 +50,7 @@ SRC_C += exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown
 VPATH += src/unistd
 HEADERS += include/unistd.h
 

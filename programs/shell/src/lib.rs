@@ -1,11 +1,7 @@
 //! This crate is a tiny rust sodo static lib linked with a static tiny libc
 
 #![cfg_attr(not(test), no_std)]
-#![cfg_attr(test, feature(allocator_api))]
-#![feature(alloc)]
 #![feature(alloc_error_handler)]
-#![feature(asm)]
-#![feature(core_intrinsics)]
 #![warn(missing_docs)]
 
 pub mod memory;
