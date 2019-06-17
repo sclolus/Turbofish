@@ -123,16 +123,16 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
     // Error from ring 3
     } else if cs & 0b11 == 0b11 {
         // Temporaly display a debug
-        eprintln!("\n{:X?}", *cpu_state);
-        eprintln!("Stack informations 'ss: 0x{:X?} esp: 0x{:X?}'", (*cpu_state).ss, (*cpu_state).esp);
-        eprintln!("Cannot display backtrace from a non-kernel routine !");
+        log::warn!("{:X?}", *cpu_state);
+        log::warn!("Stack informations 'ss: 0x{:X?} esp: 0x{:X?}'", (*cpu_state).ss, (*cpu_state).esp);
+        log::warn!("Cannot display backtrace from a non-kernel routine !");
 
         // Send a kill signum to the current process: kernel-sodo mode
         let current_task_pid = SCHEDULER.lock().current_task_pid();
         let _res = match (*cpu_state).cpu_isr_reserved {
             14 => sys_kill(current_task_pid, Signum::Sigsegv as u32),
             _ => {
-                eprintln!("{}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1);
+                log::warn!("{}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1);
                 sys_kill(current_task_pid, Signum::Sigkill as u32)
             }
         };

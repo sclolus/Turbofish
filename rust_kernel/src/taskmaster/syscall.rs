@@ -33,7 +33,7 @@ use unlink::sys_unlink;
 mod socket;
 use socket::{sys_socketcall, SocketArgsPtr};
 
-mod read;
+pub mod read;
 use read::sys_read;
 
 use errno::Errno;

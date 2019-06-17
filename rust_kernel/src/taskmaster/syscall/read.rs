@@ -13,16 +13,22 @@ use errno::Errno;
 
 use crate::terminal::TERMINAL;
 
-// TODO: Fix nasty processes concurence
 static mut KEY_SYMB_OPT: Option<KeySymb> = None;
+
+/// In a TTY keysymb control is up, handle it. This function must be called from a non-interruptble context
+pub unsafe fn handle_tty_control() {
+    if let Some(keysymb) = KEY_SYMB_OPT {
+        // Check if is not a special tty control before register character
+        if TERMINAL.as_mut().unwrap().handle_tty_control(keysymb) {
+            KEY_SYMB_OPT = None;
+        }
+    }
+}
 
 /// Usefull method to stock the character from the keyboard
 pub fn stock_keysymb(keysymb: KeySymb) {
     unsafe {
-        // Check if is not a special tty control before register character
-        if !TERMINAL.as_mut().unwrap().handle_tty_control(keysymb) {
-            KEY_SYMB_OPT = Some(keysymb);
-        }
+        KEY_SYMB_OPT = Some(keysymb);
     }
 }
 

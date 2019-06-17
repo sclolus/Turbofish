@@ -2,6 +2,7 @@
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
+use super::syscall::read::handle_tty_control;
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 
@@ -119,6 +120,9 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
+
+    // Handle a tty control
+    handle_tty_control();
 
     // Switch between processes
     let action = scheduler.advance_next_process(1);
@@ -384,7 +388,7 @@ impl Scheduler {
         self.running_process.remove(self.current_task_index);
         // Check if there is altmost one process
         if self.running_process.len() == 0 {
-            eprintln!("no more process !");
+            log::warn!("No more process");
             loop {}
         }
     }
@@ -418,9 +422,10 @@ impl Scheduler {
 
     /// Exit form a process and go to the current process
     pub fn current_task_exit(&mut self, status: i32) -> ! {
-        eprintln!(
+        log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
-            self.running_process[self.current_task_index], status
+            self.running_process[self.current_task_index],
+            status
         );
 
         match status {
@@ -432,13 +437,13 @@ impl Scheduler {
         // When the father die, the process 0 adopts all his orphelans
         if let Some(reaper) = self.all_process.get(&Self::REAPER_PID) {
             if let ProcessState::Zombie(_) = reaper.process_state {
-                eprintln!("... the reaper is a zombie ... it is worring ...");
+                log::warn!("... the reaper is a zombie ... it is worring ...");
             }
             while let Some(child_pid) = self.current_task_mut().child.pop() {
                 self.all_process.get_mut(&child_pid).expect("Hashmap corrupted").parent = Some(Self::REAPER_PID);
             }
         } else {
-            eprintln!("... the reaper is die ... RIP ...");
+            log::warn!("... the reaper is die ... RIP ...");
         }
 
         let pid = self.current_task_pid;
@@ -545,7 +550,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
 
-    println!("Starting processes:");
+    log::info!("Starting processes");
 
     match t {
         Some(v) => _update_process_end_time(v),
