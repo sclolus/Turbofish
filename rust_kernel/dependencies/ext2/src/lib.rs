@@ -3,7 +3,6 @@
 
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 #![deny(missing_docs)]
-#![feature(alloc)]
 
 mod disk;
 use crate::disk::Disk;

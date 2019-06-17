@@ -1,5 +1,4 @@
 //! contain the standard errno definition
-#![feature(alloc)]
 #![cfg_attr(not(test), no_std)]
 #![feature(try_reserve)]
 extern crate alloc;

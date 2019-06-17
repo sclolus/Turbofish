@@ -1,5 +1,4 @@
 #![feature(try_reserve)]
-#![feature(alloc)]
 extern crate try_clone_derive;
 use try_clone_derive::TryClone;
 extern crate alloc;

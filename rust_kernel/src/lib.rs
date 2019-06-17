@@ -5,9 +5,7 @@
 #![feature(asm)] // for inline asm
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
-#![feature(copy_within)]
 #![cfg_attr(test, feature(allocator_api))]
-#![feature(alloc)]
 #![feature(alloc_error_handler)]
 #![feature(underscore_const_names)]
 #![feature(stmt_expr_attributes)]
