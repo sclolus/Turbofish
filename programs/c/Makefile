@@ -59,9 +59,19 @@ ifeq ($(findstring SaRestart,$(MAKECMDGOALS)),SaRestart)
 	SRC_C = SaRestart
 endif
 
+ifeq ($(findstring SaRestartMultiple,$(MAKECMDGOALS)),SaRestartMultiple)
+	TARGET = SaRestartMultiple
+	SRC_C = SaRestartMultiple
+endif
+
 ifeq ($(findstring NoSaRestart,$(MAKECMDGOALS)),NoSaRestart)
 	TARGET = NoSaRestart
 	SRC_C = NoSaRestart
+endif
+
+ifeq ($(findstring NoSaRestartMultiple,$(MAKECMDGOALS)),NoSaRestartMultiple)
+	TARGET = NoSaRestartMultiple
+	SRC_C = NoSaRestartMultiple
 endif
 
 ifeq ($(findstring Continue,$(MAKECMDGOALS)),Continue)
