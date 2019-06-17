@@ -138,8 +138,26 @@ impl TryFrom<u32> for Signum {
 pub struct SaMask(u32);
 
 impl SaMask {
-    fn contains(&self, signum: Signum) -> bool {
-        self.0.get_bit(signum as u32 as usize)
+    /// Check is sa_mask contains a specified signum
+    fn contains(&self, s: Signum) -> bool {
+        self.0.get_bit(s as u32 as usize)
+    }
+
+    /// Check if the current Signum is marked as masked. Ignore it if SIGSTOP, SIGKILL and SIGCONT for job control
+    fn is_masked(&self, s: Signum) -> bool {
+        if self.contains(s) && s != Signum::Sigstop && s != Signum::Sigkill && s != Signum::Sigcont {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Udpdate sa_mask relative to a sigaction sa_mask and signum if no defer.
+    fn update(&mut self, s: Signum, sigaction: &StructSigaction) {
+        *self = *self | sigaction.sa_mask;
+        if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
+            *self |= SaMask::from(s);
+        }
     }
 }
 
@@ -265,9 +283,10 @@ impl SignalInterface {
     /// This function is non-mutable
     pub fn get_job_action(&self) -> JobAction {
         let mut action: JobAction = JobAction::default();
+        let mut sa_mask = self.current_sa_mask;
 
         for &signum in self.signal_queue.iter() {
-            if self.current_sa_mask.contains(signum) {
+            if sa_mask.is_masked(signum) {
                 continue;
             }
             let sigaction = self.signal_actions[signum];
@@ -281,53 +300,65 @@ impl SignalInterface {
                         _ => JobAction::default(),
                     }
                 }
-                _ => JobAction::INTERRUPT,
+                _ => {
+                    sa_mask.update(signum, &sigaction);
+                    JobAction::INTERRUPT
+                }
             };
         }
         action
     }
 
     /// Create handler contexts and pop all the signal queue. Return Some(signum) in case of Deadly signal
-    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, mut in_blocked_syscall: bool) -> Option<Signum> {
-        for &signum in self.signal_queue.iter() {
-            if self.current_sa_mask.contains(signum) {
+    pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, _in_blocked_syscall: bool) -> Option<Signum> {
+        let mut i = 0;
+
+        loop {
+            if i == self.signal_queue.len() {
+                break;
+            }
+            let signum = *self.signal_queue.get(i).expect("WTF");
+
+            if self.current_sa_mask.is_masked(signum) {
+                i += 1;
                 continue;
             }
+
             let sigaction = self.signal_actions[signum];
             match sigaction.sa_handler {
-                SIG_IGN => {}
-                SIG_DFL => {
-                    use DefaultAction::*;
-                    match signum.into() {
-                        Abort | Terminate => return Some(signum),
-                        _ => {}
-                    }
+                SIG_IGN => {
+                    self.signal_queue.remove(i);
+                    continue;
                 }
-                _ => {
-                    // Only the RESTART of the first signal is considered
-                    if in_blocked_syscall {
-                        if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
-                            // back 2 instruction to reput eip on `int 80h` and restart the syscall
-                            unsafe { (*cpu_state).eip -= 2 };
-                        } else {
-                            // else the syscall must return Eintr
-                            unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
-                        }
-                        in_blocked_syscall = false;
+                SIG_DFL => match signum.into() {
+                    DefaultAction::Abort | DefaultAction::Terminate => return Some(signum),
+                    _ => {
+                        self.signal_queue.remove(i);
+                        continue;
                     }
+                },
+                _ => {
                     unsafe {
                         context_builder::push(cpu_state, self.current_sa_mask, signum, sigaction.sa_handler as u32);
                     }
-                    self.current_sa_mask = self.current_sa_mask | sigaction.sa_mask;
-                    if !sigaction.sa_flags.contains(SaFlags::SA_NODEFER) {
-                        self.current_sa_mask |= SaMask::from(signum);
-                    }
+                    self.current_sa_mask.update(signum, &sigaction);
+                    self.signal_queue.remove(i);
                 }
             };
         }
-        self.signal_queue.truncate(0);
         None
     }
+    // Only the RESTART of the first signal is considered
+    // if in_blocked_syscall {
+    //     if sigaction.sa_flags.contains(SaFlags::SA_RESTART) {
+    //         // back 2 instruction to reput eip on `int 80h` and restart the syscall
+    //         unsafe { (*cpu_state).eip -= 2 };
+    //     } else {
+    //         // else the syscall must return Eintr
+    //         unsafe { (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32 };
+    //     }
+    //     in_blocked_syscall = false;
+    // }
 
     /// Acknowledge end of signal execution, pop the first internal signal and a restore context form the signal frame.
     pub fn terminate_pending_signal(&mut self, process_context_ptr: u32) {
