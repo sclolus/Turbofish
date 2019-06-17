@@ -309,7 +309,7 @@ impl SignalInterface {
         action
     }
 
-    /// Create handler contexts and pop all the signal queue. Return Some(signum) in case of Deadly signal
+    /// Create handler contexts and pop the signal queue. Return Some(signum) in case of Deadly signal
     pub fn exec_signal_handler(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) -> Option<Signum> {
         let mut i = 0;
         let mut restart = in_blocked_syscall;

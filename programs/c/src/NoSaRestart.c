@@ -17,7 +17,7 @@ int main (void) {
 	struct sigaction sa;
 
 	sa.sa_handler = hello_signal;
-	sa.sa_flags = SA_RESTART;
+	sa.sa_flags = 0;
 	if (sigaction(SIGUSR2, &sa, NULL) == -1) {
 		printf("F: sigaction failed\n");
 	}
@@ -32,7 +32,7 @@ int main (void) {
 		int status;
 		int ret;
 		if ((ret = wait(&status)) < 0) {
-			printf("F: wait failed\n");
+			printf("F: wait failed: ret: %i\n", ret);
 		} else {
 			printf("F: wait success: child_pid: %i exit_status: %i\n", ret, status);
 		}

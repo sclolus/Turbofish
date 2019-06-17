@@ -1,3 +1,4 @@
+
 ifeq ($(findstring Ud2,$(MAKECMDGOALS)),Ud2)
 	TARGET = Ud2
 	SRC_C = Ud2
@@ -56,6 +57,11 @@ endif
 ifeq ($(findstring SaRestart,$(MAKECMDGOALS)),SaRestart)
 	TARGET = SaRestart
 	SRC_C = SaRestart
+endif
+
+ifeq ($(findstring NoSaRestart,$(MAKECMDGOALS)),NoSaRestart)
+	TARGET = NoSaRestart
+	SRC_C = NoSaRestart
 endif
 
 ifeq ($(findstring Continue,$(MAKECMDGOALS)),Continue)
