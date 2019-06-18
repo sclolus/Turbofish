@@ -144,12 +144,9 @@ impl SaMask {
     }
 
     /// Check if the current Signum is marked as masked. Ignore it if SIGSTOP, SIGKILL and SIGCONT for job control
+    #[inline(always)]
     fn is_masked(&self, s: Signum) -> bool {
-        if self.contains(s) && s != Signum::Sigstop && s != Signum::Sigkill && s != Signum::Sigcont {
-            true
-        } else {
-            false
-        }
+        self.contains(s) && s != Signum::Sigstop && s != Signum::Sigkill && s != Signum::Sigcont
     }
 
     /// Udpdate sa_mask relative to a sigaction sa_mask and signum if no defer.
@@ -281,7 +278,7 @@ impl SignalInterface {
     }
 
     /// Get a Job action(s) relative to signal_queue content
-    /// This function is non-mutable
+    /// This function is pure
     pub fn get_job_action(&self) -> JobAction {
         let mut action: JobAction = JobAction::default();
         let mut sa_mask = self.current_sa_mask;
