@@ -45,4 +45,6 @@ int pause(void);
 int reboot(void);
 int shutdown(void);
 
+int execve(const char *filename, char *const argv[], char *const envp[]);
+
 #endif

@@ -39,6 +39,9 @@ use read::sys_read;
 mod power;
 use power::{sys_reboot, sys_shutdown};
 
+mod execve;
+use execve::sys_execve;
+
 use errno::Errno;
 
 use core::ffi::c_void;
@@ -127,6 +130,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         6 => sys_close(ebx as i32),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         10 => sys_unlink(ebx as *const u8),
+        11 => sys_execve(ebx as *const u8, ecx as u32, edx as u32), // TODO: argv & envp
         20 => sys_getpid(),
         // 24 => sys_getuid(), TODO: need to be implemented
         29 => sys_pause(),

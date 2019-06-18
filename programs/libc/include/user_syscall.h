@@ -13,6 +13,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define CLOSE         6
 #define WAITPID       7
 #define UNLINK       10
+#define EXECVE       11
 #define GETPID       20
 #define GETUID       24
 #define PAUSE        29

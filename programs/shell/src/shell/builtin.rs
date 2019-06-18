@@ -60,3 +60,19 @@ extern "C" {
     fn reboot() -> i32;
     fn shutdown() -> i32;
 }
+
+/// Execute a program
+pub fn exec(args: &[&str]) -> u8 {
+    unsafe {
+        if args.len() > 0 {
+            // TODO: Convert args to c_str with \0 at end of string
+            execve(args[0].as_ptr(), 0, 0) as u8
+        } else {
+            1
+        }
+    }
+}
+
+extern "C" {
+    fn execve(filename: *const u8, argv: i32, envp: i32) -> i32;
+}

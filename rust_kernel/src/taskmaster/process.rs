@@ -127,9 +127,9 @@ impl core::fmt::Debug for KernelProcess {
 
 /// This enum describe the origin of the process
 #[allow(unused)]
-pub enum TaskOrigin {
+pub enum TaskOrigin<'a> {
     /// ELF file
-    Elf(&'static [u8]),
+    Elf(&'a [u8]),
     /// Just a dummy function
     Raw(*const u8, usize),
 }

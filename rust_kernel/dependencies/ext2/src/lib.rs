@@ -66,7 +66,8 @@ impl<'a> Iterator for EntryIter<'a> {
 /// The Kernel side FileDescriptor struct
 #[derive(Debug, Copy, Clone)]
 pub struct File {
-    inode_nbr: u32,
+    /// Inode number
+    pub inode_nbr: u32,
     curr_offset: u64,
 }
 
