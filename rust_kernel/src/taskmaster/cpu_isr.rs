@@ -113,7 +113,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
                 return;
             } else {
                 let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
-                eprintln!("{}", page_fault_cause);
+                eprintln!("{}     address: {:#X?}", page_fault_cause, _read_cr2());
             }
         }
         eprintln!("Kernel Panic: {}\n{:X?}", CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1, *cpu_state);
