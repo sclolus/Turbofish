@@ -30,6 +30,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 mod shell;
 use shell::shell;
 
+mod ffi;
+
 #[cfg(not(test))]
 #[no_mangle]
 fn main() -> ! {

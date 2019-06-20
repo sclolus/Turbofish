@@ -40,6 +40,11 @@ impl Task {
         })
     }
 
+    /// Reset signal interface to default
+    pub fn renew_signal_interface(&mut self) {
+        self.signal = SignalInterface::new();
+    }
+
     pub fn unwrap_process_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
             ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,

@@ -41,7 +41,7 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
 }
 
 /// Execute a program
-pub fn sys_execve(filename: *const u8, _argv: u32, _envp: u32) -> SysResult<u32> {
+pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, _envp: *const *const c_char) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -49,14 +49,19 @@ pub fn sys_execve(filename: *const u8, _argv: u32, _envp: u32) -> SysResult<u32>
 
         // TODO: check with len
         // TODO: Unsafe strlen here. the check must be done before
-        v.check_user_ptr::<u8>(filename)?;
-        let len = unsafe { strlen(filename as *const c_char) };
+        v.check_user_ptr::<c_char>(filename)?;
+        let len = unsafe { strlen(filename) };
 
-        let pathname =
-            format!("/bin/{}", unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(filename, len)) });
+        let pathname = format!("/bin/{}", unsafe {
+            core::str::from_utf8_unchecked(core::slice::from_raw_parts(filename as *const u8, len))
+        });
         let content = get_file_content(&pathname)?;
 
         let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };
+
+        let t: crate::ffi::CStringArray = argv.into();
+        println!("argument received: {:?}", t);
+
         unsafe {
             /*
              * Switch to the new virtual allocator context
@@ -73,12 +78,16 @@ pub fn sys_execve(filename: *const u8, _argv: u32, _envp: u32) -> SysResult<u32>
          * So the trick is to exchange kernel stacks between old and new process.
          * We need also to save new CpuState before doing this operation
          */
-        let cpu_state_offset =
-            Into::<usize>::into(UserProcess::RING3_PROCESS_KERNEL_STACK_SIZE) - core::mem::size_of::<CpuState>();
-
         unsafe {
-            (old_process.kernel_stack.as_ptr().add(cpu_state_offset) as *mut u8)
-                .copy_from(new_process.kernel_stack.as_ptr().add(cpu_state_offset), core::mem::size_of::<CpuState>());
+            (old_process.kernel_stack.as_ptr().add(old_process.kernel_stack.len() - core::mem::size_of::<CpuState>())
+                as *mut u8)
+                .copy_from(
+                    new_process
+                        .kernel_stack
+                        .as_ptr()
+                        .add(new_process.kernel_stack.len() - core::mem::size_of::<CpuState>()),
+                    core::mem::size_of::<CpuState>(),
+                );
         }
         core::mem::swap(&mut new_process.kernel_stack, &mut old_process.kernel_stack);
 
@@ -86,6 +95,9 @@ pub fn sys_execve(filename: *const u8, _argv: u32, _envp: u32) -> SysResult<u32>
          * Now, we can drop safety the old process
          */
         scheduler.current_task_mut().process_state = ProcessState::Running(new_process);
+
+        // Reset the signal interface
+        scheduler.current_task_mut().renew_signal_interface();
     });
     Ok(0)
 }

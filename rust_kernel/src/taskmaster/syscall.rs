@@ -46,6 +46,7 @@ use errno::Errno;
 
 use core::ffi::c_void;
 
+use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
@@ -130,7 +131,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         6 => sys_close(ebx as i32),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         10 => sys_unlink(ebx as *const u8),
-        11 => sys_execve(ebx as *const u8, ecx as u32, edx as u32), // TODO: argv & envp
+        11 => sys_execve(ebx as *const c_char, ecx as *const *const c_char, edx as *const *const c_char),
         20 => sys_getpid(),
         // 24 => sys_getuid(), TODO: need to be implemented
         29 => sys_pause(),

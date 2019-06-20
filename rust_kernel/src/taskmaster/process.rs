@@ -145,7 +145,7 @@ impl UserProcess {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    pub const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
 }
 
 /// Main implementation of KernalProcess

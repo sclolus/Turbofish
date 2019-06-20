@@ -61,12 +61,16 @@ extern "C" {
     fn shutdown() -> i32;
 }
 
+use crate::ffi::{c_char, CString, CStringArray};
+
 /// Execute a program
 pub fn exec(args: &[&str]) -> u8 {
     unsafe {
         if args.len() > 0 {
-            // TODO: Convert args to c_str with \0 at end of string
-            execve(args[0].as_ptr(), 0, 0) as u8
+            let filename: CString = args[0].into();
+            let argv: CStringArray = args.into();
+
+            execve(filename.as_ptr(), argv.as_ptr(), 0 as *const *const c_char) as u8
         } else {
             1
         }
@@ -74,5 +78,5 @@ pub fn exec(args: &[&str]) -> u8 {
 }
 
 extern "C" {
-    fn execve(filename: *const u8, argv: i32, envp: i32) -> i32;
+    fn execve(filename: *const c_char, argv: *const *const c_char, envp: *const *const c_char) -> i32;
 }
