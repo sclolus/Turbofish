@@ -75,7 +75,9 @@ pub fn exec(args: &[&str]) -> u8 {
                 println!("Fork Failed");
                 1
             } else if f == 0 {
-                execve(filename.as_ptr(), argv.as_ptr(), 0 as *const *const c_char) as u8
+                execve(filename.as_ptr(), argv.as_ptr(), 0 as *const *const c_char) as u8;
+                println!("unexepted error !");
+                1
             } else {
                 let mut status: i32 = 0;
                 let w = wait(&mut status as *mut i32);

@@ -2,32 +2,27 @@
 
 use super::SysResult;
 
-use super::process::{CpuState, Process, UserProcess};
+use super::process::{CpuState, Process, TaskOrigin, UserProcess};
+use super::safe_ffi::{c_char, CString, CStringArray};
 use super::scheduler::SCHEDULER;
 use super::task::ProcessState;
-use crate::taskmaster::TaskOrigin;
 
 use alloc::format;
 use alloc::vec::Vec;
+use core::convert::TryInto;
 use errno::Errno;
 use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
 
 use crate::drivers::storage::ext2::EXT2;
-use crate::ffi::{c_char, CString, CStringArray};
 
 /// Return a file content using raw ext2 methods
 fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
-    println!("litteral pathname: {}", pathname);
-
     let ext2 = unsafe { EXT2.as_mut().ok_or("ext2 not init").map_err(|_| Errno::Enodev)? };
 
     let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
-    println!("file: {:?}", file);
 
     let inode = ext2.get_inode(file.inode_nbr)?;
-
-    println!("inode: {:?}", inode);
 
     let mut v: Vec<u8> = try_vec![0; inode.0.low_size as usize]?;
 
@@ -45,40 +40,25 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
     let argc = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let _v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let v = &scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
-        // TODO: check with len
-        // TODO: Unsafe strlen here. the check must be done before
-        // v.check_user_ptr::<c_char>(filename)?;
-        // let len = unsafe { strlen(filename) };
+        let filename: CString = (v, filename).try_into()?;
+        let argv_content: CStringArray = (v, argv).try_into()?;
+        let envp_content: CStringArray = (v, envp).try_into()?;
 
-        let filename: CString = filename.into();
-        let argv_content: CStringArray = argv.into();
-        let envp_content: CStringArray = envp.into();
-        println!("filename_content: {:?}", filename);
-        println!("argv_content: {:?}", argv_content);
-        println!("envp_content: {:?}", envp_content);
-
+        // TODO: Use PWD later. (note that format! macro is not in a faillible memory context)
         let pathname = format!("/bin/{}", filename);
 
         let content = get_file_content(&pathname)?;
 
         let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };
 
-        unsafe {
-            /*
-             * Switch to the new virtual allocator context
-             */
-            new_process.context_switch();
-        }
-
         let old_process = scheduler.current_task_mut().unwrap_process_mut();
-
         /*
          * We cannot move directly into the new process kernel stack, or just copy its content,
          * because rust made some optimizations with current process kernel stack.
          * So the trick is to exchange kernel stacks between old and new process.
-         * We need also to save new CpuState before doing this operation
+         * We need also to save new CpuState before doing this operation, and finally switch the virtual context
          */
         unsafe {
             (old_process.kernel_stack.as_ptr().add(old_process.kernel_stack.len() - core::mem::size_of::<CpuState>())
@@ -92,6 +72,14 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
                 );
         }
         core::mem::swap(&mut new_process.kernel_stack, &mut old_process.kernel_stack);
+
+        unsafe {
+            /*
+             * Switch to the new virtual allocator context
+             * IMPORTANT: Because of the TSS re-initialization. It is important to do that after swapping kernel stack
+             */
+            new_process.context_switch();
+        }
 
         /*
          * Now, we can drop safety the old process

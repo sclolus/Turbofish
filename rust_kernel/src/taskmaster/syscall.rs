@@ -5,6 +5,7 @@ use super::SysResult;
 use super::ipc;
 use super::process;
 use super::process::CpuState;
+use super::safe_ffi;
 use super::scheduler;
 use super::scheduler::unpreemptible;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};

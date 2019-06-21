@@ -8,7 +8,7 @@ use core::fmt;
 #[derive(Copy, Clone, PartialEq)]
 #[repr(transparent)]
 #[allow(non_camel_case_types)]
-pub struct c_char(u8);
+pub struct c_char(pub u8);
 
 /// Main structure of c_str
 #[derive(Copy, Clone)]
@@ -19,14 +19,14 @@ pub struct c_str {
 }
 
 /// Main structure of CString
-pub struct CString(Vec<c_char>);
+pub struct CString(pub Vec<c_char>);
 
 /// Main structure of CStringArray
 pub struct CStringArray {
     /// Pointer vector of C Style
-    c_pointer: Vec<*const c_char>,
+    pub c_pointer: Vec<*const c_char>,
     /// Rust borrowed content
-    borrowed_content: Vec<CString>,
+    pub borrowed_content: Vec<CString>,
 }
 
 /// Debug boilerplate of c_char
