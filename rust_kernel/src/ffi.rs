@@ -67,6 +67,30 @@ impl CString {
     pub fn len(&self) -> usize {
         self.0.len() - 1
     }
+
+    /// Get the len of data if the are serialized into a raw buffer
+    pub fn get_serialized_len(&self, align: usize) -> Option<usize> {
+        if align == 0 {
+            None
+        } else if self.0.len() % align == 0 {
+            Some(self.0.len())
+        } else {
+            Some(self.0.len() + align - self.0.len() % align)
+        }
+    }
+
+    /// Serialize the data into a raw buffer beginning at ptr location
+    pub fn serialize(&self, align: usize, ptr: *mut c_char) -> Option<*mut c_char> {
+        if align == 0 {
+            None
+        } else {
+            let aligned_ptr = (ptr as usize - ptr as usize % align) as *mut c_char;
+            unsafe {
+                aligned_ptr.copy_from(self.as_ptr(), self.0.len());
+            }
+            Some(aligned_ptr)
+        }
+    }
 }
 
 /// Create a CString from a RUST str slice
@@ -105,6 +129,70 @@ impl CStringArray {
     pub fn as_ptr(&self) -> *const *const c_char {
         self.c_pointer.as_ptr()
     }
+
+    /// Get the number of contained strings
+    pub fn len(&self) -> usize {
+        self.borrowed_content.len()
+    }
+
+    /// Get the len of data if the are serialized into a raw buffer
+    pub fn get_serialized_len(&self, align: usize) -> Option<usize> {
+        if align == 0 {
+            None
+        } else {
+            // First, count the string pointers total len
+            let mut total_len = self.c_pointer.len() * core::mem::size_of::<*const c_char>();
+
+            // Fix unaligned
+            if total_len % align != 0 {
+                total_len += align - total_len % align
+            }
+
+            // Then, add all the strings len
+            for elem in self.borrowed_content.iter() {
+                total_len += elem.get_serialized_len(align).expect("WTF");
+            }
+            Some(total_len)
+        }
+    }
+
+    /// Serialize the data into a raw buffer beginning at ptr location
+    pub fn serialize(&self, align: usize, ptr: *mut c_char) -> Option<*mut *mut c_char> {
+        if align == 0 {
+            None
+        } else {
+            // Align the pointer
+            let origin_aligned_ptr = (ptr as usize - ptr as usize % align) as *mut *mut c_char;
+            let mut aligned_ptr = origin_aligned_ptr as usize;
+
+            // First, reserve space for the string pointers
+            let len = self.c_pointer.len() * core::mem::size_of::<*mut c_char>();
+            aligned_ptr += len;
+            // Fix unaligned
+            if aligned_ptr % align != 0 {
+                aligned_ptr += len + align - len % align;
+            }
+
+            // Then, copy all the strings
+            for (i, elem) in self.borrowed_content.iter().enumerate() {
+                let res = elem.serialize(align, aligned_ptr as *mut c_char).expect("WTF");
+                // check align coherency
+                if res as usize != aligned_ptr {
+                    return None;
+                }
+                unsafe {
+                    // Make one BSP entry
+                    *(origin_aligned_ptr.add(i)) = aligned_ptr as *mut c_char;
+                }
+                aligned_ptr += elem.get_serialized_len(align).expect("WTF");
+            }
+            unsafe {
+                // Terminate the array of string pointer by a nulltpr
+                *(origin_aligned_ptr.add(self.c_pointer.len() - 1)) = 0x0 as *mut c_char;
+            }
+            Some(origin_aligned_ptr)
+        }
+    }
 }
 
 /// Create a CStringArray from a RUST str slice array
@@ -130,13 +218,15 @@ impl convert::From<*const *const c_char> for CStringArray {
         let mut c_pointer: Vec<*const c_char> = Vec::new();
         let mut borrowed_content: Vec<CString> = Vec::new();
 
-        let mut i = 0;
         unsafe {
-            while *(sa.add(i)) != 0x0 as *const c_char {
-                let string: CString = (*(sa.add(i)) as *const c_char).into();
-                c_pointer.push(string.as_ptr());
-                borrowed_content.push(string);
-                i += 1;
+            if sa != 0x0 as *const *const c_char {
+                let mut i = 0;
+                while *(sa.add(i)) != 0x0 as *const c_char {
+                    let string: CString = (*(sa.add(i)) as *const c_char).into();
+                    c_pointer.push(string.as_ptr());
+                    borrowed_content.push(string);
+                    i += 1;
+                }
             }
         }
         // nullptr to terminate the array

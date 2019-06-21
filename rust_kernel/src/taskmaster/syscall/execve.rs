@@ -14,7 +14,7 @@ use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
 
 use crate::drivers::storage::ext2::EXT2;
-use crate::ffi::{c_char, strlen};
+use crate::ffi::{c_char, strlen, CStringArray};
 
 /// Return a file content using raw ext2 methods
 fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
@@ -41,8 +41,8 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
 }
 
 /// Execute a program
-pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, _envp: *const *const c_char) -> SysResult<u32> {
-    unpreemptible_context!({
+pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *const *const c_char) -> SysResult<u32> {
+    let argc = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
         let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
@@ -59,8 +59,10 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, _envp: *c
 
         let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };
 
-        let t: crate::ffi::CStringArray = argv.into();
-        println!("argument received: {:?}", t);
+        let argv_content: CStringArray = argv.into();
+        let envp_content: CStringArray = envp.into();
+        println!("argv_content: {:?}", argv_content);
+        println!("envp_content: {:?}", envp_content);
 
         unsafe {
             /*
@@ -69,7 +71,6 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, _envp: *c
             new_process.context_switch();
         }
 
-        // TODO: pass argv && envp
         let old_process = scheduler.current_task_mut().unwrap_process_mut();
 
         /*
@@ -98,6 +99,25 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, _envp: *c
 
         // Reset the signal interface
         scheduler.current_task_mut().renew_signal_interface();
+
+        let p = scheduler.current_task_mut().unwrap_process_mut();
+        let cpu_state = unsafe {
+            p.kernel_stack.as_ptr().add(p.kernel_stack.len() - core::mem::size_of::<CpuState>()) as *mut CpuState
+        };
+
+        let align = 4;
+        unsafe {
+            // Set the argv argument: EBX
+            (*cpu_state).esp -= argv_content.get_serialized_len(align).expect("WTF") as u32;
+            (*cpu_state).registers.ebx =
+                argv_content.serialize(align, (*cpu_state).esp as *mut c_char).expect("WTF") as u32;
+            // set the envp argument: ECX
+            (*cpu_state).esp -= envp_content.get_serialized_len(align).expect("WTF") as u32;
+            (*cpu_state).registers.ecx =
+                envp_content.serialize(align, (*cpu_state).esp as *mut c_char).expect("WTF") as u32;
+        }
+        // Set the argc argument: EAX
+        argv_content.len() as u32
     });
-    Ok(0)
+    Ok(argc)
 }

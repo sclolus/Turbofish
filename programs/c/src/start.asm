@@ -10,7 +10,11 @@ _start:       ; tell linker entry point
 	push ebp
 	mov ebp, esp
 
+	push ecx ; push envp
+	push ebx ; push argv
+	push eax ; push argc
 	call main
+	add esp, 12
 
 	push 0
 	call exit

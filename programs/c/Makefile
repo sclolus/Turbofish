@@ -114,6 +114,11 @@ ifeq ($(findstring SignalStopContinueOverload,$(MAKECMDGOALS)),SignalStopContinu
     SRC_C = SignalStopContinueOverload
 endif
 
+ifeq ($(findstring GetArgs,$(MAKECMDGOALS)),GetArgs)
+    TARGET = GetArgs
+    SRC_C = GetArgs
+endif
+
 # --- Preserve this above part. It is stricly system ---
 ifeq ($(GNU),yes)
 SRC_ASM +=
