@@ -14,7 +14,7 @@ use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
 
 use crate::drivers::storage::ext2::EXT2;
-use crate::ffi::{c_char, strlen, CStringArray};
+use crate::ffi::{c_char, CString, CStringArray};
 
 /// Return a file content using raw ext2 methods
 fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
@@ -45,24 +45,25 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
     let argc = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let _v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
         // TODO: check with len
         // TODO: Unsafe strlen here. the check must be done before
-        v.check_user_ptr::<c_char>(filename)?;
-        let len = unsafe { strlen(filename) };
+        // v.check_user_ptr::<c_char>(filename)?;
+        // let len = unsafe { strlen(filename) };
 
-        let pathname = format!("/bin/{}", unsafe {
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(filename as *const u8, len))
-        });
+        let filename: CString = filename.into();
+        let argv_content: CStringArray = argv.into();
+        let envp_content: CStringArray = envp.into();
+        println!("filename_content: {:?}", filename);
+        println!("argv_content: {:?}", argv_content);
+        println!("envp_content: {:?}", envp_content);
+
+        let pathname = format!("/bin/{}", filename);
+
         let content = get_file_content(&pathname)?;
 
         let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };
-
-        let argv_content: CStringArray = argv.into();
-        let envp_content: CStringArray = envp.into();
-        println!("argv_content: {:?}", argv_content);
-        println!("envp_content: {:?}", envp_content);
 
         unsafe {
             /*

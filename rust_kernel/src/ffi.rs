@@ -120,6 +120,14 @@ impl convert::From<*const c_char> for CString {
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let debug_slice = unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
+        write!(f, "{} of len: {}", unsafe { core::str::from_utf8_unchecked(debug_slice) }, self.len())
+    }
+}
+
+/// Display boilerplate of CString
+impl fmt::Display for CString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let debug_slice = unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
         write!(f, "{}", unsafe { core::str::from_utf8_unchecked(debug_slice) })
     }
 }
@@ -170,7 +178,7 @@ impl CStringArray {
             aligned_ptr += len;
             // Fix unaligned
             if aligned_ptr % align != 0 {
-                aligned_ptr += len + align - len % align;
+                aligned_ptr += align - aligned_ptr % align;
             }
 
             // Then, copy all the strings
