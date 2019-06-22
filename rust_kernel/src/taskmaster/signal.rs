@@ -212,6 +212,12 @@ impl Default for StructSigaction {
     }
 }
 
+impl StructSigaction {
+    fn is_handled(&self) -> bool {
+        self.sa_handler != SIG_DFL && self.sa_handler != SIG_IGN
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 struct SignalActions(pub [StructSigaction; 32]);
 
@@ -260,6 +266,36 @@ impl SignalInterface {
             signal_queue: VecDeque::new(),
             current_sa_mask: Default::default(),
         }
+    }
+
+    /// Used to reset the signals after a call to execve
+    pub fn reset_for_new_process_image(&mut self) {
+        // Signals set to the default action (SIG_DFL) in the calling
+        // process image shall be set to the default action in the new
+        // process image. Except for SIGCHLD, signals set to be
+        // ignored (SIG_IGN) by the calling process image shall be set
+        // to be ignored by the new process image. Signals set to be
+        // caught by the calling process image shall be set to the
+        // default action in the new process image (see <signal.h>).
+
+        // If the SIGCHLD signal is set to be ignored by the calling
+        // process image, it is unspecified whether the SIGCHLD signal
+        // is set to be ignored or to the default action in the new
+        // process image.
+        for sigaction in &mut self.signal_actions.0 {
+            if sigaction.is_handled() {
+                *sigaction = Default::default();
+            }
+            // After a successful call to any of the exec functions,
+            // alternate signal stacks are not preserved and the
+            // SA_ONSTACK flag shall be cleared for all signals.
+            sigaction.sa_flags.remove(SaFlags::SA_ONSTACK);
+        }
+
+        // The initial thread of the new process shall inherit at
+        // least the following attributes from the calling thread:
+        //     Signal mask (see sigprocmask() and pthread_sigmask())
+        //     Pending signals (see sigpending())
     }
 
     /// Fork the signal interface

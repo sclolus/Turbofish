@@ -87,7 +87,7 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
         scheduler.current_task_mut().process_state = ProcessState::Running(new_process);
 
         // Reset the signal interface
-        scheduler.current_task_mut().renew_signal_interface();
+        scheduler.current_task_mut().signal.reset_for_new_process_image();
 
         let p = scheduler.current_task_mut().unwrap_process_mut();
         let cpu_state = unsafe {
