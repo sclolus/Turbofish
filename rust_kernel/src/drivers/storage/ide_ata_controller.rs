@@ -18,6 +18,7 @@ use bit_field::BitField;
 use bitflags::bitflags;
 
 use crate::drivers::PIT0;
+use core::convert::TryInto;
 use core::time::Duration;
 
 pub static mut IDE_ATA_CONTROLLER: Option<IdeAtaController> = None;
@@ -367,10 +368,10 @@ fn check_bounds(
     if nbr_sectors == NbrSectors(0) {
         Err(AtaError::NothingToDo)
     // Be careful with logical overflow
-    } else if start_sector.0 as u64 > u64::max_value() as u64 - nbr_sectors.0 as u64 {
+    } else if start_sector.0 > usize::max_value() - nbr_sectors.0 {
         Err(AtaError::OutOfBound)
     // raide disk capacity
-    } else if start_sector.0 + nbr_sectors.0 as u64 > drive_capacity.0 {
+    } else if start_sector.0 + nbr_sectors.0 > drive_capacity.0 {
         Err(AtaError::OutOfBound)
     } else {
         Ok(())
@@ -522,14 +523,18 @@ impl Drive {
         // Bit 10 is set if the drive supports LBA48 mode.
         // 100 through 103 taken as a uint64_t contain the total number of 48 bit addressable sectors on the drive. (Probably also proof that LBA48 is supported.)
         if v[83] & (1 << 10) != 0 {
+            let nbr_sectors: Option<usize> = (v[100] as u64
+                + ((v[101] as u64) << 16)
+                + ((v[102] as u64) << 32)
+                + ((v[103] as u64) << 48))
+                .try_into()
+                .ok();
+            if nbr_sectors == None {
+                return None;
+            }
             Some(Drive {
                 capabilities: Capabilities::Lba48,
-                sector_capacity: NbrSectors(
-                    v[100] as u64
-                        + ((v[101] as u64) << 16)
-                        + ((v[102] as u64) << 32)
-                        + ((v[103] as u64) << 48),
-                ),
+                sector_capacity: NbrSectors(nbr_sectors.expect("WTF")),
                 // The bits in the low byte tell you the supported UDMA modes, the upper byte tells you which UDMA mode is active.
                 udma_support: v[88],
                 command_register,
@@ -540,7 +545,7 @@ impl Drive {
         } else if v[60] != 0 || v[61] != 0 {
             Some(Drive {
                 capabilities: Capabilities::Lba28,
-                sector_capacity: NbrSectors(v[60] as u64 + ((v[61] as u64) << 16)),
+                sector_capacity: NbrSectors(v[60] as usize + ((v[61] as usize) << 16)),
                 udma_support: v[88],
                 command_register,
                 control_register,
@@ -603,8 +608,11 @@ impl Drive {
 
     /// Init read or write sequence for lba48 mode
     fn init_lba48(&self, start_sector: Sector, nbr_sectors: NbrSectors) {
-        let lba_low = start_sector.0.get_bits(0..32) as u32;
-        let lba_high = start_sector.0.get_bits(32..48) as u32;
+        let lba_low: u32 = (start_sector.0 & 0xffffffff) as _;
+        // Since Sector newtype handle usize. We don't know at advance its bit model
+        // #[allow(exceeding_bitshifts)]
+        // let lba_high: u32 = ((start_sector.0 >> 32) & 0xffff) as _;
+        let lba_high: u32 = 0;
 
         // Send 0x40 for the "master" or 0x50 for the "slave" to port 0x1F6: outb(0x1F6, 0x40 | (slavebit << 4))
         self.wait_available();
@@ -643,7 +651,7 @@ impl Drive {
 
     /// Init read or write sequence for lba28 mode
     fn init_lba28(&self, start_sector: Sector, nbr_sectors: NbrSectors) {
-        let lba_low = start_sector.0.get_bits(0..32) as u32;
+        let lba_low: u32 = (start_sector.0 & 0xffffffff) as _;
 
         // Send 0xE0 for the "master" or 0xF0 for the "slave" to port 0x1F6
         // and add the highest 4 bits of the LBA to port 0x1F6: outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
