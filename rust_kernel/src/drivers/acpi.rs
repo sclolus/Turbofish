@@ -110,7 +110,8 @@ struct FADT {
     /*40 */ dsdt: u32,
 
     // field used in ACPI 1.0, no longer in use, for compatibility only
-    /*44 */ reserved: u8,
+    /*44 */
+    reserved: u8,
 
     /*45 */ preferred_power_management_profile: u8,
     /*46 */ sci_interrupt: u16,
@@ -286,16 +287,20 @@ impl Acpi {
             let rsdp_descriptor_ptr: *const RSDPDescriptor10 = get_rsdp_descriptor_ptr()?;
             rsdp_descriptor = match (*rsdp_descriptor_ptr).revision {
                 0 => RSDPDescriptor::LegacyRSDPDescriptor(*rsdp_descriptor_ptr),
-                _ => RSDPDescriptor::AdvancedRSDPDescriptor(*(rsdp_descriptor_ptr as *const RSDPDescriptor20)),
+                _ => RSDPDescriptor::AdvancedRSDPDescriptor(
+                    *(rsdp_descriptor_ptr as *const RSDPDescriptor20),
+                ),
             };
 
             let virt_addr: *const u8 = match rsdp_descriptor {
-                RSDPDescriptor::LegacyRSDPDescriptor(descriptor) => {
-                    map(descriptor.rsdt_address as *mut u8, size_of::<ACPIRSDTHeader>())
-                }
-                RSDPDescriptor::AdvancedRSDPDescriptor(descriptor) => {
-                    map(descriptor.xsdt_address_0_31 as *mut u8, size_of::<ACPIRSDTHeader>())
-                }
+                RSDPDescriptor::LegacyRSDPDescriptor(descriptor) => map(
+                    descriptor.rsdt_address as *mut u8,
+                    size_of::<ACPIRSDTHeader>(),
+                ),
+                RSDPDescriptor::AdvancedRSDPDescriptor(descriptor) => map(
+                    descriptor.xsdt_address_0_31 as *mut u8,
+                    size_of::<ACPIRSDTHeader>(),
+                ),
             };
 
             fadt = find_fadt(virt_addr as *const Rsdt);
@@ -304,7 +309,10 @@ impl Acpi {
         }
         match fadt {
             Ok(fadt) => {
-                *ACPI.lock() = Some(Self { rsdp_descriptor, fadt });
+                *ACPI.lock() = Some(Self {
+                    rsdp_descriptor,
+                    fadt,
+                });
                 Ok(())
             }
             Err(e) => Err(e),
@@ -383,9 +391,12 @@ impl Acpi {
             return Err(AcpiError::Disabled);
         }
 
-        let dsdt_header = map(self.fadt.dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
-        let dsdt = map((self.fadt.dsdt as usize + size_of::<DsdtHeader>()) as *mut u8, (*dsdt_header).length as usize)
-            as *const u8;
+        let dsdt_header =
+            map(self.fadt.dsdt as *mut u8, size_of::<DsdtHeader>()) as *const DsdtHeader;
+        let dsdt = map(
+            (self.fadt.dsdt as usize + size_of::<DsdtHeader>()) as *mut u8,
+            (*dsdt_header).length as usize,
+        ) as *const u8;
 
         // dbg!(*dsdt_header);
 
@@ -430,7 +441,13 @@ impl Acpi {
 
 /// Get the first main ACPI descriptor
 unsafe fn get_rsdp_descriptor_ptr() -> AcpiResult<*const RSDPDescriptor10> {
-    match memschr(RSDP_BIOS_ADDR, 0x20000, "RSD PTR ".as_ptr(), 8, Some(rsdp_checksum)) {
+    match memschr(
+        RSDP_BIOS_ADDR,
+        0x20000,
+        "RSD PTR ".as_ptr(),
+        8,
+        Some(rsdp_checksum),
+    ) {
         Ok(rsdp_descriptor_ptr) => Ok(rsdp_descriptor_ptr as *const RSDPDescriptor10),
         Err(_) => Err(AcpiError::AcpiAbsent),
     }
@@ -440,7 +457,10 @@ unsafe fn get_rsdp_descriptor_ptr() -> AcpiResult<*const RSDPDescriptor10> {
 unsafe fn find_fadt(rsdt: *const Rsdt) -> AcpiResult<FADT> {
     let entries = (((*rsdt).h.length - size_of::<ACPIRSDTHeader>() as u32) / 4) as usize;
 
-    let others_rsdt = map((*rsdt).others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+    let others_rsdt = map(
+        (*rsdt).others_rsdt as *mut u8,
+        size_of::<ACPIRSDTHeader>() * entries,
+    );
 
     // println!("begin research... on {:?}", others_rsdt);
     for i in 0..entries {
@@ -450,12 +470,18 @@ unsafe fn find_fadt(rsdt: *const Rsdt) -> AcpiResult<FADT> {
             // println!("iteration {} / {}: sign = ", i, entries);
             // println!("{:?}", (*h).signature);
             let ret = *(h as *const FADT);
-            unmap(others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+            unmap(
+                others_rsdt as *mut u8,
+                size_of::<ACPIRSDTHeader>() * entries,
+            );
             return Ok(ret);
         }
     }
     // No FACP found
-    unmap(others_rsdt as *mut u8, size_of::<ACPIRSDTHeader>() * entries);
+    unmap(
+        others_rsdt as *mut u8,
+        size_of::<ACPIRSDTHeader>() * entries,
+    );
     Err(AcpiError::CannotInitialize)
 }
 

@@ -59,7 +59,13 @@ struct Prdt([PrdEntry; Udma::NBR_DMA_ENTRIES]);
 
 impl Prdt {
     fn new() -> Self {
-        Self([PrdEntry { addr: Phys(0), size: 0, is_end: 0 }; Udma::NBR_DMA_ENTRIES])
+        Self(
+            [PrdEntry {
+                addr: Phys(0),
+                size: 0,
+                is_end: 0,
+            }; Udma::NBR_DMA_ENTRIES],
+        )
     }
 }
 
@@ -109,24 +115,37 @@ impl Udma {
         // Init a new PRDT
         init_prdt(prdt.as_mut(), &mut memory);
 
-        let physical_prdt_address = get_physical_addr(Virt(prdt.as_ref() as *const _ as usize)).unwrap().0;
+        let physical_prdt_address = get_physical_addr(Virt(prdt.as_ref() as *const _ as usize))
+            .unwrap()
+            .0;
 
-        eprintln!("Physical PRDT address = {:X?}", physical_prdt_address as u32);
+        eprintln!(
+            "Physical PRDT address = {:X?}",
+            physical_prdt_address as u32
+        );
 
         // Set the IO/PORT on Bus master register with physical DMA PRDT Address
-        Pio::<u32>::new(bus_mastered_register + Self::DMA_PRDT_ADDR).write(physical_prdt_address as u32);
+        Pio::<u32>::new(bus_mastered_register + Self::DMA_PRDT_ADDR)
+            .write(physical_prdt_address as u32);
 
         // Enable IRQ mask for a specific channel
         unsafe {
             match channel {
                 Channel::Primary => PIC_8259.lock().enable_irq(pic_8259::Irq::PrimaryATAChannel),
-                Channel::Secondary => PIC_8259.lock().enable_irq(pic_8259::Irq::SecondaryATAChannel),
+                Channel::Secondary => PIC_8259
+                    .lock()
+                    .enable_irq(pic_8259::Irq::SecondaryATAChannel),
             }
         }
 
         // dbg_hex!(prdt.as_mut());
 
-        Self { memory, channel, prdt, bus_mastered_register }
+        Self {
+            memory,
+            channel,
+            prdt,
+            bus_mastered_register,
+        }
     }
 
     /// Get the complete memory DMA zone
@@ -142,25 +161,29 @@ impl Udma {
     /// Start the UDMA transfert
     pub fn start_transfer(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::ONOFF.bits());
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND)
+            .write(s | DmaCommand::ONOFF.bits());
     }
 
     /// Stop the UDMA transfert
     pub fn stop_transfer(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::ONOFF.bits());
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND)
+            .write(s & !DmaCommand::ONOFF.bits());
     }
 
     /// Set reading mode: DISK to DMA buffer
     pub fn set_read(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s | DmaCommand::RDWR.bits());
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND)
+            .write(s | DmaCommand::RDWR.bits());
     }
 
     /// Set writing mode: DMA buffer to DISK
     pub fn set_write(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).read();
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND).write(s & !DmaCommand::RDWR.bits());
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_COMMAND)
+            .write(s & !DmaCommand::RDWR.bits());
     }
 
     /// Clear interrupt bit
@@ -171,12 +194,15 @@ impl Udma {
     /// Clear error bit
     pub fn clear_error(&self) {
         let s = Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read();
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(s & !DmaStatus::FAILED.bits());
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS)
+            .write(s & !DmaStatus::FAILED.bits());
     }
 
     /// Get the UDMA status
     pub fn get_status(&self) -> DmaStatus {
-        DmaStatus { bits: Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read() }
+        DmaStatus {
+            bits: Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read(),
+        }
     }
 }
 
@@ -184,6 +210,10 @@ impl Udma {
 fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
     for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
         let addr = get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap();
-        *prd = PrdEntry { addr, size: 1 << 15, is_end: 0 }
+        *prd = PrdEntry {
+            addr,
+            size: 1 << 15,
+            is_end: 0,
+        }
     }
 }

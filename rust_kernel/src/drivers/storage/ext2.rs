@@ -17,13 +17,21 @@ pub struct DiskIoBios {
 
 impl Debug for DiskIoBios {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}, {:?}", self.start_of_partition, self.partition_size)
+        write!(
+            f,
+            "{:?}, {:?}",
+            self.start_of_partition, self.partition_size
+        )
     }
 }
 
 impl DiskIoBios {
     pub fn new(start_of_partition: u64, partition_size: u64) -> Self {
-        Self { start_of_partition, partition_size, buf: [0; SECTOR_SIZE] }
+        Self {
+            start_of_partition,
+            partition_size,
+            buf: [0; SECTOR_SIZE],
+        }
     }
 }
 
@@ -37,7 +45,10 @@ impl DiskIo for DiskIoBios {
     fn write_buffer(&mut self, mut offset: u64, mut buf: &[u8]) -> IoResult<u64> {
         let len = buf.len();
         loop {
-            let size_read = min((SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize, buf.len());
+            let size_read = min(
+                (SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize,
+                buf.len(),
+            );
 
             let sector = Sector::from(offset + self.start_of_partition);
             unsafe {
@@ -68,7 +79,10 @@ impl DiskIo for DiskIoBios {
     fn read_buffer(&mut self, mut offset: u64, mut buf: &mut [u8]) -> IoResult<u64> {
         let len = buf.len();
         loop {
-            let size_read = min((SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize, buf.len());
+            let size_read = min(
+                (SECTOR_SIZE as u64 - offset % SECTOR_SIZE as u64) as usize,
+                buf.len(),
+            );
 
             let sector = Sector::from(offset + self.start_of_partition);
             unsafe {
@@ -93,7 +107,10 @@ impl DiskIo for DiskIoBios {
 pub static mut EXT2: Option<Ext2Filesystem> = None;
 
 pub fn init(mbr: &Mbr) -> IoResult<()> {
-    let disk_io = DiskIoBios::new(dbg!(mbr.parts[0].start as u64 * 512), mbr.parts[0].size as u64 * 512);
+    let disk_io = DiskIoBios::new(
+        dbg!(mbr.parts[0].start as u64 * 512),
+        mbr.parts[0].size as u64 * 512,
+    );
     unsafe {
         EXT2 = Some(Ext2Filesystem::new(Box::new(disk_io))?);
     }

@@ -82,7 +82,10 @@ fn read_line() -> String {
                 print!("{}", &line[cursor_pos..]);
                 return line;
             }
-            key if ((key >= KeySymb::space) && (key <= KeySymb::ydiaeresis) && (key != KeySymb::Delete)) => {
+            key if ((key >= KeySymb::space)
+                && (key <= KeySymb::ydiaeresis)
+                && (key != KeySymb::Delete)) =>
+            {
                 line.insert(cursor_pos, key as u8 as char);
 
                 print!("{}", &line[cursor_pos..]);
@@ -92,7 +95,10 @@ fn read_line() -> String {
                 graphical_cursor_offset += 1;
                 graphical_len += 1;
 
-                print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset));
+                print!(
+                    "{}",
+                    CursorMove::Backward(graphical_len - graphical_cursor_offset)
+                );
             }
             KeySymb::Left => {
                 if cursor_pos > 0 {
@@ -135,7 +141,10 @@ fn read_line() -> String {
                         print!("{}", &line[cursor_pos..]);
                         print!("{}", " ");
                     }
-                    print!("{}", CursorMove::Backward(graphical_len - graphical_cursor_offset + 1));
+                    print!(
+                        "{}",
+                        CursorMove::Backward(graphical_len - graphical_cursor_offset + 1)
+                    );
                 }
             }
             _ => {}

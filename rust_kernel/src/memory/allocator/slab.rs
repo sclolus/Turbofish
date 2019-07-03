@@ -15,7 +15,11 @@ struct Node<T> {
 
 impl<T> Node<T> {
     fn new(content: T) -> Self {
-        Self { prev: None, next: None, content }
+        Self {
+            prev: None,
+            next: None,
+            content,
+        }
     }
 
     #[allow(dead_code)]
@@ -60,7 +64,11 @@ struct LinkedList<T> {
 
 impl<T> LinkedList<T> {
     fn new() -> Self {
-        Self { head: None, tail: None, len: 0 }
+        Self {
+            head: None,
+            tail: None,
+            len: 0,
+        }
     }
 
     fn push_front(&mut self, node: *mut Node<T>) {
@@ -135,11 +143,15 @@ impl<T> LinkedList<T> {
     }
 
     pub fn iter<'a>(&self) -> Iter<'a, T> {
-        Iter { current: unsafe { self.head.map(|x| &*x) } }
+        Iter {
+            current: unsafe { self.head.map(|x| &*x) },
+        }
     }
 
     pub fn iter_mut<'a>(&mut self) -> IterMut<'a, T> {
-        IterMut { current: unsafe { self.head.map(|x| &mut *x) } }
+        IterMut {
+            current: unsafe { self.head.map(|x| &mut *x) },
+        }
     }
 
     pub unsafe fn in_place_construction(nodes: &mut [Node<T>]) -> Self {
@@ -177,7 +189,10 @@ impl<'a, T: 'a> Iterator for IterMut<'a, T> {
     type Item = &'a mut Node<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self.current.as_mut().and_then(|x| x.next.map(|x| unsafe { &mut *x }));
+        let next = self
+            .current
+            .as_mut()
+            .and_then(|x| x.next.map(|x| unsafe { &mut *x }));
         let current = self.current.take();
         self.current = next;
 
@@ -239,7 +254,11 @@ fn mmap(size: usize) -> Option<*mut u8> {
 
 fn munmap(addr: *mut u8, size: usize) {
     unsafe {
-        if let Err(e) = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().free(Page::containing(Virt(addr as usize))) {
+        if let Err(e) = KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_mut()
+            .unwrap()
+            .free(Page::containing(Virt(addr as usize)))
+        {
             panic!("Failed to munmap {:p} size: {}: {:?}", addr, size, e);
         }
     }
@@ -255,7 +274,9 @@ impl Slab {
 
         // This is how you satisfy the borrow checker. damn it.
         let elem_size = self.elem_size;
-        for ptr in (1..self.elem_count).map(|x| (first_slot as usize + x * elem_size) as *mut FreeSlot) {
+        for ptr in
+            (1..self.elem_count).map(|x| (first_slot as usize + x * elem_size) as *mut FreeSlot)
+        {
             self.free_list.push_back(ptr)
         }
     }
@@ -340,7 +361,11 @@ struct Cache {
 
 impl Debug for Cache {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "elem_size: {}\nnbr_slabs: {}\nslab: \n", self.elem_size, self.nbr_slabs)?;
+        write!(
+            f,
+            "elem_size: {}\nnbr_slabs: {}\nslab: \n",
+            self.elem_size, self.nbr_slabs
+        )?;
         Ok(for (index, slab) in self.slabs.iter().enumerate() {
             writeln!(f, "slab {}:\n {:#?}", index, slab)?
         })
@@ -366,7 +391,9 @@ impl Cache {
         // dbg!(nbr_slabs);
 
         let new = if current_page_number < new_page_number {
-            mmap(new_page_number).map(|addr| addr as *mut Node<Option<Slab>>).ok_or(())?
+            mmap(new_page_number)
+                .map(|addr| addr as *mut Node<Option<Slab>>)
+                .ok_or(())?
         } else {
             self.data.ok_or(())?
         };
@@ -384,7 +411,10 @@ impl Cache {
                 for new in &mut slice[self.nbr_slabs..nbr_slabs] {
                     mem::forget(mem::replace(&mut new.content, None));
                 }
-                for (new, old) in slice[0..self.nbr_slabs].iter_mut().zip(self.slabs.iter_mut()) {
+                for (new, old) in slice[0..self.nbr_slabs]
+                    .iter_mut()
+                    .zip(self.slabs.iter_mut())
+                {
                     mem::swap(&mut new.content, &mut old.content);
                     mem::forget(mem::replace(&mut old.content, None));
                 }
@@ -428,13 +458,21 @@ impl Cache {
     }
 
     pub fn new(elem_size: usize) -> core::result::Result<Self, ()> {
-        let mut new = Cache { elem_size, nbr_slabs: 0, slabs: LinkedList::new(), data: None };
+        let mut new = Cache {
+            elem_size,
+            nbr_slabs: 0,
+            slabs: LinkedList::new(),
+            data: None,
+        };
 
         new.allocate_metadata(Self::BASE_NBR_SLABS)?;
         Ok(new)
     }
 
-    pub fn take_slab<F: Fn(&Slab) -> bool>(&mut self, predicate: F) -> Option<*mut Node<Option<Slab>>> {
+    pub fn take_slab<F: Fn(&Slab) -> bool>(
+        &mut self,
+        predicate: F,
+    ) -> Option<*mut Node<Option<Slab>>> {
         let found = self
             .slabs
             .iter_mut()
@@ -505,7 +543,10 @@ impl Cache {
 
     #[allow(dead_code)]
     pub fn contains(&self, addr: *mut u8) -> bool {
-        self.slabs.iter().filter_map(|node| node.content.as_ref()).any(|slab| slab.contains(addr))
+        self.slabs
+            .iter()
+            .filter_map(|node| node.content.as_ref())
+            .any(|slab| slab.contains(addr))
     }
 }
 
@@ -585,7 +626,8 @@ impl SlabAllocator {
             size = 32;
         }
         let addr = addr.0 as *mut u8;
-        let cache = &mut self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize];
+        let cache =
+            &mut self.caches[size.next_power_of_two().trailing_zeros() as usize - 5 as usize];
         cache.free(addr);
     }
 

@@ -6,7 +6,9 @@ pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
     match Layout::from_size_align(size, 16) {
         Err(_) => 0 as *mut u8,
         Ok(layout) => match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
+            KernelAllocator::Bootstrap(_) => {
+                panic!("Attempting to kmalloc while in bootstrap allocator")
+            }
             KernelAllocator::Kernel(a) => {
                 if layout.size() <= PAGE_SIZE {
                     a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
@@ -27,12 +29,18 @@ pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Bootstrap(_) => panic!("Attempting to kmalloc while in bootstrap allocator"),
+        KernelAllocator::Bootstrap(_) => {
+            panic!("Attempting to kmalloc while in bootstrap allocator")
+        }
         KernelAllocator::Kernel(_) => {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
-                .reserve(Virt(virt as usize).into(), Phys(phys as usize).into(), size.into())
+                .reserve(
+                    Virt(virt as usize).into(),
+                    Phys(phys as usize).into(),
+                    size.into(),
+                )
                 .map(|_| Page::containing(Virt(virt as usize)))
                 .unwrap_or(Page::containing(Virt(0x0)))
                 .to_addr()
@@ -129,16 +137,17 @@ pub unsafe extern "C" fn map(phy_addr: *mut u8, size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
             let addr = Phys(phy_addr as usize);
-            match KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .map_addr(addr.into(), ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into())
-            {
+            match KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().map_addr(
+                addr.into(),
+                ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into(),
+            ) {
                 Err(_) => 0 as *mut u8,
                 Ok(virt_addr) => (virt_addr.to_addr().0 as *mut u8).add(addr.offset()),
             }
         }
-        KernelAllocator::Bootstrap(_) => panic!("Mapping memory while in bootstrap allocator is unsafe"),
+        KernelAllocator::Bootstrap(_) => {
+            panic!("Mapping memory while in bootstrap allocator is unsafe")
+        }
     }
 }
 
@@ -148,16 +157,17 @@ pub unsafe extern "C" fn unmap(virt_addr: *mut u8, size: usize) -> i32 {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Kernel(_) => {
             let addr = Virt(virt_addr as usize);
-            match KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .unmap_addr(addr.into(), ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into())
-            {
+            match KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().unmap_addr(
+                addr.into(),
+                ((addr + size).align_next(PAGE_SIZE) - addr.align_prev(PAGE_SIZE)).into(),
+            ) {
                 Err(_) => -1,
                 Ok(_) => 0,
             }
         }
-        KernelAllocator::Bootstrap(_) => panic!("Unmapping memory while in bootstrap allocator is unsafe"),
+        KernelAllocator::Bootstrap(_) => {
+            panic!("Unmapping memory while in bootstrap allocator is unsafe")
+        }
     }
 }
 
@@ -166,8 +176,13 @@ pub unsafe extern "C" fn unmap(virt_addr: *mut u8, size: usize) -> i32 {
 pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
     unsafe {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(addr),
-            KernelAllocator::Bootstrap(_) => panic!("call to get_physical_addr while in bootstrap allocator "),
+            KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .get_physical_addr(addr),
+            KernelAllocator::Bootstrap(_) => {
+                panic!("call to get_physical_addr while in bootstrap allocator ")
+            }
         }
     }
 }

@@ -99,7 +99,11 @@ pub fn start() -> ! {
     SCHEDULER
         .lock()
         .set_idle_process(unsafe {
-            KernelProcess::new(TaskOrigin::Raw(_idle_process_code as *const u8, _idle_process_len)).unwrap()
+            KernelProcess::new(TaskOrigin::Raw(
+                _idle_process_code as *const u8,
+                _idle_process_len,
+            ))
+            .unwrap()
         })
         .unwrap();
 

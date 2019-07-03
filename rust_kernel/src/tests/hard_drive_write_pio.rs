@@ -19,7 +19,10 @@ const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(
+    multiboot_info: *const MultibootInfo,
+    device_map_ptr: *const DeviceMap,
+) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::terminal::UART_16550.init() };
@@ -39,7 +42,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         interrupts::enable();
 
         let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+            .unwrap();
     }
 
     log::info!("Scanning PCI buses ...");
@@ -52,10 +56,14 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
     let mut d = IdeAtaController::new().unwrap();
 
-    d.force_operating_mode(ide_ata_controller::OperatingMode::PioTransfert).unwrap();
+    d.force_operating_mode(ide_ata_controller::OperatingMode::PioTransfert)
+        .unwrap();
 
     println!("{:#X?}", d);
-    eprintln!("Selecting drive: {:#X?}", d.select_drive(Rank::Primary(Hierarchy::Slave)));
+    eprintln!(
+        "Selecting drive: {:#X?}",
+        d.select_drive(Rank::Primary(Hierarchy::Slave))
+    );
 
     use alloc::vec;
     use alloc::vec::Vec;

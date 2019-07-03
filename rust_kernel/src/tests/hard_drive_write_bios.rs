@@ -16,7 +16,10 @@ const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(
+    multiboot_info: *const MultibootInfo,
+    device_map_ptr: *const DeviceMap,
+) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::terminal::UART_16550.init() };
@@ -36,7 +39,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         interrupts::enable();
 
         let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+            .unwrap();
     }
 
     log::info!("Scanning PCI buses ...");
@@ -66,15 +70,25 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         let r = srand::<u8>(255);
 
         let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
-        eprintln!("performing test {:?} write at {:?} for {:?}", nb_test, start_sector, nbr_sectors);
-        d.unwrap().write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
+        eprintln!(
+            "performing test {:?} write at {:?} for {:?}",
+            nb_test, start_sector, nbr_sectors
+        );
+        d.unwrap()
+            .write(start_sector, nbr_sectors, src.as_ptr())
+            .unwrap();
 
         let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
-        d.unwrap().read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
+        d.unwrap()
+            .read(start_sector, nbr_sectors, dst.as_mut_ptr())
+            .unwrap();
 
         for i in 0..src.len() {
             if src[i] != dst[i] {
-                panic!("expected: {:?}, readen {:?} at offset {:?} on test {:?}", src[i], dst[i], i, nb_test);
+                panic!(
+                    "expected: {:?}, readen {:?} at offset {:?} on test {:?}",
+                    src[i], dst[i], i, nb_test
+                );
             }
         }
     }

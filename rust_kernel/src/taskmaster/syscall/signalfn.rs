@@ -11,10 +11,17 @@ use core::convert::TryInto;
 use errno::Errno;
 
 /// Register a new handler for a specified signum with sigaction params
-pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *mut StructSigaction) -> SysResult<u32> {
+pub unsafe fn sys_sigaction(
+    signum: u32,
+    act: *const StructSigaction,
+    old_act: *mut StructSigaction,
+) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
-        let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let v = &mut scheduler
+            .current_task_mut()
+            .unwrap_process_mut()
+            .virtual_allocator;
 
         // Check if pointer exists in user virtual address space
         v.check_user_ptr::<StructSigaction>(act)?;
@@ -22,10 +29,10 @@ pub unsafe fn sys_sigaction(signum: u32, act: *const StructSigaction, old_act: *
             v.check_user_ptr::<StructSigaction>(old_act)?;
         }
         // TODO: Use old_act
-        scheduler
-            .current_task_mut()
-            .signal
-            .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, act.as_ref().expect("Null PTR"))
+        scheduler.current_task_mut().signal.new_handler(
+            signum.try_into().map_err(|_| Errno::Einval)?,
+            act.as_ref().expect("Null PTR"),
+        )
     })
 }
 
@@ -46,7 +53,9 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
                 auto_preempt();
-            } else if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
+            } else if action.intersects(JobAction::TERMINATE)
+                || action.intersects(JobAction::INTERRUPT)
+            {
                 SIGNAL_LOCK = true;
             }
         }
@@ -57,7 +66,10 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
 /// Wait for signal
 pub unsafe fn sys_pause() -> SysResult<u32> {
     unpreemptible_context!({
-        SCHEDULER.lock().current_task_mut().set_waiting(WaitingState::Pause);
+        SCHEDULER
+            .lock()
+            .current_task_mut()
+            .set_waiting(WaitingState::Pause);
         /*
          * pause() returns only when a signal was caught and the signal-catching function returned.
          * In this case, pause() returns -1, and errno is set to EINTR
@@ -78,7 +90,10 @@ pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
         };
 
         let mut scheduler = SCHEDULER.lock();
-        scheduler.current_task_mut().signal.new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)
+        scheduler
+            .current_task_mut()
+            .signal
+            .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)
     })
 }
 
@@ -88,7 +103,10 @@ pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
 pub unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
-        scheduler.current_task_mut().signal.terminate_pending_signal(cpu_state as u32);
+        scheduler
+            .current_task_mut()
+            .signal
+            .terminate_pending_signal(cpu_state as u32);
         Ok((*cpu_state).registers.eax)
     })
 }

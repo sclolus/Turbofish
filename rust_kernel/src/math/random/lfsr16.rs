@@ -14,8 +14,11 @@ struct LfsrFibonnaci {
 }
 
 /// Main structure
-static mut LFSR_FIBONACCI: LfsrFibonnaci =
-    LfsrFibonnaci { registers: [0; SEQ_SIZE], current_offset: 0, stored_seed: None };
+static mut LFSR_FIBONACCI: LfsrFibonnaci = LfsrFibonnaci {
+    registers: [0; SEQ_SIZE],
+    current_offset: 0,
+    stored_seed: None,
+};
 
 /// Fibonacci LFSR
 pub fn lfsr16_set_seed(seed: u16) -> MathResult<()> {
@@ -34,7 +37,9 @@ pub fn lfsr16_set_seed(seed: u16) -> MathResult<()> {
                     (*elem).set_bit(j, bits.get_bit(0));
 
                     // check of algorythm mathematical coherency
-                    assert!(lfsr != seed || (lfsr == seed && i as usize == SEQ_SIZE - 1 && j == 30));
+                    assert!(
+                        lfsr != seed || (lfsr == seed && i as usize == SEQ_SIZE - 1 && j == 30)
+                    );
                 }
             }
             LFSR_FIBONACCI.stored_seed = Some(seed);

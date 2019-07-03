@@ -46,7 +46,10 @@ pub trait AdvancedGraphic {
     /// Command a refresh for selected graphic area
     fn refresh_text_line(&mut self, line: usize) -> IoResult;
     /// Fill the graphic buffer with a custom function
-    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult;
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(
+        &mut self,
+        closure: T,
+    ) -> IoResult;
     /// Query info about screeb composition
     fn query_graphic_infos(&self) -> Result<(usize, usize, usize), IoError>;
 }
@@ -72,7 +75,10 @@ impl ScreenMonad {
     fn new() -> Self {
         let vga = VgaTextMode::new();
         let size = vga.query_window_size();
-        Self { drawing_mode: DrawingMode::Vga(vga), size }
+        Self {
+            drawing_mode: DrawingMode::Vga(vga),
+            size,
+        }
     }
     /// Switch between VBE mode
     pub fn switch_graphic_mode(&mut self, mode: u16) -> Result<(), VbeError> {
@@ -145,7 +151,10 @@ impl AdvancedGraphic for ScreenMonad {
             DrawingMode::Vbe(vbe) => vbe.refresh_text_line(line),
         }
     }
-    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(
+        &mut self,
+        closure: T,
+    ) -> IoResult {
         match &mut self.drawing_mode {
             DrawingMode::Vga(_vga) => Ok(()),
             DrawingMode::Vbe(vbe) => vbe.draw_graphic_buffer(closure),

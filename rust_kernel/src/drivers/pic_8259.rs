@@ -37,7 +37,10 @@ impl Pic {
 
     /// Creates a new PIC instance with port `port`
     pub const fn new(port: u16) -> Self {
-        Pic { command: Pio::new(port), data: Pio::new(port + 1) }
+        Pic {
+            command: Pio::new(port),
+            data: Pio::new(port + 1),
+        }
     }
 
     /// Get the interrupt mask of the slave PIC
@@ -131,8 +134,16 @@ impl Pic8259 {
 
     /// Those are the current default handlers for the IRQs from the PICs 8259 (master)
     /// They are mapped from 0x20 to 0x27
-    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] =
-        [_isr_timer, _isr_keyboard, _isr_cascade, _isr_com2, _isr_com1, _isr_lpt2, _isr_floppy_disk, _isr_lpt1];
+    const DEFAULT_IRQS_MASTER: [unsafe extern "C" fn(); 8] = [
+        _isr_timer,
+        _isr_keyboard,
+        _isr_cascade,
+        _isr_com2,
+        _isr_com1,
+        _isr_lpt2,
+        _isr_floppy_disk,
+        _isr_lpt1,
+    ];
 
     /// Those are the current default handlers for the IRQs from the PICs 8259 (slave)
     /// They are mapped from 0x28 to 0x30
@@ -148,7 +159,11 @@ impl Pic8259 {
     ];
 
     pub const fn new() -> Self {
-        Self { master: Pic::new(Self::MASTER_COMMAND_PORT), slave: Pic::new(Self::SLAVE_COMMAND_PORT), bios_imr: None }
+        Self {
+            master: Pic::new(Self::MASTER_COMMAND_PORT),
+            slave: Pic::new(Self::SLAVE_COMMAND_PORT),
+            bios_imr: None,
+        }
     }
 
     /// Must be called when PIC is initialized
@@ -279,7 +294,10 @@ impl Pic8259 {
     /// The bits 0 to 7 (inclusive) are the self.master's IMR.
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
     pub fn get_masks(&mut self) -> u16 {
-        unsafe { (self.master.get_interrupt_mask() as u16) | ((self.slave.get_interrupt_mask() as u16) << 8) }
+        unsafe {
+            (self.master.get_interrupt_mask() as u16)
+                | ((self.slave.get_interrupt_mask() as u16) << 8)
+        }
     }
 
     /// Send end of interrupt from specific IRQ to the PIC.

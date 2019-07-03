@@ -25,7 +25,11 @@ pub static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
 impl Ps2Controler {
     /// Instanciante an instance of PS/2 controler. (const fn power)
     pub const fn new() -> Self {
-        Ps2Controler { data: Pio::new(0x60), command: Pio::new(0x64), current_scancode: None }
+        Ps2Controler {
+            data: Pio::new(0x60),
+            command: Pio::new(0x64),
+            current_scancode: None,
+        }
     }
     // TODO or NOT TODO: it handle only escape sequence 0xE0, 0xE0 0xF0 for the moment
     /// read one byte on data port, return an entire scancode if any
@@ -109,7 +113,9 @@ impl KeyCode {
             return Some(KeyCode::Released((scancode - 0x80) as u8));
         }
         if scancode >= 0xe010 && scancode <= 0xe06d {
-            return Some(KeyCode::Pressed(Self::ESCAPED_SCANCODE_TO_KEYCODE[(scancode & 0xFF) as usize] as u8));
+            return Some(KeyCode::Pressed(
+                Self::ESCAPED_SCANCODE_TO_KEYCODE[(scancode & 0xFF) as usize] as u8,
+            ));
         }
         if scancode >= 0xe090 && scancode <= 0xe0ed {
             return Some(KeyCode::Released(
@@ -167,7 +173,12 @@ pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
 impl KeyboardDriver {
     /// default initialisation
     pub fn new(f: Option<CallbackKeyboard>) -> Self {
-        Self { escape_key_mask: 0, capslock: false, io_term: f, keymap: KeyMap::En }
+        Self {
+            escape_key_mask: 0,
+            capslock: false,
+            io_term: f,
+            keymap: KeyMap::En,
+        }
     }
 
     /// bind a new callback
@@ -211,15 +222,19 @@ impl KeyboardDriver {
                     }
                     CapsLockSensitive::No(other) => Some(other),
                     CapsLockSensitive::Yes(_) => {
-                        let symb = self.get_keymap()[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
+                        let symb = self.get_keymap()[k as usize]
+                            [(self.escape_key_mask ^ self.capslock as u8) as usize];
                         match symb {
-                            CapsLockSensitive::No(other) | CapsLockSensitive::Yes(other) => Some(other),
+                            CapsLockSensitive::No(other) | CapsLockSensitive::Yes(other) => {
+                                Some(other)
+                            }
                         }
                     }
                 }
             }
             KeyCode::Released(k) => {
-                let symb = self.get_keymap()[k as usize][(self.escape_key_mask ^ self.capslock as u8) as usize];
+                let symb = self.get_keymap()[k as usize]
+                    [(self.escape_key_mask ^ self.capslock as u8) as usize];
                 match symb {
                     CapsLockSensitive::No(KeySymb::Control) => {
                         self.escape_key_mask &= !(EscapeKeyMask::Control as u8);
@@ -250,7 +265,8 @@ impl KeyboardDriver {
                     KeyCode::from_scancode(scancode).map(|s| u(s));
                 }
                 RequestKeySymb(u) => {
-                    KeyCode::from_scancode(scancode).map(|s| self.keycode_to_keysymb(s).map(|s| u(s)));
+                    KeyCode::from_scancode(scancode)
+                        .map(|s| self.keycode_to_keysymb(s).map(|s| u(s)));
                 }
             }
         });
@@ -268,6 +284,11 @@ pub fn init_keyboard_driver() {
 extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
     let scancode = unsafe { PS2_CONTROLER.read_scancode() };
     if let Some(scancode) = scancode {
-        unsafe { KEYBOARD_DRIVER.as_mut().unwrap().interrupt_handler(scancode) }
+        unsafe {
+            KEYBOARD_DRIVER
+                .as_mut()
+                .unwrap()
+                .interrupt_handler(scancode)
+        }
     }
 }

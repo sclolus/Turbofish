@@ -152,7 +152,13 @@ macro_rules! dbg {
     ($val: expr) => {
         match $val {
             tmp => {
-                $crate::println!("[{}:{}] {} = {:#?}", file!(), line!(), stringify!($val), &tmp);
+                $crate::println!(
+                    "[{}:{}] {} = {:#?}",
+                    file!(),
+                    line!(),
+                    stringify!($val),
+                    &tmp
+                );
                 tmp
             }
         }
@@ -166,7 +172,13 @@ macro_rules! dbg_hex {
     ($val: expr) => {
         match $val {
             tmp => {
-                $crate::println!("[{}:{}] {} = {:#X?}", file!(), line!(), stringify!($val), &tmp);
+                $crate::println!(
+                    "[{}:{}] {} = {:#X?}",
+                    file!(),
+                    line!(),
+                    stringify!($val),
+                    &tmp
+                );
                 tmp
             }
         }

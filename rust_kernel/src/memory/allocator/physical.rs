@@ -8,7 +8,9 @@ pub struct PhysicalPageAllocator {
 
 impl PhysicalPageAllocator {
     pub fn new(phys_start: Page<Phys>, size: NbrPages) -> Self {
-        Self { allocator: BuddyAllocator::new(phys_start, size).expect("new physical buddy failed") }
+        Self {
+            allocator: BuddyAllocator::new(phys_start, size).expect("new physical buddy failed"),
+        }
     }
 
     pub fn alloc(&mut self, size: NbrPages, _flags: AllocFlags) -> Result<Page<Phys>> {
@@ -60,9 +62,10 @@ pub unsafe fn init_physical_allocator(system_memory_amount: NbrPages, device_map
         if RegionType::Usable == region.region_type {
             continue;
         }
-        if let Err(_e) =
-            pallocator.reserve(Page::containing(Phys(region.low_addr as usize)), (region.low_length as usize).into())
-        {
+        if let Err(_e) = pallocator.reserve(
+            Page::containing(Phys(region.low_addr as usize)),
+            (region.low_length as usize).into(),
+        ) {
             //println!("some error were occured on pallocator ! {:?}", e);
         }
     }

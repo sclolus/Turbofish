@@ -7,7 +7,9 @@ mod udma;
 pub use udma::{Channel, DmaStatus, Udma};
 
 use super::SECTOR_SIZE;
-use super::{IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI};
+use super::{
+    IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI,
+};
 use super::{NbrSectors, Sector};
 
 use alloc::vec::Vec;
@@ -48,14 +50,27 @@ struct Drive {
 
 /// Since data are copied into DMA for read, DmaIo copy DMA buff into buf address passed
 pub trait DmaIo {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8, udma: &mut Udma) -> AtaResult<()>;
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8, udma: &mut Udma) -> AtaResult<()>;
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+        udma: &mut Udma,
+    ) -> AtaResult<()>;
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+        udma: &mut Udma,
+    ) -> AtaResult<()>;
 }
 
 /// When in PIO mode, buff address is passed by pointer and methods read or write on it
 pub trait PioIo {
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()>;
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()>;
+    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8)
+        -> AtaResult<()>;
 }
 
 /// Standard port location, if they are different, probe IDE controller in PCI driver
@@ -68,11 +83,13 @@ impl IdeAtaController {
     /// Invocation of a new PioMode-IDE controller
     pub fn new() -> Option<Self> {
         // Search a specific IDE controller 'IsaCompatibilityModeOnlyControllerBusMastered'
-        let (pci, pci_location) = PCI.lock().query_device::<PciType0>(PciDeviceClass::MassStorageController(
-            MassStorageControllerSubClass::IdeController(
-                IdeControllerProgIf::IsaCompatibilityModeOnlyControllerBusMastered,
-            ),
-        ))?;
+        let (pci, pci_location) =
+            PCI.lock()
+                .query_device::<PciType0>(PciDeviceClass::MassStorageController(
+                    MassStorageControllerSubClass::IdeController(
+                        IdeControllerProgIf::IsaCompatibilityModeOnlyControllerBusMastered,
+                    ),
+                ))?;
 
         // Become the BUS MASTER, it is very important on QEMU since it does not do it for us (give little tempos)
         PIT0.lock().sleep(Duration::from_millis(40));
@@ -84,14 +101,26 @@ impl IdeAtaController {
         eprintln!("current pci status: {:#?}", pci.get_status(pci_location));
 
         // Get primary and secondary IO ports (0 or 1 means ide default port values_
-        let primary_base_register =
-            if pci.bar0 == 0 || pci.bar0 == 1 { PRIMARY_BASE_REGISTER } else { pci.bar0 as u16 };
-        let primary_control_register =
-            if pci.bar1 == 0 || pci.bar1 == 1 { PRIMARY_CONTROL_REGISTER } else { pci.bar1 as u16 };
-        let secondary_base_register =
-            if pci.bar2 == 0 || pci.bar2 == 1 { SECONDARY_BASE_REGISTER } else { pci.bar2 as u16 };
-        let secondary_control_register =
-            if pci.bar3 == 0 || pci.bar3 == 1 { SECONDARY_CONTROL_REGISTER } else { pci.bar3 as u16 };
+        let primary_base_register = if pci.bar0 == 0 || pci.bar0 == 1 {
+            PRIMARY_BASE_REGISTER
+        } else {
+            pci.bar0 as u16
+        };
+        let primary_control_register = if pci.bar1 == 0 || pci.bar1 == 1 {
+            PRIMARY_CONTROL_REGISTER
+        } else {
+            pci.bar1 as u16
+        };
+        let secondary_base_register = if pci.bar2 == 0 || pci.bar2 == 1 {
+            SECONDARY_BASE_REGISTER
+        } else {
+            pci.bar2 as u16
+        };
+        let secondary_control_register = if pci.bar3 == 0 || pci.bar3 == 1 {
+            SECONDARY_CONTROL_REGISTER
+        } else {
+            pci.bar3 as u16
+        };
 
         // DMA port is contained inside BAR 4 of the PCI device
         let _dma_port = pci.bar4 as u16;
@@ -159,12 +188,19 @@ impl IdeAtaController {
             Rank::Secondary(Hierarchy::Slave) if self.secondary_slave.is_some() => Some(rank),
             _ => None,
         };
-        self.get_selected_drive().ok_or(AtaError::DeviceNotFound)?.select_drive();
+        self.get_selected_drive()
+            .ok_or(AtaError::DeviceNotFound)?
+            .select_drive();
         Ok(())
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
+    pub fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> AtaResult<()> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
@@ -191,12 +227,20 @@ impl IdeAtaController {
                 d.disable_interrupt();
                 PioIo::read(d, start_sector, nbr_sectors, buf)
             }
-            other => panic!("this device should not be in that configuration, {:?}", other),
+            other => panic!(
+                "this device should not be in that configuration, {:?}",
+                other
+            ),
         }
     }
 
     /// Write nbr_sectors after start_sector location from the buf
-    pub fn write(&mut self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+    pub fn write(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> AtaResult<()> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
@@ -223,7 +267,10 @@ impl IdeAtaController {
                 d.disable_interrupt();
                 PioIo::write(d, start_sector, nbr_sectors, buf)
             }
-            other => panic!("this device should not be in that configuration, {:?}", other),
+            other => panic!(
+                "this device should not be in that configuration, {:?}",
+                other
+            ),
         }
     }
 
@@ -239,7 +286,11 @@ impl IdeAtaController {
 }
 
 /// Emit Out Of Bound when a bound problem occured
-fn check_bounds(start_sector: Sector, nbr_sectors: NbrSectors, drive_capacity: NbrSectors) -> AtaResult<()> {
+fn check_bounds(
+    start_sector: Sector,
+    nbr_sectors: NbrSectors,
+    drive_capacity: NbrSectors,
+) -> AtaResult<()> {
     // 0 sector meens nothing for an human interface
     if nbr_sectors == NbrSectors(0) {
         Err(AtaError::NothingToDo)
@@ -360,23 +411,31 @@ impl Drive {
         }
 
         // For any other value: poll the Status port (0x1F7) until bit 7 (BSY, value = 0x80) clears
-        while (StatusRegister::from_bits_truncate(Pio::<u8>::new(command_register + Self::STATUS).read()))
-            .contains(StatusRegister::BSY)
+        while (StatusRegister::from_bits_truncate(
+            Pio::<u8>::new(command_register + Self::STATUS).read(),
+        ))
+        .contains(StatusRegister::BSY)
         {}
 
         // Continue polling one of the Status ports until bit 3 (DRQ, value = 8) sets, or until bit 0 (ERR, value = 1) sets.
-        while !(StatusRegister::from_bits_truncate(Pio::<u8>::new(command_register + Self::STATUS).read()))
-            .intersects(StatusRegister::ERR | StatusRegister::DRQ)
+        while !(StatusRegister::from_bits_truncate(
+            Pio::<u8>::new(command_register + Self::STATUS).read(),
+        ))
+        .intersects(StatusRegister::ERR | StatusRegister::DRQ)
         {}
 
         // If ERR is set, it is a failure
-        if (StatusRegister::from_bits_truncate(Pio::<u8>::new(command_register + Self::STATUS).read()))
-            .contains(StatusRegister::ERR)
+        if (StatusRegister::from_bits_truncate(
+            Pio::<u8>::new(command_register + Self::STATUS).read(),
+        ))
+        .contains(StatusRegister::ERR)
         {
             eprintln!(
                 "unexpected error while polling status of {:?} err: {:?}",
                 rank,
-                ErrorRegister::from_bits_truncate(Pio::<u8>::new(command_register + Self::ERROR).read())
+                ErrorRegister::from_bits_truncate(
+                    Pio::<u8>::new(command_register + Self::ERROR).read()
+                )
             );
             return None;
         }
@@ -394,7 +453,10 @@ impl Drive {
             Some(Drive {
                 capabilities: Capabilities::Lba48,
                 sector_capacity: NbrSectors(
-                    v[100] as u64 + ((v[101] as u64) << 16) + ((v[102] as u64) << 32) + ((v[103] as u64) << 48),
+                    v[100] as u64
+                        + ((v[101] as u64) << 16)
+                        + ((v[102] as u64) << 32)
+                        + ((v[103] as u64) << 48),
                 ),
                 // The bits in the low byte tell you the supported UDMA modes, the upper byte tells you which UDMA mode is active.
                 udma_support: v[88],
@@ -438,21 +500,25 @@ impl Drive {
     /// Disable IRQ for the selected drive
     pub fn disable_interrupt(&self) {
         // Disable interrupt bit for the selected drive
-        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(DeviceControlRegister::NIEN.bits());
+        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL)
+            .write(DeviceControlRegister::NIEN.bits());
     }
 
     /// Enable IRQ for the selected drive
     pub fn enable_interrupt(&self) {
         // Enable interrupt bit for the selected drive
         let c = Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).read();
-        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL).write(c & !DeviceControlRegister::NIEN.bits());
+        Pio::<u8>::new(self.control_register + Self::DEVICE_CONTROL)
+            .write(c & !DeviceControlRegister::NIEN.bits());
     }
 
     /// The method suggested in the ATA specs for sending ATA commands tells you to check the BSY and DRQ bits before trying to send a command
     fn wait_available(&self) {
         // Continue polling one of the Status ports until bit 3 (DRQ, value = 8) sets, or until bit 0 (BSY, value = 7) sets.
-        while StatusRegister::from_bits_truncate(Pio::<u8>::new(self.control_register + Self::ALTERNATE_STATUS).read())
-            .intersects(StatusRegister::BSY | StatusRegister::DRQ)
+        while StatusRegister::from_bits_truncate(
+            Pio::<u8>::new(self.control_register + Self::ALTERNATE_STATUS).read(),
+        )
+        .intersects(StatusRegister::BSY | StatusRegister::DRQ)
         {}
     }
 
@@ -476,24 +542,31 @@ impl Drive {
         }
 
         // Outb (0x1F2, sectorcount high byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(8..16) as u8);
+        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT)
+            .write(nbr_sectors.0.get_bits(8..16) as u8);
 
         // LBA 4
-        Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(24..32) as u8);
+        Pio::<u8>::new(self.command_register + Self::L1_SECTOR)
+            .write(lba_low.get_bits(24..32) as u8);
         // LBA 5
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_high.get_bits(0..8) as u8);
+        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER)
+            .write(lba_high.get_bits(0..8) as u8);
         // LBA 6
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_high.get_bits(8..16) as u8);
+        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER)
+            .write(lba_high.get_bits(8..16) as u8);
 
         // outb (0x1F2, sectorcount low byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(0..8) as u8);
+        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT)
+            .write(nbr_sectors.0.get_bits(0..8) as u8);
 
         // LBA 1
         Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(0..8) as u8);
         // LBA 2
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_low.get_bits(8..16) as u8);
+        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER)
+            .write(lba_low.get_bits(8..16) as u8);
         // LBA 3
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_low.get_bits(16..24) as u8);
+        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER)
+            .write(lba_low.get_bits(16..24) as u8);
     }
 
     /// Init read or write sequence for lba28 mode
@@ -504,26 +577,27 @@ impl Drive {
         // and add the highest 4 bits of the LBA to port 0x1F6: outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
         self.wait_available();
         match self.get_hierarchy() {
-            Hierarchy::Master => {
-                Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xE0 | ((lba_low >> 24) & 0xF) as u8)
-            }
-            Hierarchy::Slave => {
-                Pio::<u8>::new(self.command_register + Self::SELECTOR).write(0xF0 | ((lba_low >> 24) & 0xF) as u8)
-            }
+            Hierarchy::Master => Pio::<u8>::new(self.command_register + Self::SELECTOR)
+                .write(0xE0 | ((lba_low >> 24) & 0xF) as u8),
+            Hierarchy::Slave => Pio::<u8>::new(self.command_register + Self::SELECTOR)
+                .write(0xF0 | ((lba_low >> 24) & 0xF) as u8),
         }
 
         // Send a NULL byte to port 0x1F1, if you like (it is ignored and wastes lots of CPU time): outb(0x1F1, 0x00)
         Pio::<u8>::new(self.command_register + Self::FEATURES).write(0);
 
         // outb (0x1F2, sectorcount low byte)
-        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT).write(nbr_sectors.0.get_bits(0..8) as u8);
+        Pio::<u8>::new(self.command_register + Self::SECTOR_COUNT)
+            .write(nbr_sectors.0.get_bits(0..8) as u8);
 
         // LBA 1
         Pio::<u8>::new(self.command_register + Self::L1_SECTOR).write(lba_low.get_bits(0..8) as u8);
         // LBA 2
-        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER).write(lba_low.get_bits(8..16) as u8);
+        Pio::<u8>::new(self.command_register + Self::L2_CYLINDER)
+            .write(lba_low.get_bits(8..16) as u8);
         // LBA 3
-        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER).write(lba_low.get_bits(16..24) as u8);
+        Pio::<u8>::new(self.command_register + Self::L3_CYLINDER)
+            .write(lba_low.get_bits(16..24) as u8);
     }
 }
 

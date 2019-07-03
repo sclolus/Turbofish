@@ -25,7 +25,12 @@ pub struct Task {
 
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
+        Self {
+            process_state,
+            child: Vec::new(),
+            parent,
+            signal: SignalInterface::new(),
+        }
     }
 
     pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {

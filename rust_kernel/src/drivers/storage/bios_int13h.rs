@@ -133,7 +133,9 @@ impl BiosInt13h {
     /// Public invocation of a new BiosInt13h instance
     pub fn new(boot_device: u8) -> DiskResult<Self> {
         // Check if BIOS extension of int 13h is present
-        let mut reg: BaseRegisters = BaseRegisters { ..Default::default() };
+        let mut reg: BaseRegisters = BaseRegisters {
+            ..Default::default()
+        };
         reg.edx = boot_device as u32;
 
         let ret = unsafe {
@@ -150,13 +152,17 @@ impl BiosInt13h {
         let version = reg.eax as u16;
 
         // Check if interface support DAP (Device Access using the packet structure)
-        let interface_support = InterfaceSupport { bits: reg.ecx.get_bits(0..16) as u16 };
+        let interface_support = InterfaceSupport {
+            bits: reg.ecx.get_bits(0..16) as u16,
+        };
         if !interface_support.contains(InterfaceSupport::DAP) {
             return Err(DiskError::NotSupported);
         }
 
         // Get device characteristics
-        let mut reg: BaseRegisters = BaseRegisters { ..Default::default() };
+        let mut reg: BaseRegisters = BaseRegisters {
+            ..Default::default()
+        };
         let mut p: *mut DriveParameters = DAP_LOCATION as *mut _;
         unsafe {
             (*p).result_size = 0x1E;
@@ -173,7 +179,8 @@ impl BiosInt13h {
             return Err(DiskError::NotSupported);
         }
 
-        let (nb_sector, sector_size) = unsafe { (NbrSectors((*p).nb_sector), (*p).bytes_per_sector) };
+        let (nb_sector, sector_size) =
+            unsafe { (NbrSectors((*p).nb_sector), (*p).bytes_per_sector) };
 
         // Sector size != 512 is very difficult to manage in our kernel, skip out !
         if sector_size != SECTOR_SIZE as u16 {
@@ -181,11 +188,22 @@ impl BiosInt13h {
         }
 
         // Returns the main constructor
-        Ok(Self { boot_device, interface_support, nb_sector, sector_size, version })
+        Ok(Self {
+            boot_device,
+            interface_support,
+            nb_sector,
+            sector_size,
+            version,
+        })
     }
 
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    pub fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<()> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
@@ -195,11 +213,17 @@ impl BiosInt13h {
 
             // Initalize a new DAP packet
             unsafe {
-                create_dap(Sector(start_sector.0 + (i * N_SECTOR) as u64), sectors_to_read, DAP_LOCATION);
+                create_dap(
+                    Sector(start_sector.0 + (i * N_SECTOR) as u64),
+                    sectors_to_read,
+                    DAP_LOCATION,
+                );
             }
 
             // Command a read from disk to DAP buffer
-            let mut reg: BaseRegisters = BaseRegisters { ..Default::default() };
+            let mut reg: BaseRegisters = BaseRegisters {
+                ..Default::default()
+            };
             reg.edx = self.boot_device as u32;
             let ret = unsafe {
                 i8086_payload(
@@ -224,7 +248,12 @@ impl BiosInt13h {
     }
 
     /// Write nbr_sectors after start_sector location from the buf
-    pub fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> DiskResult<()> {
+    pub fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> DiskResult<()> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
@@ -234,7 +263,11 @@ impl BiosInt13h {
 
             // Initalize a new DAP packet
             unsafe {
-                create_dap(Sector(start_sector.0 + (i * N_SECTOR) as u64), sectors_to_write, DAP_LOCATION);
+                create_dap(
+                    Sector(start_sector.0 + (i * N_SECTOR) as u64),
+                    sectors_to_write,
+                    DAP_LOCATION,
+                );
             }
 
             // Copy 'sectors_to_write' data from 'buf' to DAP buffer
@@ -246,7 +279,9 @@ impl BiosInt13h {
             }
 
             // Command a write to disk
-            let mut reg: BaseRegisters = BaseRegisters { ..Default::default() };
+            let mut reg: BaseRegisters = BaseRegisters {
+                ..Default::default()
+            };
             reg.edx = self.boot_device as u32;
             let ret = unsafe {
                 i8086_payload(
@@ -266,7 +301,11 @@ impl BiosInt13h {
 }
 
 /// Emit Out Of Bound when a bound problem occured
-fn check_bounds(start_sector: Sector, nbr_sectors: NbrSectors, drive_capacity: NbrSectors) -> DiskResult<()> {
+fn check_bounds(
+    start_sector: Sector,
+    nbr_sectors: NbrSectors,
+    drive_capacity: NbrSectors,
+) -> DiskResult<()> {
     // 0 sector meens nothing for an human interface
     if nbr_sectors == NbrSectors(0) {
         Err(DiskError::NothingToDo)

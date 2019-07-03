@@ -221,7 +221,10 @@ pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
 
                 ret = _int8086(reg, bios_int);
 
-                pic_8259.set_idt_vectors(pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR, pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR);
+                pic_8259.set_idt_vectors(
+                    pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR,
+                    pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR,
+                );
                 pic_8259.set_masks(imrs);
             }
         }

@@ -53,7 +53,9 @@ pub fn preemptible() {
             // Check if the Time to live of the current process is expired
             // TODO: If scheduler is disable, the kernel will crash
             // TODO: After Exit, the next process seems to be skiped !
-            if crate::taskmaster::scheduler::_get_pit_time() >= crate::taskmaster::scheduler::_get_process_end_time() {
+            if crate::taskmaster::scheduler::_get_pit_time()
+                >= crate::taskmaster::scheduler::_get_process_end_time()
+            {
                 _auto_preempt();
             } else {
                 crate::taskmaster::scheduler::_preemptible();
@@ -139,7 +141,12 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
-    SCHEDULER.lock().all_process.get_mut(&process_to_free).unwrap().process_state = ProcessState::Zombie(status);
+    SCHEDULER
+        .lock()
+        .all_process
+        .get_mut(&process_to_free)
+        .unwrap()
+        .process_state = ProcessState::Zombie(status);
 
     preemptible();
 }
@@ -195,7 +202,8 @@ impl Scheduler {
         let pid = self.get_available_pid();
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
-        self.all_process.insert(pid, Task::new(father_pid, ProcessState::Running(process)));
+        self.all_process
+            .insert(pid, Task::new(father_pid, ProcessState::Running(process)));
         self.running_process.push(pid);
         Ok(pid)
     }
@@ -210,7 +218,10 @@ impl Scheduler {
     fn store_kernel_esp(&mut self, kernel_esp: u32) {
         match self.idle_mode {
             true => {
-                self.kernel_idle_process.as_mut().expect("No idle mode process").kernel_esp = kernel_esp;
+                self.kernel_idle_process
+                    .as_mut()
+                    .expect("No idle mode process")
+                    .kernel_esp = kernel_esp;
                 self.idle_mode = false;
             }
             false => {
@@ -249,7 +260,8 @@ impl Scheduler {
                         // Check if signal var contains something, set return value as
                         // negative (rel to SIGNUM), set process as running then return
                         self.current_task_mut().set_running();
-                        self.current_task_mut().set_return_value(-(Errno::Eintr as i32));
+                        self.current_task_mut()
+                            .set_return_value(-(Errno::Eintr as i32));
                         return action;
                     }
                     match waiting_state {
@@ -273,9 +285,14 @@ impl Scheduler {
                             let zombie_pid = match pid_opt {
                                 // In case of PID == None, Check is the at least one child is a zombie.
                                 None => {
-                                    if let Some(&zombie_pid) = self.current_task().child.iter().find(|current_pid| {
-                                        self.all_process.get(current_pid).expect("Hashmap corrupted").is_zombie()
-                                    }) {
+                                    if let Some(&zombie_pid) =
+                                        self.current_task().child.iter().find(|current_pid| {
+                                            self.all_process
+                                                .get(current_pid)
+                                                .expect("Hashmap corrupted")
+                                                .is_zombie()
+                                        })
+                                    {
                                         Some(zombie_pid)
                                     } else {
                                         None
@@ -289,7 +306,12 @@ impl Scheduler {
                                         .iter()
                                         .find(|&&current_pid| current_pid == *pid as u32)
                                     {
-                                        if self.all_process.get(elem).expect("Hashmap corrupted").is_zombie() {
+                                        if self
+                                            .all_process
+                                            .get(elem)
+                                            .expect("Hashmap corrupted")
+                                            .is_zombie()
+                                        {
                                             Some(*elem)
                                         } else {
                                             None
@@ -342,7 +364,9 @@ impl Scheduler {
                 // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
                 // If ring0 process -> block temporary interruptible macro
                 let ring = unsafe { get_ring(kernel_esp) };
-                if action.intersects(JobAction::TERMINATE) || action.intersects(JobAction::INTERRUPT) {
+                if action.intersects(JobAction::TERMINATE)
+                    || action.intersects(JobAction::INTERRUPT)
+                {
                     if ring == PrivilegeLevel::Ring3 {
                         self.current_task_deliver_pending_signals(
                             kernel_esp as *mut CpuState,
@@ -440,7 +464,10 @@ impl Scheduler {
                 log::warn!("... the reaper is a zombie ... it is worring ...");
             }
             while let Some(child_pid) = self.current_task_mut().child.pop() {
-                self.all_process.get_mut(&child_pid).expect("Hashmap corrupted").parent = Some(Self::REAPER_PID);
+                self.all_process
+                    .get_mut(&child_pid)
+                    .expect("Hashmap corrupted")
+                    .parent = Some(Self::REAPER_PID);
             }
         } else {
             log::warn!("... the reaper is die ... RIP ...");
@@ -496,13 +523,20 @@ impl Scheduler {
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
-    pub fn current_task_deliver_pending_signals(&mut self, cpu_state: *mut CpuState, in_blocked_syscall: bool) {
+    pub fn current_task_deliver_pending_signals(
+        &mut self,
+        cpu_state: *mut CpuState,
+        in_blocked_syscall: bool,
+    ) {
         debug_assert_eq!(
             unsafe { get_ring(cpu_state as u32) },
             PrivilegeLevel::Ring3,
             "Cannot apply signal from ring0 process"
         );
-        let signum: Option<Signum> = self.current_task_mut().signal.exec_signal_handler(cpu_state, in_blocked_syscall);
+        let signum: Option<Signum> = self
+            .current_task_mut()
+            .signal
+            .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
             self.current_task_exit(signum as i32 + 128);
         }
@@ -532,7 +566,10 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             None
         }
         TaskMode::Multi(scheduler_frequency) => {
-            log::info!("Scheduler initialised at frequency: {:?} hz", scheduler_frequency);
+            log::info!(
+                "Scheduler initialised at frequency: {:?} hz",
+                scheduler_frequency
+            );
             let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
             if period == 0 {
                 Some(1)

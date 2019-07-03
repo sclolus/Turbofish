@@ -42,7 +42,10 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let v = &mut scheduler
+            .current_task_mut()
+            .unwrap_process_mut()
+            .virtual_allocator;
 
         // Check if pointer exists in user virtual address space
         v.check_user_ptr_with_len::<u8>(buf, count)?;
@@ -52,10 +55,15 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
             unsafe {
                 KEY_SYMB_OPT = None;
                 // Register callback
-                KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
+                KEYBOARD_DRIVER
+                    .as_mut()
+                    .unwrap()
+                    .bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
             }
 
-            scheduler.current_task_mut().set_waiting(WaitingState::Event(get_keysymb));
+            scheduler
+                .current_task_mut()
+                .set_waiting(WaitingState::Event(get_keysymb));
 
             let ret = auto_preempt();
 

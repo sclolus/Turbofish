@@ -15,7 +15,10 @@ pub fn sys_reboot() -> SysResult<u32> {
             Some(mut acpi) => match acpi.reboot_computer() {
                 Ok(_) => {}
                 Err(e) => {
-                    log::error!("ACPI reboot failure: {:?}. Trying with PS/2 controler ...", e);
+                    log::error!(
+                        "ACPI reboot failure: {:?}. Trying with PS/2 controler ...",
+                        e
+                    );
                     unsafe {
                         PS2_CONTROLER.reboot_computer();
                     }

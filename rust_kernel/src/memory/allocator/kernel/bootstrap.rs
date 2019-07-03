@@ -5,7 +5,8 @@ use core::alloc::Layout;
 /// 4 MB for the bootstrap
 const MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR: usize = 0x400_000;
 
-static mut BSS_MEMORY: [u8; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR] = [0; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR];
+static mut BSS_MEMORY: [u8; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR] =
+    [0; MEMORY_BOOTSTRAP_KERNEL_ALLOCATOR];
 
 #[derive(Debug)]
 pub struct BootstrapKernelAllocator {

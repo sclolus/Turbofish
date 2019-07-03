@@ -18,7 +18,11 @@ use crate::drivers::storage::ext2::EXT2;
 
 /// Return a file content using raw ext2 methods
 fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
-    let ext2 = unsafe { EXT2.as_mut().ok_or("ext2 not init").map_err(|_| Errno::Enodev)? };
+    let ext2 = unsafe {
+        EXT2.as_mut()
+            .ok_or("ext2 not init")
+            .map_err(|_| Errno::Enodev)?
+    };
 
     let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
 
@@ -36,11 +40,18 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
 }
 
 /// Execute a program
-pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *const *const c_char) -> SysResult<u32> {
+pub fn sys_execve(
+    filename: *const c_char,
+    argv: *const *const c_char,
+    envp: *const *const c_char,
+) -> SysResult<u32> {
     let argc = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let v = &scheduler
+            .current_task_mut()
+            .unwrap_process_mut()
+            .virtual_allocator;
 
         let filename: CString = (v, filename).try_into()?;
         let argv_content: CStringArray = (v, argv).try_into()?;
@@ -61,7 +72,10 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
          * We need also to save new CpuState before doing this operation, and finally switch the virtual context
          */
         unsafe {
-            (old_process.kernel_stack.as_ptr().add(old_process.kernel_stack.len() - core::mem::size_of::<CpuState>())
+            (old_process
+                .kernel_stack
+                .as_ptr()
+                .add(old_process.kernel_stack.len() - core::mem::size_of::<CpuState>())
                 as *mut u8)
                 .copy_from(
                     new_process
@@ -87,23 +101,31 @@ pub fn sys_execve(filename: *const c_char, argv: *const *const c_char, envp: *co
         scheduler.current_task_mut().process_state = ProcessState::Running(new_process);
 
         // Reset the signal interface
-        scheduler.current_task_mut().signal.reset_for_new_process_image();
+        scheduler
+            .current_task_mut()
+            .signal
+            .reset_for_new_process_image();
 
         let p = scheduler.current_task_mut().unwrap_process_mut();
         let cpu_state = unsafe {
-            p.kernel_stack.as_ptr().add(p.kernel_stack.len() - core::mem::size_of::<CpuState>()) as *mut CpuState
+            p.kernel_stack
+                .as_ptr()
+                .add(p.kernel_stack.len() - core::mem::size_of::<CpuState>())
+                as *mut CpuState
         };
 
         let align = 4;
         unsafe {
             // Set the argv argument: EBX
             (*cpu_state).esp -= argv_content.get_serialized_len(align).expect("WTF") as u32;
-            (*cpu_state).registers.ebx =
-                argv_content.serialize(align, (*cpu_state).esp as *mut c_char).expect("WTF") as u32;
+            (*cpu_state).registers.ebx = argv_content
+                .serialize(align, (*cpu_state).esp as *mut c_char)
+                .expect("WTF") as u32;
             // set the envp argument: ECX
             (*cpu_state).esp -= envp_content.get_serialized_len(align).expect("WTF") as u32;
-            (*cpu_state).registers.ecx =
-                envp_content.serialize(align, (*cpu_state).esp as *mut c_char).expect("WTF") as u32;
+            (*cpu_state).registers.ecx = envp_content
+                .serialize(align, (*cpu_state).esp as *mut c_char)
+                .expect("WTF") as u32;
         }
         // Set the argc argument: EAX
         argv_content.len() as u32

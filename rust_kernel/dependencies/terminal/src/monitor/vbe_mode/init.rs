@@ -20,12 +20,17 @@ pub struct VbeInfo {
     /*6  */ pub oem_string_offset: u32, //dd ? ; vbe_far_offset to oem string
     /*10 */ pub capabilities: u32, //db 4 dup (?) ; capabilities of graphics controller
     /*14 */ pub video_mode_offset: u32, //dd ? ; vbe_far_offset to video_mode_list
-    /*18 */ pub total_memory: u16, //dw ? ; number of 64kb memory blocks added for vbe 2.0+
+    /*18 */
+    pub total_memory: u16, //dw ? ; number of 64kb memory blocks added for vbe 2.0+
     /*20 */ pub oem_software_rev: u16, //dw ? ; vbe implementation software revision
-    /*22 */ pub oem_vendor_name_offset: u32, //dd ? ; vbe_far_offset to vendor name string
-    /*26 */ pub oem_product_name_offset: u32, //dd ? ; vbe_far_offset to product name string
-    /*30 */ pub oem_product_rev_offset: u32, //dd ? ; vbe_far_offset to product revision string
-    /*34 */ pub reserved: VbeInfoReserved, //db 222 dup (?) ; reserved for vbe implementation scratch area
+    /*22 */
+    pub oem_vendor_name_offset: u32, //dd ? ; vbe_far_offset to vendor name string
+    /*26 */
+    pub oem_product_name_offset: u32, //dd ? ; vbe_far_offset to product name string
+    /*30 */
+    pub oem_product_rev_offset: u32, //dd ? ; vbe_far_offset to product revision string
+    /*34 */
+    pub reserved: VbeInfoReserved, //db 222 dup (?) ; reserved for vbe implementation scratch area
     /*256*/ pub oem_data: VbeInfoOemData, //db 256 dup ; data area for oem strings
 }
 
@@ -36,11 +41,16 @@ define_raw_data!(VbeInfoOemData, 256);
 impl VbeInfo {
     /// only way to initialize VbeInfo safely transform all the pointers within the struct by their offsets
     unsafe fn new(ptr: *const Self) -> Self {
-        Self { video_mode_offset: (*ptr).video_mode_offset - ptr as u32, ..*ptr }
+        Self {
+            video_mode_offset: (*ptr).video_mode_offset - ptr as u32,
+            ..*ptr
+        }
     }
     /// calculate the mode ptr using the address of self and the offset
     fn get_video_mode_ptr(&self) -> *const u16 {
-        unsafe { (self as *const Self as *const u8).add(self.video_mode_offset as usize) as *const u16 }
+        unsafe {
+            (self as *const Self as *const u8).add(self.video_mode_offset as usize) as *const u16
+        }
     }
     /// return the number of modes available
     /// The VideoModePtr is a VbeFarPtr that points to a list of mode numbers for all display modes
@@ -160,7 +170,11 @@ unsafe fn save_vbe_info() -> Result<VbeInfo, VbeError> {
     // VBE 3.0 specification says to put 'VBE2' in vbe_signature field to have pointers
     // points to reserved field instead of far pointer. So in practice it doesn't work
     TEMPORARY_PTR_LOCATION.copy_from("VBE2".as_ptr(), 4);
-    let reg: BaseRegisters = BaseRegisters { edi: TEMPORARY_PTR_LOCATION as u32, eax: 0x4f00, ..Default::default() };
+    let reg: BaseRegisters = BaseRegisters {
+        edi: TEMPORARY_PTR_LOCATION as u32,
+        eax: 0x4f00,
+        ..Default::default()
+    };
     vbe_real_mode_op(reg, 0x10)?;
     Ok(VbeInfo::new(TEMPORARY_PTR_LOCATION as *const VbeInfo))
 }
@@ -195,7 +209,10 @@ pub fn init_graphic_mode(mode: u16) -> Result<VbeMode, VbeError> {
         if kreserve(
             LINEAR_FRAMEBUFFER_VIRTUAL_ADDR,
             mode_info.phys_base_ptr as *mut u8,
-            mode_info.x_resolution as usize * mode_info.y_resolution as usize * mode_info.bits_per_pixel as usize / 8,
+            mode_info.x_resolution as usize
+                * mode_info.y_resolution as usize
+                * mode_info.bits_per_pixel as usize
+                / 8,
         ) == 0 as *mut u8
         {
             panic!("reserve failed")

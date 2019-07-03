@@ -195,14 +195,22 @@ pub struct Idtr {
 /// Returns the default values for the Idtr.
 impl Default for Idtr {
     fn default() -> Self {
-        Idtr { length: InterruptTable::DEFAULT_IDT_SIZE - 1, idt_addr: InterruptTable::DEFAULT_IDT_ADDR }
+        Idtr {
+            length: InterruptTable::DEFAULT_IDT_SIZE - 1,
+            idt_addr: InterruptTable::DEFAULT_IDT_ADDR,
+        }
     }
 }
 
 impl Idtr {
     /// Consumes the Idtr, returning the corresponding InterruptTable.
     unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
-        InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
+        InterruptTable {
+            entries: core::slice::from_raw_parts_mut(
+                self.idt_addr,
+                ((self.length + 1) / 8) as usize,
+            ),
+        }
     }
 
     /// Returns the current Interrupt Descriptor Table Register
@@ -210,7 +218,10 @@ impl Idtr {
     #[inline(never)]
     unsafe extern "C" fn get_idtr() -> Idtr {
         // Temporary struct Idtr to be filled by the asm routine
-        let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
+        let mut idtr = Idtr {
+            length: 0,
+            idt_addr: 1 as *mut _,
+        };
 
         asm!("sidt $0" : "=*m"(&mut idtr as *mut _) :: "memory" : "volatile");
         idtr
@@ -366,7 +377,9 @@ impl InterruptTable<'_> {
             .set_gate_type(InterruptGate32);
 
         for (index, &(exception, gate_type)) in Self::CPU_EXCEPTIONS.iter().enumerate() {
-            gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
+            gate_entry
+                .set_handler(exception as *const c_void as u32)
+                .set_gate_type(gate_type);
 
             self[index] = gate_entry;
         }

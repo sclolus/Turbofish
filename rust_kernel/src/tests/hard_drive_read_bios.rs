@@ -16,7 +16,10 @@ const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(
+    multiboot_info: *const MultibootInfo,
+    device_map_ptr: *const DeviceMap,
+) -> u32 {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::terminal::UART_16550.init() };
@@ -29,14 +32,16 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
 
-        PIT0.lock().configure(pit_8253::OperatingMode::RateGenerator);
+        PIT0.lock()
+            .configure(pit_8253::OperatingMode::RateGenerator);
         PIT0.lock().start_at_frequency(1000.).unwrap();
 
         crate::watch_dog();
         interrupts::enable();
 
         let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+            .unwrap();
     }
 
     log::info!("Scanning PCI buses ...");
@@ -65,13 +70,19 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
 
         let mut v: Vec<u32> = vec![0; n as usize * SECTOR_SIZE as usize / 4];
         eprintln!("read at {:?} for {:?}", start_sector, nbr_sectors);
-        d.unwrap().read(start_sector, nbr_sectors, v.as_mut_ptr() as *mut u8).unwrap();
+        d.unwrap()
+            .read(start_sector, nbr_sectors, v.as_mut_ptr() as *mut u8)
+            .unwrap();
 
-        for (j, i) in
-            (start_sector.0 * SECTOR_SIZE..(start_sector.0 + nbr_sectors.0) * SECTOR_SIZE).step_by(4).enumerate()
+        for (j, i) in (start_sector.0 * SECTOR_SIZE..(start_sector.0 + nbr_sectors.0) * SECTOR_SIZE)
+            .step_by(4)
+            .enumerate()
         {
             if v[j] != i as u32 {
-                panic!("expected: {:?}, readen {:?} at offset {:?} on test {:?}", i, v[j], j, nb_test);
+                panic!(
+                    "expected: {:?}, readen {:?} at offset {:?} on test {:?}",
+                    i, v[j], j, nb_test
+                );
             }
         }
     }

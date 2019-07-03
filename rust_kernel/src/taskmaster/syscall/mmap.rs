@@ -23,13 +23,23 @@ pub struct MmapArgStruct {
 fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+    let v = &mut scheduler
+        .current_task_mut()
+        .unwrap_process_mut()
+        .virtual_allocator;
 
     // Check if pointer exists in user virtual address space
     v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
 
     #[allow(unused_variables)]
-    let MmapArgStruct { virt_addr, length, prot, flags, fd, offset } = unsafe { *mmap_arg };
+    let MmapArgStruct {
+        virt_addr,
+        length,
+        prot,
+        flags,
+        fd,
+        offset,
+    } = unsafe { *mmap_arg };
 
     let addr = v.alloc(length, AllocFlags::USER_MEMORY)?;
     Ok((addr, length))

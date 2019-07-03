@@ -10,7 +10,10 @@ use errno::Errno;
 fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+    let v = &mut scheduler
+        .current_task_mut()
+        .unwrap_process_mut()
+        .virtual_allocator;
 
     // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
     // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
@@ -44,19 +47,30 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             return Err(Errno::Echild);
         }
         // Check is the at least one child is a already a zombie -> Return immediatly child PID
-        if let Some(&zombie_pid) = task
-            .child
-            .iter()
-            .find(|current_pid| scheduler.all_process.get(current_pid).expect("Pid must be here").is_zombie())
-        {
+        if let Some(&zombie_pid) = task.child.iter().find(|current_pid| {
+            scheduler
+                .all_process
+                .get(current_pid)
+                .expect("Pid must be here")
+                .is_zombie()
+        }) {
             Some(zombie_pid)
         } else {
             None
         }
     } else {
         // Check if specified child exists
-        if let Some(elem) = task.child.iter().find(|&&current_pid| current_pid == pid as u32) {
-            if scheduler.all_process.get(elem).expect("Pid must be here").is_zombie() {
+        if let Some(elem) = task
+            .child
+            .iter()
+            .find(|&&current_pid| current_pid == pid as u32)
+        {
+            if scheduler
+                .all_process
+                .get(elem)
+                .expect("Pid must be here")
+                .is_zombie()
+            {
                 Some(*elem)
             } else {
                 None
@@ -79,7 +93,10 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 }
             }
             // fflush zombie
-            scheduler.all_process.remove(&pid).expect("Pid must be here");
+            scheduler
+                .all_process
+                .remove(&pid)
+                .expect("Pid must be here");
             let task = scheduler.current_task_mut();
             task.child.remove_item(&pid).unwrap();
             // Return immediatly
@@ -89,7 +106,10 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_task_mut()
-                .set_waiting(WaitingState::ChildDeath(if pid < 0 { None } else { Some(pid as u32) }, 0));
+                .set_waiting(WaitingState::ChildDeath(
+                    if pid < 0 { None } else { Some(pid as u32) },
+                    0,
+                ));
 
             // Auto-preempt calling
             let ret = auto_preempt();

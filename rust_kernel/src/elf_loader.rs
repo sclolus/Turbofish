@@ -32,5 +32,8 @@ pub fn load_elf(content: &[u8]) -> Elf {
         }
         ph_table
     };
-    Elf { header, program_header_table }
+    Elf {
+        header,
+        program_header_table,
+    }
 }

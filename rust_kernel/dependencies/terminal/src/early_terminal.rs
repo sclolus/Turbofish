@@ -24,7 +24,11 @@ pub struct EarlyTerminal {
 /// Custom implementation of Debug trait
 impl core::fmt::Debug for EarlyTerminal {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "{:?} {:?} and some boeufs ...", self.cursor, self.text_color)
+        write!(
+            f,
+            "{:?} {:?} and some boeufs ...",
+            self.cursor, self.text_color
+        )
     }
 }
 
@@ -36,7 +40,12 @@ impl EarlyTerminal {
     /// (const fn) Create a new instance of an Early terminal
     pub const fn new() -> Self {
         Self {
-            cursor: Cursor { pos: Pos { line: 0, column: 0 }, nb_lines: HEIGHT, nb_columns: WIDTH, visible: true },
+            cursor: Cursor {
+                pos: Pos { line: 0, column: 0 },
+                nb_lines: HEIGHT,
+                nb_columns: WIDTH,
+                visible: true,
+            },
             text_color: AnsiColor::WHITE,
             buf: [None; WIDTH * HEIGHT],
             is_vbe_mode: false,
@@ -60,7 +69,17 @@ impl EarlyTerminal {
                 Some(e) => e,
                 None => (' ' as u8, AnsiColor::WHITE),
             };
-            SCREEN_MONAD.lock().draw_character(c as char, Pos { line: i / WIDTH, column: i % WIDTH }, color).unwrap();
+            SCREEN_MONAD
+                .lock()
+                .draw_character(
+                    c as char,
+                    Pos {
+                        line: i / WIDTH,
+                        column: i % WIDTH,
+                    },
+                    color,
+                )
+                .unwrap();
         }
 
         // It is necessary if we are in VBE mode
@@ -93,8 +112,12 @@ impl core::fmt::Write for EarlyTerminal {
                     }
                 }
                 _ => {
-                    self.buf[self.cursor.pos.line * WIDTH + self.cursor.pos.column] = Some((*c as u8, self.text_color));
-                    SCREEN_MONAD.lock().draw_character(*c as char, self.cursor.pos, self.text_color).unwrap();
+                    self.buf[self.cursor.pos.line * WIDTH + self.cursor.pos.column] =
+                        Some((*c as u8, self.text_color));
+                    SCREEN_MONAD
+                        .lock()
+                        .draw_character(*c as char, self.cursor.pos, self.text_color)
+                        .unwrap();
 
                     if let Some(line) = self.cursor.forward() {
                         if line == self.cursor.nb_lines - 1 {

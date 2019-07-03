@@ -16,7 +16,10 @@ use crate::watch_dog;
 use core::time::Duration;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> ! {
+pub extern "C" fn kmain(
+    multiboot_info: *const MultibootInfo,
+    device_map_ptr: *const DeviceMap,
+) -> ! {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::terminal::UART_16550.init() };
@@ -54,12 +57,24 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     };
 
     unsafe {
-        PIC_8259.lock().enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
+        PIC_8259
+            .lock()
+            .enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
     }
-    log::info!("Keyboard has been initialized: IRQ mask: {:X?}", PIC_8259.lock().get_masks());
+    log::info!(
+        "Keyboard has been initialized: IRQ mask: {:X?}",
+        PIC_8259.lock().get_masks()
+    );
 
     let size = SCREEN_MONAD.lock().query_window_size();
-    printfixed!(Pos { line: 1, column: size.column - 17 }, "{}", "Turbo Fish v0.3".green());
+    printfixed!(
+        Pos {
+            line: 1,
+            column: size.column - 17
+        },
+        "{}",
+        "Turbo Fish v0.3".green()
+    );
 
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
