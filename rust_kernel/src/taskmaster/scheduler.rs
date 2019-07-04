@@ -5,9 +5,9 @@ use super::signal::{JobAction, Signum};
 use super::syscall::read::handle_tty_control;
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
+use alloc::collections::CollectionAllocErr;
 
 use alloc::boxed::Box;
-use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicU32, Ordering};
@@ -36,6 +36,7 @@ extern "C" {
 }
 
 pub type Pid = u32;
+pub type Tid = u32;
 
 /// Protect process again scheduler interruption
 #[inline(always)]
@@ -143,19 +144,25 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 
     SCHEDULER
         .lock()
-        .all_process
-        .get_mut(&process_to_free)
+        .get_task_mut(&process_to_free)
         .unwrap()
         .process_state = ProcessState::Zombie(status);
 
     preemptible();
 }
 
+fn new_thread_list(task: Task) -> Result<HashMap<Tid, Task>, CollectionAllocErr> {
+    let mut all_thread = HashMap::new();
+    all_thread.try_reserve(1)?;
+    all_thread.insert(0, task);
+    Ok(all_thread)
+}
+
 #[derive(Debug)]
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
-    pub all_process: HashMap<Pid, Task>,
+    pub all_process: HashMap<Pid, HashMap<Tid, Task>>,
     /// contains pids of all runing process
     running_process: Vec<Pid>,
 
@@ -202,8 +209,10 @@ impl Scheduler {
         let pid = self.get_available_pid();
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
-        self.all_process
-            .insert(pid, Task::new(father_pid, ProcessState::Running(process)));
+        self.all_process.insert(
+            pid,
+            new_thread_list(Task::new(father_pid, ProcessState::Running(process)))?,
+        );
         self.running_process.push(pid);
         Ok(pid)
     }
@@ -287,8 +296,7 @@ impl Scheduler {
                                 None => {
                                     if let Some(&zombie_pid) =
                                         self.current_task().child.iter().find(|current_pid| {
-                                            self.all_process
-                                                .get(current_pid)
+                                            self.get_task(current_pid)
                                                 .expect("Hashmap corrupted")
                                                 .is_zombie()
                                         })
@@ -307,8 +315,7 @@ impl Scheduler {
                                         .find(|&&current_pid| current_pid == *pid as u32)
                                     {
                                         if self
-                                            .all_process
-                                            .get(elem)
+                                            .get_task(elem)
                                             .expect("Hashmap corrupted")
                                             .is_zombie()
                                         {
@@ -323,7 +330,7 @@ impl Scheduler {
                             };
                             // If a zombie was found, write the exit status, overwrite PID if None and return
                             if let Some(pid) = zombie_pid {
-                                let child = self.all_process.get(&pid).expect("Hashmap corrupted");
+                                let child = self.get_task(&pid).expect("Hashmap corrupted");
                                 match child.process_state {
                                     ProcessState::Zombie(status) => {
                                         self.current_task_mut()
@@ -390,20 +397,21 @@ impl Scheduler {
 
     /// Get current process
     pub fn current_task(&self) -> &Task {
-        self.get_process(self.current_task_pid).unwrap()
+        self.get_task(&self.current_task_pid).unwrap()
     }
 
     /// Get current process mutably
     pub fn current_task_mut(&mut self) -> &mut Task {
-        self.get_process_mut(self.current_task_pid).unwrap()
+        let current_task_pid = self.current_task_pid;
+        self.get_task_mut(&current_task_pid).unwrap()
     }
 
-    pub fn get_process(&self, pid: Pid) -> Option<&Task> {
-        self.all_process.get(&pid)
+    pub fn get_task(&self, pid: &Pid) -> Option<&Task> {
+        self.all_process.get(pid)?.get(&0)
     }
 
-    pub fn get_process_mut(&mut self, pid: Pid) -> Option<&mut Task> {
-        self.all_process.get_mut(&pid)
+    pub fn get_task_mut(&mut self, pid: &Pid) -> Option<&mut Task> {
+        self.all_process.get_mut(pid)?.get_mut(&0)
     }
 
     /// Remove the current running process
@@ -433,7 +441,7 @@ impl Scheduler {
 
         let child = current_task.fork(kernel_esp, father_pid)?;
 
-        self.all_process.insert(child_pid, child);
+        self.all_process.insert(child_pid, new_thread_list(child)?);
         self.running_process.push(child_pid);
 
         self.current_task_mut().child.push(child_pid);
@@ -459,13 +467,12 @@ impl Scheduler {
         }
 
         // When the father die, the process 0 adopts all his orphelans
-        if let Some(reaper) = self.all_process.get(&Self::REAPER_PID) {
+        if let Some(reaper) = self.get_task(&Self::REAPER_PID) {
             if let ProcessState::Zombie(_) = reaper.process_state {
                 log::warn!("... the reaper is a zombie ... it is worring ...");
             }
             while let Some(child_pid) = self.current_task_mut().child.pop() {
-                self.all_process
-                    .get_mut(&child_pid)
+                self.get_task_mut(&child_pid)
                     .expect("Hashmap corrupted")
                     .parent = Some(Self::REAPER_PID);
             }
@@ -477,7 +484,7 @@ impl Scheduler {
 
         // Send a sig child signal to the father
         if let Some(parent_pid) = self.current_task().parent {
-            let parent = self.get_process_mut(parent_pid).expect("WTF");
+            let parent = self.get_task_mut(&parent_pid).expect("WTF");
             let _ret = parent.signal.generate_signal(Signum::Sigchld);
         }
 

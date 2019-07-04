@@ -49,8 +49,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         // Check is the at least one child is a already a zombie -> Return immediatly child PID
         if let Some(&zombie_pid) = task.child.iter().find(|current_pid| {
             scheduler
-                .all_process
-                .get(current_pid)
+                .get_task(current_pid)
                 .expect("Pid must be here")
                 .is_zombie()
         }) {
@@ -66,8 +65,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             .find(|&&current_pid| current_pid == pid as u32)
         {
             if scheduler
-                .all_process
-                .get(elem)
+                .get_task(elem)
                 .expect("Pid must be here")
                 .is_zombie()
             {
@@ -82,7 +80,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     match child_pid {
         Some(pid) => {
-            let child = scheduler.all_process.get(&pid).expect("Pid must be here");
+            let child = scheduler.get_task(&pid).expect("Pid must be here");
             // TODO: Manage terminated value with signal
             if wstatus != 0x0 as *mut i32 {
                 unsafe {
