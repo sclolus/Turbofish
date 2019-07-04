@@ -14,6 +14,8 @@ pub mod vec;
 pub use vec::*;
 pub mod rc;
 pub use rc::*;
+pub mod arc;
+pub use arc::*;
 
 use alloc::collections::CollectionAllocErr;
 
