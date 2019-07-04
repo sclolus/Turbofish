@@ -202,7 +202,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         log::warn!("Cannot display backtrace from a non-kernel routine !");
 
         // Send a kill signum to the current process: kernel-sodo mode
-        let current_task_pid = SCHEDULER.lock().current_task_pid();
+        let current_task_pid = SCHEDULER.lock().current_task_id().0;
         let _res = match (*cpu_state).cpu_isr_reserved {
             14 => sys_kill(current_task_pid, Signum::Sigsegv as u32),
             _ => {

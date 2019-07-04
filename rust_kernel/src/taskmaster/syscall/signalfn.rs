@@ -41,8 +41,8 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let current_task_pid = scheduler.current_task_pid();
-        let task = scheduler.get_task_mut(&pid).ok_or(Errno::Esrch)?;
+        let current_task_pid = scheduler.current_task_id().0;
+        let task = scheduler.get_task_mut((pid, 0)).ok_or(Errno::Esrch)?;
         let signum = signum.try_into().map_err(|_| Errno::Einval)?;
         let res = task.signal.generate_signal(signum)?;
 

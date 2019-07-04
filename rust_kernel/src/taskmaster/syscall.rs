@@ -108,7 +108,7 @@ unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
 
 unsafe fn sys_getpid() -> SysResult<u32> {
     Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_task_pid()
+        SCHEDULER.lock().current_task_id().0
     }))
 }
 

@@ -144,7 +144,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
 
     SCHEDULER
         .lock()
-        .get_task_mut(&process_to_free)
+        .get_task_mut((process_to_free, 0))
         .unwrap()
         .process_state = ProcessState::Zombie(status);
 
@@ -164,7 +164,7 @@ pub struct Scheduler {
     /// contains a hashmap of pid, process
     pub all_process: HashMap<Pid, HashMap<Tid, Task>>,
     /// contains pids of all runing process
-    running_process: Vec<Pid>,
+    running_process: Vec<(Pid, Tid)>,
 
     /// The next pid to be considered by the scheduler
     /// TODO: think about PID Reuse when SMP will be added,
@@ -173,7 +173,7 @@ pub struct Scheduler {
     next_pid: AtomicU32,
 
     /// index in the vector of the current running process
-    current_task_pid: Pid,
+    current_task_id: (Pid, Tid),
     /// current process index in the running_process vector
     current_task_index: usize,
     /// time interval in PIT tics between two schedules
@@ -193,7 +193,7 @@ impl Scheduler {
             all_process: HashMap::new(),
             next_pid: AtomicU32::new(1),
             current_task_index: 0,
-            current_task_pid: 1,
+            current_task_id: (1, 0),
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
@@ -213,7 +213,7 @@ impl Scheduler {
             pid,
             new_thread_list(Task::new(father_pid, ProcessState::Running(process)))?,
         );
-        self.running_process.push(pid);
+        self.running_process.push((pid, 0));
         Ok(pid)
     }
 
@@ -245,7 +245,7 @@ impl Scheduler {
 
         for idx in 0..self.running_process.len() {
             self.current_task_index = (next_process_index + idx) % self.running_process.len();
-            self.current_task_pid = self.running_process[self.current_task_index];
+            self.current_task_id = self.running_process[self.current_task_index];
 
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
@@ -295,8 +295,8 @@ impl Scheduler {
                                 // In case of PID == None, Check is the at least one child is a zombie.
                                 None => {
                                     if let Some(&zombie_pid) =
-                                        self.current_task().child.iter().find(|current_pid| {
-                                            self.get_task(current_pid)
+                                        self.current_task().child.iter().find(|&current_pid| {
+                                            self.get_task((*current_pid, 0))
                                                 .expect("Hashmap corrupted")
                                                 .is_zombie()
                                         })
@@ -315,7 +315,7 @@ impl Scheduler {
                                         .find(|&&current_pid| current_pid == *pid as u32)
                                     {
                                         if self
-                                            .get_task(elem)
+                                            .get_task((*elem, 0))
                                             .expect("Hashmap corrupted")
                                             .is_zombie()
                                         {
@@ -330,7 +330,7 @@ impl Scheduler {
                             };
                             // If a zombie was found, write the exit status, overwrite PID if None and return
                             if let Some(pid) = zombie_pid {
-                                let child = self.get_task(&pid).expect("Hashmap corrupted");
+                                let child = self.get_task((pid, 0)).expect("Hashmap corrupted");
                                 match child.process_state {
                                     ProcessState::Zombie(status) => {
                                         self.current_task_mut()
@@ -391,27 +391,26 @@ impl Scheduler {
     }
 
     /// Get current process pid
-    pub fn current_task_pid(&self) -> Pid {
-        self.current_task_pid
+    pub fn current_task_id(&self) -> (Pid, Tid) {
+        self.current_task_id
     }
 
     /// Get current process
     pub fn current_task(&self) -> &Task {
-        self.get_task(&self.current_task_pid).unwrap()
+        self.get_task(self.current_task_id).unwrap()
     }
 
     /// Get current process mutably
     pub fn current_task_mut(&mut self) -> &mut Task {
-        let current_task_pid = self.current_task_pid;
-        self.get_task_mut(&current_task_pid).unwrap()
+        self.get_task_mut(self.current_task_id).unwrap()
     }
 
-    pub fn get_task(&self, pid: &Pid) -> Option<&Task> {
-        self.all_process.get(pid)?.get(&0)
+    pub fn get_task(&self, id: (Pid, Tid)) -> Option<&Task> {
+        self.all_process.get(&id.0)?.get(&id.1)
     }
 
-    pub fn get_task_mut(&mut self, pid: &Pid) -> Option<&mut Task> {
-        self.all_process.get_mut(pid)?.get_mut(&0)
+    pub fn get_task_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Task> {
+        self.all_process.get_mut(&id.0)?.get_mut(&id.1)
     }
 
     /// Remove the current running process
@@ -433,7 +432,7 @@ impl Scheduler {
         self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
         let child_pid = self.get_available_pid();
-        let father_pid = self.current_task_pid;
+        let father_pid = self.current_task_id.0;
         let current_task = self.current_task_mut();
         current_task.child.try_reserve(1)?;
 
@@ -442,7 +441,7 @@ impl Scheduler {
         let child = current_task.fork(kernel_esp, father_pid)?;
 
         self.all_process.insert(child_pid, new_thread_list(child)?);
-        self.running_process.push(child_pid);
+        self.running_process.push((child_pid, 0));
 
         self.current_task_mut().child.push(child_pid);
         // dbg!(self.current_task());
@@ -467,12 +466,12 @@ impl Scheduler {
         }
 
         // When the father die, the process 0 adopts all his orphelans
-        if let Some(reaper) = self.get_task(&Self::REAPER_PID) {
+        if let Some(reaper) = self.get_task((Self::REAPER_PID, 0)) {
             if let ProcessState::Zombie(_) = reaper.process_state {
                 log::warn!("... the reaper is a zombie ... it is worring ...");
             }
             while let Some(child_pid) = self.current_task_mut().child.pop() {
-                self.get_task_mut(&child_pid)
+                self.get_task_mut((child_pid, 0))
                     .expect("Hashmap corrupted")
                     .parent = Some(Self::REAPER_PID);
             }
@@ -480,11 +479,11 @@ impl Scheduler {
             log::warn!("... the reaper is die ... RIP ...");
         }
 
-        let pid = self.current_task_pid;
+        let pid = self.current_task_id.0;
 
         // Send a sig child signal to the father
         if let Some(parent_pid) = self.current_task().parent {
-            let parent = self.get_task_mut(&parent_pid).expect("WTF");
+            let parent = self.get_task_mut((parent_pid, 0)).expect("WTF");
             let _ret = parent.signal.generate_signal(Signum::Sigchld);
         }
 
