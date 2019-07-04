@@ -3,6 +3,7 @@
 pub use crate::ffi::{c_char, CString, CStringArray};
 use crate::memory::{tools::PAGE_SIZE, AddressSpace};
 
+use alloc::sync::Arc;
 use errno::Errno;
 use fallible_collections::{try_vec, FallibleVec};
 
@@ -24,9 +25,9 @@ fn safe_strlen(ptr: *const c_char, limit: usize) -> Option<usize> {
 }
 
 /// Secure create a CString from a C char*
-impl core::convert::TryFrom<(&AddressSpace, *const c_char)> for CString {
+impl core::convert::TryFrom<(&Arc<AddressSpace>, *const c_char)> for CString {
     type Error = Errno;
-    fn try_from(arg: (&AddressSpace, *const c_char)) -> Result<Self, Self::Error> {
+    fn try_from(arg: (&Arc<AddressSpace>, *const c_char)) -> Result<Self, Self::Error> {
         let mut string_len = 0;
 
         let mut curr_ptr = arg.1;
@@ -56,9 +57,9 @@ impl core::convert::TryFrom<(&AddressSpace, *const c_char)> for CString {
 }
 
 /// Secure create a CStringArray from a C char** type
-impl core::convert::TryFrom<(&AddressSpace, *const *const c_char)> for CStringArray {
+impl core::convert::TryFrom<(&Arc<AddressSpace>, *const *const c_char)> for CStringArray {
     type Error = Errno;
-    fn try_from(arg: (&AddressSpace, *const *const c_char)) -> Result<Self, Self::Error> {
+    fn try_from(arg: (&Arc<AddressSpace>, *const *const c_char)) -> Result<Self, Self::Error> {
         // tips: Constructs a new, empty Vec<T>. The vector will not allocate until elements are pushed onto it.
         let mut c_pointer: Vec<*const c_char> = Vec::new();
         let mut borrowed_content: Vec<CString> = Vec::new();

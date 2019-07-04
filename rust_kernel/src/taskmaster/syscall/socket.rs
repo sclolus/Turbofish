@@ -8,6 +8,7 @@ pub type SocketArgsPtr = *const u8;
 
 use errno::Errno;
 
+use alloc::sync::Arc;
 use core::convert::TryInto;
 use core::slice;
 
@@ -157,9 +158,9 @@ enum Sockaddr {
 }
 
 /// TryFrom boilerplate for Sockaddr
-impl core::convert::TryFrom<(&mut AddressSpace, *const u8, usize)> for Sockaddr {
+impl core::convert::TryFrom<(&Arc<AddressSpace>, *const u8, usize)> for Sockaddr {
     type Error = Errno;
-    fn try_from(arg: (&mut AddressSpace, *const u8, usize)) -> Result<Self, Self::Error> {
+    fn try_from(arg: (&Arc<AddressSpace>, *const u8, usize)) -> Result<Self, Self::Error> {
         arg.0
             .check_user_ptr::<SunFamily>(arg.1 as *const SunFamily)?;
         let raw_family = unsafe { *(arg.1 as *const u16) };
@@ -188,7 +189,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &mut scheduler
+        let v = &scheduler
             .current_task_mut()
             .unwrap_process_mut()
             .virtual_allocator;

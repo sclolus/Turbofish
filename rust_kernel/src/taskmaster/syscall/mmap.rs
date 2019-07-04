@@ -4,6 +4,7 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 
+use alloc::sync::Arc;
 use bitflags::bitflags;
 use errno::Errno;
 
@@ -41,7 +42,9 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
         offset,
     } = unsafe { *mmap_arg };
 
-    let addr = v.alloc(length, AllocFlags::USER_MEMORY)?;
+    let addr = Arc::get_mut(v)
+        .expect("virtual allocator already shared mutably")
+        .alloc(length, AllocFlags::USER_MEMORY)?;
     Ok((addr, length))
 }
 

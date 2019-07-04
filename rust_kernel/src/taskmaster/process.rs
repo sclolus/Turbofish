@@ -6,12 +6,13 @@ use tss::TSS;
 use super::SysResult;
 
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::slice;
 
 use elf_loader::SegmentType;
 
-use fallible_collections::{try_vec, FallibleBox};
+use fallible_collections::{try_vec, FallibleArc, FallibleBox};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -94,7 +95,7 @@ pub struct UserProcess {
     /// Current process ESP on kernel stack
     pub kernel_esp: u32,
     /// Page directory of the process
-    pub virtual_allocator: AddressSpace,
+    pub virtual_allocator: Arc<AddressSpace>,
 }
 
 /// This structure represents an entire kernel process
@@ -273,7 +274,7 @@ impl Process for UserProcess {
         Ok(Box::try_new(UserProcess {
             kernel_stack,
             kernel_esp,
-            virtual_allocator,
+            virtual_allocator: Arc::try_new(virtual_allocator)?,
         })?)
     }
 
@@ -325,7 +326,7 @@ impl Process for UserProcess {
         Ok(Box::try_new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
-            virtual_allocator: self.virtual_allocator.fork()?,
+            virtual_allocator: Arc::try_new(self.virtual_allocator.fork()?)?,
         })?)
     }
 }
