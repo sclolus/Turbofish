@@ -2,7 +2,7 @@
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
-use super::syscall::read::handle_tty_control;
+use super::syscall::{clone::CloneFlags, read::handle_tty_control};
 use super::task::{ProcessState, Task, WaitingState};
 use super::{SysResult, TaskMode};
 use alloc::collections::CollectionAllocErr;
@@ -447,6 +447,37 @@ impl Scheduler {
         // dbg!(self.current_task());
 
         Ok(child_pid)
+    }
+
+    pub fn current_task_clone(
+        &mut self,
+        function: u32,
+        child_stack: *const c_void,
+        flags: CloneFlags,
+        args: *const c_void,
+    ) -> SysResult<u32> {
+        if self.time_interval == None {
+            panic!("It'a illogical to fork a process when we are in monotask mode");
+        }
+        // self.all_process.try_reserve(1)?;
+        // self.running_process.try_reserve(1)?;
+        // let child_pid = self.get_available_pid();
+        // let father_pid = self.current_task_id.0;
+        // let current_task = self.current_task_mut();
+        // current_task.child.try_reserve(1)?;
+
+        // // try reserve a place for child pid
+
+        // let child = current_task.sys_clone(kernel_esp, father_pid)?;
+
+        // self.all_process.insert(child_pid, new_thread_list(child)?);
+        // self.running_process.push((child_pid, 0));
+
+        // self.current_task_mut().child.push(child_pid);
+        // dbg!(self.current_task());
+
+        // Ok(child_pid)
+        unimplemented!()
     }
 
     const REAPER_PID: Pid = 1;

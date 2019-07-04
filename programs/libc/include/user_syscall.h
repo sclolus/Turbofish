@@ -27,5 +27,6 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define MPROTECT    125
 #define NANOSLEEP   162
 #define SHUTDOWN    293
+#define CLONE    120
 
 #endif

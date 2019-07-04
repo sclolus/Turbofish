@@ -54,6 +54,10 @@ SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink p
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
+SRC_C += sched
+VPATH += src/sched
+HEADERS += include/sched.h
+
 SRC_C += nanosleep
 VPATH += src/time
 HEADERS += include/time.h

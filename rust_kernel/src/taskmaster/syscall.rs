@@ -43,6 +43,9 @@ use power::{sys_reboot, sys_shutdown};
 mod execve;
 use execve::sys_execve;
 
+pub mod clone;
+use clone::sys_clone;
+
 use errno::Errno;
 
 use core::ffi::c_void;
@@ -169,6 +172,12 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         102 => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
+        120 => sys_clone(
+            ebx as u32,
+            ecx as *const c_void,
+            edx as u32,
+            esi as *const c_void,
+        ),
         125 => sys_mprotect(
             Virt(ebx as usize),
             ecx as usize,
