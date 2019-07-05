@@ -13,7 +13,7 @@ use core::ffi::c_void;
 use core::sync::atomic::{AtomicU32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
-use spinlock::Spinlock;
+use sync::Spinlock;
 
 use crate::drivers::PIT0;
 use crate::interrupts;

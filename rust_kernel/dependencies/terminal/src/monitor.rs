@@ -7,7 +7,7 @@ use super::cursor::Pos;
 use crate::ansi_escape_code::AnsiColor;
 
 use lazy_static::lazy_static;
-use spinlock::Spinlock;
+use sync::Spinlock;
 use vbe_mode::*;
 use vga_text_mode::*;
 

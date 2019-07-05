@@ -1,6 +1,6 @@
 //! Process TSS manager
 
-use spinlock::Spinlock;
+use sync::Spinlock;
 
 /// Base TSS structure
 #[allow(unused)]

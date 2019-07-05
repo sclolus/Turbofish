@@ -2,7 +2,6 @@
 
 use super::SysResult;
 
-use super::ipc;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;

@@ -18,15 +18,17 @@ pub unsafe fn sys_sigaction(
 ) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
-        let v = &mut scheduler
-            .current_task_mut()
-            .unwrap_process_mut()
-            .virtual_allocator;
+        {
+            let v = scheduler
+                .current_task_mut()
+                .unwrap_process_mut()
+                .get_virtual_allocator();
 
-        // Check if pointer exists in user virtual address space
-        v.check_user_ptr::<StructSigaction>(act)?;
-        if old_act as usize != 0 {
-            v.check_user_ptr::<StructSigaction>(old_act)?;
+            // Check if pointer exists in user virtual address space
+            v.check_user_ptr::<StructSigaction>(act)?;
+            if old_act as usize != 0 {
+                v.check_user_ptr::<StructSigaction>(old_act)?;
+            }
         }
         // TODO: Use old_act
         scheduler.current_task_mut().signal.new_handler(

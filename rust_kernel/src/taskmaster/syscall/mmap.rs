@@ -4,7 +4,6 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 
-use alloc::sync::Arc;
 use bitflags::bitflags;
 use errno::Errno;
 
@@ -24,10 +23,10 @@ pub struct MmapArgStruct {
 fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler
+    let mut v = scheduler
         .current_task_mut()
         .unwrap_process_mut()
-        .virtual_allocator;
+        .get_virtual_allocator();
 
     // Check if pointer exists in user virtual address space
     v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
@@ -42,9 +41,7 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
         offset,
     } = unsafe { *mmap_arg };
 
-    let addr = Arc::get_mut(v)
-        .expect("virtual allocator already shared mutably")
-        .alloc(length, AllocFlags::USER_MEMORY)?;
+    let addr = v.alloc(length, AllocFlags::USER_MEMORY)?;
     Ok((addr, length))
 }
 

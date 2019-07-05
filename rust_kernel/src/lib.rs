@@ -59,7 +59,7 @@ pub use watch_dog::*;
 
 pub mod shell;
 
-pub use spinlock::{Spinlock, SpinlockGuard};
+pub use sync::{Spinlock, SpinlockGuard};
 pub mod elf_loader;
 
 use crate::memory::RustGlobalAlloc;

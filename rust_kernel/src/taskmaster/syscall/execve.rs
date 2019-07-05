@@ -48,14 +48,15 @@ pub fn sys_execve(
     let argc = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &scheduler
+        let v = scheduler
             .current_task_mut()
             .unwrap_process_mut()
-            .virtual_allocator;
+            .get_virtual_allocator();
 
-        let filename: CString = (v, filename).try_into()?;
-        let argv_content: CStringArray = (v, argv).try_into()?;
-        let envp_content: CStringArray = (v, envp).try_into()?;
+        let filename: CString = (&v, filename).try_into()?;
+        let argv_content: CStringArray = (&v, argv).try_into()?;
+        let envp_content: CStringArray = (&v, envp).try_into()?;
+        drop(v);
 
         // TODO: Use PWD later. (note that format! macro is not in a faillible memory context)
         let pathname = format!("/bin/{}", filename);

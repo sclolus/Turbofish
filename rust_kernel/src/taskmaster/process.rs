@@ -5,6 +5,7 @@ use tss::TSS;
 
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
+use sync::{DeadMutex, DeadMutexGuard};
 
 use alloc::boxed::Box;
 use alloc::sync::Arc;
@@ -96,7 +97,7 @@ pub struct UserProcess {
     /// Current process ESP on kernel stack
     pub kernel_esp: u32,
     /// Page directory of the process
-    pub virtual_allocator: Arc<AddressSpace>,
+    pub virtual_allocator: Arc<DeadMutex<AddressSpace>>,
 }
 
 /// This structure represents an entire kernel process
@@ -179,9 +180,12 @@ impl UserProcess {
             virtual_allocator: if flags.contains(CloneFlags::VM) {
                 self.virtual_allocator.clone()
             } else {
-                Arc::try_new(self.virtual_allocator.fork()?)?
+                Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
         })?)
+    }
+    pub fn get_virtual_allocator(&self) -> DeadMutexGuard<AddressSpace> {
+        self.virtual_allocator.lock()
     }
 }
 
@@ -308,7 +312,7 @@ impl Process for UserProcess {
         Ok(Box::try_new(UserProcess {
             kernel_stack,
             kernel_esp,
-            virtual_allocator: Arc::try_new(virtual_allocator)?,
+            virtual_allocator: Arc::try_new(DeadMutex::new(virtual_allocator))?,
         })?)
     }
 
@@ -323,7 +327,7 @@ impl Process for UserProcess {
 
     unsafe fn context_switch(&self) {
         // Switch to the new process PD
-        self.virtual_allocator.context_switch();
+        self.virtual_allocator.lock().context_switch();
         // Re-init the TSS block for the new process
         self.init_tss();
     }
@@ -360,7 +364,7 @@ impl Process for UserProcess {
         Ok(Box::try_new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
-            virtual_allocator: Arc::try_new(self.virtual_allocator.fork()?)?,
+            virtual_allocator: Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?,
         })?)
     }
 }

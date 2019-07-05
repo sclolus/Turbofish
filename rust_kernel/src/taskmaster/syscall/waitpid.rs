@@ -10,15 +10,17 @@ use errno::Errno;
 fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler
-        .current_task_mut()
-        .unwrap_process_mut()
-        .virtual_allocator;
+    {
+        let v = scheduler
+            .current_task_mut()
+            .unwrap_process_mut()
+            .get_virtual_allocator();
 
-    // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
-    // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
-    if wstatus != 0x0 as *mut i32 {
-        v.check_user_ptr::<i32>(wstatus)?;
+        // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
+        // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
+        if wstatus != 0x0 as *mut i32 {
+            v.check_user_ptr::<i32>(wstatus)?;
+        }
     }
 
     // WIFEXITED(wstatus)
