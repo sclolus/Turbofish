@@ -3,6 +3,7 @@
 mod tss;
 use tss::TSS;
 
+use super::syscall::clone::CloneFlags;
 use super::SysResult;
 
 use alloc::boxed::Box;
@@ -149,6 +150,39 @@ impl UserProcess {
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
+
+    pub fn sys_clone(&self, kernel_esp: u32, flags: CloneFlags) -> SysResult<Box<Self>> {
+        // Create the child kernel stack
+        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
+        assert!(
+            child_kernel_stack.as_ptr() as usize
+                & (Self::RING3_PROCESS_KERNEL_STACK_SIZE.to_bytes() - 1)
+                == 0
+        );
+        child_kernel_stack
+            .as_mut_slice()
+            .copy_from_slice(self.kernel_stack.as_slice());
+
+        // Set the kernel ESP of the child. Relative to kernel ESP of the father
+        let child_kernel_esp =
+            kernel_esp - self.kernel_stack.as_ptr() as u32 + child_kernel_stack.as_ptr() as u32;
+
+        // Mark child syscall return as 0
+        let child_cpu_state: *mut CpuState = child_kernel_esp as *mut CpuState;
+        unsafe {
+            (*child_cpu_state).registers.eax = 0;
+        }
+
+        Ok(Box::try_new(Self {
+            kernel_stack: child_kernel_stack,
+            kernel_esp: child_kernel_esp,
+            virtual_allocator: if flags.contains(CloneFlags::VM) {
+                self.virtual_allocator.clone()
+            } else {
+                Arc::try_new(self.virtual_allocator.fork()?)?
+            },
+        })?)
+    }
 }
 
 /// Main implementation of KernalProcess

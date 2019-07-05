@@ -451,10 +451,11 @@ impl Scheduler {
 
     pub fn current_task_clone(
         &mut self,
-        function: u32,
-        child_stack: *const c_void,
+        kernel_esp: u32,
+        _function: u32,
+        _child_stack: *const c_void,
         flags: CloneFlags,
-        args: *const c_void,
+        _args: *const c_void,
     ) -> SysResult<u32> {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
@@ -462,13 +463,13 @@ impl Scheduler {
         // self.all_process.try_reserve(1)?;
         // self.running_process.try_reserve(1)?;
         // let child_pid = self.get_available_pid();
-        // let father_pid = self.current_task_id.0;
-        // let current_task = self.current_task_mut();
+        let father_pid = self.current_task_id.0;
+        let current_task = self.current_task_mut();
         // current_task.child.try_reserve(1)?;
 
         // // try reserve a place for child pid
 
-        // let child = current_task.sys_clone(kernel_esp, father_pid)?;
+        let _child = current_task.sys_clone(kernel_esp, father_pid, flags)?;
 
         // self.all_process.insert(child_pid, new_thread_list(child)?);
         // self.running_process.push((child_pid, 0));
