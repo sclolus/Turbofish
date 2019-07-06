@@ -38,19 +38,12 @@ bitflags! {
 // flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID,
 // parent_tidptr=0x7ff03ba959d0, tls=0x7ff03ba95700,
 // child_tidptr=0x7ff03ba959d0) = 21807
-pub fn sys_clone(
-    kernel_esp: u32,
-    function: u32,
-    child_stack: *const c_void,
-    clone_flags: u32,
-    args: *const c_void,
-) -> SysResult<u32> {
+pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) -> SysResult<u32> {
     let flags = CloneFlags::from_bits_truncate(clone_flags);
 
-    dbg!(flags);
     unpreemptible_context!({
         SCHEDULER
             .lock()
-            .current_task_clone(kernel_esp, function, child_stack, flags, args)
+            .current_task_clone(kernel_esp, child_stack, flags)
     })
 }

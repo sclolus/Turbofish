@@ -10,11 +10,12 @@ use sync::{DeadMutex, DeadMutexGuard};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::ffi::c_void;
 use core::slice;
 
 use elf_loader::SegmentType;
 
-use fallible_collections::{try_vec, FallibleArc, FallibleBox};
+use fallible_collections::{try_vec, FallibleBox};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -152,7 +153,12 @@ impl UserProcess {
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
 
-    pub fn sys_clone(&self, kernel_esp: u32, flags: CloneFlags) -> SysResult<Box<Self>> {
+    pub fn sys_clone(
+        &self,
+        kernel_esp: u32,
+        child_stack: *const c_void,
+        flags: CloneFlags,
+    ) -> SysResult<Box<Self>> {
         // Create the child kernel stack
         let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
         assert!(
@@ -172,6 +178,10 @@ impl UserProcess {
         let child_cpu_state: *mut CpuState = child_kernel_esp as *mut CpuState;
         unsafe {
             (*child_cpu_state).registers.eax = 0;
+            if !child_stack.is_null() {
+                (*child_cpu_state).registers.esp = child_stack as u32;
+                (*child_cpu_state).esp = child_stack as u32;
+            }
         }
 
         Ok(Box::try_new(Self {
@@ -180,7 +190,8 @@ impl UserProcess {
             virtual_allocator: if flags.contains(CloneFlags::VM) {
                 self.virtual_allocator.clone()
             } else {
-                Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
+                // TODO: change that to Arc::try_new
+                Arc::new(DeadMutex::new(self.virtual_allocator.lock().fork()?))
             },
         })?)
     }
@@ -312,7 +323,8 @@ impl Process for UserProcess {
         Ok(Box::try_new(UserProcess {
             kernel_stack,
             kernel_esp,
-            virtual_allocator: Arc::try_new(DeadMutex::new(virtual_allocator))?,
+            // TODO: change that to Arc::try_new
+            virtual_allocator: Arc::new(DeadMutex::new(virtual_allocator)),
         })?)
     }
 
@@ -364,7 +376,8 @@ impl Process for UserProcess {
         Ok(Box::try_new(Self {
             kernel_stack: child_kernel_stack,
             kernel_esp: child_kernel_esp,
-            virtual_allocator: Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?,
+            // TODO: change that to Arc::try_new
+            virtual_allocator: Arc::new(DeadMutex::new(self.virtual_allocator.lock().fork()?)),
         })?)
     }
 }

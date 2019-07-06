@@ -5,6 +5,7 @@ use super::scheduler::Pid;
 use super::signal::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
+use core::ffi::c_void;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -46,13 +47,21 @@ impl Task {
         })
     }
 
-    pub fn sys_clone(&self, kernel_esp: u32, self_pid: Pid, flags: CloneFlags) -> SysResult<Self> {
+    pub fn sys_clone(
+        &self,
+        kernel_esp: u32,
+        self_pid: Pid,
+        child_stack: *const c_void,
+        flags: CloneFlags,
+    ) -> SysResult<Self> {
         Ok(Self {
             child: Vec::new(),
             parent: Some(self_pid),
             signal: self.signal.fork(),
             process_state: match &self.process_state {
-                ProcessState::Running(p) => ProcessState::Running(p.sys_clone(kernel_esp, flags)?),
+                ProcessState::Running(p) => {
+                    ProcessState::Running(p.sys_clone(kernel_esp, child_stack, flags)?)
+                }
                 _ => panic!("Non running process should not fork"),
             },
         })

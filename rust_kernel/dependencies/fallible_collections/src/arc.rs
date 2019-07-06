@@ -14,6 +14,8 @@ pub trait FallibleArc<T> {
 
 impl<T> FallibleArc<T> for Arc<T> {
     fn try_new(t: T) -> Result<Self, CollectionAllocErr> {
+        unimplemented!();
+        // doesn't work as the inner variable of arc are also stocked in the box
         let b = Box::try_new(t)?;
         unsafe { Ok(Arc::from_raw(Box::into_raw(b))) }
     }

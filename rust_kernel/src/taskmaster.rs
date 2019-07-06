@@ -10,6 +10,7 @@ mod signal;
 mod syscall;
 mod task;
 mod tests;
+mod thread_group;
 
 use process::{KernelProcess, Process, TaskOrigin, UserProcess};
 use scheduler::SCHEDULER;
@@ -88,6 +89,7 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleStopContinue")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Clone")[..])).unwrap(),
         ]
     };
     for (_i, p) in user_process_list.into_iter().enumerate() {

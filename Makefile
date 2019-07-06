@@ -59,6 +59,9 @@ RAM_AMOUNT = 128
 exec:
 	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -enable-kvm -cpu IvyBridge -drive format=raw,file=$(IMG_DISK)
 
+exec_serial_port:
+	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -enable-kvm -cpu IvyBridge -drive format=raw,file=$(IMG_DISK) -device isa-debug-exit,iobase=0xf4,iosize=0x04 --serial stdio
+
 exec_sata:
 	qemu-system-x86_64 -m $(RAM_AMOUNT) -vga std -enable-kvm -cpu IvyBridge \
 	-drive file=$(IMG_DISK),if=none,id=toto,format=raw \

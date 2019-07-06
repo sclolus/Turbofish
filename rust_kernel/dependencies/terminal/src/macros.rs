@@ -152,7 +152,7 @@ macro_rules! dbg {
     ($val: expr) => {
         match $val {
             tmp => {
-                $crate::println!(
+                $crate::eprintln!(
                     "[{}:{}] {} = {:#?}",
                     file!(),
                     line!(),

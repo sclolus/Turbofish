@@ -1,4 +1,9 @@
 
+ifeq ($(findstring Clone,$(MAKECMDGOALS)),Clone)
+	TARGET = Clone
+	SRC_C = Clone
+endif
+
 ifeq ($(findstring Ud2,$(MAKECMDGOALS)),Ud2)
 	TARGET = Ud2
 	SRC_C = Ud2

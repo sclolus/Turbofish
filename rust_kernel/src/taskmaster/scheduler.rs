@@ -4,6 +4,7 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
 use super::syscall::{clone::CloneFlags, read::handle_tty_control};
 use super::task::{ProcessState, Task, WaitingState};
+use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
 use alloc::collections::CollectionAllocErr;
 
@@ -21,7 +22,12 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 use crate::system::PrivilegeLevel;
 
 extern "C" {
-    fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
+    fn _exit_resume(
+        new_kernel_esp: u32,
+        process_to_free_pid: Pid,
+        process_to_free_tid: Tid,
+        status: i32,
+    ) -> !;
 
     fn _auto_preempt() -> i32;
 
@@ -139,30 +145,27 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
 /// Remove ressources of the exited process and note his exit status
 #[no_mangle]
-unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32) {
+unsafe extern "C" fn scheduler_exit_resume(
+    process_to_free_pid: Pid,
+    process_to_free_tid: Tid,
+    status: i32,
+) {
     SCHEDULER.force_unlock();
 
     SCHEDULER
         .lock()
-        .get_task_mut((process_to_free, 0))
+        .get_task_mut((process_to_free_pid, process_to_free_tid))
         .unwrap()
         .process_state = ProcessState::Zombie(status);
 
     preemptible();
 }
 
-fn new_thread_list(task: Task) -> Result<HashMap<Tid, Task>, CollectionAllocErr> {
-    let mut all_thread = HashMap::new();
-    all_thread.try_reserve(1)?;
-    all_thread.insert(0, task);
-    Ok(all_thread)
-}
-
 #[derive(Debug)]
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
-    pub all_process: HashMap<Pid, HashMap<Tid, Task>>,
+    pub all_process: HashMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
     running_process: Vec<(Pid, Tid)>,
 
@@ -211,7 +214,7 @@ impl Scheduler {
         self.running_process.try_reserve(1)?;
         self.all_process.insert(
             pid,
-            new_thread_list(Task::new(father_pid, ProcessState::Running(process)))?,
+            ThreadGroup::try_new(Task::new(father_pid, ProcessState::Running(process)))?,
         );
         self.running_process.push((pid, 0));
         Ok(pid)
@@ -242,6 +245,7 @@ impl Scheduler {
     /// Advance until a next elligible process was found
     fn advance_next_process(&mut self, offset: usize) -> JobAction {
         let next_process_index = (self.current_task_index + offset) % self.running_process.len();
+        // dbg!(&self.running_process);
 
         for idx in 0..self.running_process.len() {
             self.current_task_index = (next_process_index + idx) % self.running_process.len();
@@ -405,12 +409,28 @@ impl Scheduler {
         self.get_task_mut(self.current_task_id).unwrap()
     }
 
+    pub fn _current_thread_group(&self) -> &ThreadGroup {
+        self.get_thread_group(self.current_task_id.0).unwrap()
+    }
+
+    pub fn current_thread_group_mut(&mut self) -> &mut ThreadGroup {
+        self.get_thread_group_mut(self.current_task_id.0).unwrap()
+    }
+
+    pub fn get_thread_group(&self, pid: Pid) -> Option<&ThreadGroup> {
+        self.all_process.get(&pid)
+    }
+
+    pub fn get_thread_group_mut(&mut self, pid: Pid) -> Option<&mut ThreadGroup> {
+        self.all_process.get_mut(&pid)
+    }
+
     pub fn get_task(&self, id: (Pid, Tid)) -> Option<&Task> {
-        self.all_process.get(&id.0)?.get(&id.1)
+        self.get_thread_group(id.0)?.all_thread.get(&id.1)
     }
 
     pub fn get_task_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Task> {
-        self.all_process.get_mut(&id.0)?.get_mut(&id.1)
+        self.get_thread_group_mut(id.0)?.all_thread.get_mut(&id.1)
     }
 
     /// Remove the current running process
@@ -440,7 +460,8 @@ impl Scheduler {
 
         let child = current_task.fork(kernel_esp, father_pid)?;
 
-        self.all_process.insert(child_pid, new_thread_list(child)?);
+        self.all_process
+            .insert(child_pid, ThreadGroup::try_new(child)?);
         self.running_process.push((child_pid, 0));
 
         self.current_task_mut().child.push(child_pid);
@@ -452,33 +473,37 @@ impl Scheduler {
     pub fn current_task_clone(
         &mut self,
         kernel_esp: u32,
-        _function: u32,
-        _child_stack: *const c_void,
+        child_stack: *const c_void,
         flags: CloneFlags,
-        _args: *const c_void,
     ) -> SysResult<u32> {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
-        // self.all_process.try_reserve(1)?;
-        // self.running_process.try_reserve(1)?;
-        // let child_pid = self.get_available_pid();
+        self.running_process.try_reserve(1)?;
         let father_pid = self.current_task_id.0;
         let current_task = self.current_task_mut();
-        // current_task.child.try_reserve(1)?;
 
-        // // try reserve a place for child pid
+        let child = current_task.sys_clone(kernel_esp, father_pid, child_stack, flags)?;
 
-        let _child = current_task.sys_clone(kernel_esp, father_pid, flags)?;
+        let child_pid = if flags.contains(CloneFlags::THREAD) {
+            let thread_group = self.current_thread_group_mut();
+            let tid = thread_group.get_available_tid();
+            thread_group.all_thread.insert(tid, child);
+            let child_pid = self.current_task_id().0;
+            self.running_process.push((child_pid, tid));
+            child_pid
+        } else {
+            current_task.child.try_reserve(1)?;
+            let child_pid = self.get_available_pid();
+            self.current_task_mut().child.push(child_pid);
+            self.all_process.try_reserve(1)?;
+            self.all_process
+                .insert(child_pid, ThreadGroup::try_new(child)?);
+            self.running_process.push((child_pid, 0));
+            child_pid
+        };
 
-        // self.all_process.insert(child_pid, new_thread_list(child)?);
-        // self.running_process.push((child_pid, 0));
-
-        // self.current_task_mut().child.push(child_pid);
-        // dbg!(self.current_task());
-
-        // Ok(child_pid)
-        unimplemented!()
+        Ok(child_pid)
     }
 
     const REAPER_PID: Pid = 1;
@@ -511,7 +536,7 @@ impl Scheduler {
             log::warn!("... the reaper is die ... RIP ...");
         }
 
-        let pid = self.current_task_id.0;
+        let (pid, tid) = self.current_task_id;
 
         // Send a sig child signal to the father
         if let Some(parent_pid) = self.current_task().parent {
@@ -529,7 +554,7 @@ impl Scheduler {
 
             let new_kernel_esp = self.load_new_context(signal);
 
-            _exit_resume(new_kernel_esp, pid, status);
+            _exit_resume(new_kernel_esp, pid, tid, status);
         };
     }
 

@@ -54,6 +54,7 @@ SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink p
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
+SRC_ASM += clone
 SRC_C += sched
 VPATH += src/sched
 HEADERS += include/sched.h

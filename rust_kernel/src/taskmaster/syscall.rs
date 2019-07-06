@@ -171,13 +171,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         90 => sys_mmap(ebx as *const MmapArgStruct),
         91 => sys_munmap(Virt(ebx as usize), ecx as usize),
         102 => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
-        120 => sys_clone(
-            cpu_state as u32,
-            ebx as u32,
-            ecx as *const c_void,
-            edx as u32,
-            esi as *const c_void,
-        ),
+        120 => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
         125 => sys_mprotect(
             Virt(ebx as usize),
             ecx as usize,

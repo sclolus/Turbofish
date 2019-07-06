@@ -14,7 +14,7 @@ unsafe impl RawMutex for RawDeadMutex {
 
     fn lock(&self) {
         if !self.try_lock() {
-            panic!("dead lock");
+            panic!("dead lock from {:?}", self);
         }
     }
 
