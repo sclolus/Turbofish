@@ -4,6 +4,7 @@ use bitflags::bitflags;
 use core::ffi::c_void;
 
 bitflags! {
+    /// the clone flags
     pub struct CloneFlags: u32 {
         // const CSIGNAL: u32 = 0x000000ff; /* signal mask to be sent at exit */
         const VM = 0x00000100; /* set if VM shared between processes */
@@ -31,6 +32,7 @@ bitflags! {
         const IO = 0x80000000; /* Clone io context */
     }
 }
+
 // a call to fork: clone(child_stack=NULL,
 // flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD,
 // child_tidptr=0x7f2424406790) = 21725 a call to create_thread:
@@ -38,6 +40,7 @@ bitflags! {
 // flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID,
 // parent_tidptr=0x7ff03ba959d0, tls=0x7ff03ba95700,
 // child_tidptr=0x7ff03ba959d0) = 21807
+/// the clone syscall
 pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) -> SysResult<u32> {
     let flags = CloneFlags::from_bits_truncate(clone_flags);
 
@@ -46,4 +49,13 @@ pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) 
             .lock()
             .current_task_clone(kernel_esp, child_stack, flags)
     })
+}
+
+/// Fork a process
+pub fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
+    sys_clone(
+        kernel_esp,
+        0 as *const c_void,
+        0, /*CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD*/
+    )
 }

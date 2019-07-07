@@ -12,7 +12,11 @@ sys_clone:
 	mov ecx, [ebp + 12]
 	int 80h
 	cmp eax, 0
-	je clone_child
+	jne .continue
+	cmp ebx, 0
+	jne clone_child
+
+.continue:
 	pop ecx
 	pop ebx
 

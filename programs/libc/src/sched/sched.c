@@ -6,6 +6,7 @@ extern int errno;
 
 extern int sys_clone(void *, int);
 
+// inspired by the linux clone syscall
 int	clone(int (*fn)(void *), void *child_stack,
 		  int flags, void *arg/*, pid_t *ptid, void *newtls, pid_t *ctid*/) {
 
@@ -21,30 +22,23 @@ int	clone(int (*fn)(void *), void *child_stack,
 	*new_child_stack = (int)fn;
 
 
+	// here we don't use the user_syscall, as we must do a hack to
+	// call continue_clone_child in the child
 	int ret = sys_clone(new_child_stack, flags);
-
-//_user_syscall(CLONE, 2, child_stack, flags);
 
 	if (ret < 0) {
 		errno = -ret;
 		return -1;
 	}
-	if (ret  == 0) {
-		printf("ret null\n");
-		exit(1);
-		}
-
-	/* 
-	 * } else if ((ret == 0) && (fn > 0)) {
-	 * 	exit(fn(arg));
-	 * }
-	 */
 	return ret;
 }
 
-// continue the clone fonction if we are in a child
+// continue the clone fonction if we are in a child and the child_stack != NULL
 int	continue_clone_child(int (*fn)(void *), void *child_stack, int flags, void *arg) {
-	(void)child_stack;
+	if (child_stack == NULL) {
+		printf("panic child stack == NULL\n");
+		exit(1);
+	}
 	(void)flags;
 	if (fn != NULL) {
 		exit(fn(arg));

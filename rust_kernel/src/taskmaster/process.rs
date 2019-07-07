@@ -86,9 +86,6 @@ pub trait Process {
     unsafe fn start(&self) -> !;
     /// Switch to the current process PD
     unsafe fn context_switch(&self);
-
-    /// Fork the process and return his child
-    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>>;
 }
 
 /// This structure represents an entire process
@@ -350,36 +347,6 @@ impl Process for UserProcess {
         // Launch the ring3 process on its own kernel stack
         _start_process(self.kernel_esp)
     }
-
-    fn fork(&self, kernel_esp: u32) -> SysResult<Box<Self>> {
-        // Create the child kernel stack
-        let mut child_kernel_stack = try_vec![0; Self::RING3_PROCESS_KERNEL_STACK_SIZE.into()]?;
-        assert!(
-            child_kernel_stack.as_ptr() as usize
-                & (Self::RING3_PROCESS_KERNEL_STACK_SIZE.to_bytes() - 1)
-                == 0
-        );
-        child_kernel_stack
-            .as_mut_slice()
-            .copy_from_slice(self.kernel_stack.as_slice());
-
-        // Set the kernel ESP of the child. Relative to kernel ESP of the father
-        let child_kernel_esp =
-            kernel_esp - self.kernel_stack.as_ptr() as u32 + child_kernel_stack.as_ptr() as u32;
-
-        // Mark child syscall return as 0
-        let child_cpu_state: *mut CpuState = child_kernel_esp as *mut CpuState;
-        unsafe {
-            (*child_cpu_state).registers.eax = 0;
-        }
-
-        Ok(Box::try_new(Self {
-            kernel_stack: child_kernel_stack,
-            kernel_esp: child_kernel_esp,
-            // TODO: change that to Arc::try_new
-            virtual_allocator: Arc::new(DeadMutex::new(self.virtual_allocator.lock().fork()?)),
-        })?)
-    }
 }
 
 // Note: It is very really tricky to exit from a kernel process about possibles memory leaks or code corruption
@@ -468,11 +435,6 @@ impl Process for KernelProcess {
 
     unsafe fn context_switch(&self) {
         // Context_switch is not necessary for a kernel process
-    }
-
-    // Note: Forking from a kernel process seams not to be a good idea
-    fn fork(&self, _kernel_esp: u32) -> SysResult<Box<Self>> {
-        unimplemented!();
     }
 }
 

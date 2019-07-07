@@ -43,7 +43,7 @@ mod execve;
 use execve::sys_execve;
 
 pub mod clone;
-use clone::sys_clone;
+use clone::{sys_clone, sys_fork};
 
 use errno::Errno;
 
@@ -101,11 +101,6 @@ fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
 unsafe fn sys_exit(status: i32) -> ! {
     unpreemptible();
     SCHEDULER.lock().current_task_exit(status);
-}
-
-/// Fork a process
-unsafe fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
-    unpreemptible_context!({ SCHEDULER.lock().current_task_fork(kernel_esp) })
 }
 
 unsafe fn sys_getpid() -> SysResult<u32> {
