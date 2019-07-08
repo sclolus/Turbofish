@@ -97,5 +97,56 @@ pub extern "C" fn kmain(
     // println!("{:#X?}", elf);
     // crate::shell::shell();
 
-    crate::taskmaster::start();
+    use crate::taskmaster::{Process, TaskOrigin, UserProcess};
+    // Load some processes into the scheduler
+    let user_process_list = unsafe {
+        vec![
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
+            // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieBefore")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieAfter")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Timer")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionlessSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionOrientedSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/DummyRead")[..])).unwrap(),
+            /*
+             * Signal tests
+             */
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Csignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SonKillFather")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/RecursiveSignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal_no_defer")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SaRestart")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/NoSaRestart")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SaRestartMultiple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/NoSaRestartMultiple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Continue")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuo")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleStopContinue")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Clone")[..])).unwrap(),
+        ]
+    };
+    crate::taskmaster::start(user_process_list);
 }

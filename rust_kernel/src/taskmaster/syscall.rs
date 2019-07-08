@@ -177,6 +177,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         293 => sys_shutdown(),
         0x80000000 => sys_test(),
         0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
+        0x80000002 => crate::tests::helpers::exit_qemu(eax as u32),
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
