@@ -1,4 +1,9 @@
 
+ifeq ($(findstring DeepThought,$(MAKECMDGOALS)),DeepThought)
+	TARGET = DeepThought
+	SRC_C = DeepThought
+endif
+
 ifeq ($(findstring Clone,$(MAKECMDGOALS)),Clone)
 	TARGET = Clone
 	SRC_C = Clone
