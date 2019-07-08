@@ -28,18 +28,18 @@ pid_t waitpid(pid_t pid, int *wstatus, int options);
  * statement in main().  This macro should be employed only if WIFEXITED
  * returned true.
  */
-#define	WEXITSTATUS(status)	(((status) & 0xff00) >> 8)
+#define	WEXITSTATUS(status)	((status) & 0xff)
 
 /* returns true if the child process was terminated by a signal. */
 #define WIFSIGNALED(status) \
-  (((signed char) (((status) & 0x7f) + 1) >> 1) > 0)
+	(((signed char) (status & 0x7f00)) > 0)
 
 /* 
  * returns the number of the signal that caused the child process to
  * terminate.  This macro should be employed only if WIFSIGNALED returned
  * true.
  */
-#define	WTERMSIG(status)	((status) & 0x7f)
+#define	WTERMSIG(status)	((status) & 0x7f00 >> 8)
 
 
 /* If WIFSTOPPED(STATUS), the signal that stopped the child.  */
@@ -48,7 +48,9 @@ pid_t waitpid(pid_t pid, int *wstatus, int options);
 /* Nonzero if STATUS indicates normal termination.  */
 #define	WIFEXITED(status)	(WTERMSIG(status) == 0)
 
-/* Nonzero if STATUS indicates the child is stopped.  */
-#define	WIFSTOPPED(status)	(((status) & 0xff) == 0x7f)
+/* 
+ * /\* Nonzero if STATUS indicates the child is stopped.  *\/
+ * #define	WIFSTOPPED(status)	(((status) & 0xff) == 0x7f)
+ */
 
 #endif
