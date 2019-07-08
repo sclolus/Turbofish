@@ -29,4 +29,6 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SHUTDOWN    293
 #define CLONE    120
 
+#define EXIT_QEMU   0x80000002
+
 #endif

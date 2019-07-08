@@ -46,7 +46,7 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit
+SRC_C += exit exit_qemu
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
