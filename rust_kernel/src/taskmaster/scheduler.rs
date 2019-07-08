@@ -48,7 +48,7 @@ pub type Tid = u32;
 #[inline(always)]
 pub fn unpreemptible() {
     unsafe {
-        crate::taskmaster::scheduler::_unpreemptible();
+        _unpreemptible();
     }
 }
 
@@ -60,12 +60,10 @@ pub fn preemptible() {
             // Check if the Time to live of the current process is expired
             // TODO: If scheduler is disable, the kernel will crash
             // TODO: After Exit, the next process seems to be skiped !
-            if crate::taskmaster::scheduler::_get_pit_time()
-                >= crate::taskmaster::scheduler::_get_process_end_time()
-            {
-                _auto_preempt();
+            if _get_pit_time() >= _get_process_end_time() {
+                auto_preempt();
             } else {
-                crate::taskmaster::scheduler::_preemptible();
+                _preemptible();
             }
         }
     }
