@@ -59,8 +59,11 @@ pub fn sys_execve(
         drop(v);
 
         // TODO: Use PWD later. (note that format! macro is not in a faillible memory context)
-        let pathname = format!("/bin/{}", filename);
+        let pathname = format!("{}", filename);
 
+        if !(pathname.starts_with("/")) {
+            unimplemented!();
+        }
         let content = get_file_content(&pathname)?;
 
         let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };

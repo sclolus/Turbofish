@@ -76,7 +76,7 @@ pub fn exec(args: &[&str]) -> u8 {
                 1
             } else if f == 0 {
                 execve(filename.as_ptr(), argv.as_ptr(), 0 as *const *const c_char) as u8;
-                println!("unexepted error !");
+                perror("execve failed\0".as_ptr());
                 1
             } else {
                 let mut status: i32 = 0;
@@ -91,7 +91,12 @@ pub fn exec(args: &[&str]) -> u8 {
 }
 
 extern "C" {
-    fn execve(filename: *const c_char, argv: *const *const c_char, envp: *const *const c_char) -> i32;
+    fn execve(
+        filename: *const c_char,
+        argv: *const *const c_char,
+        envp: *const *const c_char,
+    ) -> i32;
     fn fork() -> i32;
     fn wait(status: *mut i32) -> i32;
+    fn perror(msg: *const u8);
 }
