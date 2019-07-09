@@ -10,7 +10,8 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
-	{.path = "/bin/SignalSimple"}
+	{.path = "/bin/SignalSimple"},
+	{.path = "/bin/SignalSimpleDuo"}
 };
 
 #define TEST_PROGRAMS_LEN sizeof(TEST_PROGRAMS) / sizeof(struct program_test)
@@ -46,6 +47,7 @@ int main() {
 				// qemu exit fail
 				printf("test: '%s' failed", TEST_PROGRAMS[i].path);
 				printf("status '%d'", status);
+				sleep(10);
 				if (!WIFEXITED(status)) {
 					exit_qemu(1);
 				}
