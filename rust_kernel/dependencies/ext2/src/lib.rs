@@ -31,9 +31,21 @@ extern crate terminal;
 
 extern crate alloc;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use bit_field::BitArray;
 
 use core::mem::size_of;
+
+/// Global structure of ext2Filesystem, such as disk partition.
+#[derive(Debug)]
+pub struct Ext2Filesystem {
+    pub superblock: SuperBlock, // or remove pub and add get_superblock() method.
+    superblock_addr: u64,
+    disk: Disk,
+    nbr_block_grp: u32,
+    pub block_size: u32, // or remove pub and add get_block_size() method.
+    cache: Cache<u64, Block>,
+}
 
 /// Used to help confirm the presence of Ext2 on a volume
 const EXT2_SIGNATURE_MAGIC: u16 = 0xef53;
@@ -85,16 +97,6 @@ pub struct File {
 //     }
 // }
 
-/// Global structure of ext2Filesystem
-#[derive(Debug)]
-pub struct Ext2Filesystem {
-    pub superblock: SuperBlock, // or remove pub and add get_superblock() method.
-    superblock_addr: u64,
-    disk: Disk,
-    nbr_block_grp: u32,
-    pub block_size: u32, // or remove pub and add get_block_size() method.
-}
-
 type OffsetDirEntry = u32;
 type InodeAddr = u64;
 type InodeNbr = u32;
@@ -121,6 +123,7 @@ impl Ext2Filesystem {
             superblock_addr,
             nbr_block_grp,
             disk,
+            cache: Cache::new(block_size as usize / size_of::<Block>()),
         })
     }
 
@@ -270,7 +273,7 @@ impl Ext2Filesystem {
         else {
             let next_entry_off = curr_offset as u64 + entry.get_size() as u64;
             let previous_entry_addr = self
-                .inode_data((&mut inode, inode_addr), previous_offset as u64)
+                .inode_data_may_alloc((&mut inode, inode_addr), previous_offset as u64, false)
                 .unwrap();
             previous.set_size((next_entry_off - previous_offset as u64) as u16);
             previous.write_on_disk(previous_entry_addr, &mut self.disk)?;
@@ -390,7 +393,9 @@ impl Ext2Filesystem {
             Some((mut entry, offset)) => {
                 let offset = offset as u64;
 
-                let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
+                let entry_addr = self
+                    .inode_data_may_alloc((&mut inode, inode_addr), offset, false)
+                    .unwrap();
                 // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry)?;
                 let entry_size = entry.size() as u64;
 
@@ -399,7 +404,7 @@ impl Ext2Filesystem {
                     // if we do not cross a Block
                     if self.to_block(new_offset) == self.to_block(new_offset + new_entry.size() as u64)
                     // and the block is already allocated
-                        && self.inode_data((&mut inode, inode_addr), new_offset).is_ok()
+                        && self.inode_data_may_alloc((&mut inode, inode_addr), new_offset, true).is_ok()
                     //self.to_block( as u32) == self.to_block(offset)
                     {
                         new_offset
@@ -422,7 +427,7 @@ impl Ext2Filesystem {
         if offset >= inode.0.get_size() {
             return None;
         }
-        let base_addr = self.inode_data(inode, offset).ok()? as u64;
+        let base_addr = self.inode_data_may_alloc(inode, offset, false).ok()? as u64;
         let dir_header: DirectoryEntry = self.disk.read_struct(base_addr).ok()?;
         Some(dir_header)
     }
@@ -520,11 +525,6 @@ impl Ext2Filesystem {
         Ok(())
     }
 
-    /// get the data of an inode at the offset file.curr_offset
-    fn inode_data(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
-        self.inode_data_may_alloc(inode, offset, false)
-    }
-
     /// get the data of inode at offset `offset`, and allocate the data block if necessary
     fn inode_data_alloc(&mut self, inode: (&mut Inode, u64), offset: u64) -> IoResult<u64> {
         self.inode_data_may_alloc(inode, offset, true)
@@ -533,6 +533,7 @@ impl Ext2Filesystem {
     /// alloc a pointer (used by the function inode_data_alloc)
     fn alloc_pointer(&mut self, pointer_addr: u64, alloc: bool) -> IoResult<Block> {
         err_if_zero({
+            //            println!("reading at {:#X?}", pointer_addr);
             let pointer = self.disk.read_struct(pointer_addr)?;
             if alloc && pointer == Block(0) {
                 let new_block = self.alloc_block().ok_or(Errno::ENOSPC)?;
@@ -685,7 +686,9 @@ impl Ext2Filesystem {
         let block_off = offset / self.block_size as u64;
         let blocknumber_per_block = self.block_size as usize / size_of::<Block>();
 
-        /* SIMPLE ADDRESSING */
+        /*
+         * SIMPLE ADDRESSING
+         */
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
@@ -699,13 +702,13 @@ impl Ext2Filesystem {
             )?) + offset % self.block_size as u64);
         }
 
-        /* SINGLY INDIRECT ADDRESSING */
-        // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
+        /*
+         * SINGLY INDIRECT ADDRESSING
+         * 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
+         */
         offset_start = offset_end;
         offset_end += blocknumber_per_block as u64;
         if block_off >= offset_start && block_off < offset_end {
-            // dbg!("singly indirect addressing");
-
             let off = block_off - offset_start;
 
             let singly_indirect = err_if_zero({
@@ -716,20 +719,21 @@ impl Ext2Filesystem {
                 }
                 inode.singly_indirect_block_pointers
             })?;
+
             let pointer: Block = self.alloc_pointer(
                 self.to_addr(singly_indirect) + off * size_of::<Block>() as u64,
                 alloc,
             )?;
-            // dbg!(pointer);
 
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
 
-        /* DOUBLY INDIRECT ADDRESSING */
+        /*
+         * DOUBLY INDIRECT ADDRESSING
+         */
         offset_start = offset_end;
         offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
-            // dbg!("doubly indirect addressing");
             let off = (block_off - offset_start) / blocknumber_per_block as u64;
             let doubly_indirect = err_if_zero({
                 if alloc && inode.doubly_indirect_block_pointers == Block(0) {
@@ -748,16 +752,16 @@ impl Ext2Filesystem {
                 self.to_addr(pointer_to_pointer) + off * size_of::<Block>() as u64,
                 alloc,
             )?;
-
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
 
-        /* TRIPLY INDIRECT ADDRESSING */
+        /*
+         * TRIPLY INDIRECT ADDRESSING
+         */
         offset_start = offset_end;
         offset_end +=
             (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
-            // dbg!("triply indirect addressing");
             let off =
                 (block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u64;
 
@@ -793,5 +797,199 @@ impl Ext2Filesystem {
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
         Err(Errno::EFBIG)
+    }
+
+    /// Get the file location at offset 'offset'
+    /// Return which block store the file data at offset T
+    /// Simple Read
+    fn inode_data(&mut self, inode: &Inode, offset: u64) -> IoResult<u64> {
+        let block_off = offset / self.block_size as u64;
+        let blocknumber_per_block = self.block_size as usize / size_of::<Block>();
+
+        /*
+         * SIMPLE ADDRESSING
+         */
+        let mut offset_start = 0;
+        let mut offset_end = 12;
+        if block_off >= offset_start && block_off < offset_end {
+            return Ok(self.to_addr(err_if_zero(
+                inode.direct_block_pointers[block_off as usize],
+            )?) + offset % self.block_size as u64);
+        }
+
+        /*
+         * SINGLY INDIRECT ADDRESSING
+         * 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
+         */
+        offset_start = offset_end;
+        offset_end += blocknumber_per_block as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            let off = block_off - offset_start;
+            let singly_indirect = err_if_zero({ inode.singly_indirect_block_pointers })?;
+
+            let addr = self.to_addr(singly_indirect);
+            let pointer = self.get_pointer(addr, off, Level::L1)?;
+            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+        }
+
+        /*
+         * DOUBLY INDIRECT ADDRESSING
+         */
+        offset_start = offset_end;
+        offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            let off = (block_off - offset_start) / blocknumber_per_block as u64;
+            let doubly_indirect = err_if_zero({ inode.doubly_indirect_block_pointers })?;
+
+            let addr = self.to_addr(doubly_indirect);
+            let pointer_to_pointer = self.get_pointer(addr, off, Level::L1)?;
+
+            let off = (block_off - offset_start) % blocknumber_per_block as u64;
+
+            let addr = self.to_addr(pointer_to_pointer);
+            let pointer = self.get_pointer(addr, off, Level::L2)?;
+
+            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+        }
+
+        /*
+         * TRIPLY INDIRECT ADDRESSING
+         */
+        offset_start = offset_end;
+        offset_end +=
+            (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
+        if block_off >= offset_start && block_off < offset_end {
+            let off =
+                (block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u64;
+            let tripply_indirect = err_if_zero({ inode.triply_indirect_block_pointers })?;
+
+            let addr = self.to_addr(tripply_indirect);
+            let pointer_to_pointer_to_pointer = self.get_pointer(addr, off, Level::L1)?;
+
+            let off = (((block_off - offset_start)
+                % (blocknumber_per_block * blocknumber_per_block) as u64)
+                / blocknumber_per_block as u64) as u64;
+
+            let addr = self.to_addr(pointer_to_pointer_to_pointer);
+            let pointer_to_pointer = self.get_pointer(addr, off, Level::L2)?;
+
+            let off = (((block_off - offset_start)
+                % (blocknumber_per_block * blocknumber_per_block) as u64)
+                % blocknumber_per_block as u64) as u64;
+
+            let addr = self.to_addr(pointer_to_pointer);
+            let pointer = self.get_pointer(addr, off, Level::L3)?;
+
+            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+        }
+        Err(Errno::EFBIG)
+    }
+
+    /// Get a inode pointer
+    #[inline(always)]
+    fn get_pointer(&mut self, addr: u64, off: u64, level: Level) -> IoResult<Block> {
+        Ok(*match self.cache.get(addr, off as usize, level) {
+            Some(p) => p,
+            None => {
+                let v = self.cache.update_layer(addr, level);
+                unsafe {
+                    self.disk.read_buffer(
+                        addr,
+                        core::slice::from_raw_parts_mut(
+                            v.as_mut_ptr() as *mut u8,
+                            self.block_size as usize,
+                        ),
+                    )?
+                };
+                self.cache
+                    .get(addr, off as usize, level)
+                    .expect("Must be founded !")
+            }
+        })
+    }
+}
+
+const NB_LAYERS: usize = 3;
+
+/// Multi layer cache
+#[derive(Debug)]
+struct Cache<K, T> {
+    entries: [CacheEntry<K, T>; NB_LAYERS],
+}
+
+impl<K: Eq + PartialEq + Copy, T: Clone + Default> Cache<K, T> {
+    /// Create a new multi layer cache
+    fn new(nb_elems: usize) -> Self {
+        let mut entries: [CacheEntry<K, T>; NB_LAYERS] = unsafe { core::mem::uninitialized() };
+        for entry in entries.iter_mut() {
+            *entry = CacheEntry::new(nb_elems);
+        }
+        Self { entries }
+    }
+
+    /// Invalidate all the layers
+    fn invalidate(&mut self) {
+        for entry in self.entries.iter_mut() {
+            entry.invalidate();
+        }
+    }
+
+    /// Try to get a layer borrowed data
+    fn get(&self, idx: K, offset: usize, level: Level) -> Option<&T> {
+        self.entries[get_index(level)].get(idx).map(|v| &v[offset])
+    }
+
+    /// Update a layer and get a mutable reference to his content
+    fn update_layer(&mut self, idx: K, level: Level) -> &mut Vec<T> {
+        self.entries[get_index(level)].update_layer(idx)
+    }
+}
+
+fn get_index(level: Level) -> usize {
+    use Level::*;
+    match level {
+        L1 => NB_LAYERS - 3,
+        L2 => NB_LAYERS - 2,
+        L3 => NB_LAYERS - 1,
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Level {
+    L1,
+    L2,
+    L3,
+}
+
+#[derive(Debug)]
+struct CacheEntry<K, T> {
+    idx: Option<K>,
+    data: Vec<T>,
+}
+
+impl<K: Eq + PartialEq + Copy, T: Clone + Default> CacheEntry<K, T> {
+    fn new(nb_elems: usize) -> Self {
+        Self {
+            idx: None,
+            data: vec![Default::default(); nb_elems],
+        }
+    }
+
+    fn invalidate(&mut self) {
+        self.idx = None;
+    }
+
+    fn get(&self, idx: K) -> Option<&Vec<T>> {
+        if let Some(stored_idx) = self.idx {
+            if stored_idx == idx {
+                return Some(&self.data);
+            }
+        }
+        None
+    }
+
+    fn update_layer(&mut self, idx: K) -> &mut Vec<T> {
+        self.idx = Some(idx);
+        &mut self.data
     }
 }

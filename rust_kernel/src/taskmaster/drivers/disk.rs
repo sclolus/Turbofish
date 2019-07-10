@@ -173,9 +173,10 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
         Ok(IpcResult::Done(len as u32))
     }
 
+    /// Read data fron DiskIo: Convert bytes len to Sectors
     fn read(&mut self, mut buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let len = buf.len();
-        let start_offset = self.offset; // Just used for Assert
+        //let start_offset = self.offset; // Just used for Assert
 
         // Unaligned read start: in case of start_offset not multiple of SECTOR_SIZE
         let start_unaligned_bytes = (self.offset & SECTOR_MASK as u64) as usize;
@@ -190,14 +191,14 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
             );
             self.offset += size_to_copy as u64;
             if size_to_copy == buf.len() {
-                assert!(self.offset == start_offset + len as u64);
+                //assert!(self.offset == start_offset + len as u64);
                 return Ok(IpcResult::Done(len as u32));
             } else {
                 buf = &mut buf[size_to_copy..];
             }
         }
 
-        assert!(self.offset & SECTOR_MASK as u64 == 0);
+        //assert!(self.offset & SECTOR_MASK as u64 == 0);
         // Aligned read
         let mut aligned_sectors: NbrSectors = NbrSectors(buf.len() >> SECTOR_SHIFT);
         while aligned_sectors != NbrSectors(0) {
@@ -206,15 +207,15 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
                 .disk
                 .read(sector, aligned_sectors, buf.as_mut_ptr())
                 .map_err(|_| Errno::EIO)?;
-            assert!(aligned_sectors_readen != NbrSectors(0));
+            //assert!(aligned_sectors_readen != NbrSectors(0));
             aligned_sectors = aligned_sectors - aligned_sectors_readen;
             let bytes_readen: usize = aligned_sectors_readen.0 << SECTOR_SHIFT;
 
             self.offset += bytes_readen as u64;
             buf = &mut buf[bytes_readen..];
         }
-        assert!(self.offset & SECTOR_MASK as u64 == 0);
-        // Unaligned read end: in case of start_offset not multiple of SECTOR_SIZE
+        //assert!(self.offset & SECTOR_MASK as u64 == 0);
+        // Unaligned read end: in case of end_offset not multiple of SECTOR_SIZE
         let end_unaligned_bytes = ((self.offset + buf.len() as u64) & SECTOR_MASK as u64) as usize;
         if end_unaligned_bytes != 0 {
             let sector = Sector::from(self.offset + self.start_of_partition as u64);
@@ -226,7 +227,7 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
             self.offset += size_to_copy as u64;
         }
 
-        assert!(self.offset == start_offset + len as u64);
+        //assert!(self.offset == start_offset + len as u64);
         Ok(IpcResult::Done(len as u32))
     }
 

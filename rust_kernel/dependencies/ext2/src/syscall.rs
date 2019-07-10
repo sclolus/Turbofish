@@ -281,10 +281,12 @@ impl Ext2Filesystem {
             buf = &mut buf[..(inode.get_size() - *file_offset) as usize];
         }
 
+        // Invalidate the cache used after
+        self.cache.invalidate();
+
         let file_curr_offset_start = *file_offset;
         let block_mask = (self.block_size - 1) as u64;
 
-        //println!("buf size: {:?}", buf.len());
         //println!("inode_size: {:#X?} file_offset: {:#X?} len buf: {:?}", inode.get_size(), *file_offset, buf.len());
         while buf.len() != 0 {
             let mut bytes_to_read = 0;
@@ -292,9 +294,7 @@ impl Ext2Filesystem {
             let mut start_data_address = None;
             let mut last_data_address: Option<u64> = None;
             loop {
-                let data_address = self
-                    .inode_data((&mut inode, inode_addr), *file_offset)
-                    .expect("WTF");
+                let data_address = self.inode_data(&mut inode, *file_offset).expect("WTF");
                 if let Some(last_address) = last_data_address {
                     if data_address != last_address + self.block_size as u64 {
                         break;

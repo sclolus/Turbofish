@@ -284,6 +284,7 @@ impl BlockIo for IdeAtaController {
         nbr_sectors: NbrSectors,
         buf: *mut u8,
     ) -> DiskResult<NbrSectors> {
+        // log::warn!("Read of {:?} sectors", nbr_sectors);
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
