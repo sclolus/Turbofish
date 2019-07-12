@@ -204,13 +204,13 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         // Send a kill signum to the current process: kernel-sodo mode
         let current_task_pid = SCHEDULER.lock().current_task_id().0;
         let _res = match (*cpu_state).cpu_isr_reserved {
-            14 => sys_kill(current_task_pid, Signum::Sigsegv as u32),
+            14 => sys_kill(current_task_pid as i32, Signum::Sigsegv as u32),
             _ => {
                 log::warn!(
                     "{}",
                     CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1
                 );
-                sys_kill(current_task_pid, Signum::Sigkill as u32)
+                sys_kill(current_task_pid as i32, Signum::Sigkill as u32)
             }
         };
 

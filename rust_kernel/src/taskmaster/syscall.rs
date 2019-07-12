@@ -45,9 +45,11 @@ use execve::sys_execve;
 pub mod clone;
 use clone::{sys_clone, sys_fork};
 
-use errno::Errno;
+mod process_group;
+use process_group::{sys_getpgid, sys_getpgrp, sys_setpgid};
 
 use core::ffi::c_void;
+use errno::Errno;
 
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
@@ -103,7 +105,7 @@ unsafe fn sys_exit(status: i32) -> ! {
     SCHEDULER.lock().current_task_exit(status);
 }
 
-unsafe fn sys_getpid() -> SysResult<u32> {
+unsafe fn sys_getpid() -> SysResult<Pid> {
     Ok(unpreemptible_context!({
         SCHEDULER.lock().current_task_id().0
     }))
@@ -155,8 +157,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         20 => sys_getpid(),
         // 24 => sys_getuid(), TODO: need to be implemented
         29 => sys_pause(),
-        37 => sys_kill(ebx as Pid, ecx as u32),
+        37 => sys_kill(ebx as i32, ecx as u32),
         48 => sys_signal(ebx as u32, ecx as usize),
+        57 => sys_setpgid(ebx as Pid, ecx as Pid),
+        65 => sys_getpgrp(),
         67 => sys_sigaction(
             ebx as u32,
             ecx as *const StructSigaction,
@@ -172,6 +176,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ecx as usize,
             MmapProt::from_bits_truncate(edx),
         ),
+        132 => sys_getpgid(ebx as Pid),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         200 => sys_sigreturn(cpu_state),
         293 => sys_shutdown(),

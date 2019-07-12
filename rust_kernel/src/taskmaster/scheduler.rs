@@ -212,7 +212,10 @@ impl Scheduler {
         self.running_process.try_reserve(1)?;
         self.all_process.insert(
             pid,
-            ThreadGroup::try_new(Task::new(father_pid, ProcessState::Running(process)))?,
+            ThreadGroup::try_new(
+                Task::new(father_pid, ProcessState::Running(process)),
+                father_pid.unwrap_or(pid),
+            )?,
         );
         self.running_process.push((pid, 0));
         Ok(pid)
@@ -314,7 +317,7 @@ impl Scheduler {
                                         .current_task()
                                         .child
                                         .iter()
-                                        .find(|&&current_pid| current_pid == *pid as u32)
+                                        .find(|&&current_pid| current_pid == *pid as Pid)
                                     {
                                         if self
                                             .get_task((*elem, 0))
@@ -407,7 +410,7 @@ impl Scheduler {
         self.get_task_mut(self.current_task_id).unwrap()
     }
 
-    pub fn _current_thread_group(&self) -> &ThreadGroup {
+    pub fn current_thread_group(&self) -> &ThreadGroup {
         self.get_thread_group(self.current_task_id.0).unwrap()
     }
 
@@ -447,7 +450,7 @@ impl Scheduler {
         kernel_esp: u32,
         child_stack: *const c_void,
         flags: CloneFlags,
-    ) -> SysResult<u32> {
+    ) -> SysResult<Pid> {
         if self.time_interval == None {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
@@ -470,7 +473,7 @@ impl Scheduler {
             self.current_task_mut().child.push(child_pid);
             self.all_process.try_reserve(1)?;
             self.all_process
-                .insert(child_pid, ThreadGroup::try_new(child)?);
+                .insert(child_pid, ThreadGroup::try_new(child, father_pid)?);
             self.running_process.push((child_pid, 0));
             child_pid
         };

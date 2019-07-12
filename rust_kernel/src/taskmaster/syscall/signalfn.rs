@@ -4,8 +4,8 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{JobAction, StructSigaction};
-use super::task::WaitingState;
+use super::signal::{JobAction, Signum, StructSigaction};
+use super::task::{Task, WaitingState};
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -39,17 +39,57 @@ pub unsafe fn sys_sigaction(
 }
 
 /// Send a signal to a specified PID process
-pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
+pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
+    fn generate_signal<'a, T: Iterator<Item = &'a mut Task>>(
+        iter: T,
+        signum: Signum,
+    ) -> SysResult<u32> {
+        let mut present = false;
+        for task in iter {
+            present = true;
+            task.signal.generate_signal(signum)?;
+        }
+        if !present {
+            return Err(Errno::Esrch);
+        }
+        Ok(0)
+    }
     unpreemptible_context!({
+        let signum = signum.try_into().map_err(|_| Errno::Einval)?;
         let mut scheduler = SCHEDULER.lock();
 
-        let current_task_pid = scheduler.current_task_id().0;
-        let task = scheduler.get_task_mut((pid, 0)).ok_or(Errno::Esrch)?;
-        let signum = signum.try_into().map_err(|_| Errno::Einval)?;
-        let res = task.signal.generate_signal(signum)?;
-
+        if pid < -1 {
+            generate_signal(
+                scheduler
+                    .all_process
+                    .iter_mut()
+                    .filter_map(|(_pid, thread_group)| {
+                        if thread_group.pgid == -pid as Pid {
+                            Some(thread_group.get_first_thread())
+                        } else {
+                            None
+                        }
+                    }),
+                signum,
+            )
+        } else if pid == -1 {
+            generate_signal(
+                scheduler
+                    .all_process
+                    .iter_mut()
+                    .filter_map(|(_pid, thread_group)| Some(thread_group.get_first_thread())),
+                signum,
+            )
+        } else {
+            generate_signal(scheduler.get_task_mut((pid as Pid, 0)).into_iter(), signum)
+        }?;
         // auto-sodo mode
-        if current_task_pid == pid {
+        let current_task_pid = scheduler.current_task_id().0;
+        if (pid > 0 && current_task_pid == pid as u32)
+            || (pid < -1 && scheduler.current_thread_group().pgid == -pid as Pid)
+            || pid == -1
+        {
+            let task = scheduler.current_task();
             let action = task.signal.get_job_action();
 
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
@@ -61,7 +101,7 @@ pub unsafe fn sys_kill(pid: Pid, signum: u32) -> SysResult<u32> {
                 SIGNAL_LOCK = true;
             }
         }
-        Ok(res)
+        Ok(0)
     })
 }
 

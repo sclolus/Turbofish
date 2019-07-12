@@ -27,6 +27,7 @@ all:
 	make -C ./c/ SignalSimpleStopContinue
 	make -C ./c/ GetArgs
 	make -C ./c/ DeepThought
+	make -C ./c/ ProcessGroup
 	cp ./c/build/* $(TARGET_DIR)
 
 	make -C ./rust/fork_bomb

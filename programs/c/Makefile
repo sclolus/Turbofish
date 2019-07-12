@@ -1,4 +1,10 @@
 
+ifeq ($(findstring ProcessGroup,$(MAKECMDGOALS)),ProcessGroup)
+	TARGET = ProcessGroup
+	SRC_C = ProcessGroup
+endif
+
+
 ifeq ($(findstring DeepThought,$(MAKECMDGOALS)),DeepThought)
 	TARGET = DeepThought
 	SRC_C = DeepThought

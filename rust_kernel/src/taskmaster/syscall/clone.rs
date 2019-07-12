@@ -1,4 +1,4 @@
-use super::scheduler::SCHEDULER;
+use super::scheduler::{Pid, SCHEDULER};
 use super::SysResult;
 use bitflags::bitflags;
 use core::ffi::c_void;
@@ -41,7 +41,7 @@ bitflags! {
 // parent_tidptr=0x7ff03ba959d0, tls=0x7ff03ba95700,
 // child_tidptr=0x7ff03ba959d0) = 21807
 /// the clone syscall
-pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) -> SysResult<u32> {
+pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) -> SysResult<Pid> {
     let flags = CloneFlags::from_bits_truncate(clone_flags);
 
     unpreemptible_context!({
@@ -52,7 +52,7 @@ pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) 
 }
 
 /// Fork a process
-pub fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
+pub fn sys_fork(kernel_esp: u32) -> SysResult<Pid> {
     sys_clone(
         kernel_esp,
         0 as *const c_void,

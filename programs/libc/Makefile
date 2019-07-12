@@ -50,7 +50,7 @@ SRC_C += exit exit_qemu
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve process_group
 VPATH += src/unistd
 HEADERS += include/unistd.h
 

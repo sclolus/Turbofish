@@ -47,4 +47,8 @@ int reboot(void);
 
 int execve(const char *filename, char *const argv[], char *const envp[]);
 
+pid_t getpgid(pid_t pid);
+pid_t getpgrp(void);
+int setpgid(pid_t pid, pid_t pgid);
+
 #endif
