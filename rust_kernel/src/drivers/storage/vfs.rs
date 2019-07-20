@@ -16,6 +16,8 @@ use errno::Errno;
 use core::str::{Split};
 use core::iter::Filter;
 
+type DeviceId = usize;
+
 /// Type of file
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Filetype {
@@ -27,7 +29,6 @@ pub enum Filetype {
     Socket,
     SymbolicLink,
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VfsError {
@@ -85,7 +86,7 @@ impl VirtualFileSystem {
 
     fn pathname_resolution(&mut self, path: &Path) -> Option<&DirectoryEntry> {
         fn aux<'a>(mut components: Split<char>, root: &'a DirectoryEntry) -> Option<&'a DirectoryEntry> {
-            let component = loop {
+            let component = loop { // rewrite all of this with skip_while.
                 match components.next() {
                     Some(component) => {
                         if component == "" {
