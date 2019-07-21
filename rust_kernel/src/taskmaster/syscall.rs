@@ -113,7 +113,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         3 => sys_read(ebx as i32, ecx as *const u8, edx as usize),
         4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        5 => sys_open(ebx, ecx, edx)
+        // 5 => sys_open(ebx, ecx, edx),
         7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         20 => sys_getpid(),
         37 => sys_kill(ebx as Pid, ecx as u32, cpu_state),

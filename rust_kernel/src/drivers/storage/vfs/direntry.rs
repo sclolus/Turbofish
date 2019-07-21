@@ -2,6 +2,7 @@
 use super::posix_consts::*;
 use super::{VfsResult, VfsError};
 use super::Filetype;
+use super::InodeId;
 use core::convert::TryFrom;
 use core::fmt;
 use core::str::Split;
@@ -11,6 +12,8 @@ use errno::Errno;
 
 use alloc::vec;
 use alloc::vec::Vec;
+
+pub type DirectoryEntryId = usize;
 
 /// Newtype of filename
 #[derive(Copy, Clone)]
@@ -57,18 +60,15 @@ impl fmt::Debug for Filename {
 
 #[derive(Debug)]
 pub struct DirectoryEntryHeader {
-    /// inode number of the entry.
-    pub inode: u32,
-
+    pub id: DirectoryEntryId,
+    pub inode_id: InodeId,
     pub filename: Filename,
     pub name_size: usize,
-
     pub filetype: Filetype,
 }
 
 #[derive(Debug)]
 pub struct DirectoryEntry {
-
     pub header: DirectoryEntryHeader,
     pub entry: Entry,
 }
@@ -79,7 +79,7 @@ pub enum Entry {
 
     },
     Directory {
-        direntries: Vec<DirectoryEntry>,
+        direntries: Vec<DirectoryEntryId>,
     },
     CharacterDevice {
     },
@@ -94,14 +94,14 @@ pub enum Entry {
 }
 
 impl DirectoryEntry {
-    pub fn new(filename: &str, filetype: Filetype, inode: u32) -> VfsResult<Self> {
+    pub fn new(filename: &str, filetype: Filetype, inode: InodeId) -> VfsResult<Self> {
         let mut header: DirectoryEntryHeader = unsafe { mem::zeroed() };
 
         if filename.as_bytes().len() > NAME_MAX {
             unimplemented!();
         }
 
-        header.inode = inode;
+        header.inode_id = inode;
         header.filetype = filetype;
         // (header.filename.0)[0..filename.as_bytes().len()].copy_from_slice(filename.as_bytes());
         header.filename = TryFrom::try_from(filename)?;
@@ -134,7 +134,7 @@ impl DirectoryEntry {
         self.header.filetype == Filetype::Directory
     }
 
-    pub fn directory_entries(&self) -> VfsResult<core::slice::Iter<DirectoryEntry>> {
+    pub fn directory_entries(&self) -> VfsResult<core::slice::Iter<DirectoryEntryId>> {
         use Entry::*;
         if self.is_directory() {
             if let Directory {
@@ -150,61 +150,59 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn directory_entries_mut(&mut self) -> VfsResult<core::slice::IterMut<DirectoryEntry>> {
-        use Entry::*;
-        if let Directory {
-            direntries,
-        } = &mut self.entry {
-            Result::Ok(direntries.iter_mut())
-        } else {
-            Result::Err(VfsError::IsNotADirectory)
-        }
-    }
+    // pub fn directory_entries_mut(&mut self) -> VfsResult<core::slice::IterMut<DirectoryEntry>> {
+    //     use Entry::*;
+    //     if let Directory {
+    //         direntries,
+    //     } = &mut self.entry {
+    //         Result::Ok(direntries.iter_mut())
+    //     } else {
+    //         Result::Err(VfsError::IsNotADirectory)
+    //     }
+    // }
 
-    pub fn add_direntry(&mut self, entry: DirectoryEntry) -> VfsResult<&mut DirectoryEntry> {
+    pub fn add_direntry(&mut self, entry: DirectoryEntryId) -> VfsResult<()> {
         if !self.is_directory() {
             return Result::Err(VfsError::IsNotADirectory);
         }
 
         if let Entry::Directory { direntries } = &mut self.entry {
             direntries.push(entry);
-            let len = direntries.len();
-
-            Result::Ok(&mut direntries[len - 1])
+            Result::Ok(())
         } else {
             panic!("Impossible condition");
         }
     }
 
-    pub fn walk_tree<E, F: FnMut(&DirectoryEntry) -> Result<(), E>>(&self, mut callback: &mut F) -> Result<(), E> {
-        if !self.is_directory() {
-            return Ok(())
-        }
+    // pub fn walk_tree<E, F: FnMut(&DirectoryEntry) -> Result<(), E>>(&self, mut callback: &mut F) -> Result<(), E> {
+    //     if !self.is_directory() {
+    //         return Ok(())
+    //     }
 
-        for entry in self.directory_entries().unwrap() {
-            callback(entry)?;
-        }
+    //     for entry in self.directory_entries().unwrap() {
+    //         callback(entry)?;
+    //     }
 
-        for entry in self.directory_entries().unwrap().filter(|x| x.is_directory()) {
-            entry.walk_tree(callback)?;
-        }
-        Ok(())
-    }
+    //     for entry in self.directory_entries().unwrap().filter(|x| x.is_directory()) {
+    //         entry.walk_tree(callback)?;
+    //     }
+    //     Ok(())
+    // }
 
-    pub fn walk_tree_mut<E, F: FnMut(&mut DirectoryEntry) -> Result<(), E>>(&mut self, mut callback: &mut F) -> Result<(), E> {
-        if !self.is_directory() {
-            return Ok(())
-        }
+    // pub fn walk_tree_mut<E, F: FnMut(&mut DirectoryEntry) -> Result<(), E>>(&mut self, mut callback: &mut F) -> Result<(), E> {
+    //     if !self.is_directory() {
+    //         return Ok(())
+    //     }
 
-        for entry in self.directory_entries_mut().unwrap().filter(|x| x.is_directory()) {
-            if let Err(e) = entry.walk_tree_mut(callback) {
-                return Err(e)
-            }
-        }
+    //     for entry in self.directory_entries_mut().unwrap().filter(|x| x.is_directory()) {
+    //         if let Err(e) = entry.walk_tree_mut(callback) {
+    //             return Err(e)
+    //         }
+    //     }
 
-        for entry in self.directory_entries_mut().unwrap() {
-            callback(entry)?;
-        }
-        Ok(())
-    }
+    //     for entry in self.directory_entries_mut().unwrap() {
+    //         callback(entry)?;
+    //     }
+    //     Ok(())
+    // }
 }
