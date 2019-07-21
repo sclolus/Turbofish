@@ -6,11 +6,13 @@ use direntry::{DirectoryEntry, DirectoryEntryHeader, DirectoryEntryId};
 pub mod inode;
 use inode::{Inode, InodeId, inode_number, mode_t, File, InodeOperations};
 
+
 pub mod posix_consts;
 pub use posix_consts::*;
 
 use alloc::vec::Vec;
 use alloc::boxed::Box;
+
 
 use core::str::{Split};
 use core::iter::Filter;
@@ -42,6 +44,7 @@ pub enum Filetype {
 pub enum VfsError {
     MountError,
     IsNotADirectory,
+
     InodeAlreadyExists,
     Errno(Errno),
 }
@@ -51,8 +54,9 @@ impl From<Errno> for VfsError {
         VfsError::Errno(value)
     }
 }
+
 impl From<VfsError> for NoneError {
-    fn from(value: VfsError) -> Self {
+    fn from(_value: VfsError) -> Self {
         NoneError
     }
 }
@@ -64,7 +68,6 @@ pub trait Filesystem {
     fn get_name(&self) -> &str;
     fn read_superblock(&self) -> Superblock;
     fn get_root_inode(&self) -> Inode;
-
 }
 
 enum FileSystemType {}
@@ -129,8 +132,8 @@ pub struct VirtualFileSystem {
     inodes: BTreeMap<InodeId, Inode>,
     dcache: Dcache,
 }
-
 type Path = str;
+
 
 bitflags! {
     #[derive(Default)] // I wonder for this derive <.<
@@ -158,7 +161,7 @@ bitflags! {
 
         /// If the file exists, this flag has no effect except as noted under O_EXCL below.
         /// Otherwise, if O_DIRECTORY is not set the file shall be created as a regular file; the user ID of the file shall be set to the effective user ID of the process; the group ID of the file shall be set to the group ID of the file's parent directory or to the effective group ID of the process; and the access permission bits (see <sys/stat.h>) of the file mode shall be set to the value of the argument following the oflag argument taken as type mode_t modified as follows: a bitwise AND is performed on the file-mode bits and the corresponding bits in the complement of the process' file mode creation mask. Thus, all bits in the file mode whose corresponding bit in the file mode creation mask is set are cleared. When bits other than the file permission bits are set, the effect is unspecified. The argument following the oflag argument does not affect whether the file is open for reading, writing, or for both. Implementations shall provide a way to initialize the file's group ID to the group ID of the parent directory. Implementations may, but need not, provide an implementation-defined way to initialize the file's group ID to the effective group ID of the calling process.
-// do something about this pave
+        // do something about this pave
         const O_CREAT = 0x80;
 
         /// If path resolves to a non-directory file, fail and set errno to [ENOTDIR].
@@ -304,11 +307,10 @@ impl VirtualFileSystem {
                 let direntry_inode_id = direntry.header.inode_id;
                 self.dcache.get_direntry_mut(current_dir_id)?.add_direntry(direntry_id).unwrap(); //remove this unwrap
                 let new_inode = (current_dir_inode.inode_operations.lookup_inode)(direntry_inode_id).unwrap();
-
+                self.add_inode(new_inode);
                 current_dir_id = direntry_id;
             }
         }
-
     }
 
     fn mount_on_dentry(&mut self,
@@ -333,17 +335,17 @@ impl VirtualFileSystem {
         }
     }
 
-    fn get_inode(&self, id: InodeId) -> Option<&Inode> {
+    pub fn get_inode(&self, id: InodeId) -> Option<&Inode> {
         self.inodes.get(&id)
     }
 
-    pub fn open(&mut self, path: &Path, flags: open_flags, mode: mode_t) -> VfsResult<File> {
+    pub fn open(&mut self, path: &Path, flags: open_flags, _mode: mode_t) -> VfsResult<File> {
         // Applications shall specify exactly one of the first five values (file access modes)
         let unique_necessary = open_flags::O_EXEC
-                             | open_flags::O_RDONLY
-                             | open_flags::O_RDWR
-                             | open_flags::O_SEARCH
-                             | open_flags::O_WRONLY;
+                                | open_flags::O_RDONLY
+                                | open_flags::O_RDWR
+                                | open_flags::O_SEARCH
+                                | open_flags::O_WRONLY;
         if !flags.intersects(unique_necessary) {
             return Err(VfsError::Errno(Einval))
         }
@@ -443,7 +445,7 @@ impl Display for VirtualFileSystem {
 }
 
 pub fn init() -> VfsResult<VirtualFileSystem> {
-    let mut vfs = VirtualFileSystem::new()?;
+    let vfs = VirtualFileSystem::new()?;
 
     println!("{}", vfs);
     // let result: Result<(), VfsError> = vfs.dcache.walk_tree_mut(&mut |entry| { entry.add_direntry(DirectoryEntry::new("lol", Filetype::Directory, InodeId::new(5, 0))?);; Ok(())});
