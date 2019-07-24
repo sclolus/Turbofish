@@ -32,7 +32,7 @@
 //The <locale.h> header shall define NULL (as described in <stddef.h>) and at least the following as macros:
 //
 //
-//LC_ALL
+#define LC_ALL "C"
 //LC_COLLATE
 //LC_CTYPE
 //[CX] [Option Start]

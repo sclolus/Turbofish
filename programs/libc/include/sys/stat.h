@@ -3,10 +3,6 @@
 #include <sys/types.h>
 #include <time.h>
 
-struct timespec {
-	int t;
-};
-
 struct stat {
 	dev_t st_dev;            // Device ID of device containing file. 
 	ino_t st_ino;            // File serial number. 
@@ -39,6 +35,10 @@ struct stat {
 	//[Option End]
 
 };
+
+#define st_atime st_atim.tv_sec      /* Backward compatibility */
+#define st_mtime st_mtim.tv_sec
+#define st_ctime st_ctim.tv_sec
 //The st_ino and st_dev fields taken together uniquely identify the file within the system.
 
 //The <sys/stat.h> header shall define the [XSI] [Option Start] blkcnt_t, blksize_t, [Option End] dev_t, ino_t, mode_t, nlink_t, uid_t, gid_t, off_t, and time_t types as described in <sys/types.h>.

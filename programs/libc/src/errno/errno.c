@@ -885,6 +885,6 @@ TRANS error; @pxref{Cancel AIO Operations}. */
 
 const int _sys_nerr_internal = NERR;
 
-void perror(char *msg) {
+void perror(const char *msg) {
 	dprintf(2, "%s: %s\n", msg, _sys_errlist_internal[errno]);
 }

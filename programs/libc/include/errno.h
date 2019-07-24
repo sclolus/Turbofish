@@ -137,5 +137,3 @@ extern int errno;
 #define EMEDIUMTYPE     124     /* Wrong medium type */
 
 #endif
-
-void perror(char *msg);

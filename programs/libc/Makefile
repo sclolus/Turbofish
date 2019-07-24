@@ -55,8 +55,12 @@ VPATH += src/unistd
 HEADERS += include/unistd.h
 
 SRC_C += mmap munmap mprotect
-VPATH += src/sys/mman
+VPATH += src/sys/mman 
 HEADERS += include/sys/mman.h
+
+SRC_C += mkfifo
+VPATH += src/sys/stat 
+HEADERS += include/sys/stat.h
 
 SRC_ASM += clone
 SRC_C += sched
@@ -87,7 +91,7 @@ AS = nasm
 CC = i686-turbofish-gcc
 
 ASFLAGS = -f elf
-CFLAGS += $(IFLAGS)  -nostdlib #-m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc #$(IFLAGS)
+CFLAGS += $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 #ifeq ($(DEBUG),yes)
 #	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
 #	ASFLAGS += -g
@@ -129,3 +133,4 @@ exec: all
 
 install:
 	cp libc.a ~/cross/sysroot/usr/lib/.
+	cp -r include/*  ~/cross/sysroot/usr/include/
