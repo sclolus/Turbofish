@@ -1,12 +1,35 @@
-#ifndef __STDIO_H__
-# define __STDIO_H__
+#ifndef STDIO_H
+#define STDIO_H
+#include <stdarg.h>
+#include <stddef.h>
+#define SEEK_SET 0
+typedef struct { int unused; } FILE;
+#ifdef __cplusplus
+extern "C" {
+#endif
+	extern FILE* stderr;
+	extern FILE* stdout;
+	extern FILE* stdin;
 
-#include "i386.h"
+#define stderr stderr
+#define stdin stdin
+#define stdout stdout
 
-int printf(const char *restrict format, ...);
-int eprintf(const char *restrict format, ...);
-int fprintf(int const fd, const char *restrict format, ...);
-int dprintf(bool display, const char *restrict format, ...);
-int sprintf(char *str, const char *restrict format, ...);
+#ifndef EOF
+# define EOF (-1)
+#endif
 
+	int fclose(FILE*);
+	int fflush(FILE*);
+	FILE* fopen(const char*, const char*);
+	int fprintf(FILE*, const char*, ...);
+	size_t fread(void*, size_t, size_t, FILE*);
+	int fseek(FILE*, long, int);
+	long ftell(FILE*);
+	size_t fwrite(const void*, size_t, size_t, FILE*);
+	void setbuf(FILE*, char*);
+	int vfprintf(FILE*, const char*, va_list);
+#ifdef __cplusplus
+}
+#endif
 #endif

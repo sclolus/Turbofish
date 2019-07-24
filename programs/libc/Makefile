@@ -14,7 +14,7 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strclr striter striteri \
 	strequ strnequ \
 	putchar putstr putendl putnbr putnbr_base \
-	aligned_memcpy aligned_bzero
+	aligned_memcpy aligned_bzero strdup
 VPATH += src/string
 HEADERS += include/string.h
 
@@ -54,6 +54,10 @@ SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink p
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
+SRC_C += mmap munmap mprotect
+VPATH += src/sys/mman
+HEADERS += include/sys/mman.h
+
 SRC_ASM += clone
 SRC_C += sched
 VPATH += src/sched
@@ -80,19 +84,19 @@ VPATH += src
 HEADERS += include/user_syscall.h
 
 AS = nasm
-CC = gcc
+CC = i686-turbofish-gcc
 
 ASFLAGS = -f elf
-CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc $(IFLAGS)
-ifeq ($(DEBUG),yes)
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
-	ASFLAGS += -g
-else ifeq ($(OPTIM),yes)
-	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
-else
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall
-endif
+CFLAGS += $(IFLAGS)  -nostdlib #-m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc #$(IFLAGS)
+#ifeq ($(DEBUG),yes)
+#	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
+#	ASFLAGS += -g
+#else ifeq ($(OPTIM),yes)
+#	# -fno-omit-frame-pointer keep good call trace for panic()
+#	CFLAGS += -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
+#else
+#	CFLAGS += -v -std=gnu99 -Wextra -Wall
+#endif
 
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
@@ -122,3 +126,6 @@ re: fclean all
 
 exec: all
 	./$(TARGET)
+
+install:
+	cp libc.a ~/cross/sysroot/usr/lib/.

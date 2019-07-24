@@ -6,6 +6,8 @@
  * Here is a copy of that file as of Aug 2004 on RedHat 7.3
  */
 
+extern int errno;
+
 #define EPERM            1      /* Operation not permitted */
 #define ENOENT           2      /* No such file or directory */
 #define ESRCH            3      /* No such process */

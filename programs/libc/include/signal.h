@@ -1,7 +1,7 @@
 #ifndef __SIGNAL_H__
 # define __SIGNAL_H__
 
-#include "i386.h"
+//#include "i386.h"
 
 /* Default actions. */
 #define SIG_DFL        0
@@ -49,10 +49,10 @@ typedef void (*sighandler_t)(int);
 sighandler_t signal(int signum, sighandler_t handler);
 
 // TODO: Verify that before implementing sigaction
-typedef int pid_t;
-typedef int uid_t;
-typedef u32 clock_t;
-typedef u32 sigval_t;
+#define pid_t int
+#define uid_t int
+#define clock_t int
+#define sigval_t int
 
 struct siginfo {
 	int      si_signo;       /* Signal number            */
@@ -97,10 +97,10 @@ struct siginfo {
 
 #define SA_RESTORER  0x04000000
 
-typedef struct siginfo siginfo_t;
+#define siginfo_t struct siginfo
 
 // TODO: Modify that dummy code
-typedef u32 sigset_t;
+#define sigset_t int
 
 struct sigaction {
 	union {

@@ -4,7 +4,7 @@
 
 extern int errno;
 
-int write(int fd, const char *s, size_t len)
+int write(int fd, const void *s, size_t len)
 {
 	int ret = _user_syscall(WRITE, 3, fd, s, len);
 	if (ret < 0) {

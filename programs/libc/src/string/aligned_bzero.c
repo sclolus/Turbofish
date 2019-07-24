@@ -1,5 +1,6 @@
 
 #include "string.h"
+#include "i386.h"
 
 /*
 ** XXX This function is not secure ! Only size multiplied by 4 works !
