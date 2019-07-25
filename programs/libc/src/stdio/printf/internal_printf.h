@@ -2,6 +2,7 @@
 #ifndef INTERNAL_PRINTF_H
 # define INTERNAL_PRINTF_H
 
+#include "stddef.h"
 typedef __builtin_va_list	va_list;
 # define va_start(v,l)		__builtin_va_start(v,l)
 # define va_end(v)		__builtin_va_end(v)
@@ -18,7 +19,7 @@ typedef short int		t_s_int;
 typedef long int		t_l_int;
 typedef long long int		t_ll_int;
 
-typedef unsigned int		size_t;
+//typedef unsigned int		size_t;
 typedef unsigned int		uintmax_t;
 typedef signed int		intmax_t;
 typedef signed int		wchar_t;
@@ -26,7 +27,6 @@ typedef signed int		bool;
 
 # define false			0
 # define true			1
-# define NULL			0
 # define MB_CUR_MAX		4
 
 # define MASK7			0x0000007f

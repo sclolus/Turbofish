@@ -66,7 +66,7 @@ typedef int locale_t;
 //[CX][Option Start]
 //locale_t      newlocale(int, const char *, locale_t);
 //[Option End]
-//char         *setlocale(int, const char *);
+char         *setlocale(int, const char *);
 //[CX][Option Start]
 //locale_t      uselocale (locale_t);
 //[Option End]

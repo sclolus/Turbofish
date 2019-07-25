@@ -1,5 +1,6 @@
 
 #include "internal_printf.h"
+#include "stdio.h"
 
 /*
 **	'man 3 stdarg' to understand variadics macro.
@@ -22,7 +23,7 @@ int		printf(const char *restrict format, ...)
 	return (op.total_size);
 }
 
-int		dprintf(bool display, const char *restrict format, ...)
+int		_dprintf(bool display, const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;
@@ -58,7 +59,12 @@ int		eprintf(const char *restrict format, ...)
 	return (op.total_size);
 }
 
-int		fprintf(int const fd, const char *restrict format, ...)
+int fprintf(FILE *stream, const char *format, ...)
+{
+	return dprintf(stream->fd, format);
+}
+
+int		dprintf(int const fd, const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;

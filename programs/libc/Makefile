@@ -21,8 +21,9 @@ HEADERS += include/string.h
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
-	cast buffer norme
-VPATH += src/stdio/printf
+	cast buffer norme \
+	stdio _doprnt
+VPATH += src/stdio/printf src/stdio/
 HEADERS += include/stdio.h internal_printf.h
 
 SRC_C += ctor mem_syscall \
@@ -46,7 +47,7 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit exit_qemu
+SRC_C += exit exit_qemu atexit env abort abs
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
@@ -82,6 +83,14 @@ HEADERS += include/wait.h
 SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
 VPATH += src/socket
 HEADERS += include/sys/socket.h include/sys/un.h
+
+SRC_C += gettext locale
+VPATH += src/locale
+HEADERS += include/locale.h
+
+SRC_C += isdigit 
+VPATH += src/ctype
+HEADERS += include/ctype.h
 
 SRC_ASM += user_syscall
 VPATH += src

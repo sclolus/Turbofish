@@ -7,7 +7,7 @@
 
 //The <stdio.h> header shall define the following data types through typedef:
 
-typedef struct { int unused; } FILE;
+typedef struct { int fd; } FILE;
 //    A structure containing information about a file.
 typedef size_t fpos_t;
 //    A non-array type containing all information needed to specify uniquely every position within a file.

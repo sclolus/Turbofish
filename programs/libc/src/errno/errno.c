@@ -11,7 +11,7 @@ int errno = 0;
 # define ERR_REMAP(n) n
 #endif
 
-const char *const _sys_errlist_internal[] =
+const char *const sys_errlist[] =
   {
     [0] = N_("Success"),
 #ifdef EPERM
@@ -881,10 +881,10 @@ TRANS error; @pxref{Cancel AIO Operations}. */
   };
 
 #define NERR \
-  (sizeof _sys_errlist_internal / sizeof _sys_errlist_internal [0])
+  (sizeof sys_errlist/ sizeof sys_errlist[0])
 
-const int _sys_nerr_internal = NERR;
+const int sys_nerr = NERR;
 
 void perror(const char *msg) {
-	dprintf(2, "%s: %s\n", msg, _sys_errlist_internal[errno]);
+	dprintf(2, "%s: %s\n", msg, sys_errlist[errno]);
 }

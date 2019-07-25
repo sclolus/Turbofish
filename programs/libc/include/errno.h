@@ -7,6 +7,8 @@
  */
 
 extern int errno;
+extern const int sys_nerr;
+extern const char *const sys_errlist[];
 
 #define EPERM            1      /* Operation not permitted */
 #define ENOENT           2      /* No such file or directory */
