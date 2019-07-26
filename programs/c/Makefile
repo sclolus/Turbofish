@@ -145,19 +145,19 @@ endif
 BUILD_DIR = build
 VPATH += src
 
-AS = nasm
-CC = gcc
+AS = i686-turbofish-ld
+CC = i686-turbofish-gcc
 
 ifeq ($(GNU),yes)
-CFLAGS += -m32
+#CFLAGS += -m32
 # Add GNU libc includes
-LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
+#LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
 else
-CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc
-LDFLAGS = -T linker.ld -m elf_i386
+#CFLAGS += #-m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions # -nostdinc
+#LDFLAGS = -T linker.ld -m elf_i386
 endif
-ASFLAGS = -f elf
-CFLAGS += -m32
+#ASFLAGS = -f elf
+#CFLAGS += -m32
 ifeq ($(LDMAP),yes)
     LDFLAGS += -M
 endif
@@ -177,16 +177,16 @@ OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C))))
 all: $(TARGET)
 # Do nothing while A specific target is not specified
 
-$(TARGET): $(OBJ_ASM) $(OBJ_C)
+$(TARGET): $(OBJ_C)
 ifeq ($(GNU),yes)
-	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/$@ $^
+	$(CC) $(LDFLAGS) -o $(BUILD_DIR)/$@ $^
 else
 	make -C libc all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/$@ $^ libc/libc.a
+	$(CC) -o $(BUILD_DIR)/$@ $^
 endif
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
-	$(AS) $(ASFLAGS) -o $@ $<
+# $(OBJ_DIR)/%.o: Makefile $(HEADERS)
+# 	$(CC) -o $@ $<
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<

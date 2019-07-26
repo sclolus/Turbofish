@@ -107,7 +107,7 @@ struct itimerspec {
 //[CX][Option Start]
 //struct tm *gmtime_r(const time_t *restrict, struct tm *restrict);
 //[Option End]
-//struct tm *localtime(const time_t *);
+struct tm *localtime(const time_t *);
 //[CX][Option Start]
 //struct tm *localtime_r(const time_t *restrict, struct tm *restrict);
 //[Option End]

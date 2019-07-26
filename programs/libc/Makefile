@@ -88,7 +88,7 @@ SRC_C += gettext locale
 VPATH += src/locale
 HEADERS += include/locale.h
 
-SRC_C += isdigit 
+SRC_C += isdigit isspace
 VPATH += src/ctype
 HEADERS += include/ctype.h
 

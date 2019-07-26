@@ -1,10 +1,9 @@
 #ifndef __WAIT_H__
 # define __WAIT_H__
 
-#include "i386.h"
+#include <i386.h>
 
-typedef int pid_t;
-
+#include <sys/types.h>
 /*
  * Option bits for the second argument of waitpid.  WNOHANG causes the
  * wait to not hang if there are no stopped or terminated processes, rather
