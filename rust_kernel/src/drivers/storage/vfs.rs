@@ -4,11 +4,14 @@ pub mod direntry;
 use direntry::{DirectoryEntry, DirectoryEntryHeader, DirectoryEntryId};
 
 pub mod inode;
-use inode::{Inode, InodeId, inode_number, mode_t, File, InodeOperations};
+use inode::{Inode, InodeId, InodeStatus, inode_number, mode_t, File, InodeOperations};
 
 
 pub mod posix_consts;
 pub use posix_consts::*;
+
+pub mod stat;
+use stat::UserStat;
 
 use alloc::vec::Vec;
 use alloc::boxed::Box;
@@ -44,7 +47,7 @@ pub enum Filetype {
 pub enum VfsError {
     MountError,
     IsNotADirectory,
-
+    NoSuchInode,
     InodeAlreadyExists,
     Errno(Errno),
 }
@@ -72,9 +75,14 @@ pub trait Filesystem {
 
 enum FileSystemType {}
 
+pub struct SuperBlockOperations {
+
+}
+
 pub struct Superblock {
     file_system_type: FileSystemType,
     blocksize: usize,
+    super_operations: SuperBlockOperations,
 }
 
 
@@ -220,7 +228,7 @@ impl VirtualFileSystem {
         new.dcache.add_direntry(DirectoryEntry::new("test1", Filetype::Directory, InodeId::new(3, 0))?);
         new.dcache.add_direntry(DirectoryEntry::new("test2", Filetype::Directory, InodeId::new(3, 0))?);
         new.dcache.add_direntry(DirectoryEntry::new("test3", Filetype::Directory, InodeId::new(3, 0))?);
-        Ok(new)
+o        Ok(new)
     }
 
 
@@ -299,14 +307,14 @@ impl VirtualFileSystem {
                 }
             }
             let current_dir_inode = self.inodes.get(&current_dir_inode_id)?;
-            let new_direntry = (current_dir_inode.inode_operations.lookup_direntry)(&current_dir_inode, component);
+            let new_direntry = (current_dir_inode.inode_operations.lookup_direntry.unwrap())(&current_dir_inode, component); // remove this unwrap
 
             if let Some(direntry) = new_direntry {
                 let direntry = self.dcache.add_direntry(direntry)?;
                 let direntry_id = direntry.header.id;
                 let direntry_inode_id = direntry.header.inode_id;
                 self.dcache.get_direntry_mut(current_dir_id)?.add_direntry(direntry_id).unwrap(); //remove this unwrap
-                let new_inode = (current_dir_inode.inode_operations.lookup_inode)(direntry_inode_id).unwrap();
+                let new_inode = (current_dir_inode.inode_operations.lookup_inode.unwrap())(direntry_inode_id).unwrap();
                 self.add_inode(new_inode);
                 current_dir_id = direntry_id;
             }
@@ -335,11 +343,37 @@ impl VirtualFileSystem {
         }
     }
 
+
+
     pub fn get_inode(&self, id: InodeId) -> Option<&Inode> {
         self.inodes.get(&id)
     }
 
-    pub fn open(&mut self, path: &Path, flags: open_flags, _mode: mode_t) -> VfsResult<File> {
+    pub fn get_inode_mut(&mut self, id: InodeId) -> Option<&mut Inode> {
+        self.inodes.get_mut(&id)
+    }
+
+    pub fn unlink_inode(&mut self, id: InodeId) -> VfsResult<()> {
+        let ref_count;
+        {
+            let inode = match self.get_inode_mut(id) {
+                None => return Err(VfsError::NoSuchInode),
+                Some(inode) => inode,
+            };
+
+            inode.link_number -= 1;
+            if (inode.link_number == 0) {
+                inode.status = InodeStatus::ToBeRemoved;
+            }
+            ref_count = inode.ref_count.load(Ordering::Relaxed);
+        }
+        if (ref_count == 0) {
+            self.inodes.remove(&id);
+        }
+        return Ok(())
+    }
+
+    pub fn open(&mut self, path: &Path, flags: open_flags, mode: mode_t) -> VfsResult<File> {
         // Applications shall specify exactly one of the first five values (file access modes)
         let unique_necessary = open_flags::O_EXEC
                                 | open_flags::O_RDONLY
@@ -357,19 +391,26 @@ impl VirtualFileSystem {
         }
 
 
-        let dirent = self.pathname_resolution(path);
-        if let None = dirent {
-            if flags.contains(open_flags::O_CREAT) {
-                unimplemented!()
-            }
-            return Err(VfsError::Errno(Eacces))
-        }
+        let dirent = match self.pathname_resolution(path) {
+            None => {
+                if flags.contains(open_flags::O_CREAT) {
+                    unimplemented!()
+                } else {
+                    return Err(VfsError::Errno(Eacces))
+                }
+            },
+            Some(dirent) => dirent,
+        };
 
         if flags.contains(open_flags::O_CREAT | open_flags::O_EXCL) {
             return Err(VfsError::Errno(Eexist))
         }
 
-        Err(VfsError::Errno(Eopnotsupp))
+        let mut file = File::from_dentry(dirent);
+        let mut inode = self.get_inode_mut(dirent.header.inode_id).unwrap();// remove this unwrap
+        file.flags = flags;
+
+        (inode.inode_operations.open.unwrap())(inode, file, flags, mode)
     }
 
     pub fn creat(&mut self) -> VfsResult<()> {
@@ -448,12 +489,12 @@ pub fn init() -> VfsResult<VirtualFileSystem> {
     let vfs = VirtualFileSystem::new()?;
 
     println!("{}", vfs);
-    // let result: Result<(), VfsError> = vfs.dcache.walk_tree_mut(&mut |entry| { entry.add_direntry(DirectoryEntry::new("lol", Filetype::Directory, InodeId::new(5, 0))?);; Ok(())});
+    let result: Result<(), VfsError> = vfs.dcache.walk_tree_mut(&mut |entry| { entry.add_direntry(DirectoryEntry::new("lol", Filetype::Directory, InodeId::new(5, 0))?);; Ok(())});
 
-    // println!("{}", vfs);
-    // println!("pathname resolution {:?}", vfs.pathname_resolution("/test/lol"));
-    // println!("pathname resolution {:?}", vfs.pathname_resolution("/test1/lol"));
-    // println!("pathname resolution {:?}", vfs.pathname_resolution("/test/dlol"));
+    println!("{}", vfs);
+    println!("pathname resolution {:?}", vfs.pathname_resolution("/test/lol"));
+    println!("pathname resolution {:?}", vfs.pathname_resolution("/test1/lol"));
+    println!("pathname resolution {:?}", vfs.pathname_resolution("/test/dlol"));
 
     Ok(vfs)
 }

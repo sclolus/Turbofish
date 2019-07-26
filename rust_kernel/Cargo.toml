@@ -68,6 +68,7 @@ members = [
 "dependencies/elf_loader",
 "dependencies/errno",
 "dependencies/try_clone_derive",
-"dependencies/fallible_collections"
+"dependencies/fallible_collections",
+"userspace_workplace/vfs_tests",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

@@ -106,16 +106,16 @@ impl DirectoryEntry {
         // (header.filename.0)[0..filename.as_bytes().len()].copy_from_slice(filename.as_bytes());
         header.filename = TryFrom::try_from(filename)?;
         header.name_size = filename.len();
-        use Filetype::*;
 
-        let entry = match filetype {
-            Directory => {
-                Entry::Directory {
-                    direntries: Vec::new()
-                }
+        use Filetype::*;
+        let entry = if let Directory = filetype {
+            Entry::Directory {
+                direntries: Vec::new()
             }
-            _ => unimplemented!()
+        } else {
+            unimplemented!()
         };
+
         Ok(Self {
             header,
             entry

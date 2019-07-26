@@ -1,14 +1,14 @@
 #[deny(missing_docs)]
 
 use super::DeviceId;
-pub type off_t = usize;
-pub type inode_number = usize;
-pub type time_t = usize;
-pub type uid_t = usize;
-pub type gid_t = usize;
-
-use super::Path;
+use super::{off_t, time_t, uid_t, gid_t};
+use super::{Path, VfsResult, open_flags};
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
+use super::stat::UserStat;
+
+use core::sync::atomic::{AtomicU32, Ordering};
+
+pub type inode_number = usize;
 
 use bitflags::bitflags;
 
@@ -62,9 +62,21 @@ bitflags! {
     }
 }
 
+#[derive(Default, Copy, Clone)]
 pub struct InodeOperations {
-    pub lookup_direntry: fn(&Inode, &Path) -> Option<DirectoryEntry>,
-    pub lookup_inode: fn(InodeId) -> Option<Inode>,
+    pub lookup_direntry: Option<fn(&Inode, &Path) -> Option<DirectoryEntry>>,
+    pub lookup_inode: Option<fn(InodeId) -> Option<Inode>>,
+    pub creat: Option<fn(Inode, &mut DirectoryEntry, DirectoryEntry, mode_t) -> VfsResult<impl Into<Inode>>>,
+    pub link: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    pub symlink: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    pub rename: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    pub stat: Option<fn(&mut Inode, &mut DirectoryEntry, &mut UserStat) -> VfsResult<i32>>,
+    pub mkdir: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
+    pub rmdir: Option<fn(&mut Inode, &mut DirectoryEntry) -> VfsResult<i32>>,
+    pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
+    pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>,
+    pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
+    pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, off_t) -> VfsResult<i32>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -91,6 +103,10 @@ impl InodeId {
     }
 }
 
+pub enum InodeStatus {
+    Normal,
+    ToBeRemoved,
+}
 pub struct Inode {
     /// This inode's id.
     pub id: InodeId,
@@ -107,7 +123,14 @@ pub struct Inode {
     pub mtime: time_t,
     pub ctime: time_t,
 
+    pub size: usize,
+    pub status: InodeStatus,
+    pub ref_count: AtomicU32,
     pub inode_operations: InodeOperations,
+}
+
+impl Inode {
+
 }
 
 use core::cmp::{PartialEq, Eq};
@@ -151,6 +174,9 @@ pub struct File {
     dentry_id: DirectoryEntryId,
     // status: status,
     offset: off_t,
+    pub flags: open_flags,
+
+
 
     // file_operations: FileOperations,
 }
@@ -168,6 +194,7 @@ impl File {
             id: dentry.header.inode_id,
             dentry_id: dentry.header.id,
             offset: 0,
+            flags: Default::default(),
         }
     }
 
@@ -181,17 +208,17 @@ pub enum SeekType {
     SEEK_END,
 }
 
+type ssize_t = i64;
+
 pub struct FileOperations {
-    pub read: Option<fn(&mut File, &mut [u8], usize)>,
-    // pub open: Option<fn(&mut )>,
-    pub llseek: Option<fn(&mut File, usize, SeekType)>,
+    pub read: Option<fn(&mut File, &mut [u8]) -> VfsResult<ssize_t>>,
+    pub lseek: Option<fn(&mut File, off_t, SeekType) -> off_t>,
     // pub flush: Option<fn()>,
-    pub write: Option<fn(&mut File, &mut [u8], usize)>,
-    pub release: Option<fn(&mut File)>,
-    // read: fn(),
-    // read: fn(),
-    // read: fn(),
-    // read: fn(),
-    // read: fn(),
-    // read: fn(),
+    pub write: Option<fn(&mut File, &mut [u8]) -> VfsResult<ssize_t>>,
+    pub release: Option<fn(&mut File) -> VfsResult<i32>>,
+    pub ftruncate: Option<fn(&mut File, off_t) -> VfsResult<i32>>,
+    pub fstat: Option<fn(&mut File, &mut UserStat) -> VfsResult<i32>>,
+    pub fchmod: Option<fn(&mut File, mode_t) -> VfsResult<i32>>,
+    pub fchown: Option<fn(&mut File, uid_t, gid_t) -> VfsResult<i32>>,
+    pub open: Option<fn(&mut Inode, &mut File, i32, mode_t) -> VfsResult<i32>>,
 }

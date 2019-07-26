@@ -1,0 +1,9 @@
+[package]
+name = "vfs_tests"
+version = "0.1.0"
+authors = ["miniske"]
+edition = "2018"
+
+[dependencies]
+walkdir = "2"
+errno = { path = "../../dependencies/errno" }
