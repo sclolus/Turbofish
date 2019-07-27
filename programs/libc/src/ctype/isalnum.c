@@ -1,5 +1,5 @@
 
-#include "string.h"
+#include <ctype.h>
 
 int	isalnum(int c)
 {
