@@ -51,8 +51,7 @@ impl Default for Filename {
 
 impl PartialEq for Filename {
     fn eq(&self, other: &Self) -> bool {
-        self.1 == other.1 &&
-            self.0[..self.1] == other.0[..self.1]
+        self.as_str() == other.as_str()
     }
 }
 
@@ -444,8 +443,6 @@ mod test {
 
 
     }
-
-
 
     make_path_creation_test! {"////a/b/c", test_path_posix_path_can_have_multiple_beginning_slashes}
     make_path_creation_test! {"a/b/c////", test_path_posix_path_can_have_multiple_trailing_slashes}
