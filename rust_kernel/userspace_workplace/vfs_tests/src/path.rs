@@ -3,6 +3,7 @@ use core::fmt;
 use core::mem;
 use core::cmp::Ordering;
 use errno::Errno;
+use core::slice::Iter;
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
 
@@ -131,6 +132,10 @@ impl Path {
         let ret = self.components.pop()?;
         self.total_length -= ret.len();
         Some(ret)
+    }
+
+    pub fn components(&self) -> Iter<Filename> {
+        self.components.iter()
     }
 }
 

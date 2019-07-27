@@ -55,7 +55,7 @@ mod direntry {
     }
 
     #[derive(Debug, Clone)]
-    enum DirectoryEntryInner {
+    pub enum DirectoryEntryInner {
         Regular,
         Directory(EntryDirectory)
     }
@@ -188,6 +188,7 @@ mod direntry {
 }
 
 use direntry::{DirectoryEntry, DirectoryEntryId};
+use errno::Errno;
 
 #[derive(Debug, Copy, Clone)]
 enum DcacheError {
@@ -197,7 +198,15 @@ enum DcacheError {
     InvalidEntryIdInDirectory,
     RootDoesNotExists,
     NotEmpty,
+    Errno(Errno),
 }
+
+impl From<Errno> for DcacheError {
+    fn from(errno: Errno) -> Self {
+        DcacheError::Errno(errno)
+    }
+}
+
 type DcacheResult<T> = Result<T, DcacheError>;
 
 struct Dcache {
@@ -277,36 +286,32 @@ impl Dcache {
         Ok(path)
     }
 
-    pub fn pathname_resolution(&self, root: DirectoryEntryId, name: String) -> DcacheResult<DirectoryEntryId> {
+    pub fn pathname_resolution(&self, root: DirectoryEntryId, pathname: Path) -> DcacheResult<DirectoryEntryId> {
         if !self.d_entries.contains_key(&root) {
             return Err(RootDoesNotExists)
         }
 
-        let mut components = name.split('/').filter(|&x| x != "");
-
         let mut current_dir_id = root;
-        'walk: loop {
-            let component = match components.next() {
-                Some(component) => component,
-                None => return Ok(self.d_entries.get(&current_dir_id).unwrap().id), //impossible condition
-            };
-
-            let current_entry = match self.d_entries.get(&current_dir_id) {
-                Some(entry) => entry,
-                None => return Err(NoSuchEntry),
-            };
+        for component in pathname.components() {
+            let current_entry = self.d_entries.get(&current_dir_id).ok_or(NoSuchEntry)?;
 
             if !current_entry.is_directory() {
                 return Err(NotADirectory)
             }
 
             let current_dir = current_entry.get_directory().unwrap(); // impossible condition
-            let next_entry_id = match current_dir.entries().iter().find(|x| self.d_entries.get(x).expect("Invalid entry id in a directory entry that is a directory").filename == component) {
-                Some(next) => next,
-                None => return Err(NoSuchEntry),
-            };
+            if component == &"." {
+                continue ;
+            } else if component == &".." {
+                current_dir_id = current_entry.parent_id;
+                continue ;
+            }
+
+            let next_entry_id = current_dir.entries().iter()
+                .find(|x| &self.d_entries.get(x).expect("Invalid entry id in a directory entry that is a directory").filename == component).ok_or(NoSuchEntry)?;
             current_dir_id = *next_entry_id;
         }
+        Ok(self.d_entries.get(&current_dir_id).unwrap().id)
     }
 
     pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(&self, root: &DirectoryEntry, mut callback: &mut F) -> DcacheResult<()>  {
@@ -391,18 +396,42 @@ fn main() {
 
     let mut callbacks: Vec<Box<ReplClosures>> = Vec::new();
 
-    let ls_closure = |dc: & Dcache, cwd: &mut DirectoryEntryId, path: String| -> DcacheResult<()> {
-        let cwd_entry = dc.d_entries.get(cwd).ok_or(NotADirectory)?;
-        let cwd_directory = cwd_entry.get_directory()?;
+    let ls_closure = |dc: &Dcache, cwd: &mut DirectoryEntryId, path: String| -> DcacheResult<()> {
+        let path = Path::try_from(path.as_str())?;
 
-        for entry_id in cwd_directory.entries() {
-            let entry = dc.d_entries.get(entry_id).ok_or(NoSuchEntry)?;
-            println!("+= {}", entry.filename);
+        let search_root;
+        if path.is_absolute() {
+            search_root = dc.root_id;
+        } else {
+            search_root = *cwd;
+        }
+
+        let entry_id = dc.pathname_resolution(search_root, path)?;
+        let entry = dc.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
+
+        if entry.is_directory() {
+            let directory = entry.get_directory()?;
+
+            println!("(DIRECTORY {}):", entry.filename);
+            for entry_id in directory.entries() {
+                let entry = dc.d_entries.get(entry_id).ok_or(NoSuchEntry)?;
+                println!("+= {}", entry.filename);
+            }
+        } else {
+            println!("-> {}", entry.filename);
         }
         Ok(())
     };
     let cd_closure = |dcache: &Dcache, cwd: &mut DirectoryEntryId, path: String| -> DcacheResult<()> {
-        let entry_id = dcache.pathname_resolution(dcache.root_id, path)?;
+        let path = Path::try_from(path.as_str())?;
+        let search_root;
+        if path.is_absolute() {
+            search_root = dcache.root_id;
+        } else {
+            search_root = *cwd;
+        }
+
+        let entry_id = dcache.pathname_resolution(search_root, path)?;
         let entry = dcache.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
         if entry.is_directory() {
             *cwd = entry_id;
@@ -418,7 +447,10 @@ fn main() {
 
     let print_prompt_closure = |dcache: &Dcache, cwd: &DirectoryEntryId| {
         let entry = dcache.d_entries.get(cwd).unwrap();
-        println!("{}>", entry.filename);
+        print!("{}> ", entry.filename);
+        use std::io::{stdout, Write};
+
+        stdout().flush()
     };
 
     let callbacks_strings = ["ls", "cd"];
