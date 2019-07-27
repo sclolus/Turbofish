@@ -18,7 +18,7 @@
 //    Used for file system block counts.
 #define fsfilcnt_t unsigned int
 //    Used for file system file counts.
-#define gid_t int
+typedef int gid_t;
 //    Used for group IDs.
 #define id_t int
 //    Used as a general identifier; can be used to contain at least a pid_t, uid_t, or gid_t.

@@ -1,5 +1,5 @@
-#ifndef CTYPE_H
-# define CTYPE_H
+#ifndef __CTYPE_H__
+# define __CTYPE_H__
 typedef int locale_t;
 int   isalnum(int);
 //[CX][Option Start]

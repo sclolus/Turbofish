@@ -47,5 +47,9 @@ int   setitimer(int, const struct itimerval *restrict,
 //		struct timeval *restrict);
 int   utimes(const char *, const struct timeval [2]);
 
-
+//TODO: check that not posiz
+struct timezone {
+	int tz_minuteswest;     /* minutes west of Greenwich */
+	int tz_dsttime;         /* type of DST correction */
+};
 #endif

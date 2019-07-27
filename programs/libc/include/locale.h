@@ -4,37 +4,39 @@
 
 //The <locale.h> header shall define the lconv structure, which shall include at least the following members. (See the definitions of LC_MONETARY in LC_MONETARY and LC_NUMERIC.)
 //
-//char    *currency_symbol
-//char    *decimal_point
-//char     frac_digits
-//char    *grouping
-//char    *int_curr_symbol
-//char     int_frac_digits
-//char     int_n_cs_precedes
-//char     int_n_sep_by_space
-//char     int_n_sign_posn
-//char     int_p_cs_precedes
-//char     int_p_sep_by_space
-//char     int_p_sign_posn
-//char    *mon_decimal_point
-//char    *mon_grouping
-//char    *mon_thousands_sep
-//char    *negative_sign
-//char     n_cs_precedes
-//char     n_sep_by_space
-//char     n_sign_posn
-//char    *positive_sign
-//char     p_cs_precedes
-//char     p_sep_by_space
-//char     p_sign_posn
-//char    *thousands_sep
+struct lconv {
+	char    *currency_symbol;
+	char    *decimal_point;
+	char     frac_digits;
+	char    *grouping;
+	char    *int_curr_symbol;
+	char     int_frac_digits;
+	char     int_n_cs_precedes;
+	char     int_n_sep_by_space;
+	char     int_n_sign_posn;
+	char     int_p_cs_precedes;
+	char     int_p_sep_by_space;
+	char     int_p_sign_posn;
+	char    *mon_decimal_point;
+	char    *mon_grouping;
+	char    *mon_thousands_sep;
+	char    *negative_sign;
+	char     n_cs_precedes;
+	char     n_sep_by_space;
+	char     n_sign_posn;
+	char    *positive_sign;
+	char     p_cs_precedes;
+	char     p_sep_by_space;
+	char     p_sign_posn;
+	char    *thousands_sep;
+};
 //
 //The <locale.h> header shall define NULL (as described in <stddef.h>) and at least the following as macros:
 //
 //
 #define LC_ALL "C"
 //LC_COLLATE
-//LC_CTYPE
+#define LC_CTYPE "C"
 //[CX] [Option Start]
 //LC_MESSAGES
 //[Option End]

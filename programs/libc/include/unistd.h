@@ -7,7 +7,17 @@
 // The <unistd.h> header shall define NULL as described in <stddef.h>.
 #include <stddef.h>
 
+#define _POSIX_VERSION 200809L
 
+
+#define F_OK 42
+//    Test for existence of file.
+#define R_OK 42
+//   Test for read permission.
+#define W_OK 42
+//   Test for write permission.
+#define X_OK 42
+//    Test for execute (search) permission. 
 //The <unistd.h> header shall define the intptr_t type as described in <stdint.h>.
 //#include <sys/stdint.h>
 #ifdef __cplusplus
@@ -65,7 +75,9 @@ extern "C" {
 //[XSI][Option Start]
 	long         gethostid(void);
 //[Option End]
-	int          gethostname(char *, size_t);
+	/* int          gethostname(char *, size_t); */
+//TODO:Check non posix
+	int          gethostname(char *, int);
 	char        *getlogin(void);
 	int          getlogin_r(char *, size_t);
 	int          getopt(int, char * const [], const char *);
