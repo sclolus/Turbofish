@@ -9,7 +9,7 @@
 pub const NAME_MAX: usize = 256;
 
 
-/// The maximum size (in bytes) of any path.
+/// The maximum size (in bytes) of any path (including null byte).
 pub const PATH_MAX: usize = 4096;
 
 pub type off_t = usize;

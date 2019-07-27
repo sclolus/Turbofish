@@ -16,7 +16,10 @@ impl TryFrom<&str> for Filename {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self, Errno> {
         let mut n = [0; NAME_MAX];
-        if s.len() >= NAME_MAX {
+        if s.bytes().find(|&b| b == '/' as u8).is_some() {
+            return Err(Errno::Einval);
+        }
+        if s.len() > NAME_MAX || s.len() == 0 {
             return Err(Errno::Enametoolong);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
@@ -49,7 +52,7 @@ impl Default for Filename {
 impl PartialEq for Filename {
     fn eq(&self, other: &Self) -> bool {
         self.1 == other.1 &&
-        self.0[..self.1] == other.0[..self.1]
+            self.0[..self.1] == other.0[..self.1]
     }
 }
 
@@ -76,16 +79,17 @@ impl Eq for Filename {}
 /// Debug boilerplate of filename
 impl fmt::Debug for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{:?}", self.as_str())
+        Ok(write!(f, "{:?}", self.as_str())?)
     }
 }
 
 impl fmt::Display for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{:?}", self.as_str())
+        Ok(write!(f, "{}", self.as_str())?)
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Path {
     components: Vec<Filename>,
     total_length: usize,
@@ -105,9 +109,13 @@ impl Path {
         Self::null_path()
     }
 
-    fn set_absolute(&mut self, value: bool) -> &mut Self {
+    fn set_absolute(&mut self, value: bool) -> Result<&mut Self, Errno> {
+        if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
+            return Err(Errno::Enametoolong)
+        }
         self.is_absolute = value;
-        self
+        self.update_len();
+        Ok(self)
     }
 
     pub fn is_absolute(&self) -> bool {
@@ -122,14 +130,52 @@ impl Path {
         self.total_length
     }
 
-    pub fn push(&mut self, component: Filename) -> &mut Self { // this is an Option return type actually
-        self.total_length += component.len();
+    pub fn parent(&self) -> Path {
+        let mut components = self.components();
+        components.next_back();
+
+        Self::try_from(components).unwrap() // well for now this should not be happening
+    }
+
+    pub fn push(&mut self, component: Filename) -> Result<&mut Self, Errno> { // this is an Option return type actually
+        let total_length;
+        if self.depth() != 0 {
+            total_length = self.total_length + component.len() + 1;
+        } else {
+            total_length = self.total_length + component.len();
+        }
+
+        if total_length > PATH_MAX - 1 {
+            return Err(Errno::Enametoolong)
+        }
+        self.total_length = total_length;
         self.components.push(component);
-        self
+        Ok(self)
+    }
+
+    fn len_from_components(&self) -> usize {
+        let mut len = 0;
+
+        if self.is_absolute() {
+            len += 1;
+        }
+        if self.depth() != 0 {
+            len += self.components.iter().map(|x| x.len()).sum::<usize>() + self.depth() - 1;
+        }
+
+        len
+    }
+
+    fn update_len(&mut self) -> usize {
+        self.total_length = self.len_from_components();
+        self.total_length
     }
 
     pub fn pop(&mut self) -> Option<Filename> {
         let ret = self.components.pop()?;
+        if self.depth() != 0 {
+            self.total_length -= 1;
+        }
         self.total_length -= ret.len();
         Some(ret)
     }
@@ -139,9 +185,25 @@ impl Path {
     }
 }
 
+impl<'a> TryFrom<Iter<'a, Filename>> for Path {
+    type Error = Errno;
+    fn try_from(iter: Iter<Filename>) -> Result<Self, Errno> {
+        let mut path = Path::new();
+
+        for filename in iter {
+            path.push(*filename)?;
+        }
+        Ok(path)
+
+    }
+}
+
 impl TryFrom<&str> for Path {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self, Errno> {
+        if s.len() > PATH_MAX - 1 {
+            return Err(Errno::Enametoolong);
+        }
         let is_absolute = s.starts_with('/');
         let components = s.split('/').filter(|&x| x != "");
 
@@ -150,8 +212,7 @@ impl TryFrom<&str> for Path {
         path.set_absolute(is_absolute);
         for component in components {
             let filename = Filename::try_from(component)?;
-
-            path.push(filename);
+            path.push(filename)?;
         }
         Ok(path)
     }
@@ -190,4 +251,317 @@ impl Ord for Path {
 
         a.cmp(b)
     }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_absolute() {
+            write!(f, "/")?;
+        }
+        let depth = self.depth();
+        for (index, component) in self.components().enumerate() {
+            write!(f, "{}", component)?;
+            if (index + 1 != depth) {
+                write!(f, "/")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    macro_rules!    make_test {
+        (pass, $test_name: ident, $body: tt) => {
+            #[test]
+            fn $test_name() {
+                $body
+            }
+        };
+        (fail, $test_name: ident, $body: tt) => {
+            #[test]
+            #[should_panic]
+            fn $test_name() {
+                $body
+            }
+        }
+    }
+
+    macro_rules! make_filename_creation_test {
+        ($body: block, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                Filename::try_from($body.as_str()).unwrap();
+            }
+            }
+        };
+        (fail, $body: block, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                Filename::try_from($body.as_str()).unwrap();
+            }
+            }
+        };
+        ($filename: expr, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                Filename::try_from($filename).unwrap();
+            }
+            }
+        };
+        (fail, $filename: expr, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                Filename::try_from($filename).unwrap();
+            }
+            }
+        };
+    }
+
+    make_filename_creation_test! {fail, {
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+
+        make_component(0)
+    }, test_filename_posix_filename_cant_be_zero_len
+    }
+
+    make_filename_creation_test! {fail, {
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+
+        make_component(NAME_MAX + 1)
+    }, test_filename_posix_filename_cant_be_greater_than_name_max
+    }
+
+    make_filename_creation_test! {fail, {
+        use std::str::FromStr;
+        String::from_str("aaa/bbb.txt").expect("This should never happened") // the expect kind of breaks the test but hey, that should not happen anyway
+    }, test_filename_posix_filename_cant_be_have_slash
+    }
+
+    make_filename_creation_test! {{
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+
+        make_component(NAME_MAX)
+    }, test_filename_posix_filename_can_be_name_max
+    }
+
+    make_filename_creation_test! {{
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+
+        make_component(1)
+    }, test_filename_posix_filename_can_be_one
+    }
+
+    make_test!{pass, test_path_root_path_is_absolute, {
+        let path = Path::try_from("/").unwrap();
+        assert!(path.is_absolute)
+    }}
+
+    make_test!{pass, test_path_root_path_has_zero_depth, {
+        let path = Path::try_from("/").unwrap();
+        assert!(path.depth() == 0)
+    }}
+
+    make_test!{pass, test_path_root_path_has_one_len, {
+        let path = Path::try_from("/").unwrap();
+        assert!(path.len() == 1)
+    }}
+
+    macro_rules! make_path_len_test {
+        ($path: expr, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                let path_len = $path.len();
+                let path = Path::try_from($path).unwrap();
+
+                assert_eq!(path.len(), path_len);
+            }
+            }
+        };
+    }
+
+    make_path_len_test!{"", test_path_len_empty_path}
+    make_path_len_test!{"a", test_path_len_a_path}
+    make_path_len_test!{"/a", test_path_len_root_a_path}
+    make_path_len_test!{"a/b", test_path_len_a_b_path}
+    make_path_len_test!{"/a/b", test_path_len_root_a_b_path}
+    make_path_len_test!{"a/b/c", test_path_len_a_b_c_path}
+    make_path_len_test!{"/a/b/c", test_path_len_root_a_b_c_path}
+    make_path_len_test!{"a/bb/ccc", test_path_len_a_bb_ccc_path}
+    make_path_len_test!{"/a/bb/ccc", test_path_len_root_a_bb_ccc_path}
+
+    macro_rules! make_path_creation_test {
+        ($body: block, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                Path::try_from($body.as_str()).unwrap();
+            }
+            }
+        };
+        (fail, $body: block, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                Path::try_from($body.as_str()).unwrap();
+            }
+            }
+        };
+        ($path: expr, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                Path::try_from($path).unwrap();
+            }
+            }
+        };
+        (fail, $path: expr, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                Path::try_from($path).unwrap();
+            }
+            }
+        };
+
+
+
+    }
+
+
+
+    make_path_creation_test! {"////a/b/c", test_path_posix_path_can_have_multiple_beginning_slashes}
+    make_path_creation_test! {"a/b/c////", test_path_posix_path_can_have_multiple_trailing_slashes}
+    make_path_creation_test! {"/a////b//////////////////c/d//e/f///g//", test_path_posix_path_can_have_multiple_slashes}
+    make_path_creation_test! {"", test_path_posix_path_can_have_zero_filenames}
+    make_path_creation_test! {"/", test_path_posix_path_can_have_root_zero_filenames}
+    make_path_creation_test! {fail, {
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+        let mut path = String::new();
+        let mut current_count = 0;
+
+        loop {
+            let additional_count;
+            additional_count = NAME_MAX + 1;
+
+            if current_count + additional_count > PATH_MAX - 1 {
+                path.push_str("/");
+                path.push_str(&make_component((PATH_MAX - 1) - current_count));
+                break
+            } else {
+                path.push_str("/");
+                path.push_str(&make_component(NAME_MAX));
+                current_count += additional_count;
+            }
+        }
+        path
+    }, test_path_posix_path_cant_be_greater_than_path_max}
+
+    make_path_creation_test! {{
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+        let mut path = String::new();
+        let mut current_count = 0;
+
+        loop {
+            let additional_count;
+            additional_count = NAME_MAX + 1;
+
+            if current_count + additional_count > PATH_MAX - 1 {
+                path.push_str("/");
+                path.push_str(&make_component((PATH_MAX - 1) - current_count - 1));
+                break
+            } else {
+                path.push_str("/");
+                path.push_str(&make_component(NAME_MAX));
+                current_count += additional_count;
+            }
+        }
+        path
+    }, test_path_posix_path_can_have_len_path_max_minus_one}
+
+    make_test! {fail, test_path_posix_path_cant_be_greater_than_path_max_after_setting_to_absolute, {
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+        let mut path = String::new();
+        let mut current_count = 0;
+
+        loop {
+            let additional_count;
+            additional_count = NAME_MAX + 1;
+
+            if current_count + additional_count > PATH_MAX - 1 {
+                path.push_str(&make_component((PATH_MAX - 1) - current_count));
+                break
+            } else {
+                path.push_str(&make_component(NAME_MAX));
+                path.push_str("/");
+                current_count += additional_count;
+            }
+        }
+        let mut path = Path::try_from(path.as_str()).unwrap();
+        path.set_absolute(true).unwrap();
+    }}
+
+
+    make_test!{pass, test_path_parent_method, {
+        let mut paths = Vec::new();
+        let mut path = Path::new();
+
+        for alpha in 0..5 {
+            let mut string = String::new();
+            let c = Some(((alpha + 'a' as u8) as char));
+            string.extend(c.iter());
+            let filename = Filename::try_from(string.as_str()).unwrap();
+            path.push(filename).unwrap();
+            paths.push(path.clone());
+        }
+        paths.pop();
+        loop {
+            println!("{}", path);
+            if path.depth() == 0 {
+                break
+            }
+            let test_path = paths.pop().unwrap_or(Path::null_path());
+            path = path.parent();
+
+            assert_eq!(path, test_path);
+        }
+    }}
 }

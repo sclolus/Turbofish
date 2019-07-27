@@ -144,7 +144,7 @@ mod direntry {
             self.inner.is_directory()
         }
 
-        pub fn get_directory(& self) -> DcacheResult<& EntryDirectory> {
+        pub fn get_directory(& self) -> DcacheResult<&EntryDirectory> {
             self.inner.get_directory()
         }
 
