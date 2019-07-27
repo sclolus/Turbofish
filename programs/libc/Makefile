@@ -51,7 +51,7 @@ SRC_C += exit exit_qemu atexit env abort abs
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve process_group
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
@@ -72,7 +72,7 @@ SRC_C += nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal kill raise
+SRC_C += signal kill raise killpg
 VPATH += src/signal
 HEADERS += include/signal.h
 
