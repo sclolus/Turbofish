@@ -340,5 +340,7 @@ int    sigwaitinfo(const sigset_t *restrict, siginfo_t *restrict);
 
 //[CX] [Option Start] Inclusion of the <signal.h> header may make visible all symbols from the <time.h> header. [Option End]
 
+//TODO: check NON POSIX
+#define NSIG 42
 
 #endif

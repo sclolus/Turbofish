@@ -25,8 +25,8 @@ typedef size_t fpos_t;
 
 //The <stdio.h> header shall define the following macros which shall expand to integer constant expressions:
 
-//BUFSIZ
-//    Size of <stdio.h> buffers. [CX] [Option Start]  This shall expand to a positive value. [Option End]
+#define BUFSIZ 1
+	//Size of <stdio.h> buffers. [CX] [Option Start]  This shall expand to a positive value. [Option End]
 //L_ctermid
 //    [CX] [Option Start] Maximum size of character array to hold ctermid() output. [Option End]
 //L_tmpnam
