@@ -11,3 +11,7 @@ void	*memset(void *b, int c, size_t len)
 		*s++ = c;
 	return (b);
 }
+
+void	*ft_memset(void *b, int c, size_t len) {
+	return memset(b, c, len);
+}

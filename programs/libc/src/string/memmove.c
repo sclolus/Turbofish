@@ -21,3 +21,7 @@ void	*memmove(void *dst, const void *src, size_t len)
 	}
 	return (dst);
 }
+
+void	*ft_memmove(void *dst, const void *src, size_t len) {
+	return memmove(dst, src, len);
+}
