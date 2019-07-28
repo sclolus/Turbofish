@@ -129,6 +129,10 @@ impl Path {
         self.total_length
     }
 
+    pub fn filename(&self) -> Option<&Filename> {
+        self.components.iter().last()
+    }
+
     pub fn parent(&self) -> Path {
         let mut components = self.components();
         components.next_back();

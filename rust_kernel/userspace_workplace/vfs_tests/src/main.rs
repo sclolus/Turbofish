@@ -60,7 +60,8 @@ mod direntry {
     #[derive(Debug, Clone)]
     pub enum DirectoryEntryInner {
         Regular,
-        Directory(EntryDirectory)
+        Directory(EntryDirectory),
+        Symlink(Path),
     }
 
     use DirectoryEntryInner::*;
@@ -85,6 +86,14 @@ mod direntry {
             // }
         }
 
+        pub fn is_symlink(&self) -> bool {
+            is_variant!(Symlink(_) = self)
+        }
+
+        pub fn is_regular(&self) -> bool {
+            is_variant!(Regular = self)
+        }
+
         pub fn is_directory_empty(&self) -> DcacheResult<bool> {
             // since empty directory as only . and .. entries.
             Ok(self.get_directory()?.is_directory_empty())
@@ -106,6 +115,13 @@ mod direntry {
             })
         }
 
+        pub fn get_symbolic_content(&self) -> DcacheResult<&Path> {
+            use DirectoryEntryInner::*;
+            Ok(match self {
+                Symlink(ref path) => path,
+                _ => return Err(NotASymlink),
+            })
+        }
     }
 
     #[derive(Debug, Clone)]
@@ -144,6 +160,11 @@ mod direntry {
             self
         }
 
+        pub fn set_symlink(&mut self, path: Path) -> &mut Self {
+            self.inner = DirectoryEntryInner::Symlink(path);
+            self
+        }
+
         pub fn root_entry() -> Self {
             let mut root_entry = DirectoryEntry::default();
             root_entry
@@ -157,6 +178,18 @@ mod direntry {
 
         pub fn is_directory(&self) -> bool {
             self.inner.is_directory()
+        }
+
+        pub fn is_symlink(&self) -> bool {
+            self.inner.is_symlink()
+        }
+
+        pub fn is_regular(&self) -> bool {
+            self.inner.is_regular()
+        }
+
+        pub fn get_symbolic_content(&self) -> DcacheResult<&Path> {
+            self.inner.get_symbolic_content()
         }
 
         pub fn get_directory(& self) -> DcacheResult<&EntryDirectory> {
@@ -210,6 +243,7 @@ enum DcacheError {
     FileAlreadyExists,
     NoSuchEntry,
     NotADirectory,
+    NotASymlink,
     InvalidEntryIdInDirectory,
     RootDoesNotExists,
     NotEmpty,
@@ -308,25 +342,33 @@ impl Dcache {
         }
         Ok(path)
     }
+    fn _pathname_resolution(&self, mut root: DirectoryEntryId, pathname: Path, recursion_level: usize) -> DcacheResult<DirectoryEntryId> {
+        use crate::posix_consts::SYMLOOP_MAX;
+        if recursion_level > SYMLOOP_MAX {
+            return Err(Errno(Errno::Eloop))
+        }
 
-    pub fn pathname_resolution(&self, root: DirectoryEntryId, pathname: Path) -> DcacheResult<DirectoryEntryId> {
+        if pathname.is_absolute() {
+            root = self.root_id;
+        }
+
         if !self.d_entries.contains_key(&root) {
             return Err(RootDoesNotExists)
         }
 
         let mut current_dir_id = root;
-        for component in pathname.components() {
-            let current_entry = self.d_entries.get(&current_dir_id).ok_or(NoSuchEntry)?;
+        let mut components = pathname.components();
+        let mut was_symlink = false;
+        let mut current_entry = self.d_entries.get(&current_dir_id).ok_or(NoSuchEntry)?;
+        let mut current_next_entry_id = root;
+        for component in components.by_ref() {
+            let current_dir = current_entry.get_directory()?;
 
-            if !current_entry.is_directory() {
-                return Err(NotADirectory)
-            }
-
-            let current_dir = current_entry.get_directory().unwrap(); // impossible condition
             if component == &"." {
                 continue ;
             } else if component == &".." {
                 current_dir_id = current_entry.parent_id;
+                current_entry = self.d_entries.get(&current_dir_id).ok_or(NoSuchEntry)?;
                 continue ;
             }
             let next_entry_id = current_dir.entries().iter()
@@ -335,9 +377,29 @@ impl Dcache {
                         .expect("Invalid entry id in a directory entry that is a directory").filename;
                     filename == component
                 }).ok_or(NoSuchEntry)?;
+
+            current_next_entry_id = *next_entry_id;
+            current_entry = self.d_entries.get(next_entry_id).ok_or(NoSuchEntry)?;
+            if current_entry.is_symlink() {
+                was_symlink = true;
+                break ;
+            }
             current_dir_id = *next_entry_id;
         }
-        Ok(self.d_entries.get(&current_dir_id).unwrap().id)
+        if was_symlink {
+            // let current_entry = self.d_entries.get(&current_next_entry_id).ok_or(NoSuchEntry)?;
+            let mut new_path = current_entry.get_symbolic_content()?.clone();
+            new_path.chain(components.try_into()?)?;
+
+            self._pathname_resolution(current_dir_id, new_path, recursion_level + 1)
+        } else {
+            Ok(self.d_entries.get(&current_dir_id).unwrap().id)
+        }
+
+    }
+
+    pub fn pathname_resolution(&self, root: DirectoryEntryId, pathname: Path) -> DcacheResult<DirectoryEntryId> {
+        self._pathname_resolution(root, pathname, 0)
     }
 
     pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(&self, root: &DirectoryEntry, mut callback: &mut F) -> DcacheResult<()>  {
@@ -400,8 +462,14 @@ fn main() {
 
             new.set_filename(Filename::try_from(entry.file_name().to_str().unwrap()).unwrap());
             new.set_id(get_available_directory_entry_id());
-            if entry.file_type().unwrap().is_dir() {
+            let filetype = entry.file_type().unwrap();
+
+            if filetype.is_dir() {
                 new.set_directory();
+            } else if filetype.is_symlink() {
+                let std_path = std::fs::read_link(entry.path()).unwrap();
+                let path = std_path.as_os_str().to_str().unwrap().try_into().unwrap();
+                new.set_symlink(path);
             } else {
                 new.set_regular();
             }
@@ -428,7 +496,6 @@ fn main() {
 
     let ls_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
         let arg = args.get(0);
-        let search_root;
         let path;
         let entry;
         let entry_id;
@@ -436,12 +503,7 @@ fn main() {
         match arg {
             Some(&arg) => {
                 path = Path::try_from(arg)?;
-                if path.is_absolute() {
-                    search_root = dc.root_id;
-                } else {
-                    search_root = *cwd;
-                }
-                entry_id = dc.pathname_resolution(search_root, path)?;
+                entry_id = dc.pathname_resolution(*cwd, path)?;
                 entry = dc.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
 
             },
@@ -458,7 +520,20 @@ fn main() {
             println!("(DIRECTORY {}):", entry.filename);
             for entry_id in directory.entries() {
                 let entry = dc.d_entries.get(entry_id).ok_or(NoSuchEntry)?;
-                println!("+= {}", entry.filename);
+
+                let postfix: Option<String>;
+                let prefix;
+                if entry.is_directory() {
+                    postfix = None;
+                    prefix = "d---------";
+                } else if entry.is_symlink() {
+                    postfix = Some(format!("-> {}", entry.get_symbolic_content()?));
+                    prefix = "l---------";
+                } else {
+                    postfix = None;
+                    prefix = "----------";
+                }
+                println!("+={} {} {}", prefix, entry.filename, &postfix.unwrap_or("".to_string()));
             }
         } else {
             println!("-> {}", dc.dentry_path(entry_id)?);
@@ -469,11 +544,7 @@ fn main() {
         let path = *args.get(0).ok_or(NotEnoughArguments)?;
         let path = Path::try_from(path)?;
         let search_root;
-        if path.is_absolute() {
-            search_root = dcache.root_id;
-        } else {
-            search_root = *cwd;
-        }
+        search_root = *cwd;
 
         let entry_id = dcache.pathname_resolution(search_root, path)?;
         let entry = dcache.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
@@ -489,11 +560,7 @@ fn main() {
         let path = Path::try_from(path)?;
 
         let search_root;
-        if path.is_absolute() {
-            search_root = dc.root_id;
-        } else {
-            search_root = *cwd;
-        }
+        search_root = *cwd;
 
         let entry_id = dc.pathname_resolution(search_root, path)?;
         if entry_id == *cwd {
@@ -509,14 +576,35 @@ fn main() {
         let path = Path::try_from(path)?;
 
         let search_root;
-        if path.is_absolute() {
-            search_root = dc.root_id;
-        } else {
             search_root = *cwd;
-        }
 
         let entry_id = dc.pathname_resolution(search_root, path)?;
         dc.rename_dentry(entry_id, new_file_name)?;
+        Ok(())
+    };
+
+    let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+        let path = *args.get(0).ok_or(NotEnoughArguments)?;
+        let new_symlink_pathname = args.get(1).ok_or(NotEnoughArguments)?;
+        let path = Path::try_from(path)?;
+        let new_symlink_path = Path::try_from(*new_symlink_pathname)?;
+
+        let search_root;
+            search_root = *cwd;
+
+        let parent_path = new_symlink_path.parent();
+        let filename = new_symlink_path.filename().unwrap(); //remove this unwrap
+        let parent_id = dc.pathname_resolution(search_root, parent_path)?;
+        let mut new_symlink_entry = DirectoryEntry::default();
+
+        println!("Created symlink {} with path: {}", new_symlink_path, path);
+
+        new_symlink_entry
+            .set_filename(*filename)
+            .set_id(get_available_directory_entry_id())
+            .set_symlink(path);
+
+        dc.add_entry(Some(parent_id), new_symlink_entry)?;
         Ok(())
     };
 
@@ -533,12 +621,13 @@ fn main() {
         stdout().flush()
     };
 
-    let callbacks_strings = ["ls", "cd", "unlink", "rename", ""];
+    let callbacks_strings = ["ls", "cd", "unlink", "rename", "symlink", ""];
     type ReplClosures = dyn Fn(&mut Dcache, &mut DirectoryEntryId, Vec<&str>) -> DcacheResult<()>;
     callbacks.push(Box::new(ls_closure));
     callbacks.push(Box::new(cd_closure));
     callbacks.push(Box::new(unlink_closure));
     callbacks.push(Box::new(rename_closure));
+    callbacks.push(Box::new(symlink_closure));
     callbacks.push(Box::new(no_such_command_closure));
     let mut cwd_id = dcache.root_id;
 
