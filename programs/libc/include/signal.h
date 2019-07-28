@@ -92,7 +92,7 @@ typedef void (*sighandler_t)(int);
 
 #define sig_atomic_t int
 //    Possibly volatile-qualified integer type of an object that can be accessed as an atomic entity, even in the presence of asynchronous interrupts.
-#define sigset_t int
+#define sigset_t unsigned int
     //[CX] [Option Start] Integer or structure type of an object used to represent sets of signals. [Option End]
 //pid_t
     //[CX] [Option Start] As described in <sys/types.h>. [Option End]
@@ -236,11 +236,11 @@ struct sigaction {
 
 //The <signal.h> header shall define the following macros which shall expand to integer constant expressions that need not be usable in #if preprocessing directives:
 
-#define SIG_BLOCK 42
+#define SIG_BLOCK 0
     //[CX] [Option Start] The resulting set is the union of the current set and the signal set pointed to by the argument set. [Option End]
-#define SIG_UNBLOCK 42
+#define SIG_UNBLOCK 1
     //[CX] [Option Start] The resulting set is the intersection of the current set and the complement of the signal set pointed to by the argument set. [Option End]
-#define SIG_SETMASK 42
+#define SIG_SETMASK 2
     //[CX] [Option Start] The resulting set is the signal set pointed to by the argument set. [Option End]
 
 //The <signal.h> header shall also define the following symbolic constants:

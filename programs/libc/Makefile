@@ -73,7 +73,8 @@ SRC_C += nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal kill raise killpg
+SRC_C += signal kill raise killpg \
+		sigemptyset sigfillset sigaddset sigdelset \
 VPATH += src/signal
 HEADERS += include/signal.h
 
