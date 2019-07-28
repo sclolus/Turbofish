@@ -111,6 +111,12 @@ unsafe fn sys_getpid() -> SysResult<Pid> {
     }))
 }
 
+unsafe fn sys_getppid() -> SysResult<Pid> {
+    Ok(unpreemptible_context!({
+        SCHEDULER.lock().current_task().parent.unwrap_or(1)
+    }))
+}
+
 /// Do a stack overflow on the kernel stack
 #[allow(unconditional_recursion)]
 unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
@@ -160,6 +166,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         37 => sys_kill(ebx as i32, ecx as u32),
         48 => sys_signal(ebx as u32, ecx as usize),
         57 => sys_setpgid(ebx as Pid, ecx as Pid),
+        64 => sys_getppid(),
         65 => sys_getpgrp(),
         67 => sys_sigaction(
             ebx as u32,

@@ -20,6 +20,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define KILL         37
 #define SIGNAL       48
 #define SETPGID      57
+#define GETPPID		 64
 #define GETPGRP		 65
 #define SIGACTION    67
 #define REBOOT       88
