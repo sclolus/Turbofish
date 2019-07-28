@@ -75,6 +75,7 @@ HEADERS += include/time.h
 
 SRC_C += signal kill raise killpg \
 		sigemptyset sigfillset sigaddset sigdelset \
+		strsignal
 VPATH += src/signal
 HEADERS += include/signal.h
 
