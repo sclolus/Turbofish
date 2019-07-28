@@ -419,35 +419,77 @@
 	* Number of bits in a type char.
 	* [CX] [Option Start] Value: 8 [Option End]
 	*/
- /*
- * {CHAR_MAX}
- *     Maximum value for an object of type char.
- *     Value: {UCHAR_MAX} or {SCHAR_MAX}
- * {CHAR_MIN}
- *     Minimum value for an object of type char.
- *     Value: {SCHAR_MIN} or 0
- * {INT_MAX}
- *     Maximum value for an object of type int.
- *     [CX] [Option Start] Minimum Acceptable Value: 2 147 483 647 [Option End]
- * {INT_MIN}
- *     Minimum value for an object of type int.
- *     [CX] [Option Start] Maximum Acceptable Value: -2 147 483 647 [Option End]
- * {LLONG_MAX}
- *     Maximum value for an object of type long long.
- *     Minimum Acceptable Value: +9223372036854775807
- * {LLONG_MIN}
- *     Minimum value for an object of type long long.
- *     Maximum Acceptable Value: -9223372036854775807
+
+
+
+
+#define	CHAR_MAX	((long)(UCHAR_MAX >> 1))
+    /* 
+	 * Maximum value for an object of type char.
+     * Value: {UCHAR_MAX} or {SCHAR_MAX}
+	 */
+#define	CHAR_MIN	((long)(~CHAR_MAX))
+    /* 
+	 * Minimum value for an object of type char.
+     * Value: {SCHAR_MIN} or 0
+	 */
+#define INT_MAX ((int)(UINT_MAX >> 1))
+    /* 
+	 * Maximum value for an object of type int.
+     * [CX] [Option Start] Minimum Acceptable Value: 2 147 483 647 [Option End]
+	 */
+#define	INT_MIN	((long)(~INT_MAX))
+    /* 
+	 * Minimum value for an object of type int.
+     * [CX] [Option Start] Maximum Acceptable Value: -2 147 483 647 [Option End]
+	 */
+#define	LLONG_MAX	((long long)(ULLONG_MAX >> 1))
+    /* 
+	 * Maximum value for an object of type long long.
+     * Minimum Acceptable Value: +9223372036854775807
+	 */
+#define	LLONG_MIN	((long long)(~LLONG_MAX))
+    /* 
+	 * Minimum value for an object of type long long.
+     * Maximum Acceptable Value: -9223372036854775807
+	 */
+/* 
  * {LONG_BIT}
  *     [CX] [Option Start]
  *     Number of bits in an object of type long.
  *     Minimum Acceptable Value: 32 [Option End]
- * {LONG_MAX}
- *     Maximum value for an object of type long.
- *     Minimum Acceptable Value: +2 147 483 647
- * {LONG_MIN}
- *     Minimum value for an object of type long.
- *     Maximum Acceptable Value: -2 147 483 647
+ */
+#define	LONG_MAX	((long)(ULONG_MAX >> 1))
+    /* 
+	 * Maximum value for an object of type long.
+     * Minimum Acceptable Value: +2 147 483 647
+	 */
+#define	LONG_MIN	((long)(~LONG_MAX))
+    /* 
+	 * Minimum value for an object of type long.
+     * Maximum Acceptable Value: -2 147 483 647
+	 */
+#define	UCHAR_MAX	((unsigned char)(~0L))
+    /* 
+	 * Maximum value for an object of type unsigned char.
+     * [CX] [Option Start] Value: 255 [Option End]
+	 */
+#define	UINT_MAX	((unsigned int)(~0L))
+    /* 
+	 * Maximum value for an object of type unsigned.
+     * [CX] [Option Start] Minimum Acceptable Value: 4 294 967 295 [Option End]
+	 */
+#define	ULLONG_MAX	((unsigned long long)(~0L))
+    /* 
+	 * Maximum value for an object of type unsigned long long.
+     * Minimum Acceptable Value: 18446744073709551615
+	 */
+#define	ULONG_MAX	((unsigned long)(~0L))
+    /* 
+	 * Maximum value for an object of type unsigned long.
+     * Minimum Acceptable Value: 4 294 967 295
+	 */
+ /*
  * {MB_LEN_MAX}
  *     Maximum number of bytes in a character, for any supported locale.
  *     Minimum Acceptable Value: 1
@@ -467,18 +509,6 @@
  *     [CX] [Option Start]
  *     Maximum value for an object of type ssize_t.
  *     Minimum Acceptable Value: {_POSIX_SSIZE_MAX} [Option End]
- * {UCHAR_MAX}
- *     Maximum value for an object of type unsigned char.
- *     [CX] [Option Start] Value: 255 [Option End]
- * {UINT_MAX}
- *     Maximum value for an object of type unsigned.
- *     [CX] [Option Start] Minimum Acceptable Value: 4 294 967 295 [Option End]
- * {ULLONG_MAX}
- *     Maximum value for an object of type unsigned long long.
- *     Minimum Acceptable Value: 18446744073709551615
- * {ULONG_MAX}
- *     Maximum value for an object of type unsigned long.
- *     Minimum Acceptable Value: 4 294 967 295
  * {USHRT_MAX}
  *     Maximum value for an object of type unsigned short.
  *     Minimum Acceptable Value: 65 535
@@ -512,4 +542,6 @@
  *     Default process priority.
  *     Minimum Acceptable Value: 20 [Option End] 
  */
+
+
 #endif

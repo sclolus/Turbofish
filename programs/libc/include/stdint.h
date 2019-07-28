@@ -88,6 +88,7 @@
 //     The following type designates a signed integer type with the property that any valid pointer to void can be converted to this type, then converted back to a pointer to void, and the result will compare equal to the original pointer: intptr_t
 // 
 //     The following type designates an unsigned integer type with the property that any valid pointer to void can be converted to this type, then converted back to a pointer to void, and the result will compare equal to the original pointer: uintptr_t
+typedef unsigned int		uintptr_t;
 // 
 //     [XSI] [Option Start] On XSI-conformant systems, the intptr_t and uintptr_t types are required; [Option End]  otherwise, they are optional.
 // 
@@ -257,4 +258,16 @@
 // 
 //     The following macro expands to an integer constant expression having the value specified by its argument and the type uintmax_t: UINTMAX_C(value)
 ///
+
+// NON POSIX
+
+/* Align a value by rounding down to closest size.
+   e.g. Using size of 4096, we get this behavior:
+        {4095, 4096, 4097} = {0, 4096, 4096}.  */
+#define ALIGN_DOWN(base, size)        ((base) & -((__typeof__ (base)) (size)))
+
+/* Same as ALIGN_DOWN(), but automatically casts when base is a pointer.  */
+#define PTR_ALIGN_DOWN(base, size) \
+  ((__typeof__ (base)) ALIGN_DOWN ((uintptr_t) (base), (size)))
+
 #endif

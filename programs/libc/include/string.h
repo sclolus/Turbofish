@@ -31,6 +31,7 @@ extern "C" {
 //    [Option End]
 	char    *strcat(char *restrict, const char *restrict);
 	char    *strchr(const char *, int);
+	char	*strchrnul(const char *, int);
 	int      strcmp(const char *, const char *);
 	int      strcoll(const char *, const char *);
 //    [CX][Option Start]

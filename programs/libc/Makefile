@@ -13,8 +13,9 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	atoi toupper tolower \
 	strclr striter striteri \
 	strequ strnequ \
-	putchar putstr putendl putnbr putnbr_base \
-	aligned_memcpy aligned_bzero strdup
+	putendl putnbr putnbr_base \
+	aligned_memcpy aligned_bzero strdup \
+	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul 
 VPATH += src/string
 HEADERS += include/string.h
 
