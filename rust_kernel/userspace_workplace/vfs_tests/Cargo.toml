@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 walkdir = "2"
 errno = { path = "../../dependencies/errno" }
+const_assert = { path = "../../dependencies/const_assert" }

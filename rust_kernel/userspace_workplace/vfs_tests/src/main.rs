@@ -1,8 +1,11 @@
+#![feature(underscore_const_names)]
 use std::cmp::{Eq, PartialEq, Ord, PartialOrd};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
 extern crate errno;
+#[macro_use]
+extern crate const_assert;
 
 mod posix_consts;
 mod path;
