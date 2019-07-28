@@ -86,7 +86,11 @@
 //The [XSI] [Option Start]  WCONTINUED [Option End] and WNOHANG constants, described above for waitpid(), can also be used with waitid().
 
 //The type idtype_t shall be defined as an enumeration type whose possible values shall include at least the following: P_ALL P_PGID P_PID
-typedef idtype_t;
+typedef enum idtype {
+	P_ALL,
+	P_PGID,
+	P_PID
+} idtype_t;
 
 //The <sys/wait.h> header shall define the id_t and pid_t types as described in <sys/types.h>.
 

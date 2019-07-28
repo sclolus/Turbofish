@@ -1,8 +1,8 @@
 
-#include "string.h"
+#include <string.h>
+#include <stdio.h>
 
 void	putendl(char const *s)
 {
-	putstr(s);
-	putchar('\n');
+	puts(s);
 }

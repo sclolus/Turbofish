@@ -332,8 +332,7 @@ void (*sigset(int, void (*)(int)))(int);
 //[Option End]
 //[CX][Option Start]
 int    sigsuspend(const sigset_t *);
-int    sigtimedwait(const sigset_t *restrict, siginfo_t *restrict,
-           const struct timespec *restrict);
+int    sigtimedwait(const sigset_t *restrict, siginfo_t *restrict, const struct timespec *restrict);
 int    sigwait(const sigset_t *restrict, int *restrict);
 int    sigwaitinfo(const sigset_t *restrict, siginfo_t *restrict);
 //[Option End]

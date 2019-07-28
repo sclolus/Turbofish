@@ -1,7 +1,7 @@
 
-#include "string.h"
+#include <string.h>
 
-int	tolower(int c)
+int	_tolower(int c)
 {
 	if (c >= 'A' && c <= 'Z')
 		return (c + 32);

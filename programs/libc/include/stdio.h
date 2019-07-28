@@ -150,6 +150,7 @@ void     perror(const char *);
 FILE    *popen(const char *, const char *);
 //[Option End]
 int      printf(const char *restrict, ...);
+int      eprintf(const char *restrict, ...);
 int      putc(int, FILE *);
 int      putchar(int);
 //[CX][Option Start]

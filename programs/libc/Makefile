@@ -10,7 +10,7 @@ HEADERS += include/errno.h
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
 	strchr strrchr strstr strnstr strcmp strncmp \
-	atoi toupper tolower \
+	atoi toupper \
 	strclr striter striteri \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
@@ -89,7 +89,7 @@ SRC_C += gettext locale
 VPATH += src/locale
 HEADERS += include/locale.h
 
-SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint 
+SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower
 VPATH += src/ctype
 HEADERS += include/ctype.h
 

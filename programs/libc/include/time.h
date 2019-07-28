@@ -11,7 +11,7 @@
 //[CPT] [Option Start] The <time.h> header shall define the pid_t type as described in <sys/types.h>. [Option End]
 
 //[CX] [Option Start] The tag sigevent shall be declared as naming an incomplete structure type, the contents of which are described in the <signal.h> header. [Option End]
-#include <signal.h>
+/* #include <signal.h> */
 
 //The <time.h> header shall declare the tm structure, which shall include at least the following members:
 struct tm {

@@ -21,7 +21,7 @@ void		open_malloc_tracer(void)
 	ret = 0;
 	(void)ret;
 	if (ret == -1)
-		bzero(&ctx.begin_time, sizeof(struct timespec));
+		memset(&ctx.begin_time, 0, sizeof(struct timespec));
 //	ctx.begin_time.tv_nsec /= 1000;
 }
 

@@ -1,4 +1,4 @@
 
 char * gettext (const char * msgid) {
-	return msgid;
+	return (char *)msgid;
 }

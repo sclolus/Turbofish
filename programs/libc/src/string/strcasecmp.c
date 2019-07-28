@@ -1,4 +1,5 @@
 #include <string.h>
+#include <ctype.h>
 
 int __strcasecmp (const char *s1, const char *s2)
 {
@@ -8,7 +9,7 @@ int __strcasecmp (const char *s1, const char *s2)
 
 	if (p1 == p2)
 		return 0;
-	while ((result = tolower (*p1) - tolower (*p2++)) == 0) {
+	while ((result = _tolower (*p1) - _tolower (*p2++)) == 0) {
 		if (*p1++ == '\0')
 			break;
 	}

@@ -79,9 +79,12 @@
 #include <sys/types.h>
 //
 //[TYM] [Option Start] The <sys/mman.h> header shall define the posix_typed_mem_info structure, which shall include at least the following member:
-//
 //size_t  posix_tmi_length  Maximum length which may be allocated 
 //                          from a typed memory object. 
+struct posix_typed_mem_info {
+	size_t  posix_tmi_length;  //Maximum length which may be allocated from a typed memory object. 
+};
+//
 //
 //[Option End]
 //

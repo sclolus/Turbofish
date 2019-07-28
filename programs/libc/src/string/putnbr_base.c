@@ -1,5 +1,6 @@
 
 #include "string.h"
+#include <stdio.h>
 
 void	putnbr_base(int n, int base)
 {

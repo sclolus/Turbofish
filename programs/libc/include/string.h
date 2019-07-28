@@ -73,6 +73,15 @@ extern "C" {
 //    [Option End]
 
 //    [CX] [Option Start] Inclusion of the <string.h> header may also make visible all symbols from <stddef.h>. [Option End]
+
+// NON POSIX :
+void	aligned_bzero(void *s, size_t n);
+
+void	*aligned_memcpy(void *restrict dst, const void *restrict src, size_t n);
+
+
+#define HEX_T(x)	"0123456789ABCDEF"[x]
+
 #ifdef __cplusplus
 }
 #endif

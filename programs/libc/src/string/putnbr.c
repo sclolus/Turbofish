@@ -1,5 +1,6 @@
 
-#include "string.h"
+#include <string.h>
+#include <stdio.h>
 
 void	putnbr(int n)
 {
