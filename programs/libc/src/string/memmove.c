@@ -1,7 +1,7 @@
 
 #include "string.h"
 
-void	*ft_memmove(void *dst, const void *src, size_t len)
+void	*memmove(void *dst, const void *src, size_t len)
 {
 	char *s1;
 	char *s2;
