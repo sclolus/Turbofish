@@ -9,8 +9,11 @@ use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
 use core::mem::transmute;
-use core::ops::{BitOr, BitOrAssign, Index, IndexMut};
+use core::ops::{BitAnd, BitOr, BitOrAssign, Index, IndexMut, Not};
 use errno::Errno;
+
+#[allow(non_camel_case_types)]
+pub type sigset_t = u32;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -163,11 +166,37 @@ impl From<Signum> for SaMask {
     }
 }
 
+impl From<u32> for SaMask {
+    fn from(n: u32) -> Self {
+        // make sure we don't create a mask with syskill or Sigstop as
+        // syskill and sigstop cannot be blocked
+        SaMask(
+            n & !(Signum::Sigkill as u32) & !(Signum::Sigstop as u32) & !(Signum::Sigcont as u32),
+        )
+    }
+}
+
 impl BitOr for SaMask {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         Self(self.0 | rhs.0)
+    }
+}
+
+impl Not for SaMask {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
+    }
+}
+
+impl BitAnd for SaMask {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
     }
 }
 
@@ -450,6 +479,44 @@ impl SignalInterface {
 
         self.signal_queue.try_reserve(1)?;
         self.signal_queue.push_back(signum);
+        Ok(0)
+    }
+    const SIG_BLOCK: i32 = 0;
+    // The resulting set shall be the union of the current set and the
+    // signal set pointed to by set.
+    const SIG_UNBLOCK: i32 = 1;
+    // The resulting set shall be the intersection of the current set and
+    // the complement of the signal set pointed to by set.
+    const SIG_SETMASK: i32 = 2;
+    // The resulting set shall be the signal set pointed to by set.
+
+    pub fn change_signal_mask(
+        &mut self,
+        how: i32,
+        set: Option<&sigset_t>,
+        oldset: Option<&mut sigset_t>,
+    ) -> SysResult<u32> {
+        if let Some(set) = set {
+            let mask = SaMask::from(*set);
+            let current_sa_mask = self.current_sa_mask;
+            let oldval = match how {
+                Self::SIG_BLOCK => mem::replace(&mut self.current_sa_mask, current_sa_mask | mask),
+                Self::SIG_UNBLOCK => {
+                    mem::replace(&mut self.current_sa_mask, current_sa_mask & !mask)
+                }
+                Self::SIG_SETMASK => mem::replace(&mut self.current_sa_mask, mask),
+                _ => {
+                    return Err(Errno::Einval);
+                }
+            };
+            if let Some(oldset) = oldset {
+                *oldset = oldval.0;
+            }
+        } else {
+            if let Some(oldset) = oldset {
+                *oldset = self.current_sa_mask.0;
+            }
+        }
         Ok(0)
     }
 }

@@ -9,7 +9,7 @@ use super::scheduler;
 use super::scheduler::unpreemptible;
 use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
 use super::signal;
-use super::signal::StructSigaction;
+use super::signal::{sigset_t, StructSigaction};
 use super::task;
 
 mod mmap;
@@ -22,7 +22,7 @@ mod waitpid;
 use waitpid::sys_waitpid;
 
 pub mod signalfn;
-use signalfn::{sys_kill, sys_pause, sys_sigaction, sys_signal, sys_sigreturn};
+use signalfn::{sys_kill, sys_pause, sys_sigaction, sys_signal, sys_sigprocmask, sys_sigreturn};
 
 mod close;
 use close::sys_close;
@@ -183,6 +183,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ecx as usize,
             MmapProt::from_bits_truncate(edx),
         ),
+        126 => sys_sigprocmask(ebx as i32, ecx as *const sigset_t, edx as *mut sigset_t),
         132 => sys_getpgid(ebx as Pid),
         162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         200 => sys_sigreturn(cpu_state),
