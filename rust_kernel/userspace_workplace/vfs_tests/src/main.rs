@@ -61,13 +61,25 @@ mod direntry {
     }
 
     use DirectoryEntryInner::*;
-    impl DirectoryEntryInner {
-        pub fn is_directory(&self) -> bool {
-            if let Directory(_) = self {
+    macro_rules!    is_variant {
+        ($pat: pat = $it: tt) => {
+            if let $pat = $it {
                 true
             } else {
                 false
             }
+        };
+    }
+
+    impl DirectoryEntryInner {
+        pub fn is_directory(&self) -> bool {
+            is_variant!(Directory(_) = self)
+
+            // if let Directory(_) = self {
+            //     true
+            // } else {
+            //     false
+            // }
         }
 
         pub fn is_directory_empty(&self) -> DcacheResult<bool> {

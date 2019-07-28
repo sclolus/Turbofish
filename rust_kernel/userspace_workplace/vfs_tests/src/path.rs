@@ -182,6 +182,18 @@ impl Path {
     pub fn components(&self) -> Iter<Filename> {
         self.components.iter()
     }
+
+    pub fn chain(&mut self, other: Path) -> Result<&mut Self, Errno> {
+        if self == &Path::null_path() {
+            *self = other;
+            Ok(self)
+        } else {
+            for component in other.components() { // implement into iter to prevent useless copies of components
+                self.push(*component)?;
+            }
+            Ok(self)
+        }
+    }
 }
 
 impl<'a> TryFrom<Iter<'a, Filename>> for Path {
@@ -219,7 +231,7 @@ impl TryFrom<&str> for Path {
 
 impl PartialEq for Path {
     fn eq(&self, other: &Self) -> bool {
-        if self.components.len() != other.components.len() {
+        if self.len() != other.len() {
             return false
         }
 
@@ -507,6 +519,37 @@ mod test {
         path
     }, test_path_posix_path_can_have_len_path_max_minus_one}
 
+    fn make_relative_str_path_of_length(length: usize) -> String {
+        let make_component = |count: usize| {
+            let mut s = String::new();
+
+            for _ in 0..count {
+                s.push_str("a");
+            }
+            s
+        };
+        let mut path = String::new();
+        let mut current_count = 0;
+
+        loop {
+            let additional_count;
+            additional_count = NAME_MAX + 1;
+
+            if current_count + additional_count > length {
+                path.push_str(&make_component((length) - current_count));
+                break
+            } else {
+                path.push_str(&make_component(NAME_MAX));
+                path.push_str("/");
+                current_count += additional_count;
+            }
+        }
+        let path_str = path;
+        let path = Path::try_from(path_str.as_str()).unwrap();
+        assert_eq!(path.len(), path_str.len());
+        path_str
+    }
+
     make_test! {fail, test_path_posix_path_cant_be_greater_than_path_max_after_setting_to_absolute, {
         let make_component = |count: usize| {
             let mut s = String::new();
@@ -561,4 +604,118 @@ mod test {
             assert_eq!(path, test_path);
         }
     }}
+
+    macro_rules! make_path_chain_test { // please rewrite this, this is getting stupid, DRY
+        ($make_path_pair: block, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.as_str().try_into().unwrap(), b.as_str().try_into().unwrap());
+                a.chain(b).unwrap();
+            }}
+        };
+
+        (fail, $make_path_pair: block, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.as_str().try_into().unwrap(), b.as_str().try_into().unwrap()); //creat somemacro to report test macro bad uses.
+
+                a.chain(b).unwrap();
+            }}
+        };
+
+        ($make_path_pair: block, $make_test_path: block, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.as_str().try_into().unwrap(), b.as_str().try_into().unwrap());
+                let test_path: Path = ($make_test_path).try_into().unwrap();
+                assert_eq!(a.chain(b).unwrap(), &test_path);
+            }}
+        };
+
+        (fail, $make_path_pair: block, $make_test_path: block, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.as_str().try_into().unwrap(), b.as_str().try_into().unwrap()); //creat somemacro to report test macro bad uses.
+
+                let test_path: Path = ($make_test_path).try_into().unwrap();
+                assert_eq!(a.chain(b).unwrap(), &test_path);
+            }}
+        };
+        ($make_path_pair: expr, $make_test_path: block, $test_name: ident) => {
+            make_test!{pass, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.try_into().unwrap(), b.try_into().unwrap());
+                let test_path: Path = ($make_test_path).try_into().unwrap();
+                assert_eq!(a.chain(b).unwrap(), &test_path);
+            }}
+        };
+
+        (fail, $make_path_pair: expr, $make_test_path: block, $test_name: ident) => {
+            make_test!{fail, $test_name, {
+                use std::convert::TryInto;
+                let (a, b) = $make_path_pair;
+                let (mut a, b): (Path, Path) =  (a.try_into().unwrap(), b.try_into().unwrap()); //creat somemacro to report test macro bad uses.
+
+                let test_path: Path = ($make_test_path).try_into().unwrap();
+                assert_eq!(a.chain(b).unwrap(), &test_path);
+            }}
+        };
+
+    }
+
+    make_path_chain_test!{("a/", "b"),
+                          {"a/b"},
+                          test_path_chain_a_b}
+    make_path_chain_test!{("/a/", "b"),
+                          {"/a/b"},
+                          test_path_chain_root_a_b}
+
+    make_path_chain_test!{("/a/b/", "b/c/d/"),
+                              {"/a/b/b/c/d/"},
+                          test_path_chain_root_a_b_b_c_d}
+
+    make_path_chain_test!{("/a/b/", "b/c/d/"),
+                                  {"/a/b/b/c/d/"},
+                          test_path_chain_root_a_b__b_c_d}
+
+    make_path_chain_test!{("", "a"),
+                          {"a"},
+                          test_path_chain_root_zero_a_is_a}
+
+    make_path_chain_test!{("a", ""),
+                          {"a"},
+                          test_path_chain_root_a_zero_is_a}
+
+    make_path_chain_test!{("/a", ""),
+                          {"/a"},
+                          test_path_chain_root_a_zero_is_root_a}
+
+    make_path_chain_test!{("", "/a"),
+                          {"/a"},
+                          test_path_chain_zero_root_a_is_root_a}
+
+    make_path_chain_test!{("", "a/b/c"),
+                          {"a/b/c"},
+                          test_path_chain_zero_a_b_c_is_a_b_c}
+
+    make_path_chain_test!{("a/b/c", ""),
+                          {"a/b/c"},
+                          test_path_chain_a_b_c_zero_is_a_b_c}
+
+    make_path_chain_test!{fail, {
+        let a = make_relative_str_path_of_length(PATH_MAX - 1);
+        let b = make_relative_str_path_of_length(1);
+        (a, b)
+    }, test_path_chain_cant_create_bigger_path_than_posix_says}
+    make_path_chain_test!{{
+        let a = make_relative_str_path_of_length(PATH_MAX - 3);
+        let b = make_relative_str_path_of_length(1);
+        (a, b)
+    }, test_path_chain_can_create_a_path_of_length_path_max_minus_three}
+
 }

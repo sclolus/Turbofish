@@ -9,3 +9,10 @@ pub const NAME_MAX: usize = 256;
 
 /// The maximum size (in bytes) of any path.
 pub const PATH_MAX: usize = 4096;
+
+/// Posix says:
+/// 3.381 Symbolic Link
+/// A type of file with the property that when the file is encountered during
+/// pathname resolution, a string stored by the file is used to modify the pathname resolution.
+/// The stored string has a length of {SYMLINK_MAX} bytes or fewer.
+pub const SYMLINK_MAX: usize = 256;
