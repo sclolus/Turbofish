@@ -22,22 +22,6 @@ geteuid
 getgid
 getgroups
 
-environ
-
-qsort
-
-_exit
-wait3
-getppid
-
-longjmp
-setjmp
-
-WIFSTOPPED
-sigemptyset
-sigfillset
-sigprocmask
 sigsuspend
-strsignal
 
-vsnprintf
+vsnprintf -> micka

@@ -481,13 +481,14 @@ impl SignalInterface {
         self.signal_queue.push_back(signum);
         Ok(0)
     }
-    const SIG_BLOCK: i32 = 0;
+
+    pub const SIG_BLOCK: i32 = 0;
     // The resulting set shall be the union of the current set and the
     // signal set pointed to by set.
-    const SIG_UNBLOCK: i32 = 1;
+    pub const SIG_UNBLOCK: i32 = 1;
     // The resulting set shall be the intersection of the current set and
     // the complement of the signal set pointed to by set.
-    const SIG_SETMASK: i32 = 2;
+    pub const SIG_SETMASK: i32 = 2;
     // The resulting set shall be the signal set pointed to by set.
 
     pub fn change_signal_mask(

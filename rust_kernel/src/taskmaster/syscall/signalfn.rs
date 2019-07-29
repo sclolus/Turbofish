@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{sigset_t, JobAction, Signum, StructSigaction};
+use super::signal::{sigset_t, JobAction, Signum, StructSigaction, SignalInterface};
 use super::task::{Task, WaitingState};
 
 use core::convert::TryInto;
@@ -151,6 +151,14 @@ pub unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
             .terminate_pending_signal(cpu_state as u32);
         Ok((*cpu_state).registers.eax)
     })
+}
+
+pub unsafe fn sys_sigsuspend(sigmask: *const sigset_t) -> SysResult<u32> {
+    let mut oldmask: sigset_t = 0;
+    sys_sigprocmask(SignalInterface::SIG_SETMASK, sigmask, &mut oldmask)?;
+    let ret = sys_pause();
+    sys_sigprocmask(SignalInterface::SIG_SETMASK, &oldmask, 0 as *mut sigset_t)?;
+    ret
 }
 
 pub unsafe fn sys_sigprocmask(

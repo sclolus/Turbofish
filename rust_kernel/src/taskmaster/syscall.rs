@@ -22,7 +22,7 @@ mod waitpid;
 use waitpid::sys_waitpid;
 
 pub mod signalfn;
-use signalfn::{sys_kill, sys_pause, sys_sigaction, sys_signal, sys_sigprocmask, sys_sigreturn};
+use signalfn::{sys_kill, sys_pause, sys_sigaction, sys_signal, sys_sigprocmask, sys_sigreturn, sys_sigsuspend};
 
 mod close;
 use close::sys_close;
@@ -172,6 +172,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ebx as u32,
             ecx as *const StructSigaction,
             edx as *mut StructSigaction,
+        ),
+        72 => sys_sigsuspend(
+            ebx as *const sigset_t
         ),
         88 => sys_reboot(),
         90 => sys_mmap(ebx as *const MmapArgStruct),

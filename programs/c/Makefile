@@ -32,7 +32,8 @@ SRC_C = Clone \
 		Ud2 \
 		Wait \
 		env \
-		SetJmp
+		SetJmp \
+		SigSuspend
 
 ifeq ($(GNU),yes)
 CFLAGS += -m32

@@ -23,6 +23,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETPPID		 64
 #define GETPGRP		 65
 #define SIGACTION    67
+#define SIGSUSPEND   72
 #define REBOOT       88
 #define MMAP         90
 #define MUNMAP       91
