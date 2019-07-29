@@ -30,7 +30,8 @@ SRC_C = Clone \
 		SonSendSignal \
 		Timer \
 		Ud2 \
-		Wait
+		Wait \
+		env
 
 ifeq ($(GNU),yes)
 CFLAGS += -m32

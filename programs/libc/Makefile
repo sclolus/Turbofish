@@ -134,6 +134,9 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
+crt0.o: src/start.asm
+	$(AS) $(ASFLAGS) -o crt0.o src/start.asm
+
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
 
@@ -148,3 +151,4 @@ exec: all
 install:
 	cp libc.a ~/cross/sysroot/usr/lib/.
 	cp -r include/*  ~/cross/sysroot/usr/include/
+	cp crt0.o ~/cross/sysroot/usr/lib/crt0.o

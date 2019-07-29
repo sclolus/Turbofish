@@ -22,6 +22,7 @@ pub struct c_str {
 pub struct CString(pub Vec<c_char>);
 
 /// Main structure of CStringArray
+#[derive(Debug)]
 pub struct CStringArray {
     /// Pointer vector of C Style
     pub c_pointer: Vec<*const c_char>,
@@ -261,7 +262,7 @@ impl convert::From<*const *const c_char> for CStringArray {
 }
 
 /// Debug boilerplate of CStringArray
-impl fmt::Debug for CStringArray {
+impl fmt::Display for CStringArray {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for elem in &self.borrowed_content {
             write!(f, "{:?}\n", elem)?;
