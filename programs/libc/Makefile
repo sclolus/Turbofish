@@ -1,4 +1,5 @@
 TARGET = libc.a
+SYSROOT = ~/cross/sysroot/
 
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
@@ -153,6 +154,6 @@ exec: all
 	./$(TARGET)
 
 install:
-	cp libc.a ~/cross/sysroot/usr/lib/.
-	cp -r include/*  ~/cross/sysroot/usr/include/
-	cp crt0.o ~/cross/sysroot/usr/lib/crt0.o
+	cp libc.a $(SYSROOT)/usr/lib/.
+	cp -r include/* $(SYSROOT)/usr/include/
+	cp crt0.o $(SYSROOT)/usr/lib/crt0.o
