@@ -1,6 +1,6 @@
 
 #include "user_syscall.h"
-#include "unistd.h"
+#include <stdlib.h>
 
 /*
  * exit - cause normal process termination
