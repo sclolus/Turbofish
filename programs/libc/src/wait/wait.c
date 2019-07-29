@@ -40,3 +40,9 @@ pid_t wait(int *wstatus)
 	 */
 	return waitpid(-1, wstatus, 0);
 }
+
+pid_t wait3(int *wstatus, int options,
+			struct rusage *rusage) {
+	//TODO: handle rusage
+	waitpid(-1, wstatus, options);
+}

@@ -43,10 +43,9 @@
 /* Nonzero if STATUS indicates normal termination.  */
 #define	WIFEXITED(status)	(WTERMSIG(status) == 0)
 
-/* 
- * /\* Nonzero if STATUS indicates the child is stopped.  *\/
- * #define	WIFSTOPPED(status)	(((status) & 0xff) == 0x7f)
- */
+//TODO: check validity of that
+/* Nonzero if STATUS indicates the child is stopped.  */
+#define	WIFSTOPPED(status)	(WTERMSIG(status) != 0)
 
 //The <sys/wait.h> header shall define the following symbolic constants for use with waitpid():
 //
