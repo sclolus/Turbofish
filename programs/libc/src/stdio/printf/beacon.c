@@ -8,19 +8,57 @@
 
 int		printf(const char *restrict format, ...)
 {
+  va_list ap;
+
+  va_start(ap, format);
+  int n = vprintf(format, ap);
+  va_end(ap);
+  return n;
+}
+
+
+int vprintf(const char* format, va_list ap) {
 	t_status	op;
 	int		ret;
 
 	ft_memset(&op, 0, sizeof(t_status));
 	op.s = format;
 	op.fd = STDOUT;
-	va_start(op.ap, format);
+	op.ap = ap;
 	ret = new_chain(&op);
 	va_end(op.ap);
 	if (ret < 0)
 		return (ret);
 	fflush_buffer(&op);
 	return (op.total_size);
+}
+
+// TODO: limit to `size` bytes
+int vsnprintf(char *str, size_t size, const char *format, va_list ap) {
+	t_status	op;
+	int		ret;
+
+	if (str == NULL)
+		return (-1);
+	ft_memset(&op, 0, sizeof(t_status));
+	op.s = format;
+	op.str = str;
+	op.ap = ap;
+	ret = new_chain(&op);
+	va_end(op.ap);
+	if (ret < 0)
+		return (ret);
+	fflush_buffer(&op);
+	return (op.total_size);
+}
+
+int snprintf(char *str, size_t size, const char *format, ...) {
+  va_list ap;
+
+  va_start(ap, format);
+  int n = vsnprintf(str, size, format, ap);
+  va_end(ap);
+  return n;
 }
 
 int		_dprintf(bool display, const char *restrict format, ...)
