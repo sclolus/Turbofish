@@ -31,7 +31,8 @@ SRC_C = Clone \
 		Timer \
 		Ud2 \
 		Wait \
-		env
+		env \
+		SetJmp
 
 ifeq ($(GNU),yes)
 CFLAGS += -m32

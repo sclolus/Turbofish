@@ -97,6 +97,10 @@ SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigi
 VPATH += src/ctype
 HEADERS += include/ctype.h
 
+VPATH += src/setjmp
+SRC_ASM += setjmp
+HEADERS += include/setjmp.h
+
 SRC_ASM += user_syscall
 VPATH += src
 HEADERS += include/user_syscall.h
@@ -105,7 +109,7 @@ AS = nasm
 CC = i686-turbofish-gcc
 
 ASFLAGS = -f elf
-CFLAGS += $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+CFLAGS += -masm=intel $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 #ifeq ($(DEBUG),yes)
 #	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
 #	ASFLAGS += -g
