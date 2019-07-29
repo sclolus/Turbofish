@@ -69,10 +69,10 @@ endif
 
 ifeq ($(GNU),yes)
 $(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
-	$(CC) $(LDFLAGS) -o $(BUILD_DIR)/$@ $^
+	$(CC) -o $(BUILD_DIR)/$@ $^
 else
-$(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive) libc/libc.a
-	$(CC) $(LDFLAGS) -o $(BUILD_DIR)/$@ $^
+$(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
+	$(CC) -o $(BUILD_DIR)/$@ $^ -z muldefs
 endif
 
 #$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
@@ -101,3 +101,6 @@ test:
 
 exec: all
 	./$(TARGET)
+
+install:
+	cp build/$(TARGET) ../../rust_kernel/src/userland/

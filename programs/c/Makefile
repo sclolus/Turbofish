@@ -54,6 +54,9 @@ all: $(TARGET_C)
 build/%: %.c Makefile
 	$(CC) $(CFLAGS) -o $@ $<
 
+install:
+	cp $(TARGET_C) ../../rust_kernel/src/userland/
+
 clean:
 	rm $(TARGET_C)
 
