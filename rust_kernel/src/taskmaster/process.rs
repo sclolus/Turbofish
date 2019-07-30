@@ -20,7 +20,7 @@ use fallible_collections::{try_vec, FallibleBox};
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
-use crate::memory::AddressSpace;
+use crate::memory::{mmu::Entry, AddressSpace};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::registers::Eflags;
 use crate::system::{BaseRegisters, PrivilegeLevel};
@@ -226,7 +226,7 @@ impl Process for UserProcess {
                     if h.segment_type == SegmentType::Load {
                         let segment = {
                             virtual_allocator.alloc_on(
-                                Page::containing(Virt(h.vaddr as usize)),
+                                h.vaddr as *mut u8,
                                 h.memsz as usize,
                                 AllocFlags::USER_MEMORY,
                             )?;
@@ -240,11 +240,11 @@ impl Process for UserProcess {
                             .as_mut_ptr()
                             .write_bytes(0, h.memsz as usize - h.filez as usize);
                         // Modify the rights on pages by following the ELF specific restrictions
-                        virtual_allocator.modify_range_page_entry(
+                        virtual_allocator.change_range_page_entry(
                             Page::containing(Virt(h.vaddr as usize)),
                             (h.memsz as usize).into(),
-                            Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
-                        );
+                            &mut |entry: &mut Entry| *entry |= Entry::from(Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY),
+                        ).expect("page must have been alloc by alloc on");
                     }
                 }
                 elf.header.entry_point as u32
@@ -267,7 +267,7 @@ impl Process for UserProcess {
         );
 
         // Mark the first entry of the kernel stack as read-only, its make an Triple fault when happened
-        virtual_allocator.modify_page_entry(
+        virtual_allocator.change_flags_page_entry(
             Virt(kernel_stack.as_ptr() as usize).into(),
             AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY,
         );
@@ -283,7 +283,7 @@ impl Process for UserProcess {
             virtual_allocator.alloc(Self::RING3_PROCESS_STACK_SIZE, AllocFlags::USER_MEMORY)?;
 
         // Mark the first entry of the user stack as read-only, this prevent user stack overflow
-        virtual_allocator.modify_page_entry(
+        virtual_allocator.change_flags_page_entry(
             Virt(stack_addr as usize).into(),
             AllocFlags::READ_ONLY | AllocFlags::USER_MEMORY,
         );
@@ -383,7 +383,7 @@ impl Process for KernelProcess {
         KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
             .unwrap()
-            .modify_page_entry(
+            .change_flags_page_entry(
                 Virt(kernel_stack.as_ptr() as usize).into(),
                 AllocFlags::READ_ONLY | AllocFlags::KERNEL_MEMORY,
             );

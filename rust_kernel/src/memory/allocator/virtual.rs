@@ -25,21 +25,46 @@ impl VirtualPageAllocator {
 
     /// Modify the allocFlags for a specific and existing Page
     #[inline(always)]
-    pub fn modify_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
+    pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
         self.mmu.modify_page_entry(page, Into::<Entry>::into(flags));
     }
 
     /// Modify the AllocFlags of a given range of existing Virtual pages
-    pub fn modify_range_page_entry(
+    pub fn change_flags_range_page_entry(
         &mut self,
         start_page: Page<Virt>,
         nbr_pages: NbrPages,
         flags: AllocFlags,
     ) {
         for i in 0..nbr_pages.0 {
-            self.modify_page_entry(start_page + NbrPages(i), flags);
+            self.change_flags_page_entry(start_page + NbrPages(i), flags);
         }
     }
+
+    pub fn change_page_entry<U>(&mut self, page: Page<Virt>, update: &mut U) -> Result<()>
+    where
+        U: FnMut(&mut Entry),
+    {
+        Ok(update(self.mmu
+            .get_entry_mut(page)
+            .ok_or::<MemoryError>(MemoryError::PageNotPresent)?))
+    }
+
+    pub fn change_range_page_entry<U>(
+        &mut self,
+        start_page: Page<Virt>,
+        nbr_pages: NbrPages,
+        update: &mut U
+    ) -> Result<()>
+    where
+        U: FnMut(&mut Entry),
+    {
+        for i in 0..nbr_pages.0 {
+            self.change_page_entry(start_page + NbrPages(i), update)?;
+        }
+        Ok(())
+    }
+
 
     /// Check if the predicate is satisfied into a chunk of pages
     pub fn check_page_range<P>(
@@ -349,7 +374,20 @@ impl AddressSpace {
         self.0.context_switch()
     }
 
-    pub fn modify_range_page_entry(
+    pub fn change_range_page_entry<U>(
+        &mut self,
+        start_page: Page<Virt>,
+        nbr_pages: NbrPages,
+        update: &mut U
+    ) -> Result<()> 
+    where
+        U: FnMut(&mut Entry),
+{
+        self.0
+            .change_range_page_entry(start_page, nbr_pages, update)
+    }
+
+    pub fn change_flags_range_page_entry(
         &mut self,
         start_page: Page<Virt>,
         nbr_pages: NbrPages,
@@ -357,24 +395,25 @@ impl AddressSpace {
     ) {
         //TODO: check range in user_memory
         self.0
-            .modify_range_page_entry(start_page, nbr_pages, flags | AllocFlags::USER_MEMORY);
-    }
-
-    pub fn alloc_on<N>(&mut self, vaddr: Page<Virt>, size: N, flags: AllocFlags) -> Result<*mut u8>
-    where
-        N: Into<NbrPages>,
-    {
-        Ok(self
-            .0
-            .alloc_on(vaddr, size.into(), flags | AllocFlags::USER_MEMORY)?
-            .to_addr()
-            .0 as *mut u8)
+            .change_flags_range_page_entry(start_page, nbr_pages, flags | AllocFlags::USER_MEMORY);
     }
 
     #[inline(always)]
-    pub fn modify_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
+    pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
         //TODO: check range in user_memory
         self.0
-            .modify_page_entry(page, flags | AllocFlags::USER_MEMORY);
+            .change_flags_page_entry(page, flags | AllocFlags::USER_MEMORY);
+    }
+
+    pub fn alloc_on(&mut self, vaddr: *mut u8, size: usize, flags: AllocFlags) -> Result<*mut u8>
+    {
+        let vaddr = Virt(vaddr as usize);
+        let size = NbrPages::from((vaddr + size).align_next(PAGE_SIZE) - vaddr.align_prev(PAGE_SIZE));
+        let page = Page::from(vaddr);
+        Ok(self
+            .0
+            .alloc_on(page, size, flags | AllocFlags::USER_MEMORY)?
+            .to_addr()
+            .0 as *mut u8)
     }
 }
