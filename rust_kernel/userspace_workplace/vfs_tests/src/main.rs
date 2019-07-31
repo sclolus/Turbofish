@@ -78,12 +78,6 @@ mod direntry {
     impl DirectoryEntryInner {
         pub fn is_directory(&self) -> bool {
             is_variant!(Directory(_) = self)
-
-            // if let Directory(_) = self {
-            //     true
-            // } else {
-            //     false
-            // }
         }
 
         pub fn is_symlink(&self) -> bool {
@@ -95,7 +89,6 @@ mod direntry {
         }
 
         pub fn is_directory_empty(&self) -> DcacheResult<bool> {
-            // since empty directory as only . and .. entries.
             Ok(self.get_directory()?.is_directory_empty())
         }
 
@@ -130,7 +123,7 @@ mod direntry {
         inner: DirectoryEntryInner,
         pub id: DirectoryEntryId,
         pub parent_id: DirectoryEntryId,
-        // _: (), // ensure privacy of the default struct constructor.
+        //        _: (), // ensure privacy of the default struct constructor.
     }
 
     impl DirectoryEntry {
@@ -342,6 +335,7 @@ impl Dcache {
         }
         Ok(path)
     }
+
     fn _pathname_resolution(&self, mut root: DirectoryEntryId, pathname: Path, recursion_level: usize) -> DcacheResult<DirectoryEntryId> {
         use crate::posix_consts::SYMLOOP_MAX;
         if recursion_level > SYMLOOP_MAX {
@@ -419,8 +413,38 @@ impl Dcache {
         Ok(())
     }
 
-    pub fn rename_dentry(&mut self, id: DirectoryEntryId, filename: Filename) -> DcacheResult<()> {
-        self.d_entries.get_mut(&id).ok_or(NoSuchEntry)?.set_filename(filename);
+    fn move_dentry(&mut self, id: DirectoryEntryId, new_parent: DirectoryEntryId) -> DcacheResult<()> {
+        let parent_id;
+        {
+            let entry = self.d_entries.get(&id).ok_or(NoSuchEntry)?;
+            parent_id = entry.parent_id;
+        }
+        let parent_dir = self.d_entries.get_mut(&parent_id).ok_or(EntryNotConnected)?;
+
+        parent_dir.remove_entry(id)?;
+        let entry = self.d_entries.remove(&id).ok_or(NoSuchEntry)?;
+        self.add_entry(Some(new_parent), entry)?;
+        Ok(())
+    }
+
+    pub fn rename_dentry(&mut self, cwd: DirectoryEntryId, id: DirectoryEntryId, new_pathname: Path) -> DcacheResult<()> {
+        let new_filename = new_pathname.filename().unwrap(); // ?
+
+        if new_filename == &"." || new_filename == &".." {
+            return Err(Errno(Errno::Einval));
+        }
+
+        if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
+            self.remove_entry(id)?;
+        };
+
+        let new_parent_id = self.pathname_resolution(cwd, new_pathname.parent())?;
+
+        self.move_dentry(id, new_parent_id)?;
+
+        let entry = self.d_entries.get_mut(&id).ok_or(NoSuchEntry)?;
+
+        entry.set_filename(*new_filename);
         Ok(())
     }
 }
@@ -572,14 +596,14 @@ fn main() {
 
     let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
         let path = *args.get(0).ok_or(NotEnoughArguments)?;
-        let new_file_name = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
+        let new_pathname: Path = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
         let path = Path::try_from(path)?;
 
         let search_root;
             search_root = *cwd;
 
         let entry_id = dc.pathname_resolution(search_root, path)?;
-        dc.rename_dentry(entry_id, new_file_name)?;
+        dc.rename_dentry(*cwd, entry_id, new_pathname)?;
         Ok(())
     };
 
@@ -612,6 +636,17 @@ fn main() {
         println!("No such command");
         Ok(())
     };
+    let callbacks_strings = ["ls", "cd", "unlink", "rename", "symlink", "help", ""];
+
+    let help = |_dcache: &mut Dcache, _cwd: &mut DirectoryEntryId, _args: Vec<&str>| -> DcacheResult<()> {
+        let command_strings = ["ls", "cd", "unlink", "rename", "symlink", "help", ""];
+
+        println!("Available commands:");
+        for command in command_strings.iter() {
+            println!("- {}", command);
+        }
+        Ok(())
+    };
 
     let print_prompt_closure = |dcache: &Dcache, cwd: &DirectoryEntryId| {
         let entry = dcache.d_entries.get(cwd).unwrap();
@@ -621,13 +656,13 @@ fn main() {
         stdout().flush()
     };
 
-    let callbacks_strings = ["ls", "cd", "unlink", "rename", "symlink", ""];
     type ReplClosures = dyn Fn(&mut Dcache, &mut DirectoryEntryId, Vec<&str>) -> DcacheResult<()>;
     callbacks.push(Box::new(ls_closure));
     callbacks.push(Box::new(cd_closure));
     callbacks.push(Box::new(unlink_closure));
     callbacks.push(Box::new(rename_closure));
     callbacks.push(Box::new(symlink_closure));
+    callbacks.push(Box::new(help));
     callbacks.push(Box::new(no_such_command_closure));
     let mut cwd_id = dcache.root_id;
 
