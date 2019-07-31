@@ -1,5 +1,5 @@
 TARGET = libc.a
-SYSROOT = ~/cross/sysroot/
+SYSROOT = /toolchain_turbofish/sysroot
 
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
@@ -109,6 +109,10 @@ HEADERS += include/user_syscall.h
 AS = nasm
 CC = i686-turbofish-gcc
 
+VPATH += src
+CRT_DIR = src/crt
+CRT_SOURCES = crtbegin.c crtend.c crti.c crtn.c
+
 ASFLAGS = -f elf
 CFLAGS += -masm=intel $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 #ifeq ($(DEBUG),yes)
@@ -124,10 +128,12 @@ CFLAGS += -masm=intel $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -n
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+OBJ_CRT = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(CRT_SOURCES)))))
+OBJ_CRT0 = $(OBJ_DIR)/crt/ctr0.o
 
 .PHONY = all clean fclean re exec
 
-all: $(TARGET)
+all: $(TARGET) $(OBJ_CRT) $(OBJ_CRT0)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C)
 	ar rc $@ $^
@@ -139,9 +145,11 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-crt0.o: src/start.asm
-	$(AS) $(ASFLAGS) -o crt0.o src/start.asm
+$(OBJ_DIR)/crt/%.o: $(CRT_DIR)/$(CRT_SOURCES)
+	$(CC) $(CFLAGS) -c $< -o $@ 
 
+$(OBJ_CRT0): $(CRT_DIR)/crt0.asm
+	$(AS) $(ASFLAGS) -o $@ $<
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
 
@@ -156,4 +164,4 @@ exec: all
 install:
 	cp libc.a $(SYSROOT)/usr/lib/.
 	cp -r include/* $(SYSROOT)/usr/include/
-	cp crt0.o $(SYSROOT)/usr/lib/crt0.o
+	cp $(OBJ_CRT0) $(OBJ_CRT) $(SYSROOT)/usr/lib/.

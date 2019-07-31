@@ -1,0 +1,47 @@
+Only in gcc-9.1.0/config: turbofish.h
+diff -r gcc-origin/config.sub gcc-9.1.0/config.sub
+1368a1369
+> 	turbofish*);;
+diff -r gcc-origin/fixincludes/mkfixinc.sh gcc-9.1.0/fixincludes/mkfixinc.sh
+13a14
+>     *-myos* | \
+30a32
+>  
+31a34
+> 
+diff -r gcc-origin/gcc/config.gcc gcc-9.1.0/gcc/config.gcc
+614a615,622
+> 
+> *-*-turbofish*)
+>   gas=yes
+>   gnu_ld=yes
+>   default_use_cxa_atexit=yes
+>   use_gcc_stdint=wrap
+>   ;;
+> 
+980a989,994
+> i[34567]86-*-turbofish*)
+>     tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h turbofish.h"
+>     ;;
+> x86_64-*-turbofish*)
+>     tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h i386/x86-64.h turbofish.h"
+>     ;;
+diff -r gcc-origin/libgcc/config.host gcc-9.1.0/libgcc/config.host
+345a346,353
+> i[34567]86-*-turbofish*)
+> 	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
+> 	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
+> 	;;
+> x86_64-*-turbofish*)
+> 	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
+> 	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
+> 	;;
+diff -r gcc-origin/libstdc++-v3/crossconfig.m4 gcc-9.1.0/libstdc++-v3/crossconfig.m4
+37a38,44
+>  *-turbofish*)
+>     GLIBCXX_CHECK_COMPILER_FEATURES
+>     GLIBCXX_CHECK_LINKER_FEATURES
+>     GLIBCXX_CHECK_MATH_SUPPORT
+>     GLIBCXX_CHECK_STDLIB_SUPPORT
+>     ;;
+> 
