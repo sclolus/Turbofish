@@ -17,7 +17,7 @@ cp patch-binutils patch-gcc build_toolchain
 cd build_toolchain
 
 # CROSS COMPILE BINUTILS
-wget 'https://ftp.gnu.org/gnu/binutils/binutils-2.32.tar.xz'
+wget -c 'https://ftp.gnu.org/gnu/binutils/binutils-2.32.tar.xz'
 tar -xf 'binutils-2.32.tar.xz'
 patch -p0 < patch-binutils
 cd 'binutils-2.32'
@@ -36,7 +36,7 @@ cd ../..
 # CROSS COMPILE GCC
 echo 'WARNING: you must make install on libc to install the headers before compiling gcc'
 sudo apt install g++ libmpc-dev libmpfr-dev libgmp-dev
-wget 'https://ftp.gnu.org/gnu/gcc/gcc-9.1.0/gcc-9.1.0.tar.xz'
+wget -c 'https://ftp.gnu.org/gnu/gcc/gcc-9.1.0/gcc-9.1.0.tar.xz'
 tar -xf 'gcc-9.1.0.tar.xz'
 patch -p0 < patch-gcc
 cd 'gcc-9.1.0'

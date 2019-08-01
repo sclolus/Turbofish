@@ -33,8 +33,8 @@ diff -ruN gcc-9.1.0/gcc/config/turbofish.h gcc-modified/gcc/config/turbofish.h
 +++ gcc-modified/gcc/config/turbofish.h	2019-08-01 20:03:29.926429356 +0200
 @@ -0,0 +1,28 @@
 +/* Useful if you wish to make target-specific GCC changes. */
-+#undef TARGET_MYOS
-+#define TARGET_MYOS 1
++#undef TARGET_TURBOFISH
++#define TARGET_TURBOFISH 1
 + 
 +/* Default arguments you want when running your
 +   i686-turbofish-gcc/x86_64-turbofish-gcc toolchain */

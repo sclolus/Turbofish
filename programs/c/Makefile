@@ -63,7 +63,7 @@ install:
 	cp -v $(TARGET_C) ../../rust_kernel/src/userland/
 
 clean:
-	rm $(TARGET_C)
+	rm -f $(TARGET_C)
 
 fclean: clean
 
