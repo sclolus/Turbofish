@@ -9,7 +9,7 @@ sudo chown $USER:$USER $ROOT_TOOLCHAIN
 ln -s --force --no-dereference --verbose $ROOT_TOOLCHAIN toolchain_turbofish
 mkdir -pv $SYSROOT $CROSS
 mkdir -pv $SYSROOT/usr
-mkdir -pv $SYSROOT/usr{lib,include}
+mkdir -pv $SYSROOT/usr/{lib,include}
 cp -rv programs/libc/include/* $SYSROOT/usr/include
 
 mkdir -pv build_toolchain
