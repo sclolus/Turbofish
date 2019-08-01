@@ -100,5 +100,4 @@ pub extern "C" fn kmain(
     make_somization(1024 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
     exit_qemu(0);
-    0
 }

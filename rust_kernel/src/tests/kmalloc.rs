@@ -49,5 +49,4 @@ pub extern "C" fn kmain(
 
     crate::watch_dog();
     exit_qemu(0);
-    0
 }
