@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{sigset_t, JobAction, Signum, StructSigaction, SignalInterface};
+use super::signal::{sigset_t, JobAction, SignalInterface, Signum, StructSigaction};
 use super::task::{Task, WaitingState};
 
 use core::convert::TryInto;

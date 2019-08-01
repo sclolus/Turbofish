@@ -69,7 +69,7 @@ pub fn exec(args: &[&str]) -> u8 {
         if args.len() > 0 {
             let filename: CString = args[0].into();
             let argv: CStringArray = args.into();
-            let env: &[&str]  = &["VAR_A=A","VAR_B=B"];
+            let env: &[&str] = &["VAR_A=A", "VAR_B=B"];
             let env_array: CStringArray = env.into();
 
             let f = fork();

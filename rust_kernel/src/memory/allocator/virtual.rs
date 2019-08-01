@@ -45,16 +45,18 @@ impl VirtualPageAllocator {
     where
         U: FnMut(&mut Entry),
     {
-        Ok(update(self.mmu
-            .get_entry_mut(page)
-            .ok_or::<MemoryError>(MemoryError::PageNotPresent)?))
+        Ok(update(
+            self.mmu
+                .get_entry_mut(page)
+                .ok_or::<MemoryError>(MemoryError::PageNotPresent)?,
+        ))
     }
 
     pub fn change_range_page_entry<U>(
         &mut self,
         start_page: Page<Virt>,
         nbr_pages: NbrPages,
-        update: &mut U
+        update: &mut U,
     ) -> Result<()>
     where
         U: FnMut(&mut Entry),
@@ -64,7 +66,6 @@ impl VirtualPageAllocator {
         }
         Ok(())
     }
-
 
     /// Check if the predicate is satisfied into a chunk of pages
     pub fn check_page_range<P>(
@@ -378,11 +379,11 @@ impl AddressSpace {
         &mut self,
         start_page: Page<Virt>,
         nbr_pages: NbrPages,
-        update: &mut U
-    ) -> Result<()> 
+        update: &mut U,
+    ) -> Result<()>
     where
         U: FnMut(&mut Entry),
-{
+    {
         self.0
             .change_range_page_entry(start_page, nbr_pages, update)
     }
@@ -394,8 +395,11 @@ impl AddressSpace {
         flags: AllocFlags,
     ) {
         //TODO: check range in user_memory
-        self.0
-            .change_flags_range_page_entry(start_page, nbr_pages, flags | AllocFlags::USER_MEMORY);
+        self.0.change_flags_range_page_entry(
+            start_page,
+            nbr_pages,
+            flags | AllocFlags::USER_MEMORY,
+        );
     }
 
     #[inline(always)]
@@ -405,10 +409,10 @@ impl AddressSpace {
             .change_flags_page_entry(page, flags | AllocFlags::USER_MEMORY);
     }
 
-    pub fn alloc_on(&mut self, vaddr: *mut u8, size: usize, flags: AllocFlags) -> Result<*mut u8>
-    {
+    pub fn alloc_on(&mut self, vaddr: *mut u8, size: usize, flags: AllocFlags) -> Result<*mut u8> {
         let vaddr = Virt(vaddr as usize);
-        let size = NbrPages::from((vaddr + size).align_next(PAGE_SIZE) - vaddr.align_prev(PAGE_SIZE));
+        let size =
+            NbrPages::from((vaddr + size).align_next(PAGE_SIZE) - vaddr.align_prev(PAGE_SIZE));
         let page = Page::from(vaddr);
         Ok(self
             .0

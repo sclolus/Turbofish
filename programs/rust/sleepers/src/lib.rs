@@ -50,20 +50,31 @@ fn main() -> i32 {
         let ret = unsafe { sleep(seconds) };
 
         if ret != 0 {
-            println!("Ny sleep was interrupted !!! I remain {:?} seconds ...", ret);
+            println!(
+                "Ny sleep was interrupted !!! I remain {:?} seconds ...",
+                ret
+            );
         }
 
         println!("Now, il attempt to sleept with nano.");
 
-        let input: Timespec = Timespec { seconds: srand::<u32>(1), nanoseconds: (srand::<u32>(1000) * 1000000) as i32 };
-        let mut output: Timespec = Timespec { ..Default::default() };
+        let input: Timespec = Timespec {
+            seconds: srand::<u32>(1),
+            nanoseconds: (srand::<u32>(1000) * 1000000) as i32,
+        };
+        let mut output: Timespec = Timespec {
+            ..Default::default()
+        };
 
         println!("I will on nano sleeping , my time struct is {:#?}", input);
 
         let ret = unsafe { nanosleep(&input as *const _, &mut output as *mut _) };
 
         if ret == -1 {
-            println!("Ny nanosleep was interrupted !!! I time struct remain is {:#?} ...", output);
+            println!(
+                "Ny nanosleep was interrupted !!! I time struct remain is {:#?} ...",
+                output
+            );
         }
     }
     #[allow(unreachable_code)]

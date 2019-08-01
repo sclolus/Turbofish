@@ -20,8 +20,8 @@ use fallible_collections::{try_vec, FallibleBox};
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
-use crate::memory::{mmu::Entry, AddressSpace};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::{mmu::Entry, AddressSpace};
 use crate::registers::Eflags;
 use crate::system::{BaseRegisters, PrivilegeLevel};
 
@@ -240,11 +240,17 @@ impl Process for UserProcess {
                             .as_mut_ptr()
                             .write_bytes(0, h.memsz as usize - h.filez as usize);
                         // Modify the rights on pages by following the ELF specific restrictions
-                        virtual_allocator.change_range_page_entry(
-                            Page::containing(Virt(h.vaddr as usize)),
-                            (h.memsz as usize).into(),
-                            &mut |entry: &mut Entry| *entry |= Entry::from(Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY),
-                        ).expect("page must have been alloc by alloc on");
+                        virtual_allocator
+                            .change_range_page_entry(
+                                Page::containing(Virt(h.vaddr as usize)),
+                                (h.memsz as usize).into(),
+                                &mut |entry: &mut Entry| {
+                                    *entry |= Entry::from(
+                                        Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
+                                    )
+                                },
+                            )
+                            .expect("page must have been alloc by alloc on");
                     }
                 }
                 elf.header.entry_point as u32
