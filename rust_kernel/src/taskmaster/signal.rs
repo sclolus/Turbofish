@@ -434,7 +434,7 @@ impl SignalInterface {
     }
 
     /// Register a new handler for a specified Signum
-    pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<u32> {
+    pub fn new_handler(&mut self, signum: Signum, sigaction: &StructSigaction) -> SysResult<StructSigaction> {
         // The system shall not allow the action for the signals SIGKILL or SIGSTOP to be set to SIG_IGN.
         if (signum == Signum::Sigkill || signum == Signum::Sigstop)
             && sigaction.sa_handler != SIG_DFL
@@ -449,7 +449,7 @@ impl SignalInterface {
 
         // Associate a new action for a specified Signum
         let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
-        Ok(former.sa_handler as u32)
+        Ok(former)
     }
 
     /// Register a new signal

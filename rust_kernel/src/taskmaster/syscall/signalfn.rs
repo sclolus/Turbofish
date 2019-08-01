@@ -31,10 +31,11 @@ pub unsafe fn sys_sigaction(
             }
         }
         // TODO: Use old_act
-        scheduler.current_task_mut().signal.new_handler(
+        *old_act = scheduler.current_task_mut().signal.new_handler(
             signum.try_into().map_err(|_| Errno::Einval)?,
             act.as_ref().expect("Null PTR"),
-        )
+        )?;
+        Ok(0)
     })
 }
 
@@ -132,10 +133,11 @@ pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
         };
 
         let mut scheduler = SCHEDULER.lock();
-        scheduler
+        let struct_sigaction = scheduler
             .current_task_mut()
             .signal
-            .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)
+            .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)?;
+        Ok(struct_sigaction.sa_handler as u32)
     })
 }
 
