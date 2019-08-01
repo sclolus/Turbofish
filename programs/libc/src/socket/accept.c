@@ -1,6 +1,7 @@
 
 #include <user_syscall.h>
 #include <sys/socket.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -29,11 +30,5 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 	 * descriptor for the accepted socket.  On error, -1 is returned,
 	 * and errno is set appropriately
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

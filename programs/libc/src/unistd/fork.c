@@ -1,7 +1,8 @@
 
-#include "sched.h"
-#include "user_syscall.h"
-#include "unistd.h"
+#include <sched.h>
+#include <user_syscall.h>
+#include <unistd.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -16,11 +17,5 @@ pid_t fork()
 	 * and 0 is returned in the child.  On failure, -1 is returned in the
 	 * parent, no child process is created, and errno is set appropriately.
 	 */
-	if (ret < 0) {
-		errno = -(int)ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

@@ -1,8 +1,7 @@
 
-#include "user_syscall.h"
-#include "wait.h"
-
-extern int errno;
+#include <user_syscall.h>
+#include <wait.h>
+#include <errno.h>
 
 /*
  * Each of these calls sets errno to an appropriate value in the case of an error
@@ -13,20 +12,15 @@ extern int errno;
  */
 pid_t waitpid(pid_t pid, int *wstatus, int options)
 {
-	pid_t p = _user_syscall(WAITPID, 3, pid, wstatus, options);
+	pid_t ret = _user_syscall(WAITPID, 3, pid, wstatus, options);
 	/*
 	 * on success, returns the process ID of the child whose state
 	 * has changed; if WNOHANG was specified and one or more child(ren)
 	 * specified by pid exist, but have not yet changed state, then 0
 	 * is returned.  On error, -1 is returned.
 	 */
-	if (p < 0) {
-		errno = -p;
-		return -1;
-	} else {
-		errno = 0;
-		return p;
-	}
+
+	set_errno_and_return(ret);
 }
 
 /*

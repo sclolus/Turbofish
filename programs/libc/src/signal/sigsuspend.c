@@ -12,11 +12,5 @@
 int sigsuspend(const sigset_t *sigmask) {
 	int ret = _user_syscall(SIGSUSPEND, 1, sigmask);
 
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return 0;
-	}
+	set_errno_and_return(ret);
 }

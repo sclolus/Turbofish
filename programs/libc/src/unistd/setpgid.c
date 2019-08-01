@@ -4,9 +4,5 @@
 
 int setpgid(pid_t pid, pid_t pgid) {
 	int ret = _user_syscall(SETPGID, 2, pid, pgid);
-	if (ret < 0) {
-		errno = -ret;
-		ret = -1;
-	}
-	return ret;
+	set_errno_and_return(ret);
 }

@@ -1,5 +1,5 @@
 
-#include "string.h"
+#include <string.h>
 
 char	*strnstr(const char *big, const char *little, size_t len)
 {

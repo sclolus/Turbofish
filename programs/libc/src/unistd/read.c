@@ -1,6 +1,7 @@
 
-#include "user_syscall.h"
-#include "unistd.h"
+#include <user_syscall.h>
+#include <unistd.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -21,11 +22,6 @@ ssize_t read(int fd, void *buf, size_t count)
 	 * On error, -1 is returned, and errno is set appropriately. In this case, it is left
 	 * unspecified whether the file position (if any) changes
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+
+	set_errno_and_return(ret);
 }

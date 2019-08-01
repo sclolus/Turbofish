@@ -1,7 +1,7 @@
 
-#include "user_syscall.h"
-#include "sys/mman.h"
-#include "stdio.h"
+#include <user_syscall.h>
+#include <sys/mman.h>
+#include <stdio.h>
 
 extern int errno;
 
@@ -31,7 +31,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 		errno = err;
 		return (void *)MAP_FAILED;
 	} else {
-		errno = 0;
 		return ret;
 	}
 }

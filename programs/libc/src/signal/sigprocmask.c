@@ -8,5 +8,5 @@ int sigprocmask(int how, const sigset_t *restrict set,
 		return EINVAL;
 	}
 	int ret = _user_syscall(SIGPROCMASK, 3, how, set, oset);
-
+	set_errno_and_return(ret);
 }

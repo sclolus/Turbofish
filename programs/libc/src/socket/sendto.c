@@ -1,6 +1,7 @@
 
 #include <user_syscall.h>
 #include <sys/socket.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -25,11 +26,5 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
 	 * On success, this call returns the number of bytes sent.
 	 * On error, -1 is returned, and errno is set appropriately.
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

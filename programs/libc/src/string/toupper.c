@@ -1,5 +1,5 @@
 
-#include "string.h"
+#include <string.h>
 
 int	toupper(int c)
 {

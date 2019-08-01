@@ -1,16 +1,11 @@
 
-#include "sys/mman.h"
-#include "user_syscall.h"
-
-extern int errno;
+#include <sys/mman.h>
+#include <user_syscall.h>
+#include <errno.h>
 
 int mprotect(void *addr, size_t length, int prot)
 {
 	int ret = _user_syscall(MPROTECT, 3, addr, length, prot);
-	if (ret < 0) {
-		errno = -ret;
-	} else {
-		errno = 0;
-	}
-	return ret;
+
+	set_errno_and_return(ret);
 }

@@ -1,6 +1,7 @@
 
 #include <user_syscall.h>
 #include <sys/socket.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -25,11 +26,5 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags)
 	 * When a stream socket peer has performed an orderly shutdown,
 	 * the return value will be 0 (the traditional "end-of-file" return).
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

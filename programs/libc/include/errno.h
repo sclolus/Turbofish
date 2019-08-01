@@ -138,4 +138,12 @@ extern const char *const sys_errlist[];
 #define ENOMEDIUM       123     /* No medium found */
 #define EMEDIUMTYPE     124     /* Wrong medium type */
 
+#define set_errno_and_return(ret) \
+	if (ret < 0) { \
+		errno = -ret; \
+		return -1; \
+	} else { \
+		return ret; \
+	}
+
 #endif

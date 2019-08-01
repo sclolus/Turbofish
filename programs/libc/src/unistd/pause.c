@@ -1,7 +1,6 @@
 
-#include "user_syscall.h"
-
-extern int errno;
+#include <user_syscall.h>
+#include <errno.h>
 
 /*
  * Wait for signal
@@ -13,6 +12,7 @@ int pause(void)
 	 * pause() returns only when a signal was caught and the signal-catching function returned.
 	 * In this case, pause() returns -1, and errno is set to EINTR.
 	 */
+
 	if (ret < 0) {
 		errno = -ret;
 		return -1;
