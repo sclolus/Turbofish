@@ -334,7 +334,7 @@ impl SignalInterface {
     /// Fork the signal interface
     pub fn fork(&self) -> Self {
         Self {
-            signal_actions: SignalActions([Default::default(); 32]),
+            signal_actions: self.signal_actions,
             // The set of signals pending for the child process shall be
             // initialized to the empty set.
             signal_queue: VecDeque::new(),

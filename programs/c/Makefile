@@ -33,13 +33,15 @@ SRC_C = Clone \
 		Wait \
 		env \
 		SetJmp \
-		SigSuspend
+		SigSuspend \
+		SigPause \
 
 ifeq ($(GNU),yes)
-CFLAGS += -m32
+CFLAGS += -Wall -Wextra -m32
 CC = gcc
-# LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
 else
+# LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
+CFLAGS = -Wall -Wextra
 endif
 
 #ASFLAGS = -f elf
@@ -58,7 +60,7 @@ build/%: %.c Makefile
 	$(CC) $(CFLAGS) -o $@ $<
 
 install:
-	cp $(TARGET_C) ../../rust_kernel/src/userland/
+	cp -v $(TARGET_C) ../../rust_kernel/src/userland/
 
 clean:
 	rm $(TARGET_C)

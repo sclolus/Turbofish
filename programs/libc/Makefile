@@ -1,6 +1,9 @@
 TARGET = libc.a
 SYSROOT = /toolchain_turbofish/sysroot
 
+AS = nasm
+CC = i686-turbofish-gcc
+
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
 
@@ -106,15 +109,15 @@ SRC_ASM += user_syscall
 VPATH += src
 HEADERS += include/user_syscall.h
 
-AS = nasm
-CC = i686-turbofish-gcc
-
 VPATH += src
 CRT_DIR = src/crt
 CRT_SOURCES = crtbegin.c crtend.c crti.c crtn.c
 
 ASFLAGS = -f elf
-CFLAGS += -masm=intel $(IFLAGS)  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) # -nostdinc #$(IFLAGS)
+
 #ifeq ($(DEBUG),yes)
 #	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
 #	ASFLAGS += -g
