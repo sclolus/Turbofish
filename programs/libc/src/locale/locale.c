@@ -1,14 +1,33 @@
-#include "locale.h"
-#include "stddef.h"
+#include <locale.h>
+#include <stddef.h>
 
-char *setlocale(int category, const char *locale) {
-	return "";
-}
+#include <custom.h>
 
-char * bindtextdomain (const char * domainname, const char * dirname) {
+#warning SETLOCALE FUNCTION MUST BE DEFINED
+
+char *setlocale(int category, const char *locale)
+{
+	FUNC
+	(void)category;
+	(void)locale;
 	return NULL;
 }
 
-char * textdomain (const char * domainname) {
+#warning BINDTEXTDOMAIN FUNCTION MUST BE DEFINED
+
+char *bindtextdomain(const char *domainname, const char *dirname)
+{
+	FUNC
+	(void)domainname;
+	(void)dirname;
+	return NULL;
+}
+
+#warning TEXTDOMAIN FUNCTION MUST BE DEFINED
+
+char *textdomain(const char *domainname)
+{
+	FUNC
+	(void)domainname;
 	return NULL;
 }

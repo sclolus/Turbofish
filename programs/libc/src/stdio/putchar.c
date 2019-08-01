@@ -1,9 +1,6 @@
-
-#include <string.h>
 #include <unistd.h>
 
-
-void	putchar(char c)
+int putchar(int c)
 {
-	write(1, &c, 1);
+	return (int)write(1, &c, 1);
 }

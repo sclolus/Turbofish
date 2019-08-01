@@ -116,7 +116,7 @@ CRT_SOURCES = crtbegin.c crtend.c crti.c crtn.c
 ASFLAGS = -f elf
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
-CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) # -nostdinc #$(IFLAGS)
+CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
 
 #ifeq ($(DEBUG),yes)
 #	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0

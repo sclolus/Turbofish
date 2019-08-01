@@ -6,14 +6,14 @@
 **	'man 3 stdarg' to understand variadics macro.
 */
 
-int		printf(const char *restrict format, ...)
+int printf(const char *restrict format, ...)
 {
-  va_list ap;
+	va_list ap;
 
-  va_start(ap, format);
-  int n = vprintf(format, ap);
-  va_end(ap);
-  return n;
+	va_start(ap, format);
+	int n = vprintf(format, ap);
+	va_end(ap);
+	return n;
 }
 
 
@@ -33,11 +33,13 @@ int vprintf(const char* format, va_list ap) {
 	return (op.total_size);
 }
 
-// TODO: limit to `size` bytes
+#warning THE SIZE PARAM OF THE VSNPRINTF FUNCTION MUST BE CONSIDERED
+
 int vsnprintf(char *str, size_t size, const char *format, va_list ap) {
 	t_status	op;
 	int		ret;
 
+	(void)size;
 	if (str == NULL)
 		return (-1);
 	ft_memset(&op, 0, sizeof(t_status));
@@ -52,16 +54,18 @@ int vsnprintf(char *str, size_t size, const char *format, va_list ap) {
 	return (op.total_size);
 }
 
-int snprintf(char *str, size_t size, const char *format, ...) {
-  va_list ap;
+#warning THE SIZE PARAM OF THE SNPRINTF FUNCTION MUST BE CONSIDERED
 
-  va_start(ap, format);
-  int n = vsnprintf(str, size, format, ap);
-  va_end(ap);
-  return n;
+int snprintf(char *str, size_t size, const char *format, ...) {
+	va_list ap;
+
+	va_start(ap, format);
+	int n = vsnprintf(str, size, format, ap);
+	va_end(ap);
+	return n;
 }
 
-int		_dprintf(bool display, const char *restrict format, ...)
+int _dprintf(bool display, const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;
@@ -80,7 +84,7 @@ int		_dprintf(bool display, const char *restrict format, ...)
 	return (op.total_size);
 }
 
-int		eprintf(const char *restrict format, ...)
+int eprintf(const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;
@@ -102,7 +106,7 @@ int fprintf(FILE *stream, const char *format, ...)
 	return dprintf(stream->fd, format);
 }
 
-int		dprintf(int const fd, const char *restrict format, ...)
+int dprintf(int const fd, const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;
@@ -119,13 +123,11 @@ int		dprintf(int const fd, const char *restrict format, ...)
 	return (op.total_size);
 }
 
-int		sprintf(char *str, const char *restrict format, ...)
+int sprintf(char *str, const char *restrict format, ...)
 {
 	t_status	op;
 	int		ret;
 
-	if (str == NULL)
-		return (-1);
 	ft_memset(&op, 0, sizeof(t_status));
 	op.s = format;
 	op.str = str;

@@ -11,4 +11,5 @@ void exit(int status)
 	 * The exit() function does not return.
 	 */
 	_user_syscall(EXIT, 1, status);
+	while (1) {}
 }
