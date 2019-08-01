@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 export TARGET="i686-turbofish"
 export ROOT_TOOLCHAIN="/toolchain_turbofish"
 export SYSROOT="$ROOT_TOOLCHAIN/sysroot"
@@ -10,7 +10,7 @@ ln -s --force --no-dereference --verbose $ROOT_TOOLCHAIN toolchain_turbofish
 mkdir -pv $SYSROOT $CROSS
 mkdir -pv $SYSROOT/usr
 mkdir -pv $SYSROOT/usr{lib,include}
-make install -C programs/libc/
+cp -rv programs/libc/include/* $SYSROOT/usr/include
 
 mkdir -pv build_toolchain
 cp patch-binutils patch-gcc build_toolchain
@@ -23,13 +23,13 @@ patch -p0 < patch-binutils
 cd 'binutils-2.32'
 # In LD subdirectory (Maybe install automake 1.15.1)
 cd ld
-automake
+automake-1.15
 cd -
 # Create a build directory in binutils
 mkdir -p build
 cd build
 ../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$SYSROOT
-make -j 8
+make -j8
 make install
 cd ../..
 
