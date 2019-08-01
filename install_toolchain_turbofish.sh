@@ -42,3 +42,7 @@ cd build
 ../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$SYSROOT
 make
 make install
+
+# DASH
+# URL: http://gondor.apana.org.au/~herbert/dash/files/
+# take version 0.5.10.2
