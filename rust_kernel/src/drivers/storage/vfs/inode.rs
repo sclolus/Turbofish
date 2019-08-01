@@ -8,7 +8,7 @@ use super::stat::UserStat;
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
-pub type inode_number = usize;
+pub type InodeNumber = usize;
 
 use bitflags::bitflags;
 
@@ -83,11 +83,11 @@ pub struct InodeOperations {
 pub struct InodeId
 {
     pub device_id: DeviceId,
-    pub inode_number: inode_number,
+    pub inode_number: InodeNumber,
 }
 
 impl InodeId {
-    pub fn new(inode_number: inode_number, device_id: DeviceId) -> Self {
+    pub fn new(inode_number: InodeNumber, device_id: DeviceId) -> Self {
         Self {
             device_id,
             inode_number
@@ -98,7 +98,7 @@ impl InodeId {
         self.device_id
     }
 
-    pub fn inode_number(&self) -> inode_number {
+    pub fn inode_number(&self) -> InodeNumber {
         self.inode_number
     }
 }
@@ -175,20 +175,9 @@ pub struct File {
     // status: status,
     offset: off_t,
     pub flags: open_flags,
-
-
-
-    // file_operations: FileOperations,
 }
 
 impl File {
-    // pub fn minimal() -> Self {
-    //     Self {
-    //         id,
-    //         offset: 0,
-    //     }
-    // }
-
     pub fn from_dentry(dentry: &DirectoryEntry) -> Self {
         Self {
             id: dentry.header.inode_id,
@@ -197,8 +186,6 @@ impl File {
             flags: Default::default(),
         }
     }
-
-
 }
 
 #[repr(u32)]

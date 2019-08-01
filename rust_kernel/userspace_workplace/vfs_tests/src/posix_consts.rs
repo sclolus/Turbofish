@@ -48,3 +48,11 @@ pub const TTY_NAME_MAX: usize = _POSIX_TTY_NAME_MAX;
 
 pub const _POSIX_TTY_NAME_MAX: usize = 9;
 const_assert!(TTY_NAME_MAX >= _POSIX_TTY_NAME_MAX);
+
+pub type time_t = usize;
+
+#[repr(C)]
+pub struct timespec {
+    seconds: time_t,
+    nanoseconds: time_t,
+}

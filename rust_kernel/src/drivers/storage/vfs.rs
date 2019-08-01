@@ -4,7 +4,7 @@ pub mod direntry;
 use direntry::{DirectoryEntry, DirectoryEntryHeader, DirectoryEntryId};
 
 pub mod inode;
-use inode::{Inode, InodeId, InodeStatus, inode_number, mode_t, File, InodeOperations};
+use inode::{Inode, InodeId, InodeStatus, InodeNumber, mode_t, File, InodeOperations};
 
 
 pub mod posix_consts;
