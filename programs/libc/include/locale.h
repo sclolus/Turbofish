@@ -1,6 +1,5 @@
 #ifndef __LOCALE_H__
-#define __LOCALE_H__
-
+# define __LOCALE_H__
 
 //The <locale.h> header shall define the lconv structure, which shall include at least the following members. (See the definitions of LC_MONETARY in LC_MONETARY and LC_NUMERIC.)
 //
@@ -68,10 +67,9 @@ typedef int locale_t;
 //[CX][Option Start]
 //locale_t      newlocale(int, const char *, locale_t);
 //[Option End]
-char         *setlocale(int, const char *);
+char *setlocale(int, const char *);
 //[CX][Option Start]
 //locale_t      uselocale (locale_t);
 //[Option End]
 
-
-# endif
+#endif

@@ -1,7 +1,6 @@
-
-/* stdlib.h: */
 #ifndef _STDLIB_H
-#define _STDLIB_H
+# define _STDLIB_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -161,4 +160,5 @@ int           wctomb(char *, wchar_t);
 #ifdef __cplusplus
 }
 #endif
+
 #endif

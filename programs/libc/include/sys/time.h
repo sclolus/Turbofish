@@ -1,5 +1,6 @@
 #ifndef __SYS_TIME_H__
 # define __SYS_TIME_H__
+
 //The <sys/time.h> header shall define the timeval structure, which shall include at least the following members:
 
 #include <sys/types.h>
@@ -38,18 +39,19 @@ struct itimerval {
 //he following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
 //[OB][Option Start]
-int   getitimer(int, struct itimerval *);
-int   gettimeofday(struct timeval *restrict, void *restrict);
-int   setitimer(int, const struct itimerval *restrict,
+int getitimer(int, struct itimerval *);
+int gettimeofday(struct timeval *restrict, void *restrict);
+int setitimer(int, const struct itimerval *restrict,
 		struct itimerval *restrict);
 //[Option End]
 //int   select(int, fd_set *restrict, fd_set *restrict, fd_set *restrict,
 //		struct timeval *restrict);
-int   utimes(const char *, const struct timeval [2]);
+int utimes(const char *, const struct timeval [2]);
 
 //TODO: check that not posiz
 struct timezone {
 	int tz_minuteswest;     /* minutes west of Greenwich */
 	int tz_dsttime;         /* type of DST correction */
 };
+
 #endif

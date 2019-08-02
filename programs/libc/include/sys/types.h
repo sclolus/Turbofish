@@ -1,7 +1,6 @@
-
-/* sys/types.h: */
 #ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
+# define _SYS_TYPES_H
+
 #define pid_t int
 
 #define blkcnt_t int

@@ -160,13 +160,13 @@ struct flock {
 
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-int  creat(const char *, mode_t);
-int  fcntl(int, int, ...);
-int  open(const char *, int, ...);
-int  openat(int, const char *, int, ...);
+int creat(const char *, mode_t);
+int fcntl(int, int, ...);
+int open(const char *, int, ...);
+int openat(int, const char *, int, ...);
 //[ADV][Option Start]
-int  posix_fadvise(int, off_t, off_t, int);
-int  posix_fallocate(int, off_t, off_t);
+int posix_fadvise(int, off_t, off_t, int);
+int posix_fallocate(int, off_t, off_t);
 //[Option End]
 
 //Inclusion of the <fcntl.h> header may also make visible all symbols from <sys/stat.h> and <unistd.h>.

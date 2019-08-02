@@ -1,5 +1,6 @@
 #ifndef __MATH_H__
 # define __MATH_H__
+
 //    [CX] [Option Start] Some of the functionality described on this reference page extends the ISO C standard. Applications shall define the appropriate feature test macro (see XSH The Compilation Environment ) to enable the visibility of these symbols in this header. [Option End]
 
 //The <math.h> header shall define at least the following types:
@@ -296,4 +297,5 @@ extern int signgam;
 //[Option End]
 
 //The behavior of each of the functions defined in <math.h> is specified in the System Interfaces volume of POSIX.1-2017 for all representable values of its input arguments, except where stated otherwise. Each function shall execute as if it were a single operation without generating any externally visible exceptional conditions.
+
 #endif

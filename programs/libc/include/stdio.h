@@ -1,5 +1,6 @@
 #ifndef STDIO_H
-#define STDIO_H
+# define STDIO_H
+
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -191,4 +192,5 @@ int      vsprintf(char *restrict, const char *restrict, va_list);
 int      vsscanf(const char *restrict, const char *restrict, va_list);
 
 //[CX] [Option Start] Inclusion of the <stdio.h> header may also make visible all symbols from <stddef.h>. [Option End]
+
 #endif

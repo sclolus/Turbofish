@@ -1,8 +1,6 @@
 #ifndef __SIGNAL_H__
 # define __SIGNAL_H__
 
-//#include "i386.h"
-
 /* Signals.  */
 #define SIGHUP         1       /* Hangup (POSIX).  */
 #define SIGINT         2       /* Interrupt (ANSI).  */

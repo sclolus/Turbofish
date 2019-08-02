@@ -1,74 +1,76 @@
 #ifndef __CTYPE_H__
 # define __CTYPE_H__
+
 typedef int locale_t;
-int   isalnum(int);
+
+int isalnum(int);
 //[CX][Option Start]
-int   isalnum_l(int, locale_t);
+int isalnum_l(int, locale_t);
 //[Option End]
-int   isalpha(int);
+int isalpha(int);
 //[CX][Option Start]
-int   isalpha_l(int, locale_t);
+int isalpha_l(int, locale_t);
 //[Option End]
 //[OB XSI][Option Start]
-int   isascii(int);
+int isascii(int);
 //[Option End]
-int   isblank(int);
+int isblank(int);
 //[CX][Option Start]
-int   isblank_l(int, locale_t);
+int isblank_l(int, locale_t);
 //[Option End]
-int   iscntrl(int);
+int iscntrl(int);
 //[CX][Option Start]
-int   iscntrl_l(int, locale_t);
+int iscntrl_l(int, locale_t);
 //[Option End]
-int   isdigit(int);
+int isdigit(int);
 //[CX][Option Start]
-int   isdigit_l(int, locale_t);
+int isdigit_l(int, locale_t);
 //[Option End]
-int   isgraph(int);
+int isgraph(int);
 //[CX][Option Start]
-int   isgraph_l(int, locale_t);
+int isgraph_l(int, locale_t);
 //[Option End]
-int   islower(int);
+int islower(int);
 //[CX][Option Start]
-int   islower_l(int, locale_t);
+int islower_l(int, locale_t);
 //[Option End]
-int   isprint(int);
+int isprint(int);
 //[CX][Option Start]
-int   isprint_l(int, locale_t);
+int isprint_l(int, locale_t);
 //[Option End]
-int   ispunct(int);
+int ispunct(int);
 //[CX][Option Start]
-int   ispunct_l(int, locale_t);
+int ispunct_l(int, locale_t);
 //[Option End]
-int   isspace(int);
+int isspace(int);
 //[CX][Option Start]
-int   isspace_l(int, locale_t);
+int isspace_l(int, locale_t);
 //[Option End]
-int   isupper(int);
+int isupper(int);
 //[CX][Option Start]
-int   isupper_l(int, locale_t);
+int isupper_l(int, locale_t);
 //[Option End]
-int   isxdigit(int);
+int isxdigit(int);
 //[CX][Option Start]
-int   isxdigit_l(int, locale_t);
+int isxdigit_l(int, locale_t);
 //[Option End]
 //[OB XSI][Option Start]
-int   toascii(int);
+int toascii(int);
 //[Option End]
-int   tolower(int);
+int tolower(int);
 //[CX][Option Start]
-int   tolower_l(int, locale_t);
+int tolower_l(int, locale_t);
 //[Option End]
-int   toupper(int);
+int toupper(int);
 //[CX][Option Start]
-int   toupper_l(int, locale_t);
+int toupper_l(int, locale_t);
 //[Option End]
 
 //The <ctype.h> header shall define the following as macros:
 
 //[OB XSI][Option Start]
-int   _toupper(int);
-int   _tolower(int);
+int _toupper(int);
+int _tolower(int);
 //[Option End]
 
 #endif

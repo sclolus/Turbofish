@@ -68,11 +68,11 @@ struct rusage {
 //
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-int  getpriority(int, id_t);
-int  getrlimit(int, struct rlimit *);
-int  getrusage(int, struct rusage *);
-int  setpriority(int, id_t, int);
-int  setrlimit(int, const struct rlimit *);
+int getpriority(int, id_t);
+int getrlimit(int, struct rlimit *);
+int getrusage(int, struct rusage *);
+int setpriority(int, id_t, int);
+int setrlimit(int, const struct rlimit *);
 
 //The <sys/resource.h> header shall define the id_t type through typedef, as described in <sys/types.h>.
 //

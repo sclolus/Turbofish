@@ -23,4 +23,5 @@ char *nl_langinfo_l(nl_item, locale_t);
 
 //TODO: check that not posix
 #define CODESET			42
+
 #endif
