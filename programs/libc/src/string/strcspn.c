@@ -1,11 +1,9 @@
 #include <string.h>
 #include <stdint.h>
 
-
 /* Return the length of the maximum initial segment of S
    which contains no characters from REJECT.  */
-size_t
-strcspn(const char *str, const char *reject)
+size_t strcspn(const char *str, const char *reject)
 {
 	if ((reject[0] == '\0')
 		|| (reject[1] == '\0'))

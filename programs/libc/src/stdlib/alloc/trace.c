@@ -1,6 +1,5 @@
-
 #include "main_headers.h"
-#include "string.h"
+#include <string.h>
 
 void		open_malloc_tracer(void)
 {

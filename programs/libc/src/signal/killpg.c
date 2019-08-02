@@ -6,12 +6,11 @@
  * kill(-pgrp, sig). If pgrp is less than or equal to 1, the behavior
  * of killpg() is undefined.
  */
-
-int killpg(pid_t pgrp, int sig) {
+int killpg(pid_t pgrp, int sig)
+{
 	if (pgrp > 1) {
 		return kill(-pgrp, sig);
-	}
-	else {
+	} else {
 		errno = EINVAL;
 		return -1;
 	}

@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 static struct s_node_page	*assign_new_node_page(void)

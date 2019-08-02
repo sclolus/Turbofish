@@ -1,4 +1,3 @@
-
 #include <string.h>
 
 char	*strstr(const char *big, const char *little)

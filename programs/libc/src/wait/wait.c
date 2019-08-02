@@ -1,4 +1,3 @@
-
 #include <user_syscall.h>
 #include <wait.h>
 #include <errno.h>
@@ -44,5 +43,6 @@ pid_t wait(int *wstatus)
 pid_t wait3(int *wstatus, int options, struct rusage *rusage)
 {
 	(void)rusage;
+
 	return waitpid(-1, wstatus, options);
 }

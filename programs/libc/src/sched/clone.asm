@@ -1,3 +1,5 @@
+[BITS 32]
+
 %define CLONE 120
 
 global sys_clone
@@ -22,7 +24,6 @@ sys_clone:
 
 	pop ebp
 	ret
-
 
 extern continue_clone_child
 

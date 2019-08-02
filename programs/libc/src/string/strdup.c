@@ -1,10 +1,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-char    *strdup(const char *s) {
-	size_t len = strlen (s) + 1;
-	void *new = malloc (len);
+/*
+ * strdup - duplicate a string
+ */
+char    *strdup(const char *s)
+{
+	size_t len = strlen(s) + 1;
+	char *new = (char *)malloc(len);
 	if (new == NULL)
 		return NULL;
-	return (char *) memcpy (new, s, len);
+	new[len - 1] = '\0';
+	return (char *)memcpy(new, s, len - 1);
 }

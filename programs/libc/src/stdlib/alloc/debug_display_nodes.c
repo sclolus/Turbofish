@@ -1,6 +1,5 @@
-
 #include "main_headers.h"
-#include "stdio.h"
+#include <stdio.h>
 
 static inline void	show_part(struct s_node_page *e, int i, int fd)
 {

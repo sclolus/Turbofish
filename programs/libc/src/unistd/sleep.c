@@ -1,4 +1,3 @@
-
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -6,7 +5,8 @@
 /*
  * sleep - sleep for a specified number of seconds
  */
-unsigned int sleep(unsigned int seconds) {
+unsigned int sleep(unsigned int seconds)
+{
 	struct timespec input;
 	struct timespec output; /* no initialised first, setted by sys_libc */
 
@@ -32,7 +32,8 @@ unsigned int sleep(unsigned int seconds) {
 /*
  * usleep - suspend execution for microsecond intervals
  */
-int usleep(useconds_t usec) {
+int usleep(useconds_t usec)
+{
 	struct timespec input;
 	struct timespec output; /* no initialised first, setted by sys_libc */
 

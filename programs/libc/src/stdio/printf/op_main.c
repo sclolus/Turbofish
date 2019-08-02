@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 static int	extract_args(

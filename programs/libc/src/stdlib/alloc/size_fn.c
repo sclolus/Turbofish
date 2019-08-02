@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 size_t			allign_size(size_t size, enum e_page_type page_type)

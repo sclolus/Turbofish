@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 static void		f_b(char *s, uintmax_t n, int size)

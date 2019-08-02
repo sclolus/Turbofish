@@ -1,4 +1,3 @@
-
 #include "alloc_btree_internal_header.h"
 
 struct s_node	*alloc_btree_get_next_neighbours_node(struct s_node *node)

@@ -1,4 +1,3 @@
-
 #include "alloc_btree_internal_header.h"
 
 static struct s_node	*simulate_insert_child(

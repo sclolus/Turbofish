@@ -9,7 +9,7 @@
 
 segment .text
 
-;int	setjmp(jmp_buf env) {
+; int setjmp(jmp_buf env) {
 global setjmp
 setjmp:
     mov edx, [esp + 4]
@@ -23,7 +23,7 @@ setjmp:
     xor eax, eax
     ret
 
-;void	longjmp(jmp_buf env, int val) {
+; void longjmp(jmp_buf env, int val) {
 global longjmp
 longjmp:
 	mov edx, [esp + 4] ; save env buffer

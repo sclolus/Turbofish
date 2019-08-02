@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 void	cast_u(uintmax_t *n, t_length mask)

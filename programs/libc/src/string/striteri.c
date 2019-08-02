@@ -1,4 +1,3 @@
-
 #include <string.h>
 
 void	striteri(char *s, void (*f)(unsigned int, char *))

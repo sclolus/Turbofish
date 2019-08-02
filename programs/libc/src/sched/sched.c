@@ -1,6 +1,6 @@
-#include "sched.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 extern int errno;
 
@@ -8,10 +8,11 @@ extern int sys_clone(void *, int);
 
 // inspired by the linux clone syscall
 int	clone(int (*fn)(void *), void *child_stack,
-		  int flags, void *arg/*, pid_t *ptid, void *newtls, pid_t *ctid*/) {
-
+		  int flags, void *arg/*, pid_t *ptid, void *newtls, pid_t *ctid*/)
+{
 	// push the args on the child_stack
 	int *new_child_stack = child_stack;
+
 	new_child_stack--;
 	*new_child_stack = (int)arg;
 	new_child_stack--;
@@ -20,7 +21,6 @@ int	clone(int (*fn)(void *), void *child_stack,
 	*new_child_stack = (int)child_stack;
 	new_child_stack--;
 	*new_child_stack = (int)fn;
-
 
 	// here we don't use the user_syscall, as we must do a hack to
 	// call continue_clone_child in the child
@@ -33,8 +33,11 @@ int	clone(int (*fn)(void *), void *child_stack,
 	return ret;
 }
 
+#warning CLONE FUNCTION DOESNT CARE ABOUT HIS FLAGS PARAM
+
 // continue the clone fonction if we are in a child and the child_stack != NULL
-int	continue_clone_child(int (*fn)(void *), void *child_stack, int flags, void *arg) {
+int	continue_clone_child(int (*fn)(void *), void *child_stack, int flags, void *arg)
+{
 	if (child_stack == NULL) {
 		printf("panic child stack == NULL\n");
 		exit(1);

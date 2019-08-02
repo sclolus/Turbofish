@@ -1,6 +1,5 @@
-
 #include "main_headers.h"
-#include "string.h"
+#include <string.h>
 
 static void	*copy_another_place(
 		struct s_node *record,

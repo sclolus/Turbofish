@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 void	*insert_allocated_record(struct s_node *record)

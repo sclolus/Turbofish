@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 static int		get_size(wchar_t c)

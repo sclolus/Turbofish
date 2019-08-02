@@ -1,6 +1,5 @@
-
 #include "main_headers.h"
-#include "stdio.h"
+#include <stdio.h>
 
 #define STDOUT_FILENO 1
 
