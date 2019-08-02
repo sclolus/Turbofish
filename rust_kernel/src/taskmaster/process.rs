@@ -12,6 +12,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::slice;
+use fallible_collections::FallibleArc;
 
 use elf_loader::SegmentType;
 
@@ -188,7 +189,7 @@ impl UserProcess {
                 self.virtual_allocator.clone()
             } else {
                 // TODO: change that to Arc::try_new
-                Arc::new(DeadMutex::new(self.virtual_allocator.lock().fork()?))
+                Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
         })?)
     }
@@ -327,7 +328,7 @@ impl Process for UserProcess {
             kernel_stack,
             kernel_esp,
             // TODO: change that to Arc::try_new
-            virtual_allocator: Arc::new(DeadMutex::new(virtual_allocator)),
+            virtual_allocator: Arc::try_new(DeadMutex::new(virtual_allocator))?,
         })?)
     }
 
