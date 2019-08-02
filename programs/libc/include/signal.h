@@ -3,6 +3,10 @@
 
 #include "i386.h"
 
+/* Default actions. */
+#define SIG_DFL        0
+#define SIG_IGN        1
+
 /* Signals.  */
 #define SIGHUP         1       /* Hangup (POSIX).  */
 #define SIGINT         2       /* Interrupt (ANSI).  */
@@ -96,7 +100,7 @@ struct siginfo {
 typedef struct siginfo siginfo_t;
 
 // TODO: Modify that dummy code
-typedef u8 sigset_t[128];
+typedef u32 sigset_t;
 
 struct sigaction {
 	union {
@@ -112,5 +116,7 @@ struct sigaction {
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
 
 int kill(pid_t pid, int sig);
+
+int raise(int sig);
 
 #endif

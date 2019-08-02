@@ -9,6 +9,8 @@ all: $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf /mnt
+	sudo mkdir -p /mnt/bin
+	sudo cp -vf $(KERNEL_DIRECTORY)/src/userland/* /mnt/bin
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 

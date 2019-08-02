@@ -1,10 +1,11 @@
 /// Definition of KeyMapArray typedef
 pub type KeyMapArray = [[CapsLockSensitive; 16]; 128];
 
+/// generated with `dumpkeys --long-info`
 #[allow(missing_docs)]
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-/// generated with `dumpkeys --long-info`
+#[repr(u16)]
 pub enum KeySymb {
     nul = 0x0000,
     Control_a = 0x0001,

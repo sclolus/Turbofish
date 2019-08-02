@@ -462,10 +462,10 @@ unsafe fn find_fadt(rsdt: *const Rsdt) -> AcpiResult<FADT> {
 /// Checksum for rsdp descriptor
 unsafe fn rsdp_checksum(rsdp_descriptor: *const u8) -> bool {
     let ptr: *const u8 = rsdp_descriptor;
-    let checksum: u8 = 0;
+    let mut checksum: u8 = 0;
 
     for i in 0..size_of::<RSDPDescriptor10>() {
-        checksum.overflowing_add(*ptr.add(i));
+        checksum = checksum.overflowing_add(*ptr.add(i)).0;
     }
 
     if checksum == 0 {

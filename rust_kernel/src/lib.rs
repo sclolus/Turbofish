@@ -5,14 +5,13 @@
 #![feature(asm)] // for inline asm
 #![feature(stdsimd)] // for has_cpuid, dafuq rust.
 #![feature(slice_index_methods)]
-#![feature(copy_within)]
 #![cfg_attr(test, feature(allocator_api))]
-#![feature(alloc)]
 #![feature(alloc_error_handler)]
 #![feature(underscore_const_names)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_reserve)]
 #![feature(vec_remove_item)]
+#![feature(type_alias_enum_variants)]
 // #![deny(missing_docs)]
 
 extern crate alloc;
@@ -48,7 +47,6 @@ pub mod drivers;
 pub mod math;
 pub mod memory;
 pub mod multiboot;
-#[cfg(not(test))]
 pub mod panic;
 pub mod registers;
 #[cfg(not(feature = "test"))]

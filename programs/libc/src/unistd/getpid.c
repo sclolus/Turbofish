@@ -1,7 +1,7 @@
+
+#include "user_syscall.h"
 #include "signal.h"
 
-extern pid_t user_getpid(void);
-
 pid_t getpid(void) {
-	return user_getpid();
+	return _user_syscall(GETPID, 0);
 }

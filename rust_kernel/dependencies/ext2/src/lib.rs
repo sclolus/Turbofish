@@ -3,7 +3,6 @@
 
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 #![deny(missing_docs)]
-#![feature(alloc)]
 
 mod disk;
 use crate::disk::Disk;
@@ -67,7 +66,8 @@ impl<'a> Iterator for EntryIter<'a> {
 /// The Kernel side FileDescriptor struct
 #[derive(Debug, Copy, Clone)]
 pub struct File {
-    inode_nbr: u32,
+    /// Inode number
+    pub inode_nbr: u32,
     curr_offset: u64,
 }
 

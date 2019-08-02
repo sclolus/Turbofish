@@ -3,6 +3,7 @@
 
 #include "i386.h"
 
+ssize_t read(int fd, void *buf, size_t count);
 int write(int fd, const char *s, size_t len);
 
 typedef int pid_t;
@@ -35,5 +36,15 @@ int usleep(useconds_t usec);
 
 uid_t getuid(void);
 pid_t getpid(void);
+
+int close(int fd);
+int unlink(const char *pathname);
+
+int pause(void);
+
+int reboot(void);
+int shutdown(void);
+
+int execve(const char *filename, char *const argv[], char *const envp[]);
 
 #endif

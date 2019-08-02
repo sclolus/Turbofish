@@ -1,8 +1,11 @@
 //! This file contains the task manager
 
+mod cpu_isr;
+mod ipc;
 mod process;
 #[macro_use]
 mod scheduler;
+mod safe_ffi;
 mod signal;
 mod syscall;
 mod task;
@@ -30,16 +33,22 @@ pub enum TaskMode {
 // Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start() -> ! {
+    // Reassign all cpu exceptions for taskmaster
+    unsafe {
+        cpu_isr::reassign_cpu_exceptions();
+    }
+
     // Initialize Syscall system
     syscall::init();
 
     // Load some processes into the scheduler
     let user_process_list = unsafe {
         vec![
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/richard")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/vincent")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_me_baby")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/prempt_me")[..])).unwrap(),
@@ -48,18 +57,41 @@ pub fn start() -> ! {
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_fucker")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/stack_overflow")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sys_stack_overflow")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/mordak")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/fork_bomb")[..])).unwrap(),
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Wait")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/csignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieBefore")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/WaitChildDieAfter")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/sleepers")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Timer")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionlessSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/ConnectionOrientedSimpleTest")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/DummyRead")[..])).unwrap(),
+            /*
+             * Signal tests
+             */
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SegFault")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Ud2")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Csignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SonKillFather")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/RecursiveSignal")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/recursive_signal_no_defer")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SaRestart")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/NoSaRestart")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SaRestartMultiple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/NoSaRestartMultiple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Continue")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimple")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuo")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleDuoRecurse")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalSimpleStopContinue")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/SignalStopContinueOverload")[..])).unwrap(),
         ]
     };
-    for (i, p) in user_process_list.into_iter().enumerate() {
-        println!("user pocess no: {} : {:?}", i, p);
+    for (_i, p) in user_process_list.into_iter().enumerate() {
+        // println!("user pocess no: {} : {:?}", i, p);
         SCHEDULER.lock().add_user_process(None, p).unwrap();
     }
 

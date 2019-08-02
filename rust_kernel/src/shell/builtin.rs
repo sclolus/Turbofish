@@ -1,6 +1,6 @@
 use crate::drivers::{storage::ext2::EXT2, ACPI, PCI};
-use crate::system::i8086_payload_apm_shutdown;
 use crate::interrupts;
+use crate::system::i8086_payload_apm_shutdown;
 use alloc::format;
 use alloc::string::String;
 use core::time::Duration;

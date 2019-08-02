@@ -5,7 +5,6 @@
 #![feature(specialization)]
 #![feature(allocator_api)]
 #![deny(missing_docs)]
-#![feature(alloc)]
 
 extern crate alloc;
 #[macro_use]

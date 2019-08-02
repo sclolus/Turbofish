@@ -1,19 +1,25 @@
 //! This file contains definition of a task
 
-use super::process::{CpuState, UserProcess};
+use super::process::{CpuState, Process, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
+use super::SysResult;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use core::mem;
 
+/// Main Task definition
 #[derive(Debug)]
 pub struct Task {
+    /// Current process state
     pub process_state: ProcessState,
+    /// List of childs
     pub child: Vec<Pid>,
+    /// Parent
     pub parent: Option<Pid>,
+    /// Signal Interface
     pub signal: SignalInterface,
 }
 
@@ -22,14 +28,26 @@ impl Task {
         Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
     }
 
-    pub fn unwrap_running_mut(&mut self) -> &mut UserProcess {
+    pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {
+        Ok(Self {
+            child: Vec::new(),
+            parent: Some(self_pid),
+            signal: self.signal.fork(),
+            process_state: match &self.process_state {
+                ProcessState::Running(p) => ProcessState::Running(p.fork(kernel_esp)?),
+                _ => panic!("Non running process should not fork"),
+            },
+        })
+    }
+
+    pub fn unwrap_process_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
             ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
             _ => panic!("WTF"),
         }
     }
 
-    pub fn unwrap_running(&self) -> &UserProcess {
+    pub fn unwrap_process(&self) -> &UserProcess {
         match &self.process_state {
             ProcessState::Running(process) | ProcessState::Waiting(process, _) => process,
             _ => panic!("WTF"),
@@ -45,7 +63,7 @@ impl Task {
 
     /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
     pub fn set_return_value(&self, return_value: i32) {
-        let cpu_state = self.unwrap_running().kernel_esp as *mut CpuState;
+        let cpu_state = self.unwrap_process().kernel_esp as *mut CpuState;
         unsafe {
             (*(cpu_state)).registers.eax = return_value as u32;
         }
@@ -88,9 +106,13 @@ impl Task {
 pub enum WaitingState {
     /// The Process is sleeping until pit time >= u32 value
     Sleeping(u32),
+    /// The sys_pause command was invoqued, the process is waiting for a signal
+    Pause,
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Option<Pid>, u32),
+    /// Waiting for a custom event
+    Event(fn() -> Option<u32>),
 }
 
 #[derive(Debug)]

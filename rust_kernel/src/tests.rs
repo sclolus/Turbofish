@@ -7,19 +7,15 @@ pub mod helpers;
 #[cfg(feature = "test-sodo-allocator")]
 pub mod sodo_allocator;
 
-#[cfg(feature = "test-vmalloc")]
-#[path = "tests"]
-mod reexport_test_vmalloc {
-    pub mod standard_sodomizer;
-    pub mod vmalloc;
-}
-
 #[cfg(feature = "test-kmalloc")]
-#[path = "tests"]
-mod reexport_test_kmalloc {
-    pub mod kmalloc;
-    pub mod standard_sodomizer;
-}
+pub mod kmalloc;
+#[cfg(feature = "test-kmalloc")]
+pub mod standard_sodomizer;
+
+#[cfg(feature = "test-vmalloc")]
+pub mod standard_sodomizer;
+#[cfg(feature = "test-vmalloc")]
+pub mod vmalloc;
 
 #[cfg(feature = "native-test-hard-drive-read-pio")]
 pub mod hard_drive_read_pio;

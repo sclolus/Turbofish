@@ -23,7 +23,7 @@ pub struct MmapArgStruct {
 fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+    let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
     // Check if pointer exists in user virtual address space
     v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
@@ -37,8 +37,7 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
 
 /// Map files or devices into memory
 pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
-    unpreemptible_context!({ mmap(mmap_arg) })
-    .map(|(address, length)| {
+    unpreemptible_context!({ mmap(mmap_arg) }).map(|(address, length)| {
         unsafe {
             address.write_bytes(0, length);
         }

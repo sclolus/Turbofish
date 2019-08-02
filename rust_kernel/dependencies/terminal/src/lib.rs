@@ -1,8 +1,5 @@
 //! Kernel tty manager
-#![feature(alloc)]
-#![feature(copy_within)]
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
-//#![cfg_attr(not(test), no_std)]
 
 extern crate alloc;
 
@@ -116,6 +113,22 @@ impl Terminal {
     pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
         &mut self.ttys[fd]
     }
+
+    /// Provide a tiny interface to sontrol some features on the tty
+    pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
+        match keysymb {
+            KeySymb::F1 => self.switch_foreground_tty(1),
+            KeySymb::F2 => self.switch_foreground_tty(0),
+            KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
+            KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
+            KeySymb::Control_b => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenUp),
+            KeySymb::Control_d => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenDown),
+            _ => {
+                return false;
+            }
+        };
+        true
+    }
 }
 
 /// Usefull method to stock the character from the keyboard
@@ -143,7 +156,8 @@ pub fn init_terminal() {
         let size = width * height * bpp / 8;
 
         let mut v: Vec<u8> = vec![42; size];
-        bmp_loader::draw_image(unsafe { &_wanggle_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        // bmp_loader::draw_image(unsafe { &_wanggle_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        bmp_loader::draw_image(unsafe { &_univers_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
         term.get_tty(1).tty.set_background_buffer(v);
 
         let mut v: Vec<u8> = vec![84; size];

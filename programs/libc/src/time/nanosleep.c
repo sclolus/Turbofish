@@ -1,14 +1,16 @@
 
+#include "user_syscall.h"
 #include "time.h"
 
-extern int user_nanosleep(const struct timespec *req, struct timespec *rem);
 extern int errno;
 
 int nanosleep(const struct timespec *req, struct timespec *rem) {
-	int ret = user_nanosleep(req, rem);
+	int ret = _user_syscall(NANOSLEEP, 2, req, rem);
 	if (ret < 0) {
 		errno = -ret;
 		return -1;
+	} else {
+		errno = 0;
+		return 0;
 	}
-	return 0;
 }

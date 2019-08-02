@@ -2,8 +2,8 @@
 
 use super::SysResult;
 
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt};
 use super::task::WaitingState;
 
 use errno::Errno;
@@ -25,7 +25,7 @@ extern "C" {
 fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let v = &mut scheduler.curr_process_mut().unwrap_running_mut().virtual_allocator;
+    let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
 
     v.check_user_ptr::<TimeSpec>(req)?;
     v.check_user_ptr::<TimeSpec>(rem)?;
@@ -41,7 +41,7 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
     let next_wake = (request_time / pit_period) as u32 + unsafe { _get_pit_time() };
 
     // Set as Sleeping
-    scheduler.curr_process_mut().set_waiting(WaitingState::Sleeping(next_wake));
+    scheduler.current_task_mut().set_waiting(WaitingState::Sleeping(next_wake));
 
     // auto preemption mechanism set environement as preemptible
     if auto_preempt() < 0 {

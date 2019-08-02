@@ -47,29 +47,32 @@ VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
 SRC_C += exit
-SRC_ASM +=
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += write fork mmap munmap mprotect sleep getuid getpid
-SRC_ASM += user_write user_fork user_exit user_mmap user_munmap user_mprotect user_getuid user_getpid
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
 SRC_C += nanosleep
-SRC_ASM += user_nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal kill
-SRC_ASM += user_sigaction user_kill
+SRC_C += signal kill raise
 VPATH += src/signal
 HEADERS += include/signal.h
 
 SRC_C += wait
-SRC_ASM += user_waitpid
 VPATH += src/wait
 HEADERS += include/wait.h
+
+SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
+VPATH += src/socket
+HEADERS += include/sys/socket.h include/sys/un.h
+
+SRC_ASM += user_syscall
+VPATH += src
+HEADERS += include/user_syscall.h
 
 AS = nasm
 CC = gcc
