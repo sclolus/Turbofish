@@ -6,6 +6,10 @@
  * Here is a copy of that file as of Aug 2004 on RedHat 7.3
  */
 
+extern int errno;
+extern const int sys_nerr;
+extern const char *const sys_errlist[];
+
 #define EPERM            1      /* Operation not permitted */
 #define ENOENT           2      /* No such file or directory */
 #define ESRCH            3      /* No such process */
@@ -133,5 +137,13 @@
 
 #define ENOMEDIUM       123     /* No medium found */
 #define EMEDIUMTYPE     124     /* Wrong medium type */
+
+#define set_errno_and_return(ret) \
+	if (ret < 0) { \
+		errno = -ret; \
+		return -1; \
+	} else { \
+		return ret; \
+	}
 
 #endif

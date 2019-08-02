@@ -296,13 +296,6 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "spinlock"
-version = "0.1.0"
-dependencies = [
- "lock_api 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "syn"
 version = "0.15.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -310,6 +303,13 @@ dependencies = [
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "sync"
+version = "0.1.0"
+dependencies = [
+ "lock_api 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -323,7 +323,7 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "raw_data 0.1.0",
  "registers 0.1.0",
- "spinlock 0.1.0",
+ "sync 0.1.0",
 ]
 
 [[package]]
@@ -356,7 +356,7 @@ dependencies = [
  "mbr 0.1.0",
  "raw_data 0.1.0",
  "registers 0.1.0",
- "spinlock 0.1.0",
+ "sync 0.1.0",
  "terminal 0.1.0",
  "try_clone_derive 0.1.0",
 ]

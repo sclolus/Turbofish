@@ -83,8 +83,16 @@ fn main() {
     let all_result: Vec<Result<(), TestError>> = tests
         .iter()
         .map(|feature| {
-            let native = if feature.starts_with("native-test-") { true } else { false };
-            println!("test: {} native_mode: {}", (*feature).clone().magenta().bold(), native);
+            let native = if feature.starts_with("native-test-") {
+                true
+            } else {
+                false
+            };
+            println!(
+                "test: {} native_mode: {}",
+                (*feature).clone().magenta().bold(),
+                native
+            );
 
             let exit_status = exec_command(
                 "make",
@@ -95,7 +103,11 @@ fn main() {
                     &format!(
                         "cargo_flags=--features {},test,{}",
                         feature,
-                        if matches.opt_present("g") { "" } else { "serial-eprintln,exit-on-panic" }
+                        if matches.opt_present("g") {
+                            ""
+                        } else {
+                            "serial-eprintln,exit-on-panic"
+                        }
                     ),
                 ],
             );
@@ -106,7 +118,10 @@ fn main() {
 
             if native && feature.contains("hard-drive") {
                 // Compiling generate C programm
-                exec_command("gcc", &["src/tests/generate.c", "-o", "generate", "--verbose"]);
+                exec_command(
+                    "gcc",
+                    &["src/tests/generate.c", "-o", "generate", "--verbose"],
+                );
 
                 // Generating a Rainbow disk of 16mo
                 exec_command("./generate", &["../rainbow_disk.img", "16777216"]);
@@ -115,14 +130,23 @@ fn main() {
                 exec_command("rm", &["generate", "-v"]);
             }
 
-            let output_file = format!("{}/test-output/{}", env!("PWD"), format!("{}-output", feature));
+            let output_file = format!(
+                "{}/test-output/{}",
+                env!("PWD"),
+                format!("{}-output", feature)
+            );
             let mut child = {
-                let mut qemu_command = Command::new("qemu-system-x86_64");
+                let mut qemu_command = Command::new("sudo");
                 qemu_command
+                    .args(&["qemu-system-x86_64"])
                     .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
-                    .args(if matches.opt_present("g") { [].iter() } else { ["-display", "none"].iter() });
+                    .args(if matches.opt_present("g") {
+                        [].iter()
+                    } else {
+                        ["-display", "none"].iter()
+                    });
 
                 match native {
                     true => {
@@ -142,7 +166,10 @@ fn main() {
 
             let show_output = || {
                 let mut output = String::new();
-                File::open(output_file).unwrap().read_to_string(&mut output).unwrap();
+                File::open(output_file)
+                    .unwrap()
+                    .read_to_string(&mut output)
+                    .unwrap();
                 println!("{}: {}", "OUTPUT".blue().bold(), output);
             };
 
@@ -175,7 +202,11 @@ fn main() {
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(
         "test result: {} {} passed; {} failed",
-        if total_succeed == tests.len() { "SUCCEED".green().bold() } else { "FAILED".red().bold() },
+        if total_succeed == tests.len() {
+            "SUCCEED".green().bold()
+        } else {
+            "FAILED".red().bold()
+        },
         total_succeed,
         total_failed
     );

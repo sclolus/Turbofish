@@ -31,15 +31,26 @@ pub fn watch_dog() {
         let ivt_bios = *(0x0 as *const IvtBios);
         match &mut WATCH_DOG {
             None => {
-                let mut idt: [IdtGateEntry; InterruptTable::DEFAULT_IDT_SIZE as usize] = core::mem::zeroed();
+                let mut idt: [IdtGateEntry; InterruptTable::DEFAULT_IDT_SIZE as usize] =
+                    core::mem::zeroed();
 
                 for (d, s) in idt.iter_mut().zip(curr_idt.iter()) {
                     *d = *s;
                 }
-                WATCH_DOG = Some(WatchDog { checksum_text, checksum_rodata, idt, idt_size: curr_idt.len(), ivt_bios });
+                WATCH_DOG = Some(WatchDog {
+                    checksum_text,
+                    checksum_rodata,
+                    idt,
+                    idt_size: curr_idt.len(),
+                    ivt_bios,
+                });
             }
             Some(watchdog) => {
-                assert_eq!(watchdog.idt_size, curr_idt.len(), "corruption of idt, idt size has changed");
+                assert_eq!(
+                    watchdog.idt_size,
+                    curr_idt.len(),
+                    "corruption of idt, idt size has changed"
+                );
 
                 // test if modifications are occured in IDT
                 for (i, (o, n)) in watchdog.idt.iter().zip(curr_idt.iter()).enumerate() {

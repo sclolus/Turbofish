@@ -96,7 +96,11 @@ pub fn get_page_fault_origin(err_code: u32) -> &'static str {
 }
 
 #[no_mangle]
-pub extern "C" fn cpu_page_fault_handler(cr2: u32, err_code: u32, ext_reg: ExtendedRegisters) -> () {
+pub extern "C" fn cpu_page_fault_handler(
+    cr2: u32,
+    err_code: u32,
+    ext_reg: ExtendedRegisters,
+) -> () {
     let virtual_page_allocator = unsafe { KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap() };
     if let Err(e) = virtual_page_allocator.valloc_handle_page_fault(cr2) {
         let page_fault_cause = get_page_fault_origin(err_code);
@@ -137,7 +141,10 @@ pub fn panic_sa_mere(info: &PanicInfo) {
     unsafe {
         interrupts::disable();
     }
-    eprintln!("Rust is on panic but it is not a segmentation fault !\n{}", info);
+    eprintln!(
+        "Rust is on panic but it is not a segmentation fault !\n{}",
+        info
+    );
     let ebp: *const u32;
     unsafe {
         asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel");

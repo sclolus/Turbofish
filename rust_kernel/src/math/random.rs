@@ -264,7 +264,13 @@ mod test {
         for i in 1..100000 {
             mediane_f += ((4242.4242).rand() as f64 - mediane_f) / i as f64;
         }
-        println!("{}\nu32 -> {:?}\ni32 -> {:?}\nf32 -> {:?}", function!(), mediane_u, mediane_i, mediane_f);
+        println!(
+            "{}\nu32 -> {:?}\ni32 -> {:?}\nf32 -> {:?}",
+            function!(),
+            mediane_u,
+            mediane_i,
+            mediane_f
+        );
     }
     #[test]
     fn random_distribution_test() {
@@ -283,7 +289,13 @@ mod test {
         let cloned_iter = first_iter.clone().take((n_buckets - 1) as usize);
         let final_iter = first_iter.skip(1).zip(cloned_iter);
 
-        let s = final_iter.fold(0, |acc, (first, second): (i64, i64)| acc + (first - second).abs());
-        println!("{} distribution / 100000 rand(). 50 buckets on range of 1000 -> {:?}", function!(), s);
+        let s = final_iter.fold(0, |acc, (first, second): (i64, i64)| {
+            acc + (first - second).abs()
+        });
+        println!(
+            "{} distribution / 100000 rand(). 50 buckets on range of 1000 -> {:?}",
+            function!(),
+            s
+        );
     }
 }

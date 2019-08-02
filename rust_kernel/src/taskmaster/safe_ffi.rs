@@ -5,6 +5,7 @@ use crate::memory::{tools::PAGE_SIZE, AddressSpace};
 
 use errno::Errno;
 use fallible_collections::{try_vec, FallibleVec};
+use sync::DeadMutexGuard;
 
 use alloc::vec::Vec;
 
@@ -24,9 +25,11 @@ fn safe_strlen(ptr: *const c_char, limit: usize) -> Option<usize> {
 }
 
 /// Secure create a CString from a C char*
-impl core::convert::TryFrom<(&AddressSpace, *const c_char)> for CString {
+impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const c_char)> for CString {
     type Error = Errno;
-    fn try_from(arg: (&AddressSpace, *const c_char)) -> Result<Self, Self::Error> {
+    fn try_from(
+        arg: (&DeadMutexGuard<'_, AddressSpace>, *const c_char),
+    ) -> Result<Self, Self::Error> {
         let mut string_len = 0;
 
         let mut curr_ptr = arg.1;
@@ -56,9 +59,13 @@ impl core::convert::TryFrom<(&AddressSpace, *const c_char)> for CString {
 }
 
 /// Secure create a CStringArray from a C char** type
-impl core::convert::TryFrom<(&AddressSpace, *const *const c_char)> for CStringArray {
+impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const *const c_char)>
+    for CStringArray
+{
     type Error = Errno;
-    fn try_from(arg: (&AddressSpace, *const *const c_char)) -> Result<Self, Self::Error> {
+    fn try_from(
+        arg: (&DeadMutexGuard<'_, AddressSpace>, *const *const c_char),
+    ) -> Result<Self, Self::Error> {
         // tips: Constructs a new, empty Vec<T>. The vector will not allocate until elements are pushed onto it.
         let mut c_pointer: Vec<*const c_char> = Vec::new();
         let mut borrowed_content: Vec<CString> = Vec::new();
@@ -76,7 +83,8 @@ impl core::convert::TryFrom<(&AddressSpace, *const *const c_char)> for CStringAr
 
                     let mut i = 0;
                     while i != limit && *(curr_ptr.add(i / pointer_size)) != 0x0 as _ {
-                        let string: CString = (arg.0, (*(curr_ptr.add(i / pointer_size)) as _)).try_into()?;
+                        let string: CString =
+                            (arg.0, (*(curr_ptr.add(i / pointer_size)) as _)).try_into()?;
                         c_pointer.try_push(string.as_ptr())?;
                         borrowed_content.try_push(string)?;
                         i += pointer_size;
@@ -91,6 +99,9 @@ impl core::convert::TryFrom<(&AddressSpace, *const *const c_char)> for CStringAr
 
         // nullptr to terminate the array
         c_pointer.try_push(0x0 as _)?;
-        Ok(Self { c_pointer, borrowed_content })
+        Ok(Self {
+            c_pointer,
+            borrowed_content,
+        })
     }
 }

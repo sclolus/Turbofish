@@ -1,5 +1,6 @@
 
-#include "user_syscall.h"
+#include <user_syscall.h>
+#include <errno.h>
 
 extern int errno;
 
@@ -12,11 +13,5 @@ int execve(const char *filename, char *const argv[], char *const envp[])
 	/*
 	 * On success, execve() does not return, on error -1 is returned, and errno is set appropriately.
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

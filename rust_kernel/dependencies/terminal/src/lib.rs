@@ -55,13 +55,24 @@ impl Terminal {
             buf: None,
             // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
             ttys: (0..2)
-                .map(|_| BufferedTty::new(Tty::new(false, size.line, size.column, MAX_SCREEN_BUFFER, None)))
+                .map(|_| {
+                    BufferedTty::new(Tty::new(
+                        false,
+                        size.line,
+                        size.column,
+                        MAX_SCREEN_BUFFER,
+                        None,
+                    ))
+                })
                 .collect(),
         }
     }
 
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
-        self.ttys.iter_mut().find(|btty| btty.tty.foreground).map(|btty| btty.tty.foreground = false);
+        self.ttys
+            .iter_mut()
+            .find(|btty| btty.tty.foreground)
+            .map(|btty| btty.tty.foreground = false);
         self.ttys[new_foreground_tty].tty.foreground = true;
         self.ttys[new_foreground_tty].tty.refresh();
     }
@@ -77,8 +88,16 @@ impl Terminal {
             Some(KeySymb::F2) => self.switch_foreground_tty(0),
             Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
             Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            Some(KeySymb::Control_b) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenUp),
-            Some(KeySymb::Control_d) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenDown),
+            Some(KeySymb::Control_b) => self
+                .get_foreground_tty()
+                .unwrap()
+                .tty
+                .scroll(Scroll::HalfScreenUp),
+            Some(KeySymb::Control_d) => self
+                .get_foreground_tty()
+                .unwrap()
+                .tty
+                .scroll(Scroll::HalfScreenDown),
             _ => {
                 return;
             }
@@ -121,8 +140,16 @@ impl Terminal {
             KeySymb::F2 => self.switch_foreground_tty(0),
             KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
             KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            KeySymb::Control_b => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenUp),
-            KeySymb::Control_d => self.get_foreground_tty().unwrap().tty.scroll(Scroll::HalfScreenDown),
+            KeySymb::Control_b => self
+                .get_foreground_tty()
+                .unwrap()
+                .tty
+                .scroll(Scroll::HalfScreenUp),
+            KeySymb::Control_d => self
+                .get_foreground_tty()
+                .unwrap()
+                .tty
+                .scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }
@@ -157,11 +184,25 @@ pub fn init_terminal() {
 
         let mut v: Vec<u8> = vec![42; size];
         // bmp_loader::draw_image(unsafe { &_wanggle_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
-        bmp_loader::draw_image(unsafe { &_univers_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        bmp_loader::draw_image(
+            unsafe { &_univers_bmp_start },
+            v.as_mut_ptr(),
+            width,
+            height,
+            bpp,
+        )
+        .unwrap();
         term.get_tty(1).tty.set_background_buffer(v);
 
         let mut v: Vec<u8> = vec![84; size];
-        bmp_loader::draw_image(unsafe { &_univers_bmp_start }, v.as_mut_ptr(), width, height, bpp).unwrap();
+        bmp_loader::draw_image(
+            unsafe { &_univers_bmp_start },
+            v.as_mut_ptr(),
+            width,
+            height,
+            bpp,
+        )
+        .unwrap();
         term.get_tty(0).tty.set_background_buffer(v);
     }
 
@@ -171,7 +212,10 @@ pub fn init_terminal() {
     term.get_foreground_tty().unwrap().tty.refresh();
     unsafe {
         TERMINAL = Some(term);
-        KEYBOARD_DRIVER.as_mut().unwrap().bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
+        KEYBOARD_DRIVER
+            .as_mut()
+            .unwrap()
+            .bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
     self::log::init().unwrap();
     ::log::info!("Terminal has been initialized");

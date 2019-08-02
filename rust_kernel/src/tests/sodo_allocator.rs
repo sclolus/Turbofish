@@ -6,7 +6,10 @@ use crate::terminal::UART_16550;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) -> u32 {
+pub extern "C" fn kmain(
+    multiboot_info: *const MultibootInfo,
+    device_map_ptr: *const DeviceMap,
+) -> u32 {
     unsafe {
         UART_16550.init();
     }
@@ -17,7 +20,8 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     crate::watch_dog();
     unsafe {
         let device_map = crate::memory::tools::get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map).unwrap();
+        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+            .unwrap();
     }
     crate::watch_dog();
 
@@ -57,7 +61,11 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
                     if max_alloc != nb_allocations {
                         let n: u8 = srand(core::u8::MAX);
                         let size = alloc_size_fn();
-                        let new_alloc = Allocation { size: size, random_u8: n, v: vec![n; size] };
+                        let new_alloc = Allocation {
+                            size: size,
+                            random_u8: n,
+                            v: vec![n; size],
+                        };
                         s[nb_allocations] = Some(new_alloc);
                         nb_allocations += 1;
                     }
@@ -92,5 +100,4 @@ pub extern "C" fn kmain(multiboot_info: *const MultibootInfo, device_map_ptr: *c
     make_somization(1024 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
     exit_qemu(0);
-    0
 }

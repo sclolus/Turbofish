@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 raw_data = { path = "../raw_data" }
 keyboard = { path = "../keyboard" }
-spinlock = { path = "../spinlock" }
+sync = { path = "../sync" }
 registers = { path = "../registers" }
 io = { path = "../io" }
 bitflags = "1.0.4"

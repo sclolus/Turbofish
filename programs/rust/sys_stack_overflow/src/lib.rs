@@ -3,9 +3,7 @@
 #[no_mangle]
 fn main() -> i32 {
     println!("Sys Stack overflow program");
-    unsafe {
-        user_stack_overflow()
-    }
+    unsafe { user_stack_overflow() }
 }
 
 pub struct Writer {}

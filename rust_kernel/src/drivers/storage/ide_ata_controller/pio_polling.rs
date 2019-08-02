@@ -30,7 +30,8 @@ impl PioIo for Drive {
 
                     // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
                     self.wait_available();
-                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadPioExt as u8);
+                    Pio::<u8>::new(self.command_register + Self::COMMAND)
+                        .write(Command::AtaCmdReadPioExt as u8);
 
                     // Read n sectors and put them into buf
                     self.read_sectors(sectors_to_read, chunk.as_mut_ptr())?;
@@ -48,7 +49,8 @@ impl PioIo for Drive {
 
                     // Send the "READ SECTORS" command (0x20) to port 0x1F7: outb(0x1F7, 0x20)
                     self.wait_available();
-                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadPio as u8);
+                    Pio::<u8>::new(self.command_register + Self::COMMAND)
+                        .write(Command::AtaCmdReadPio as u8);
 
                     // Read n sectors and put them into buf
                     self.read_sectors(sectors_to_read, chunk.as_mut_ptr())?;
@@ -61,7 +63,12 @@ impl PioIo for Drive {
     }
 
     /// Drive specific WRITE method
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8) -> AtaResult<()> {
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> AtaResult<()> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
         let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
@@ -78,7 +85,8 @@ impl PioIo for Drive {
 
                     // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x34)
                     self.wait_available();
-                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdWritePioExt as u8);
+                    Pio::<u8>::new(self.command_register + Self::COMMAND)
+                        .write(Command::AtaCmdWritePioExt as u8);
 
                     // Write n sectors from buf to disk
                     self.write_sectors(sectors_to_write, chunk.as_ptr())?;
@@ -99,7 +107,8 @@ impl PioIo for Drive {
 
                     // Send the "WRITE SECTORS" command (0x30) to port 0x1F7: outb(0x1F7, 0x30)
                     self.wait_available();
-                    Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdWritePio as u8);
+                    Pio::<u8>::new(self.command_register + Self::COMMAND)
+                        .write(Command::AtaCmdWritePio as u8);
 
                     // Write n sectors from buf to disk
                     self.write_sectors(sectors_to_write, chunk.as_ptr())?;
@@ -125,7 +134,8 @@ impl Drive {
             let p = buf as *mut u16;
             for i in 0..SECTOR_SIZE >> 1 {
                 unsafe {
-                    *p.add(i + sector * (SECTOR_SIZE >> 1)) = Pio::<u16>::new(self.command_register + Self::DATA).read()
+                    *p.add(i + sector * (SECTOR_SIZE >> 1)) =
+                        Pio::<u16>::new(self.command_register + Self::DATA).read()
                 }
             }
         }
@@ -141,7 +151,8 @@ impl Drive {
             let p = buf as *const u16;
             for i in 0..SECTOR_SIZE >> 1 {
                 unsafe {
-                    Pio::<u16>::new(self.command_register + Self::DATA).write(*p.add(i + sector * (SECTOR_SIZE >> 1)))
+                    Pio::<u16>::new(self.command_register + Self::DATA)
+                        .write(*p.add(i + sector * (SECTOR_SIZE >> 1)))
                 }
             }
         }
@@ -151,12 +162,16 @@ impl Drive {
     /// Wait for end of Busy state and DRQ ready
     fn busy_wait(&self) -> AtaResult<()> {
         loop {
-            let r = StatusRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::STATUS).read());
+            let r = StatusRegister::from_bits_truncate(
+                Pio::<u8>::new(self.command_register + Self::STATUS).read(),
+            );
             if r.contains(StatusRegister::ERR) {
                 eprintln!(
                     "unexpected error while busy of {:?} err: {:?}",
                     self.rank,
-                    ErrorRegister::from_bits_truncate(Pio::<u8>::new(self.command_register + Self::ERROR).read())
+                    ErrorRegister::from_bits_truncate(
+                        Pio::<u8>::new(self.command_register + Self::ERROR).read()
+                    )
                 );
                 return Err(AtaError::IoError);
             }
@@ -173,12 +188,10 @@ impl Drive {
     /// or "temporary bad sectors" can be created on your disk.
     fn fflush_write_cache(&self) {
         match self.capabilities {
-            Capabilities::Lba28 => {
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdCacheFlush as u8)
-            }
-            Capabilities::Lba48 => {
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdCacheFlushExt as u8)
-            }
+            Capabilities::Lba28 => Pio::<u8>::new(self.command_register + Self::COMMAND)
+                .write(Command::AtaCmdCacheFlush as u8),
+            Capabilities::Lba48 => Pio::<u8>::new(self.command_register + Self::COMMAND)
+                .write(Command::AtaCmdCacheFlushExt as u8),
             _ => {}
         };
 

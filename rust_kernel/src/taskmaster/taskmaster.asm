@@ -145,17 +145,19 @@ _exit_resume:
 	push ebp
 	mov ebp, esp
 
-	mov ecx, dword [ebp + 12]   ; get PID of process to free
-	mov edx, dword [ebp + 16]   ; get return status of process to free
+	mov ebx, dword [ebp + 12]   ; get PID of process to free
+	mov ecx, dword [ebp + 16]   ; get TID of process to free
+	mov edx, dword [ebp + 20]   ; get return status of process to free
 
 	; Go to the stack of the new current process
 	mov esp, dword [ebp + 8]
 
 	push edx
 	push ecx
+	push ebx
 	; Free the ressources of the existed process
 	call scheduler_exit_resume
-	add esp, 8
+	add esp, 12
 
 	jmp schedule_return
 

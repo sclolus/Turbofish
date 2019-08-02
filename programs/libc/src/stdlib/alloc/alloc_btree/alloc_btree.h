@@ -2,6 +2,7 @@
 #ifndef BTREE_H
 # define BTREE_H
 
+#include <stddef.h>
 /*
 ** This PACK provide a suitable interface to manipulate binary tree.
 ** Including black and white color self balanced.

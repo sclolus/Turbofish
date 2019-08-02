@@ -1,7 +1,8 @@
 //! This module contains the turbo fish's storage drivers
 #[deny(missing_docs)]
 use super::pci::{
-    IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, SerialAtaProgIf, PCI,
+    IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0,
+    SerialAtaProgIf, PCI,
 };
 
 const SECTOR_SIZE: usize = 512;
@@ -56,28 +57,36 @@ pub fn init(multiboot_info: &MultibootInfo) {
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr())
+                    .expect("read ide failed");
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr())
+                    .expect("read ide failed");
 
                 let size_read = NbrSectors(1);
                 let mut v1: Vec<u8> = vec![0; size_read.into()];
-                d.read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("read ide failed");
+                d.read(Sector(0x0), size_read, v1.as_mut_ptr())
+                    .expect("read ide failed");
             }
             Err(_) => {}
         }
     }
 
     unsafe {
-        bios_int13h::init((multiboot_info.boot_device >> 24) as u8).expect("bios_int_13 init failed");
+        bios_int13h::init((multiboot_info.boot_device >> 24) as u8)
+            .expect("bios_int_13 init failed");
     }
 
     let size_read = NbrSectors(1);
     let mut v1: Vec<u8> = vec![0; size_read.into()];
     unsafe {
-        BIOS_INT13H.as_mut().unwrap().read(Sector(0x0), size_read, v1.as_mut_ptr()).expect("bios read failed");
+        BIOS_INT13H
+            .as_mut()
+            .unwrap()
+            .read(Sector(0x0), size_read, v1.as_mut_ptr())
+            .expect("bios read failed");
     }
 
     let mut a = [0; 512];

@@ -1,7 +1,8 @@
 #ifndef __SOCKET_H__
 # define __SOCKET_H__
 
-#include <i386.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 /*
  * LIBC internal values for user_socketcall

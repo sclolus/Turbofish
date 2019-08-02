@@ -26,7 +26,13 @@ use core::time::Duration;
 // Read the controller and drive status to determine if the transfer completed successfully.
 impl DmaIo for Drive {
     /// drive specific READ method
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, _buf: *mut u8, udma: &mut Udma) -> AtaResult<()> {
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        _buf: *mut u8,
+        udma: &mut Udma,
+    ) -> AtaResult<()> {
         println!("dma read");
 
         udma.reset_command();
@@ -38,7 +44,10 @@ impl DmaIo for Drive {
         self.fill_dma(start_sector, nbr_sectors, udma)?;
         // udma.stop_transfer();
 
-        eprintln!("current status of DMA controller '{:X?}'", udma.get_status());
+        eprintln!(
+            "current status of DMA controller '{:X?}'",
+            udma.get_status()
+        );
 
         Ok(())
     }
@@ -56,7 +65,12 @@ impl DmaIo for Drive {
 }
 
 impl Drive {
-    fn fill_dma(&self, start_sector: Sector, nbr_sectors: NbrSectors, udma: &mut Udma) -> AtaResult<()> {
+    fn fill_dma(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        udma: &mut Udma,
+    ) -> AtaResult<()> {
         println!("fill dma");
         if nbr_sectors == NbrSectors(0) {
             return Ok(());
@@ -69,11 +83,13 @@ impl Drive {
         match self.capabilities {
             Capabilities::Lba48 => {
                 self.init_lba48(start_sector, prd_size);
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDmaExt as u8);
+                Pio::<u8>::new(self.command_register + Self::COMMAND)
+                    .write(Command::AtaCmdReadDmaExt as u8);
             }
             Capabilities::Lba28 => {
                 self.init_lba28(start_sector, prd_size);
-                Pio::<u8>::new(self.command_register + Self::COMMAND).write(Command::AtaCmdReadDma as u8);
+                Pio::<u8>::new(self.command_register + Self::COMMAND)
+                    .write(Command::AtaCmdReadDma as u8);
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Chs => {

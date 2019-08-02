@@ -69,14 +69,16 @@ pub fn exec(args: &[&str]) -> u8 {
         if args.len() > 0 {
             let filename: CString = args[0].into();
             let argv: CStringArray = args.into();
+            let env: &[&str] = &["VAR_A=A", "VAR_B=B"];
+            let env_array: CStringArray = env.into();
 
             let f = fork();
             if f < 0 {
                 println!("Fork Failed");
                 1
             } else if f == 0 {
-                execve(filename.as_ptr(), argv.as_ptr(), 0 as *const *const c_char) as u8;
-                println!("unexepted error !");
+                execve(filename.as_ptr(), argv.as_ptr(), env_array.as_ptr()) as u8;
+                perror("execve failed\0".as_ptr());
                 1
             } else {
                 let mut status: i32 = 0;
@@ -91,7 +93,12 @@ pub fn exec(args: &[&str]) -> u8 {
 }
 
 extern "C" {
-    fn execve(filename: *const c_char, argv: *const *const c_char, envp: *const *const c_char) -> i32;
+    fn execve(
+        filename: *const c_char,
+        argv: *const *const c_char,
+        envp: *const *const c_char,
+    ) -> i32;
     fn fork() -> i32;
     fn wait(status: *mut i32) -> i32;
+    fn perror(msg: *const u8);
 }

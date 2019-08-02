@@ -1,4 +1,8 @@
 TARGET = libc.a
+SYSROOT = ../../toolchain_turbofish
+
+AS = nasm
+CC = i686-turbofish-gcc
 
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
@@ -10,19 +14,21 @@ HEADERS += include/errno.h
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
 	strchr strrchr strstr strnstr strcmp strncmp \
-	atoi isalpha isdigit isalnum isascii isprint toupper tolower \
+	atoi toupper \
 	strclr striter striteri \
 	strequ strnequ \
-	putchar putstr putendl putnbr putnbr_base \
-	aligned_memcpy aligned_bzero
+	putendl putnbr putnbr_base \
+	aligned_memcpy aligned_bzero strdup \
+	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror
 VPATH += src/string
 HEADERS += include/string.h
 
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
-	cast buffer norme
-VPATH += src/stdio/printf
+	cast buffer norme \
+	stdio _doprnt putchar puts
+VPATH += src/stdio/printf src/stdio/
 HEADERS += include/stdio.h internal_printf.h
 
 SRC_C += ctor mem_syscall \
@@ -46,19 +52,36 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit
+SRC_C += exit exit_qemu atexit env abort abs qsort _exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid
 VPATH += src/unistd
 HEADERS += include/unistd.h
+
+SRC_C += mmap munmap mprotect
+VPATH += src/sys/mman 
+HEADERS += include/sys/mman.h
+
+SRC_C += mkfifo
+VPATH += src/sys/stat 
+HEADERS += include/sys/stat.h
+
+SRC_ASM += clone
+SRC_C += sched
+VPATH += src/sched
+HEADERS += include/sched.h
 
 SRC_C += nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal kill raise
+SRC_C += signal kill raise killpg \
+		sigemptyset sigfillset sigaddset sigdelset \
+		strsignal \
+        sigprocmask sigsuspend
+
 VPATH += src/signal
 HEADERS += include/signal.h
 
@@ -70,32 +93,50 @@ SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
 VPATH += src/socket
 HEADERS += include/sys/socket.h include/sys/un.h
 
+SRC_C += gettext locale
+VPATH += src/locale
+HEADERS += include/locale.h
+
+SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower
+VPATH += src/ctype
+HEADERS += include/ctype.h
+
+VPATH += src/setjmp
+SRC_ASM += setjmp
+HEADERS += include/setjmp.h
+
 SRC_ASM += user_syscall
 VPATH += src
 HEADERS += include/user_syscall.h
 
-AS = nasm
-CC = gcc
+VPATH += src
+CRT_DIR = src/crt
+CRT_SOURCES = crtbegin.c crtend.c crti.c crtn.c
 
 ASFLAGS = -f elf
-CFLAGS += -m32 -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc $(IFLAGS)
-ifeq ($(DEBUG),yes)
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
-	ASFLAGS += -g
-else ifeq ($(OPTIM),yes)
-	# -fno-omit-frame-pointer keep good call trace for panic()
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
-else
-	CFLAGS += -m32 -std=gnu99 -Wextra -Wall
-endif
+# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
+CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
+
+#ifeq ($(DEBUG),yes)
+#	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
+#	ASFLAGS += -g
+#else ifeq ($(OPTIM),yes)
+#	# -fno-omit-frame-pointer keep good call trace for panic()
+#	CFLAGS += -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
+#else
+#	CFLAGS += -v -std=gnu99 -Wextra -Wall
+#endif
 
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+OBJ_CRT = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(CRT_SOURCES)))))
+OBJ_CRT0 = $(OBJ_DIR)/crt/ctr0.o
 
 .PHONY = all clean fclean re exec
 
-all: $(TARGET)
+all: $(TARGET) $(OBJ_CRT) $(OBJ_CRT0)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C)
 	ar rc $@ $^
@@ -107,6 +148,11 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
+$(OBJ_DIR)/crt/%.o: $(CRT_DIR)/$(CRT_SOURCES)
+	$(CC) $(CFLAGS) -c $< -o $@ 
+
+$(OBJ_CRT0): $(CRT_DIR)/crt0.asm
+	$(AS) $(ASFLAGS) -o $@ $<
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -delete
 
@@ -117,3 +163,8 @@ re: fclean all
 
 exec: all
 	./$(TARGET)
+
+install:
+	cp libc.a $(SYSROOT)/usr/lib/.
+	cp -r include/* $(SYSROOT)/usr/include/
+	cp $(OBJ_CRT0) $(OBJ_CRT) $(SYSROOT)/usr/lib/.

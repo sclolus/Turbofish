@@ -222,7 +222,10 @@ impl<T: Address> Page<T> {
     /// new page frame from the page number
     #[inline(always)]
     pub fn new(number: usize) -> Self {
-        Self { number, _phantom: core::marker::PhantomData }
+        Self {
+            number,
+            _phantom: core::marker::PhantomData,
+        }
     }
 
     /// page wich contains the address `addr`
@@ -234,7 +237,10 @@ impl<T: Address> Page<T> {
     /// create an iterator of the inclusive range (from..=to)
     #[inline(always)]
     pub fn inclusive_range(from: Self, to: Self) -> PageIter<T> {
-        PageIter { current: from, end: to }
+        PageIter {
+            current: from,
+            end: to,
+        }
     }
 
     /// create an iterator of the exclusive range (from..to)

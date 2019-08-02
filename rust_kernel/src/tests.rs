@@ -28,3 +28,6 @@ pub mod hard_drive_read_bios;
 
 #[cfg(feature = "native-test-hard-drive-write-bios")]
 pub mod hard_drive_write_bios;
+
+#[cfg(feature = "native-test-libc")]
+pub mod test_libc;

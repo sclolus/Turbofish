@@ -19,7 +19,9 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
                         .0 as *mut u8
                 }
             }
-            KernelAllocator::Bootstrap(b) => b.alloc_bootstrap(layout).unwrap_or(Virt(0x0)).0 as *mut u8,
+            KernelAllocator::Bootstrap(b) => {
+                b.alloc_bootstrap(layout).unwrap_or(Virt(0x0)).0 as *mut u8
+            }
         }
     }
 
@@ -37,7 +39,9 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
                         .expect("Cannot dealloc page");
                 }
             }
-            KernelAllocator::Bootstrap(_) => panic!("Attempting to free while in bootstrap allocator"),
+            KernelAllocator::Bootstrap(_) => {
+                panic!("Attempting to free while in bootstrap allocator")
+            }
         }
     }
 }
@@ -45,5 +49,8 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
 #[alloc_error_handler]
 #[cfg(not(test))]
 fn out_of_memory(layout: core::alloc::Layout) -> ! {
-    panic!("Out of memory: Failed to allocate a rust data structure {:?}", layout);
+    panic!(
+        "Out of memory: Failed to allocate a rust data structure {:?}",
+        layout
+    );
 }

@@ -73,7 +73,11 @@ fn main() -> i32 {
                     if max_alloc != nb_allocations {
                         let n: u8 = srand(core::u8::MAX);
                         let size = alloc_size_fn();
-                        let new_alloc = Allocation { size: size, random_u8: n, v: vec![n; size] };
+                        let new_alloc = Allocation {
+                            size: size,
+                            random_u8: n,
+                            v: vec![n; size],
+                        };
                         s[nb_allocations] = Some(new_alloc);
                         nb_allocations += 1;
                     }

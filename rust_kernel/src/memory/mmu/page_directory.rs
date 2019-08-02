@@ -22,7 +22,9 @@ pub struct PageDirectory {
 impl PageDirectory {
     /// This fonction creates a PageDirectory at addr `page_directory_addr` of size (in elements) of `size`.
     pub const fn new() -> Self {
-        Self { entries: [Entry::new(); 1024] }
+        Self {
+            entries: [Entry::new(); 1024],
+        }
     }
 
     /// create a new page directory for a process ( share all pages table above 3GB and the 1 page table with the kernel )
@@ -36,7 +38,11 @@ impl PageDirectory {
             // get the physical addr of the page directory for the tricks
             let phys_pd: Phys = {
                 let raw_pd = pd.as_mut() as *mut PageDirectory;
-                KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .get_physical_addr(Virt(raw_pd as usize))
+                    .unwrap()
             };
 
             pd.self_map_tricks(phys_pd);
@@ -47,7 +53,11 @@ impl PageDirectory {
     pub unsafe fn context_switch(&self) {
         let phys_pd = {
             let raw_pd = self as *const Self;
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().get_physical_addr(Virt(raw_pd as usize)).unwrap()
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .get_physical_addr(Virt(raw_pd as usize))
+                .unwrap()
         };
         _enable_paging(phys_pd);
     }
@@ -74,10 +84,16 @@ impl PageDirectory {
                         mem_tmp = *mem;
 
                         child.as_ref().context_switch();
-                        let phys =
-                            PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)?;
+                        let phys = PHYSICAL_ALLOCATOR
+                            .as_mut()
+                            .unwrap()
+                            .alloc(PAGE_SIZE.into(), AllocFlags::USER_MEMORY)?;
                         // TODO: Respect the origin layout
-                        child.map_page(virt, phys, Entry::PRESENT | Entry::READ_WRITE | Entry::USER)?;
+                        child.map_page(
+                            virt,
+                            phys,
+                            Entry::PRESENT | Entry::READ_WRITE | Entry::USER,
+                        )?;
                         *(virt.to_addr().0 as *mut [u8; PAGE_SIZE]) = mem_tmp;
                         self.context_switch();
                     }
@@ -101,12 +117,17 @@ impl PageDirectory {
                 let page_table = self.get_page_table_trick(page).expect("can't happen");
                 for j in 0..1024 {
                     if page_table[j].contains(Entry::PRESENT) {
-                        if page_table[j].entry_addr() != temporary_addr || remaining_pages == NbrPages(0) {
+                        if page_table[j].entry_addr() != temporary_addr
+                            || remaining_pages == NbrPages(0)
+                        {
                             // This point may signify the end of the previous block and the begin of the next
                             temporary_addr = page_table[j].entry_addr();
                             // A physical block of size max NbrPages(remaining_pages) is detected, liberate it
-                            remaining_pages =
-                                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(page_table[j].entry_addr().into()).unwrap();
+                            remaining_pages = PHYSICAL_ALLOCATOR
+                                .as_mut()
+                                .unwrap()
+                                .free(page_table[j].entry_addr().into())
+                                .unwrap();
                         }
                         remaining_pages -= NbrPages(1);
                         temporary_addr += PAGE_SIZE;
@@ -115,7 +136,11 @@ impl PageDirectory {
                         remaining_pages = NbrPages(0);
                     }
                 }
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().free(self[i].entry_page()).unwrap();
+                PHYSICAL_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .free(self[i].entry_page())
+                    .unwrap();
             }
         }
         _enable_paging(old_cr3);
@@ -147,7 +172,9 @@ impl PageDirectory {
     pub fn set_page_tables(&mut self, offset: usize, page_tables: &[PageTable]) {
         for (i, pt) in page_tables.iter().enumerate() {
             self[offset + i] = Default::default();
-            self[offset + i].set_entry_addr(Phys(pt.as_ref().as_ptr() as usize - symbol_addr!(virtual_offset)));
+            self[offset + i].set_entry_addr(Phys(
+                pt.as_ref().as_ptr() as usize - symbol_addr!(virtual_offset),
+            ));
             self[offset + i] |= Entry::PRESENT | Entry::READ_WRITE;
         }
     }
@@ -160,7 +187,9 @@ impl PageDirectory {
             return None;
         }
         // assert!(self as *const _ == 0xFFC00000 as *const _);
-        Some(unsafe { &mut *((self[pd_index].entry_addr().0 + symbol_addr!(virtual_offset)) as *mut PageTable) })
+        Some(unsafe {
+            &mut *((self[pd_index].entry_addr().0 + symbol_addr!(virtual_offset)) as *mut PageTable)
+        })
     }
 
     /// get the page table corresponding to `virtp` using the trick
@@ -179,13 +208,17 @@ impl PageDirectory {
     unsafe fn get_page_table_trick_alloc(&mut self, virtp: Page<Virt>) -> Result<&mut PageTable> {
         let pd_index = virtp.pd_index();
         if !self[pd_index].contains(Entry::PRESENT) {
-            let new_page_table =
-                PHYSICAL_ALLOCATOR.as_mut().unwrap().alloc(size_of::<PageTable>().into(), AllocFlags::KERNEL_MEMORY)?;
+            let new_page_table = PHYSICAL_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .alloc(size_of::<PageTable>().into(), AllocFlags::KERNEL_MEMORY)?;
             self[pd_index].set_entry_page(new_page_table);
             self[pd_index] |= Entry::PRESENT | Entry::READ_WRITE;
 
-            let slice =
-                core::slice::from_raw_parts_mut((0xFFC00000 + pd_index * 4096) as *mut u8, size_of::<PageTable>());
+            let slice = core::slice::from_raw_parts_mut(
+                (0xFFC00000 + pd_index * 4096) as *mut u8,
+                size_of::<PageTable>(),
+            );
             for i in slice {
                 *i = 0;
             }
@@ -196,24 +229,32 @@ impl PageDirectory {
     /// get mutably the entry of the page table corresponding to `virtp`
     #[inline(always)]
     pub fn get_entry_mut(&mut self, virtp: Page<Virt>) -> Option<&mut Entry> {
-        self.get_page_table_trick(virtp).map(|page_table| &mut page_table[virtp.pt_index()])
+        self.get_page_table_trick(virtp)
+            .map(|page_table| &mut page_table[virtp.pt_index()])
     }
 
     /// get the entry of the page table corresponding to `virtp`
     #[inline(always)]
     pub fn get_entry(&self, virtp: Page<Virt>) -> Option<Entry> {
-        self.get_page_table_trick(virtp).map(|page_table| page_table[virtp.pt_index()])
+        self.get_page_table_trick(virtp)
+            .map(|page_table| page_table[virtp.pt_index()])
     }
 
     /// use the self referencing trick. so must be called when paging is enabled and after self_map_tricks has been called
     #[inline(always)]
-    pub unsafe fn map_page(&mut self, virtp: Page<Virt>, physp: Page<Phys>, entry: Entry) -> Result<()> {
+    pub unsafe fn map_page(
+        &mut self,
+        virtp: Page<Virt>,
+        physp: Page<Phys>,
+        entry: Entry,
+    ) -> Result<()> {
         // We can't have hybrid permisions inside a page table.
         // So if we try to map a map as an User page, we need to set it to for the corresponding page directory entry.
         if entry.contains(Entry::USER) {
             self[virtp.pd_index()] |= Entry::USER;
         }
-        self.get_page_table_trick_alloc(virtp)?.map_page(virtp, physp, entry)
+        self.get_page_table_trick_alloc(virtp)?
+            .map_page(virtp, physp, entry)
     }
 
     //TODO: check overflow
@@ -225,7 +266,10 @@ impl PageDirectory {
         nb_pages: NbrPages,
         entry: Entry,
     ) -> Result<()> {
-        for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
+        for (virtp, physp) in (virtp..virtp + nb_pages)
+            .iter()
+            .zip((physp..physp + nb_pages).iter())
+        {
             self.map_page(virtp, physp, entry)?;
         }
         Ok(())
@@ -240,7 +284,10 @@ impl PageDirectory {
         nb_pages: NbrPages,
         entry: Entry,
     ) -> Result<()> {
-        for (virtp, physp) in (virtp..virtp + nb_pages).iter().zip((physp..physp + nb_pages).iter()) {
+        for (virtp, physp) in (virtp..virtp + nb_pages)
+            .iter()
+            .zip((physp..physp + nb_pages).iter())
+        {
             self.get_page_table_init(virtp)
                 .ok_or(MemoryError::PageTableNotPresent)
                 .and_then(|page_table| page_table.map_page(virtp, physp, entry))?

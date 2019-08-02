@@ -1,0 +1,125 @@
+diff -ruN binutils-2.32/bfd/config.bfd modified_binutils-2.32/bfd/config.bfd
+--- binutils-2.32/bfd/config.bfd	2019-01-19 11:01:32.000000000 -0500
++++ modified_binutils-2.32/bfd/config.bfd	2019-07-31 08:38:30.948021504 -0400
+@@ -221,9 +221,13 @@
+     targ_defvec=plugin_vec
+     targ_selvecs="plugin_vec"
+     ;;
+-
+ # START OF targmatch.h
+ #ifdef BFD64
++  x86_64-*-turbofish*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
+   aarch64-*-darwin*)
+     targ_defvec=aarch64_mach_o_vec
+     targ_selvecs="arm_mach_o_vec mach_o_le_vec mach_o_be_vec mach_o_fat_vec"
+@@ -315,6 +319,11 @@
+     want64=true
+     ;;
+ #endif /* BFD64 */
++  i[3-7]86-*-turbofish*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
+ 
+   am33_2.0-*-linux*)
+     targ_defvec=am33_elf32_linux_vec
+diff -ruN binutils-2.32/config.sub modified_binutils-2.32/config.sub
+--- binutils-2.32/config.sub	2019-01-19 11:01:33.000000000 -0500
++++ modified_binutils-2.32/config.sub	2019-07-31 08:28:31.660511075 -0400
+@@ -1366,6 +1366,7 @@
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
++	turbofish*);;
+ 	qnx*)
+ 		case $cpu in
+ 		    x86 | i*86)
+diff -ruN binutils-2.32/gas/configure.tgt modified_binutils-2.32/gas/configure.tgt
+--- binutils-2.32/gas/configure.tgt	2019-01-19 11:01:33.000000000 -0500
++++ modified_binutils-2.32/gas/configure.tgt	2019-07-31 08:40:54.830920859 -0400
+@@ -121,6 +121,7 @@
+ generic_target=${cpu_type}-$vendor-$os
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
++  i386-*-turbofish*) fmt=elf ;;
+   aarch64*-*-elf*)			fmt=elf;;
+   aarch64*-*-fuchsia*)			fmt=elf;;
+   aarch64*-*-linux*)			fmt=elf em=linux
+diff -ruN binutils-2.32/ld/configure.tgt modified_binutils-2.32/ld/configure.tgt
+--- binutils-2.32/ld/configure.tgt	2019-01-19 11:01:33.000000000 -0500
++++ modified_binutils-2.32/ld/configure.tgt	2019-07-31 08:47:10.972024053 -0400
+@@ -45,6 +45,15 @@
+ # architecture variants should be kept together even if their names
+ # break the alpha sorting.
+ case "${targ}" in
++i[3-7]86-*-turbofish*)
++			targ_emul=elf_i386_turbofish
++			targ_extra_emuls=elf_i386
++			targ64_extra_emuls="elf_x86_64_turbofish elf_x86_64"
++			;;
++x86_64-*-turbofish*)
++			targ_emul=elf_x86_64_turbofish
++			targ_extra_emuls="elf_i386_turbofish elf_x86_64 elf_i386"
++			;;
+ aarch64_be-*-elf)	targ_emul=aarch64elfb
+ 			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b armelfb armelf" ;;
+ aarch64-*-elf | aarch64-*-rtems*)
+diff -ruN binutils-2.32/ld/emulparams/elf_i386_turbofish.sh modified_binutils-2.32/ld/emulparams/elf_i386_turbofish.sh
+--- binutils-2.32/ld/emulparams/elf_i386_turbofish.sh	1969-12-31 19:00:00.000000000 -0500
++++ modified_binutils-2.32/ld/emulparams/elf_i386_turbofish.sh	2019-07-31 08:58:49.123044502 -0400
+@@ -0,0 +1,4 @@
++. ${srcdir}/emulparams/elf_i386.sh
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
++TEXT_START_ADDR=0x400000
+diff -ruN binutils-2.32/ld/emulparams/elf_x86_64_turbofish.sh modified_binutils-2.32/ld/emulparams/elf_x86_64_turbofish.sh
+--- binutils-2.32/ld/emulparams/elf_x86_64_turbofish.sh	1969-12-31 19:00:00.000000000 -0500
++++ modified_binutils-2.32/ld/emulparams/elf_x86_64_turbofish.sh	2019-07-31 09:40:01.387441725 -0400
+@@ -0,0 +1 @@
++. ${srcdir}/emulparams/elf_x86_64.sh
+diff -ruN binutils-2.32/ld/Makefile.am modified_binutils-2.32/ld/Makefile.am
+--- binutils-2.32/ld/Makefile.am	2019-01-19 11:01:33.000000000 -0500
++++ modified_binutils-2.32/ld/Makefile.am	2019-07-31 11:25:01.208575748 -0400
+@@ -283,6 +283,7 @@
+ 	eelf32xstormy16.c \
+ 	eelf32xtensa.c \
+ 	eelf_i386.c \
++	eelf_i386_turbofish.c \
+ 	eelf_i386_be.c \
+ 	eelf_i386_chaos.c \
+ 	eelf_i386_fbsd.c \
+@@ -454,6 +455,7 @@
+ 	eelf_k1om.c \
+ 	eelf_k1om_fbsd.c \
+ 	eelf_x86_64.c \
++	eelf_x86_64_turbofish.c \
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_nacl.c \
+@@ -1289,6 +1291,10 @@
+ eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
+   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf_i386_turbofish.c: $(srcdir)/emulparams/elf_i386_turbofish.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_i386_turbofish "$(tdir_elf_i386_turbofish)"
++
+ eelf_i386_be.c: $(srcdir)/emulparams/elf_i386_be.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
+@@ -1849,6 +1855,10 @@
+ eelf_x86_64.c: $(srcdir)/emulparams/elf_x86_64.sh \
+   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf_x86_64_turbofish.c: $(srcdir)/emulparams/elf_x86_64_turbofish.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_x86_64_turbofish "$(tdir_elf_x86_64_turbofish)"
++
+ eelf_x86_64_cloudabi.c: $(srcdir)/emulparams/elf_x86_64_cloudabi.sh \
+   $(srcdir)/emulparams/elf_x86_64.sh \
+   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}

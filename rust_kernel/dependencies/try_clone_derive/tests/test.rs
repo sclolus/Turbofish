@@ -63,6 +63,9 @@ fn test_enum_multi_tuble() {
 
 #[test]
 fn test_enum_struct() {
-    let s = Enum::D { e: Struct { a: 42, b: 42 }, f: vec![42; 100] };
+    let s = Enum::D {
+        e: Struct { a: 42, b: 42 },
+        f: vec![42; 100],
+    };
     assert_eq!(s, s.try_clone().unwrap());
 }

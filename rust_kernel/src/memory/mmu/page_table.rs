@@ -17,7 +17,9 @@ pub struct PageTable {
 impl PageTable {
     /// This fonction creates a PageTable at addr `page_directory_addr`
     pub const fn new() -> Self {
-        Self { entries: [Entry::new(); 1024] }
+        Self {
+            entries: [Entry::new(); 1024],
+        }
     }
 
     #[inline(always)]

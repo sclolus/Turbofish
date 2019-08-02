@@ -1,5 +1,5 @@
 
-#include "string.h"
+#include <string.h>
 
 void	striter(char *s, void (*f)(char *))
 {

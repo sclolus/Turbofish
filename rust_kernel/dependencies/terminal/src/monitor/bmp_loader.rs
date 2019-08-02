@@ -26,9 +26,17 @@ pub struct BmpImage {
 }
 
 // Last pixel line of bitmap format is the first line of standard screen format
-fn fill_image(output: *mut u8, image: *const u8, width: usize, height: usize, bpp: usize, header: BmpImage) {
+fn fill_image(
+    output: *mut u8,
+    image: *const u8,
+    width: usize,
+    height: usize,
+    bpp: usize,
+    header: BmpImage,
+) {
     let ptr_input = unsafe { slice::from_raw_parts(image, header.filesize as usize) };
-    let ptr_output = unsafe { slice::from_raw_parts_mut(output, width * height * bpp / 8 as usize) };
+    let ptr_output =
+        unsafe { slice::from_raw_parts_mut(output, width * height * bpp / 8 as usize) };
 
     // offset to last input line
     let mut input_index = (header.height - 1) as usize * header.width as usize * 3;
@@ -40,14 +48,22 @@ fn fill_image(output: *mut u8, image: *const u8, width: usize, height: usize, bp
         *elem = ptr_input[input_index];
         input_index += 1;
         // check if on end of pixel line
-        if (input_index % (header.width as usize * 3)) == 0 && input_index != header.width as usize * 3 {
+        if (input_index % (header.width as usize * 3)) == 0
+            && input_index != header.width as usize * 3
+        {
             input_index -= header.width as usize * 3 * 2;
         }
     }
 }
 
 /// This function implemente no scale change, only work with 1024 * 768 * (24b || 32b bitmap)
-pub fn draw_image(image: *const BmpImage, buffer: *mut u8, width: usize, height: usize, bpp: usize) -> IoResult {
+pub fn draw_image(
+    image: *const BmpImage,
+    buffer: *mut u8,
+    width: usize,
+    height: usize,
+    bpp: usize,
+) -> IoResult {
     if bpp != 32 && bpp != 24 {
         Err(IoError::NotSupported)
     } else {

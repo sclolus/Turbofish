@@ -305,7 +305,9 @@ impl PciType0 {
         Pio::<u32>::new(Pci::CONFIG_ADDRESS).write(pci_location + 4);
         let l1 = Pio::<u32>::new(Pci::CONFIG_DATA).read();
 
-        PciStatus { bits: (l1 >> 16) as u16 }
+        PciStatus {
+            bits: (l1 >> 16) as u16,
+        }
     }
 }
 
@@ -337,7 +339,10 @@ struct AddressSpace {
 
 impl AddressSpace {
     pub fn get_location(&self) -> u32 {
-        0x80000000 + ((self.bus as u32) << 16) + ((self.slot as u32) << 11) + ((self.function as u32) << 8)
+        0x80000000
+            + ((self.bus as u32) << 16)
+            + ((self.slot as u32) << 11)
+            + ((self.function as u32) << 8)
     }
 }
 
@@ -352,7 +357,11 @@ impl core::fmt::Display for PciDevice {
         write!(
             f,
             "{:02X?}:{:02X?}.{:X?} {:?} {:?}",
-            self.address_space.bus, self.address_space.slot, self.address_space.function, self.class, device_type
+            self.address_space.bus,
+            self.address_space.slot,
+            self.address_space.function,
+            self.class,
+            device_type
         )
     }
 }
@@ -369,7 +378,10 @@ impl CustomPciDeviceAllocator {
 
     /// Constructor
     pub const fn new() -> Self {
-        CustomPciDeviceAllocator { devices_array: [None; Self::CAPACITY], len: 0 }
+        CustomPciDeviceAllocator {
+            devices_array: [None; Self::CAPACITY],
+            len: 0,
+        }
     }
 
     /// Push a new device
@@ -385,7 +397,10 @@ impl CustomPciDeviceAllocator {
 
     /// Allow Ability to iterate
     pub fn iter(&self) -> CustomPciDeviceAllocatorIterator {
-        CustomPciDeviceAllocatorIterator { parent_reference: self, current_iter: 0 }
+        CustomPciDeviceAllocatorIterator {
+            parent_reference: self,
+            current_iter: 0,
+        }
     }
 }
 
@@ -416,10 +431,15 @@ impl Pci {
     pub const CONFIG_DATA: u16 = 0x0CFC;
 
     pub const fn new() -> Pci {
-        Pci { devices_list: CustomPciDeviceAllocator::new() }
+        Pci {
+            devices_list: CustomPciDeviceAllocator::new(),
+        }
     }
 
-    pub fn query_device<T: Copy + core::fmt::Debug>(&mut self, device_class: PciDeviceClass) -> Option<(T, u32)> {
+    pub fn query_device<T: Copy + core::fmt::Debug>(
+        &mut self,
+        device_class: PciDeviceClass,
+    ) -> Option<(T, u32)> {
         let dev = self.devices_list.iter().find(|d| d.class == device_class)?;
         let location = dev.address_space.get_location();
         let dev = unsafe { transmute_copy::<PciDeviceRaw, T>(&PciDeviceRaw::fill(location)) };
@@ -480,26 +500,35 @@ impl Pci {
         location += (slot as u32) << 11;
         location += (function as u32) << 8;
 
-        let header_l0 =
-            unsafe { transmute_copy::<PciDeviceHeaderL0Raw, PciDeviceHeaderL0>(&PciDeviceHeaderL0Raw::fill(location)) };
+        let header_l0 = unsafe {
+            transmute_copy::<PciDeviceHeaderL0Raw, PciDeviceHeaderL0>(&PciDeviceHeaderL0Raw::fill(
+                location,
+            ))
+        };
 
         match header_l0.vendor_id {
             0xffff => None,
             _ => {
                 location += size_of::<PciDeviceHeaderL0Raw>() as u32;
                 let header_body = unsafe {
-                    transmute_copy::<PciDeviceHeaderBodyRaw, PciDeviceHeaderBody>(&PciDeviceHeaderBodyRaw::fill(
-                        location,
-                    ))
+                    transmute_copy::<PciDeviceHeaderBodyRaw, PciDeviceHeaderBody>(
+                        &PciDeviceHeaderBodyRaw::fill(location),
+                    )
                 };
 
                 location += size_of::<PciDeviceHeaderBodyRaw>() as u32;
                 let registers = unsafe {
                     match header_body.header_type & 0x3 {
-                        0x1 => PciDeviceRegisters::PciType1(transmute_copy(&PciDeviceRegistersRaw::fill(location))),
-                        0x2 => PciDeviceRegisters::PciType2(transmute_copy(&PciDeviceRegistersRaw::fill(location))),
+                        0x1 => PciDeviceRegisters::PciType1(transmute_copy(
+                            &PciDeviceRegistersRaw::fill(location),
+                        )),
+                        0x2 => PciDeviceRegisters::PciType2(transmute_copy(
+                            &PciDeviceRegistersRaw::fill(location),
+                        )),
                         // Default device is considered like PCI type 0
-                        _ => PciDeviceRegisters::PciType0(transmute_copy(&PciDeviceRegistersRaw::fill(location))),
+                        _ => PciDeviceRegisters::PciType0(transmute_copy(
+                            &PciDeviceRegistersRaw::fill(location),
+                        )),
                     }
                 };
 
@@ -507,8 +536,16 @@ impl Pci {
                     header_l0: header_l0,
                     header_body: header_body,
                     registers: registers,
-                    class: get_pci_device(header_body.class_code, header_body.sub_class, header_body.prog_if),
-                    address_space: AddressSpace { bus, slot, function },
+                    class: get_pci_device(
+                        header_body.class_code,
+                        header_body.sub_class,
+                        header_body.prog_if,
+                    ),
+                    address_space: AddressSpace {
+                        bus,
+                        slot,
+                        function,
+                    },
                 })
             }
         }

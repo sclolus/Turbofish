@@ -7,6 +7,7 @@ use super::scheduler::{Scheduler, SCHEDULER};
 pub type SocketArgsPtr = *const u8;
 
 use errno::Errno;
+use sync::DeadMutexGuard;
 
 use core::convert::TryInto;
 use core::slice;
@@ -157,16 +158,26 @@ enum Sockaddr {
 }
 
 /// TryFrom boilerplate for Sockaddr
-impl core::convert::TryFrom<(&mut AddressSpace, *const u8, usize)> for Sockaddr {
+impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const u8, usize)> for Sockaddr {
     type Error = Errno;
-    fn try_from(arg: (&mut AddressSpace, *const u8, usize)) -> Result<Self, Self::Error> {
-        arg.0.check_user_ptr::<SunFamily>(arg.1 as *const SunFamily)?;
+    fn try_from(
+        arg: (&DeadMutexGuard<AddressSpace>, *const u8, usize),
+    ) -> Result<Self, Self::Error> {
+        arg.0
+            .check_user_ptr::<SunFamily>(arg.1 as *const SunFamily)?;
         let raw_family = unsafe { *(arg.1 as *const u16) };
         match raw_family.try_into()? {
             SunFamily::AfUnix => {
                 if arg.2 == core::mem::size_of::<SockaddrUnix>() {
-                    arg.0.check_user_ptr::<SockaddrUnix>(arg.1 as *const SockaddrUnix)?;
-                    unsafe { Ok(Sockaddr::Unix((arg.1 as *const SockaddrUnix).as_ref().ok_or(Errno::Einval)?)) }
+                    arg.0
+                        .check_user_ptr::<SockaddrUnix>(arg.1 as *const SockaddrUnix)?;
+                    unsafe {
+                        Ok(Sockaddr::Unix(
+                            (arg.1 as *const SockaddrUnix)
+                                .as_ref()
+                                .ok_or(Errno::Einval)?,
+                        ))
+                    }
                 } else {
                     Err(Errno::Einval)
                 }
@@ -180,7 +191,10 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let v = &mut scheduler.current_task_mut().unwrap_process_mut().virtual_allocator;
+        let v = scheduler
+            .current_task_mut()
+            .unwrap_process_mut()
+            .get_virtual_allocator();
 
         let call: CallType = call_type.try_into()?;
 
@@ -188,69 +202,134 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         match call {
             SysSocket => {
                 v.check_user_ptr::<SocketArgs>(args as *const SocketArgs)?;
-                let SocketArgs { domain, socket_type, protocol } = unsafe { *(args as *const SocketArgs) };
-                socket(&mut scheduler, domain.try_into()?, socket_type.try_into()?, protocol)
+                drop(v);
+                let SocketArgs {
+                    domain,
+                    socket_type,
+                    protocol,
+                } = unsafe { *(args as *const SocketArgs) };
+                socket(
+                    &mut scheduler,
+                    domain.try_into()?,
+                    socket_type.try_into()?,
+                    protocol,
+                )
             }
             SysBind => {
                 v.check_user_ptr::<BindArgs>(args as *const BindArgs)?;
-                let BindArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const BindArgs) };
-                let sockaddr = (v, addr as *const u8, addr_len as usize).try_into()?;
+                let BindArgs {
+                    socket_fd,
+                    addr,
+                    addr_len,
+                } = unsafe { *(args as *const BindArgs) };
+                let sockaddr = (&v, addr as *const u8, addr_len as usize).try_into()?;
+                drop(v);
                 bind(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysConnect => {
                 v.check_user_ptr::<ConnectArgs>(args as *const ConnectArgs)?;
-                let ConnectArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const ConnectArgs) };
-                let sockaddr = (v, addr as *const u8, addr_len as usize).try_into()?;
+                let ConnectArgs {
+                    socket_fd,
+                    addr,
+                    addr_len,
+                } = unsafe { *(args as *const ConnectArgs) };
+                let sockaddr = (&v, addr as *const u8, addr_len as usize).try_into()?;
+                drop(v);
                 connect(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysListen => {
                 v.check_user_ptr::<ListenArgs>(args as *const ListenArgs)?;
+                drop(v);
                 let ListenArgs { socket_fd, backlog } = unsafe { *(args as *const ListenArgs) };
                 listen(&mut scheduler, socket_fd as i32, backlog as i32)
             }
             SysAccept => {
                 v.check_user_ptr::<AcceptArgs>(args as *const AcceptArgs)?;
-                let AcceptArgs { socket_fd, addr, addr_len } = unsafe { *(args as *const AcceptArgs) };
+                drop(v);
+                let AcceptArgs {
+                    socket_fd,
+                    addr,
+                    addr_len,
+                } = unsafe { *(args as *const AcceptArgs) };
                 // UNSAFE pointers are passed to accept(). The syscall MUST check them before filling
-                accept(&mut scheduler, socket_fd as i32, addr as *mut u8, addr_len as *mut SockLen)
+                accept(
+                    &mut scheduler,
+                    socket_fd as i32,
+                    addr as *mut u8,
+                    addr_len as *mut SockLen,
+                )
             }
             SysSend => {
                 v.check_user_ptr::<SendArgs>(args as *const SendArgs)?;
-                let SendArgs { socket_fd, buf, len, flags } = unsafe { *(args as *const SendArgs) };
+                let SendArgs {
+                    socket_fd,
+                    buf,
+                    len,
+                    flags,
+                } = unsafe { *(args as *const SendArgs) };
                 let mem = unsafe { slice::from_raw_parts(buf as *const u8, len as usize) };
                 v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
+                drop(v);
                 send(&mut scheduler, socket_fd as i32, mem, flags)
             }
             SysRecv => {
                 v.check_user_ptr::<RecvArgs>(args as *const RecvArgs)?;
-                let RecvArgs { socket_fd, buf, len, flags } = unsafe { *(args as *const RecvArgs) };
+                let RecvArgs {
+                    socket_fd,
+                    buf,
+                    len,
+                    flags,
+                } = unsafe { *(args as *const RecvArgs) };
                 let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
                 v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
+                drop(v);
                 recv(&mut scheduler, socket_fd as i32, mem, flags)
             }
             SysSendTo => {
                 v.check_user_ptr::<SendToArgs>(args as *const SendToArgs)?;
-                let SendToArgs { socket_fd, buf, len, flags, dst_addr, addr_len } =
-                    unsafe { *(args as *const SendToArgs) };
+                let SendToArgs {
+                    socket_fd,
+                    buf,
+                    len,
+                    flags,
+                    dst_addr,
+                    addr_len,
+                } = unsafe { *(args as *const SendToArgs) };
                 let mem = unsafe { slice::from_raw_parts(buf as *const u8, len as usize) };
                 v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
                 let sockaddr_opt: Option<Sockaddr> = if dst_addr != 0x0 {
-                    Some((v, dst_addr as *const u8, addr_len as usize).try_into()?)
+                    Some((&v, dst_addr as *const u8, addr_len as usize).try_into()?)
                 } else {
                     None
                 };
+                drop(v);
                 send_to(&mut scheduler, socket_fd as i32, mem, flags, sockaddr_opt)
             }
             SysRecvFrom => {
                 v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
-                let RecvFromArgs { socket_fd, buf, len, flags, src_addr, addr_len } =
-                    unsafe { *(args as *const RecvFromArgs) };
+                drop(v);
+                let RecvFromArgs {
+                    socket_fd,
+                    buf,
+                    len,
+                    flags,
+                    src_addr,
+                    addr_len,
+                } = unsafe { *(args as *const RecvFromArgs) };
                 let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
                 // UNSAFE pointers are passed to recv_from(). The syscall MUST check them before filling
-                recv_from(&mut scheduler, socket_fd as i32, mem, flags, src_addr as *mut u8, addr_len as *mut SockLen)
+                recv_from(
+                    &mut scheduler,
+                    socket_fd as i32,
+                    mem,
+                    flags,
+                    src_addr as *mut u8,
+                    addr_len as *mut SockLen,
+                )
             }
             SysShutdown => {
                 v.check_user_ptr::<ShutdownArgs>(args as *const ShutdownArgs)?;
+                drop(v);
                 let ShutdownArgs { socket_fd, how } = unsafe { *(args as *const ShutdownArgs) };
                 shutdown(&mut scheduler, socket_fd as i32, how)
             }
@@ -296,8 +375,19 @@ raw_deferencing_struct!(
 
 type SockLen = usize;
 
-fn socket(_scheduler: &mut Scheduler, domain: Domain, socket_type: SocketType, protocol: u32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?} {:?}", function!(), domain, socket_type, protocol);
+fn socket(
+    _scheduler: &mut Scheduler,
+    domain: Domain,
+    socket_type: SocketType,
+    protocol: u32,
+) -> SysResult<u32> {
+    println!(
+        "{:?}: {:?} {:?} {:?}",
+        function!(),
+        domain,
+        socket_type,
+        protocol
+    );
     Ok(3)
 }
 
@@ -371,8 +461,19 @@ raw_deferencing_struct!(
 );
 
 // This function cannot be completely safe by nature of theses functionalities.
-fn accept(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: *mut u8, sockaddr_len: *mut SockLen) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, sockaddr, sockaddr_len);
+fn accept(
+    _scheduler: &mut Scheduler,
+    socket_fd: i32,
+    sockaddr: *mut u8,
+    sockaddr_len: *mut SockLen,
+) -> SysResult<u32> {
+    println!(
+        "{:?}: {:?} {:?} {:?}",
+        function!(),
+        socket_fd,
+        sockaddr,
+        sockaddr_len
+    );
     Ok(0)
 }
 
@@ -393,7 +494,13 @@ raw_deferencing_struct!(
 );
 
 fn send(_scheduler: &mut Scheduler, socket_fd: i32, buf: &[u8], flags: u32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, unsafe { core::str::from_utf8_unchecked(buf) }, flags);
+    println!(
+        "{:?}: {:?} {:?} {:?}",
+        function!(),
+        socket_fd,
+        unsafe { core::str::from_utf8_unchecked(buf) },
+        flags
+    );
     Ok(0)
 }
 
@@ -414,7 +521,13 @@ raw_deferencing_struct!(
 );
 
 fn recv(_scheduler: &mut Scheduler, socket_fd: i32, buf: &mut [u8], flags: u32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?} {:?}", function!(), socket_fd, unsafe { core::str::from_utf8_unchecked(buf) }, flags);
+    println!(
+        "{:?}: {:?} {:?} {:?}",
+        function!(),
+        socket_fd,
+        unsafe { core::str::from_utf8_unchecked(buf) },
+        flags
+    );
     Ok(0)
 }
 

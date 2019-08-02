@@ -46,7 +46,13 @@ struct LinearFrameBuffer(pub *mut u8);
 unsafe impl Send for LinearFrameBuffer {}
 
 impl VbeMode {
-    pub fn new(linear_frame_buffer: *mut u8, width: usize, height: usize, bpp: usize, mode_info: ModeInfo) -> Self {
+    pub fn new(
+        linear_frame_buffer: *mut u8,
+        width: usize,
+        height: usize,
+        bpp: usize,
+        mode_info: ModeInfo,
+    ) -> Self {
         let bytes_per_pixel: usize = bpp / 8;
         let screen_size: usize = bytes_per_pixel * width * height;
         let columns: usize = unsafe { width / _font_width };
@@ -116,7 +122,8 @@ impl VbeMode {
     /// copy one bounded area line from graphic buffer to db frame buffer
     fn copy_graphic_buffer_line_area(&mut self, line: usize, column_1: usize, column_2: usize) {
         for i in 0..self.char_height {
-            let o1 = (line * self.char_height + i) * self.pitch + column_1 * self.char_width * self.bytes_per_pixel;
+            let o1 = (line * self.char_height + i) * self.pitch
+                + column_1 * self.char_width * self.bytes_per_pixel;
             let o2 = o1 + (column_2 - column_1) * self.char_width * self.bytes_per_pixel;
             self.db_frame_buffer[o1..o2].copy_from_slice(&self.graphic_buffer[o1..o2]);
         }
@@ -126,7 +133,10 @@ impl VbeMode {
 impl Drawer for VbeMode {
     /// return window size in nb char
     fn query_window_size(&self) -> Pos {
-        Pos { line: self.height / self.char_height, column: self.width / self.char_width }
+        Pos {
+            line: self.height / self.char_height,
+            column: self.width / self.char_width,
+        }
     }
 
     #[inline(always)]
@@ -141,7 +151,11 @@ impl Drawer for VbeMode {
     fn clear_screen(&mut self) {
         // Copy the entire graphic buffer
         unsafe {
-            _sse2_memcpy(self.db_frame_buffer.as_mut_ptr(), self.graphic_buffer.as_ptr(), self.pitch * self.height);
+            _sse2_memcpy(
+                self.db_frame_buffer.as_mut_ptr(),
+                self.graphic_buffer.as_ptr(),
+                self.pitch * self.height,
+            );
         }
     }
 
@@ -162,7 +176,11 @@ impl AdvancedGraphic for VbeMode {
     /// refresh framebuffer
     fn refresh_screen(&mut self) {
         unsafe {
-            _sse2_memcpy(self.linear_frame_buffer.0, self.db_frame_buffer.as_ptr(), self.pitch * self.height);
+            _sse2_memcpy(
+                self.linear_frame_buffer.0,
+                self.db_frame_buffer.as_ptr(),
+                self.pitch * self.height,
+            );
         }
     }
 
@@ -180,8 +198,16 @@ impl AdvancedGraphic for VbeMode {
     }
 
     /// Expose graphic buffer
-    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(&mut self, closure: T) -> IoResult {
-        closure(self.graphic_buffer.as_mut_ptr(), self.width, self.height, self.bytes_per_pixel * 8)?;
+    fn draw_graphic_buffer<T: Fn(*mut u8, usize, usize, usize) -> IoResult>(
+        &mut self,
+        closure: T,
+    ) -> IoResult {
+        closure(
+            self.graphic_buffer.as_mut_ptr(),
+            self.width,
+            self.height,
+            self.bytes_per_pixel * 8,
+        )?;
         self.clear_screen();
         Ok(())
     }

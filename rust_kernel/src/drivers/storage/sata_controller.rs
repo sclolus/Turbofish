@@ -85,9 +85,9 @@ impl SataController {
 
     pub fn init() -> Option<Self> {
         PCI.lock()
-            .query_device(PciDeviceClass::MassStorageController(MassStorageControllerSubClass::SerialAta(
-                SerialAtaProgIf::Ahci1,
-            )))
+            .query_device(PciDeviceClass::MassStorageController(
+                MassStorageControllerSubClass::SerialAta(SerialAtaProgIf::Ahci1),
+            ))
             .map(|(pci, location)| Self { pci, location })
     }
 
@@ -99,8 +99,10 @@ impl SataController {
         let mut vec = Vec::new();
         unsafe {
             println!("{:#X?}", *s);
-            let virt =
-                map((self.pci.bar5 + 0x100) as *mut u8, size_of::<HbaPort>() * (*s).pi as usize) as *const HbaPort;
+            let virt = map(
+                (self.pci.bar5 + 0x100) as *mut u8,
+                size_of::<HbaPort>() * (*s).pi as usize,
+            ) as *const HbaPort;
             for i in 0..(*s).pi as usize {
                 let l = core::ptr::read_volatile(virt.add(i));
                 if l.sig == Self::SATA_SIG_ATA

@@ -61,7 +61,9 @@ impl FromStr for CursorMove {
                 if off + 1 >= s.len() {
                     return Err(ParseCursorError);
                 }
-                let column: usize = s[off + 1..s.len() - 1].parse().map_err(|_e| ParseCursorError)?;
+                let column: usize = s[off + 1..s.len() - 1]
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
                 Ok(CursorMove::Pos(Pos { line, column }))
             }),
             _ => {
@@ -91,7 +93,10 @@ mod test {
         // println!("{}", Forward(10));
 
         let cursors = [
-            Pos(crate::Pos { line: 1, column: 42 }),
+            Pos(crate::Pos {
+                line: 1,
+                column: 42,
+            }),
             Up(10),
             Down(32),
             Forward(84),

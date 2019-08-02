@@ -1,6 +1,6 @@
 //! Process TSS manager
 
-use spinlock::Spinlock;
+use sync::Spinlock;
 
 /// Base TSS structure
 #[allow(unused)]
@@ -53,7 +53,9 @@ impl Tss {
     fn new() -> Self {
         let block_ptr = Self::TSS_MEMORY_ADDRESS as *mut TssBlock;
         unsafe {
-            *block_ptr = TssBlock { ..Default::default() };
+            *block_ptr = TssBlock {
+                ..Default::default()
+            };
         }
         Self { block_ptr }
     }

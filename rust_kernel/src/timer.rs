@@ -78,7 +78,10 @@ pub struct Rtc {
 
 impl Rtc {
     pub const fn new() -> Self {
-        Self { register_selector: Pio::new(0x70), data: Pio::new(0x71) }
+        Self {
+            register_selector: Pio::new(0x70),
+            data: Pio::new(0x71),
+        }
     }
 
     /// REGISTER  FIELD
@@ -102,7 +105,13 @@ impl Rtc {
 
         //println!("format is_24hour{:?} is_binary{:?}", is_24hour_format, is_binary_format);
 
-        let convert_to_binary = |x| if is_binary_format { x } else { ((x / 16) * 10) + (x & 0xF) };
+        let convert_to_binary = |x| {
+            if is_binary_format {
+                x
+            } else {
+                ((x / 16) * 10) + (x & 0xF)
+            }
+        };
         let convert_to_binary_24hour = |mut x: u8| {
             if is_24hour_format {
                 convert_to_binary(x)

@@ -38,7 +38,11 @@ pub fn make_somization<T: Fn() -> usize>(
                 if max_alloc != nb_allocations {
                     let n: u8 = srand(core::u8::MAX);
                     let size = alloc_size_fn();
-                    let new_alloc = Allocation { size: size, random_u8: n, v: unsafe { allocator(size) } };
+                    let new_alloc = Allocation {
+                        size: size,
+                        random_u8: n,
+                        v: unsafe { allocator(size) },
+                    };
                     assert_ne!(new_alloc.v, 0 as *mut u8);
                     let size = unsafe { size_verifier(new_alloc.v) };
                     assert!(size >= new_alloc.size);

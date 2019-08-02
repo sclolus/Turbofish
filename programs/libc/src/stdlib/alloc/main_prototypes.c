@@ -1,6 +1,6 @@
 
 #include "main_headers.h"
-#include "string.h"
+#include <string.h>
 
 #define STDOUT_FILENO 1
 #define SIZE_MAX 4294967295
@@ -23,26 +23,26 @@ void			*malloc(size_t size)
 	return (addr);
 }
 
-int			free(void *ptr)
+void			free(void *ptr)
 {
 	int ret;
 
 //	pthread_mutex_lock(&g_mut);
 	if (ctx.is_initialized == false && constructor_runtime() == -1)
-		return -1;
+		return;
 	if (ctx.tracer_file_descriptor != -1)
 		begin_trace(FREE, ptr, 0, 0);
 	if (ptr == NULL) {
 		if (ctx.tracer_file_descriptor != -1)
 			bend_trace(NO_OP, NULL);
 //		pthread_mutex_unlock(&g_mut);
-		return -1;
+		return;
 	}
 	ret = core_deallocator(ptr);
 	if (ctx.tracer_file_descriptor != -1)
 		bend_trace(ret < 0 ? FAIL : SUCCESS, NULL);
 //	pthread_mutex_unlock(&g_mut);
-	return 0;
+	return;
 }
 
 size_t			alloc_size(void *ptr)

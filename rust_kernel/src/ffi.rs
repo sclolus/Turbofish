@@ -22,6 +22,7 @@ pub struct c_str {
 pub struct CString(pub Vec<c_char>);
 
 /// Main structure of CStringArray
+#[derive(Debug)]
 pub struct CStringArray {
     /// Pointer vector of C Style
     pub c_pointer: Vec<*const c_char>,
@@ -119,16 +120,25 @@ impl convert::From<*const c_char> for CString {
 /// Debug boilerplate of CString
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let debug_slice = unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
-        write!(f, "{} of len: {}", unsafe { core::str::from_utf8_unchecked(debug_slice) }, self.len())
+        let debug_slice =
+            unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
+        write!(
+            f,
+            "{} of len: {}",
+            unsafe { core::str::from_utf8_unchecked(debug_slice) },
+            self.len()
+        )
     }
 }
 
 /// Display boilerplate of CString
 impl fmt::Display for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let debug_slice = unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
-        write!(f, "{}", unsafe { core::str::from_utf8_unchecked(debug_slice) })
+        let debug_slice =
+            unsafe { core::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.len()) };
+        write!(f, "{}", unsafe {
+            core::str::from_utf8_unchecked(debug_slice)
+        })
     }
 }
 
@@ -183,7 +193,9 @@ impl CStringArray {
 
             // Then, copy all the strings
             for (i, elem) in self.borrowed_content.iter().enumerate() {
-                let res = elem.serialize(align, aligned_ptr as *mut c_char).expect("WTF");
+                let res = elem
+                    .serialize(align, aligned_ptr as *mut c_char)
+                    .expect("WTF");
                 // check align coherency
                 if res as usize != aligned_ptr {
                     return None;
@@ -216,7 +228,10 @@ impl convert::From<&[&str]> for CStringArray {
         }
         // nullptr to terminate the array
         c_pointer.push(0x0 as *const c_char);
-        Self { c_pointer, borrowed_content }
+        Self {
+            c_pointer,
+            borrowed_content,
+        }
     }
 }
 
@@ -239,12 +254,15 @@ impl convert::From<*const *const c_char> for CStringArray {
         }
         // nullptr to terminate the array
         c_pointer.push(0x0 as *const c_char);
-        Self { c_pointer, borrowed_content }
+        Self {
+            c_pointer,
+            borrowed_content,
+        }
     }
 }
 
 /// Debug boilerplate of CStringArray
-impl fmt::Debug for CStringArray {
+impl fmt::Display for CStringArray {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for elem in &self.borrowed_content {
             write!(f, "{:?}\n", elem)?;

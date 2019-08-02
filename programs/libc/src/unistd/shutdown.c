@@ -1,7 +1,6 @@
 
-#include "user_syscall.h"
-
-extern int errno;
+#include <user_syscall.h>
+#include <errno.h>
 
 /*
  * Power off the computer
@@ -12,11 +11,5 @@ int shutdown(void)
 	/*
 	 * On Error, -1 is returned, and errno is set appropriately.
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return ret;
-	}
+	set_errno_and_return(ret);
 }

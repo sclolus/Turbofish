@@ -24,7 +24,10 @@ pub struct Pio<T> {
 impl<T> Pio<T> {
     /// Returns a new Pio assigned to the port `port`
     pub const fn new(port: u16) -> Self {
-        Pio { port, value: PhantomData }
+        Pio {
+            port,
+            value: PhantomData,
+        }
     }
 }
 

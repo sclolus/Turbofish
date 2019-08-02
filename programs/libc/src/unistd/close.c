@@ -1,8 +1,7 @@
 
-#include "user_syscall.h"
-#include "unistd.h"
-
-extern int errno;
+#include <user_syscall.h>
+#include <unistd.h>
+#include <errno.h>
 
 /*
  * Close a file descriptor
@@ -13,11 +12,5 @@ int close(int fd)
 	/*
 	 * close() returns zero on success.  On error, -1 is returned, and errno is set appropriately.
 	 */
-	if (ret < 0) {
-		errno = -ret;
-		return -1;
-	} else {
-		errno = 0;
-		return 0;
-	}
+	set_errno_and_return(ret);
 }

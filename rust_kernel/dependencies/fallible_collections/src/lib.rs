@@ -7,12 +7,15 @@
 #![deny(missing_docs)]
 
 extern crate alloc;
-#[macro_use]
 pub mod boxed;
 pub use boxed::*;
 #[macro_use]
 pub mod vec;
 pub use vec::*;
+pub mod rc;
+pub use rc::*;
+pub mod arc;
+pub use arc::*;
 
 use alloc::collections::CollectionAllocErr;
 

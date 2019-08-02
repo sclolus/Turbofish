@@ -1,7 +1,7 @@
 
-#include "string.h"
+#include <string.h>
 
-void	*ft_memmove(void *dst, const void *src, size_t len)
+void	*memmove(void *dst, const void *src, size_t len)
 {
 	char *s1;
 	char *s2;
@@ -20,4 +20,8 @@ void	*ft_memmove(void *dst, const void *src, size_t len)
 			*s2++ = *s1++;
 	}
 	return (dst);
+}
+
+void	*ft_memmove(void *dst, const void *src, size_t len) {
+	return memmove(dst, src, len);
 }

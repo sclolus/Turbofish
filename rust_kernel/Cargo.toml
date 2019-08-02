@@ -30,7 +30,7 @@ const_assert = { path = "dependencies/const_assert" }
 ext2 = { path = "dependencies/ext2" }
 terminal = { path = "dependencies/terminal" }
 registers = { path = "dependencies/registers" }
-spinlock = { path = "dependencies/spinlock" }
+sync = { path = "dependencies/sync" }
 elf_loader = { path = "dependencies/elf_loader" }
 errno = { path = "dependencies/errno" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
@@ -44,15 +44,16 @@ features = ["spin_no_std"]
 exit-on-panic = ["terminal/exit-on-panic"]
 serial-eprintln = ["terminal/serial-eprintln"]
 std-print = ["terminal/std-print", "ext2/std-print", "elf_loader/std-print"]
-#test-succeed= []
-#test-failed= []
-test-sodo-allocator= []
-test-vmalloc= []
-test-kmalloc= []
+#test-succeed = []
+#test-failed = []
+test-sodo-allocator = []
+test-vmalloc = []
+test-kmalloc = []
 native-test-hard-drive-read-pio = []
 native-test-hard-drive-write-pio = []
 native-test-hard-drive-read-bios = []
 native-test-hard-drive-write-bios = []
+native-test-libc = []
 test = []
 
 [workspace]
@@ -64,7 +65,7 @@ members = [
 "dependencies/ext2",
 "dependencies/terminal",
 "dependencies/registers",
-"dependencies/spinlock",
+"dependencies/sync",
 "dependencies/elf_loader",
 "dependencies/errno",
 "dependencies/try_clone_derive",

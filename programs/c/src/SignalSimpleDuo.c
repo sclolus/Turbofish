@@ -4,12 +4,17 @@
 #include <stdio.h>
 #include <wait.h>
 
+bool SIGUSR2_HANDLER_CALLED = false;
+bool SIGSTP_HANDLER_CALLED = false;
+
 void usr2(int signum) {
 	printf("usr2 signal handler %i\n", signum);
+	SIGUSR2_HANDLER_CALLED = true;
 }
 
 void tstp(int signum) {
 	printf("tstp signal handler %i\n", signum);
+	SIGSTP_HANDLER_CALLED = true;
 }
 
 pid_t father_id = 0;
@@ -33,6 +38,11 @@ int main(void)
 		int id;
 		int ret = wait(&id);
 		printf("wait status %i\n", ret);
+		if (!SIGSTP_HANDLER_CALLED || !SIGUSR2_HANDLER_CALLED) {
+			exit(1);
+		} else {
+			exit(0);
+		}
 	}
 	return 0;
 }

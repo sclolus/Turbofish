@@ -16,16 +16,22 @@ impl VgaTextMode {
     const CURSOR_DATA_REGISTER: u16 = 0x3D5;
 
     pub fn new() -> Self {
-        Self { memory_location: unsafe { &mut *(VGA_MEM_LOCATION as *mut [(u8, u8); WIDTH * HEIGHT]) } }
+        Self {
+            memory_location: unsafe { &mut *(VGA_MEM_LOCATION as *mut [(u8, u8); WIDTH * HEIGHT]) },
+        }
     }
 }
 
 impl Drawer for VgaTextMode {
     fn query_window_size(&self) -> Pos {
-        Pos { line: HEIGHT, column: WIDTH }
+        Pos {
+            line: HEIGHT,
+            column: WIDTH,
+        }
     }
     fn draw_character(&mut self, c: char, position: Pos, color: AnsiColor) -> IoResult {
-        self.memory_location[position.column + position.line * WIDTH] = (c as u8, Into::<VgaColor>::into(color).0);
+        self.memory_location[position.column + position.line * WIDTH] =
+            (c as u8, Into::<VgaColor>::into(color).0);
         Ok(())
     }
 
@@ -37,13 +43,24 @@ impl Drawer for VgaTextMode {
         let line = Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).read();
 
         // clear the cursor
-        self.clear_cursor(' ', Pos { line: line as usize, column: column as usize }, AnsiColor::WHITE).unwrap();
+        self.clear_cursor(
+            ' ',
+            Pos {
+                line: line as usize,
+                column: column as usize,
+            },
+            AnsiColor::WHITE,
+        )
+        .unwrap();
 
         // fill screen with white non visible cells (cursor will be white)
         unsafe {
             _screencpy_des_familles(
                 VGA_MEM_LOCATION,
-                VgaCell { character: ' ' as u8, color: Into::<VgaColor>::into(AnsiColor::WHITE).0 },
+                VgaCell {
+                    character: ' ' as u8,
+                    color: Into::<VgaColor>::into(AnsiColor::WHITE).0,
+                },
                 WIDTH * HEIGHT,
             );
         }
@@ -71,7 +88,8 @@ impl Drawer for VgaTextMode {
         Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write((Pio::<u8>::new(0x3D5).read()) & 0xC0 | 0);
 
         Pio::<u8>::new(Self::CURSOR_INDEX_REGISTER).write(0x0B); // end scanline
-        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER).write((Pio::<u8>::new(0x3D5).read()) & 0xE0 | 15);
+        Pio::<u8>::new(Self::CURSOR_DATA_REGISTER)
+            .write((Pio::<u8>::new(0x3D5).read()) & 0xE0 | 15);
         Ok(())
     }
 }

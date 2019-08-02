@@ -23,7 +23,10 @@ pub fn reboot(_args: &[&str]) -> u8 {
         Some(mut acpi) => match acpi.reboot_computer() {
             Ok(_) => {}
             Err(e) => {
-                log::error!("ACPI reboot failure: {:?}. Trying with PS/2 controler ...", e);
+                log::error!(
+                    "ACPI reboot failure: {:?}. Trying with PS/2 controler ...",
+                    e
+                );
                 unsafe {
                     PS2_CONTROLER.reboot_computer();
                 }
@@ -170,15 +173,21 @@ pub fn cat(args: &[&str]) -> u8 {
     pub fn cat_result(args: &[&str]) -> Result<(), &'static str> {
         let filename = format!("{}/{}", *CWD.lock(), args[0]);
         let ext2 = unsafe { EXT2.as_mut().ok_or("ext2 not init")? };
-        let mut file = dbg!(ext2.open(dbg!(&filename), OpenFlags::O_RDONLY, 0)).map_err(|_| "open failed")?;
+        let mut file =
+            dbg!(ext2.open(dbg!(&filename), OpenFlags::O_RDONLY, 0)).map_err(|_| "open failed")?;
         let buf: &mut [u8; 1024] = &mut [0; 1024];
 
         loop {
-            let size_read = ext2.read(&mut file, &mut buf[..]).map_err(|_| "read failed")?;
+            let size_read = ext2
+                .read(&mut file, &mut buf[..])
+                .map_err(|_| "read failed")?;
             if size_read == 0 {
                 return Ok(());
             }
-            print!("{}", core::str::from_utf8(&buf[0..size_read as usize]).map_err(|_| "not valid utf8")?);
+            print!(
+                "{}",
+                core::str::from_utf8(&buf[0..size_read as usize]).map_err(|_| "not valid utf8")?
+            );
         }
     }
     match cat_result(args) {

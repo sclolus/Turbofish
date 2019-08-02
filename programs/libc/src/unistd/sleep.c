@@ -1,6 +1,7 @@
 
-#include "time.h"
-#include "unistd.h"
+#include <time.h>
+#include <unistd.h>
+#include <errno.h>
 
 /*
  * sleep - sleep for a specified number of seconds
@@ -46,5 +47,5 @@ int usleep(useconds_t usec) {
 	 * The usleep() function returns 0 on success.  On error, -1 is returned,
 	 * with errno set to indicate the cause of the error.
 	 */
-	return ret < 0 ? -1 : 0;
+	set_errno_and_return(ret);
 }

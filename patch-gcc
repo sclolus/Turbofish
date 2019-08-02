@@ -1,0 +1,128 @@
+diff -ruN gcc-9.1.0/config.sub gcc-modified/config.sub
+--- gcc-9.1.0/config.sub	2019-01-03 12:28:27.000000000 +0100
++++ gcc-modified/config.sub	2019-08-01 20:03:29.926429356 +0200
+@@ -1366,6 +1366,7 @@
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
++	turbofish*);;
+ 	qnx*)
+ 		case $cpu in
+ 		    x86 | i*86)
+diff -ruN gcc-9.1.0/fixincludes/mkfixinc.sh gcc-modified/fixincludes/mkfixinc.sh
+--- gcc-9.1.0/fixincludes/mkfixinc.sh	2016-06-21 23:57:20.000000000 +0200
++++ gcc-modified/fixincludes/mkfixinc.sh	2019-08-01 20:03:29.926429356 +0200
+@@ -11,6 +11,7 @@
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-myos* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+@@ -28,5 +29,7 @@
+     *)
+ 	cat < ${srcdir}/fixinc.in > ${target} || exit 1
+ 	;;
++ 
+ esac
++
+ chmod 755 ${target}
+diff -ruN gcc-9.1.0/gcc/config/turbofish.h gcc-modified/gcc/config/turbofish.h
+--- gcc-9.1.0/gcc/config/turbofish.h	1970-01-01 01:00:00.000000000 +0100
++++ gcc-modified/gcc/config/turbofish.h	2019-08-01 20:03:29.926429356 +0200
+@@ -0,0 +1,28 @@
++/* Useful if you wish to make target-specific GCC changes. */
++#undef TARGET_TURBOFISH
++#define TARGET_TURBOFISH 1
++ 
++/* Default arguments you want when running your
++   i686-turbofish-gcc/x86_64-turbofish-gcc toolchain */
++#undef LIB_SPEC
++#define LIB_SPEC "-lc" /* link against C standard library */
++ 
++/* Files that are linked before user code.
++   The %s tells GCC to look for these files in the library directory. */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++ 
++/* Files that are linked after user code. */
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++ 
++/* Additional predefined macros. */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()      \
++  do {                                \
++    builtin_define ("__turbofish__");      \
++    builtin_define ("__unix__");      \
++    builtin_assert ("system=turbofish");   \
++    builtin_assert ("system=unix");   \
++    builtin_assert ("system=posix");   \
++  } while(0);
+diff -ruN gcc-9.1.0/gcc/config.gcc gcc-modified/gcc/config.gcc
+--- gcc-9.1.0/gcc/config.gcc	2019-04-15 10:05:03.000000000 +0200
++++ gcc-modified/gcc/config.gcc	2019-08-01 20:03:29.926429356 +0200
+@@ -612,6 +612,14 @@
+ 		tm_defines="${tm_defines} USE_IX86_FRAME_POINTER=1"
+ 	fi
+ 	;;
++
++*-*-turbofish*)
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=wrap
++  ;;
++
+ x86_64-*-*)
+ 	case ${with_abi} in
+ 	"")
+@@ -978,6 +986,12 @@
+ esac
+ 
+ case ${target} in
++i[34567]86-*-turbofish*)
++    tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h turbofish.h"
++    ;;
++x86_64-*-turbofish*)
++    tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h i386/x86-64.h turbofish.h"
++    ;;
+ aarch64*-*-elf | aarch64*-*-fuchsia* | aarch64*-*-rtems*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-elf-raw.h"
+diff -ruN gcc-9.1.0/libgcc/config.host gcc-modified/libgcc/config.host
+--- gcc-9.1.0/libgcc/config.host	2019-01-17 13:29:13.000000000 +0100
++++ gcc-modified/libgcc/config.host	2019-08-01 20:03:29.926429356 +0200
+@@ -343,6 +343,14 @@
+ esac
+ 
+ case ${host} in
++i[34567]86-*-turbofish*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
++x86_64-*-turbofish*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ aarch64*-*-elf | aarch64*-*-rtems*)
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o"
+ 	extra_parts="$extra_parts crtfastmath.o"
+diff -ruN gcc-9.1.0/libstdc++-v3/crossconfig.m4 gcc-modified/libstdc++-v3/crossconfig.m4
+--- gcc-9.1.0/libstdc++-v3/crossconfig.m4	2019-03-11 17:28:11.000000000 +0100
++++ gcc-modified/libstdc++-v3/crossconfig.m4	2019-08-01 20:03:29.926429356 +0200
+@@ -35,6 +35,13 @@
+     AC_DEFINE(HAVE_TANHF)
+     ;;
+ 
++ *-turbofish*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
++
+   mips*-sde-elf*)
+     # These definitions are for the SDE C library rather than newlib.
+     SECTION_FLAGS='-ffunction-sections -fdata-sections'

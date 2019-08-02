@@ -1,9 +1,11 @@
 //! This file contains definition of a task
 
-use super::process::{CpuState, Process, UserProcess};
+use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
+use super::syscall::clone::CloneFlags;
 use super::SysResult;
+use core::ffi::c_void;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -25,17 +27,30 @@ pub struct Task {
 
 impl Task {
     pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
-        Self { process_state, child: Vec::new(), parent, signal: SignalInterface::new() }
+        Self {
+            process_state,
+            child: Vec::new(),
+            parent,
+            signal: SignalInterface::new(),
+        }
     }
 
-    pub fn fork(&self, kernel_esp: u32, self_pid: Pid) -> SysResult<Self> {
+    pub fn sys_clone(
+        &self,
+        kernel_esp: u32,
+        new_parent_pid: Pid,
+        child_stack: *const c_void,
+        flags: CloneFlags,
+    ) -> SysResult<Self> {
         Ok(Self {
             child: Vec::new(),
-            parent: Some(self_pid),
+            parent: Some(new_parent_pid),
             signal: self.signal.fork(),
             process_state: match &self.process_state {
-                ProcessState::Running(p) => ProcessState::Running(p.fork(kernel_esp)?),
-                _ => panic!("Non running process should not fork"),
+                ProcessState::Running(p) => {
+                    ProcessState::Running(p.sys_clone(kernel_esp, child_stack, flags)?)
+                }
+                _ => panic!("Non running process should not clone"),
             },
         })
     }
