@@ -3,6 +3,7 @@ SHELL := env PATH=$(PATH) /bin/bash
 
 BUILD_DIR = build
 VPATH += src
+VPATH += src/posix_test_suite
 
 # AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
@@ -42,16 +43,40 @@ SRC_C += Clone \
 		CanonicalRead \
 		Loop
 
+
+SRC_C += kill/1-1 \
+		# kill/1-2 \
+		# kill/2-1 \
+		# kill/2-2 \
+		# kill/3-1
+
+SRC_C += signal/1-1 \
+		signal/2-1 \
+		signal/3-1 \
+		signal/5-1 \
+		signal/6-1 \
+		signal/7-1
+
+SRC_C += # sigprocmask/10-1 \
+		# sigprocmask/12-1 \
+		# sigprocmask/15-1 \
+		# sigprocmask/17-core-buildonly \
+		# sigprocmask/4-1 \
+		# sigprocmask/5-1 \
+		# sigprocmask/6-1 \
+		# sigprocmask/7-1 \
+		# sigprocmask/8-1 \
+		# sigprocmask/8-2 \
+		# sigprocmask/8-3 \
+		# sigprocmask/9-1
+
 CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)
 CFLAGS += -m32 -D GNU
 CC = gcc
 else
-# LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
 CFLAGS +=
 endif
-
-#ASFLAGS = -f elf
 
 ifeq ($(LDMAP),yes)
     LDFLAGS += -M

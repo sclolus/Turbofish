@@ -16,7 +16,15 @@ struct program_test {
 static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/SignalSimple"},
 	{.path = "/bin/SignalSimpleDuo"},
-	{.path = "/bin/ProcessGroup"}
+	{.path = "/bin/ProcessGroup"},
+	{.path = "/bin/kill/1-1"},
+	{.path = "/bin/kill/1-1"},
+	{.path = "/bin/signal/1-1"},
+	{.path = "/bin/signal/2-1"},
+	{.path = "/bin/signal/3-1"},
+	{.path = "/bin/signal/5-1"},
+	{.path = "/bin/signal/6-1"},
+	{.path = "/bin/signal/7-1"}
 };
 
 void _exit_qemu(int val)
