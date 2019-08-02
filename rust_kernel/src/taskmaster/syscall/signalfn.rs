@@ -86,7 +86,7 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
         }?;
         // auto-sodo mode
         let current_task_pid = scheduler.current_task_id().0;
-        if (pid > 0 && current_task_pid == pid as u32)
+        if (pid > 0 && current_task_pid == pid)
             || (pid < -1 && scheduler.current_thread_group().pgid == -pid as Pid)
             || pid == -1
         {

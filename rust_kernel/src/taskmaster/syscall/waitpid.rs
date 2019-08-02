@@ -1,7 +1,7 @@
 //! waitpid (wait) implementations
 
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, unpreemptible};
 use super::task::{ProcessState, WaitingState};
 use super::SysResult;
 
@@ -61,11 +61,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         }
     } else {
         // Check if specified child exists
-        if let Some(elem) = task
-            .child
-            .iter()
-            .find(|&&current_pid| current_pid == pid as u32)
-        {
+        if let Some(elem) = task.child.iter().find(|&&current_pid| current_pid == pid) {
             if scheduler
                 .get_task((*elem, 0))
                 .expect("Pid must be here")
@@ -100,49 +96,27 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             let task = scheduler.current_task_mut();
             task.child.remove_item(&pid).unwrap();
             // Return immediatly
-            Ok(pid)
+            Ok(pid as u32)
         }
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_task_mut()
-                .set_waiting(WaitingState::ChildDeath(
-                    if pid < 0 { None } else { Some(pid as u32) },
-                    0,
-                ));
+                .set_waiting(WaitingState::ChildDeath(pid));
 
             // Auto-preempt calling
             let ret = auto_preempt();
 
             // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
-            unpreemptible();
-            let mut scheduler = SCHEDULER.lock();
+            // unpreemptible();
+            // let mut scheduler = SCHEDULER.lock();
 
             if ret < 0 {
                 // Reset as running
                 // scheduler.current_task_mut().set_running();
                 return Err(Errno::Eintr);
             } else {
-                let child_pid = match &scheduler.current_task().process_state {
-                    // Read the fields of the WaintingState::ChildDeath(x, y)
-                    ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
-                        // Set wstatus pointer is not null by reading y
-                        if wstatus != 0x0 as *mut i32 {
-                            unsafe {
-                                *wstatus = *status as i32;
-                            }
-                        }
-                        let t = opt.expect("Cannot be None");
-                        scheduler.all_process.remove(&t).expect("Pid must be here");
-                        t
-                    }
-                    _ => panic!("WTF"),
-                };
-                // Set process as Running, Set return readen value in Ok(x)
-                scheduler.current_task_mut().set_running();
-                let task = scheduler.current_task_mut();
-                task.child.remove_item(&child_pid).unwrap();
-                Ok(child_pid)
+                return waitpid(pid, wstatus, options);
             }
         }
     }

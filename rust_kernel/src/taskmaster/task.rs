@@ -35,6 +35,13 @@ impl Task {
         }
     }
 
+    pub fn get_waiting_state(&self) -> Option<&WaitingState> {
+        match &self.process_state {
+            ProcessState::Waiting(_, waiting_state) => Some(waiting_state),
+            _ => None,
+        }
+    }
+
     pub fn sys_clone(
         &self,
         kernel_esp: u32,
@@ -125,7 +132,7 @@ pub enum WaitingState {
     Pause,
     /// The Process is looking for the death of his child
     /// Set none for undefined PID or a child PID. Is followed by the status field
-    ChildDeath(Option<Pid>, u32),
+    ChildDeath(Pid),
     /// Waiting for a custom event
     Event(fn() -> Option<u32>),
 }

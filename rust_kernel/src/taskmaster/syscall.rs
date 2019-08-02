@@ -107,15 +107,15 @@ unsafe fn sys_exit(status: i32) -> ! {
     SCHEDULER.lock().current_task_exit(status);
 }
 
-unsafe fn sys_getpid() -> SysResult<Pid> {
+unsafe fn sys_getpid() -> SysResult<u32> {
     Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_task_id().0
+        SCHEDULER.lock().current_task_id().0 as u32
     }))
 }
 
-unsafe fn sys_getppid() -> SysResult<Pid> {
+unsafe fn sys_getppid() -> SysResult<u32> {
     Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_task().parent.unwrap_or(1)
+        SCHEDULER.lock().current_task().parent.unwrap_or(1) as u32
     }))
 }
 

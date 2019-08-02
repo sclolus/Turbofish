@@ -1,5 +1,6 @@
 //! this file contains the scheduler description
 
+use super::messaging::{Message, MESSAGE_QUEUE};
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
 use super::syscall::{clone::CloneFlags, read::handle_tty_control};
@@ -11,7 +12,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::ffi::c_void;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use sync::Spinlock;
@@ -41,7 +42,7 @@ extern "C" {
     pub fn _schedule_force_preempt();
 }
 
-pub type Pid = u32;
+pub type Pid = i32;
 pub type Tid = u32;
 
 /// Protect process again scheduler interruption
@@ -131,6 +132,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // Handle a tty control
     handle_tty_control();
 
+    scheduler.handle_messages();
     // Switch between processes
     let action = scheduler.advance_next_process(1);
 
@@ -171,7 +173,7 @@ pub struct Scheduler {
     /// TODO: think about PID Reuse when SMP will be added,
     /// as current PID attribution depends on the existence of a pid in the
     /// `all_process` HashMap.
-    next_pid: AtomicU32,
+    next_pid: AtomicI32,
 
     /// index in the vector of the current running process
     current_task_id: (Pid, Tid),
@@ -192,12 +194,38 @@ impl Scheduler {
         Self {
             running_process: Vec::new(),
             all_process: HashMap::new(),
-            next_pid: AtomicU32::new(1),
+            next_pid: AtomicI32::new(1),
             current_task_index: 0,
             current_task_id: (1, 0),
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
+        }
+    }
+
+    fn handle_messages(&mut self) {
+        while let Some(message) = MESSAGE_QUEUE.lock().pop_front() {
+            dbg!(message);
+            // whether the parent must be wake up
+            match message {
+                Message::ProcessDied { pid } => {
+                    let dead_process = self.get_task((pid, 0)).expect("no dead child");
+                    // dbg!(dead_process);
+                    if let Some(parent_pid) = dead_process.parent {
+                        dbg!(parent_pid);
+                        let parent = self.get_task_mut((parent_pid, 0)).expect("no parent");
+
+                        let mut wake_up = false;
+                        if let Some(WaitingState::ChildDeath(wake_pid)) = parent.get_waiting_state()
+                        {
+                            wake_up = *wake_pid == -1 || pid == *wake_pid;
+                        }
+                        if wake_up {
+                            parent.set_running();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -243,7 +271,8 @@ impl Scheduler {
         }
     }
 
-    /// Advance until a next elligible process was found
+    /// Advance until a next elligible process was found, modify
+    /// self.current_task_index and self.current_task_id
     fn advance_next_process(&mut self, offset: usize) -> JobAction {
         let next_process_index = (self.current_task_index + offset) % self.running_process.len();
         // dbg!(&self.running_process);
@@ -293,58 +322,6 @@ impl Scheduler {
                                 self.current_task_mut().set_running();
                                 self.current_task_mut().set_return_value(0);
                                 return action;
-                            }
-                        }
-                        WaitingState::ChildDeath(pid_opt, _) => {
-                            let zombie_pid = match pid_opt {
-                                // In case of PID == None, Check is the at least one child is a zombie.
-                                None => {
-                                    if let Some(&zombie_pid) =
-                                        self.current_task().child.iter().find(|&current_pid| {
-                                            self.get_task((*current_pid, 0))
-                                                .expect("Hashmap corrupted")
-                                                .is_zombie()
-                                        })
-                                    {
-                                        Some(zombie_pid)
-                                    } else {
-                                        None
-                                    }
-                                }
-                                // In case of PID >= 0, Check is specified child PID is a zombie.
-                                Some(pid) => {
-                                    if let Some(elem) = self
-                                        .current_task()
-                                        .child
-                                        .iter()
-                                        .find(|&&current_pid| current_pid == *pid as Pid)
-                                    {
-                                        if self
-                                            .get_task((*elem, 0))
-                                            .expect("Hashmap corrupted")
-                                            .is_zombie()
-                                        {
-                                            Some(*elem)
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                }
-                            };
-                            // If a zombie was found, write the exit status, overwrite PID if None and return
-                            if let Some(pid) = zombie_pid {
-                                let child = self.get_task((pid, 0)).expect("Hashmap corrupted");
-                                match child.process_state {
-                                    ProcessState::Zombie(status) => {
-                                        self.current_task_mut()
-                                            .set_waiting(WaitingState::ChildDeath(zombie_pid, status as u32));
-                                        self.current_task_mut().set_return_value(0);
-                                        return action;
-                                    }
-                                    _ => panic!("A zombie was found just before, but there is no zombie here"),
-                                };
                             }
                         }
                         _ => {}
@@ -518,6 +495,7 @@ impl Scheduler {
             let parent = self.get_task_mut((parent_pid, 0)).expect("WTF");
             let _ret = parent.signal.generate_signal(Signum::Sigchld);
         }
+        MESSAGE_QUEUE.lock().push_back(Message::ProcessDied { pid });
 
         self.remove_curr_running();
 
