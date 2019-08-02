@@ -62,7 +62,7 @@ build/%: %.c Makefile
 	$(CC) $(CFLAGS) -o $@ $<
 
 install:
-	cp -r build/* $(INSTALL_DIR)
+	cp -rv build/* $(INSTALL_DIR)
 
 clean:
 	rm -f $(TARGET_C)

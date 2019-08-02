@@ -1,4 +1,5 @@
 .*
+toolchain_turbofish
 !.cargo
 nm_output
 *.o
