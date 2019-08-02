@@ -1,0 +1,5 @@
+In file included from conformance/interfaces/pthread_cancel/5-2.c:50:0:
+conformance/interfaces/pthread_cancel/testfrmw.c: In function ‘output’:
+conformance/interfaces/pthread_cancel/testfrmw.c:57:7: error: format not a string literal and no format arguments [-Werror=format-security]
+       printf(ts);
+       ^~~~~~
