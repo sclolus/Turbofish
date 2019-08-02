@@ -16,7 +16,7 @@ void hello_signal(int signum) {
 int main() {
 	printf("initialise Signals test\n");
 
-	printf("hello_signal: %x\n", hello_signal);
+	printf("hello_signal: %p\n", hello_signal);
 	pid_t pid = getpid();
 	printf("pid of process '%u'\n", pid);
 

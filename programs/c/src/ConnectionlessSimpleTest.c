@@ -37,6 +37,7 @@ int main(void)
 		 * Send a message to the father
 		 */
 		ssize_t ret = sendto(fd, "banane banane banane", 20, 0, (const struct sockaddr *)&dest_addr, sizeof(dest_addr));
+		(void)ret;
 		close(fd);
 		exit(0);
 	} else {
@@ -72,7 +73,7 @@ int main(void)
 		 * Wait for a child message
 		 */
 		ssize_t n = recvfrom(fd, buf, 128, 0, (struct sockaddr *)&input, &len);
-		printf("F: Received: %s ret: %li\n", buf, n);
+		printf("F: Received: %s ret: %zi\n", buf, n);
 		close(fd);
 		/*
 		 * Unlink the file

@@ -7,6 +7,7 @@
 
 void signal_handler(int signum)
 {
+	(void)signum;
 	printf("aaaaaaaaaarrrrrrrrrrrggggggggggggggg.......\n");
 }
 

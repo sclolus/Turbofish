@@ -23,8 +23,6 @@ void ttou(int signum) {
 	printf("ttou signal handler %i\n", signum);
 }
 
-static sigset_t signal_mask; /* signals to block */
-
 int main (void) {
 	pid_t pid = getpid();
 	printf("F: pid of process '%u'\n", pid);

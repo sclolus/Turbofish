@@ -48,7 +48,7 @@ void routineB()
 }
 
 
-int main(int argc, char **argv)
+int main(void)
 {
     routineA();
     return 0;

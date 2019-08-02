@@ -9,8 +9,6 @@ void hello_signal(int signum) {
 	printf("end signal\n");
 }
 
-static sigset_t signal_mask; /* signals to block */
-
 int main (void) {
 	pid_t pid = getpid();
 	printf("F: pid of process '%u'\n", pid);

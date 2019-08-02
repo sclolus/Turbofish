@@ -59,7 +59,7 @@ int main(void)
 			printf("C: Cannot recv a message\n");
 			exit(errno);
 		}
-		printf("C: Message recu: %s\n");
+		printf("C: Message recu: %s\n", buf);
 		/*
 		 * Closing socket
 		 */

@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <wait.h>
+#include <custom.h>
 
 struct program_test {
 	char *path;

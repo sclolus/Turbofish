@@ -5,4 +5,6 @@
 
 # define FUNC eprintf("%s called\n", __func__);
 
+void exit_qemu(int status);
+
 #endif

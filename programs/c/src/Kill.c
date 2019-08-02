@@ -6,6 +6,7 @@
 
 void death(int signum)
 {
+	(void)signum;
 	printf("aaaaaaaaaaaaarrrrrrrrrrrggggggggggggggg.......\n");
 	exit(0);
 }
