@@ -25,21 +25,13 @@ mod inode;
 use inode::{Inode, InodeNumber, InodeId, OpenFlags, File};
 
 mod user;
-use user::Current;
+use user::{UserId, GroupId, Current};
 
 use errno::Errno;
+use Errno::*;
 
 mod permissions;
 use permissions::{FilePermissions};
-
-static mut CURRENT_ID: usize = 3;
-fn get_available_directory_entry_id() -> DirectoryEntryId {
-    unsafe {
-        let id = CURRENT_ID;
-        CURRENT_ID += 1;
-        DirectoryEntryId::new(id)
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VfsError {
@@ -98,7 +90,10 @@ pub struct VirtualFileSystem {
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
     dcache: Dcache,
+    open_file_descriptions: Vec<File>,
 }
+
+type Vfs = VirtualFileSystem;
 
 impl VirtualFileSystem {
     pub fn new() -> VfsResult<VirtualFileSystem> {
@@ -107,8 +102,13 @@ impl VirtualFileSystem {
             // superblocks: Vec::new(),
             inodes: BTreeMap::new(),
             dcache: Dcache::new(),
+            open_file_descriptions: Vec::new(),
         };
 
+        let root_inode = Inode::root_inode();
+        let root_inode_id = root_inode.id;
+
+        new.inodes.insert(root_inode_id, root_inode);
         Ok(new)
     }
 
@@ -173,7 +173,8 @@ impl VirtualFileSystem {
                 let parent_id = self.dcache.pathname_resolution(current.cwd, path.parent())?;
 
                 new_direntry
-                    .set_filename(*path.filename().unwrap());
+                    .set_filename(*path.filename().unwrap())
+                    .set_inode_id(new_id);
 
                 if flags.contains(OpenFlags::O_DIRECTORY) {
                     new_direntry.set_directory();
@@ -217,6 +218,18 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn chown(&mut self, current: &Current, path: Path, owner: UserId, group: GroupId) -> VfsResult<()> {
+        let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
+
+        let entry = self.dcache.get_entry(&entry_id)?;
+
+        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
+
+        inode.set_uid(owner);
+        inode.set_gid(group);
+        Ok(())
+    }
+
     pub fn mkdir(&mut self, current: &Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
         let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
 
@@ -225,7 +238,49 @@ impl VirtualFileSystem {
     }
 
     pub fn rmdir(&mut self, current: &Current, path: Path) -> VfsResult<()> {
+        let filename = path.filename().ok_or(Errno(Einval))?;
+        if filename == &"." || filename == &".." {
+            return Err(Errno(Einval));
+        }
 
+        let entry_id = self.dcache.pathname_resolution(current.cwd, path.clone())?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+
+        if !entry.is_directory() {
+            return Err(NotADirectory);
+        }
+        self.unlink(current, path)
+    }
+
+    pub fn link(&mut self, current: &Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
+        let oldentry_id = self.dcache.pathname_resolution(current.cwd, oldpath)?;
+        let oldentry = self.dcache.get_entry(&oldentry_id)?;
+
+        if oldentry.is_directory() {//link on directories not currently supported.
+            return Err(Errno(Eisdir));
+        }
+
+        if self.dcache.pathname_resolution(current.cwd, newpath.clone()).is_ok() {
+            return Err(Errno(Eexist));
+        }
+
+        let parent_new = self.dcache.pathname_resolution(current.cwd, newpath.parent())?;
+
+        let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(NoSuchInode)?;
+
+        let mut newentry = oldentry.clone();
+
+        newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
+        self.dcache.add_entry(Some(parent_new), newentry)?;
+        inode.link_number += 1;
+        Ok(())
+    }
+
+    pub fn rename(&mut self, current: &Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
+        let oldentry_id = self.dcache.pathname_resolution(current.cwd, oldpath)?;
+
+        self.dcache.rename_dentry(current.cwd, oldentry_id, newpath)?;
+        Ok(())
     }
 }
 
@@ -235,55 +290,67 @@ impl VirtualFileSystem {
 
 use walkdir::WalkDir;
 use std::fs::{FileType, DirEntry, read_dir};
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path as StdPath;
 use std::convert::{TryFrom, TryInto};
 fn main() {
-    // use std::env;
-    // let mut dcache = Dcache::new();
+    use std::env;
+    let mut vfs = Vfs::new().unwrap();
 
-    // let mut args = env::args().skip(1);
+    let mut args = env::args().skip(1);
+    let current = Current {
+        cwd: DirectoryEntryId::new(2),
+        uid: 0,
+        euid: 0,
+        gid: 0,
+        egid: 0,
+    };
 
-    // fn construct_tree(dcache: &mut Dcache, root: &StdPath, parent_id: DirectoryEntryId) {
-    //     let mut iter = read_dir(root).unwrap().filter_map(|e| e.ok());
+    fn construct_tree(vfs: &mut Vfs, current: &Current, root: &StdPath, current_path: Path) {
+        let mut iter = read_dir(root).unwrap().filter_map(|e| e.ok());
 
-    //     for entry in iter {
-    //         let mut new = DirectoryEntry::default();
+        for entry in iter {
+            let filename = Filename::try_from(entry.file_name().to_str().unwrap()).unwrap();
+            let mut path = current_path.clone();
 
-    //         new.set_filename(Filename::try_from(entry.file_name().to_str().unwrap()).unwrap());
-    //         new.set_id(get_available_directory_entry_id());
-    //         let filetype = entry.file_type().unwrap();
+            path.push(filename).unwrap();
+            // let mut new = DirectoryEntry::default();
 
-    //         if filetype.is_dir() {
-    //             new.set_directory();
-    //         } else if filetype.is_symlink() {
-    //             let std_path = std::fs::read_link(entry.path()).unwrap();
-    //             let path = std_path.as_os_str().to_str().unwrap().try_into().unwrap();
-    //             new.set_symlink(path);
-    //         } else {
-    //             new.set_regular();
-    //         }
+            // new.set_filename();
+            // new.set_id(get_available_directory_entry_id());
+            let filetype = entry.file_type().unwrap();
+            let mode = unsafe { FilePermissions::from_u32(entry.metadata().unwrap().permissions().mode()) };
 
-    //         let new_id = new.id;
-    //         dcache.add_entry(Some(parent_id), new).unwrap();
+            let mut flags = OpenFlags::O_CREAT;
 
-    //         if entry.file_type().unwrap().is_dir() {
-    //             construct_tree(dcache, &entry.path(), new_id);
-    //         }
-    //     }
-    // }
+            if filetype.is_dir() {
+                flags |= OpenFlags::O_DIRECTORY;
+            } else if filetype.is_symlink() {
+                // let std_path = std::fs::read_link(entry.path()).unwrap();
+                // let path = std_path.as_os_str().to_str().unwrap().try_into().unwrap();
+                // new.set_symlink(path);
+            }
 
-    // let path = args.next().unwrap();
+            // println!("{}", path);
+            vfs.open(&current, path.clone(), flags, mode).unwrap();
+            if entry.file_type().unwrap().is_dir() {
+                construct_tree(vfs, current, &entry.path(), path);
+            }
+        }
+    }
 
-    // construct_tree(&mut dcache, &StdPath::new(&path), DirectoryEntryId::new(2));
-    // println!("{}", dcache);
+    let path = args.next().unwrap();
 
-    // let mut line = String::new();
-    // let mut stdin = stdin();
-    // use std::io::stdin;
+    construct_tree(&mut vfs, &current, &StdPath::new(&path), "/".try_into().unwrap());
+
+
+    let mut line = String::new();
+    let mut stdin = stdin();
+    use std::io::stdin;
 
     // let mut callbacks: Vec<Box<ReplClosures>> = Vec::new();
 
-    // let ls_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+    // let ls_closure = |fs: &mut Vfs, current: &mut Current, args: Vec<&str>| -> DcacheResult<()> {
     //     let arg = args.get(0);
     //     let path;
     //     let entry;
@@ -292,12 +359,12 @@ fn main() {
     //     match arg {
     //         Some(&arg) => {
     //             path = Path::try_from(arg)?;
-    //             entry_id = dc.pathname_resolution(*cwd, path)?;
+    //             entry_id = dc.pathname_resolution(current.cwd, path)?;
     //             entry = dc.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
 
     //         },
     //         None => {
-    //             entry_id = *cwd;
+    //             entry_id = current.cwd;
     //             entry = dc.d_entries.get(cwd).ok_or(NoSuchEntry)?;
     //         }
     //     }
@@ -329,82 +396,84 @@ fn main() {
     //     }
     //     Ok(())
     // };
-    // let cd_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
-    //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-    //     let path = Path::try_from(path)?;
-    //     let search_root;
-    //     search_root = *cwd;
+    // // let cd_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+    // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
+    // //     let path = Path::try_from(path)?;
+    // //     let search_root;
+    // //     search_root = *cwd;
 
-    //     let entry_id = dcache.pathname_resolution(search_root, path)?;
-    //     let entry = dcache.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
-    //     if entry.is_directory() {
-    //         *cwd = entry_id;
-    //     } else {
-    //         return Err(NotADirectory)
-    //     }
-    //     Ok(())
-    // };
-    // let unlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
-    //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-    //     let path = Path::try_from(path)?;
+    // //     let entry_id = dcache.pathname_resolution(search_root, path)?;
+    // //     let entry = dcache.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
+    // //     if entry.is_directory() {
+    // //         *cwd = entry_id;
+    // //     } else {
+    // //         return Err(NotADirectory)
+    // //     }
+    // //     Ok(())
+    // // };
+    // // let unlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+    // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
+    // //     let path = Path::try_from(path)?;
 
-    //     let search_root;
-    //     search_root = *cwd;
+    // //     let search_root;
+    // //     search_root = *cwd;
 
-    //     let entry_id = dc.pathname_resolution(search_root, path)?;
-    //     if entry_id == *cwd {
-    //         *cwd = dc.d_entries.get(&entry_id).ok_or(EntryNotConnected)?.parent_id;
-    //     }
-    //     dc.remove_entry(entry_id)?;
-    //     Ok(())
-    // };
+    // //     let entry_id = dc.pathname_resolution(search_root, path)?;
+    // //     if entry_id == *cwd {
+    // //         *cwd = dc.d_entries.get(&entry_id).ok_or(EntryNotConnected)?.parent_id;
+    // //     }
+    // //     dc.remove_entry(entry_id)?;
+    // //     Ok(())
+    // // };
 
-    // let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
-    //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-    //     let new_pathname: Path = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
-    //     let path = Path::try_from(path)?;
+    // // let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+    // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
+    // //     let new_pathname: Path = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
+    // //     let path = Path::try_from(path)?;
 
-    //     let search_root;
-    //         search_root = *cwd;
+    // //     let search_root;
+    // //         search_root = *cwd;
 
-    //     let entry_id = dc.pathname_resolution(search_root, path)?;
-    //     dc.rename_dentry(*cwd, entry_id, new_pathname)?;
-    //     Ok(())
-    // };
+    // //     let entry_id = dc.pathname_resolution(search_root, path)?;
+    // //     dc.rename_dentry(*cwd, entry_id, new_pathname)?;
+    // //     Ok(())
+    // // };
 
-    // let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
-    //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-    //     let new_symlink_pathname = args.get(1).ok_or(NotEnoughArguments)?;
-    //     let path = Path::try_from(path)?;
-    //     let new_symlink_path = Path::try_from(*new_symlink_pathname)?;
+    // // let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+    // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
+    // //     let new_symlink_pathname = args.get(1).ok_or(NotEnoughArguments)?;
+    // //     let path = Path::try_from(path)?;
+    // //     let new_symlink_path = Path::try_from(*new_symlink_pathname)?;
 
-    //     let search_root;
-    //         search_root = *cwd;
+    // //     let search_root;
+    // //         search_root = *cwd;
 
-    //     let parent_path = new_symlink_path.parent();
-    //     let filename = new_symlink_path.filename().unwrap(); //remove this unwrap
-    //     let parent_id = dc.pathname_resolution(search_root, parent_path)?;
-    //     let mut new_symlink_entry = DirectoryEntry::default();
+    // //     let parent_path = new_symlink_path.parent();
+    // //     let filename = new_symlink_path.filename().unwrap(); //remove this unwrap
+    // //     let parent_id = dc.pathname_resolution(search_root, parent_path)?;
+    // //     let mut new_symlink_entry = DirectoryEntry::default();
 
-    //     println!("Created symlink {} with path: {}", new_symlink_path, path);
+    // //     println!("Created symlink {} with path: {}", new_symlink_path, path);
 
-    //     new_symlink_entry
-    //         .set_filename(*filename)
-    //         .set_id(get_available_directory_entry_id())
-    //         .set_symlink(path);
+    // //     new_symlink_entry
+    // //         .set_filename(*filename)
+    // //         .set_id(get_available_directory_entry_id())
+    // //         .set_symlink(path);
 
-    //     dc.add_entry(Some(parent_id), new_symlink_entry)?;
-    //     Ok(())
-    // };
+    // //     dc.add_entry(Some(parent_id), new_symlink_entry)?;
+    // //     Ok(())
+    // // };
 
     // let no_such_command_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
     //     println!("No such command");
     //     Ok(())
     // };
-    // let callbacks_strings = ["ls", "cd", "unlink", "rename", "symlink", "help", ""];
+    // let callbacks_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
+    //                          , "help", ""];
 
     // let help = |_dcache: &mut Dcache, _cwd: &mut DirectoryEntryId, _args: Vec<&str>| -> DcacheResult<()> {
-    //     let command_strings = ["ls", "cd", "unlink", "rename", "symlink", "help", ""];
+    //     let command_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
+    //                            , "help", ""];
 
     //     println!("Available commands:");
     //     for command in command_strings.iter() {
@@ -421,12 +490,12 @@ fn main() {
     //     stdout().flush()
     // };
 
-    // type ReplClosures = dyn Fn(&mut Dcache, &mut DirectoryEntryId, Vec<&str>) -> DcacheResult<()>;
+    // type ReplClosures = dyn Fn(&mut Vfs, &mut Current, Vec<&str>) -> DcacheResult<()>;
     // callbacks.push(Box::new(ls_closure));
-    // callbacks.push(Box::new(cd_closure));
-    // callbacks.push(Box::new(unlink_closure));
-    // callbacks.push(Box::new(rename_closure));
-    // callbacks.push(Box::new(symlink_closure));
+    // // callbacks.push(Box::new(cd_closure));
+    // // callbacks.push(Box::new(unlink_closure));
+    // // callbacks.push(Box::new(rename_closure));
+    // // callbacks.push(Box::new(symlink_closure));
     // callbacks.push(Box::new(help));
     // callbacks.push(Box::new(no_such_command_closure));
     // let mut cwd_id = dcache.root_id;

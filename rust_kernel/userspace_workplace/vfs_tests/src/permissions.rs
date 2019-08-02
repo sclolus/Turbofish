@@ -72,5 +72,9 @@ bitflags! {
 }
 
 impl FilePermissions {
-    // pub fn access_granted(&self, euid: UserId, egid: GroupId,)
+    pub unsafe fn from_u32(mode: u32) -> Self {
+        use std::mem::transmute;
+
+        transmute(mode)
+    }
 }

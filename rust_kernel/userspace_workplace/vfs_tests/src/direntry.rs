@@ -160,6 +160,7 @@ impl DirectoryEntry {
         root_entry
             .set_filename(Filename::try_from("root").unwrap())
             .set_id(DirectoryEntryId::new(2))
+            .set_inode_id(InodeId::new(2))
             .set_directory();
 
         root_entry

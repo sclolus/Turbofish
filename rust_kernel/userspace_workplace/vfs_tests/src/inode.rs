@@ -79,6 +79,23 @@ impl Inode {
         self
     }
 
+    pub fn root_inode() -> Self {
+        let access_mode = FilePermissions::S_IRWXU
+            | FilePermissions::S_IFDIR;
+
+        Self {
+            id: InodeId::new(2),
+            link_number: 1,
+            opened_by: 0,
+            access_mode,
+            uid: 0,
+            gid: 0,
+            atime: 0,
+            ctime: 0,
+            mtime: 0,
+            size: 4096,
+        }
+    }
 
     // Builder Pattern end
 
@@ -118,6 +135,7 @@ pub struct File {
 }
 
 impl File {
+
 }
 
 bitflags! {
