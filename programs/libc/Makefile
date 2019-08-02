@@ -1,5 +1,5 @@
 TARGET = libc.a
-SYSROOT = /toolchain_turbofish/sysroot
+SYSROOT = ../../toolchain_turbofish
 
 AS = nasm
 CC = i686-turbofish-gcc
