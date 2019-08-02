@@ -98,13 +98,13 @@ typedef void (*sighandler_t)(int);
 
 /* Default actions. */
 
-#define SIG_DFL        0
+#define SIG_DFL ((sighandler_t)0)
 //    Request for default signal handling.
-//SIG_ERR
+#define SIG_ERR ((sighandler_t)-1)
 //    Return value from signal() in case of error.
 //SIG_HOLD
     //[OB XSI] [Option Start] Request that signal be held. [Option End]
-#define SIG_IGN        1
+#define SIG_IGN ((sighandler_t)1)
 //   Request that signal be ignored.
 
 //[CX] [Option Start] The <signal.h> header shall define the pthread_t, size_t, and uid_t types as described in <sys/types.h>.
