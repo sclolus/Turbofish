@@ -80,7 +80,7 @@ HEADERS += include/time.h
 SRC_C += signal sigaction kill raise killpg \
 		sigemptyset sigfillset sigaddset sigdelset \
 		strsignal \
-        sigprocmask sigsuspend
+        sigprocmask sigsuspend sigismember
 
 VPATH += src/signal
 HEADERS += include/signal.h
