@@ -1,7 +1,7 @@
 //! waitpid (wait) implementations
 
-use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
+use super::scheduler::{auto_preempt, schedule};
 use super::task::{ProcessState, WaitingState};
 use super::SysResult;
 
@@ -105,19 +105,21 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .set_waiting(WaitingState::ChildDeath(pid));
 
             // Auto-preempt calling
-            let ret = auto_preempt();
+            unsafe {
+                return schedule();
+            }
 
             // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
             // unpreemptible();
             // let mut scheduler = SCHEDULER.lock();
 
-            if ret < 0 {
-                // Reset as running
-                // scheduler.current_task_mut().set_running();
-                return Err(Errno::Eintr);
-            } else {
-                return waitpid(pid, wstatus, options);
-            }
+            // if ret < 0 {
+            //     // Reset as running
+            //     // scheduler.current_task_mut().set_running();
+            //     return Err(Errno::Eintr);
+            // } else {
+            //     return waitpid(pid, wstatus, options);
+            // }
         }
     }
 }

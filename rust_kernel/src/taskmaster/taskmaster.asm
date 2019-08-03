@@ -161,6 +161,17 @@ _exit_resume:
 
 	jmp schedule_return
 
+global _continue_schedule
+_continue_schedule:
+	push ebp
+	mov ebp, esp
+
+	; Go to the stack of the new current process
+	mov esp, dword [ebp + 8]
+
+	jmp schedule_return
+
+
 ; https://wiki.osdev.org/Exceptions
 ; These CPU ISR gates are on vector 0 -> 31
 

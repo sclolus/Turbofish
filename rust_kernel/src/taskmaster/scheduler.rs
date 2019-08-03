@@ -40,6 +40,7 @@ extern "C" {
     pub fn _unpreemptible();
     pub fn _preemptible();
     pub fn _schedule_force_preempt();
+    fn _continue_schedule(new_kernel_esp: u32) -> !;
 }
 
 pub type Pid = i32;
@@ -124,23 +125,36 @@ pub fn auto_preempt() -> i32 {
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
-    _update_process_end_time(scheduler.time_interval.unwrap());
 
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
+    load_next_process(1)
+}
 
+/// load the next process, returning the new_kernel_esp
+pub unsafe fn load_next_process(next_process: usize) -> u32 {
+    SCHEDULER.force_unlock();
+    let mut scheduler = SCHEDULER.lock();
+
+    _update_process_end_time(scheduler.time_interval.unwrap());
     // Handle a tty control
     handle_tty_control();
 
     scheduler.handle_messages();
     // Switch between processes
-    let action = scheduler.advance_next_process(1);
+    let action = scheduler.advance_next_process(next_process);
 
     // Set all the context of the illigible process
     let new_kernel_esp = scheduler.load_new_context(action);
 
     // Restore kernel_esp for the new process/
     new_kernel_esp
+}
+
+pub unsafe fn schedule() -> ! {
+    let new_kernel_esp = load_next_process(1);
+    println!("{:X?}", new_kernel_esp);
+    _continue_schedule(new_kernel_esp)
 }
 
 /// Remove ressources of the exited process and note his exit status
@@ -499,13 +513,10 @@ impl Scheduler {
 
         self.remove_curr_running();
 
-        let signal = self.advance_next_process(0);
-
+        dbg!("exit");
         // Switch to the next process
         unsafe {
-            _update_process_end_time(self.time_interval.unwrap());
-
-            let new_kernel_esp = self.load_new_context(signal);
+            let new_kernel_esp = load_next_process(0);
 
             _exit_resume(new_kernel_esp, pid, tid, status);
         };
