@@ -217,31 +217,40 @@ impl Scheduler {
         }
     }
 
-    fn handle_messages(&mut self) {
+    fn dispatch_messages(&mut self) {
         while let Some(message) = MESSAGE_QUEUE.lock().pop_front() {
-            dbg!(message);
-            // whether the parent must be wake up
-            match message {
-                Message::ProcessDied { pid } => {
-                    let dead_process = self.get_task((pid, 0)).expect("no dead child");
-                    // dbg!(dead_process);
-                    if let Some(parent_pid) = dead_process.parent {
-                        dbg!(parent_pid);
-                        let parent = self.get_task_mut((parent_pid, 0)).expect("no parent");
-
-                        let mut wake_up = false;
-                        if let Some(WaitingState::ChildDeath(wake_pid)) = parent.get_waiting_state()
-                        {
-                            wake_up = *wake_pid == -1 || pid == *wake_pid;
-                        }
-                        if wake_up {
-                            parent.set_running();
-                        }
-                    }
-                }
-            }
+            self.get_task_mut((message.get_dest(), 0))
+                .map(|task| task.message_queue.push_back(message.get_content()));
         }
     }
+
+    // fn handle_messages(&mut self) {
+    //     while let Some(message) = MESSAGE_QUEUE.lock().pop_front() {
+    //         dbg!(message);
+    //         // whether the parent must be wake up
+    //         match message {
+    //             Message::ProcessDied { pid } => {
+    //                 let dead_process = self.get_task((pid, 0)).expect("no dead child");
+    //                 // dbg!(dead_process);
+    //                 if let Some(parent_pid) = dead_process.parent {
+    //                     dbg!(parent_pid);
+    //                     let parent = self.get_task_mut((parent_pid, 0)).expect("no parent");
+    //                     // if parent.signal.get_job_action() {}
+
+    //                     let mut wake_up = false;
+    //                     if let Some(WaitingState::ChildDeath(wake_pid)) = parent.get_waiting_state()
+    //                     {
+    //                         wake_up = *wake_pid == -1 || pid == *wake_pid;
+    //                     }
+
+    //                     if wake_up {
+    //                         parent.set_running();
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_user_process(
@@ -300,6 +309,21 @@ impl Scheduler {
             // else create a signal var with option<SignalStatus>
             let p = self.current_task_mut();
 
+            // whether the parent must be wake up
+            let mut message_queue = core::mem::replace(&mut p.message_queue, MessageQueue::new());
+            while let Some(message) = message_queue.pop_front() {
+                match message {
+                    MessageContent::ProcessDied { pid } => {
+                        if let Some(syscall_result) =
+                            super::syscall::waitpid::continue_waitpid(self, pid)
+                        {
+                            self.current_task_mut()
+                                .set_return_value(syscall_result.into_raw_result() as i32);
+                        }
+                    }
+                }
+            }
+            let p = self.current_task_mut();
             let action = p.signal.get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
@@ -508,6 +532,10 @@ impl Scheduler {
         if let Some(parent_pid) = self.current_task().parent {
             let parent = self.get_task_mut((parent_pid, 0)).expect("WTF");
             let _ret = parent.signal.generate_signal(Signum::Sigchld);
+            MESSAGE_QUEUE.lock().push_back(Message::new(
+                parent_pid,
+                MessageContent::ProcessDied { pid },
+            ));
         }
         MESSAGE_QUEUE.lock().push_back(Message::ProcessDied { pid });
 

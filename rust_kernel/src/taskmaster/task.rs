@@ -1,5 +1,6 @@
 //! This file contains definition of a task
 
+use super::messaging::{MessageContent, MessageQueue};
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
@@ -23,6 +24,7 @@ pub struct Task {
     pub parent: Option<Pid>,
     /// Signal Interface
     pub signal: SignalInterface,
+    pub message_queue: MessageQueue<MessageContent>,
 }
 
 impl Task {
@@ -32,6 +34,7 @@ impl Task {
             child: Vec::new(),
             parent,
             signal: SignalInterface::new(),
+            message_queue: MessageQueue::new(),
         }
     }
 
@@ -59,6 +62,7 @@ impl Task {
                 }
                 _ => panic!("Non running process should not clone"),
             },
+            message_queue: MessageQueue::new(),
         })
     }
 
