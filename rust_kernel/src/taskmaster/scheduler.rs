@@ -58,15 +58,13 @@ pub fn unpreemptible() {
 #[inline(always)]
 pub fn preemptible() {
     unsafe {
-        if SIGNAL_LOCK == false {
-            // Check if the Time to live of the current process is expired
-            // TODO: If scheduler is disable, the kernel will crash
-            // TODO: After Exit, the next process seems to be skiped !
-            if _get_pit_time() >= _get_process_end_time() {
-                auto_preempt();
-            } else {
-                _preemptible();
-            }
+        // Check if the Time to live of the current process is expired
+        // TODO: If scheduler is disable, the kernel will crash
+        // TODO: After Exit, the next process seems to be skiped !
+        if _get_pit_time() >= _get_process_end_time() {
+            auto_preempt();
+        } else {
+            _preemptible();
         }
     }
 }
@@ -105,19 +103,12 @@ macro_rules! unpreemptible_context {
     }};
 }
 
-/// For signal from RING0, special lock interruptible state while signal(s) is/are not applied
-pub static mut SIGNAL_LOCK: bool = false;
-
 /// Auto-preempt will cause schedule into the next process
 /// In some critical cases like signal, avoid this switch
 pub fn auto_preempt() -> i32 {
     unsafe {
         SCHEDULER.force_unlock();
-        if SIGNAL_LOCK == true {
-            -1
-        } else {
-            _auto_preempt()
-        }
+        _auto_preempt()
     }
 }
 
@@ -410,9 +401,6 @@ impl Scheduler {
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
                         )
                     } else {
-                        unsafe {
-                            SIGNAL_LOCK = true;
-                        }
                     }
                 }
                 kernel_esp
@@ -540,6 +528,7 @@ impl Scheduler {
 
         self.remove_curr_running();
 
+        dbg!("exit");
         // Switch to the next process
         unsafe {
             let new_kernel_esp = load_next_process(0);

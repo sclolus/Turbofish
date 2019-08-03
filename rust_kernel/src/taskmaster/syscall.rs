@@ -7,7 +7,7 @@ use super::process::CpuState;
 use super::safe_ffi;
 use super::scheduler;
 use super::scheduler::unpreemptible;
-use super::scheduler::{Pid, SCHEDULER, SIGNAL_LOCK};
+use super::scheduler::{Pid, SCHEDULER};
 use super::signal;
 use super::signal::{sigset_t, StructSigaction};
 use super::task;
@@ -210,11 +210,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
-        // dbg!(SIGNAL_LOCK);
-        if SIGNAL_LOCK {
-            SIGNAL_LOCK = false;
             SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
-        }
     }}
 }
 

@@ -3,7 +3,7 @@
 use super::SysResult;
 
 use super::process::CpuState;
-use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
+use super::scheduler::{auto_preempt, Pid, SCHEDULER};
 use super::signal::{sigset_t, JobAction, SignalInterface, Signum, StructSigaction};
 use super::task::{Task, WaitingState};
 
@@ -96,10 +96,6 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
                 auto_preempt();
-            } else if action.intersects(JobAction::TERMINATE)
-                || action.intersects(JobAction::INTERRUPT)
-            {
-                SIGNAL_LOCK = true;
             }
         }
         Ok(0)
