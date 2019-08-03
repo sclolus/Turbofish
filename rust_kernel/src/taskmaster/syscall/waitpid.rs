@@ -102,10 +102,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_task_mut()
-                .set_waiting(WaitingState::ChildDeath(
-                    if pid < 0 { None } else { Some(pid as i32) },
-                    0,
-                ));
+                .set_waiting(WaitingState::ChildDeath(pid, 0));
 
             let ret = auto_preempt();
 
@@ -119,16 +116,19 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             } else {
                 let child_pid = match &scheduler.current_task().process_state {
                     // Read the fields of the WaintingState::ChildDeath(x, y)
-                    ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
+                    ProcessState::Waiting(_, WaitingState::ChildDeath(dead_pid, status)) => {
+                        let dead_pid = *dead_pid;
                         // Set wstatus pointer is not null by reading y
                         if wstatus != 0x0 as *mut i32 {
                             unsafe {
                                 *wstatus = *status as i32;
                             }
                         }
-                        let t = opt.expect("Cannot be None");
-                        scheduler.all_process.remove(&t).expect("Pid must be here");
-                        t
+                        scheduler
+                            .all_process
+                            .remove(&dead_pid)
+                            .expect("Pid must be here");
+                        dead_pid
                     }
                     _ => panic!("WTF"),
                 };

@@ -1,6 +1,6 @@
 //! this file contains the scheduler description
 
-use super::messaging::{Message, MessageContent, MessageQueue, MESSAGE_QUEUE};
+use super::messaging::{Message, MessageContent, MESSAGE_QUEUE};
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
 use super::syscall::{clone::CloneFlags, read::handle_tty_control};
@@ -293,10 +293,6 @@ impl Scheduler {
             // else create a signal var with option<SignalStatus>
 
             // whether the parent must be wake up
-            let mut message_queue = core::mem::replace(
-                &mut self.current_task_mut().message_queue,
-                MessageQueue::new(),
-            );
             let p = self.current_task();
             let action = p.signal.get_job_action();
 
@@ -304,20 +300,21 @@ impl Scheduler {
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
             }
-            while let Some(message) = message_queue.pop_front() {
-                dbg!(message);
+            while let Some(message) = self.current_task_mut().message_queue.pop_front() {
                 match message {
                     MessageContent::ProcessDied {
                         pid: dead_process_pid,
                     } => {
+                        let dead_process_pgid = self
+                            .get_thread_group(dead_process_pid)
+                            .expect("no dead child")
+                            .pgid;
                         let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
                             self.current_task().get_waiting_state()
                         {
-                            match wake_pid {
-                                None => true,
-                                Some(wake_pid) if dead_process_pid == *wake_pid => true,
-                                _ => false,
-                            }
+                            *wake_pid == -1
+                                || *wake_pid == dead_process_pid
+                                || -*wake_pid == dead_process_pgid
                         } else {
                             false
                         };
@@ -337,10 +334,7 @@ impl Scheduler {
                             ),
                         };
                         self.current_task_mut()
-                            .set_waiting(WaitingState::ChildDeath(
-                                Some(dead_process_pid),
-                                status as u32,
-                            ));
+                            .set_waiting(WaitingState::ChildDeath(dead_process_pid, status as u32));
                         self.current_task_mut().set_return_value(0);
                         return JobAction::default();
                     }
@@ -546,7 +540,6 @@ impl Scheduler {
 
         self.remove_curr_running();
 
-        dbg!("exit");
         // Switch to the next process
         unsafe {
             let new_kernel_esp = load_next_process(0);
