@@ -1,7 +1,6 @@
 
+#include <errno.h>
 #include <unistd.h>
-
-extern int errno;
 
 int main()
 {

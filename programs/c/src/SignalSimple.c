@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <wait.h>
+#include <stdbool.h>
 
 bool SIGHANDLER_CALLED = false;
 

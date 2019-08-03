@@ -3,7 +3,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <wait.h>
+
+#ifndef GNU
 #include <custom.h>
+#endif
 
 struct program_test {
 	char *path;
@@ -15,6 +18,15 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/SignalSimpleDuo"},
 	{.path = "/bin/ProcessGroup"}
 };
+
+void _exit_qemu(int val)
+{
+#ifdef GNU
+	exit(val);
+#else
+	exit_qemu(val);
+#endif
+}
 
 #define TEST_PROGRAMS_LEN sizeof(TEST_PROGRAMS) / sizeof(struct program_test)
 
@@ -34,7 +46,7 @@ int main() {
 			printf("child_pid: %d\n", child_pid);
 			execve(TEST_PROGRAMS[i].path, args, env);
 			perror("execve failed");
-			exit_qemu(1);
+			_exit_qemu(1);
 		} else {
 			pid_t father_pid = getpid();
 			printf("father_pid: %d\n", father_pid);
@@ -43,7 +55,7 @@ int main() {
 			int ret = wait(&status);
 			if (ret == -1) {
 				perror("wait failed");
-				exit_qemu(1);
+				_exit_qemu(1);
 			}
 			if (status != 0) {
 				// qemu exit fail
@@ -51,13 +63,13 @@ int main() {
 				printf("status '%d'", status);
 				sleep(1000);
 				if (!WIFEXITED(status)) {
-					exit_qemu(1);
+					_exit_qemu(1);
 				}
 				if (WEXITSTATUS(status) != 0) {
-					exit_qemu(1);
+					_exit_qemu(1);
 				}
 			}
 		}
 	}
-	exit_qemu(0);
+	_exit_qemu(0);
 }
