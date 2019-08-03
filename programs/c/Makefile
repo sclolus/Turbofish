@@ -38,7 +38,8 @@ SRC_C += Clone \
 		SetJmp \
 		SigSuspend \
 		SigPause \
-		HelloWorld
+		HelloWorld \
+		SigChild
 
 CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)
