@@ -3,6 +3,8 @@ SYSROOT = ../../toolchain_turbofish/sysroot
 
 AS = i686-turbofish-as
 CC = i686-turbofish-gcc
+AR = i686-turbofish-ar
+RANLIB = i686-turbofish-ranlib
 
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
@@ -110,7 +112,6 @@ VPATH += src/setjmp
 SRC_ASM += setjmp
 HEADERS += include/setjmp.h
 
-ASFLAGS = -f elf
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
@@ -137,14 +138,14 @@ OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir
 all: $(TARGET) $(OBJ_C_RUNTIME)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C)
-	ar rc $@ $^
-	ranlib $@
-
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
-	nasm $(ASFLAGS) -o $@ $<
+	$(AR) rc $@ $^
+	$(RANLIB) $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS)
+	$(AS) -o $@ $<
 
 # Compile all the C runtime object files
 obj/crt/%.o: src/crt/%.s

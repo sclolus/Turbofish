@@ -1,8 +1,8 @@
-[BITS 32]
+.intel_syntax noprefix
 
-%define CLONE 120
+.set CLONE, 120
 
-global sys_clone
+.global sys_clone
 sys_clone:
 	push ebp
 	mov ebp, esp
@@ -12,7 +12,7 @@ sys_clone:
 	mov eax, CLONE
 	mov ebx, [ebp + 8]
 	mov ecx, [ebp + 12]
-	int 80h
+	int 0x80
 	cmp eax, 0
 	jne .continue
 	cmp ebx, 0
@@ -25,8 +25,5 @@ sys_clone:
 	pop ebp
 	ret
 
-extern continue_clone_child
-
 clone_child:
 	call continue_clone_child
-	
