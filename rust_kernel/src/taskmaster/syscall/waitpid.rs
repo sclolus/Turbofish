@@ -1,7 +1,7 @@
 //! waitpid (wait) implementations
 
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, schedule};
+use super::scheduler::{auto_preempt, unpreemptible};
 use super::task::{ProcessState, WaitingState};
 use super::SysResult;
 
@@ -102,24 +102,42 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_task_mut()
-                .set_waiting(WaitingState::ChildDeath(pid));
+                .set_waiting(WaitingState::ChildDeath(
+                    if pid < 0 { None } else { Some(pid as i32) },
+                    0,
+                ));
 
-            // Auto-preempt calling
-            unsafe {
-                return schedule();
+            let ret = auto_preempt();
+
+            unpreemptible();
+            let mut scheduler = SCHEDULER.lock();
+
+            if ret < 0 {
+                // Reset as running
+                scheduler.current_task_mut().set_running();
+                return Err(Errno::Eintr);
+            } else {
+                let child_pid = match &scheduler.current_task().process_state {
+                    // Read the fields of the WaintingState::ChildDeath(x, y)
+                    ProcessState::Waiting(_, WaitingState::ChildDeath(opt, status)) => {
+                        // Set wstatus pointer is not null by reading y
+                        if wstatus != 0x0 as *mut i32 {
+                            unsafe {
+                                *wstatus = *status as i32;
+                            }
+                        }
+                        let t = opt.expect("Cannot be None");
+                        scheduler.all_process.remove(&t).expect("Pid must be here");
+                        t
+                    }
+                    _ => panic!("WTF"),
+                };
+                // Set process as Running, Set return readen value in Ok(x)
+                scheduler.current_task_mut().set_running();
+                let task = scheduler.current_task_mut();
+                task.child.remove_item(&child_pid).unwrap();
+                Ok(child_pid as u32)
             }
-
-            // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
-            // unpreemptible();
-            // let mut scheduler = SCHEDULER.lock();
-
-            // if ret < 0 {
-            //     // Reset as running
-            //     // scheduler.current_task_mut().set_running();
-            //     return Err(Errno::Eintr);
-            // } else {
-            //     return waitpid(pid, wstatus, options);
-            // }
         }
     }
 }

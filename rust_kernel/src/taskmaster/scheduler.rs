@@ -1,6 +1,6 @@
 //! this file contains the scheduler description
 
-use super::messaging::{Message, MESSAGE_QUEUE};
+use super::messaging::{Message, MessageContent, MessageQueue, MESSAGE_QUEUE};
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
 use super::syscall::{clone::CloneFlags, read::handle_tty_control};
@@ -140,7 +140,7 @@ pub unsafe fn load_next_process(next_process: usize) -> u32 {
     // Handle a tty control
     handle_tty_control();
 
-    scheduler.handle_messages();
+    scheduler.dispatch_messages();
     // Switch between processes
     let action = scheduler.advance_next_process(next_process);
 
@@ -151,11 +151,12 @@ pub unsafe fn load_next_process(next_process: usize) -> u32 {
     new_kernel_esp
 }
 
-pub unsafe fn schedule() -> ! {
-    let new_kernel_esp = load_next_process(1);
-    println!("{:X?}", new_kernel_esp);
-    _continue_schedule(new_kernel_esp)
-}
+// #[allow(unused)]
+// pub unsafe fn schedule() -> ! {
+//     let new_kernel_esp = load_next_process(1);
+//     println!("{:X?}", new_kernel_esp);
+//     _continue_schedule(new_kernel_esp)
+// }
 
 /// Remove ressources of the exited process and note his exit status
 #[no_mangle]
@@ -166,12 +167,23 @@ unsafe extern "C" fn scheduler_exit_resume(
 ) {
     SCHEDULER.force_unlock();
 
-    SCHEDULER
-        .lock()
+    let mut scheduler = SCHEDULER.lock();
+    let dead_process = scheduler
         .get_task_mut((process_to_free_pid, process_to_free_tid))
-        .unwrap()
-        .process_state = ProcessState::Zombie(status);
+        .unwrap();
 
+    dead_process.process_state = ProcessState::Zombie(status);
+    // Send a sig child signal to the father
+    if let Some(parent_pid) = dead_process.parent {
+        let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
+        let _ret = parent.signal.generate_signal(Signum::Sigchld);
+        MESSAGE_QUEUE.lock().push_back(Message::new(
+            parent_pid,
+            MessageContent::ProcessDied {
+                pid: process_to_free_pid,
+            },
+        ));
+    }
     preemptible();
 }
 
@@ -223,34 +235,6 @@ impl Scheduler {
                 .map(|task| task.message_queue.push_back(message.get_content()));
         }
     }
-
-    // fn handle_messages(&mut self) {
-    //     while let Some(message) = MESSAGE_QUEUE.lock().pop_front() {
-    //         dbg!(message);
-    //         // whether the parent must be wake up
-    //         match message {
-    //             Message::ProcessDied { pid } => {
-    //                 let dead_process = self.get_task((pid, 0)).expect("no dead child");
-    //                 // dbg!(dead_process);
-    //                 if let Some(parent_pid) = dead_process.parent {
-    //                     dbg!(parent_pid);
-    //                     let parent = self.get_task_mut((parent_pid, 0)).expect("no parent");
-    //                     // if parent.signal.get_job_action() {}
-
-    //                     let mut wake_up = false;
-    //                     if let Some(WaitingState::ChildDeath(wake_pid)) = parent.get_waiting_state()
-    //                     {
-    //                         wake_up = *wake_pid == -1 || pid == *wake_pid;
-    //                     }
-
-    //                     if wake_up {
-    //                         parent.set_running();
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_user_process(
@@ -307,28 +291,60 @@ impl Scheduler {
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
-            let p = self.current_task_mut();
 
             // whether the parent must be wake up
-            let mut message_queue = core::mem::replace(&mut p.message_queue, MessageQueue::new());
-            while let Some(message) = message_queue.pop_front() {
-                match message {
-                    MessageContent::ProcessDied { pid } => {
-                        if let Some(syscall_result) =
-                            super::syscall::waitpid::continue_waitpid(self, pid)
-                        {
-                            self.current_task_mut()
-                                .set_return_value(syscall_result.into_raw_result() as i32);
-                        }
-                    }
-                }
-            }
-            let p = self.current_task_mut();
+            let mut message_queue = core::mem::replace(
+                &mut self.current_task_mut().message_queue,
+                MessageQueue::new(),
+            );
+            let p = self.current_task();
             let action = p.signal.get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
+            }
+            while let Some(message) = message_queue.pop_front() {
+                dbg!(message);
+                match message {
+                    MessageContent::ProcessDied {
+                        pid: dead_process_pid,
+                    } => {
+                        let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
+                            self.current_task().get_waiting_state()
+                        {
+                            match wake_pid {
+                                None => true,
+                                Some(wake_pid) if dead_process_pid == *wake_pid => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        };
+                        if !wake_up {
+                            continue;
+                        }
+                        let dead_process =
+                            self.get_task((dead_process_pid, 0)).expect("no dead child");
+                        // dbg!(dead_process);
+                        let status = match dead_process.process_state {
+                            ProcessState::Zombie(status) => {
+                                status
+                                // return action;
+                            }
+                            _ => panic!(
+                                "A zombie was found just before, but there is no zombie here"
+                            ),
+                        };
+                        self.current_task_mut()
+                            .set_waiting(WaitingState::ChildDeath(
+                                Some(dead_process_pid),
+                                status as u32,
+                            ));
+                        self.current_task_mut().set_return_value(0);
+                        return JobAction::default();
+                    }
+                }
             }
 
             match &self.current_task().process_state {
@@ -527,17 +543,6 @@ impl Scheduler {
         }
 
         let (pid, tid) = self.current_task_id;
-
-        // Send a sig child signal to the father
-        if let Some(parent_pid) = self.current_task().parent {
-            let parent = self.get_task_mut((parent_pid, 0)).expect("WTF");
-            let _ret = parent.signal.generate_signal(Signum::Sigchld);
-            MESSAGE_QUEUE.lock().push_back(Message::new(
-                parent_pid,
-                MessageContent::ProcessDied { pid },
-            ));
-        }
-        MESSAGE_QUEUE.lock().push_back(Message::ProcessDied { pid });
 
         self.remove_curr_running();
 
