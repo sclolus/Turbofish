@@ -26,6 +26,19 @@ use errno::Errno;
 /// SysResult is just made to handle module errors. Return optional return and errno
 pub type SysResult<T> = core::result::Result<T, Errno>;
 
+pub trait IntoRawResult {
+    fn into_raw_result(self) -> u32;
+}
+
+impl IntoRawResult for SysResult<u32> {
+    fn into_raw_result(self) -> u32 {
+        match self {
+            Ok(return_value) => return_value as u32,
+            Err(errno) => (-(errno as i32)) as u32,
+        }
+    }
+}
+
 /// MonoTasking or MultiTasking configuration
 pub enum TaskMode {
     /// MonoTasking mode

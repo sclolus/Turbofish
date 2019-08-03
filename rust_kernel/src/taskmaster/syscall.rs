@@ -1,6 +1,6 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
-use super::SysResult;
+use super::{IntoRawResult, SysResult};
 
 use super::process;
 use super::process::CpuState;
@@ -205,10 +205,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     // the syscall number contained in eax, in case of SA_RESTART behavior
     if is_in_blocked_syscall == false {
         // Return value will be on EAX. Errno always represents the low 7 bits
-        (*cpu_state).registers.eax = match result {
-            Ok(return_value) => return_value as u32,
-            Err(errno) => (-(errno as i32)) as u32,
-        };
+        (*cpu_state).registers.eax = result.into_raw_result();
     }
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
     // If ring0 process -> Can't happened normally
