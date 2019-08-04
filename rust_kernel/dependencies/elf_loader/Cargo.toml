@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 bitflags = "1.0.4"
 terminal = { path = "../terminal" }
+derive_is_enum_variant = "0.1.1"
 
 [features]
 test = []

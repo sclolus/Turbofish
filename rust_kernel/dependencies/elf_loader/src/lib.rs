@@ -1,12 +1,33 @@
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 use bitflags::bitflags;
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use core::mem;
+use core::result::Result as CoreResult;
+
+#[macro_use]
+extern crate derive_is_enum_variant;
 
 #[cfg(not(feature = "std-print"))]
 #[allow(unused_imports)]
 #[macro_use]
 extern crate terminal;
+
+pub struct ElfParser<'a> {
+    file: &'a [u8],
+}
+
+type Result<T> = CoreResult<T, ElfParseError>;
+
+impl<'a> ElfParser<'a> {
+    pub fn new(file: &'a [u8]) -> Self {
+        Self { file }
+    }
+
+    pub fn parse(&mut self) -> Result<()> {
+        let header = ElfHeader::from_bytes(self.file)?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum ElfParseError {
@@ -19,9 +40,20 @@ pub enum ElfParseError {
     InvalidTargetArchitecture,
     InvalidSegmentType,
     InvalidProgramHeader,
+    InvalidProgramHeaderNumber,
+    InvalidProgramHeaderFlags,
     InvalidSegmentAlignment,
+    InvalidSectionHeader,
     InvalidSectionHeaderType,
     InvalidSectionAlignment,
+    InvalidSectionHeaderNumber,
+    InvalidSectionHeaderFlags,
+    InvalidSymbol,
+    InvalidSymbolType,
+    InvalidSymbolBinding,
+    InvalidSymbolVisibility,
+    InvalidRel,
+    InvalidRela,
 }
 
 use core::array::TryFromSliceError;
@@ -42,6 +74,14 @@ where
     array
 }
 
+fn slice_to_u32(slice: &[u8]) -> u32 {
+    u32::from_ne_bytes(copy_to_array(&slice[0x0..0x4]))
+}
+
+fn slice_to_u16(slice: &[u8]) -> u16 {
+    u16::from_ne_bytes(copy_to_array(&slice[0x0..0x2]))
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Endian {
     Little,
@@ -51,7 +91,7 @@ pub enum Endian {
 impl TryFrom<u8> for Endian {
     type Error = ElfParseError;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self> {
         use Endian::*;
         match value {
             1 => Ok(Little),
@@ -61,7 +101,7 @@ impl TryFrom<u8> for Endian {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, is_enum_variant)]
 pub enum Format {
     Bit32,
     Bit64,
@@ -70,7 +110,7 @@ pub enum Format {
 impl TryFrom<u8> for Format {
     type Error = ElfParseError;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self> {
         use Format::*;
         match value {
             1 => Ok(Bit32),
@@ -80,7 +120,7 @@ impl TryFrom<u8> for Format {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, is_enum_variant)]
 pub enum Abi {
     SystemV,
     HPUX,
@@ -104,7 +144,7 @@ pub enum Abi {
 impl TryFrom<u8> for Abi {
     type Error = ElfParseError;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self> {
         use Abi::*;
         Ok(match value {
             0x0 => SystemV,
@@ -129,7 +169,7 @@ impl TryFrom<u8> for Abi {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, is_enum_variant)]
 pub enum ObjectType {
     None,
     Rel,
@@ -145,7 +185,7 @@ pub enum ObjectType {
 impl TryFrom<u16> for ObjectType {
     type Error = ElfParseError;
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self> {
         use crate::ObjectType::*;
         Ok(match value {
             0x0 => None,
@@ -162,7 +202,7 @@ impl TryFrom<u16> for ObjectType {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, is_enum_variant)]
 pub enum Architecture {
     None,
     SPARC,
@@ -181,7 +221,7 @@ pub enum Architecture {
 impl TryFrom<u16> for Architecture {
     type Error = ElfParseError;
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self> {
         use crate::Architecture::*;
         Ok(match value {
             0x0 => None,
@@ -226,21 +266,25 @@ pub struct ElfHeader {
     version: u32,
 
     /// The address of the entry point. i.e the address in memory where the programs starts executing.
+    /// If the file has no associated entry point, this member holds zero.
     pub entry_point: u32,
 
     /// Offset of the start of the program header table.
+    /// If the file has no program header table, this member holds zero.
     pub program_header_table_offset: u32,
 
     /// Offset of the start of the section header table.
+    /// If the file has no section header table, this member holds zero.
     pub section_header_table_offset: u32,
 
     /// The interpretation of this field depends on the target architecture.
     flags: u32,
 
-    /// The size of this header.
+    /// The size of this header in bytes.
     self_size: u16,
 
     /// Contains the size of a program header table entry.
+    /// All entries are the same size.
     program_header_table_size: u16,
 
     /// Contains the number of entries in the program header table.
@@ -257,7 +301,7 @@ pub struct ElfHeader {
 }
 
 impl ElfHeader {
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self, ElfParseError> {
+    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
         Self::try_from(bytes.as_ref())
     }
 }
@@ -265,13 +309,29 @@ impl ElfHeader {
 impl TryFrom<&[u8]> for ElfHeader {
     type Error = ElfParseError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() < 52 {
+    fn try_from(value: &[u8]) -> Result<Self> {
+        // Special case of nbr_program_header, currently not supported.
+        const PN_XNUM: u16 = 0xffff;
+        const SHN_LORESERVE: u16 = 0xff00;
+
+        if value.len() < mem::size_of::<Self>() {
             return Err(ElfParseError::InvalidHeader);
         }
         // check the magic
         if value[0..4] != [0x7F, 0x45, 0x4c, 0x46] {
             return Err(ElfParseError::BadMagic);
+        }
+
+        let nbr_program_header = u16::from_ne_bytes(TryFrom::try_from(&value[0x2C..0x2E])?);
+
+        if nbr_program_header == PN_XNUM {
+            return Err(ElfParseError::InvalidProgramHeaderNumber);
+        }
+
+        let nbr_section_header = u16::from_ne_bytes(TryFrom::try_from(&value[0x30..0x32])?);
+
+        if nbr_section_header >= SHN_LORESERVE {
+            return Err(ElfParseError::InvalidSectionHeaderNumber);
         }
 
         Ok(Self {
@@ -288,15 +348,15 @@ impl TryFrom<&[u8]> for ElfHeader {
             flags: u32::from_ne_bytes(TryFrom::try_from(&value[0x24..0x28])?),
             self_size: u16::from_ne_bytes(TryFrom::try_from(&value[0x28..0x2A])?),
             program_header_table_size: u16::from_ne_bytes(TryFrom::try_from(&value[0x2A..0x2C])?),
-            nbr_program_header: u16::from_ne_bytes(TryFrom::try_from(&value[0x2C..0x2E])?),
+            nbr_program_header,
             section_header_table_size: u16::from_ne_bytes(TryFrom::try_from(&value[0x2E..0x30])?),
-            nbr_section_header: u16::from_ne_bytes(TryFrom::try_from(&value[0x30..0x32])?),
+            nbr_section_header,
             section_header_str_index: u16::from_ne_bytes(TryFrom::try_from(&value[0x32..0x34])?),
         })
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
 pub enum SegmentType {
     Null,
     Load,
@@ -318,6 +378,7 @@ pub enum SegmentType {
 }
 
 bitflags! {
+    #[derive(Default)]
     pub struct ProgramHeaderFlags: u32 {
         #[allow(non_upper_case_globals)]
         const Executable = 0x1;
@@ -335,17 +396,19 @@ bitflags! {
         const MaskProc = 0xf0000000;
     }
 }
-// TODO should be a TryFrom.
-impl From<u32> for ProgramHeaderFlags {
-    fn from(value: u32) -> Self {
-        unsafe { mem::transmute(value) }
+
+impl TryFrom<u32> for ProgramHeaderFlags {
+    type Error = ElfParseError;
+
+    fn try_from(value: u32) -> Result<Self> {
+        Ok(Self::from_bits(value).ok_or(ElfParseError::InvalidProgramHeaderFlags)?)
     }
 }
 
 impl TryFrom<u32> for SegmentType {
     type Error = ElfParseError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u32) -> Result<Self> {
         use SegmentType::*;
         Ok(match value {
             0x0 => Null,
@@ -394,7 +457,7 @@ pub struct ProgramHeader {
 }
 
 impl ProgramHeader {
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self, ElfParseError> {
+    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
         Self::try_from(bytes.as_ref())
     }
 }
@@ -402,20 +465,20 @@ impl ProgramHeader {
 impl TryFrom<&[u8]> for ProgramHeader {
     type Error = ElfParseError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() < 32 {
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < mem::size_of::<Self>() {
             return Err(ElfParseError::InvalidProgramHeader);
         }
 
         let new = Self {
-            segment_type: SegmentType::try_from(u32::from_ne_bytes(copy_to_array(&value[0x0..0x4])))?,
-            offset: (u32::from_ne_bytes(copy_to_array(&value[0x4..0x8]))),
-            vaddr: (u32::from_ne_bytes(copy_to_array(&value[0x8..0x0C]))),
-            paddr: (u32::from_ne_bytes(copy_to_array(&value[0x0C..0x10]))),
-            filez: (u32::from_ne_bytes(copy_to_array(&value[0x10..0x14]))),
-            memsz: (u32::from_ne_bytes(copy_to_array(&value[0x14..0x18]))),
-            flags: (ProgramHeaderFlags::from(u32::from_ne_bytes(copy_to_array(&value[0x18..0x1C])))),
-            align: (u32::from_ne_bytes(copy_to_array(&value[0x1C..0x20]))),
+            segment_type: SegmentType::try_from(slice_to_u32(&value[0x0..0x4]))?,
+            offset: slice_to_u32(&value[0x4..0x8]),
+            vaddr: slice_to_u32(&value[0x8..0x0C]),
+            paddr: slice_to_u32(&value[0x0C..0x10]),
+            filez: slice_to_u32(&value[0x10..0x14]),
+            memsz: slice_to_u32(&value[0x14..0x18]),
+            flags: ProgramHeaderFlags::try_from(slice_to_u32(&value[0x18..0x1C]))?,
+            align: slice_to_u32(&value[0x1C..0x20]),
         };
 
         // if new.p_align > 1 && (new.p_vaddr != new.p_offset % new.p_align || !new.p_align.is_power_of_two()) {
@@ -442,7 +505,7 @@ impl core::fmt::Display for ProgramHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
 pub enum SectionHeaderType {
     Null,
     ProgBits,
@@ -485,7 +548,7 @@ pub enum SectionHeaderType {
 impl TryFrom<u32> for SectionHeaderType {
     type Error = ElfParseError;
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+    fn try_from(value: u32) -> Result<Self> {
         use SectionHeaderType::*;
         Ok(match value {
             0x0 => Null,
@@ -562,10 +625,10 @@ bitflags! {
     }
 }
 
-// TODO should be a TryFrom.
-impl From<u32> for SectionHeaderFlags {
-    fn from(value: u32) -> Self {
-        unsafe { mem::transmute(value) }
+impl TryFrom<u32> for SectionHeaderFlags {
+    type Error = ElfParseError;
+    fn try_from(value: u32) -> Result<Self> {
+        Ok(Self::from_bits(value).ok_or(ElfParseError::InvalidSectionHeaderFlags)?)
     }
 }
 
@@ -584,7 +647,7 @@ pub struct SectionHeader {
 }
 
 impl SectionHeader {
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self, ElfParseError> {
+    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
         Self::try_from(bytes.as_ref())
     }
 }
@@ -592,15 +655,15 @@ impl SectionHeader {
 impl TryFrom<&[u8]> for SectionHeader {
     type Error = ElfParseError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        fn slice_to_u32(slice: &[u8]) -> u32 {
-            u32::from_ne_bytes(copy_to_array(&slice[0x0..0x4]))
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < mem::size_of::<Self>() {
+            return Err(ElfParseError::InvalidSectionHeader);
         }
 
         let new = Self {
             sh_name: slice_to_u32(&value[0x0..0x4]),
             sh_type: SectionHeaderType::try_from(slice_to_u32(&value[0x4..0x8]))?,
-            sh_flags: SectionHeaderFlags::from(slice_to_u32(&value[0x8..0xC])),
+            sh_flags: SectionHeaderFlags::try_from(slice_to_u32(&value[0x8..0xC]))?,
             sh_addr: slice_to_u32(&value[0xC..0x10]),
             sh_offset: slice_to_u32(&value[0x10..0x14]),
             sh_size: slice_to_u32(&value[0x14..0x18]),
@@ -633,6 +696,195 @@ impl core::fmt::Display for SectionHeader {
         )?)
     }
 }
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub struct Symbol {
+    name: u32,
+    value: u32,
+    size: u32,
+    info: SymbolInfo,
+    visibility: SymbolVisibility,
+    section_index: u16,
+}
+
+impl TryFrom<&[u8]> for Symbol {
+    type Error = ElfParseError;
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < mem::size_of::<Self>() {
+            return Err(ElfParseError::InvalidSymbol);
+        }
+
+        Ok(Self {
+            name: slice_to_u32(&value[0..0x4]),
+            value: slice_to_u32(&value[0x4..0x8]),
+            size: slice_to_u32(&value[0x8..0xC]),
+            info: SymbolInfo::try_from(value[0xC])?,
+            visibility: SymbolVisibility::try_from(value[0xD])?,
+            section_index: slice_to_u16(&value[0xE..0x10]),
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
+pub enum SymbolType {
+    NoType,
+    Object,
+    Func,
+    Section,
+    File,
+    Common,
+    Tls,
+    Num,
+    Loos,
+    GnuIfunc,
+    Hios,
+    LoProc,
+    HiProc,
+}
+
+impl TryFrom<u8> for SymbolType {
+    type Error = ElfParseError;
+    fn try_from(value: u8) -> Result<Self> {
+        use SymbolType::*;
+        Ok(match value {
+            0 => NoType,
+            1 => Object,
+            2 => Func,
+            3 => Section,
+            4 => File,
+            5 => Common,
+            6 => Tls,
+            7 => Num,
+            10 => GnuIfunc,
+            // 10 => Loos,
+            12 => Hios,
+            13 => LoProc,
+            15 => HiProc,
+            _ => return Err(ElfParseError::InvalidSymbolType),
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
+pub enum SymbolBinding {
+    Local,
+    Global,
+    Weak,
+    Num,
+    Loos,
+    GnuUnique,
+    Hios,
+    LoProc,
+    HiProc,
+}
+
+impl TryFrom<u8> for SymbolBinding {
+    type Error = ElfParseError;
+    fn try_from(value: u8) -> Result<Self> {
+        use SymbolBinding::*;
+        Ok(match value {
+            0 => Local,
+            1 => Global,
+            2 => Weak,
+            3 => Num,
+            10 => GnuUnique,
+            // 10 => Loos,
+            12 => Hios,
+            13 => LoProc,
+            15 => HiProc,
+            _ => return Err(ElfParseError::InvalidSymbolBinding),
+        })
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub struct SymbolInfo {
+    s_type: SymbolType,
+    s_binding: SymbolBinding,
+}
+
+impl SymbolInfo {
+    pub fn get_type(&self) -> SymbolType {
+        self.s_type
+    }
+
+    pub fn get_binding(&self) -> SymbolBinding {
+        self.s_binding
+    }
+}
+
+impl TryFrom<u8> for SymbolInfo {
+    type Error = ElfParseError;
+    fn try_from(value: u8) -> Result<Self> {
+        let bits_type = value & 0xf;
+        let bits_binding = value >> 4;
+
+        Ok(Self { s_type: bits_type.try_into()?, s_binding: bits_binding.try_into()? })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
+pub enum SymbolVisibility {
+    Default,
+    Internal,
+    Hidden,
+    Protected,
+}
+
+impl TryFrom<u8> for SymbolVisibility {
+    type Error = ElfParseError;
+    fn try_from(value: u8) -> Result<Self> {
+        use SymbolVisibility::*;
+        Ok(match value {
+            0 => Default,
+            1 => Internal,
+            2 => Hidden,
+            3 => Protected,
+            _ => return Err(ElfParseError::InvalidSymbolVisibility),
+        })
+    }
+}
+
+pub struct Rel {
+    offset: u32,
+    info: u32,
+}
+
+impl TryFrom<&[u8]> for Rel {
+    type Error = ElfParseError;
+    #[rustfmt::skip]
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < mem::size_of::<Self>() {
+            return Err(ElfParseError::InvalidRel);
+        }
+
+        Ok(Self { offset: slice_to_u32(&value[0x0..0x4]),
+                  info: slice_to_u32(&value[0x4..0x8]) })
+    }
+}
+
+pub struct Rela {
+    rel: Rel,
+    addend: i32,
+}
+
+impl TryFrom<&[u8]> for Rela {
+    type Error = ElfParseError;
+    #[rustfmt::skip]
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.len() < mem::size_of::<Self>() {
+            return Err(ElfParseError::InvalidRela);
+        }
+
+        Ok(Self { rel: Rel::try_from(&value[0x0..0x8])?,
+                  addend: slice_to_u32(&value[0x8..0xC]) as i32 })
+    }
+}
+
+// pub struct DynamicTag {
+//     tag: DynamicTagType,
+
+// }
 
 #[cfg(test)]
 mod tests {
