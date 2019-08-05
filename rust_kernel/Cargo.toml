@@ -35,6 +35,7 @@ elf_loader = { path = "dependencies/elf_loader" }
 errno = { path = "dependencies/errno" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
+messaging = { path = "dependencies/messaging" }
 
 [dependencies.lazy_static]
 version = "1.3.0"
@@ -69,6 +70,7 @@ members = [
 "dependencies/elf_loader",
 "dependencies/errno",
 "dependencies/try_clone_derive",
-"dependencies/fallible_collections"
+"dependencies/fallible_collections",
+"dependencies/messaging"
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

@@ -1,12 +1,12 @@
 //! This file contains definition of a task
 
-use super::messaging::{MessageContent, MessageQueue};
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use core::ffi::c_void;
+use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -24,7 +24,7 @@ pub struct Task {
     pub parent: Option<Pid>,
     /// Signal Interface
     pub signal: SignalInterface,
-    pub message_queue: MessageQueue<MessageContent>,
+    pub message_queue: MessageQueue<ProcessMessage>,
 }
 
 impl Task {
@@ -128,7 +128,7 @@ impl Task {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum WaitingState {
     /// The Process is sleeping until pit time >= u32 value
     Sleeping(u32),
@@ -138,7 +138,8 @@ pub enum WaitingState {
     /// Set none for undefined PID or a child PID. Is followed by the status field
     ChildDeath(Pid, u32),
     /// Waiting for a custom event
-    Event(fn() -> Option<u32>),
+    Read,
+    // Event(fn() -> Option<u32>),
 }
 
 #[derive(Debug)]

@@ -12,6 +12,7 @@ registers = { path = "../registers" }
 io = { path = "../io" }
 bitflags = "1.0.4"
 log = "0.4.6"
+messaging = { path = "../messaging" }
 
 [dependencies.lazy_static]
 version = "1.3.0"

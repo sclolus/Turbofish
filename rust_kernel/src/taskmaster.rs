@@ -5,7 +5,6 @@ mod ipc;
 mod process;
 #[macro_use]
 mod scheduler;
-pub mod messaging;
 mod safe_ffi;
 mod signal;
 mod syscall;
@@ -47,6 +46,17 @@ pub enum TaskMode {
     Multi(f32),
 }
 
+use keyboard::keysymb::KeySymb;
+use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+use messaging::{MessageTo, TtyMessage};
+
+/// we send a message
+pub fn handle_key_press(keysymb: KeySymb) {
+    messaging::push_message(MessageTo::Tty {
+        content: TtyMessage::KeyPress { keysymb },
+    })
+}
+
 // Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
@@ -62,6 +72,12 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         SCHEDULER.lock().add_user_process(None, p).unwrap();
     }
 
+    unsafe {
+        KEYBOARD_DRIVER
+            .as_mut()
+            .unwrap()
+            .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
+    }
     // Set the scheduler idle process
     SCHEDULER
         .lock()
@@ -75,7 +91,7 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         .unwrap();
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(20.)) }
+    unsafe { scheduler::start(TaskMode::Multi(1000.)) }
 }
 
 extern "C" {

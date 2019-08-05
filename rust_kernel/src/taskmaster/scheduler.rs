@@ -1,21 +1,21 @@
 //! this file contains the scheduler description
 
-use super::messaging::{Message, MessageContent, MESSAGE_QUEUE};
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal::{JobAction, Signum};
-use super::syscall::{clone::CloneFlags, read::handle_tty_control};
+use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
 use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
-use alloc::collections::CollectionAllocErr;
-
 use alloc::boxed::Box;
+use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
+use messaging::{pop_message, push_message, MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
+use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
 use crate::interrupts;
@@ -119,17 +119,14 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
-    load_next_process(1)
+    load_next_process(&mut scheduler, 1)
 }
 
 /// load the next process, returning the new_kernel_esp
-pub unsafe fn load_next_process(next_process: usize) -> u32 {
-    SCHEDULER.force_unlock();
-    let mut scheduler = SCHEDULER.lock();
-
+pub unsafe fn load_next_process(scheduler: &mut Scheduler, next_process: usize) -> u32 {
     _update_process_end_time(scheduler.time_interval.unwrap());
     // Handle a tty control
-    handle_tty_control();
+    // handle_tty_control();
 
     scheduler.dispatch_messages();
     // Switch between processes
@@ -168,12 +165,12 @@ unsafe extern "C" fn scheduler_exit_resume(
     if let Some(parent_pid) = dead_process.parent {
         let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
         let _ret = parent.signal.generate_signal(Signum::Sigchld);
-        MESSAGE_QUEUE.lock().push_back(Message::new(
-            parent_pid,
-            MessageContent::ProcessDied {
+        messaging::push_message(MessageTo::Process {
+            pid: parent_pid,
+            content: ProcessMessage::ProcessDied {
                 pid: process_to_free_pid,
             },
-        ));
+        });
     }
     preemptible();
 }
@@ -221,9 +218,27 @@ impl Scheduler {
     }
 
     fn dispatch_messages(&mut self) {
-        while let Some(message) = MESSAGE_QUEUE.lock().pop_front() {
-            self.get_task_mut((message.get_dest(), 0))
-                .map(|task| task.message_queue.push_back(message.get_content()));
+        while let Some(message) = messaging::pop_message() {
+            // eprintln!("{:#?}", message);
+            match message {
+                MessageTo::Process { pid, content } => {
+                    self.get_task_mut((pid, 0))
+                        .map(|task| task.message_queue.push_back(content));
+                }
+                MessageTo::Tty { content } => unsafe {
+                    TERMINAL.as_mut().unwrap().handle_message(content)
+                },
+                MessageTo::Scheduler { content } => match content {
+                    SchedulerMessage::SomethingToRead => {
+                        if let Some(task) =
+                            self.find_task(|t| t.get_waiting_state() == Some(&WaitingState::Read))
+                        {
+                            task.message_queue
+                                .push_back(ProcessMessage::SomethingToRead);
+                        }
+                    }
+                },
+            }
         }
     }
 
@@ -292,8 +307,9 @@ impl Scheduler {
                 continue;
             }
             while let Some(message) = self.current_task_mut().message_queue.pop_front() {
+                // eprintln!("Process message: {:#?}", message);
                 match message {
-                    MessageContent::ProcessDied {
+                    ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
                         let dead_process_pgid = self
@@ -329,6 +345,14 @@ impl Scheduler {
                         self.current_task_mut().set_return_value(0);
                         return JobAction::default();
                     }
+                    ProcessMessage::SomethingToRead => {
+                        self.current_task_mut()
+                            .message_queue
+                            .retain(|message| *message != ProcessMessage::SomethingToRead);
+                        self.current_task_mut().set_return_value(0);
+                        self.current_task_mut().set_running();
+                        return JobAction::default();
+                    }
                 }
             }
 
@@ -347,14 +371,14 @@ impl Scheduler {
                         return action;
                     }
                     match waiting_state {
-                        WaitingState::Event(f) => {
-                            if let Some(res) = f() {
-                                self.current_task_mut().set_running();
-                                // TODO: This is a dummy implementation. If bit 31 of result is set it can lead to undefined behavior
-                                self.current_task_mut().set_return_value(res as i32);
-                                return action;
-                            }
-                        }
+                        // WaitingState::Event(f) => {
+                        //     if let Some(res) = f() {
+                        //         self.current_task_mut().set_running();
+                        //         // TODO: This is a dummy implementation. If bit 31 of result is set it can lead to undefined behavior
+                        //         self.current_task_mut().set_return_value(res as i32);
+                        //         return action;
+                        //     }
+                        // }
                         WaitingState::Sleeping(time) => {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {
@@ -447,6 +471,16 @@ impl Scheduler {
         self.get_thread_group_mut(id.0)?.all_thread.get_mut(&id.1)
     }
 
+    pub fn find_task<P>(&mut self, predicate: P) -> Option<&mut Task>
+    where
+        P: FnMut(&&mut Task) -> bool,
+    {
+        self.all_process
+            .values_mut()
+            .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
+            .find(predicate)
+    }
+
     /// Remove the current running process
     fn remove_curr_running(&mut self) {
         // Remove process from the running process list
@@ -531,7 +565,7 @@ impl Scheduler {
         dbg!("exit");
         // Switch to the next process
         unsafe {
-            let new_kernel_esp = load_next_process(0);
+            let new_kernel_esp = load_next_process(self, 0);
 
             _exit_resume(new_kernel_esp, pid, tid, status);
         };
