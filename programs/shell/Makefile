@@ -1,3 +1,6 @@
+PATH  := $(PATH):/toolchain_turbofish/cross/bin/
+SHELL := env PATH=$(PATH) /bin/bash
+
 TARGET = shell
 
 # --- Preserve this above part. It is stricly system ---

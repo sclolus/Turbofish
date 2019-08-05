@@ -1,3 +1,6 @@
+PATH  := $(PATH):/toolchain_turbofish/cross/bin/
+SHELL := env PATH=$(PATH) /bin/bash
+
 TARGET = libc.a
 SYSROOT = ../../toolchain_turbofish/sysroot
 
@@ -152,10 +155,10 @@ obj/crt/%.o: src/crt/%.s
 	$(AS) -o $@ $<
 
 clean:
-	find $(OBJ_DIR) -type f -name '*.o' -delete
+	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;
 
 fclean: clean
-	rm -f $(TARGET)
+	rm -fv $(TARGET)
 
 re: fclean all
 

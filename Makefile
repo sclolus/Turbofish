@@ -5,6 +5,7 @@ LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 
 all: $(IMG_DISK)
+	make -C programs
 	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mount $(LOOP_DEVICE)p1 /mnt
@@ -36,9 +37,11 @@ $(IMG_DISK):
 	sudo losetup -d $(LOOP_DEVICE)
 
 clean:
+	make -C programs fclean
 	make -C $(KERNEL_DIRECTORY) fclean
 
 fclean:
+	make -C programs fclean
 	make -C $(KERNEL_DIRECTORY) fclean
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)

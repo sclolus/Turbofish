@@ -46,6 +46,11 @@ cd build
 make -j8 all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
 
+rm /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crti.o -f
+rm /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtn.o -f
+rm /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtbegin.o -f
+rm /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtend.o -f
+
 # DASH
 # URL: http://gondor.apana.org.au/~herbert/dash/files/
 # take version 0.5.10.2

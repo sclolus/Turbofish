@@ -1,3 +1,6 @@
+PATH  := $(PATH):/toolchain_turbofish/cross/bin/
+SHELL := env PATH=$(PATH) /bin/bash
+
 BUILD_DIR = build
 VPATH += src
 
@@ -42,7 +45,7 @@ CFLAGS += -m32 -D GNU
 CC = gcc
 else
 # LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
-CGLAGS +=
+CFLAGS +=
 endif
 
 #ASFLAGS = -f elf
@@ -65,7 +68,7 @@ install:
 	cp -rv build/* $(INSTALL_DIR)
 
 clean:
-	rm -f $(TARGET_C)
+	rm -fv $(TARGET_C)
 
 fclean: clean
 
