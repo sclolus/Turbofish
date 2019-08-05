@@ -9,12 +9,12 @@ use sync::UnInterruptibleMutex;
 
 type Pid = i32;
 
-/// message for the tty driver
-#[derive(Debug, Copy, Clone)]
-pub enum TtyMessage {
-    /// which key was press
-    KeyPress { keysymb: KeySymb },
-}
+// /// message for the tty driver
+// #[derive(Debug, Copy, Clone)]
+// pub enum TtyMessage {
+//     /// which key was press
+//     KeyPress { keysymb: KeySymb },
+// }
 
 /// message for the scheduler
 #[derive(Debug, Copy, Clone)]
@@ -36,7 +36,7 @@ pub enum ProcessMessage {
 /// message in its variant content
 #[derive(Debug, Copy, Clone)]
 pub enum MessageTo {
-    Tty { content: TtyMessage },
+    // Tty { content: TtyMessage },
     Process { pid: Pid, content: ProcessMessage },
     Scheduler { content: SchedulerMessage },
 }

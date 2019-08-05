@@ -5,6 +5,7 @@ use super::signal::{JobAction, Signum};
 use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
 use super::thread_group::ThreadGroup;
+use super::KEY_BUFFER;
 use super::{SysResult, TaskMode};
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
@@ -218,6 +219,13 @@ impl Scheduler {
     }
 
     fn dispatch_messages(&mut self) {
+        // get the keypress from the keybuffer
+        let mut key_buffer = KEY_BUFFER.lock();
+
+        unsafe {
+            TERMINAL.as_mut().unwrap().put_input(&*key_buffer);
+        }
+        key_buffer.clear();
         while let Some(message) = messaging::pop_message() {
             // eprintln!("{:#?}", message);
             match message {
@@ -225,9 +233,6 @@ impl Scheduler {
                     self.get_task_mut((pid, 0))
                         .map(|task| task.message_queue.push_back(content));
                 }
-                MessageTo::Tty { content } => unsafe {
-                    TERMINAL.as_mut().unwrap().handle_message(content)
-                },
                 MessageTo::Scheduler { content } => match content {
                     SchedulerMessage::SomethingToRead => {
                         if let Some(task) =
@@ -238,6 +243,7 @@ impl Scheduler {
                         }
                     }
                 },
+                _ => unimplemented!(),
             }
         }
     }
@@ -371,14 +377,6 @@ impl Scheduler {
                         return action;
                     }
                     match waiting_state {
-                        // WaitingState::Event(f) => {
-                        //     if let Some(res) = f() {
-                        //         self.current_task_mut().set_running();
-                        //         // TODO: This is a dummy implementation. If bit 31 of result is set it can lead to undefined behavior
-                        //         self.current_task_mut().set_return_value(res as i32);
-                        //         return action;
-                        //     }
-                        // }
                         WaitingState::Sleeping(time) => {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {

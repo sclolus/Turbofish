@@ -35,7 +35,7 @@ use alloc::vec::Vec;
 use core::fmt::Write;
 use keyboard::keysymb::KeySymb;
 use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use messaging::{MessageTo, SchedulerMessage, TtyMessage};
+use messaging::{MessageTo, SchedulerMessage};
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
@@ -70,16 +70,17 @@ impl Terminal {
         }
     }
 
-    pub fn handle_message(&mut self, content: TtyMessage) {
-        match content {
-            TtyMessage::KeyPress { keysymb } => {
-                self.buf.push_back(keysymb);
-                // self.buf = Some(keysymb);
-                messaging::push_message(MessageTo::Scheduler{content: SchedulerMessage::SomethingToRead});
-                // self.write_str(self.buf);
+    pub fn put_input(&mut self, buff: &[KeySymb]) {
+        for key in buff {
+            if !self.handle_tty_control(*key) {
+                self.buf.push_back(*key);
+                messaging::push_message(MessageTo::Scheduler {
+                    content: SchedulerMessage::SomethingToRead,
+                });
             }
-            // _ => unimplemented!(),
         }
+        // if !buff.is_empty() {
+        // }
     }
 
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
@@ -95,29 +96,6 @@ impl Terminal {
     pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
         self.ttys.iter_mut().find(|btty| btty.tty.foreground)
     }
-
-    // fn handle_macros(&mut self) {
-    //     match self.buf {
-    //         Some(KeySymb::F1) => self.switch_foreground_tty(1),
-    //         Some(KeySymb::F2) => self.switch_foreground_tty(0),
-    //         Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
-    //         Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-    //         Some(KeySymb::Control_b) => self
-    //             .get_foreground_tty()
-    //             .unwrap()
-    //             .tty
-    //             .scroll(Scroll::HalfScreenUp),
-    //         Some(KeySymb::Control_d) => self
-    //             .get_foreground_tty()
-    //             .unwrap()
-    //             .tty
-    //             .scroll(Scroll::HalfScreenDown),
-    //         _ => {
-    //             return;
-    //         }
-    //     };
-    //     self.buf = None;
-    // }
 
     // fn stock_keysymb(&mut self, keysymb: KeySymb) {
     //     self.buf = Some(keysymb);

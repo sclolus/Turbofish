@@ -46,15 +46,32 @@ pub enum TaskMode {
     Multi(f32),
 }
 
+use arrayvec::ArrayVec;
 use keyboard::keysymb::KeySymb;
 use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use messaging::{MessageTo, TtyMessage};
+use messaging::MessageTo;
+use sync::DeadMutex;
+
+/// the number of keysymb the keyboard interrupt_handler can stock
+/// between two schedule
+const KEY_BUFFER_LEN: usize = 20;
+
+lazy_static! {
+    /// buffer for the keyboard interrupt handler
+    static ref KEY_BUFFER: DeadMutex<ArrayVec<[KeySymb; KEY_BUFFER_LEN]>> =
+        DeadMutex::new(ArrayVec::new());
+}
 
 /// we send a message
 pub fn handle_key_press(keysymb: KeySymb) {
-    messaging::push_message(MessageTo::Tty {
-        content: TtyMessage::KeyPress { keysymb },
-    })
+    // in the keyboard interrupt handler, after reading the keysymb,
+    // we just stock it in a buffer, the scheduler will then fetch the
+    // buffer at each schedule
+
+    KEY_BUFFER
+        .lock()
+        .try_push(keysymb)
+        .expect("not enough place in KEY_BUFFER");
 }
 
 // Create an ASM dummy process based on a simple function
