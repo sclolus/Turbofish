@@ -39,7 +39,8 @@ SRC_C += Clone \
 		SigSuspend \
 		SigPause \
 		HelloWorld \
-		SigChild
+		SigChild \
+		CanonicalRead
 
 CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)

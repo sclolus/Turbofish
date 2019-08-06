@@ -17,9 +17,10 @@ const PROMPT: &str = "----{,_,\"> $ ";
 /// Blocked read
 fn block_read(buf: &mut [KeySymb]) {
     unsafe {
-        while TERMINAL.as_mut().unwrap().read(buf, 1) == 0 {
-            asm!("hlt" :::: "volatile");
-        }
+        // while TERMINAL.as_mut().unwrap().read(buf, 1) == 0 {
+        //     asm!("hlt" :::: "volatile");
+        // }
+        unimplemented!()
     }
 }
 

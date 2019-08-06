@@ -403,6 +403,18 @@ pub struct BufferedTty {
     escaped_buf: String,
 }
 
+impl AsRef<Tty> for BufferedTty {
+    fn as_ref(&self) -> &Tty {
+        &self.tty
+    }
+}
+
+impl AsMut<Tty> for BufferedTty {
+    fn as_mut(&mut self) -> &mut Tty {
+        &mut self.tty
+    }
+}
+
 const ESCAPED_BUF_CAPACITY: usize = 256;
 
 impl BufferedTty {
@@ -477,5 +489,159 @@ impl Write for BufferedTty {
                 }
             }
         }
+    }
+}
+
+use arrayvec::{ArrayVec, CapacityError};
+use bitflags::bitflags;
+use core::cmp::min;
+use core::convert::TryFrom;
+use keyboard::keysymb::KeySymb;
+use messaging::{MessageTo, SchedulerMessage};
+
+bitflags! {
+    pub struct Lmode: u32 {
+        ///    Enable echo.
+        const ECHO = 0;
+        ///    Echo erase character as error-correcting backspace.
+        const ECHOE = 1;
+        ///    Echo KILL.
+        const ECHOK = 2;
+        ///    Echo NL.
+        const ECHONL = 3;
+        ///    Canonical input (erase and kill processing).
+        const ICANON = 4;
+        ///    Enable extended input character processing.
+        const IEXTEN = 5;
+        ///    Enable signals.
+        const ISIG = 6;
+        ///    Disable flush after interrupt or quit.
+        const NOFLSH = 7;
+        ///    Send SIGTTOU for background output.
+        const TOSTOP = 8;
+    }
+}
+
+pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
+    let c = char::try_from(keysymb as u32).unwrap();
+    c.encode_utf8(dst).as_bytes()
+}
+
+#[derive(Debug, Clone)]
+pub struct LineDiscipline {
+    pub tty: BufferedTty,
+    lmode: Lmode,
+    read_buffer: ArrayVec<[u8; 4096]>,
+}
+
+impl LineDiscipline {
+    pub fn new(tty: BufferedTty, lmode: Lmode) -> Self {
+        Self {
+            lmode,
+            tty,
+            read_buffer: ArrayVec::new(),
+        }
+    }
+
+    /// handle directly some keysymb to control the terminal
+    pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
+        match keysymb {
+            KeySymb::Control_p => self.tty.as_mut().scroll(Scroll::Up),
+            KeySymb::Control_n => self.tty.as_mut().scroll(Scroll::Down),
+            KeySymb::Control_b => self.tty.as_mut().scroll(Scroll::HalfScreenUp),
+            KeySymb::Control_d => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
+            _ => {
+                return false;
+            }
+        };
+        true
+    }
+
+    /// write in the read buffer the keysymb read from the keyboard
+    /// Send a message if read is ready, depending of the lmode
+    pub fn write_input(&mut self, buff: &[KeySymb]) -> Result<(), CapacityError<u8>> {
+        let mut encode_buff = [0; 8];
+        for key in buff {
+            // bug enter trigger a Return but we want a Linefeed here
+            let key = if *key == KeySymb::Return {
+                KeySymb::Linefeed
+            } else {
+                *key
+            };
+            if !self.handle_tty_control(key) {
+                // dbg!(key);
+                if key == KeySymb::Delete {
+                    self.read_buffer.pop();
+                    // self.tty.as_mut().
+                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    self.tty.write_char('\0').unwrap();
+                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+
+                    continue;
+                }
+                let b = encode_utf8(key, &mut encode_buff);
+                for elem in b {
+                    self.read_buffer.try_push(*elem)?;
+                }
+                if (self.lmode.contains(Lmode::ICANON) && key == KeySymb::Linefeed)
+                    || !self.lmode.contains(Lmode::ICANON)
+                {
+                    messaging::push_message(MessageTo::Scheduler {
+                        content: SchedulerMessage::SomethingToRead,
+                    });
+                }
+                if self.lmode.contains(Lmode::ECHO) {
+                    self.write(b);
+                    self.tty.as_mut().move_cursor(CursorMove::Forward(0));
+                    // self.tty.as_mut().draw_cursor();
+                }
+            }
+        }
+        Ok(())
+    }
+    /// read (from a process) on the tty
+    /// return the number of bytes readen
+    pub fn read(&mut self, output: &mut [u8]) -> usize {
+        // print!("read buffer: ");
+        // for c in &self.read_buffer {
+        //     print!("{}", *c as char);
+        // }
+        // print!("\n");
+        if self.lmode.contains(Lmode::ICANON) {
+            if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
+                //  In canonical mode, we only read until the '\n' and at most output.len bytes
+                let len_data_to_read = min(index + 1, output.len());
+                for (dest, src) in output
+                    .iter_mut()
+                    .zip(self.read_buffer.drain(0..len_data_to_read))
+                {
+                    *dest = src;
+                }
+                return len_data_to_read;
+            }
+        } else {
+            let len_data_to_read = min(self.read_buffer.len(), output.len());
+            for (dest, src) in output
+                .iter_mut()
+                .zip(self.read_buffer.drain(0..len_data_to_read))
+            {
+                *dest = src;
+            }
+            return len_data_to_read;
+        }
+        return 0;
+    }
+
+    /// write on the tty
+    pub fn write(&mut self, s: &[u8]) -> usize {
+        let s = core::str::from_utf8(s).expect("bad utf8");
+        self.tty.write_str(s).expect("write failed");
+        s.len()
+    }
+    pub fn get_tty(&self) -> &Tty {
+        &self.tty.tty
+    }
+    pub fn get_tty_mut(&mut self) -> &mut Tty {
+        &mut self.tty.tty
     }
 }

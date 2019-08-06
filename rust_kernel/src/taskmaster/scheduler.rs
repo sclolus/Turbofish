@@ -223,7 +223,9 @@ impl Scheduler {
         let mut key_buffer = KEY_BUFFER.lock();
 
         unsafe {
-            TERMINAL.as_mut().unwrap().put_input(&*key_buffer);
+            if key_buffer.len() != 0 {
+                TERMINAL.as_mut().unwrap().write_input(&*key_buffer, 1);
+            }
         }
         key_buffer.clear();
         while let Some(message) = messaging::pop_message() {

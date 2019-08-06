@@ -17,7 +17,7 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, LineDiscipline, Lmode, Scroll, Tty, WriteMode};
 
 mod log;
 
@@ -40,9 +40,10 @@ use messaging::{MessageTo, SchedulerMessage};
 #[derive(Debug, Clone)]
 pub struct Terminal {
     buf: VecDeque<KeySymb>,
-    ttys: Vec<BufferedTty>,
+    ttys: Vec<LineDiscipline>,
 }
 
+use core::convert::TryFrom;
 /// No initialized at the beginning
 pub static mut TERMINAL: Option<Terminal> = None;
 
@@ -57,72 +58,57 @@ impl Terminal {
             // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
             ttys: (0..2)
                 .map(|_| {
-                    BufferedTty::new(Tty::new(
-                        false,
-                        size.line,
-                        size.column,
-                        MAX_SCREEN_BUFFER,
-                        None,
-                    ))
+                    LineDiscipline::new(
+                        BufferedTty::new(Tty::new(
+                            false,
+                            size.line,
+                            size.column,
+                            MAX_SCREEN_BUFFER,
+                            None,
+                        )),
+                        Lmode::ECHO | Lmode::ICANON,
+                    )
                 })
                 .collect(),
         }
     }
 
-    pub fn put_input(&mut self, buff: &[KeySymb]) {
-        for key in buff {
-            if !self.handle_tty_control(*key) {
-                self.buf.push_back(*key);
-                messaging::push_message(MessageTo::Scheduler {
-                    content: SchedulerMessage::SomethingToRead,
-                });
-            }
-        }
-        // if !buff.is_empty() {
-        // }
-    }
-
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
         self.ttys
             .iter_mut()
-            .find(|btty| btty.tty.foreground)
-            .map(|btty| btty.tty.foreground = false);
-        self.ttys[new_foreground_tty].tty.foreground = true;
-        self.ttys[new_foreground_tty].tty.refresh();
+            .find(|l| l.get_tty().foreground)
+            .map(|l| l.get_tty_mut().foreground = false);
+        self.ttys[new_foreground_tty].get_tty_mut().foreground = true;
+        self.ttys[new_foreground_tty].get_tty_mut().refresh();
     }
 
     /// Get the foregounded TTY
     pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
-        self.ttys.iter_mut().find(|btty| btty.tty.foreground)
+        Some(&mut self.ttys.iter_mut().find(|l| l.get_tty().foreground)?.tty)
     }
 
     // fn stock_keysymb(&mut self, keysymb: KeySymb) {
     //     self.buf = Some(keysymb);
     // }
 
-    /// Read a Key from the buffer and throw it to the foreground TTY
-    pub fn read(&mut self, buf: &mut [KeySymb], _tty: usize) -> usize {
-        let keysymb = self.buf.pop_front();
-        // self.handle_macros(keysymb);
-        // if !self.ttys[tty].tty.foreground {
-        //     return 0;
-        // }
-        if let Some(key) = keysymb {
-            buf[0] = key;
-            // self.buf = None;
-            return 1;
-        }
-        return 0;
+    /// Read a Key from the buffer
+    pub fn read(&mut self, buf: &mut [u8], fd: usize) -> usize {
+        self.ttys[fd].read(buf)
     }
 
-    /// Write a string th the designed TTY
-    pub fn write_str(&mut self, fd: usize, s: &str) {
-        self.ttys[fd].write_str(s).unwrap();
+    // /// Write a string th the designed TTY
+    // pub fn write_str(&mut self, fd: usize, s: &str) {
+    //     self.ttys[fd].write_str(s).unwrap();
+    // }
+
+    pub fn write_input(&mut self, buff: &[KeySymb], fd: usize) {
+        // eprintln!("write_input {:?}", buff);
+        self.ttys[fd].write_input(buff).expect("write input failed");
     }
 
     /// Get the TTY n
     pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
-        &mut self.ttys[fd]
+        &mut self.ttys[fd].tty
     }
 
     /// Provide a tiny interface to sontrol some features on the tty
@@ -130,18 +116,18 @@ impl Terminal {
         match keysymb {
             KeySymb::F1 => self.switch_foreground_tty(1),
             KeySymb::F2 => self.switch_foreground_tty(0),
-            KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
-            KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            KeySymb::Control_b => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenUp),
-            KeySymb::Control_d => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenDown),
+            // KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
+            // KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
+            // KeySymb::Control_b => self
+            //     .get_foreground_tty()
+            //     .unwrap()
+            //     .tty
+            //     .scroll(Scroll::HalfScreenUp),
+            // KeySymb::Control_d => self
+            //     .get_foreground_tty()
+            //     .unwrap()
+            //     .tty
+            //     .scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }
