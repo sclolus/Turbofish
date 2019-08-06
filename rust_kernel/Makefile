@@ -83,6 +83,26 @@ VPATH += src/taskmaster/tests src/taskmaster/process
 SRC_ASM_KERNEL += payload_13h_extended
 VPATH += src/drivers/storage/bios_int13h
 
+SRC_C_KERNEL += ctor mem_syscall \
+	size_fn \
+	index \
+	node_custom_allocator node_custom_deallocator \
+	cmp_range cmp_fixe \
+	free_record \
+	allocator \
+	reallocator \
+	deallocator \
+	main_prototypes \
+	sizeof_object \
+	alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
+	alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
+	alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
+	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
+	alloc_btree_get_neighbours
+VPATH += src/memory/allocator/c src/memory/allocator/c/alloc_btree
+#HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
+HEADERS += main_headers.h alloc_btree_internal_header.h
+
 OBJ_DIR := objs
 OBJ_ASM_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM_KERNEL)))))
 OBJ_C_KERNEL	= $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C_KERNEL)))))
