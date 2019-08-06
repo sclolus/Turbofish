@@ -1,6 +1,6 @@
 use libc_binding::{
     CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
+    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, PIPE, READ, REBOOT,
     SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
     TEST, UNLINK, WAITPID, WRITE,
@@ -10,7 +10,7 @@ use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
 use super::signal_interface::{sigset_t, StructSigaction};
-use super::socket::SocketArgsPtr;
+use super::SocketArgsPtr;
 use super::MmapProt;
 use super::SysResult;
 use crate::ffi::c_char;
@@ -58,6 +58,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             GETUID => eprintln!("getuid()"),
             PAUSE => eprintln!("pause()"),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
+            PIPE => eprintln!("pipe({:#?}, {:#?})", ebx as i32, ecx as i32),
             SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
             GETGID => eprintln!("getgid()"),
             GETEUID => eprintln!("geteuid()"),

@@ -15,7 +15,7 @@ use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
+    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, PIPE, READ, REBOOT,
     SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
     TEST, UNLINK, WAITPID, WRITE,
@@ -40,8 +40,8 @@ use close::sys_close;
 mod unlink;
 use unlink::sys_unlink;
 
-mod socket;
-use socket::{sys_socketcall, SocketArgsPtr};
+mod ipc;
+use ipc::{sys_pipe, sys_socketcall, SocketArgsPtr};
 
 pub mod read;
 use read::sys_read;
@@ -203,6 +203,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
+        PIPE => sys_pipe(ebx as i32, ecx as i32),
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),
         GETEUID => sys_geteuid(),

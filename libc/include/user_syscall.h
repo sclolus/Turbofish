@@ -18,6 +18,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETUID       24
 #define PAUSE        29
 #define KILL         37
+#define PIPE         42
 #define SETGID       46
 #define GETGID       47
 #define GETEUID      49

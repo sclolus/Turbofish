@@ -1,7 +1,7 @@
 #ifndef _UNISTD_H
 # define _UNISTD_H
 
-//The <unistd.h> header shall define the size_t, ssize_t, uid_t, gid_t, off_t, and pid_t types as described in <sys/types.h>.
+// The <unistd.h> header shall define the size_t, ssize_t, uid_t, gid_t, off_t, and pid_t types as described in <sys/types.h>.
 #include <sys/types.h>
 // The <unistd.h> header shall define NULL as described in <stddef.h>.
 #include <stddef.h>
@@ -18,18 +18,14 @@
 //   Test for write permission.
 #define	X_OK	1
 //    Test for execute (search) permission. 
-//The <unistd.h> header shall define the intptr_t type as described in <stdint.h>.
-//#include <sys/stdint.h>
+// The <unistd.h> header shall define the intptr_t type as described in <stdint.h>.
+// #include <sys/stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	/* 
-	 * int execv(const char*, char* const[]);
-	 * int execve(const char*, char* const[], char* const[]);
-	 * int execvp(const char*, char* const[]);
-	 * pid_t fork(void);
-	 */
+int          pipe(int fd[2]);
+
 int          access(const char *, int);
 unsigned     alarm(unsigned);
 int          chdir(const char *);
@@ -100,7 +96,6 @@ int          nice(int);
 //[Option End]
 long         pathconf(const char *, int);
 int          pause(void);
-int          pipe(int [2]);
 ssize_t      pread(int, void *, size_t, off_t);
 ssize_t      pwrite(int, const void *, size_t, off_t);
 ssize_t      read(int, void *, size_t);

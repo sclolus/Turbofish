@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <errno.h>
+#include <user_syscall.h>
 
 // The pipe() function shall create a pipe and place two file
 // descriptors, one each into the arguments fildes[0] and fildes[1],
@@ -30,13 +31,9 @@
 // data access, last data modification, and last file status change
 // timestamps of the pipe.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
-int pipe(int fildes[2])
+int pipe(int fd[2])
 {
-	DUMMY
-	(void)fildes;
-	errno = ENOSYS;
-	return -1;
+	int ret = _user_syscall(PIPE, 2, fd[0], fd[1]);
+
+	set_errno_and_return(ret);
 }
