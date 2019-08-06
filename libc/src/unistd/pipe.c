@@ -33,6 +33,11 @@
 
 int pipe(int fd[2])
 {
+	if (fd[0] < 0 || fd[1] < 0) {
+		errno = EBADF;
+		return -1;
+	}
+
 	int ret = _user_syscall(PIPE, 2, fd[0], fd[1]);
 
 	set_errno_and_return(ret);

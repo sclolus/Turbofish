@@ -14,7 +14,7 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
     GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, PIPE, READ, REBOOT,
     SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
@@ -41,7 +41,7 @@ mod unlink;
 use unlink::sys_unlink;
 
 mod ipc;
-use ipc::{sys_pipe, sys_socketcall, SocketArgsPtr};
+use ipc::{sys_dup, sys_dup2, sys_pipe, sys_socketcall, SocketArgsPtr};
 
 pub mod read;
 use read::sys_read;
@@ -203,13 +203,15 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
-        PIPE => sys_pipe(ebx as i32, ecx as i32),
+        PIPE => sys_pipe(ebx as u32, ecx as u32),
+        DUP => sys_dup(ebx as u32),
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),
         GETEUID => sys_geteuid(),
         GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
+        DUP2 => sys_dup2(ebx as u32, ecx as u32),
         GETPPID => sys_getppid(),
         GETPGRP => sys_getpgrp(),
         SIGACTION => sys_sigaction(

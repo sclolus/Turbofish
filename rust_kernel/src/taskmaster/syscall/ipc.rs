@@ -9,3 +9,9 @@ pub use socket::{sys_socketcall, SocketArgsPtr};
 
 mod pipe;
 pub use pipe::sys_pipe;
+
+mod dup;
+pub use dup::sys_dup;
+
+mod dup2;
+pub use dup2::sys_dup2;

@@ -1,5 +1,7 @@
+#include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
+
 // The dup() function provides an alternative interface to the service
 // provided by fcntl() using the F_DUPFD command. The call dup(fildes)
 // shall be equivalent to:
@@ -23,14 +25,14 @@
 // is equal to fildes2, the FD_CLOEXEC flag associated with fildes2
 // shall not be changed.
 
-#warning "NOT IMPLEMENTED"
-#include <custom.h>
-
-int dup2(int fildes, int fildes2)
+int dup2(int oldfd, int newfd)
 {
-	DUMMY
-	(void)fildes;
-	(void)fildes2;
-	errno = ENOSYS;
-	return -1;
+	if (oldfd < 0 || newfd < 0) {
+		errno = EBADF;
+		return -1;
+	}
+
+	int ret = _user_syscall(DUP2, 2, oldfd, newfd);
+
+	set_errno_and_return(ret);
 }

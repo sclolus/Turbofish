@@ -24,6 +24,10 @@
 extern "C" {
 #endif
 
+int          dup(int);
+int          dup2(int, int);
+int          execve(const char *, char *const [], char *const []);
+pid_t        fork(void);
 int          pipe(int fd[2]);
 
 int          access(const char *, int);
@@ -35,10 +39,7 @@ size_t       confstr(int, char *, size_t);
 //[XSI][Option Start]
 char        *crypt(const char *, const char *);
 //[Option End]
-int          dup(int);
 
-
-int          dup2(int, int);
 void         _exit(int);
 //[XSI][Option Start]
 void         encrypt(char [64], int);
@@ -47,7 +48,6 @@ int          execl(const char *, const char *, ...);
 int          execle(const char *, const char *, ...);
 int          execlp(const char *, const char *, ...);
 int          execv(const char *, char *const []);
-int          execve(const char *, char *const [], char *const []);
 int          execvp(const char *, char *const []);
 int          faccessat(int, const char *, int, int);
 int          fchdir(int);
@@ -57,7 +57,6 @@ int          fchownat(int, const char *, uid_t, gid_t, int);
 int          fdatasync(int);
 //[Option End]
 int          fexecve(int, char *const [], char *const []);
-pid_t        fork(void);
 long         fpathconf(int, int);
 //[FSC][Option Start]
 int          fsync(int);

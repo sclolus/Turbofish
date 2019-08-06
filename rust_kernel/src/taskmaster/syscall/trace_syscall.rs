@@ -1,5 +1,5 @@
 use libc_binding::{
-    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
     GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, PIPE, READ, REBOOT,
     SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
@@ -59,6 +59,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             PAUSE => eprintln!("pause()"),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
             PIPE => eprintln!("pipe({:#?}, {:#?})", ebx as i32, ecx as i32),
+            DUP => eprintln!("dup({:#?})", ebx as u32),
             SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
             GETGID => eprintln!("getgid()"),
             GETEUID => eprintln!("geteuid()"),
@@ -66,6 +67,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SIGNAL => eprintln!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => eprintln!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => eprintln!("getppid()"),
+            DUP2 => eprintln!("dup2({:#?}, {:#?})", ebx as u32, ecx as u32),
             GETPGRP => eprintln!("getpgrp()"),
             SIGACTION => eprintln!(
                 "sigaction({:#?}, {:#?}, {:#?})",
