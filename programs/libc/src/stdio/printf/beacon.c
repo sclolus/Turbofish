@@ -1,6 +1,5 @@
-
 #include "internal_printf.h"
-#include "stdio.h"
+#include <stdio.h>
 
 /*
 **	'man 3 stdarg' to understand variadics macro.

@@ -18,5 +18,4 @@ struct tms {
 
 clock_t times(struct tms *);
 
-
 #endif

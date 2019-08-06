@@ -2,14 +2,11 @@
 #include <errno.h>
 #include <user_syscall.h>
 
-	/*
-	 * sigset_t oldmask;
-	 *
-	 * sigprocmask(sig_setmask, sigmask, &oldmask);
-	 * int ret = pause();
-	 * sigprocmask(sig_setmask, oldmask, null);
-	 */
-int sigsuspend(const sigset_t *sigmask) {
+/*
+ * sigsuspend - wait for a signal
+ */
+int sigsuspend(const sigset_t *sigmask)
+{
 	int ret = _user_syscall(SIGSUSPEND, 1, sigmask);
 
 	set_errno_and_return(ret);

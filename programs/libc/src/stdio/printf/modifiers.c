@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 static int		compare(const char *s1, const char *s2)

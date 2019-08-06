@@ -1,4 +1,3 @@
-
 #include <string.h>
 
 int	toupper(int c)

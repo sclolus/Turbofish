@@ -1,5 +1,6 @@
 #ifndef __DIRENT_H__
 # define __DIRENT_H__
+
 //The internal format of directories is unspecified.
 
 //The <dirent.h> header shall define the following type:
@@ -28,21 +29,21 @@ struct dirent {
 
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-int            alphasort(const struct dirent **, const struct dirent **);
-int            closedir(DIR *);
-int            dirfd(DIR *);
-DIR           *fdopendir(int);
-DIR           *opendir(const char *);
+int alphasort(const struct dirent **, const struct dirent **);
+int closedir(DIR *);
+int dirfd(DIR *);
+DIR *fdopendir(int);
+DIR *opendir(const char *);
 struct dirent *readdir(DIR *);
-int            readdir_r(DIR *restrict, struct dirent *restrict,
-                   struct dirent **restrict);
-void           rewinddir(DIR *);
-int            scandir(const char *, struct dirent ***,
+int readdir_r(DIR *restrict, struct dirent *restrict, struct dirent **restrict);
+void rewinddir(DIR *);
+int scandir(const char *, struct dirent ***,
                    int (*)(const struct dirent *),
                    int (*)(const struct dirent **,
                    const struct dirent **));
 //[XSI][Option Start]
-void           seekdir(DIR *, long);
-long           telldir(DIR *);
+void seekdir(DIR *, long);
+long telldir(DIR *);
 //[Option End]
+
 #endif

@@ -1,5 +1,6 @@
 #ifndef __LIMITS_H__
-#define __LIMITS_H__
+# define __LIMITS_H__
+
 /* 
  * ``Numerical Limits''. [Option End]
  * 
@@ -542,6 +543,5 @@
  *     Default process priority.
  *     Minimum Acceptable Value: 20 [Option End] 
  */
-
 
 #endif

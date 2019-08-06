@@ -91,36 +91,35 @@ struct posix_typed_mem_info {
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
 //[MLR][Option Start]
-int    mlock(const void *, size_t);
+int mlock(const void *, size_t);
 //[Option End]
 //[ML][Option Start]
-int    mlockall(int);
+int mlockall(int);
 //[Option End]
-void  *mmap(void *, size_t, int, int, int, off_t);
-int    mprotect(void *, size_t, int);
+void *mmap(void *, size_t, int, int, int, off_t);
+int mprotect(void *, size_t, int);
 //[XSI|SIO][Option Start]
-int    msync(void *, size_t, int);
+int msync(void *, size_t, int);
 //[Option End]
 //[MLR][Option Start]
-int    munlock(const void *, size_t);
+int munlock(const void *, size_t);
 //[Option End]
 //[ML][Option Start]
-int    munlockall(void);
+int munlockall(void);
 //[Option End]
-int    munmap(void *, size_t);
+int munmap(void *, size_t);
 //[ADV][Option Start]
-int    posix_madvise(void *, size_t, int);
+int posix_madvise(void *, size_t, int);
 //[Option End]
 //[TYM][Option Start]
-int    posix_mem_offset(const void *restrict, size_t, off_t *restrict,
+int posix_mem_offset(const void *restrict, size_t, off_t *restrict,
            size_t *restrict, int *restrict);
-int    posix_typed_mem_get_info(int, struct posix_typed_mem_info *);
-int    posix_typed_mem_open(const char *, int, int);
+int posix_typed_mem_get_info(int, struct posix_typed_mem_info *);
+int posix_typed_mem_open(const char *, int, int);
 //[Option End]
 //[SHM][Option Start]
-int    shm_open(const char *, int, mode_t);
-int    shm_unlink(const char *);
+int shm_open(const char *, int, mode_t);
+int shm_unlink(const char *);
 //[Option End]
-
 
 #endif

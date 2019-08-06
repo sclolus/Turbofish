@@ -1,4 +1,14 @@
+#include <libintl.h>
 
-char * gettext (const char * msgid) {
+#include <custom.h>
+
+#warning LANGAGE TRANSLATIONS ARE ON A DUMMY STATE
+
+/*
+ * translate message
+ */
+char *gettext(const char *msgid)
+{
+	FUNC
 	return (char *)msgid;
 }

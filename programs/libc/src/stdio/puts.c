@@ -1,8 +1,10 @@
-
 #include <stdio.h>
 #include <string.h>
 
-int		puts(const char *s)
+/*
+ * puts() writes the string s and a trailing newline to stdout
+ */
+int puts(const char *s)
 {
 	size_t len = strlen(s);
 

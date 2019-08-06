@@ -1,4 +1,3 @@
-
 #include "alloc_btree_internal_header.h"
 
 int		alloc_btree_apply_infix(

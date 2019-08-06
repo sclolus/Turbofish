@@ -18,5 +18,4 @@ int    strncasecmp_l(const char *, const char *, size_t, locale_t);
 
 //The <strings.h> header shall define the size_t type as described in <sys/types.h>.
 
-
 #endif

@@ -1,7 +1,6 @@
-
-/* sys/types.h: */
 #ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
+# define _SYS_TYPES_H
+
 #define pid_t int
 
 #define blkcnt_t int
@@ -62,7 +61,7 @@ typedef int gid_t;
 //    Used to identify a thread.
 typedef long unsigned int size_t;
 //    Used for sizes of objects.
-#define ssize_t int
+typedef long int ssize_t;
 //    Used for a count of bytes or an error indication.
 #define suseconds_t int
 //    Used for time in microseconds.

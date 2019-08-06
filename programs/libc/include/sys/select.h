@@ -38,9 +38,9 @@ void FD_ZERO(fd_set *);
 
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-int  pselect(int, fd_set *restrict, fd_set *restrict, fd_set *restrict,
+int pselect(int, fd_set *restrict, fd_set *restrict, fd_set *restrict,
 		 const struct timespec *restrict, const sigset_t *restrict);
-int  select(int, fd_set *restrict, fd_set *restrict, fd_set *restrict,
+int select(int, fd_set *restrict, fd_set *restrict, fd_set *restrict,
 		 struct timeval *restrict);
 
 #endif

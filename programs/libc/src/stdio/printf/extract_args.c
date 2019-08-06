@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 static t_s_flags g_flags[FLAGS_QUANTITY] = {

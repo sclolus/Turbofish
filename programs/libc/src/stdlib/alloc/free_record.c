@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 static struct s_node	*get_parent(

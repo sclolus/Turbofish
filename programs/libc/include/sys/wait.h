@@ -103,16 +103,12 @@ typedef enum idtype {
 
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-pid_t  wait(int *);
-int    waitid(idtype_t, id_t, siginfo_t *, int);
-pid_t  waitpid(pid_t, int *, int);
+pid_t wait(int *);
+int waitid(idtype_t, id_t, siginfo_t *, int);
+pid_t waitpid(pid_t, int *, int);
 
 struct rusage;
 
 pid_t wait3(int *wstatus, int options, struct rusage *rusage);
-
-//TODO: check that
-/* #define WAIT int; */
-
 
 #endif

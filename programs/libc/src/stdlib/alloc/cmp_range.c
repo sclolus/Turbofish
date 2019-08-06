@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 int	cmp_addr_to_node_m_addr_range(void *content, struct s_node *node)

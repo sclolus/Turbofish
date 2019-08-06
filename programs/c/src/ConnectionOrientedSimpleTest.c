@@ -59,7 +59,7 @@ int main(void)
 			printf("C: Cannot recv a message\n");
 			exit(errno);
 		}
-		printf("C: Message recu: %s\n");
+		printf("C: Message recu: %s\n", buf);
 		/*
 		 * Closing socket
 		 */
@@ -77,7 +77,7 @@ int main(void)
 		struct sockaddr_un addr;
 
 		addr.sun_family = AF_UNIX;
-		printf("F: size: %lu\n", sizeof(addr.sun_path));
+		printf("F: size: %zu\n", sizeof(addr.sun_path));
 		strcpy((char *)&addr.sun_path, PATH);
 
 		/*

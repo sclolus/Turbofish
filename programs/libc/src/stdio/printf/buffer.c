@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 extern int write(int fd, const char *buf, size_t count);

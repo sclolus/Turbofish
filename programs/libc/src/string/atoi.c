@@ -1,4 +1,3 @@
-
 #include <string.h>
 
 int	atoi(const char *str)

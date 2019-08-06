@@ -1,4 +1,3 @@
-
 #include "main_headers.h"
 
 size_t	get_sizeof_object(void *addr)

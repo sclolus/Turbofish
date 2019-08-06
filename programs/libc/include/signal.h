@@ -1,9 +1,9 @@
 #ifndef __SIGNAL_H__
 # define __SIGNAL_H__
 
-//#include "i386.h"
-
 /* Signals.  */
+#define SIGNULL        0       /* NULL signal for logical raisons */
+
 #define SIGHUP         1       /* Hangup (POSIX).  */
 #define SIGINT         2       /* Interrupt (ANSI).  */
 #define SIGQUIT        3       /* Quit (POSIX).  */
@@ -54,6 +54,30 @@ typedef void (*sighandler_t)(int);
  *
  * SA_ONESHOT and SA_NOMASK are the historical Linux names for the Single
  * Unix names RESETHAND and NODEFER respectively.
+ * --- POSIX COMMENTARY ADDITION ---
+ * SA_NOCLDSTOP
+ *     [CX] [Option Start] Do not generate SIGCHLD when children stop [Option End]
+ *     [XSI] [Option Start] or stopped children continue. [Option End]
+ * SA_ONSTACK
+ *     [XSI] [Option Start] Causes signal delivery to occur on an alternate stack. [Option End]
+ * SA_RESETHAND
+ *     [CX] [Option Start] Causes signal dispositions to be set to SIG_DFL on entry to signal handlers. [Option End]
+ * SA_RESTART
+ *     [CX] [Option Start] Causes certain functions to become restartable. [Option End]
+ * SA_SIGINFO
+ *     [CX] [Option Start] Causes extra information to be passed to signal handlers at the time of receipt of a signal. [Option End]
+ * SA_NOCLDWAIT
+ *     [XSI] [Option Start] Causes implementations not to create zombie processes or status information on child termination. See sigaction. [Option End]
+ * SA_NODEFER
+ *     [CX] [Option Start] Causes signal not to be automatically blocked on entry to signal handler. [Option End]
+ * SS_ONSTACK
+ *     [XSI] [Option Start] Process is executing on an alternate signal stack. [Option End]
+ * SS_DISABLE
+ *     [XSI] [Option Start] Alternate signal stack is disabled. [Option End]
+ * MINSIGSTKSZ
+ *     [XSI] [Option Start] Minimum stack size for a signal handler. [Option End]
+ * SIGSTKSZ
+ *     [XSI] [Option Start] Default size in bytes for the alternate signal stack. [Option End]
  */
 #define SA_NOCLDSTOP 0x00000001u
 #define SA_NOCLDWAIT 0x00000002u
@@ -74,13 +98,13 @@ typedef void (*sighandler_t)(int);
 
 /* Default actions. */
 
-#define SIG_DFL        0
+#define SIG_DFL ((sighandler_t)0)
 //    Request for default signal handling.
-//SIG_ERR
+#define SIG_ERR ((sighandler_t)-1)
 //    Return value from signal() in case of error.
 //SIG_HOLD
     //[OB XSI] [Option Start] Request that signal be held. [Option End]
-#define SIG_IGN        1
+#define SIG_IGN ((sighandler_t)1)
 //   Request that signal be ignored.
 
 //[CX] [Option Start] The <signal.h> header shall define the pthread_t, size_t, and uid_t types as described in <sys/types.h>.
@@ -244,33 +268,6 @@ struct sigaction {
     //[CX] [Option Start] The resulting set is the signal set pointed to by the argument set. [Option End]
 
 //The <signal.h> header shall also define the following symbolic constants:
-
-/* 
- * SA_NOCLDSTOP
- *     //[CX] [Option Start] Do not generate SIGCHLD when children stop [Option End]
- *     //[XSI] [Option Start]  or stopped children continue. [Option End]
- * SA_ONSTACK
- *     //[XSI] [Option Start] Causes signal delivery to occur on an alternate stack. [Option End]
- * SA_RESETHAND
- *     //[CX] [Option Start] Causes signal dispositions to be set to SIG_DFL on entry to signal handlers. [Option End]
- * SA_RESTART
- *     //[CX] [Option Start] Causes certain functions to become restartable. [Option End]
- * SA_SIGINFO
- *     //[CX] [Option Start] Causes extra information to be passed to signal handlers at the time of receipt of a signal. [Option End]
- * SA_NOCLDWAIT
- *     //[XSI] [Option Start] Causes implementations not to create zombie processes or status information on child termination. See sigaction. [Option End]
- * SA_NODEFER
- *     //[CX] [Option Start] Causes signal not to be automatically blocked on entry to signal handler. [Option End]
- * SS_ONSTACK
- *     //[XSI] [Option Start] Process is executing on an alternate signal stack. [Option End]
- * SS_DISABLE
- *     //[XSI] [Option Start] Alternate signal stack is disabled. [Option End]
- * MINSIGSTKSZ
- *     //[XSI] [Option Start] Minimum stack size for a signal handler. [Option End]
- * SIGSTKSZ
- *     //[XSI] [Option Start] Default size in bytes for the alternate signal stack. [Option End]
- */
-
 
 //[CX] [Option Start] The <signal.h> header shall define the symbolic constants in the Code column of the following table for use as values of si_code that are signal-specific or non-signal-specific reasons why the signal was generated. [Option End]
 

@@ -1,5 +1,7 @@
-use super::{NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
+use super::{DiskDriver, NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
 use alloc::boxed::Box;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::cmp::min;
 use core::fmt::{self, Debug};
 use errno::Errno;
@@ -106,13 +108,42 @@ impl DiskIo for DiskIoBios {
 
 pub static mut EXT2: Option<Ext2Filesystem> = None;
 
-pub fn init(mbr: &Mbr) -> IoResult<()> {
-    let disk_io = DiskIoBios::new(
-        dbg!(mbr.parts[0].start as u64 * 512),
-        mbr.parts[0].size as u64 * 512,
-    );
-    unsafe {
-        EXT2 = Some(Ext2Filesystem::new(Box::new(disk_io))?);
+pub fn init(driver: DiskDriver) -> IoResult<()> {
+    log::info!("Active disk driver: {:?}", driver);
+
+    let size_read = NbrSectors(1);
+    let mut v1: Vec<u8> = vec![0; size_read.into()];
+
+    match driver {
+        DiskDriver::Bios => {
+            unsafe {
+                BIOS_INT13H
+                    .as_mut()
+                    .unwrap()
+                    .read(Sector(0x0), size_read, v1.as_mut_ptr())
+                    .expect("bios read failed");
+            }
+
+            let mut a = [0; 512];
+            for (i, elem) in a.iter_mut().enumerate() {
+                *elem = v1[i];
+            }
+            let mbr = unsafe { Mbr::new(&a) };
+
+            let disk_io = DiskIoBios::new(
+                dbg!(mbr.parts[0].start as u64 * 512),
+                mbr.parts[0].size as u64 * 512,
+            );
+            unsafe {
+                EXT2 = Some(Ext2Filesystem::new(Box::new(disk_io))?);
+            }
+        }
+        DiskDriver::Ide => {
+            // d.read(Sector(0x0), size_read, v1.as_mut_ptr())
+            //     .expect("read ide failed");
+            unimplemented!();
+        }
+        _ => unimplemented!(),
     }
     Ok(())
 }

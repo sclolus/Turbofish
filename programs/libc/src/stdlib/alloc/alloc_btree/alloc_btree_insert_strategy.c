@@ -1,4 +1,3 @@
-
 #include "alloc_btree_internal_header.h"
 
 static void		do_rotation(struct s_node *new, struct s_node *parent)

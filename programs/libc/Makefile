@@ -1,11 +1,21 @@
-TARGET = libc.a
-SYSROOT = ../../toolchain_turbofish
+PATH  := $(PATH):/toolchain_turbofish/cross/bin/
+SHELL := env PATH=$(PATH) /bin/bash
 
-AS = nasm
+TARGET = libc.a
+SYSROOT = ../../toolchain_turbofish/sysroot
+
+AS = i686-turbofish-as
 CC = i686-turbofish-gcc
+AR = i686-turbofish-ar
+RANLIB = i686-turbofish-ranlib
 
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
+
+VPATH += src
+SRC_C += libc_ctor
+SRC_ASM += user_syscall
+HEADERS += include/user_syscall.h
 
 SRC_C += errno
 VPATH += src/errno
@@ -77,10 +87,10 @@ SRC_C += nanosleep
 VPATH += src/time
 HEADERS += include/time.h
 
-SRC_C += signal kill raise killpg \
+SRC_C += signal sigaction kill raise killpg \
 		sigemptyset sigfillset sigaddset sigdelset \
 		strsignal \
-        sigprocmask sigsuspend
+        sigprocmask sigsuspend sigismember
 
 VPATH += src/signal
 HEADERS += include/signal.h
@@ -105,15 +115,6 @@ VPATH += src/setjmp
 SRC_ASM += setjmp
 HEADERS += include/setjmp.h
 
-SRC_ASM += user_syscall
-VPATH += src
-HEADERS += include/user_syscall.h
-
-VPATH += src
-CRT_DIR = src/crt
-CRT_SOURCES = crtbegin.c crtend.c crti.c crtn.c
-
-ASFLAGS = -f elf
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
@@ -131,33 +132,33 @@ CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
-OBJ_CRT = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(CRT_SOURCES)))))
-OBJ_CRT0 = $(OBJ_DIR)/crt/ctr0.o
+
+SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
+OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
 
 .PHONY = all clean fclean re exec
 
-all: $(TARGET) $(OBJ_CRT) $(OBJ_CRT0)
+all: $(TARGET) $(OBJ_C_RUNTIME)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C)
-	ar rc $@ $^
-	ranlib $@
-
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(AR) rc $@ $^
+	$(RANLIB) $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(OBJ_DIR)/crt/%.o: $(CRT_DIR)/$(CRT_SOURCES)
-	$(CC) $(CFLAGS) -c $< -o $@ 
+$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS)
+	$(AS) -o $@ $<
 
-$(OBJ_CRT0): $(CRT_DIR)/crt0.asm
-	$(AS) $(ASFLAGS) -o $@ $<
+# Compile all the C runtime object files
+obj/crt/%.o: src/crt/%.s
+	$(AS) -o $@ $<
+
 clean:
-	find $(OBJ_DIR) -type f -name '*.o' -delete
+	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;
 
 fclean: clean
-	rm -f $(TARGET)
+	rm -fv $(TARGET)
 
 re: fclean all
 
@@ -167,4 +168,4 @@ exec: all
 install:
 	cp libc.a $(SYSROOT)/usr/lib/.
 	cp -r include/* $(SYSROOT)/usr/include/
-	cp $(OBJ_CRT0) $(OBJ_CRT) $(SYSROOT)/usr/lib/.
+	cp $(OBJ_C_RUNTIME) $(SYSROOT)/usr/lib/.

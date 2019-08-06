@@ -1,5 +1,6 @@
 #ifndef __NETDB_H__
 # define __NETDB_H__
+
 //The <netdb.h> header may define the in_port_t type and the in_addr_t type as described in <netinet/in.h>.
 
 //The <netdb.h> header shall define the hostent structure, which shall include at least the following members:

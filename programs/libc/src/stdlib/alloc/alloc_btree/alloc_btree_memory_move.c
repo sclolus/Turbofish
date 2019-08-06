@@ -1,4 +1,3 @@
-
 #include "alloc_btree_internal_header.h"
 
 static void	*alloc_btree_aligned_memcpy_four(

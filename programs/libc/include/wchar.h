@@ -179,5 +179,4 @@ wchar_t      *wmemset(wchar_t *, wchar_t, size_t);
 int           wprintf(const wchar_t *restrict, ...);
 int           wscanf(const wchar_t *restrict, ...);
 
-
 #endif

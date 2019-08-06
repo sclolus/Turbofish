@@ -1,4 +1,3 @@
-
 #include "internal_printf.h"
 
 int			get_size_for_string(wchar_t c)

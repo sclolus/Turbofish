@@ -1,10 +1,13 @@
+PATH  := $(PATH):/toolchain_turbofish/cross/bin/
+SHELL := env PATH=$(PATH) /bin/bash
+
 BUILD_DIR = build
 VPATH += src
 
 # AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
-SRC_C = Clone \
+SRC_C += Clone \
 		ConnectionlessSimpleTest \
 		ConnectionOrientedSimpleTest \
 		Continue \
@@ -36,12 +39,13 @@ SRC_C = Clone \
 		SigSuspend \
 		SigPause \
 
+CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)
-CFLAGS += -Wall -Wextra -m32
+CFLAGS += -m32 -D GNU
 CC = gcc
 else
 # LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
-CFLAGS = -Wall -Wextra
+CFLAGS +=
 endif
 
 #ASFLAGS = -f elf
@@ -50,7 +54,8 @@ ifeq ($(LDMAP),yes)
     LDFLAGS += -M
 endif
 
-TARGET_C = $(addprefix $(BUILD_DIR)/, $(basename $(notdir $(SRC_C))))
+TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
+INSTALL_DIR = ../../rust_kernel/src/userland/
 
 .PHONY = all clean fclean re
 
@@ -60,10 +65,10 @@ build/%: %.c Makefile
 	$(CC) $(CFLAGS) -o $@ $<
 
 install:
-	cp -v $(TARGET_C) ../../rust_kernel/src/userland/
+	cp -rv build/* $(INSTALL_DIR)
 
 clean:
-	rm -f $(TARGET_C)
+	rm -fv $(TARGET_C)
 
 fclean: clean
 

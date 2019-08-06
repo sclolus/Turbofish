@@ -1,11 +1,10 @@
-
 #include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
 
 extern int errno;
 
-int write(int fd, const void *s, size_t len)
+ssize_t write(int fd, const void *s, size_t len)
 {
 	int ret = _user_syscall(WRITE, 3, fd, s, len);
 

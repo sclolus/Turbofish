@@ -1,6 +1,6 @@
-//#include "config.h"
-//#include "ansidecl.h"
-//#include "safe-ctype.h"
+//#include <config.h>
+//#include <ansidecl.h>
+//#include <safe-ctype.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -43,8 +43,11 @@
 	  } \
       } while (0)
 
+/*
+ * OBSOLETE: Equivalent to vfprintf(FILE *stream, const char *format, va_list ap);
+ */
 int
-_doprnt (const char *format, va_list ap, FILE *stream)
+_doprnt(const char *format, va_list ap, FILE *stream)
 {
   const char * ptr = format;
   char specifier[128];

@@ -1,5 +1,6 @@
 #ifndef STAT_H
 # define STAT_H
+
 #include <sys/types.h>
 #include <time.h>
 
@@ -143,23 +144,23 @@ struct stat {
 //The <sys/stat.h> header shall define the following symbolic constants as distinct integer values outside of the range [0,999999999], for use with the futimens() and utimensat() functions: UTIME_NOW UTIME_OMIT
 
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
-int    chmod(const char *, mode_t);
-int    fchmod(int, mode_t);
-int    fchmodat(int, const char *, mode_t, int);
-int    fstat(int, struct stat *);
-int    fstatat(int, const char *restrict, struct stat *restrict, int);
-int    futimens(int, const struct timespec [2]);
-int    lstat(const char *restrict, struct stat *restrict);
-int    mkdir(const char *, mode_t);
-int    mkdirat(int, const char *, mode_t);
-int    mkfifo(const char *, mode_t);
-int    mkfifoat(int, const char *, mode_t);
+int chmod(const char *, mode_t);
+int fchmod(int, mode_t);
+int fchmodat(int, const char *, mode_t, int);
+int fstat(int, struct stat *);
+int fstatat(int, const char *restrict, struct stat *restrict, int);
+int futimens(int, const struct timespec [2]);
+int lstat(const char *restrict, struct stat *restrict);
+int mkdir(const char *, mode_t);
+int mkdirat(int, const char *, mode_t);
+int mkfifo(const char *, mode_t);
+int mkfifoat(int, const char *, mode_t);
 //[XSI][Option Start]
-int    mknod(const char *, mode_t, dev_t);
-int    mknodat(int, const char *, mode_t, dev_t);
+int mknod(const char *, mode_t, dev_t);
+int mknodat(int, const char *, mode_t, dev_t);
 //[Option End]
-int    stat(const char *restrict, struct stat *restrict);
+int stat(const char *restrict, struct stat *restrict);
 mode_t umask(mode_t);
-int    utimensat(int, const char *, const struct timespec [2], int);
+int utimensat(int, const char *, const struct timespec [2], int);
 
 #endif
