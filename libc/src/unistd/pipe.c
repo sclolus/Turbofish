@@ -31,6 +31,13 @@
 // data access, last data modification, and last file status change
 // timestamps of the pipe.
 
+/*
+ * Create an IO pipe
+ * The first FD is open for reading
+ * The second FD is open for writing
+ * If there are multiple readers (after fork() or threads for example), race conditions between them may occured,
+ * the message is transfered just one time. There are no 'broadcasting' !
+ */
 int pipe(int fd[2])
 {
 	if (fd[0] < 0 || fd[1] < 0) {
@@ -38,7 +45,10 @@ int pipe(int fd[2])
 		return -1;
 	}
 
-	int ret = _user_syscall(PIPE, 2, fd[0], fd[1]);
-
+	int ret = _user_syscall(PIPE, 1, fd);
+	/*
+	 * On success, zero is returned.  On error, -1 is returned,
+	 * and errno is set appropriately.
+	 */
 	set_errno_and_return(ret);
 }
