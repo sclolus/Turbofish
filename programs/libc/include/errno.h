@@ -9,7 +9,7 @@ extern int errno;
 extern const int sys_nerr;
 extern const char *const sys_errlist[];
 
-enum e_errno {
+enum Errno {
 	EPERM          =  1, /* Operation not permitted */
 	ENOENT         =  2, /* No such file or directory */
 	ESRCH          =  3, /* No such process */

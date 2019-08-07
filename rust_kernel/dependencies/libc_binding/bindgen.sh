@@ -3,4 +3,5 @@
 # cargo install bindgen
 
 cd
-bindgen $@ --rustified-enum e_errno --no-layout-tests --use-core --ignore-functions  --  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs --sysroot cross/sysroot
+echo '#![allow(non_camel_case_types)]'
+bindgen $@ --rustified-enum Errno --no-layout-tests --use-core --ignore-functions  --  -nostdlib -fno-builtin  -fno-stack-protector -nodefaultlibs --sysroot ../../../toolchain_turbofish/sysroot/
