@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 use core::mem;
-use elf_loader::{ElfHeader, ProgramHeader};
+use elf_loader::{ElfHeader, ElfParser, FromBytes, ProgramHeader};
 
 /// This structure is the result of the parsing of a ELF file
 #[derive(Debug)]
@@ -11,6 +11,8 @@ pub struct Elf {
 
 /// Parse a ELF file from a slice
 pub fn load_elf(content: &[u8]) -> Elf {
+    let parser = ElfParser::from_bytes(&content).unwrap();
+
     let header = ElfHeader::from_bytes(&content).unwrap();
 
     let program_header_table = {

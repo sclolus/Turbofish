@@ -1,6 +1,6 @@
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 use bitflags::bitflags;
-use core::convert::{TryFrom, TryInto};
+use core::convert::{AsRef, TryFrom, TryInto};
 use core::mem;
 use core::result::Result as CoreResult;
 
@@ -10,26 +10,71 @@ extern crate derive_is_enum_variant;
 #[cfg(not(feature = "std-print"))]
 #[allow(unused_imports)]
 #[macro_use]
+#[cfg(not(test))]
 extern crate terminal;
+
+extern crate alloc;
+
+use alloc::vec::Vec;
 
 pub struct ElfParser<'a> {
     file: &'a [u8],
+    elf_header: Option<ElfHeader>,
+    program_headers: Vec<ProgramHeader>,
+    section_headers: Vec<SectionHeader>,
+    string_table: Option<&'a [u8]>,
+}
+
+impl<'a> TryFrom<&'a [u8]> for ElfParser<'a> {
+    type Error = ElfParseError;
+
+    fn try_from(value: &'a [u8]) -> Result<Self> {
+        Ok(Self::new(value))
+    }
 }
 
 type Result<T> = CoreResult<T, ElfParseError>;
 
 impl<'a> ElfParser<'a> {
     pub fn new(file: &'a [u8]) -> Self {
-        Self { file }
+        Self { file, elf_header: None, program_headers: Vec::new(), section_headers: Vec::new(), string_table: None }
     }
 
     pub fn parse(&mut self) -> Result<()> {
         let header = ElfHeader::from_bytes(self.file)?;
+
+        if header.program_header_table_size != 0 {
+            let ph_size = header.program_header_table_size as usize;
+            let ph_table_size = ph_size * header.nbr_program_header as usize;
+            let ph_table_start = header.program_header_table_offset as usize;
+            let ph_table_end = ph_table_start + ph_table_size;
+
+            let ph_table = &self.file[ph_table_start..ph_table_end];
+
+            for ph in ph_table.chunks(ph_size) {
+                self.program_headers.push(ph.try_into()?)
+            }
+        }
+
+        if header.section_header_table_size != 0 {
+            let sh_size = header.section_header_table_size as usize;
+            let sh_table_size = sh_size * header.nbr_section_header as usize;
+            let sh_table_start = header.section_header_table_offset as usize;
+            let sh_table_end = sh_table_start + sh_table_size;
+
+            let sh_table = &self.file[sh_table_start..sh_table_end];
+
+            for sh in sh_table.chunks(sh_size) {
+                self.program_headers.push(sh.try_into()?)
+            }
+        }
+
+        self.elf_header = Some(header);
         Ok(())
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
 pub enum ElfParseError {
     BadMagic,
     InvalidHeader,
@@ -290,7 +335,8 @@ pub struct ElfHeader {
     /// Contains the number of entries in the program header table.
     pub nbr_program_header: u16,
 
-    /// Contains the size of a section header table.
+    /// Contains the size of a section header table entry.
+    /// All entries are the same size.
     pub section_header_table_size: u16,
 
     /// Contains the number of entries in the section header table.
@@ -300,9 +346,25 @@ pub struct ElfHeader {
     section_header_str_index: u16,
 }
 
-impl ElfHeader {
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
-        Self::try_from(bytes.as_ref())
+pub trait ElfDataStructure: Sized {}
+pub trait FromBytes<'a>: ElfDataStructure {
+    fn from_bytes(bytes: &'a [u8]) -> Result<Self>;
+}
+
+impl<'a> ElfDataStructure for ElfParser<'a> {}
+impl ElfDataStructure for ElfHeader {}
+impl ElfDataStructure for ProgramHeader {}
+impl ElfDataStructure for SectionHeader {}
+impl ElfDataStructure for Symbol {}
+impl ElfDataStructure for Rel {}
+impl ElfDataStructure for Rela {}
+
+impl<'a, T> FromBytes<'a> for T
+where
+    T: TryFrom<&'a [u8], Error = ElfParseError> + ElfDataStructure,
+{
+    fn from_bytes(bytes: &'a [u8]) -> Result<Self> {
+        Self::try_from(bytes)
     }
 }
 
@@ -896,7 +958,8 @@ mod tests {
         use std::io::Read;
         let args = env::args();
 
-        for arg in args.skip(1) {
+        for arg in args.skip(3) {
+            println!("{}<", arg);
             let mut file = File::open(&arg).unwrap();
             let mut content = Vec::new();
 
