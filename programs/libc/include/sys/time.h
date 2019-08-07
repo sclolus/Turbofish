@@ -9,11 +9,6 @@
 #include <sys/select.h>
 //The <sys/time.h> header shall define the fd_set type as described in <sys/select.h>.
 
-struct timeval {
-	time_t         tv_sec ;//     Seconds. 
-	suseconds_t    tv_usec;//     Microseconds. 
-};
-
 //[OB] [Option Start] The <sys/time.h> header shall define the itimerval structure, which shall include at least the following members:
 
 struct itimerval {

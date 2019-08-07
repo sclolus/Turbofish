@@ -37,8 +37,10 @@ typedef int rlim_t;
 //
 //The <sys/resource.h> header shall define the rlimit structure, which shall include at least the following members:
 //
-//rlim_t rlim_cur  The current (soft) limit. 
-//rlim_t rlim_max  The hard limit. 
+struct rlimit {
+	rlim_t rlim_cur; //The current (soft) limit. 
+	rlim_t rlim_max; //The hard limit. 
+};
 //
 //The <sys/resource.h> header shall define the rusage structure, which shall include at least the following members:
 //

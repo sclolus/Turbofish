@@ -75,6 +75,7 @@ members = [
 "dependencies/errno",
 "dependencies/try_clone_derive",
 "dependencies/fallible_collections",
-"dependencies/messaging"
+"dependencies/messaging",
+"dependencies/libc_binding"
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

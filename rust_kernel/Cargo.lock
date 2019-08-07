@@ -103,6 +103,10 @@ version = "0.2.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "libc_binding"
+version = "0.1.0"
+
+[[package]]
 name = "lock_api"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
