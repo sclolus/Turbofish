@@ -13,6 +13,7 @@ io = { path = "../io" }
 bitflags = "1.0.4"
 log = "0.4.6"
 messaging = { path = "../messaging" }
+libc_binding = { path = "../libc_binding" }
 
 [dependencies.arrayvec]
 version = "0.4.11"

@@ -107,6 +107,10 @@ SRC_C += gettext locale
 VPATH += src/locale
 HEADERS += include/locale.h
 
+SRC_C += tcgetattr tcsetattr
+VPATH += src/termios
+HEADERS += include/termios.h
+
 SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower
 VPATH += src/ctype
 HEADERS += include/ctype.h

@@ -17,6 +17,7 @@ const PROMPT: &str = "----{,_,\"> $ ";
 
 /// Main function
 pub fn shell() -> ! {
+    unsafe { set_raw_mode() };
     loop {
         // Display prompt
         print!("{}", PROMPT);
@@ -27,7 +28,9 @@ pub fn shell() -> ! {
         print!("\n");
         // Execute command
         if line.starts_with("/") {
+            unsafe { set_cooked_mode() };
             exec(&line.split_whitespace().collect::<Vec<&str>>());
+            unsafe { set_raw_mode() };
         } else {
             exec_builtin(&line);
         }
@@ -77,7 +80,7 @@ fn read_line() -> String {
         block_read(&mut buf);
         let keysymb = buf[0];
         match keysymb {
-            KeySymb::Return => {
+            KeySymb::Linefeed => {
                 print!("{}", &line[cursor_pos..]);
                 return line;
             }
@@ -162,4 +165,6 @@ fn block_read(buf: &mut [KeySymb]) {
 
 extern "C" {
     fn read(fd: i32, buf: *mut u8, len: usize) -> isize;
+    pub fn set_raw_mode();
+    pub fn set_cooked_mode();
 }

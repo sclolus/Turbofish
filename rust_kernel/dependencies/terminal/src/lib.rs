@@ -17,7 +17,7 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{BufferedTty, LineDiscipline, Lmode, Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, LineDiscipline, Scroll, Tty, WriteMode};
 
 mod log;
 
@@ -58,16 +58,13 @@ impl Terminal {
             // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
             ttys: (0..2)
                 .map(|_| {
-                    LineDiscipline::new(
-                        BufferedTty::new(Tty::new(
-                            false,
-                            size.line,
-                            size.column,
-                            MAX_SCREEN_BUFFER,
-                            None,
-                        )),
-                        Lmode::ECHO | Lmode::ICANON,
-                    )
+                    LineDiscipline::new(BufferedTty::new(Tty::new(
+                        false,
+                        size.line,
+                        size.column,
+                        MAX_SCREEN_BUFFER,
+                        None,
+                    )))
                 })
                 .collect(),
         }
@@ -111,6 +108,9 @@ impl Terminal {
         &mut self.ttys[fd].tty
     }
 
+    pub fn get_line_discipline(&mut self, fd: usize) -> &mut LineDiscipline {
+        &mut self.ttys[fd]
+    }
     /// Provide a tiny interface to sontrol some features on the tty
     pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
         match keysymb {

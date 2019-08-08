@@ -6,6 +6,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
+use libc_binding::{termios, ECHO, ICANON};
 
 /// Description of a TTY buffer
 #[derive(Debug, Clone)]
@@ -503,32 +504,23 @@ use core::convert::TryFrom;
 use keyboard::keysymb::KeySymb;
 use messaging::{MessageTo, SchedulerMessage};
 
-bitflags! {
-    pub struct Lmode: u32 {
-        ///    Enable echo.
-        const ECHO = 0;
-        ///    Echo erase character as error-correcting backspace.
-        const ECHOE = 1;
-        ///    Echo KILL.
-        const ECHOK = 2;
-        ///    Echo NL.
-        const ECHONL = 3;
-        ///    Canonical input (erase and kill processing).
-        const ICANON = 4;
-        ///    Enable extended input character processing.
-        const IEXTEN = 5;
-        ///    Enable signals.
-        const ISIG = 6;
-        ///    Disable flush after interrupt or quit.
-        const NOFLSH = 7;
-        ///    Send SIGTTOU for background output.
-        const TOSTOP = 8;
-    }
-}
-
 pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
-    let c = char::try_from(keysymb as u32).unwrap();
-    c.encode_utf8(dst).as_bytes()
+    // particular case of convertion
+    match keysymb {
+        KeySymb::Right | KeySymb::Left | KeySymb::Up | KeySymb::Down | KeySymb::Delete => {
+            dst[0] = (keysymb as u32 & 0xff) as u8;
+            dst[1] = ((keysymb as u32 & 0xff00) >> 8) as u8;
+            return &dst[0..2];
+        }
+        KeySymb::Return => {
+            dst[0] = '\n' as u8;
+            return &dst[0..1];
+        }
+        _ => {
+            let c = char::try_from(keysymb as u32).unwrap();
+            c.encode_utf8(dst).as_bytes()
+        }
+    }
 }
 
 enum SpecialChar {
@@ -613,7 +605,7 @@ impl Index<SpecialChar> for SpecialChars {
 const SPECIAL_CHARS: &SpecialChars = &SpecialChars([
     KeySymb::Control_c,
     KeySymb::Control_backslash,
-    KeySymb::BackSpace,
+    KeySymb::Delete,
     KeySymb::Control_u,
     KeySymb::nul,
     KeySymb::Linefeed,
@@ -627,14 +619,14 @@ const SPECIAL_CHARS: &SpecialChars = &SpecialChars([
 #[derive(Debug, Clone)]
 pub struct LineDiscipline {
     pub tty: BufferedTty,
-    lmode: Lmode,
+    termios: termios,
     read_buffer: ArrayVec<[u8; 4096]>,
 }
 
 impl LineDiscipline {
-    pub fn new(tty: BufferedTty, lmode: Lmode) -> Self {
+    pub fn new(tty: BufferedTty) -> Self {
         Self {
-            lmode,
+            termios: Default::default(),
             tty,
             read_buffer: ArrayVec::new(),
         }
@@ -660,15 +652,10 @@ impl LineDiscipline {
         use SpecialChar::*;
         let mut encode_buff = [0; 8];
         for key in buff {
-            // bug enter trigger a Return but we want a Linefeed here
-            let key = if *key == KeySymb::Return {
-                KeySymb::Linefeed
-            } else {
-                *key
-            };
+            let key = *key;
             if !self.handle_tty_control(key) {
                 // handle special keys in canonical mode
-                if self.lmode.contains(Lmode::ICANON) {
+                if self.termios.c_lflag & ICANON != 0 {
                     // handle delete key
                     if key == SPECIAL_CHARS[ERASE] {
                         self.read_buffer.pop();
@@ -677,6 +664,7 @@ impl LineDiscipline {
                         self.tty.as_mut().move_cursor(CursorMove::Backward(1));
                         continue;
                     }
+                    // dbg!(key);
                     // handle kill key
                     if key == SPECIAL_CHARS[KILL] {
                         self.tty
@@ -703,17 +691,21 @@ impl LineDiscipline {
                     }
                 }
                 let b = encode_utf8(key, &mut encode_buff);
+                // dbg!((key as i32 & 0xff00) >> 8);
+                // dbg!(key as i32 & 0xff);
+                // dbg!(&b);
                 for elem in b {
+                    // dbg!(&b);
                     self.read_buffer.try_push(*elem)?;
                 }
-                if (self.lmode.contains(Lmode::ICANON) && key == KeySymb::Linefeed)
-                    || !self.lmode.contains(Lmode::ICANON)
+                if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
+                    || !self.termios.c_lflag & ICANON != 0
                 {
                     messaging::push_message(MessageTo::Scheduler {
                         content: SchedulerMessage::SomethingToRead,
                     });
                 }
-                if self.lmode.contains(Lmode::ECHO) {
+                if self.termios.c_lflag & ECHO != 0 {
                     self.write(b);
                     self.tty.as_mut().move_cursor(CursorMove::Forward(0));
                     // self.tty.as_mut().draw_cursor();
@@ -730,7 +722,8 @@ impl LineDiscipline {
         //     print!("{}", *c as char);
         // }
         // print!("\n");
-        if self.lmode.contains(Lmode::ICANON) {
+        if self.termios.c_lflag & ICANON != 0 {
+            // dbg!("canonical");
             if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
                 //  In canonical mode, we only read until the '\n' and at most output.len bytes
                 let len_data_to_read = min(index + 1, output.len());
@@ -766,5 +759,13 @@ impl LineDiscipline {
     }
     pub fn get_tty_mut(&mut self) -> &mut Tty {
         &mut self.tty.tty
+    }
+    pub fn tcsetattr(&mut self, optional_actions: u32, termios_p: &termios) {
+        // dbg!(self.termios.c_lflag);
+        self.termios = *termios_p;
+        // dbg!(self.termios.c_lflag);
+    }
+    pub fn tcgetattr(&mut self, termios_p: &mut termios) {
+        *termios_p = self.termios;
     }
 }

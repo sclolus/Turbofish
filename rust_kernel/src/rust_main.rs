@@ -99,11 +99,11 @@ pub extern "C" fn kmain(
     // Load some processes into the scheduler
     let user_process_list = unsafe {
         vec![
-            // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
-            UserProcess::new(TaskOrigin::Elf(
-                &include_bytes!("userland/CanonicalRead")[..],
-            ))
-            .unwrap(),
+            UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
+            // UserProcess::new(TaskOrigin::Elf(
+            //     &include_bytes!("userland/CanonicalRead")[..],
+            // ))
+            // .unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_a, _dummy_asm_process_len_a)).unwrap(),
             // UserProcess::new(TaskOrigin::Raw(&_dummy_asm_process_code_b, _dummy_asm_process_len_b)).unwrap(),

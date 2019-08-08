@@ -38,8 +38,7 @@ SRC_C += Clone \
 		SetJmp \
 		SigSuspend \
 		SigPause \
-		HelloWorld \
-		SigChild \
+		TcGetAttr \
 		CanonicalRead
 
 CFLAGS = -Wall -Wextra -I include

@@ -10,7 +10,7 @@ typedef int    cc_t;
 //        Used for terminal special characters.
 typedef int    speed_t;
 //        Used for terminal baud rates.
-typedef int    tcflag_t;
+typedef unsigned int    tcflag_t;
 //        Used for terminal modes.
 
 //    The above types shall be all unsigned integer types.
@@ -220,7 +220,7 @@ struct termios {
 //
 //    The <termios.h> header shall define the following symbolic constants for use as flags in the c_lflag field. The c_lflag field of the argument structure is used to control various terminal functions.
 //
-#define    ECHO 42
+#define    ECHO 1
 //        Enable echo.
 //    ECHOE
 //        Echo erase character as error-correcting backspace.
@@ -228,11 +228,11 @@ struct termios {
 //        Echo KILL.
 //    ECHONL
 //        Echo NL.
-//    ICANON
+#define   ICANON (1 << 1)
 //        Canonical input (erase and kill processing).
 //    IEXTEN
 //        Enable extended input character processing.
-#define    ISIG 42
+#define    ISIG (1 << 2)
 //        Enable signals.
 //    NOFLSH
 //        Disable flush after interrupt or quit.
@@ -243,11 +243,11 @@ struct termios {
 //
 //    The <termios.h> header shall define the following symbolic constants for use with tcsetattr():
 //
-//    TCSANOW
+#define       TCSANOW 0
 //        Change attributes immediately.
-//    TCSADRAIN
+#define       TCSADRAIN 1
 //        Change attributes when output has drained.
-#define    TCSAFLUSH 42
+#define    TCSAFLUSH 2
 //        Change attributes when output has drained; also flush pending input.
 //
 //    Line Control

@@ -30,3 +30,15 @@ impl TryFrom<u32> for Signum {
         }
     }
 }
+
+impl Default for termios {
+    fn default() -> Self {
+        termios {
+            c_iflag: 0,
+            c_oflag: 0,
+            c_cflag: 0,
+            c_lflag: (ECHO | ICANON),
+            c_cc: [0; 42],
+        }
+    }
+}
