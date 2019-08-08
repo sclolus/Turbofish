@@ -36,6 +36,7 @@ errno = { path = "dependencies/errno" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
+libc_binding = { path = "dependencies/libc_binding" }
 
 [dependencies.arrayvec]
 version = "0.4.11"

@@ -3,12 +3,18 @@ use std::process::Command;
 fn main() {
     // panic!("my pwd is{}", env!("PWD"));
     // panic!("cargo manifest dir is{}",);
-    let res = Command::new(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), "build.sh"))
+    // let res = Command::new(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), "build.sh"))
+    //     .output()
+    //     .unwrap();
+    // if !res.status.success() {
+    //     panic!("{:?}", res);
+    // }
+    let out = Command::new("./bindgen.sh")
+        .arg("all_includes.h")
         .output()
         .unwrap();
-    if !res.status.success() {
-        panic!("{:?}", res);
+    if !out.status.success() {
+        panic!("{:?}", String::from_utf8(out.stderr));
     }
-    // panic!("bonjour");
-    // std::fs::write("src/libc.rs", res.stdout).unwrap();
+    std::fs::write("src/libc.rs", out.stdout).unwrap();
 }
