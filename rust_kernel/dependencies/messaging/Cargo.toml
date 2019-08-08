@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 sync = { path = "../sync" }
 keyboard = { path = "../keyboard" }
+libc_binding = { path = "../libc_binding" }
 
 [dependencies.lazy_static]
 version = "1.3.0"

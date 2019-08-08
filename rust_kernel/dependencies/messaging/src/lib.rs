@@ -4,9 +4,8 @@ extern crate alloc;
 use lazy_static::lazy_static;
 // use super::scheduler::Pid;
 use alloc::collections::vec_deque::VecDeque;
+use libc_binding::{Pid, Signum};
 use sync::DeadMutex;
-
-type Pid = i32;
 
 // /// message for the tty driver
 // #[derive(Debug, Copy, Clone)]
@@ -37,6 +36,7 @@ pub enum ProcessMessage {
 pub enum MessageTo {
     // Tty { content: TtyMessage },
     Process { pid: Pid, content: ProcessMessage },
+    ProcessGroup { pgid: Pid, content: Signum },
     Scheduler { content: SchedulerMessage },
 }
 

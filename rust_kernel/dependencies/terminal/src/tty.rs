@@ -6,7 +6,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
-use libc_binding::{termios, ECHO, ICANON};
+use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG};
 
 /// Description of a TTY buffer
 #[derive(Debug, Clone)]
@@ -621,6 +621,7 @@ pub struct LineDiscipline {
     pub tty: BufferedTty,
     termios: termios,
     read_buffer: ArrayVec<[u8; 4096]>,
+    foreground_process_group: Pid,
 }
 
 impl LineDiscipline {
@@ -629,6 +630,7 @@ impl LineDiscipline {
             termios: Default::default(),
             tty,
             read_buffer: ArrayVec::new(),
+            foreground_process_group: 0,
         }
     }
 
@@ -652,6 +654,7 @@ impl LineDiscipline {
         use SpecialChar::*;
         let mut encode_buff = [0; 8];
         for key in buff {
+            // dbg!(key);
             let key = *key;
             if !self.handle_tty_control(key) {
                 // handle special keys in canonical mode
@@ -687,6 +690,16 @@ impl LineDiscipline {
                             .as_mut()
                             .move_cursor(CursorMove::HorizontalAbsolute(0));
 
+                        continue;
+                    }
+                }
+                if self.termios.c_lflag & ISIG != 0 {
+                    // handle control_c
+                    if key == SPECIAL_CHARS[INTR] {
+                        messaging::push_message(MessageTo::ProcessGroup {
+                            pgid: self.foreground_process_group,
+                            content: Signum::SIGINT,
+                        });
                         continue;
                     }
                 }
@@ -767,5 +780,14 @@ impl LineDiscipline {
     }
     pub fn tcgetattr(&mut self, termios_p: &mut termios) {
         *termios_p = self.termios;
+    }
+    pub fn tcsetpgrp(&mut self, pgid_id: Pid) {
+        // dbg!(self.termios.c_lflag);
+        self.foreground_process_group = pgid_id;
+        // dbg!(&self.foreground_process_group);
+        // dbg!(self.termios.c_lflag);
+    }
+    pub fn tcgetpgrp(&mut self) -> Pid {
+        self.foreground_process_group
     }
 }

@@ -45,8 +45,8 @@ extern "C" {
     fn _continue_schedule(new_kernel_esp: u32) -> !;
 }
 
-pub type Pid = i32;
 pub type Tid = u32;
+pub use libc_binding::Pid;
 
 /// Protect process again scheduler interruption
 #[inline(always)]
@@ -246,7 +246,21 @@ impl Scheduler {
                         }
                     }
                 },
-                _ => unimplemented!(),
+                MessageTo::ProcessGroup {
+                    pgid,
+                    content: signum,
+                } => {
+                    for task in self
+                        .all_process
+                        .values_mut()
+                        .filter(|thread_group| thread_group.pgid == pgid)
+                        .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
+                    {
+                        task.signal
+                            .generate_signal(signum)
+                            .expect("could not generate signal");
+                    }
+                }
             }
         }
     }
@@ -563,7 +577,6 @@ impl Scheduler {
 
         self.remove_curr_running();
 
-        dbg!("exit");
         // Switch to the next process
         unsafe {
             let new_kernel_esp = load_next_process(self, 0);

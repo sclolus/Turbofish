@@ -11,7 +11,7 @@ use super::scheduler::{Pid, SCHEDULER};
 use super::signal;
 use super::signal::{sigset_t, StructSigaction};
 use super::task;
-use libc_binding::{termios, TCGETATTR, TCSETATTR};
+use libc_binding::{termios, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP};
 
 mod mmap;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
@@ -52,6 +52,11 @@ mod tcsetattr;
 use tcsetattr::sys_tcsetattr;
 mod tcgetattr;
 use tcgetattr::sys_tcgetattr;
+
+mod tcsetpgrp;
+use tcsetpgrp::sys_tcsetpgrp;
+mod tcgetpgrp;
+use tcgetpgrp::sys_tcgetpgrp;
 
 mod process_group;
 use process_group::{sys_getpgid, sys_getpgrp, sys_setpgid};
@@ -202,6 +207,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         0x80000002 => crate::tests::helpers::exit_qemu(ebx as u32),
         TCGETATTR => sys_tcgetattr(ebx as i32, ecx as *mut termios),
         TCSETATTR => sys_tcsetattr(ebx as i32, ecx as u32, edx as *const termios),
+        TCSETPGRP => sys_tcsetpgrp(ebx as i32, ecx as Pid),
+        TCGETPGRP => sys_tcgetpgrp(ebx as i32),
 
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),

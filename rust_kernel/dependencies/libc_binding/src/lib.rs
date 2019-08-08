@@ -13,6 +13,7 @@ pub type c_schar = i8;
 pub type c_uchar = u8;
 pub type c_short = i16;
 pub type c_ushort = u16;
+pub type Pid = i32;
 
 #[derive(Debug)]
 pub struct InvalidSignum;
@@ -37,7 +38,7 @@ impl Default for termios {
             c_iflag: 0,
             c_oflag: 0,
             c_cflag: 0,
-            c_lflag: (ECHO | ICANON),
+            c_lflag: (ECHO | ICANON | ISIG),
             c_cc: [0; 42],
         }
     }
