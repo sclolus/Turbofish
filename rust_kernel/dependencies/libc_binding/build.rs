@@ -1,11 +1,14 @@
 use std::process::Command;
 
 fn main() {
-    println!("bonjour");
-    let res = Command::new("./bindgen.sh")
-        .args(&["/toolchain_turbofish/sysroot/all_includes.h"])
+    // panic!("my pwd is{}", env!("PWD"));
+    // panic!("cargo manifest dir is{}",);
+    let res = Command::new(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), "build.sh"))
         .output()
         .unwrap();
-    // panic!("{:?}", res.stdout);
-    std::fs::write("src/libc.rs", res.stdout).unwrap();
+    if !res.status.success() {
+        panic!("{:?}", res);
+    }
+    // panic!("bonjour");
+    // std::fs::write("src/libc.rs", res.stdout).unwrap();
 }
