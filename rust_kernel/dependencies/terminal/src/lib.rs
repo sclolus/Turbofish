@@ -34,7 +34,6 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Write;
 use keyboard::keysymb::KeySymb;
-use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 use messaging::{MessageTo, SchedulerMessage};
 
 /// Main structure of the terminal center
@@ -102,7 +101,7 @@ impl Terminal {
     // }
 
     /// Read a Key from the buffer and throw it to the foreground TTY
-    pub fn read(&mut self, buf: &mut [KeySymb], tty: usize) -> usize {
+    pub fn read(&mut self, buf: &mut [KeySymb], _tty: usize) -> usize {
         let keysymb = self.buf.pop_front();
         // self.handle_macros(keysymb);
         // if !self.ttys[tty].tty.foreground {

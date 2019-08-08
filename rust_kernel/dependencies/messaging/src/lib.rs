@@ -4,8 +4,7 @@ extern crate alloc;
 use lazy_static::lazy_static;
 // use super::scheduler::Pid;
 use alloc::collections::vec_deque::VecDeque;
-use keyboard::keysymb::KeySymb;
-use sync::UnInterruptibleMutex;
+use sync::DeadMutex;
 
 type Pid = i32;
 
@@ -69,8 +68,8 @@ impl<T> MessageQueue<T> {
 lazy_static! {
     /// Global Message queue of the kernel, Written by anybody and
     /// readen by the scheduler which can dispatch the message afterwards
-    static ref MESSAGE_QUEUE: UnInterruptibleMutex<MessageQueue<MessageTo>> =
-        UnInterruptibleMutex::new(MessageQueue::new());
+    static ref MESSAGE_QUEUE: DeadMutex<MessageQueue<MessageTo>> =
+        DeadMutex::new(MessageQueue::new());
 }
 
 /// push a message on to the global MESSAGE_QUEUE

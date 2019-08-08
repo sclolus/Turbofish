@@ -7,7 +7,6 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::task::WaitingState;
 
 use keyboard::keysymb::KeySymb;
-use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 
 use errno::Errno;
 
@@ -30,7 +29,7 @@ use crate::terminal::TERMINAL;
 //     unsafe { KEY_SYMB_OPT.map(|evt| evt as u32) }
 // }
 
-fn read_from_terminal(fd: i32, buf: *mut u8, count: usize) -> u32 {
+fn read_from_terminal(_fd: i32, buf: *mut u8, _count: usize) -> u32 {
     let mut keysymb_buf: [KeySymb; 1] = [KeySymb::nul; 1];
     let read_count = unsafe { TERMINAL.as_mut().unwrap().read(&mut keysymb_buf, 0) };
     if read_count != 0 {

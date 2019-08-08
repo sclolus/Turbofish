@@ -14,7 +14,7 @@ use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
-use messaging::{pop_message, push_message, MessageTo, ProcessMessage, SchedulerMessage};
+use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
 use terminal::TERMINAL;
 
@@ -243,7 +243,6 @@ impl Scheduler {
                         }
                     }
                 },
-                _ => unimplemented!(),
             }
         }
     }

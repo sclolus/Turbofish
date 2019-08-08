@@ -49,7 +49,6 @@ pub enum TaskMode {
 use arrayvec::ArrayVec;
 use keyboard::keysymb::KeySymb;
 use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-use messaging::MessageTo;
 use sync::DeadMutex;
 
 /// the number of keysymb the keyboard interrupt_handler can stock
