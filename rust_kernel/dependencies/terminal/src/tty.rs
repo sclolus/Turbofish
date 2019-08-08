@@ -214,6 +214,10 @@ impl Tty {
                     self.cursor.backward();
                 }
             }
+            CursorMove::HorizontalAbsolute(q) => {
+                self.buf.write_pos += q - self.cursor.pos.column;
+                self.cursor.pos.column = q;
+            }
             _ => {
                 unimplemented!();
             }
@@ -569,15 +573,40 @@ impl LineDiscipline {
                 *key
             };
             if !self.handle_tty_control(key) {
-                // dbg!(key);
-                if key == KeySymb::Delete {
-                    self.read_buffer.pop();
-                    // self.tty.as_mut().
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                    self.tty.write_char('\0').unwrap();
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                // handle special keys in canonical mode
+                if self.lmode.contains(Lmode::ICANON) {
+                    // handle delete key
+                    if key == KeySymb::Delete {
+                        self.read_buffer.pop();
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                        self.tty.write_char('\0').unwrap();
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                        continue;
+                    }
+                    // handle kill key
+                    if key == KeySymb::Control_u {
+                        self.tty
+                            .as_mut()
+                            .move_cursor(CursorMove::HorizontalAbsolute(0));
+                        if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8)
+                        {
+                            self.read_buffer.truncate(index);
+                        } else {
+                            self.read_buffer.clear();
+                        }
 
-                    continue;
+                        for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
+                            self.tty
+                                .as_mut()
+                                .write_char('\0')
+                                .expect("failed to write \0");
+                        }
+                        self.tty
+                            .as_mut()
+                            .move_cursor(CursorMove::HorizontalAbsolute(0));
+
+                        continue;
+                    }
                 }
                 let b = encode_utf8(key, &mut encode_buff);
                 for elem in b {
