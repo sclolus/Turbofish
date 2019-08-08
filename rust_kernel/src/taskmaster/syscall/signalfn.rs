@@ -4,8 +4,9 @@ use super::SysResult;
 
 use super::process::CpuState;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER};
-use super::signal::{sigset_t, JobAction, SignalInterface, Signum, StructSigaction};
+use super::signal::{sigset_t, JobAction, SignalInterface, StructSigaction};
 use super::task::{Task, WaitingState};
+use libc_binding::Signum;
 
 use core::convert::TryInto;
 use errno::Errno;

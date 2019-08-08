@@ -13,3 +13,20 @@ pub type c_schar = i8;
 pub type c_uchar = u8;
 pub type c_short = i16;
 pub type c_ushort = u16;
+
+#[derive(Debug)]
+pub struct InvalidSignum;
+
+use core::convert::TryFrom;
+use core::mem::transmute;
+/// TryFrom boilerplate to get a Signum relative to raw value
+impl TryFrom<u32> for Signum {
+    type Error = InvalidSignum;
+    fn try_from(n: u32) -> Result<Self, Self::Error> {
+        if n >= 32 {
+            return Err(InvalidSignum);
+        } else {
+            Ok(unsafe { transmute(n) })
+        }
+    }
+}

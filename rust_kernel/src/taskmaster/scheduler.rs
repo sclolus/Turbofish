@@ -1,7 +1,7 @@
 //! this file contains the scheduler description
 
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
-use super::signal::{JobAction, Signum};
+use super::signal::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
 use super::thread_group::ThreadGroup;
@@ -14,6 +14,7 @@ use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
+use libc_binding::Signum;
 use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
 use terminal::TERMINAL;
@@ -165,7 +166,7 @@ unsafe extern "C" fn scheduler_exit_resume(
     // Send a sig child signal to the father
     if let Some(parent_pid) = dead_process.parent {
         let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
-        let _ret = parent.signal.generate_signal(Signum::Sigchld);
+        let _ret = parent.signal.generate_signal(Signum::SIGCHLD);
         messaging::push_message(MessageTo::Process {
             pid: parent_pid,
             content: ProcessMessage::ProcessDied {
@@ -245,6 +246,7 @@ impl Scheduler {
                         }
                     }
                 },
+                _ => unimplemented!(),
             }
         }
     }
