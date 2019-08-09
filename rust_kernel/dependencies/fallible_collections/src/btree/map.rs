@@ -1,3 +1,4 @@
+use alloc::collections::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::Debug;
@@ -145,7 +146,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             match node.force() {
                 Leaf(leaf) => {
                     let mut out_tree = BTreeMap {
-                        root: node::Root::new_leaf(),
+                        root: node::Root::new_leaf().expect("Out of Mem"),
                         length: 0,
                     };
 
@@ -171,7 +172,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                     let mut out_tree = clone_subtree(internal.first_edge().descend());
 
                     {
-                        let mut out_node = out_tree.root.push_level();
+                        let mut out_node = out_tree.root.push_level().expect("Out of Mem");
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -242,10 +243,10 @@ where
         }
     }
 
-    fn replace(&mut self, key: K) -> Option<K> {
-        self.ensure_root_is_owned();
+    fn replace(&mut self, key: K) -> Result<Option<K>, CollectionAllocErr> {
+        self.ensure_root_is_owned()?;
         match search::search_tree::<marker::Mut<'_>, K, (), K>(self.root.as_mut(), &key) {
-            Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
+            Found(handle) => Ok(Some(mem::replace(handle.into_kv_mut().0, key))),
             GoDown(handle) => {
                 VacantEntry {
                     key,
@@ -253,8 +254,8 @@ where
                     length: &mut self.length,
                     _marker: PhantomData,
                 }
-                .insert(());
-                None
+                .try_insert(())?;
+                Ok(None)
             }
         }
     }
@@ -667,12 +668,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map[&37], "c");
     /// ```
 
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        match self.entry(key) {
-            Occupied(mut entry) => Some(entry.insert(value)),
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<Option<V>, CollectionAllocErr> {
+        match self.try_entry(key)? {
+            Occupied(mut entry) => Ok(Some(entry.insert(value))),
             Vacant(entry) => {
-                entry.insert(value);
-                None
+                entry.try_insert(value)?;
+                Ok(None)
             }
         }
     }
@@ -878,10 +879,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3);
     /// ```
 
-    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+    pub fn try_entry(&mut self, key: K) -> Result<Entry<'_, K, V>, CollectionAllocErr> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
-        self.ensure_root_is_owned();
-        match search::search_tree(self.root.as_mut(), &key) {
+        self.ensure_root_is_owned()?;
+        Ok(match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => Occupied(OccupiedEntry {
                 handle,
                 length: &mut self.length,
@@ -893,11 +894,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 length: &mut self.length,
                 _marker: PhantomData,
             }),
-        }
+        })
     }
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
-        self.ensure_root_is_owned();
+        self.ensure_root_is_owned().expect("Out Of Mem");
         let mut cur_node = last_leaf_edge(self.root.as_mut()).into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
@@ -923,7 +924,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                         }
                         Err(node) => {
                             // We are at the top, create a new root node and push there.
-                            open_node = node.into_root_mut().push_level();
+                            open_node = node.into_root_mut().push_level().expect("Out of Mem");
                             break;
                         }
                     }
@@ -931,9 +932,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
                 // Push key-value pair and new right subtree.
                 let tree_height = open_node.height() - 1;
-                let mut right_tree = node::Root::new_leaf();
+                let mut right_tree = node::Root::new_leaf().expect("Out of Mem");
                 for _ in 0..tree_height {
-                    right_tree.push_level();
+                    right_tree.push_level().expect("Out of Mem");
                 }
                 open_node.push(key, value, right_tree);
 
@@ -997,20 +998,20 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(b[&41], "e");
     /// ```
 
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Result<Self, CollectionAllocErr>
     where
         K: Borrow<Q>,
     {
         if self.is_empty() {
-            return Self::new();
+            return Ok(Self::new());
         }
 
         let total_num = self.len();
 
         let mut right = Self::new();
-        right.root = node::Root::new_leaf();
+        right.root = node::Root::new_leaf()?;
         for _ in 0..(self.root.as_ref().height()) {
-            right.root.push_level();
+            right.root.push_level()?;
         }
 
         {
@@ -1052,7 +1053,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
             self.length = total_num - right.len();
         }
 
-        right
+        Ok(right)
     }
 
     /// Calculates the number of elements if it is incorrect.
@@ -1149,10 +1150,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     /// If the root node is the shared root node, allocate our own node.
-    fn ensure_root_is_owned(&mut self) {
+    fn ensure_root_is_owned(&mut self) -> Result<(), CollectionAllocErr> {
         if self.root.is_shared_root() {
-            self.root = node::Root::new_leaf();
+            self.root = node::Root::new_leaf()?;
         }
+        Ok(())
     }
 }
 
@@ -1681,7 +1683,7 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
-            self.insert(k, v);
+            self.try_insert(k, v).expect("Out of Mem");
         });
     }
 }
@@ -2080,10 +2082,10 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 12);
     /// ```
 
-    pub fn or_insert(self, default: V) -> &'a mut V {
+    pub fn or_try_insert(self, default: V) -> Result<&'a mut V, CollectionAllocErr> {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default),
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => entry.try_insert(default),
         }
     }
 
@@ -2103,10 +2105,13 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
 
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+    pub fn or_try_insert_with<F: FnOnce() -> V>(
+        self,
+        default: F,
+    ) -> Result<&'a mut V, CollectionAllocErr> {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => entry.try_insert(default()),
         }
     }
 
@@ -2179,10 +2184,10 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], None);
     /// # }
     /// ```
-    pub fn or_default(self) -> &'a mut V {
+    pub fn or_default(self) -> Result<&'a mut V, CollectionAllocErr> {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Default::default()),
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => entry.try_insert(Default::default()),
         }
     }
 }
@@ -2241,7 +2246,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// assert_eq!(count["a"], 3);
     /// ```
 
-    pub fn insert(self, value: V) -> &'a mut V {
+    pub fn try_insert(self, value: V) -> Result<&'a mut V, CollectionAllocErr> {
         *self.length += 1;
 
         let out_ptr;
@@ -2250,8 +2255,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         let mut ins_v;
         let mut ins_edge;
 
-        let mut cur_parent = match self.handle.insert(self.key, value) {
-            (Fit(handle), _) => return handle.into_kv_mut().1,
+        let mut cur_parent = match self.handle.insert(self.key, value)? {
+            (Fit(handle), _) => return Ok(handle.into_kv_mut().1),
             (Split(left, k, v, right), ptr) => {
                 ins_k = k;
                 ins_v = v;
@@ -2263,8 +2268,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
         loop {
             match cur_parent {
-                Ok(parent) => match parent.insert(ins_k, ins_v, ins_edge) {
-                    Fit(_) => return unsafe { &mut *out_ptr },
+                Ok(parent) => match parent.insert(ins_k, ins_v, ins_edge)? {
+                    Fit(_) => return Ok(unsafe { &mut *out_ptr }),
                     Split(left, k, v, right) => {
                         ins_k = k;
                         ins_v = v;
@@ -2273,8 +2278,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                     }
                 },
                 Err(root) => {
-                    root.push_level().push(ins_k, ins_v, ins_edge);
-                    return unsafe { &mut *out_ptr };
+                    root.push_level()?.push(ins_k, ins_v, ins_edge);
+                    return Ok(unsafe { &mut *out_ptr });
                 }
             }
         }

@@ -1007,10 +1007,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// this edge. This method splits the node if there isn't enough room.
     ///
     /// The returned pointer points to the inserted value.
-    pub fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
+    pub fn insert(
+        mut self,
+        key: K,
+        val: V,
+    ) -> Result<(InsertResult<'a, K, V, marker::Leaf>, *mut V), CollectionAllocErr> {
         if self.node.len() < CAPACITY {
             let ptr = self.insert_fit(key, val);
-            (InsertResult::Fit(Handle::new_kv(self.node, self.idx)), ptr)
+            Ok((InsertResult::Fit(Handle::new_kv(self.node, self.idx)), ptr))
         } else {
             let middle = Handle::new_kv(self.node, B);
             let (mut left, k, v, mut right) = middle.split()?;
@@ -1025,7 +1029,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
                     .insert_fit(key, val)
                 }
             };
-            (InsertResult::Split(left, k, v, right), ptr)
+            Ok((InsertResult::Split(left, k, v, right), ptr))
         }
     }
 }
@@ -1086,16 +1090,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         key: K,
         val: V,
         edge: Root<K, V>,
-    ) -> InsertResult<'a, K, V, marker::Internal> {
+    ) -> Result<InsertResult<'a, K, V, marker::Internal>, CollectionAllocErr> {
         // Necessary for correctness, but this is an internal module
         debug_assert!(edge.height == self.node.height - 1);
 
         if self.node.len() < CAPACITY {
             self.insert_fit(key, val, edge);
-            InsertResult::Fit(Handle::new_kv(self.node, self.idx))
+            Ok(InsertResult::Fit(Handle::new_kv(self.node, self.idx)))
         } else {
             let middle = Handle::new_kv(self.node, B);
-            let (mut left, k, v, mut right) = middle.split();
+            let (mut left, k, v, mut right) = middle.split()?;
             if self.idx <= B {
                 unsafe {
                     Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val, edge);
@@ -1109,7 +1113,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     .insert_fit(key, val, edge);
                 }
             }
-            InsertResult::Split(left, k, v, right)
+            Ok(InsertResult::Split(left, k, v, right))
         }
     }
 }

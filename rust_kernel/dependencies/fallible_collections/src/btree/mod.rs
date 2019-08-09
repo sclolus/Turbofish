@@ -1,7 +1,8 @@
+pub mod map;
 mod node;
 mod search;
-pub mod map;
 pub mod set;
+use alloc::collections::CollectionAllocErr;
 
 #[doc(hidden)]
 trait Recover<Q: ?Sized> {
@@ -9,5 +10,5 @@ trait Recover<Q: ?Sized> {
 
     fn get(&self, key: &Q) -> Option<&Self::Key>;
     fn take(&mut self, key: &Q) -> Option<Self::Key>;
-    fn replace(&mut self, key: Self::Key) -> Option<Self::Key>;
+    fn replace(&mut self, key: Self::Key) -> Result<Option<Self::Key>, CollectionAllocErr>;
 }

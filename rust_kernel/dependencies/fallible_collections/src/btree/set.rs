@@ -1,6 +1,7 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
+use alloc::collections::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
@@ -632,8 +633,8 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.len(), 1);
     /// ```
 
-    pub fn insert(&mut self, value: T) -> bool {
-        self.map.insert(value, ()).is_none()
+    pub fn try_insert(&mut self, value: T) -> Result<bool, CollectionAllocErr> {
+        Ok(self.map.try_insert(value, ())?.is_none())
     }
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
@@ -652,8 +653,8 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
     /// ```
 
-    pub fn replace(&mut self, value: T) -> Option<T> {
-        Recover::replace(&mut self.map, value)
+    pub fn replace(&mut self, value: T) -> Result<Option<T>, CollectionAllocErr> {
+        Ok(Recover::replace(&mut self.map, value)?)
     }
 
     /// Removes a value from the set. Returns whether the value was
@@ -770,13 +771,13 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(b.contains(&41));
     /// ```
 
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+    pub fn try_split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Result<Self, CollectionAllocErr>
     where
         T: Borrow<Q>,
     {
-        BTreeSet {
-            map: self.map.split_off(key),
-        }
+        Ok(BTreeSet {
+            map: self.map.split_off(key)?,
+        })
     }
 }
 
@@ -894,7 +895,7 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
     fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
         iter.into_iter().for_each(move |elem| {
-            self.insert(elem);
+            self.try_insert(elem).expect("Out of Mem");
         });
     }
 }
