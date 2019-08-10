@@ -1,7 +1,10 @@
 pub mod map;
+pub use map::BTreeMap;
+
+pub mod set;
+
 mod node;
 mod search;
-pub mod set;
 use alloc::collections::CollectionAllocErr;
 
 #[doc(hidden)]

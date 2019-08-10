@@ -216,7 +216,6 @@ impl<K: TryClone, V: TryClone> TryClone for BTreeMap<K, V> {
     }
 }
 
-
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
         fn clone_subtree<'a, K: Clone, V: Clone>(
