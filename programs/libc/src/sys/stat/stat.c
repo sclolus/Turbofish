@@ -88,3 +88,8 @@ int stat(const char *restrict path, struct stat *restrict buf)
 	errno = ENOSYS;
 	return -1;
 }
+
+int stat64(const char *restrict path, struct stat *restrict buf)
+{
+	return stat(path, buf);
+}
