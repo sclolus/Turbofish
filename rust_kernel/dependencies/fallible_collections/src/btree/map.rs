@@ -134,6 +134,89 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     }
 }
 
+use crate::TryClone;
+
+impl<K: TryClone, V: TryClone> TryClone for BTreeMap<K, V> {
+    fn try_clone(&self) -> Result<BTreeMap<K, V>, CollectionAllocErr> {
+        fn clone_subtree<'a, K: TryClone, V: TryClone>(
+            node: node::NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
+        ) -> Result<BTreeMap<K, V>, CollectionAllocErr>
+        where
+            K: 'a,
+            V: 'a,
+        {
+            match node.force() {
+                Leaf(leaf) => {
+                    let mut out_tree = BTreeMap {
+                        root: node::Root::new_leaf()?,
+                        length: 0,
+                    };
+
+                    {
+                        let mut out_node = match out_tree.root.as_mut().force() {
+                            Leaf(leaf) => leaf,
+                            Internal(_) => unreachable!(),
+                        };
+
+                        let mut in_edge = leaf.first_edge();
+                        while let Ok(kv) = in_edge.right_kv() {
+                            let (k, v) = kv.into_kv();
+                            in_edge = kv.right_edge();
+
+                            out_node.push(k.try_clone()?, v.try_clone()?);
+                            out_tree.length += 1;
+                        }
+                    }
+
+                    Ok(out_tree)
+                }
+                Internal(internal) => {
+                    let mut out_tree = clone_subtree(internal.first_edge().descend())?;
+
+                    {
+                        let mut out_node = out_tree.root.push_level()?;
+                        let mut in_edge = internal.first_edge();
+                        while let Ok(kv) = in_edge.right_kv() {
+                            let (k, v) = kv.into_kv();
+                            in_edge = kv.right_edge();
+
+                            let k = (*k).try_clone()?;
+                            let v = (*v).try_clone()?;
+                            let subtree = clone_subtree(in_edge.descend())?;
+
+                            // We can't destructure subtree directly
+                            // because BTreeMap implements Drop
+                            let (subroot, sublength) = unsafe {
+                                let root = ptr::read(&subtree.root);
+                                let length = subtree.length;
+                                mem::forget(subtree);
+                                (root, length)
+                            };
+
+                            out_node.push(k, v, subroot);
+                            out_tree.length += 1 + sublength;
+                        }
+                    }
+
+                    Ok(out_tree)
+                }
+            }
+        }
+
+        if self.len() == 0 {
+            // Ideally we'd call `BTreeMap::new` here, but that has the `K:
+            // Ord` constraint, which this method lacks.
+            Ok(BTreeMap {
+                root: node::Root::shared_empty_root(),
+                length: 0,
+            })
+        } else {
+            clone_subtree(self.root.as_ref())
+        }
+    }
+}
+
+
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
         fn clone_subtree<'a, K: Clone, V: Clone>(
