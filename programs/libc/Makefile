@@ -66,7 +66,7 @@ SRC_C += exit exit_qemu atexit env abort abs qsort _exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp pipe dup2 tcgetpgrp tcsetpgrp isatty getegid geteuid getgid getgroups chdir getcwd
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
@@ -74,7 +74,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman 
 HEADERS += include/sys/mman.h
 
-SRC_C += mkfifo
+SRC_C += mkfifo stat umask fstat lstat
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
@@ -110,6 +110,14 @@ HEADERS += include/locale.h
 SRC_C += tcgetattr tcsetattr
 VPATH += src/termios
 HEADERS += include/termios.h
+
+SRC_C += opendir readdir closedir
+VPATH += src/dirent
+HEADERS += include/dirent.h
+
+SRC_C += fcntl open
+VPATH += src/fcntl
+HEADERS += include/fcntl.h
 
 SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower
 VPATH += src/ctype
