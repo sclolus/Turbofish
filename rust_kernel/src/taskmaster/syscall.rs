@@ -11,7 +11,12 @@ use super::scheduler::{Pid, SCHEDULER};
 use super::signal;
 use super::signal::{sigset_t, StructSigaction};
 use super::task;
-use libc_binding::{termios, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP};
+use libc_binding::{
+    termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID,
+    GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
+    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+};
 
 mod mmap;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
@@ -60,6 +65,9 @@ use tcgetpgrp::sys_tcgetpgrp;
 
 mod process_group;
 use process_group::{sys_getpgid, sys_getpgrp, sys_setpgid};
+
+mod trace_syscall;
+use trace_syscall::syscall_number_to_str;
 
 use core::ffi::c_void;
 use errno::Errno;
@@ -159,52 +167,53 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ebp,
         ..
     } = (*cpu_state).registers;
+    println!("{}", syscall_number_to_str(eax));
 
     let result = match eax {
-        1 => sys_exit(ebx as i32),       // This syscall doesn't return !
-        2 => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
-        3 => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
-        4 => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        6 => sys_close(ebx as i32),
-        7 => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
-        10 => sys_unlink(ebx as *const u8),
-        11 => sys_execve(
+        EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
+        FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
+        READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
+        WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        CLOSE => sys_close(ebx as i32),
+        WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
+        UNLINK => sys_unlink(ebx as *const u8),
+        EXECVE => sys_execve(
             ebx as *const c_char,
             ecx as *const *const c_char,
             edx as *const *const c_char,
         ),
-        20 => sys_getpid(),
-        // 24 => sys_getuid(), TODO: need to be implemented
-        29 => sys_pause(),
-        37 => sys_kill(ebx as i32, ecx as u32),
-        48 => sys_signal(ebx as u32, ecx as usize),
-        57 => sys_setpgid(ebx as Pid, ecx as Pid),
-        64 => sys_getppid(),
-        65 => sys_getpgrp(),
-        67 => sys_sigaction(
+        GETPID => sys_getpid(),
+        // GETUID             //        // => sys_getuid(), TODO: need to be implemented
+        PAUSE => sys_pause(),
+        KILL => sys_kill(ebx as i32, ecx as u32),
+        SIGNAL => sys_signal(ebx as u32, ecx as usize),
+        SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
+        GETPPID => sys_getppid(),
+        GETPGRP => sys_getpgrp(),
+        SIGACTION => sys_sigaction(
             ebx as u32,
             ecx as *const StructSigaction,
             edx as *mut StructSigaction,
         ),
-        72 => sys_sigsuspend(ebx as *const sigset_t),
-        88 => sys_reboot(),
-        90 => sys_mmap(ebx as *const MmapArgStruct),
-        91 => sys_munmap(Virt(ebx as usize), ecx as usize),
-        102 => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
-        120 => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
-        125 => sys_mprotect(
+        SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
+        REBOOT => sys_reboot(),
+        MMAP => sys_mmap(ebx as *const MmapArgStruct),
+        MUNMAP => sys_munmap(Virt(ebx as usize), ecx as usize),
+        SOCKETCALL => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
+        CLONE => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
+        MPROTECT => sys_mprotect(
             Virt(ebx as usize),
             ecx as usize,
             MmapProt::from_bits_truncate(edx),
         ),
-        126 => sys_sigprocmask(ebx as i32, ecx as *const sigset_t, edx as *mut sigset_t),
-        132 => sys_getpgid(ebx as Pid),
-        162 => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
-        200 => sys_sigreturn(cpu_state),
-        293 => sys_shutdown(),
-        0x80000000 => sys_test(),
-        0x80000001 => sys_stack_overflow(0, 0, 0, 0, 0, 0),
-        0x80000002 => crate::tests::helpers::exit_qemu(ebx as u32),
+        SIGPROCMASK => sys_sigprocmask(ebx as i32, ecx as *const sigset_t, edx as *mut sigset_t),
+        GETPGID => sys_getpgid(ebx as Pid),
+        NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
+        SIGRETURN => sys_sigreturn(cpu_state),
+        SHUTDOWN => sys_shutdown(),
+        TEST => sys_test(),
+        STACK_OVERFLOW => sys_stack_overflow(0, 0, 0, 0, 0, 0),
+        EXIT_QEMU => crate::tests::helpers::exit_qemu(ebx as u32),
         TCGETATTR => sys_tcgetattr(ebx as i32, ecx as *mut termios),
         TCSETATTR => sys_tcsetattr(ebx as i32, ecx as u32, edx as *const termios),
         TCSETPGRP => sys_tcsetpgrp(ebx as i32, ecx as Pid),

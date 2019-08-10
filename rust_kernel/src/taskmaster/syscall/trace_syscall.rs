@@ -1,0 +1,48 @@
+use libc_binding::{
+    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL,
+    MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
+    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+};
+
+pub fn syscall_number_to_str(sys_number: u32) -> &'static str {
+    match sys_number {
+        EXIT => "exit",
+        FORK => "fork",
+        READ => "read",
+        WRITE => "write",
+        CLOSE => "close",
+        WAITPID => "waitpid",
+        UNLINK => "unlink",
+        EXECVE => "execve",
+        GETPID => "getpid",
+        // GETUID             // => "getuid", TODO: need to be implemented
+        PAUSE => "pause",
+        KILL => "kill",
+        SIGNAL => "signal",
+        SETPGID => "setpgid",
+        GETPPID => "getppid",
+        GETPGRP => "getpgrp",
+        SIGACTION => "sigaction",
+        SIGSUSPEND => "sigsuspend",
+        REBOOT => "reboot",
+        MMAP => "mmap",
+        MUNMAP => "munmap",
+        SOCKETCALL => "socketcall",
+        CLONE => "clone",
+        MPROTECT => "mprotect",
+        SIGPROCMASK => "sigprocmask",
+        GETPGID => "getpgid",
+        NANOSLEEP => "nanosleep",
+        SIGRETURN => "sigreturn",
+        SHUTDOWN => "shutdown",
+        TEST => "test",
+        STACK_OVERFLOW => "stack_overflow",
+        EXIT_QEMU => "exit_qemu",
+        TCGETATTR => "tcgetattr",
+        TCSETATTR => "tcsetattr",
+        TCSETPGRP => "tcsetpgrp",
+        TCGETPGRP => "tcgetpgrp",
+        _ => "unknown syscall",
+    }
+}

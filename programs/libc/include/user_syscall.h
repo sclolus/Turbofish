@@ -32,12 +32,15 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SIGPROCMASK 126
 #define GETPGID		132
 #define NANOSLEEP   162
+#define SIGRETURN   200
 #define SHUTDOWN    293
 
-#define EXIT_QEMU   0x80000002
-#define TCGETATTR   0x80000003
-#define TCSETATTR   0x80000004
-#define TCGETPGRP   0x80000005
-#define TCSETPGRP   0x80000006
+#define TEST           0x80000000
+#define STACK_OVERFLOW 0x80000001
+#define EXIT_QEMU      0x80000002
+#define TCGETATTR      0x80000003
+#define TCSETATTR      0x80000004
+#define TCGETPGRP      0x80000005
+#define TCSETPGRP      0x80000006
 
 #endif
