@@ -2,8 +2,30 @@ use super::*;
 
 pub struct RustGlobalAlloc;
 
+/// This globale variable may be use to check the faillible behavior of something
+/// if is set manually to TRUE, It simulates an out of memory situation.
+static mut HOOK_FAILLIBLE_CHECKER: bool = false;
+
+#[allow(dead_code)]
+pub fn set_faillible_context() {
+    unsafe {
+        HOOK_FAILLIBLE_CHECKER = true;
+    }
+}
+
+#[allow(dead_code)]
+pub fn unset_faillible_context() {
+    unsafe {
+        HOOK_FAILLIBLE_CHECKER = false;
+    }
+}
+
 unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // This condition is just made for checking faillible contextes
+        if HOOK_FAILLIBLE_CHECKER == true {
+            return 0x0 as *mut u8;
+        }
         match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Kernel(a) => {
                 if layout.size() <= PAGE_SIZE && layout.align() <= 16 {

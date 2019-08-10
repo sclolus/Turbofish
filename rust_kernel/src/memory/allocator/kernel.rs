@@ -8,7 +8,7 @@ mod bootstrap;
 use bootstrap::*;
 
 mod rust_global_alloc;
-pub use rust_global_alloc::RustGlobalAlloc;
+pub use rust_global_alloc::{set_faillible_context, unset_faillible_context, RustGlobalAlloc};
 
 pub mod ffi;
 pub use ffi::*;
