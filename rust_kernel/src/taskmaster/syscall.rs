@@ -12,10 +12,10 @@ use super::signal;
 use super::signal::{sigset_t, StructSigaction};
 use super::task;
 use libc_binding::{
-    termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID,
-    GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN,
-    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
-    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, KILL,
+    MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
+    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 mod mmap;
@@ -67,7 +67,6 @@ mod process_group;
 use process_group::{sys_getpgid, sys_getpgrp, sys_setpgid};
 
 mod trace_syscall;
-use trace_syscall::syscall_number_to_str;
 
 use core::ffi::c_void;
 use errno::Errno;
@@ -167,7 +166,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ebp,
         ..
     } = (*cpu_state).registers;
-    println!("{}", syscall_number_to_str(eax));
+    // println!("{}", trace_syscall::syscall_number_to_str(eax));
 
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !

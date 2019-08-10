@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 #![cfg_attr(not(test), no_std)]
 pub mod libc;
 pub use libc::*;
@@ -28,18 +29,6 @@ impl TryFrom<u32> for Signum {
             return Err(InvalidSignum);
         } else {
             Ok(unsafe { transmute(n) })
-        }
-    }
-}
-
-impl Default for termios {
-    fn default() -> Self {
-        termios {
-            c_iflag: 0,
-            c_oflag: 0,
-            c_cflag: 0,
-            c_lflag: (ECHO | ICANON | ISIG),
-            c_cc: [0; 42],
         }
     }
 }

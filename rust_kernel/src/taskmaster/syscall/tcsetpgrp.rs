@@ -2,7 +2,7 @@ use super::Pid;
 use super::SysResult;
 use crate::terminal::TERMINAL;
 
-pub fn sys_tcsetpgrp(fildes: i32, pgid_id: Pid) -> SysResult<u32> {
+pub fn sys_tcsetpgrp(_fildes: i32, pgid_id: Pid) -> SysResult<u32> {
     unpreemptible_context!({
         unsafe {
             TERMINAL

@@ -3,7 +3,7 @@ use crate::terminal::TERMINAL;
 use libc_binding::termios;
 
 pub fn sys_tcsetattr(
-    fildes: i32,
+    _fildes: i32,
     optional_actions: u32,
     termios_p: *const termios,
 ) -> SysResult<u32> {

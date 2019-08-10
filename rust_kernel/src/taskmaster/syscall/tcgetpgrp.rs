@@ -1,7 +1,7 @@
 use super::SysResult;
 use crate::terminal::TERMINAL;
 
-pub fn sys_tcgetpgrp(fildes: i32) -> SysResult<u32> {
+pub fn sys_tcgetpgrp(_fildes: i32) -> SysResult<u32> {
     unpreemptible_context!({
         unsafe {
             TERMINAL

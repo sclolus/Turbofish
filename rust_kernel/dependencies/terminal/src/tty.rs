@@ -498,7 +498,6 @@ impl Write for BufferedTty {
 }
 
 use arrayvec::{ArrayVec, CapacityError};
-use bitflags::bitflags;
 use core::cmp::min;
 use core::convert::TryFrom;
 use keyboard::keysymb::KeySymb;
@@ -523,98 +522,7 @@ pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
     }
 }
 
-enum SpecialChar {
-    ///Special character on input, which is recognized if the ISIG
-    /// flag is set. Generates a SIGINT signal which is sent to all
-    /// processes in the foreground process group for which the
-    /// terminal is the controlling terminal. If ISIG is set, the INTR
-    /// character shall be discarded when processed.
-    INTR = 0,
-    ///Special character on input, which is recognized if the ISIG
-    /// flag is set. Generates a SIGQUIT signal which is sent to all
-    /// processes in the foreground process group for which the
-    /// terminal is the controlling terminal. If ISIG is set, the QUIT
-    /// character shall be discarded when processed.
-    QUIT = 1,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set. Erases the last character in the current line;
-    /// see Canonical Mode Input Processing. It shall not erase beyond
-    /// the start of a line, as delimited by an NL, EOF, or EOL
-    /// character. If ICANON is set, the ERASE character shall be
-    /// discarded when processed.
-    ERASE = 2,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set. Deletes the entire line, as delimited by an NL,
-    /// EOF, or EOL character. If ICANON is set, the KILL character
-    /// shall be discarded when processed.
-    KILL = 3,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set. When received, all the bytes waiting to be read
-    /// are immediately passed to the process without waiting for a
-    /// <newline>, and the EOF is discarded. Thus, if there are no
-    /// bytes waiting (that is, the EOF occurred at the beginning of a
-    /// line), a byte count of zero shall be returned from the read(),
-    /// representing an end-of-file indication. If ICANON is set, the
-    /// EOF character shall be discarded when processed.
-    EOF = 4,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set. It is the line delimiter <newline>. It cannot be
-    /// changed.
-    NL = 5,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set. It is an additional line delimiter, like NL.
-    EOL = 6,
-    ///If the ISIG flag is set, receipt of the SUSP character shall
-    /// cause a SIGTSTP signal to be sent to all processes in the
-    /// foreground process group for which the terminal is the
-    /// controlling terminal, and the SUSP character shall be
-    /// discarded when processed.
-    SUSP = 7,
-    ///Special character on both input and output, which is recognized
-    /// if the IXON (output control) or IXOFF (input control) flag is
-    /// set. Can be used to suspend output temporarily. It is useful
-    /// with CRT terminals to prevent output from disappearing before
-    /// it can be read. If IXON is set, the STOP character shall be
-    /// discarded when processed.
-    STOP = 8,
-    ///Special character on both input and output, which is recognized
-    /// if the IXON (output control) or IXOFF (input control) flag is
-    /// set. Can be used to resume output that has been suspended by a
-    /// STOP character. If IXON is set, the START character shall be
-    /// discarded when processed.
-    START = 9,
-    ///Special character on input, which is recognized if the ICANON
-    /// flag is set; it is the <carriage-return> character. When
-    /// ICANON and ICRNL are set and IGNCR is not set, this character
-    /// shall be translated into an NL, and shall have the same effect
-    /// as an NL character. It cannot be changed.
-    CR = 10,
-}
-
-pub struct SpecialChars([KeySymb; 11]);
-
-use core::ops::Index;
-
-impl Index<SpecialChar> for SpecialChars {
-    type Output = KeySymb;
-    fn index(&self, index: SpecialChar) -> &Self::Output {
-        &self.0[index as usize]
-    }
-}
-
-const SPECIAL_CHARS: &SpecialChars = &SpecialChars([
-    KeySymb::Control_c,
-    KeySymb::Control_backslash,
-    KeySymb::Delete,
-    KeySymb::Control_u,
-    KeySymb::nul,
-    KeySymb::Linefeed,
-    KeySymb::Return,
-    KeySymb::Control_z,
-    KeySymb::nul,
-    KeySymb::nul,
-    KeySymb::nul,
-]);
+use libc_binding::{VEOF, VEOL, VERASE, VINTR, VKILL, VMIN, VQUIT, VSTART, VSTOP, VSUSP, VTIME};
 
 #[derive(Debug, Clone)]
 pub struct LineDiscipline {
@@ -627,7 +535,25 @@ pub struct LineDiscipline {
 impl LineDiscipline {
     pub fn new(tty: BufferedTty) -> Self {
         Self {
-            termios: Default::default(),
+            termios: termios {
+                c_iflag: 0,
+                c_oflag: 0,
+                c_cflag: 0,
+                c_lflag: (ECHO | ICANON | ISIG),
+                c_cc: [
+                    /*VEOF  */ KeySymb::nul as u32,
+                    /*VEOL  */ KeySymb::Return as u32,
+                    /*VERASE*/ KeySymb::Delete as u32,
+                    /*VINTR */ KeySymb::Control_c as u32,
+                    /*VKILL */ KeySymb::Control_u as u32,
+                    /*VMIN  */ KeySymb::Linefeed as u32,
+                    /*VQUIT */ KeySymb::Control_backslash as u32,
+                    /*VSUSP */ KeySymb::Control_z as u32,
+                    /*VTIME */ KeySymb::nul as u32,
+                    /*VSTART*/ KeySymb::nul as u32,
+                    /*VSTOP */ KeySymb::nul as u32,
+                ],
+            },
             tty,
             read_buffer: ArrayVec::new(),
             foreground_process_group: 0,
@@ -651,7 +577,6 @@ impl LineDiscipline {
     /// write in the read buffer the keysymb read from the keyboard
     /// Send a message if read is ready, depending of the lmode
     pub fn write_input(&mut self, buff: &[KeySymb]) -> Result<(), CapacityError<u8>> {
-        use SpecialChar::*;
         let mut encode_buff = [0; 8];
         for key in buff {
             // dbg!(key);
@@ -660,7 +585,7 @@ impl LineDiscipline {
                 // handle special keys in canonical mode
                 if self.termios.c_lflag & ICANON != 0 {
                     // handle delete key
-                    if key == SPECIAL_CHARS[ERASE] {
+                    if key as u32 == self.termios.c_cc[VERASE as usize] {
                         self.read_buffer.pop();
                         self.tty.as_mut().move_cursor(CursorMove::Backward(1));
                         self.tty.write_char('\0').unwrap();
@@ -669,7 +594,7 @@ impl LineDiscipline {
                     }
                     // dbg!(key);
                     // handle kill key
-                    if key == SPECIAL_CHARS[KILL] {
+                    if key as u32 == self.termios.c_cc[VKILL as usize] {
                         self.tty
                             .as_mut()
                             .move_cursor(CursorMove::HorizontalAbsolute(0));
@@ -695,10 +620,24 @@ impl LineDiscipline {
                 }
                 if self.termios.c_lflag & ISIG != 0 {
                     // handle control_c
-                    if key == SPECIAL_CHARS[INTR] {
+                    if key as u32 == self.termios.c_cc[VINTR as usize] {
                         messaging::push_message(MessageTo::ProcessGroup {
                             pgid: self.foreground_process_group,
                             content: Signum::SIGINT,
+                        });
+                        continue;
+                    }
+                    if key as u32 == self.termios.c_cc[VSUSP as usize] {
+                        messaging::push_message(MessageTo::ProcessGroup {
+                            pgid: self.foreground_process_group,
+                            content: Signum::SIGSTOP,
+                        });
+                        continue;
+                    }
+                    if key as u32 == self.termios.c_cc[VQUIT as usize] {
+                        messaging::push_message(MessageTo::ProcessGroup {
+                            pgid: self.foreground_process_group,
+                            content: Signum::SIGQUIT,
                         });
                         continue;
                     }
@@ -773,7 +712,7 @@ impl LineDiscipline {
     pub fn get_tty_mut(&mut self) -> &mut Tty {
         &mut self.tty.tty
     }
-    pub fn tcsetattr(&mut self, optional_actions: u32, termios_p: &termios) {
+    pub fn tcsetattr(&mut self, _optional_actions: u32, termios_p: &termios) {
         // dbg!(self.termios.c_lflag);
         self.termios = *termios_p;
         // dbg!(self.termios.c_lflag);

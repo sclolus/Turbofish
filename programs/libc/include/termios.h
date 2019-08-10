@@ -6,7 +6,7 @@
 //
 //    The <termios.h> header shall define the following data types through typedef:
 
-typedef int    cc_t;
+typedef unsigned int    cc_t;
 //        Used for terminal special characters.
 typedef int    speed_t;
 //        Used for terminal baud rates.
@@ -21,7 +21,7 @@ typedef unsigned int    tcflag_t;
 
 //    The <termios.h> header shall define the following symbolic constant:
 
-#define    NCCS 42
+#define    NCCS 11
 
 struct termios {
     tcflag_t  c_iflag   ; //  Input modes. 
@@ -37,6 +37,75 @@ struct termios {
 
 //    Subscript Usage
 //The subscript values shall be suitable for use in #if preprocessing directives and shall be distinct, except that the VMIN and VTIME subscripts may have the same values as the VEOF and VEOL subscripts, respectively.
+/* 
+ * ///Special character on input, which is recognized if the ICANON
+ * /// flag is set. It is the line delimiter <newline>. It cannot be
+ * /// changed.
+ * NL = 5,
+ * ///Special character on input, which is recognized if the ICANON
+ * /// flag is set; it is the <carriage-return> character. When
+ * /// ICANON and ICRNL are set and IGNCR is not set, this character
+ * /// shall be translated into an NL, and shall have the same effect
+ * /// as an NL character. It cannot be changed.
+ * CR = 10,
+ */
+///Special character on input, which is recognized if the ICANON
+/// flag is set. When received, all the bytes waiting to be read
+/// are immediately passed to the process without waiting for a
+/// <newline>, and the EOF is discarded. Thus, if there are no
+/// bytes waiting (that is, the EOF occurred at the beginning of a
+/// line), a byte count of zero shall be returned from the read(),
+/// representing an end-of-file indication. If ICANON is set, the
+/// EOF character shall be discarded when processed.
+#define VEOF  0
+///Special character on input, which is recognized if the ICANON
+/// flag is set. It is an additional line delimiter, like NL.
+#define VEOL 1
+///Special character on input, which is recognized if the ICANON
+/// flag is set. Erases the last character in the current line;
+/// see Canonical Mode Input Processing. It shall not erase beyond
+/// the start of a line, as delimited by an NL, EOF, or EOL
+/// character. If ICANON is set, the ERASE character shall be
+/// discarded when processed.
+#define VERASE 2
+///Special character on input, which is recognized if the ISIG
+/// flag is set. Generates a SIGINT signal which is sent to all
+/// processes in the foreground process group for which the
+/// terminal is the controlling terminal. If ISIG is set, the INTR
+/// character shall be discarded when processed.
+#define VINTR 3
+///Special character on input, which is recognized if the ICANON
+/// flag is set. Deletes the entire line, as delimited by an NL,
+/// EOF, or EOL character. If ICANON is set, the KILL character
+/// shall be discarded when processed.
+#define VKILL 4
+#define VMIN 5
+///Special character on input, which is recognized if the ISIG
+/// flag is set. Generates a SIGQUIT signal which is sent to all
+/// processes in the foreground process group for which the
+/// terminal is the controlling terminal. If ISIG is set, the QUIT
+/// character shall be discarded when processed.
+#define VQUIT 6
+///If the ISIG flag is set, receipt of the SUSP character shall
+/// cause a SIGTSTP signal to be sent to all processes in the
+/// foreground process group for which the terminal is the
+/// controlling terminal, and the SUSP character shall be
+/// discarded when processed.
+#define VSUSP 7
+#define VTIME 8
+///Special character on both input and output, which is recognized
+/// if the IXON (output control) or IXOFF (input control) flag is
+/// set. Can be used to resume output that has been suspended by a
+/// STOP character. If IXON is set, the START character shall be
+/// discarded when processed.
+#define VSTART 9
+///Special character on both input and output, which is recognized
+/// if the IXON (output control) or IXOFF (input control) flag is
+/// set. Can be used to suspend output temporarily. It is useful
+/// with CRT terminals to prevent output from disappearing before
+/// it can be read. If IXON is set, the STOP character shall be
+/// discarded when processed.
+#define VSTOP 10
 //    Input Modes
 
 //    The <termios.h> header shall define the following symbolic constants for use as flags in the c_iflag field. The c_iflag field describes the basic terminal input control.

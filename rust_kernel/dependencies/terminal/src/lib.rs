@@ -32,9 +32,7 @@ use crate::monitor::{AdvancedGraphic, Drawer};
 use alloc::collections::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt::Write;
 use keyboard::keysymb::KeySymb;
-use messaging::{MessageTo, SchedulerMessage};
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
@@ -43,7 +41,6 @@ pub struct Terminal {
     ttys: Vec<LineDiscipline>,
 }
 
-use core::convert::TryFrom;
 /// No initialized at the beginning
 pub static mut TERMINAL: Option<Terminal> = None;
 
