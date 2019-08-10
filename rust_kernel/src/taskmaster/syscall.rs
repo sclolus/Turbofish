@@ -203,7 +203,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
-        PIPE => sys_pipe(ebx as u32, ecx as u32),
+        PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
         DUP => sys_dup(ebx as u32),
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),

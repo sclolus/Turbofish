@@ -1,5 +1,6 @@
 //! This file contains definition of a task
 
+use super::ipcmaster::FileDescriptorInterface;
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
@@ -10,6 +11,7 @@ use fallible_collections::FallibleBox;
 use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
+use fallible_collections::TryClone;
 
 use core::mem;
 
@@ -34,6 +36,8 @@ pub struct Thread {
     pub signal: SignalInterface,
     pub message_queue: MessageQueue<ProcessMessage>,
     autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
+    /// File Descriptors
+    pub fd_interface: FileDescriptorInterface,
 }
 
 impl Thread {
@@ -43,6 +47,7 @@ impl Thread {
             signal: SignalInterface::new(),
             message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::new(Ok(Default::default())),
+            fd_interface: FileDescriptorInterface::new(),
         }
     }
 
@@ -69,6 +74,7 @@ impl Thread {
             },
             message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
+            fd_interface: self.fd_interface.try_clone()?,
         })
     }
 

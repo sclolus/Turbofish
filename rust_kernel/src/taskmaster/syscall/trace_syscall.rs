@@ -58,7 +58,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             GETUID => eprintln!("getuid()"),
             PAUSE => eprintln!("pause()"),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
-            PIPE => eprintln!("pipe({:#?}, {:#?})", ebx as i32, ecx as i32),
+            PIPE => eprintln!("pipe({:#?})", ebx as *const i32),
             DUP => eprintln!("dup({:#?})", ebx as u32),
             SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
             GETGID => eprintln!("getgid()"),
