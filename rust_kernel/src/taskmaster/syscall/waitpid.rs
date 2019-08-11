@@ -106,6 +106,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
             let ret = auto_preempt();
 
+            // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
             unpreemptible();
             let mut scheduler = SCHEDULER.lock();
 

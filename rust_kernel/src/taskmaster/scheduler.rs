@@ -11,6 +11,7 @@ use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
+use core::mem;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use hashmap_core::fnv::FnvHashMap as HashMap;
@@ -256,9 +257,7 @@ impl Scheduler {
                         .filter(|thread_group| thread_group.pgid == pgid)
                         .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
                     {
-                        task.signal
-                            .generate_signal(signum)
-                            .expect("could not generate signal");
+                        mem::forget(task.signal.generate_signal(signum));
                     }
                 }
             }

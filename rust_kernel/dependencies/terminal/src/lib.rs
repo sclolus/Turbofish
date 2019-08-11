@@ -86,8 +86,8 @@ impl Terminal {
     // }
 
     /// Read a Key from the buffer
-    pub fn read(&mut self, buf: &mut [u8], fd: usize) -> ReadResult {
-        self.ttys[fd].read(buf)
+    pub fn read(&mut self, buf: &mut [u8], tty_index: usize) -> ReadResult {
+        self.ttys[tty_index].read(buf)
     }
 
     // /// Write a string th the designed TTY
@@ -95,9 +95,11 @@ impl Terminal {
     //     self.ttys[fd].write_str(s).unwrap();
     // }
 
-    pub fn write_input(&mut self, buff: &[KeySymb], fd: usize) {
+    pub fn write_input(&mut self, buff: &[KeySymb], tty_index: usize) {
         // eprintln!("write_input {:?}", buff);
-        self.ttys[fd].write_input(buff).expect("write input failed");
+        self.ttys[tty_index]
+            .write_input(buff)
+            .expect("write input failed");
     }
 
     /// Get the TTY n
@@ -113,18 +115,6 @@ impl Terminal {
         match keysymb {
             KeySymb::F1 => self.switch_foreground_tty(1),
             KeySymb::F2 => self.switch_foreground_tty(0),
-            // KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
-            // KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            // KeySymb::Control_b => self
-            //     .get_foreground_tty()
-            //     .unwrap()
-            //     .tty
-            //     .scroll(Scroll::HalfScreenUp),
-            // KeySymb::Control_d => self
-            //     .get_foreground_tty()
-            //     .unwrap()
-            //     .tty
-            //     .scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }

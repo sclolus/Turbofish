@@ -545,7 +545,8 @@ pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
     }
 }
 
-use libc_binding::{VEOF, VEOL, VERASE, VINTR, VKILL, VMIN, VQUIT, VSTART, VSTOP, VSUSP, VTIME};
+use libc_binding::{VEOF, VERASE, VINTR, VKILL, VQUIT, VSUSP};
+// use libc_binding::{VEOL, VMIN, VSTART, VSTOP, VTIME};
 
 #[derive(Debug, Clone)]
 pub struct LineDiscipline {
