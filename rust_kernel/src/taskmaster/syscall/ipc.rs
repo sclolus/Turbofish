@@ -4,6 +4,9 @@ use super::SysResult;
 
 use super::scheduler;
 
+mod write;
+pub use write::sys_write;
+
 mod socket;
 pub use socket::{sys_socketcall, SocketArgsPtr};
 

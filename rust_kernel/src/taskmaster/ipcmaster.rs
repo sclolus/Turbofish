@@ -21,6 +21,8 @@ mod pipe;
 use pipe::Pipe;
 mod socket;
 use socket::Socket;
+mod std;
+use std::{Stderr, Stdin, Stdout};
 
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure UserFileDescriptor
@@ -38,7 +40,7 @@ pub enum Mode {
 }
 
 /// This Trait represent a File Descriptor in Kernel
-/// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe())
+/// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 trait KernelFileDescriptor: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
     fn register(&mut self, access_mode: Mode);
@@ -56,6 +58,9 @@ enum KernelFileDescriptorType {
     Pipe,
     Fifo,
     Socket,
+    Stdin,
+    Stdout,
+    Stderr,
 }
 
 /// This structure design a User File Descriptor
@@ -109,10 +114,38 @@ impl FileDescriptorInterface {
 
     /// Global constructor
     pub fn new() -> Self {
-        Self {
+        let mut r = Self {
             // New BTreeMap does not allocate memory
             user_fd_list: BTreeMap::new(),
-        }
+        };
+        r.open_std()
+            .expect("Global constructor of STD devices fail");
+        r
+    }
+
+    /// Open Stdin, Stdout and Stderr
+    /// The File Descriptors between 0..2 are automaticely closed
+    fn open_std(&mut self) -> SysResult<()> {
+        let _r = self.close_fd(0);
+        let _r = self.close_fd(1);
+        let _r = self.close_fd(2);
+        let stdin = Arc::try_new(DeadMutex::new(Stdin::new()))?;
+        let stdout = Arc::try_new(DeadMutex::new(Stdout::new()))?;
+        let stderr = Arc::try_new(DeadMutex::new(Stderr::new()))?;
+
+        let _fd = self.user_fd_list.try_insert(
+            0,
+            UserFileDescriptor::new(Mode::ReadOnly, KernelFileDescriptorType::Stdin, stdin),
+        )?;
+        let _fd = self.user_fd_list.try_insert(
+            1,
+            UserFileDescriptor::new(Mode::WriteOnly, KernelFileDescriptorType::Stdout, stdout),
+        )?;
+        let _fd = self.user_fd_list.try_insert(
+            2,
+            UserFileDescriptor::new(Mode::WriteOnly, KernelFileDescriptorType::Stderr, stderr),
+        )?;
+        Ok(())
     }
 
     /// Made two File Descriptors connected with a Pipe

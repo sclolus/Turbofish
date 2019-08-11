@@ -14,11 +14,11 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, PIPE, READ, REBOOT,
-    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
-    TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
+    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -41,7 +41,7 @@ mod unlink;
 use unlink::sys_unlink;
 
 mod ipc;
-use ipc::{sys_dup, sys_dup2, sys_pipe, sys_socketcall, SocketArgsPtr};
+use ipc::{sys_dup, sys_dup2, sys_pipe, sys_socketcall, sys_write, SocketArgsPtr};
 
 pub mod read;
 use read::sys_read;
@@ -63,9 +63,6 @@ use tcsetpgrp::sys_tcsetpgrp;
 
 mod tcgetpgrp;
 use tcgetpgrp::sys_tcgetpgrp;
-
-mod write;
-use write::sys_write;
 
 mod getpid;
 use getpid::sys_getpid;
