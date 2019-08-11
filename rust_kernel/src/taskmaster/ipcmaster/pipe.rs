@@ -26,12 +26,14 @@ impl KernelFileDescriptor for Pipe {
         match access_mode {
             Mode::ReadOnly => self.input_ref += 1,
             Mode::WriteOnly => self.output_ref += 1,
+            _ => panic!("Pipe invalid access mode"),
         };
     }
     fn unregister(&mut self, access_mode: Mode) {
         match access_mode {
             Mode::ReadOnly => self.input_ref -= 1,
             Mode::WriteOnly => self.output_ref -= 1,
+            _ => panic!("Pipe invalid access mode"),
         };
     }
 }

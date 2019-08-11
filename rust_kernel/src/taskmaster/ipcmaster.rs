@@ -15,14 +15,26 @@ use sync::DeadMutex;
 
 pub type Fd = u32;
 
+mod fifo;
+use fifo::Fifo;
 mod pipe;
 use pipe::Pipe;
+mod socket;
+use socket::Socket;
 
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure UserFileDescriptor
 #[derive(Debug)]
 pub struct FileDescriptorInterface {
     user_fd_list: BTreeMap<Fd, UserFileDescriptor>,
+}
+
+/// The Access Mode of the File Descriptor
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Mode {
+    ReadOnly,
+    WriteOnly,
+    ReadWrite,
 }
 
 /// This Trait represent a File Descriptor in Kernel
@@ -34,17 +46,12 @@ trait KernelFileDescriptor: core::fmt::Debug + Send {
     fn unregister(&mut self, access_mode: Mode);
 }
 
-/// The Access Mode of the File Descriptor
-#[derive(Clone, Copy, Debug)]
-enum Mode {
-    ReadOnly,
-    WriteOnly,
-}
-
 /// Here the type of the Kernel File Descriptor
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum KernelFileDescriptorType {
     Pipe,
+    Fifo,
+    Socket,
 }
 
 /// This structure design a User File Descriptor
@@ -179,6 +186,52 @@ impl FileDescriptorInterface {
             }
         }
         Err(Errno::Ebadf)
+    }
+
+    /// Open a Fifo
+    #[allow(dead_code)]
+    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<Fd> {
+        if access_mode == Mode::ReadWrite {
+            return Err(Errno::Eacces);
+        }
+
+        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
+
+        let fd = self
+            .get_lower_fd_value()
+            .ok_or::<Errno>(Errno::Emfile)
+            .map(|fd| {
+                self.user_fd_list
+                    .try_insert(
+                        fd,
+                        UserFileDescriptor::new(access_mode, KernelFileDescriptorType::Fifo, fifo),
+                    )
+                    .map(|_| fd)
+            })??;
+        Ok(fd)
+    }
+
+    /// Open a Socket
+    #[allow(dead_code)]
+    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
+        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
+
+        let fd = self
+            .get_lower_fd_value()
+            .ok_or::<Errno>(Errno::Emfile)
+            .map(|fd| {
+                self.user_fd_list
+                    .try_insert(
+                        fd,
+                        UserFileDescriptor::new(
+                            access_mode,
+                            KernelFileDescriptorType::Socket,
+                            socket,
+                        ),
+                    )
+                    .map(|_| fd)
+            })??;
+        Ok(fd)
     }
 
     /// Clone one file descriptor
