@@ -600,7 +600,7 @@ impl LineDiscipline {
             KeySymb::Control_p => self.tty.as_mut().scroll(Scroll::Up),
             KeySymb::Control_n => self.tty.as_mut().scroll(Scroll::Down),
             KeySymb::Control_b => self.tty.as_mut().scroll(Scroll::HalfScreenUp),
-            // KeySymb::Control_d => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
+            KeySymb::Control_v => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }
