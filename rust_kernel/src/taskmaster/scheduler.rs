@@ -353,17 +353,19 @@ impl Scheduler {
                                 "A zombie was found just before, but there is no zombie here"
                             ),
                         };
-                        self.current_task_mut()
+                        let current_task = self.current_task_mut();
+                        current_task
                             .set_waiting(WaitingState::ChildDeath(dead_process_pid, status as u32));
-                        self.current_task_mut().set_return_value(0);
+                        current_task.set_return_value(0);
                         return JobAction::default();
                     }
                     ProcessMessage::SomethingToRead => {
-                        self.current_task_mut()
+                        let current_task = self.current_task_mut();
+                        current_task
                             .message_queue
                             .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        self.current_task_mut().set_return_value(0);
-                        self.current_task_mut().set_running();
+                        current_task.set_return_value(0);
+                        current_task.set_running();
                         return JobAction::default();
                     }
                 }
