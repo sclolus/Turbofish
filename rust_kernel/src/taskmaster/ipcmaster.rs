@@ -44,6 +44,10 @@ trait KernelFileDescriptor: core::fmt::Debug + Send {
     fn register(&mut self, access_mode: Mode);
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, access_mode: Mode);
+    /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<i32>;
+    /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
+    fn write(&mut self, buf: &[u8]) -> SysResult<i32>;
 }
 
 /// Here the type of the Kernel File Descriptor
@@ -155,6 +159,73 @@ impl FileDescriptorInterface {
         Ok((input_fd, output_fd))
     }
 
+    /// Open a Fifo
+    #[allow(dead_code)]
+    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<Fd> {
+        if access_mode == Mode::ReadWrite {
+            return Err(Errno::Eacces);
+        }
+
+        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
+
+        let fd = self
+            .get_lower_fd_value()
+            .ok_or::<Errno>(Errno::Emfile)
+            .map(|fd| {
+                self.user_fd_list
+                    .try_insert(
+                        fd,
+                        UserFileDescriptor::new(access_mode, KernelFileDescriptorType::Fifo, fifo),
+                    )
+                    .map(|_| fd)
+            })??;
+        Ok(fd)
+    }
+
+    /// Open a Socket
+    /// The socket type must be pass as parameter
+    #[allow(dead_code)]
+    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
+        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
+
+        let fd = self
+            .get_lower_fd_value()
+            .ok_or::<Errno>(Errno::Emfile)
+            .map(|fd| {
+                self.user_fd_list
+                    .try_insert(
+                        fd,
+                        UserFileDescriptor::new(
+                            access_mode,
+                            KernelFileDescriptorType::Socket,
+                            socket,
+                        ),
+                    )
+                    .map(|_| fd)
+            })??;
+        Ok(fd)
+    }
+
+    /// Read something from the File Descriptor:
+    /// Important ! When in blocked syscall, the slice must be verified before read op and
+    /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
+    #[allow(dead_code)]
+    pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<i32> {
+        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
+
+        elem.kernel.lock().read(buf)
+    }
+
+    /// Write something into the File Descriptor:
+    /// Important ! When in blocked syscall, the slice must be verified before write op and
+    /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
+    #[allow(dead_code)]
+    pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<i32> {
+        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
+
+        elem.kernel.lock().write(buf)
+    }
+
     /// Duplicate one File Descriptor
     pub fn dup(&mut self, oldfd: Fd) -> SysResult<Fd> {
         for (key, elem) in &self.user_fd_list {
@@ -186,52 +257,6 @@ impl FileDescriptorInterface {
             }
         }
         Err(Errno::Ebadf)
-    }
-
-    /// Open a Fifo
-    #[allow(dead_code)]
-    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<Fd> {
-        if access_mode == Mode::ReadWrite {
-            return Err(Errno::Eacces);
-        }
-
-        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
-
-        let fd = self
-            .get_lower_fd_value()
-            .ok_or::<Errno>(Errno::Emfile)
-            .map(|fd| {
-                self.user_fd_list
-                    .try_insert(
-                        fd,
-                        UserFileDescriptor::new(access_mode, KernelFileDescriptorType::Fifo, fifo),
-                    )
-                    .map(|_| fd)
-            })??;
-        Ok(fd)
-    }
-
-    /// Open a Socket
-    #[allow(dead_code)]
-    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
-        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
-
-        let fd = self
-            .get_lower_fd_value()
-            .ok_or::<Errno>(Errno::Emfile)
-            .map(|fd| {
-                self.user_fd_list
-                    .try_insert(
-                        fd,
-                        UserFileDescriptor::new(
-                            access_mode,
-                            KernelFileDescriptorType::Socket,
-                            socket,
-                        ),
-                    )
-                    .map(|_| fd)
-            })??;
-        Ok(fd)
     }
 
     /// Clone one file descriptor

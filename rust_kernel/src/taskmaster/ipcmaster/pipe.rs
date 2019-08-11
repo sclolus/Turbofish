@@ -1,5 +1,7 @@
 //! This file contains all the stuff about Pipes
 
+use super::SysResult;
+
 use super::KernelFileDescriptor;
 use super::Mode;
 
@@ -35,6 +37,12 @@ impl KernelFileDescriptor for Pipe {
             Mode::WriteOnly => self.output_ref -= 1,
             _ => panic!("Pipe invalid access mode"),
         };
+    }
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<i32> {
+        Ok(0)
+    }
+    fn write(&mut self, _buf: &[u8]) -> SysResult<i32> {
+        Ok(0)
     }
 }
 
