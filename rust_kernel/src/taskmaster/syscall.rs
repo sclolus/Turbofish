@@ -166,8 +166,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ebp,
         ..
     } = (*cpu_state).registers;
-    // println!("{}", trace_syscall::syscall_number_to_str(eax));
 
+    // trace_syscall::trace_syscall(cpu_state);
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
