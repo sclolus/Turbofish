@@ -17,6 +17,7 @@
 extern crate alloc;
 
 // Our Crates
+extern crate elf_parser;
 extern crate io;
 extern crate keyboard;
 extern crate mbr;
@@ -60,7 +61,6 @@ pub use watch_dog::*;
 pub mod shell;
 
 pub use sync::{Spinlock, SpinlockGuard};
-pub mod elf_loader;
 
 use crate::memory::RustGlobalAlloc;
 

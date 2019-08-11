@@ -3,6 +3,9 @@
 mod tss;
 use tss::TSS;
 
+mod elf;
+use elf::{load_elf, parse_elf};
+
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
@@ -12,13 +15,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::slice;
+use errno::Errno;
 use fallible_collections::FallibleArc;
 
-use elf_loader::SegmentType;
+use elf_parser::SegmentType;
 
 use fallible_collections::{try_vec, FallibleBox};
 
-use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
@@ -215,46 +218,15 @@ impl Process for UserProcess {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
-        let mut virtual_allocator = AddressSpace::try_new()?;
-        // Switch to this process Page Directory
+        let mut virtual_allocator = AddressSpace::try_new()?; // rename this to address space
+                                                              // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
         let eip = match origin {
             TaskOrigin::Elf(content) => {
                 // Parse Elf and generate stuff
-                let elf = load_elf(content);
-                for h in &elf.program_header_table {
-                    if h.segment_type == SegmentType::Load {
-                        let segment = {
-                            virtual_allocator.alloc_on(
-                                h.vaddr as *mut u8,
-                                h.memsz as usize,
-                                AllocFlags::USER_MEMORY,
-                            )?;
-                            slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
-                        };
-                        segment[0..h.filez as usize].copy_from_slice(
-                            &content[h.offset as usize..h.offset as usize + h.filez as usize],
-                        );
-                        // With BSS (so a NOBITS section), the memsz value exceed the filesz. Setting next bytes as 0
-                        segment[h.filez as usize..h.memsz as usize]
-                            .as_mut_ptr()
-                            .write_bytes(0, h.memsz as usize - h.filez as usize);
-                        // Modify the rights on pages by following the ELF specific restrictions
-                        virtual_allocator
-                            .change_range_page_entry(
-                                Page::containing(Virt(h.vaddr as usize)),
-                                (h.memsz as usize).into(),
-                                &mut |entry: &mut Entry| {
-                                    *entry |= Entry::from(
-                                        Into::<AllocFlags>::into(h.flags) | AllocFlags::USER_MEMORY,
-                                    )
-                                },
-                            )
-                            .expect("page must have been alloc by alloc on");
-                    }
-                }
-                elf.header.entry_point as u32
+                let parser = parse_elf(content).or(Err(Errno::Enoexec))?;
+                load_elf(&parser, &mut virtual_allocator).or(Err(Errno::Enoexec))? as u32
             }
             TaskOrigin::Raw(code, code_len) => {
                 // Allocate one page for code segment of the Dummy process

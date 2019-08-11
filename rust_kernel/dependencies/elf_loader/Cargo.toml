@@ -1,13 +1,14 @@
 [package]
 name = "elf_loader"
 version = "0.1.0"
-authors = ["vcombey <vcombey@student.42.fr>"]
+authors = ["sclolus"]
 edition = "2018"
 
 [dependencies]
-bitflags = "1.0.4"
+elf_parser = { path = "../elf_parser"}
 terminal = { path = "../terminal" }
-derive_is_enum_variant = "0.1.1"
+errno = { path = "../errno" }
+itertools = "0.8.0"
 
 [features]
 test = []

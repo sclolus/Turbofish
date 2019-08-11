@@ -31,7 +31,7 @@ else
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 
-CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc -fno-pie
+CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc -fno-pie  # -ffreestanding
 
 IFLAGS = -Iinclude -Ilibft/includes -Ilibasm_i386/includes -I./
 
@@ -100,7 +100,7 @@ endif
 ifeq ($(DEBUG),yes)
 	rust_os := target/$(target)/debug/lib$(name).a
 else
-	cargo_flags += --release
+	cargo_flags += --release -j1
 	rust_os := target/$(target)/release/lib$(name).a
 endif
 
@@ -144,7 +144,7 @@ compile_bootstrap:
 compile_panic = $(CC) -c $(CFLAGS) -o $(OBJ_DIR)/panic.o src/system/panic.c $(IFLAGS)
 compile_bootstrap = make -C src/boot/bootstrap OWNED_BY_KERNEL=yes
 extract_kernel_symbols = nm -n $@ > autobuild/nm_output
-gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml 
+gen_symbol_map = cargo run --release --manifest-path autobuild/nm_map_gen_rust/Cargo.toml
 link_kernel = $(LD) $(LDFLAGS) -T $(linker_script) -o $@ $^
 
 LIBS = libft/libft.a libasm_i386/libasm_i386.a

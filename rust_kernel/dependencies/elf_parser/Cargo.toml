@@ -1,0 +1,25 @@
+[package]
+name = "elf_parser"
+version = "0.1.0"
+authors = ["vcombey <vcombey@student.42.fr>"]
+edition = "2018"
+
+[dependencies]
+bitflags = "1.0.4"
+terminal = { path = "../terminal" }
+derive_is_enum_variant = "0.1.1"
+
+[dependencies.derive-new]
+version = "0.5.7"
+std = false
+default-features = false
+
+[dependencies.itertools]
+version = "0.8.0"
+default-features = false
+use_std = false
+
+
+[features]
+test = []
+std-print = []

@@ -23,7 +23,7 @@ pub enum Errno {
     Enxio = 6,
     /// Argument list too long.
     E2Big = 7,
-    /// No such file or directory.
+    /// No such file or directory/Exec Format Error.
     Enoexec = 8,
     /// Bad file descriptor.
     Ebadf = 9,

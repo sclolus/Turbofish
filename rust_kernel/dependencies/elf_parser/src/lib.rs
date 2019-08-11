@@ -1,4 +1,5 @@
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
+
 use bitflags::bitflags;
 use core::convert::{AsRef, TryFrom, TryInto};
 use core::mem;
@@ -7,21 +8,60 @@ use core::result::Result as CoreResult;
 #[macro_use]
 extern crate derive_is_enum_variant;
 
-#[cfg(not(feature = "std-print"))]
+#[macro_use]
+extern crate derive_new;
+
+#[cfg(all(not(test), not(feature = "std-print")))]
 #[allow(unused_imports)]
 #[macro_use]
-#[cfg(not(test))]
 extern crate terminal;
 
 extern crate alloc;
 
+#[macro_use]
+extern crate itertools;
+
+use itertools::unfold;
+
+trait RangeExt {
+    /// True if the range `other` is contained inside of `self`.
+    /// That is for self: start..end and other: a..b.
+    /// start >= a && b <= end.
+    fn contains_range(&self, other: &Self) -> bool;
+}
+
+use core::cmp::{max, min};
+use core::ops::Range;
+
+impl<T: Ord + Copy> RangeExt for Range<T> {
+    fn contains_range(&self, other: &Self) -> bool {
+        /// The start and end fields might be inversed.
+        let end = max(other.start, other.end);
+        let start = min(other.start, other.end);
+
+        let self_end = max(self.start, self.end);
+        let self_start = min(self.start, self.end);
+
+        start >= self_start && end <= self_end
+    }
+}
+
 use alloc::vec::Vec;
 
+#[derive(new)]
 pub struct ElfParser<'a> {
     file: &'a [u8],
+
+    #[new(default)]
     elf_header: Option<ElfHeader>,
+
+    #[new(default)]
     program_headers: Vec<ProgramHeader>,
+
+    #[new(default)]
     section_headers: Vec<SectionHeader>,
+
+    #[new(default)]
     string_table: Option<&'a [u8]>,
 }
 
@@ -29,17 +69,15 @@ impl<'a> TryFrom<&'a [u8]> for ElfParser<'a> {
     type Error = ElfParseError;
 
     fn try_from(value: &'a [u8]) -> Result<Self> {
-        Ok(Self::new(value))
+        let mut new = Self::new(value);
+        new.parse()?;
+        Ok(new)
     }
 }
 
 type Result<T> = CoreResult<T, ElfParseError>;
 
 impl<'a> ElfParser<'a> {
-    pub fn new(file: &'a [u8]) -> Self {
-        Self { file, elf_header: None, program_headers: Vec::new(), section_headers: Vec::new(), string_table: None }
-    }
-
     pub fn parse(&mut self) -> Result<()> {
         let header = ElfHeader::from_bytes(self.file)?;
 
@@ -65,17 +103,80 @@ impl<'a> ElfParser<'a> {
             let sh_table = &self.file[sh_table_start..sh_table_end];
 
             for sh in sh_table.chunks(sh_size) {
-                self.program_headers.push(sh.try_into()?)
+                self.section_headers.push(sh.try_into()?)
             }
         }
 
         self.elf_header = Some(header);
         Ok(())
     }
+
+    pub fn segments(&self) -> impl Iterator<Item = (&ProgramHeader, &[u8])> {
+        let mut program_headers = self.program_headers.iter();
+        let file_len = self.file.len(); // removing borrowing of &self on those fiels.
+        let file = self.file;
+
+        unfold((), move |_| {
+            if let Some(program_header) = program_headers.next() {
+                let start = program_header.offset as usize;
+                let end = start + program_header.filez as usize;
+                let byte_range = start..end as usize;
+
+                assert!((0..file_len).contains_range(&byte_range));
+                Some((program_header, &file[byte_range]))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn sections(&self) -> impl Iterator<Item = (&SectionHeader, &[u8])> {
+        let mut section_headers = self.section_headers.iter();
+        let file_len = self.file.len(); // removing borrowing of &self on those fiels.
+        let file = self.file;
+
+        unfold((), move |_| {
+            if let Some(section_header) = section_headers.next() {
+                let start = section_header.sh_offset as usize;
+                let end = start + section_header.sh_size as usize;
+                let byte_range = start..end as usize;
+
+                assert!((0..file_len).contains_range(&byte_range));
+                Some((section_header, &file[byte_range]))
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns the type of the parsed elf file.
+    #[rustfmt::skip]
+    pub fn object_type(&self) -> Result<ObjectType> {
+        Ok(self.elf_header
+             .as_ref().ok_or(ElfParseError::NotParsedYet)?
+             .object_type)
+    }
+
+    /// Returns the entry point associated with the executable file.
+    /// Returns None if there are no entry point associated.
+    #[rustfmt::skip]
+    pub fn entry_point(&self) -> Result<Option<usize>> {
+        let entry_point = self.elf_header
+            .as_ref().ok_or(ElfParseError::NotParsedYet)?
+            .entry_point;
+
+        if entry_point == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(entry_point as usize))
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
 pub enum ElfParseError {
+    NoEntryPoint,
+    NotParsedYet,
     BadMagic,
     InvalidHeader,
     InvalidEndian,
@@ -214,7 +315,7 @@ impl TryFrom<u8> for Abi {
     }
 }
 
-#[derive(Debug, Copy, Clone, is_enum_variant)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, is_enum_variant)]
 pub enum ObjectType {
     None,
     Rel,
@@ -452,10 +553,10 @@ bitflags! {
         const Readable = 0x4;
 
         #[allow(non_upper_case_globals)]
-        const MaskOs = 0x0ff00000;
+        const MaskOs = 0x0ff0_0000;
 
         #[allow(non_upper_case_globals)]
-        const MaskProc = 0xf0000000;
+        const MaskProc = 0xf000_0000;
     }
 }
 
@@ -480,15 +581,15 @@ impl TryFrom<u32> for SegmentType {
             0x4 => Note,
             0x5 => Shlib,
             0x6 => Phdr,
-            0x60000000 => Loos,
-            0x6FFFFFFF => Hios,
-            0x70000000 => LoProc,
-            0x7FFFFFFF => HiProc,
-            0x6474e550 => GnuEhFrame,
-            0x6474e551 => GnuStack,
-            0x6474e552 => GnuRelro,
-            0x6ffffffa => Losunw,
-            0x6ffffffb => Sunwstack,
+            0x6000_0000 => Loos,
+            0x6FFF_FFFF => Hios,
+            0x7000_0000 => LoProc,
+            0x7FFF_FFFF => HiProc,
+            0x6474_e550 => GnuEhFrame,
+            0x6474_e551 => GnuStack,
+            0x6474_e552 => GnuRelro,
+            0x6fff_fffa => Losunw,
+            0x6fff_fffb => Sunwstack,
             _other => ProcessorSpecific,
             // e => {
             //     return Err({
@@ -500,7 +601,8 @@ impl TryFrom<u32> for SegmentType {
     }
 }
 
-#[derive(Debug)]
+#[allow(clippy::too_many_arguments)]
+#[derive(Debug, new)]
 pub struct ProgramHeader {
     pub segment_type: SegmentType,
     /// This member gives the offset from the beginning of the file at which the first byte of thesegment resides
@@ -532,23 +634,33 @@ impl TryFrom<&[u8]> for ProgramHeader {
             return Err(ElfParseError::InvalidProgramHeader);
         }
 
-        let new = Self {
-            segment_type: SegmentType::try_from(slice_to_u32(&value[0x0..0x4]))?,
-            offset: slice_to_u32(&value[0x4..0x8]),
-            vaddr: slice_to_u32(&value[0x8..0x0C]),
-            paddr: slice_to_u32(&value[0x0C..0x10]),
-            filez: slice_to_u32(&value[0x10..0x14]),
-            memsz: slice_to_u32(&value[0x14..0x18]),
-            flags: ProgramHeaderFlags::try_from(slice_to_u32(&value[0x18..0x1C]))?,
-            align: slice_to_u32(&value[0x1C..0x20]),
-        };
+        let segment_type = SegmentType::try_from(slice_to_u32(&value[0x0..0x4]))?;
 
-        // if new.p_align > 1 && (new.p_vaddr != new.p_offset % new.p_align || !new.p_align.is_power_of_two()) {
-        //     //TODO Loadable  process  segments must have congruent values for
-        //     // p_vaddr and p_offset, modulo the page size.
-        //     return Err(ElfParseError::InvalidSegmentAlignment);
-        // }
-        Ok(new)
+        if segment_type.is_null() {
+            /// Null program header have undefined fields.
+            let mut mem: Self = unsafe { mem::zeroed() };
+
+            mem.segment_type = segment_type;
+            Ok(mem)
+        } else {
+            let new = Self {
+                segment_type,
+                offset: slice_to_u32(&value[0x4..0x8]),
+                vaddr: slice_to_u32(&value[0x8..0x0C]),
+                paddr: slice_to_u32(&value[0x0C..0x10]),
+                filez: slice_to_u32(&value[0x10..0x14]),
+                memsz: slice_to_u32(&value[0x14..0x18]),
+                flags: ProgramHeaderFlags::try_from(slice_to_u32(&value[0x18..0x1C]))?,
+                align: slice_to_u32(&value[0x1C..0x20]),
+            };
+
+            // if new.p_align > 1 && (new.p_vaddr != new.p_offset % new.p_align || !new.p_align.is_power_of_two()) {
+            //     //TODO Loadable  process  segments must have congruent values for
+            //     // p_vaddr and p_offset, modulo the page size.
+            //     return Err(ElfParseError::InvalidSegmentAlignment);
+            // }
+            Ok(new)
+        }
     }
 }
 
@@ -631,24 +743,24 @@ impl TryFrom<u32> for SectionHeaderType {
             0x11 => Group,
             0x12 => SymtabShndx,
             0x13 => Num,
-            0x60000000 => Loos,
-            0x6ffffff5 => GnuAttributes,
-            0x6ffffff6 => GnuHash,
-            0x6ffffff7 => GnuLibList,
-            0x6ffffff8 => Checksum,
-            0x6ffffffa => Losunw,
-            // 0x6ffffffa => SunwMove,
-            0x6ffffffb => SunwComdat,
-            0x6ffffffc => SunwSyminfo,
-            0x6ffffffd => GnuVerdef,
-            0x6ffffffe => GnuVerneed,
-            0x6fffffff => GnuVersym,
-            // 0x6fffffff => Hisunw,
-            // 0x6fffffff => Hios,
-            0x70000000 => LoProc,
-            0x7fffffff => HiProc,
-            0x80000000 => LoUser,
-            0x8fffffff => HiUser,
+            0x6000_0000 => Loos,
+            0x6fff_fff5 => GnuAttributes,
+            0x6fff_fff6 => GnuHash,
+            0x6fff_fff7 => GnuLibList,
+            0x6fff_fff8 => Checksum,
+            0x6fff_fffa => Losunw,
+            // 0x6fff_fffa => SunwMove,
+            0x6fff_fffb => SunwComdat,
+            0x6fff_fffc => SunwSyminfo,
+            0x6fff_fffd => GnuVerdef,
+            0x6fff_fffe => GnuVerneed,
+            0x6fff_ffff => GnuVersym,
+            // 0x6fff_ffff => Hisunw,
+            // 0x6fff_ffff => Hios,
+            0x7000_0000 => LoProc,
+            0x7fff_ffff => HiProc,
+            0x8000_0000 => LoUser,
+            0x8fff_ffff => HiUser,
             _ => return Err(ElfParseError::InvalidSectionHeaderType),
         })
     }
@@ -677,13 +789,13 @@ bitflags! {
         #[allow(non_upper_case_globals)]
         const Tls = 0x400;
         #[allow(non_upper_case_globals)]
-        const MaskOs = 0x0ff00000;
+        const MaskOs = 0x0ff0_0000;
         #[allow(non_upper_case_globals)]
-        const MaskProc = 0xf0000000;
+        const MaskProc = 0xf000_0000;
         #[allow(non_upper_case_globals)]
-        const Ordered = 0x40000000;
+        const Ordered = 0x4000_0000;
         #[allow(non_upper_case_globals)]
-        const Exclude = 0x80000000;
+        const Exclude = 0x8000_0000;
     }
 }
 
@@ -694,7 +806,8 @@ impl TryFrom<u32> for SectionHeaderFlags {
     }
 }
 
-#[derive(Debug)]
+#[allow(clippy::too_many_arguments)]
+#[derive(Debug, new)]
 pub struct SectionHeader {
     sh_name: u32,
     sh_type: SectionHeaderType,
@@ -759,7 +872,7 @@ impl core::fmt::Display for SectionHeader {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, new)]
 pub struct Symbol {
     name: u32,
     value: u32,
@@ -866,11 +979,11 @@ pub struct SymbolInfo {
 }
 
 impl SymbolInfo {
-    pub fn get_type(&self) -> SymbolType {
+    pub fn get_type(self) -> SymbolType {
         self.s_type
     }
 
-    pub fn get_binding(&self) -> SymbolBinding {
+    pub fn get_binding(self) -> SymbolBinding {
         self.s_binding
     }
 }
@@ -969,6 +1082,7 @@ mod tests {
 
             println!("{:#X?}", &header);
             use core::slice;
+            println!("{} programs headers", header.nbr_program_header);
             let program_header_table: &[[u8; mem::size_of::<ProgramHeader>()]] = unsafe {
                 slice::from_raw_parts(
                     &content[header.program_header_table_offset as usize] as *const u8 as *const _,
@@ -1000,6 +1114,21 @@ mod tests {
                 println!("{:02}: {:?}", index, sheader);
                 sh_table.push(sheader);
             }
+
+            println!("Interresting ================");
+            let mut parser = ElfParser::new(&content);
+            parser.parse().unwrap();
+
+            for (ph, bytes) in parser.segments() {
+                println!("{}", ph);
+            }
+
+            println!("Sections");
+            for (sh, bytes) in parser.sections() {
+                println!("{}", sh);
+            }
         }
+
+        panic!();
     }
 }

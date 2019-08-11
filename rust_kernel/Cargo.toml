@@ -31,19 +31,26 @@ ext2 = { path = "dependencies/ext2" }
 terminal = { path = "dependencies/terminal" }
 registers = { path = "dependencies/registers" }
 sync = { path = "dependencies/sync" }
-elf_loader = { path = "dependencies/elf_loader" }
+elf_parser = { path = "dependencies/elf_parser" }
+# elf_loader = { path = "dependencies/elf_loader" }
 errno = { path = "dependencies/errno" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
+
 
 [dependencies.lazy_static]
 version = "1.3.0"
 features = ["spin_no_std"]
 
+[dependencies.itertools]
+version = "0.8.0"
+default-features = false
+use_std = false
+
 [features]
 exit-on-panic = ["terminal/exit-on-panic"]
 serial-eprintln = ["terminal/serial-eprintln"]
-std-print = ["terminal/std-print", "ext2/std-print", "elf_loader/std-print"]
+std-print = ["terminal/std-print", "ext2/std-print", "elf_parser/std-print"]
 #test-succeed = []
 #test-failed = []
 test-sodo-allocator = []
@@ -66,7 +73,8 @@ members = [
 "dependencies/terminal",
 "dependencies/registers",
 "dependencies/sync",
-"dependencies/elf_loader",
+"dependencies/elf_parser",
+# "dependencies/elf_loader",
 "dependencies/errno",
 "dependencies/try_clone_derive",
 "dependencies/fallible_collections"

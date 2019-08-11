@@ -2,7 +2,7 @@
 use crate::memory::mmu::Entry;
 use bitflags::bitflags;
 use core::default::Default;
-use elf_loader::ProgramHeaderFlags;
+use elf_parser::ProgramHeaderFlags;
 
 bitflags! {
     #[derive(Default)]

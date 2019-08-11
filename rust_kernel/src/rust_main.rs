@@ -77,7 +77,7 @@ pub extern "C" fn kmain(
     );
 
     log::info!("Scanning PCI buses ...");
-    PCI.lock().scan_pci_buses();
+    // PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
 
     crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
@@ -100,6 +100,7 @@ pub extern "C" fn kmain(
     use crate::taskmaster::{Process, TaskOrigin, UserProcess};
     // Load some processes into the scheduler
     let user_process_list = unsafe {
+        println!("Before");
         vec![
             UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
@@ -149,5 +150,6 @@ pub extern "C" fn kmain(
             // UserProcess::new(TaskOrigin::Elf(&include_bytes!("userland/Clone")[..])).unwrap(),
         ]
     };
+    println!("after");
     crate::taskmaster::start(user_process_list);
 }
