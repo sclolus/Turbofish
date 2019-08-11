@@ -72,8 +72,9 @@ impl Terminal {
             .iter_mut()
             .find(|l| l.get_tty().foreground)
             .map(|l| l.get_tty_mut().foreground = false);
-        self.ttys[new_foreground_tty].get_tty_mut().foreground = true;
-        self.ttys[new_foreground_tty].get_tty_mut().refresh();
+        let new_tty = self.ttys[new_foreground_tty].get_tty_mut();
+        new_tty.foreground = true;
+        new_tty.refresh();
     }
 
     /// Get the foregounded TTY
@@ -93,10 +94,12 @@ impl Terminal {
 
     pub fn write_input(&mut self, buff: &[KeySymb], tty_index: usize) {
         // eprintln!("write_input {:?}", buff);
-        self.ttys[tty_index]
-            .write_input(buff)
-            //TODO: remove this expect later
-            .expect("write input failed");
+        if !self.handle_tty_control(buff[0]) {
+            self.ttys[tty_index]
+                .write_input(buff)
+                //TODO: remove this expect later
+                .expect("write input failed");
+        }
     }
 
     /// Get the TTY n
