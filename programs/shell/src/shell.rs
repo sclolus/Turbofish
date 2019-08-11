@@ -3,9 +3,6 @@
 mod ansi_escape_code;
 use ansi_escape_code::CursorMove;
 
-mod key_symb;
-use key_symb::KeySymb;
-
 mod builtin;
 use builtin::{echo, exec, fish, hello_world, ls, more_fish, reboot_computer, shutdown_computer};
 
@@ -71,23 +68,23 @@ fn exec_builtin(line: &str) {
 fn read_line() -> String {
     let mut line = String::new();
     let mut cursor_pos = 0;
-    let mut buf: [KeySymb; 1] = [KeySymb::nul; 1];
+    let mut buf: [u8; 8] = [0; 8];
 
     let mut graphical_cursor_offset = 0;
     let mut graphical_len = 0;
 
     loop {
-        block_read(&mut buf);
-        let keysymb = buf[0];
-        match keysymb {
-            KeySymb::Linefeed => {
+        let ret = unsafe { read(0, buf.as_mut_ptr() as *mut u8, 1) };
+        if ret == -1 {
+            panic!("read failed");
+        }
+        let first = buf[0];
+        match first {
+            key if key == ('\n' as u8) => {
                 print!("{}", &line[cursor_pos..]);
                 return line;
             }
-            key if ((key >= KeySymb::space)
-                && (key <= KeySymb::ydiaeresis)
-                && (key != KeySymb::Delete)) =>
-            {
+            key if ((key >= ' ' as u8) && (key <= '~' as u8) && (key != 127)) => {
                 line.insert(cursor_pos, key as u8 as char);
 
                 print!("{}", &line[cursor_pos..]);
@@ -102,30 +99,40 @@ fn read_line() -> String {
                     CursorMove::Backward(graphical_len - graphical_cursor_offset)
                 );
             }
-            KeySymb::Left => {
-                if cursor_pos > 0 {
-                    while !line.is_char_boundary(cursor_pos - 1) {
-                        cursor_pos -= 1;
-                    }
-                    cursor_pos -= 1;
-                    graphical_cursor_offset -= 1;
+            27 => {
+                let ret = unsafe { read(0, buf[1..].as_mut_ptr() as *mut u8, 2) };
+                match buf[1..3] {
+                    // left
+                    [79, 68] => {
+                        if cursor_pos > 0 {
+                            while !line.is_char_boundary(cursor_pos - 1) {
+                                cursor_pos -= 1;
+                            }
+                            cursor_pos -= 1;
+                            graphical_cursor_offset -= 1;
 
-                    print!("{}", CursorMove::Backward(1))
+                            print!("{}", CursorMove::Backward(1))
+                        }
+                    }
+
+                    //right
+                    [79, 67] => {
+                        if cursor_pos < line.len() {
+                            while !line.is_char_boundary(cursor_pos + 1) {
+                                cursor_pos += 1;
+                            }
+                            cursor_pos += 1;
+
+                            graphical_cursor_offset += 1;
+
+                            print!("{}", CursorMove::Forward(1));
+                        }
+                    }
+                    _ => (),
                 }
             }
-            KeySymb::Right => {
-                if cursor_pos < line.len() {
-                    while !line.is_char_boundary(cursor_pos + 1) {
-                        cursor_pos += 1;
-                    }
-                    cursor_pos += 1;
-
-                    graphical_cursor_offset += 1;
-
-                    print!("{}", CursorMove::Forward(1));
-                }
-            }
-            KeySymb::Delete => {
+            /* delete */
+            127 => {
                 if cursor_pos > 0 {
                     while !line.is_char_boundary(cursor_pos - 1) {
                         cursor_pos -= 1;
@@ -151,15 +158,6 @@ fn read_line() -> String {
             }
             _ => {}
         };
-    }
-}
-
-fn block_read(buf: &mut [KeySymb]) {
-    unsafe {
-        let ret = read(0, buf.as_mut_ptr() as *mut u8, 2);
-        if ret < 0 {
-            panic!("Fatal read error");
-        }
     }
 }
 

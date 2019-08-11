@@ -506,10 +506,33 @@ use messaging::{MessageTo, SchedulerMessage};
 pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
     // particular case of convertion
     match keysymb {
-        KeySymb::Right | KeySymb::Left | KeySymb::Up | KeySymb::Down | KeySymb::Delete => {
-            dst[0] = (keysymb as u32 & 0xff) as u8;
-            dst[1] = ((keysymb as u32 & 0xff00) >> 8) as u8;
-            return &dst[0..2];
+        KeySymb::Right => {
+            dst[0] = 27;
+            dst[1] = 79;
+            dst[2] = 67;
+            return &dst[0..3];
+        }
+        KeySymb::Left => {
+            dst[0] = 27;
+            dst[1] = 79;
+            dst[2] = 68;
+            return &dst[0..3];
+        }
+        KeySymb::Up => {
+            dst[0] = 27;
+            dst[1] = 79;
+            dst[2] = 65;
+            return &dst[0..3];
+        }
+        KeySymb::Down => {
+            dst[0] = 27;
+            dst[1] = 79;
+            dst[2] = 66;
+            return &dst[0..3];
+        }
+        KeySymb::Delete => {
+            dst[0] = 127;
+            return &dst[0..1];
         }
         KeySymb::Return => {
             dst[0] = '\n' as u8;
