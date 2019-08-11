@@ -7,7 +7,7 @@ pub mod tools;
 
 pub mod allocator;
 pub use allocator::kernel::ffi;
-pub use allocator::kernel::RustGlobalAlloc;
+pub use allocator::kernel::{set_faillible_context, unset_faillible_context, RustGlobalAlloc};
 pub use allocator::{AddressSpace, VirtualPageAllocator, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
 
 pub mod init;

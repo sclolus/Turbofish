@@ -4,7 +4,13 @@
 #![feature(try_reserve)]
 #![feature(specialization)]
 #![feature(allocator_api)]
-#![deny(missing_docs)]
+#![feature(dropck_eyepatch)]
+#![feature(ptr_internals)]
+#![feature(core_intrinsics)]
+#![feature(maybe_uninit_ref)]
+#![feature(maybe_uninit_array)]
+#![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_extra)]
 
 extern crate alloc;
 pub mod boxed;
@@ -16,6 +22,7 @@ pub mod rc;
 pub use rc::*;
 pub mod arc;
 pub use arc::*;
+pub mod btree;
 
 use alloc::collections::CollectionAllocErr;
 
