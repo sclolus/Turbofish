@@ -128,8 +128,6 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 /// load the next process, returning the new_kernel_esp
 pub unsafe fn load_next_process(scheduler: &mut Scheduler, next_process: usize) -> u32 {
     _update_process_end_time(scheduler.time_interval.unwrap());
-    // Handle a tty control
-    // handle_tty_control();
 
     scheduler.dispatch_messages();
     // Switch between processes
@@ -141,13 +139,6 @@ pub unsafe fn load_next_process(scheduler: &mut Scheduler, next_process: usize) 
     // Restore kernel_esp for the new process/
     new_kernel_esp
 }
-
-// #[allow(unused)]
-// pub unsafe fn schedule() -> ! {
-//     let new_kernel_esp = load_next_process(1);
-//     println!("{:X?}", new_kernel_esp);
-//     _continue_schedule(new_kernel_esp)
-// }
 
 /// Remove ressources of the exited process and note his exit status
 #[no_mangle]

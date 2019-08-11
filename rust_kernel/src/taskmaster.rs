@@ -70,6 +70,7 @@ pub fn handle_key_press(keysymb: KeySymb) {
     KEY_BUFFER
         .lock()
         .try_push(keysymb)
+        // TODO: remove this expect later
         .expect("not enough place in KEY_BUFFER");
 }
 

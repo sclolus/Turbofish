@@ -46,7 +46,7 @@ pub extern "C" fn kmain(
     println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(1000.).unwrap();
+    PIT0.lock().start_at_frequency(20.).unwrap();
     log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
     match Acpi::init() {

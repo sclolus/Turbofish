@@ -81,10 +81,6 @@ impl Terminal {
         Some(&mut self.ttys.iter_mut().find(|l| l.get_tty().foreground)?.tty)
     }
 
-    // fn stock_keysymb(&mut self, keysymb: KeySymb) {
-    //     self.buf = Some(keysymb);
-    // }
-
     /// Read a Key from the buffer
     pub fn read(&mut self, buf: &mut [u8], tty_index: usize) -> ReadResult {
         self.ttys[tty_index].read(buf)
@@ -99,6 +95,7 @@ impl Terminal {
         // eprintln!("write_input {:?}", buff);
         self.ttys[tty_index]
             .write_input(buff)
+            //TODO: remove this expect later
             .expect("write input failed");
     }
 
@@ -122,13 +119,6 @@ impl Terminal {
         true
     }
 }
-
-// /// Usefull method to stock the character from the keyboard
-// pub fn stock_keysymb(keysymb: KeySymb) {
-//     unsafe {
-//         TERMINAL.as_mut().unwrap().stock_keysymb(keysymb);
-//     }
-// }
 
 extern "C" {
     static _wanggle_bmp_start: BmpImage;
@@ -177,10 +167,6 @@ pub fn init_terminal() {
     term.get_foreground_tty().unwrap().tty.refresh();
     unsafe {
         TERMINAL = Some(term);
-        // KEYBOARD_DRIVER
-        //     .as_mut()
-        //     .unwrap()
-        //     .bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
     self::log::init().unwrap();
     ::log::info!("Terminal has been initialized");
