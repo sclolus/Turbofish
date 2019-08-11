@@ -1,8 +1,8 @@
 //! this is LockForest, a Lock free Queue
-use core::ops::{Deref, DerefMut};
-use core::sync::atomic::{AtomicBool};
-use core::sync::atomic::Ordering;
 use alloc::vec::Vec;
+use core::ops::{Deref, DerefMut};
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering;
 
 // true means locked
 pub struct RawLock(AtomicBool);
@@ -74,7 +74,7 @@ impl<'a, T> Lock<T> {
 /// Iterator which remove all elems
 pub struct Drain<'a, T> {
     lock_forest: &'a LockForest<T>,
-    index: usize
+    index: usize,
 }
 
 impl<'a, T> Iterator for Drain<'a, T> {
@@ -98,7 +98,6 @@ impl<T> LockForest<T> {
         let mut list = Vec::with_capacity(len);
         for _ in 0..len {
             list.push(Lock::new(None));
-            
         }
         Self {
             list,
@@ -107,7 +106,7 @@ impl<T> LockForest<T> {
     }
 
     /// push on the queue, O(n) complexity for the moment
-    pub fn push(&self, t: T) -> Result<(),()> {
+    pub fn push(&self, t: T) -> Result<(), ()> {
         for elem in &self.list {
             match elem.try_lock() {
                 Some(mut elem) => {
@@ -117,7 +116,9 @@ impl<T> LockForest<T> {
                     *elem = Some(t);
                     return Ok(());
                 }
-                None => { continue; }
+                None => {
+                    continue;
+                }
             }
         }
         Err(())
@@ -128,13 +129,15 @@ impl<T> LockForest<T> {
     pub fn drain(&self) -> Drain<T> {
         Drain {
             lock_forest: &self,
-            index: 0
+            index: 0,
         }
     }
 
     /// pop the next element after index `index` of the queue
     fn pop_after(&self, index: usize) -> Option<T> {
-        if index > self.list.len() { return None; }
+        if index > self.list.len() {
+            return None;
+        }
         for elem in &self.list[index..] {
             match elem.try_lock() {
                 Some(mut elem) => {
@@ -143,7 +146,9 @@ impl<T> LockForest<T> {
                     }
                     return elem.take();
                 }
-                None => { continue; }
+                None => {
+                    continue;
+                }
             }
         }
         None
@@ -156,7 +161,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-
         let a: LockForest<u32> = LockForest::new(10000);
         a.push(4).unwrap();
         a.push(2).unwrap();
@@ -169,6 +173,5 @@ mod tests {
         for (i, elem) in (0..10000).zip(a.drain()) {
             assert_eq!(i, elem);
         }
-
     }
 }

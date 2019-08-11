@@ -611,100 +611,96 @@ impl LineDiscipline {
 
     /// write in the read buffer the keysymb read from the keyboard
     /// Send a message if read is ready, depending of the lmode
-    pub fn write_input(&mut self, buff: &[KeySymb]) -> Result<(), CapacityError<u8>> {
+    pub fn handle_key_pressed(&mut self, key: KeySymb) -> Result<(), CapacityError<u8>> {
         let mut encode_buff = [0; 8];
-        for key in buff {
-            // dbg!(key);
-            let key = *key;
-            if !self.handle_tty_control(key) {
-                // handle special keys in canonical mode
-                if self.termios.c_lflag & ICANON != 0 {
-                    // handle delete key
-                    if key as u32 == self.termios.c_cc[VERASE as usize] {
-                        self.read_buffer.pop();
-                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                        self.tty.write_char('\0').unwrap();
-                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                        continue;
+        // dbg!(key);
+        if !self.handle_tty_control(key) {
+            // handle special keys in canonical mode
+            if self.termios.c_lflag & ICANON != 0 {
+                // handle delete key
+                if key as u32 == self.termios.c_cc[VERASE as usize] {
+                    self.read_buffer.pop();
+                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    self.tty.write_char('\0').unwrap();
+                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    return Ok(());;
+                }
+                // dbg!(key);
+                // handle kill key
+                if key as u32 == self.termios.c_cc[VKILL as usize] {
+                    self.tty
+                        .as_mut()
+                        .move_cursor(CursorMove::HorizontalAbsolute(0));
+                    if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
+                        self.read_buffer.truncate(index);
+                    } else {
+                        self.read_buffer.clear();
                     }
-                    // dbg!(key);
-                    // handle kill key
-                    if key as u32 == self.termios.c_cc[VKILL as usize] {
+
+                    for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
                         self.tty
                             .as_mut()
-                            .move_cursor(CursorMove::HorizontalAbsolute(0));
-                        if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8)
-                        {
-                            self.read_buffer.truncate(index);
-                        } else {
-                            self.read_buffer.clear();
-                        }
+                            .write_char('\0')
+                            .expect("failed to write \0");
+                    }
+                    self.tty
+                        .as_mut()
+                        .move_cursor(CursorMove::HorizontalAbsolute(0));
 
-                        for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
-                            self.tty
-                                .as_mut()
-                                .write_char('\0')
-                                .expect("failed to write \0");
-                        }
-                        self.tty
-                            .as_mut()
-                            .move_cursor(CursorMove::HorizontalAbsolute(0));
-
-                        continue;
-                    }
-                    if key as u32 == self.termios.c_cc[VEOF as usize] {
-                        self.end_of_file_set = true;
-                        messaging::push_message(MessageTo::Scheduler {
-                            content: SchedulerMessage::SomethingToRead,
-                        });
-                        continue;
-                    }
+                    return Ok(());;
                 }
-                if self.termios.c_lflag & ISIG != 0 {
-                    // handle control_c
-                    if key as u32 == self.termios.c_cc[VINTR as usize] {
-                        messaging::push_message(MessageTo::ProcessGroup {
-                            pgid: self.foreground_process_group,
-                            content: Signum::SIGINT,
-                        });
-                        continue;
-                    }
-                    if key as u32 == self.termios.c_cc[VSUSP as usize] {
-                        messaging::push_message(MessageTo::ProcessGroup {
-                            pgid: self.foreground_process_group,
-                            content: Signum::SIGSTOP,
-                        });
-                        continue;
-                    }
-                    if key as u32 == self.termios.c_cc[VQUIT as usize] {
-                        messaging::push_message(MessageTo::ProcessGroup {
-                            pgid: self.foreground_process_group,
-                            content: Signum::SIGQUIT,
-                        });
-                        continue;
-                    }
-                }
-                /* PUSH THE KEY */
-                let b = encode_utf8(key, &mut encode_buff);
-                // dbg!((key as i32 & 0xff00) >> 8);
-                // dbg!(key as i32 & 0xff);
-                // dbg!(&b);
-                for elem in b {
-                    // dbg!(&b);
-                    self.read_buffer.try_push(*elem)?;
-                }
-                if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
-                    || !self.termios.c_lflag & ICANON != 0
-                {
+                if key as u32 == self.termios.c_cc[VEOF as usize] {
+                    self.end_of_file_set = true;
                     messaging::push_message(MessageTo::Scheduler {
                         content: SchedulerMessage::SomethingToRead,
                     });
+                    return Ok(());;
                 }
-                if self.termios.c_lflag & ECHO != 0 {
-                    self.write(b);
-                    self.tty.as_mut().move_cursor(CursorMove::Forward(0));
-                    // self.tty.as_mut().draw_cursor();
+            }
+            if self.termios.c_lflag & ISIG != 0 {
+                // handle control_c
+                if key as u32 == self.termios.c_cc[VINTR as usize] {
+                    messaging::push_message(MessageTo::ProcessGroup {
+                        pgid: self.foreground_process_group,
+                        content: Signum::SIGINT,
+                    });
+                    return Ok(());;
                 }
+                if key as u32 == self.termios.c_cc[VSUSP as usize] {
+                    messaging::push_message(MessageTo::ProcessGroup {
+                        pgid: self.foreground_process_group,
+                        content: Signum::SIGSTOP,
+                    });
+                    return Ok(());;
+                }
+                if key as u32 == self.termios.c_cc[VQUIT as usize] {
+                    messaging::push_message(MessageTo::ProcessGroup {
+                        pgid: self.foreground_process_group,
+                        content: Signum::SIGQUIT,
+                    });
+                    return Ok(());;
+                }
+            }
+            /* PUSH THE KEY */
+            let b = encode_utf8(key, &mut encode_buff);
+            // dbg!((key as i32 & 0xff00) >> 8);
+            // dbg!(key as i32 & 0xff);
+            // dbg!(&b);
+            for elem in b {
+                // dbg!(&b);
+                self.read_buffer.try_push(*elem)?;
+            }
+            if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
+                || !self.termios.c_lflag & ICANON != 0
+            {
+                messaging::push_message(MessageTo::Scheduler {
+                    content: SchedulerMessage::SomethingToRead,
+                });
+            }
+            if self.termios.c_lflag & ECHO != 0 {
+                self.write(b);
+                self.tty.as_mut().move_cursor(CursorMove::Forward(0));
+                // self.tty.as_mut().draw_cursor();
             }
         }
         Ok(())

@@ -87,11 +87,11 @@ impl Terminal {
         self.ttys[tty_index].read(buf)
     }
 
-    pub fn write_input(&mut self, buff: &[KeySymb], tty_index: usize) {
+    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb, tty_index: usize) {
         // eprintln!("write_input {:?}", buff);
-        if !self.handle_tty_control(buff[0]) {
+        if !self.handle_tty_control(key_pressed) {
             self.ttys[tty_index]
-                .write_input(buff)
+                .handle_key_pressed(key_pressed)
                 //TODO: remove this expect later
                 .expect("write input failed");
         }

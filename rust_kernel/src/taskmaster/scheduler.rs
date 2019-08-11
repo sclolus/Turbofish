@@ -5,7 +5,6 @@ use super::signal::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
 use super::thread_group::ThreadGroup;
-use super::KEY_BUFFER;
 use super::{SysResult, TaskMode};
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
@@ -212,15 +211,8 @@ impl Scheduler {
 
     fn dispatch_messages(&mut self) {
         // get the keypress from the keybuffer
-        let mut key_buffer = KEY_BUFFER.lock();
 
-        unsafe {
-            if key_buffer.len() != 0 {
-                TERMINAL.as_mut().unwrap().write_input(&*key_buffer, 1);
-            }
-        }
-        key_buffer.clear();
-        while let Some(message) = messaging::pop_message() {
+        for message in messaging::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
                 MessageTo::Process { pid, content } => {
@@ -250,6 +242,12 @@ impl Scheduler {
                         mem::forget(task.signal.generate_signal(signum));
                     }
                 }
+                MessageTo::Tty { key_pressed } => unsafe {
+                    TERMINAL
+                        .as_mut()
+                        .unwrap()
+                        .handle_key_pressed(key_pressed, 1);
+                },
             }
         }
     }
