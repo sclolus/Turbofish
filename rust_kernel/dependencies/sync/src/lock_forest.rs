@@ -1,7 +1,7 @@
 //! this is LockForest, a Lock free Queue
 use alloc::vec::Vec;
 use core::ops::{Deref, DerefMut};
-use core::sync::atomic::AtomicBool;
+use core::sync::atomic::{AtomicBool, AtomicUsize};
 use core::sync::atomic::Ordering;
 
 // true means locked
@@ -82,15 +82,23 @@ impl<'a, T> Iterator for Drain<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let res = self.lock_forest.pop_after(self.index);
         self.index += 1;
+        // at the end of iteration we reput the write index at the
+        // begining
+        if res.is_none() {
+            self.lock_forest.write_index.store(0, Ordering::SeqCst);
+        }
         res
     }
 }
 
+#[derive(Debug)]
+pub struct PushOutOfMem;
+
 pub struct LockForest<T> {
     /// A satic vec whose size never change
     list: Vec<Lock<Option<T>>>,
-    //TODO: CHeck optim with a write_index
-    // write_index: AtomicUsize,
+    /// where to start to write messages
+    write_index: AtomicUsize,
 }
 
 impl<T> LockForest<T> {
@@ -101,13 +109,15 @@ impl<T> LockForest<T> {
         }
         Self {
             list,
-            // write_index: AtomicUsize::new(0),
+            write_index: AtomicUsize::new(0),
         }
     }
 
-    /// push on the queue, O(n) complexity for the moment
-    pub fn push(&self, t: T) -> Result<(), ()> {
-        for elem in &self.list {
+    fn push_after(&self, t: T, index: usize) -> Result<(), PushOutOfMem> {
+        if index >= self.list.len() {
+            return Err(PushOutOfMem)
+        }
+        for elem in &self.list[index..] {
             match elem.try_lock() {
                 Some(mut elem) => {
                     if elem.is_some() {
@@ -121,7 +131,13 @@ impl<T> LockForest<T> {
                 }
             }
         }
-        Err(())
+        Err(PushOutOfMem)
+    }
+
+    /// push on the queue, O(n) complexity for the moment
+    pub fn push(&self, t: T) -> Result<(), PushOutOfMem> {
+        let index = self.write_index.fetch_add(1, Ordering::SeqCst);
+        self.push_after(t,index)
     }
 
     /// Clears the LockForest, returning all value as an
