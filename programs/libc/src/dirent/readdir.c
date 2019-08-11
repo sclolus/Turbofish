@@ -17,6 +17,7 @@
 
 struct dirent *readdir(DIR *dirp)
 {
+	(void)dirp;
 	errno = ENOSYS;
 	return NULL;
 }

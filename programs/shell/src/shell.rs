@@ -101,6 +101,12 @@ fn read_line() -> String {
             }
             27 => {
                 let ret = unsafe { read(0, buf[1..].as_mut_ptr() as *mut u8, 2) };
+                if ret == -1 {
+                    panic!("read failed");
+                }
+                if ret != 2 {
+                    continue;
+                }
                 match buf[1..3] {
                     // left
                     [79, 68] => {

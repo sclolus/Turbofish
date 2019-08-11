@@ -91,5 +91,6 @@ int stat(const char *restrict path, struct stat *restrict buf)
 
 int stat64(const char *restrict path, struct stat *restrict buf)
 {
-	return stat(path, buf);
+	errno = ENOSYS;
+	return -1;
 }

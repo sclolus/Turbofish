@@ -11,6 +11,7 @@
 
 int closedir(DIR *dirp)
 {
+	(void)dirp;
 	errno = ENOSYS;
 	return -1;
 }

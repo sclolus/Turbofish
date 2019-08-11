@@ -43,7 +43,6 @@ extern "C" {
     pub fn _unpreemptible();
     pub fn _preemptible();
     pub fn _schedule_force_preempt();
-    fn _continue_schedule(new_kernel_esp: u32) -> !;
 }
 
 pub type Tid = u32;
@@ -122,22 +121,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
-    load_next_process(&mut scheduler, 1)
-}
-
-/// load the next process, returning the new_kernel_esp
-pub unsafe fn load_next_process(scheduler: &mut Scheduler, next_process: usize) -> u32 {
-    _update_process_end_time(scheduler.time_interval.unwrap());
-
-    scheduler.dispatch_messages();
-    // Switch between processes
-    let action = scheduler.advance_next_process(next_process);
-
-    // Set all the context of the illigible process
-    let new_kernel_esp = scheduler.load_new_context(action);
-
-    // Restore kernel_esp for the new process/
-    new_kernel_esp
+    scheduler.load_next_process(1)
 }
 
 /// Remove ressources of the exited process and note his exit status
@@ -209,6 +193,21 @@ impl Scheduler {
             kernel_idle_process: None,
             idle_mode: false,
         }
+    }
+
+    /// load the next process, returning the new_kernel_esp
+    unsafe fn load_next_process(&mut self, next_process: usize) -> u32 {
+        _update_process_end_time(self.time_interval.unwrap());
+
+        self.dispatch_messages();
+        // Switch between processes
+        let action = self.advance_next_process(next_process);
+
+        // Set all the context of the illigible process
+        let new_kernel_esp = self.load_new_context(action);
+
+        // Restore kernel_esp for the new process/
+        new_kernel_esp
     }
 
     fn dispatch_messages(&mut self) {
@@ -431,7 +430,6 @@ impl Scheduler {
                             kernel_esp as *mut CpuState,
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
                         )
-                    } else {
                     }
                 }
                 kernel_esp
@@ -571,7 +569,7 @@ impl Scheduler {
 
         // Switch to the next process
         unsafe {
-            let new_kernel_esp = load_next_process(self, 0);
+            let new_kernel_esp = self.load_next_process(0);
 
             _exit_resume(new_kernel_esp, pid, tid, status);
         };

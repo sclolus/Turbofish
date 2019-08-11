@@ -12,6 +12,7 @@
 
 DIR *opendir(const char *dirname)
 {
+	(void)dirname;
 	errno = ENOSYS;
 	return NULL;
 }

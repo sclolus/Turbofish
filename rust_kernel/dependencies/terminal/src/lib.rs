@@ -87,11 +87,6 @@ impl Terminal {
         self.ttys[tty_index].read(buf)
     }
 
-    // /// Write a string th the designed TTY
-    // pub fn write_str(&mut self, fd: usize, s: &str) {
-    //     self.ttys[fd].write_str(s).unwrap();
-    // }
-
     pub fn write_input(&mut self, buff: &[KeySymb], tty_index: usize) {
         // eprintln!("write_input {:?}", buff);
         if !self.handle_tty_control(buff[0]) {
@@ -103,12 +98,12 @@ impl Terminal {
     }
 
     /// Get the TTY n
-    pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
-        &mut self.ttys[fd].tty
+    pub fn get_tty(&mut self, tty_index: usize) -> &mut BufferedTty {
+        &mut self.ttys[tty_index].tty
     }
 
-    pub fn get_line_discipline(&mut self, fd: usize) -> &mut LineDiscipline {
-        &mut self.ttys[fd]
+    pub fn get_line_discipline(&mut self, tty_index: usize) -> &mut LineDiscipline {
+        &mut self.ttys[tty_index]
     }
     /// Provide a tiny interface to sontrol some features on the tty
     pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
