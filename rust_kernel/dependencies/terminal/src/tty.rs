@@ -553,6 +553,16 @@ pub struct LineDiscipline {
     termios: termios,
     read_buffer: ArrayVec<[u8; 4096]>,
     foreground_process_group: Pid,
+    end_of_file_set: bool,
+}
+
+/// represent a result of the read function to handle the blocking
+/// case
+pub enum ReadResult {
+    /// the syscall will be blocking
+    Blocking,
+    /// the syscall is non blocking even if the return is 0
+    NonBlocking(usize),
 }
 
 impl LineDiscipline {
@@ -564,7 +574,7 @@ impl LineDiscipline {
                 c_cflag: 0,
                 c_lflag: (ECHO | ICANON | ISIG),
                 c_cc: [
-                    /*VEOF  */ KeySymb::nul as u32,
+                    /*VEOF  */ KeySymb::Control_d as u32,
                     /*VEOL  */ KeySymb::Return as u32,
                     /*VERASE*/ KeySymb::Delete as u32,
                     /*VINTR */ KeySymb::Control_c as u32,
@@ -580,6 +590,7 @@ impl LineDiscipline {
             tty,
             read_buffer: ArrayVec::new(),
             foreground_process_group: 0,
+            end_of_file_set: false,
         }
     }
 
@@ -589,7 +600,7 @@ impl LineDiscipline {
             KeySymb::Control_p => self.tty.as_mut().scroll(Scroll::Up),
             KeySymb::Control_n => self.tty.as_mut().scroll(Scroll::Down),
             KeySymb::Control_b => self.tty.as_mut().scroll(Scroll::HalfScreenUp),
-            KeySymb::Control_d => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
+            // KeySymb::Control_d => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }
@@ -640,6 +651,13 @@ impl LineDiscipline {
 
                         continue;
                     }
+                    if key as u32 == self.termios.c_cc[VEOF as usize] {
+                        self.end_of_file_set = true;
+                        messaging::push_message(MessageTo::Scheduler {
+                            content: SchedulerMessage::SomethingToRead,
+                        });
+                        continue;
+                    }
                 }
                 if self.termios.c_lflag & ISIG != 0 {
                     // handle control_c
@@ -665,6 +683,7 @@ impl LineDiscipline {
                         continue;
                     }
                 }
+                /* PUSH THE KEY */
                 let b = encode_utf8(key, &mut encode_buff);
                 // dbg!((key as i32 & 0xff00) >> 8);
                 // dbg!(key as i32 & 0xff);
@@ -689,9 +708,23 @@ impl LineDiscipline {
         }
         Ok(())
     }
+
+    /// read maximum `max_len_data_to_read` on the read_buffer
+    fn read_max(&mut self, output: &mut [u8], max_len_data_to_read: usize) -> usize {
+        let len_data_to_read = min(max_len_data_to_read, output.len());
+        for (dest, src) in output
+            .iter_mut()
+            .zip(self.read_buffer.drain(0..len_data_to_read))
+        {
+            *dest = src;
+        }
+        len_data_to_read
+    }
+
     /// read (from a process) on the tty
     /// return the number of bytes readen
-    pub fn read(&mut self, output: &mut [u8]) -> usize {
+    pub fn read(&mut self, output: &mut [u8]) -> ReadResult {
+        use ReadResult::*;
         // print!("read buffer: ");
         // for c in &self.read_buffer {
         //     print!("{}", *c as char);
@@ -699,28 +732,21 @@ impl LineDiscipline {
         // print!("\n");
         if self.termios.c_lflag & ICANON != 0 {
             // dbg!("canonical");
-            if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
+            // if VEOF was pressed, read all
+            if self.end_of_file_set {
+                self.end_of_file_set = false;
+                NonBlocking(self.read_max(output, self.read_buffer.len()))
+            } else if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
                 //  In canonical mode, we only read until the '\n' and at most output.len bytes
-                let len_data_to_read = min(index + 1, output.len());
-                for (dest, src) in output
-                    .iter_mut()
-                    .zip(self.read_buffer.drain(0..len_data_to_read))
-                {
-                    *dest = src;
-                }
-                return len_data_to_read;
+                NonBlocking(self.read_max(output, index + 1))
+            } else {
+                Blocking
             }
+        } else if self.read_buffer.len() != 0 {
+            NonBlocking(self.read_max(output, self.read_buffer.len()))
         } else {
-            let len_data_to_read = min(self.read_buffer.len(), output.len());
-            for (dest, src) in output
-                .iter_mut()
-                .zip(self.read_buffer.drain(0..len_data_to_read))
-            {
-                *dest = src;
-            }
-            return len_data_to_read;
+            Blocking
         }
-        return 0;
     }
 
     /// write on the tty

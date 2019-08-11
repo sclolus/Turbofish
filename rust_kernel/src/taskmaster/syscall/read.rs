@@ -8,11 +8,7 @@ use super::task::WaitingState;
 
 use errno::Errno;
 
-use crate::terminal::TERMINAL;
-
-fn read_from_terminal(buf: &mut [u8]) -> u32 {
-    unsafe { TERMINAL.as_mut().unwrap().read(buf, 1) as u32 }
-}
+use crate::terminal::{ReadResult, TERMINAL};
 
 /// Read something from a file descriptor
 pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
@@ -31,20 +27,14 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
         let output = unsafe { core::slice::from_raw_parts_mut(buf, count) };
 
         if fd == 0 {
-            // Auto-preempt calling
-            // unsafe {
-            //     KEY_SYMB_OPT = None;
-            // Register callback
-            // KEYBOARD_DRIVER
-            //     .as_mut()
-            //     .unwrap()
-            //     .bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
-            // }
+            // TODO: change that, read on tty 1 for the moment
+            let read_result = unsafe { TERMINAL.as_mut().unwrap().read(output, 1) };
 
-            let read_count = read_from_terminal(output);
-            if read_count != 0 {
-                return Ok(read_count);
+            // the read was non blocking
+            if let ReadResult::NonBlocking(read_count) = read_result {
+                return Ok(read_count as u32);
             }
+            // else the read was blocking
 
             scheduler.current_task_mut().set_waiting(WaitingState::Read);
             let ret = auto_preempt();
@@ -54,15 +44,16 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
             if ret < 0 {
                 return Err(Errno::Eintr);
             } else {
-                // TODO: May be more bigger. TODO: Check size
-                // TODO: Must be sizeof of readen character
-                // println!("{:#X?}", ret);
-                let read_count = read_from_terminal(output);
-
-                if read_count == 0 {
-                    panic!("read has been wake up but there is nothing to read");
+                // TODO: change that, read on tty 1 for the moment
+                let read_result = unsafe { TERMINAL.as_mut().unwrap().read(output, 1) };
+                match read_result {
+                    ReadResult::NonBlocking(read_count) => {
+                        return Ok(read_count as u32);
+                    }
+                    ReadResult::Blocking => {
+                        panic!("read has been wake up but there is nothing to read")
+                    }
                 }
-                return Ok(read_count);
             }
         } else {
             Err(Errno::Eperm)

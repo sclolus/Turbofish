@@ -17,7 +17,7 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{BufferedTty, LineDiscipline, Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, LineDiscipline, ReadResult, Scroll, Tty, WriteMode};
 
 mod log;
 
@@ -86,7 +86,7 @@ impl Terminal {
     // }
 
     /// Read a Key from the buffer
-    pub fn read(&mut self, buf: &mut [u8], fd: usize) -> usize {
+    pub fn read(&mut self, buf: &mut [u8], fd: usize) -> ReadResult {
         self.ttys[fd].read(buf)
     }
 
