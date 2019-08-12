@@ -33,7 +33,6 @@
 #include <pwd.h>
 #include <sched.h>
 #include <setjmp.h>
-#include <sgtty.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
