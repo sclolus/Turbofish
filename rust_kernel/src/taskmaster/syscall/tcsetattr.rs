@@ -67,6 +67,7 @@ use super::scheduler::SCHEDULER;
 /// no signal is sent.
 ///
 /// Otherwise, a SIGTTOU signal shall be sent to the process group.
+// TODO: file descriptor argument
 pub fn sys_tcsetattr(
     _fildes: i32,
     optional_actions: u32,

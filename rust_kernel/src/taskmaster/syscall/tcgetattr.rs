@@ -11,6 +11,7 @@ use super::scheduler::SCHEDULER;
 /// The termios_p argument is a pointer to a termios structure.
 ///
 /// The tcgetattr() operation is allowed from any process.
+// TODO: file descriptor argument
 pub fn sys_tcgetattr(_fildes: i32, termios_p: *mut termios) -> SysResult<u32> {
     unpreemptible_context!({
         {
