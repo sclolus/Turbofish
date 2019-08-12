@@ -57,8 +57,6 @@ pub mod timer;
 pub mod watch_dog;
 pub use watch_dog::*;
 
-pub mod shell;
-
 pub use sync::{Spinlock, SpinlockGuard};
 pub mod elf_loader;
 
