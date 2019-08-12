@@ -239,6 +239,7 @@ impl Scheduler {
                         .filter(|thread_group| thread_group.pgid == pgid)
                         .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
                     {
+                        //TODO: Announce memory error later.
                         mem::forget(task.signal.generate_signal(signum));
                     }
                 }
