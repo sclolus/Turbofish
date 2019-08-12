@@ -176,7 +176,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn dummy_queue_test() {
         let a: LockForest<u32> = LockForest::new(10000);
         a.push(4).unwrap();
         a.push(2).unwrap();
