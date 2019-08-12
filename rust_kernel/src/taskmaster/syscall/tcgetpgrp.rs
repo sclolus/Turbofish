@@ -19,6 +19,7 @@ pub fn sys_tcgetpgrp(_fildes: i32) -> SysResult<u32> {
             TERMINAL
                 .as_mut()
                 .unwrap()
+                //TODO: change this 1
                 .get_line_discipline(1)
                 .tcgetpgrp()
         }

@@ -1,6 +1,7 @@
 use super::SysResult;
 use crate::terminal::TERMINAL;
 use libc_binding::termios;
+use super::scheduler::SCHEDULER;
 
 /// The tcsetattr() function shall set the parameters associated with
 /// the terminal referred to by the open file descriptor fildes (an
@@ -73,7 +74,16 @@ pub fn sys_tcsetattr(
 ) -> SysResult<u32> {
     unpreemptible_context!({
         // TODO: change this 1
-        // TODO: check termios_p pointer
+        {
+            let scheduler = SCHEDULER.lock();
+            let v = scheduler
+                .current_task()
+                .unwrap_process()
+                .get_virtual_allocator();
+
+            // Check if pointer exists in user virtual address space
+            v.check_user_ptr(termios_p)?;
+        }
         unsafe {
             TERMINAL
                 .as_mut()

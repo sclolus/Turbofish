@@ -23,6 +23,7 @@ pub fn sys_tcsetpgrp(_fildes: i32, pgid_id: Pid) -> SysResult<u32> {
             TERMINAL
                 .as_mut()
                 .unwrap()
+                //TODO: change this 1
                 .get_line_discipline(1)
                 .tcsetpgrp(pgid_id);
         }

@@ -1,6 +1,7 @@
 use super::SysResult;
 use crate::terminal::TERMINAL;
 use libc_binding::termios;
+use super::scheduler::SCHEDULER;
 
 /// The tcgetattr() function shall get the parameters associated with
 /// the terminal referred to by fildes and store them in the termios
@@ -12,12 +13,21 @@ use libc_binding::termios;
 /// The tcgetattr() operation is allowed from any process.
 pub fn sys_tcgetattr(_fildes: i32, termios_p: *mut termios) -> SysResult<u32> {
     unpreemptible_context!({
-        // TODO: change this 1
-        // TODO: check termios_p pointer
+        {
+            let scheduler = SCHEDULER.lock();
+            let v = scheduler
+                .current_task()
+                .unwrap_process()
+                .get_virtual_allocator();
+
+            // Check if pointer exists in user virtual address space
+            v.check_user_ptr(termios_p)?;
+        }
         unsafe {
             TERMINAL
                 .as_mut()
                 .unwrap()
+                // TODO: change this 1
                 .get_line_discipline(1)
                 .tcgetattr(&mut *termios_p);
         }
