@@ -10,3 +10,11 @@ int fstat(int fildes, struct stat *buf)
 	errno = ENOSYS;
 	return -1;
 }
+
+int fstat64(int fildes, struct stat *buf)
+{
+	(void)fildes;
+	(void)buf;
+	errno = ENOSYS;
+	return -1;
+}

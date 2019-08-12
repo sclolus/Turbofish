@@ -65,7 +65,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             ),
             SIGSUSPEND => eprintln!("sigsuspend({:#?})", ebx as *const sigset_t),
             REBOOT => eprintln!("reboot()"),
-            MMAP => eprintln!("mmap({:#?})", ebx as *const MmapArgStruct),
+            MMAP => unsafe { eprintln!("mmap({:#?})", *(ebx as *const MmapArgStruct)) },
             MUNMAP => eprintln!("munmap({:#?}, {:#?})", Virt(ebx as usize), ecx as usize),
             SOCKETCALL => eprintln!("socketcall({:#?}, {:#?})", ebx as u32, ecx as SocketArgsPtr),
             CLONE => eprintln!(
