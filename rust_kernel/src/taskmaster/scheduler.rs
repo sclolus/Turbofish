@@ -141,7 +141,8 @@ unsafe extern "C" fn scheduler_exit_resume(
     // Send a sig child signal to the father
     if let Some(parent_pid) = dead_process.parent {
         let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
-        let _ret = parent.signal.generate_signal(Signum::SIGCHLD);
+        //TODO: Announce memory error later.
+        mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
         messaging::push_message(MessageTo::Process {
             pid: parent_pid,
             content: ProcessMessage::ProcessDied {
