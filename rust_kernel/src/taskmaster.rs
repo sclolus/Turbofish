@@ -18,10 +18,10 @@ use scheduler::SCHEDULER;
 #[allow(unused)]
 use tests::*;
 
-use messaging::MessageTo;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use errno::Errno;
+use messaging::MessageTo;
 
 /// SysResult is just made to handle module errors. Return optional return and errno
 pub type SysResult<T> = core::result::Result<T, Errno>;
@@ -56,7 +56,7 @@ pub fn handle_key_press(key_pressed: KeySymb) {
     // we send a message to the tty which will be handled in the next
     // schedule
 
-    messaging::push_message(MessageTo::Tty {key_pressed})
+    messaging::push_message(MessageTo::Tty { key_pressed })
 }
 
 // Create an ASM dummy process based on a simple function

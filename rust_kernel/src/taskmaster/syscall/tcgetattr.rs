@@ -1,8 +1,8 @@
 //! tcgetattr syscall
+use super::scheduler::SCHEDULER;
 use super::SysResult;
 use crate::terminal::TERMINAL;
 use libc_binding::termios;
-use super::scheduler::SCHEDULER;
 
 /// The tcgetattr() function shall get the parameters associated with
 /// the terminal referred to by fildes and store them in the termios

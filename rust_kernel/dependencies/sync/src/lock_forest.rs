@@ -1,8 +1,8 @@
 //! this is LockForest, a Lock free Queue
 use alloc::vec::Vec;
 use core::ops::{Deref, DerefMut};
-use core::sync::atomic::{AtomicBool, AtomicUsize};
 use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicBool, AtomicUsize};
 
 // true means locked
 pub struct RawLock(AtomicBool);
@@ -115,7 +115,7 @@ impl<T> LockForest<T> {
 
     fn push_after(&self, t: T, index: usize) -> Result<(), PushOutOfMem> {
         if index >= self.list.len() {
-            return Err(PushOutOfMem)
+            return Err(PushOutOfMem);
         }
         for elem in &self.list[index..] {
             match elem.try_lock() {
@@ -137,12 +137,12 @@ impl<T> LockForest<T> {
     /// push on the queue, O(n) complexity for the moment
     pub fn push(&self, t: T) -> Result<(), PushOutOfMem> {
         let index = self.write_index.fetch_add(1, Ordering::SeqCst);
-        self.push_after(t,index)
+        self.push_after(t, index)
     }
 
     /// Clears the LockForest, returning all value as an
     /// iterator. Keeps the allocated memory for reuse.
-    pub fn drain(&self) -> Drain<T> {
+    pub fn drain<'a>(&'a self) -> impl Iterator<Item = T> + 'a {
         Drain {
             lock_forest: &self,
             index: 0,
@@ -201,7 +201,7 @@ mod tests {
         let q: LockForest<u32> = LockForest::new((nthreads as usize * nmsgs as usize) * 10);
         match q.pop_after(0) {
             None => {}
-            Some(..) => panic!()
+            Some(..) => panic!(),
         }
         let (tx, rx) = channel();
         let q = Arc::new(q);
@@ -209,7 +209,7 @@ mod tests {
         for _ in 0..nthreads {
             let tx = tx.clone();
             let q = q.clone();
-            thread::spawn(move|| {
+            thread::spawn(move || {
                 for i in 0..nmsgs {
                     q.push(i).unwrap();
                 }
@@ -220,8 +220,8 @@ mod tests {
         let mut i = 0;
         while i < nthreads * nmsgs {
             match q.pop_after(0) {
-                None => {},
-                Some(_) => { i += 1 }
+                None => {}
+                Some(_) => i += 1,
             }
         }
         drop(tx);

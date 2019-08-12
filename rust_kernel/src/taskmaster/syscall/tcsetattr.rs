@@ -1,8 +1,8 @@
 //! tcsetattr syscall
+use super::scheduler::SCHEDULER;
 use super::SysResult;
 use crate::terminal::TERMINAL;
 use libc_binding::termios;
-use super::scheduler::SCHEDULER;
 
 /// The tcsetattr() function shall set the parameters associated with
 /// the terminal referred to by the open file descriptor fildes (an
