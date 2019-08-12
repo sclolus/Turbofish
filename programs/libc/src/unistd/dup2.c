@@ -27,6 +27,8 @@
 
 int dup2(int fildes, int fildes2)
 {
+	(void)fildes;
+	(void)fildes2;
 	errno = ENOSYS;
 	return -1;
 }

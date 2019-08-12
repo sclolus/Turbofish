@@ -85,12 +85,16 @@
 
 int stat(const char *restrict path, struct stat *restrict buf)
 {
+	(void)path;
+	(void)buf;
 	errno = ENOSYS;
 	return -1;
 }
 
 int stat64(const char *restrict path, struct stat *restrict buf)
 {
+	(void)path;
+	(void)buf;
 	errno = ENOSYS;
 	return -1;
 }

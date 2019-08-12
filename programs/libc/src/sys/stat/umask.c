@@ -25,5 +25,6 @@
 
 mode_t umask(mode_t cmask)
 {
+	(void)cmask;
 	return 42;
 }

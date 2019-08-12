@@ -34,6 +34,7 @@
 
 int pipe(int fildes[2])
 {
+	(void)fildes;
 	errno = ENOSYS;
 	return -1;
 }

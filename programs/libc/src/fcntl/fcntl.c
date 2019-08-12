@@ -5,6 +5,8 @@
 
 int fcntl(int fildes, int cmd, ...)
 {
+	(void)fildes;
+	(void)cmd;
 	errno = ENOSYS;
 	return -1;
 }

@@ -10,6 +10,7 @@
 
 int chdir(const char *path)
 {
+	(void)path;
 	errno = ENOSYS;
 	return -1;
 }

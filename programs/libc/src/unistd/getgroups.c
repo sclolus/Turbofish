@@ -24,6 +24,8 @@
 
 int getgroups(int gidsetsize, gid_t grouplist[])
 {
+	(void)gidsetsize;
+	(void)grouplist;
 	errno = ENOSYS;
 	return -1;
 }

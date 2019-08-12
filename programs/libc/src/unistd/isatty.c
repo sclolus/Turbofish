@@ -6,5 +6,6 @@
 
 int isatty(int fildes)
 {
+	(void)fildes;
 	return 1;
 }
