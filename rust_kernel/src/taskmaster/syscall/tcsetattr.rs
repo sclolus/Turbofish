@@ -1,3 +1,4 @@
+//! tcsetattr syscall
 use super::SysResult;
 use crate::terminal::TERMINAL;
 use libc_binding::termios;

@@ -174,6 +174,9 @@ impl<T> LockForest<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::mpsc::channel;
+    use std::sync::Arc;
+    use std::thread;
 
     #[test]
     fn dummy_queue_test() {
@@ -183,11 +186,47 @@ mod tests {
         let mut iterator = a.drain();
         assert!(iterator.next() == Some(4));
         assert!(iterator.next() == Some(2));
+        assert!(iterator.next() == None);
         for i in 0..10000 {
             a.push(i).unwrap();
         }
         for (i, elem) in (0..10000).zip(a.drain()) {
             assert_eq!(i, elem);
+        }
+    }
+    #[test]
+    fn test() {
+        let nthreads = 8;
+        let nmsgs = 1000;
+        let q: LockForest<u32> = LockForest::new((nthreads as usize * nmsgs as usize) * 10);
+        match q.pop_after(0) {
+            None => {}
+            Some(..) => panic!()
+        }
+        let (tx, rx) = channel();
+        let q = Arc::new(q);
+
+        for _ in 0..nthreads {
+            let tx = tx.clone();
+            let q = q.clone();
+            thread::spawn(move|| {
+                for i in 0..nmsgs {
+                    q.push(i).unwrap();
+                }
+                tx.send(()).unwrap();
+            });
+        }
+
+        let mut i = 0;
+        while i < nthreads * nmsgs {
+            match q.pop_after(0) {
+                None => {},
+                Some(_) => { i += 1 }
+            }
+        }
+        drop(tx);
+        for _ in 0..nthreads {
+            rx.recv().unwrap();
         }
     }
 }
