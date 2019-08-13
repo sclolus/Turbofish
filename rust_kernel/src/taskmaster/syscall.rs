@@ -223,6 +223,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
+    // trace_syscall::trace_syscall_result(cpu_state, result);
+
     let is_in_blocked_syscall = result == Err(Errno::Eintr);
     // Note: do not erase eax if we've just been interrupted from a blocked syscall as we must keep
     // the syscall number contained in eax, in case of SA_RESTART behavior
