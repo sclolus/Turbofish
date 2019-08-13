@@ -38,6 +38,9 @@ SRC_C += Clone \
 		SetJmp \
 		SigSuspend \
 		SigPause \
+		TcGetAttr \
+		CanonicalRead \
+		Loop
 
 CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)

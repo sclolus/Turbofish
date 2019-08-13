@@ -116,13 +116,17 @@ impl FromStr for AnsiColor {
             return Err(ParseColorError);
         }
         // TODO: handle other color esape codes
-        if s.len() < 6 || &s[2..=6] != "38;5;" {
+        if s.len() < 7 || &s[2..=6] != "38;5;" {
             return Err(ParseColorError);
         }
-        let nb: u8 = s[7..s.find('m').unwrap()]
-            .parse()
-            .map_err(|_e| ParseColorError)?;
-        Ok(nb.into())
+        if let Some(m_index) = s.find('m') {
+            if s.len() <= 7 {
+                return Err(ParseColorError);
+            }
+            let nb: u8 = s[7..m_index].parse().map_err(|_e| ParseColorError)?;
+            return Ok(nb.into());
+        }
+        return Err(ParseColorError);
     }
 }
 

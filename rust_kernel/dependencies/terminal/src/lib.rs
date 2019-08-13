@@ -17,7 +17,7 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, LineDiscipline, ReadResult, Scroll, Tty, WriteMode};
 
 mod log;
 
@@ -29,17 +29,16 @@ use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
 use crate::monitor::{AdvancedGraphic, Drawer};
+use alloc::collections::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt::Write;
 use keyboard::keysymb::KeySymb;
-use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
-    buf: Option<KeySymb>,
-    ttys: Vec<BufferedTty>,
+    buf: VecDeque<KeySymb>,
+    ttys: Vec<LineDiscipline>,
 }
 
 /// No initialized at the beginning
@@ -52,17 +51,17 @@ impl Terminal {
     pub fn new() -> Self {
         let size = SCREEN_MONAD.lock().query_window_size();
         Self {
-            buf: None,
+            buf: VecDeque::new(),
             // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
             ttys: (0..2)
                 .map(|_| {
-                    BufferedTty::new(Tty::new(
+                    LineDiscipline::new(BufferedTty::new(Tty::new(
                         false,
                         size.line,
                         size.column,
                         MAX_SCREEN_BUFFER,
                         None,
-                    ))
+                    )))
                 })
                 .collect(),
         }
@@ -71,97 +70,51 @@ impl Terminal {
     fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
         self.ttys
             .iter_mut()
-            .find(|btty| btty.tty.foreground)
-            .map(|btty| btty.tty.foreground = false);
-        self.ttys[new_foreground_tty].tty.foreground = true;
-        self.ttys[new_foreground_tty].tty.refresh();
+            .find(|l| l.get_tty().foreground)
+            .map(|l| l.get_tty_mut().foreground = false);
+        let new_tty = self.ttys[new_foreground_tty].get_tty_mut();
+        new_tty.foreground = true;
+        new_tty.refresh();
     }
 
     /// Get the foregounded TTY
     pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
-        self.ttys.iter_mut().find(|btty| btty.tty.foreground)
+        Some(&mut self.ttys.iter_mut().find(|l| l.get_tty().foreground)?.tty)
     }
 
-    fn handle_macros(&mut self) {
-        match self.buf {
-            Some(KeySymb::F1) => self.switch_foreground_tty(1),
-            Some(KeySymb::F2) => self.switch_foreground_tty(0),
-            Some(KeySymb::Control_p) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
-            Some(KeySymb::Control_n) => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            Some(KeySymb::Control_b) => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenUp),
-            Some(KeySymb::Control_d) => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenDown),
-            _ => {
-                return;
-            }
-        };
-        self.buf = None;
+    /// Read a Key from the buffer
+    pub fn read(&mut self, buf: &mut [u8], tty_index: usize) -> ReadResult {
+        self.ttys[tty_index].read(buf)
     }
 
-    fn stock_keysymb(&mut self, keysymb: KeySymb) {
-        self.buf = Some(keysymb);
-    }
-
-    /// Read a Key from the buffer and throw it to the foreground TTY
-    pub fn read(&mut self, buf: &mut [KeySymb], tty: usize) -> usize {
-        self.handle_macros();
-        if !self.ttys[tty].tty.foreground {
-            return 0;
+    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb, tty_index: usize) {
+        // eprintln!("write_input {:?}", buff);
+        if !self.handle_tty_control(key_pressed) {
+            self.ttys[tty_index]
+                .handle_key_pressed(key_pressed)
+                //TODO: remove this expect later
+                .expect("write input failed");
         }
-        if let Some(key) = self.buf {
-            buf[0] = key;
-            self.buf = None;
-            return 1;
-        }
-        return 0;
-    }
-
-    /// Write a string th the designed TTY
-    pub fn write_str(&mut self, fd: usize, s: &str) {
-        self.ttys[fd].write_str(s).unwrap();
     }
 
     /// Get the TTY n
-    pub fn get_tty(&mut self, fd: usize) -> &mut BufferedTty {
-        &mut self.ttys[fd]
+    pub fn get_tty(&mut self, tty_index: usize) -> &mut BufferedTty {
+        &mut self.ttys[tty_index].tty
     }
 
+    pub fn get_line_discipline(&mut self, tty_index: usize) -> &mut LineDiscipline {
+        &mut self.ttys[tty_index]
+    }
     /// Provide a tiny interface to sontrol some features on the tty
     pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
         match keysymb {
             KeySymb::F1 => self.switch_foreground_tty(1),
             KeySymb::F2 => self.switch_foreground_tty(0),
-            KeySymb::Control_p => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Up),
-            KeySymb::Control_n => self.get_foreground_tty().unwrap().tty.scroll(Scroll::Down),
-            KeySymb::Control_b => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenUp),
-            KeySymb::Control_d => self
-                .get_foreground_tty()
-                .unwrap()
-                .tty
-                .scroll(Scroll::HalfScreenDown),
             _ => {
                 return false;
             }
         };
         true
-    }
-}
-
-/// Usefull method to stock the character from the keyboard
-pub fn stock_keysymb(keysymb: KeySymb) {
-    unsafe {
-        TERMINAL.as_mut().unwrap().stock_keysymb(keysymb);
     }
 }
 
@@ -212,10 +165,6 @@ pub fn init_terminal() {
     term.get_foreground_tty().unwrap().tty.refresh();
     unsafe {
         TERMINAL = Some(term);
-        KEYBOARD_DRIVER
-            .as_mut()
-            .unwrap()
-            .bind(CallbackKeyboard::RequestKeySymb(stock_keysymb));
     }
     self::log::init().unwrap();
     ::log::info!("Terminal has been initialized");

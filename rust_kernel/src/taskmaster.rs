@@ -21,9 +21,23 @@ use tests::*;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use errno::Errno;
+use messaging::MessageTo;
 
 /// SysResult is just made to handle module errors. Return optional return and errno
 pub type SysResult<T> = core::result::Result<T, Errno>;
+
+pub trait IntoRawResult {
+    fn into_raw_result(self) -> u32;
+}
+
+impl IntoRawResult for SysResult<u32> {
+    fn into_raw_result(self) -> u32 {
+        match self {
+            Ok(return_value) => return_value as u32,
+            Err(errno) => (-(errno as i32)) as u32,
+        }
+    }
+}
 
 /// MonoTasking or MultiTasking configuration
 pub enum TaskMode {
@@ -31,6 +45,18 @@ pub enum TaskMode {
     Mono,
     /// MultiTasking mode, param: frequency
     Multi(f32),
+}
+
+use keyboard::keysymb::KeySymb;
+use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
+
+/// we send a message
+pub fn handle_key_press(key_pressed: KeySymb) {
+    // in the keyboard interrupt handler, after reading the keysymb,
+    // we send a message to the tty which will be handled in the next
+    // schedule
+
+    messaging::push_message(MessageTo::Tty { key_pressed })
 }
 
 // Create an ASM dummy process based on a simple function
@@ -48,6 +74,12 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         SCHEDULER.lock().add_user_process(None, p).unwrap();
     }
 
+    unsafe {
+        KEYBOARD_DRIVER
+            .as_mut()
+            .unwrap()
+            .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
+    }
     // Set the scheduler idle process
     SCHEDULER
         .lock()
@@ -61,7 +93,7 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         .unwrap();
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(20.)) }
+    unsafe { scheduler::start(TaskMode::Multi(1000.)) }
 }
 
 extern "C" {

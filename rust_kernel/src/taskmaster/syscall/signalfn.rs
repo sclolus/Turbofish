@@ -3,9 +3,10 @@
 use super::SysResult;
 
 use super::process::CpuState;
-use super::scheduler::{auto_preempt, Pid, SCHEDULER, SIGNAL_LOCK};
-use super::signal::{sigset_t, JobAction, SignalInterface, Signum, StructSigaction};
+use super::scheduler::{auto_preempt, Pid, SCHEDULER};
+use super::signal::{sigset_t, JobAction, SignalInterface, StructSigaction};
 use super::task::{Task, WaitingState};
+use libc_binding::Signum;
 
 use core::convert::TryInto;
 use errno::Errno;
@@ -86,7 +87,7 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
         }?;
         // auto-sodo mode
         let current_task_pid = scheduler.current_task_id().0;
-        if (pid > 0 && current_task_pid == pid as u32)
+        if (pid > 0 && current_task_pid == pid)
             || (pid < -1 && scheduler.current_thread_group().pgid == -pid as Pid)
             || pid == -1
         {
@@ -96,10 +97,6 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
                 auto_preempt();
-            } else if action.intersects(JobAction::TERMINATE)
-                || action.intersects(JobAction::INTERRUPT)
-            {
-                SIGNAL_LOCK = true;
             }
         }
         Ok(0)

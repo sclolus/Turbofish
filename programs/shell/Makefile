@@ -7,6 +7,8 @@ VPATH += src
 
 CC = i686-turbofish-gcc
 
+SRC_C = termios
+
 BUILD_DIR = build
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
