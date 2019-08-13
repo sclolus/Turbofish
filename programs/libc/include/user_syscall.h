@@ -14,9 +14,14 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define UNLINK       10
 #define EXECVE       11
 #define GETPID       20
+#define SETUID       23
 #define GETUID       24
 #define PAUSE        29
 #define KILL         37
+#define SETGID       46
+#define GETGID		 47
+#define GETEUID		 49
+#define GETEGID		 50
 #define SIGNAL       48
 #define SETPGID      57
 #define GETPPID		 64
@@ -42,5 +47,9 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define TCSETATTR      0x80000004
 #define TCGETPGRP      0x80000005
 #define TCSETPGRP      0x80000006
+#define SETEGID        0x80000007
+#define SETEUID        0x80000008
+#define GETGROUPS      0x80000009
+#define SETGROUPS      0x80000010
 
 #endif

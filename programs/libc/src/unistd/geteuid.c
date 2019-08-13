@@ -1,11 +1,11 @@
 #include <unistd.h>
+#include <user_syscall.h>
 
 // The geteuid() function shall return the effective user ID of the
 // calling process. The geteuid() function shall not modify errno.
 
-#warning NOT IMPLEMENTED
-
 uid_t geteuid(void)
 {
-	return 42;
+	uid_t ret = _user_syscall(GETEUID, 0);
+	return ret;
 }

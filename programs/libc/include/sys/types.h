@@ -17,7 +17,7 @@
 //    Used for file system block counts.
 #define fsfilcnt_t unsigned int
 //    Used for file system file counts.
-typedef int gid_t;
+typedef unsigned int gid_t;
 //    Used for group IDs.
 #define id_t int
 //    Used as a general identifier; can be used to contain at least a pid_t, uid_t, or gid_t.
@@ -77,7 +77,7 @@ typedef long int ssize_t;
 ////    [OB TEF] [Option Start] Used to identify a trace event type set. [Option End]
 //trace_id_t;
 ////    [OB TRC] [Option Start] Used to identify a trace stream. [Option End]
-#define uid_t int
+typedef unsigned int uid_t;
 //    Used for user IDs.
 
 #endif

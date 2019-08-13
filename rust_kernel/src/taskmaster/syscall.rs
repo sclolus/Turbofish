@@ -14,8 +14,9 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, KILL,
-    MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
+    gid_t, termios, uid_t, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
+    READ, REBOOT, SETEGID, SETEUID, SETGID, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
     SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
     TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
@@ -74,6 +75,12 @@ use getppid::sys_getppid;
 mod exit;
 use exit::sys_exit;
 
+mod setegid;
+use setegid::sys_setegid;
+
+mod seteuid;
+use seteuid::sys_seteuid;
+
 mod sigsuspend;
 use sigsuspend::sys_sigsuspend;
 
@@ -125,6 +132,24 @@ use getpgid::sys_getpgid;
 mod setpgid;
 use setpgid::sys_setpgid;
 
+mod getuid;
+use getuid::sys_getuid;
+
+mod setgid;
+use setgid::sys_setgid;
+
+mod setuid;
+use setuid::sys_setuid;
+
+mod getgid;
+use getgid::sys_getgid;
+
+mod geteuid;
+use geteuid::sys_geteuid;
+
+mod getegid;
+use getegid::sys_getegid;
+
 mod trace_syscall;
 
 extern "C" {
@@ -165,9 +190,14 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             edx as *const *const c_char,
         ),
         GETPID => sys_getpid(),
-        // GETUID             //        // => sys_getuid(), TODO: need to be implemented
+        SETUID => sys_setuid(ebx as uid_t),
+        GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
+        SETGID => sys_setgid(ebx as gid_t),
+        GETGID => sys_getgid(),
+        GETEUID => sys_geteuid(),
+        GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
         GETPPID => sys_getppid(),
@@ -200,6 +230,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TCSETATTR => sys_tcsetattr(ebx as i32, ecx as u32, edx as *const termios),
         TCSETPGRP => sys_tcsetpgrp(ebx as i32, ecx as Pid),
         TCGETPGRP => sys_tcgetpgrp(ebx as i32),
+        SETEGID => sys_setegid(ebx as gid_t),
+        SETEUID => sys_seteuid(ebx as uid_t),
 
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
