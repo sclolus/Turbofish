@@ -24,7 +24,7 @@ use core::ffi::c_void;
 use errno::Errno;
 
 mod mmap;
-use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
+use mmap::{sys_mmap, MmapArgStruct};
 
 mod nanosleep;
 use nanosleep::{sys_nanosleep, TimeSpec};
@@ -78,6 +78,12 @@ use getppid::sys_getppid;
 
 mod exit;
 use exit::sys_exit;
+
+mod mprotect;
+use mprotect::{sys_mprotect, MmapProt};
+
+mod munmap;
+use munmap::sys_munmap;
 
 mod reboot;
 use reboot::sys_reboot;
