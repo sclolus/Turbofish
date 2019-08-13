@@ -1,22 +1,27 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
-use super::{IntoRawResult, SysResult};
-
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
 use super::scheduler;
-use super::scheduler::unpreemptible;
 use super::scheduler::{Pid, SCHEDULER};
 use super::signal;
 use super::signal::{sigset_t, StructSigaction};
 use super::task;
+use super::{IntoRawResult, SysResult};
+use crate::ffi::c_char;
+use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
+use crate::memory::tools::address::Virt;
+use crate::system::BaseRegisters;
 use libc_binding::{
     termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, KILL,
     MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
     SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
     TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
+
+use core::ffi::c_void;
+use errno::Errno;
 
 mod mmap;
 use mmap::{sys_mmap, sys_mprotect, sys_munmap, MmapArgStruct, MmapProt};
@@ -44,103 +49,67 @@ use socket::{sys_socketcall, SocketArgsPtr};
 pub mod read;
 use read::sys_read;
 
-mod power;
-use power::{sys_reboot, sys_shutdown};
-
 mod execve;
 use execve::sys_execve;
 
 pub mod clone;
-use clone::{sys_clone, sys_fork};
+use clone::sys_clone;
 
 mod tcsetattr;
 use tcsetattr::sys_tcsetattr;
+
 mod tcgetattr;
 use tcgetattr::sys_tcgetattr;
 
 mod tcsetpgrp;
 use tcsetpgrp::sys_tcsetpgrp;
+
 mod tcgetpgrp;
 use tcgetpgrp::sys_tcgetpgrp;
 
-mod process_group;
-use process_group::{sys_getpgid, sys_getpgrp, sys_setpgid};
+mod write;
+use write::sys_write;
+
+mod getpid;
+use getpid::sys_getpid;
+
+mod getppid;
+use getppid::sys_getppid;
+
+mod exit;
+use exit::sys_exit;
+
+mod reboot;
+use reboot::sys_reboot;
+
+mod shutdown;
+use shutdown::sys_shutdown;
+
+mod stack_overflow;
+use stack_overflow::sys_stack_overflow;
+
+mod test;
+use test::sys_test;
+
+mod fork;
+use fork::sys_fork;
+
+mod getpgrp;
+use getpgrp::sys_getpgrp;
+
+mod getpgid;
+use getpgid::sys_getpgid;
+
+mod setpgid;
+use setpgid::sys_setpgid;
 
 mod trace_syscall;
 
-use core::ffi::c_void;
-use errno::Errno;
-
-use crate::ffi::c_char;
-use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::memory::tools::address::Virt;
-use crate::system::BaseRegisters;
-
 extern "C" {
     fn _isr_syscall();
-    fn _sys_test() -> i32;
-    fn _get_esp() -> u32;
 
     fn _get_pit_time() -> u32;
     fn _get_process_end_time() -> u32;
-}
-
-/// Preemptif coherency checker
-unsafe fn sys_test() -> SysResult<u32> {
-    if _sys_test() == 0 {
-        Ok(0)
-    } else {
-        Err(Errno::Eperm)
-    }
-}
-
-/// Write something into the screen
-fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
-    if fd != 1 && fd != 2 {
-        Err(Errno::Ebadf)
-    } else {
-        unsafe {
-            unpreemptible_context!({
-                print!(
-                    "{}",
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
-                );
-            })
-        }
-        Ok(count as u32)
-    }
-}
-
-/// Exit from a process
-unsafe fn sys_exit(status: i32) -> ! {
-    unpreemptible();
-    SCHEDULER.lock().current_task_exit(status);
-}
-
-unsafe fn sys_getpid() -> SysResult<u32> {
-    Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_task_id().0 as u32
-    }))
-}
-
-unsafe fn sys_getppid() -> SysResult<u32> {
-    Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_task().parent.unwrap_or(1) as u32
-    }))
-}
-
-/// Do a stack overflow on the kernel stack
-#[allow(unconditional_recursion)]
-unsafe fn sys_stack_overflow(a: u32, b: u32, c: u32, d: u32, e: u32, f: u32) -> SysResult<u32> {
-    unpreemptible_context!({
-        println!(
-            "Stack overflow syscall on the fly: v = {:?}, esp: {:#X?}",
-            a + (b + c + d + e + f) * 0,
-            _get_esp()
-        );
-    });
-
-    Ok(sys_stack_overflow(a + 1, b + 1, c + 1, d + 1, e + 1, f + 1).unwrap())
 }
 
 /// Global syscall interrupt handler called from assembly code
