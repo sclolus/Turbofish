@@ -5,8 +5,8 @@ use super::process::CpuState;
 use super::safe_ffi;
 use super::scheduler;
 use super::scheduler::{Pid, SCHEDULER};
-use super::signal;
-use super::signal::{sigset_t, StructSigaction};
+use super::signal_interface;
+use super::signal_interface::{sigset_t, StructSigaction};
 use super::task;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
@@ -31,11 +31,6 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 
 mod waitpid;
 use waitpid::sys_waitpid;
-
-pub mod signalfn;
-use signalfn::{
-    sys_kill, sys_pause, sys_sigaction, sys_signal, sys_sigprocmask, sys_sigreturn, sys_sigsuspend,
-};
 
 mod close;
 use close::sys_close;
@@ -78,6 +73,27 @@ use getppid::sys_getppid;
 
 mod exit;
 use exit::sys_exit;
+
+mod sigsuspend;
+use sigsuspend::sys_sigsuspend;
+
+mod signal;
+use signal::sys_signal;
+
+mod sigprocmask;
+use sigprocmask::sys_sigprocmask;
+
+mod sigaction;
+use sigaction::sys_sigaction;
+
+mod sigreturn;
+use sigreturn::sys_sigreturn;
+
+mod pause;
+use pause::sys_pause;
+
+mod kill;
+pub use kill::sys_kill;
 
 mod mprotect;
 use mprotect::{sys_mprotect, MmapProt};

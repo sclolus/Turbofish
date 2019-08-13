@@ -2,7 +2,7 @@
 
 use super::process::CpuState;
 use super::scheduler::{Scheduler, SCHEDULER};
-use super::syscall::signalfn::sys_kill;
+use super::syscall::sys_kill;
 use libc_binding::Signum;
 
 use core::ffi::c_void;

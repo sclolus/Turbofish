@@ -8,7 +8,7 @@ use libc_binding::{
 use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
-use super::signal::{sigset_t, StructSigaction};
+use super::signal_interface::{sigset_t, StructSigaction};
 use super::socket::SocketArgsPtr;
 use super::MmapProt;
 use super::SysResult;
