@@ -2,14 +2,14 @@ use super::scheduler::{Pid, Tid};
 use super::task::Task;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
-use hashmap_core::fnv::FnvHashMap as HashMap;
+use fallible_collections::btree::BTreeMap;
 use libc_binding::{gid_t, uid_t};
 
 #[derive(Debug)]
 pub struct ThreadGroup {
     pub credentials: Credentials,
     next_tid: Tid,
-    pub all_thread: HashMap<Tid, Task>,
+    pub all_thread: BTreeMap<Tid, Task>,
     pub pgid: Pid,
 }
 
@@ -38,9 +38,8 @@ impl Credentials {
 
 impl ThreadGroup {
     pub fn try_new(task: Task, pgid: Pid) -> Result<Self, CollectionAllocErr> {
-        let mut all_thread = HashMap::new();
-        all_thread.try_reserve(1)?;
-        all_thread.insert(0, task);
+        let mut all_thread = BTreeMap::new();
+        all_thread.try_insert(0, task)?;
         Ok(ThreadGroup {
             credentials: Credentials::ROOT,
             all_thread,
