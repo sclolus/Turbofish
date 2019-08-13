@@ -234,6 +234,8 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
     // Error from ring 3
     } else if cs & 0b11 == 0b11 {
         // Temporaly display a debug
+        let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
+        log::warn!("{}     address: {:#X?}", page_fault_cause, _read_cr2());
         log::warn!("{:X?}", *cpu_state);
         log::warn!(
             "Stack informations 'ss: 0x{:X?} esp: 0x{:X?}'",
