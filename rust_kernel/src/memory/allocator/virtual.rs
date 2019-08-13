@@ -343,12 +343,15 @@ impl AddressSpace {
     }
 
     /// Check if a pointer given by user process is not bullshit
+    /// length is in number of T
     pub fn check_user_ptr_with_len<T>(&self, ptr: *const T, length: usize) -> Result<()> {
-        assert!(length != 0);
+        if length == 0 {
+            return Ok(());
+        }
         let start_ptr = Virt(ptr as usize);
         let end_ptr = Virt(
             (ptr as usize)
-                .checked_add(length - 1)
+                .checked_add(length * size_of::<T>() - 1)
                 .ok_or(MemoryError::BadAddr)?,
         );
 

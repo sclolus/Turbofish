@@ -15,9 +15,9 @@ use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
     gid_t, termios, uid_t, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
-    READ, REBOOT, SETEGID, SETEUID, SETGID, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
-    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
+    PAUSE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
     TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
@@ -74,6 +74,12 @@ use getppid::sys_getppid;
 
 mod exit;
 use exit::sys_exit;
+
+mod setgroups;
+use setgroups::sys_setgroups;
+
+mod getgroups;
+use getgroups::sys_getgroups;
 
 mod setegid;
 use setegid::sys_setegid;
@@ -232,6 +238,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TCGETPGRP => sys_tcgetpgrp(ebx as i32),
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
+        GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
+        SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
 
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),

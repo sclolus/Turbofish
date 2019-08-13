@@ -1,6 +1,7 @@
 use super::scheduler::{Pid, Tid};
 use super::task::Task;
 use alloc::collections::CollectionAllocErr;
+use alloc::vec::Vec;
 use hashmap_core::fnv::FnvHashMap as HashMap;
 use libc_binding::{gid_t, uid_t};
 
@@ -20,6 +21,7 @@ pub struct Credentials {
     pub egid: gid_t,
     pub suid: uid_t,
     pub sgid: gid_t,
+    pub groups: Vec<gid_t>,
 }
 
 impl Credentials {
@@ -30,6 +32,7 @@ impl Credentials {
         egid: 0,
         suid: 0,
         sgid: 0,
+        groups: Vec::new(),
     };
 }
 

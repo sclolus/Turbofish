@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <user_syscall.h>
 #include <errno.h>
 
 // The getgroups() function shall fill in the array grouplist with the
@@ -20,12 +21,8 @@
 // than or equal to one and less than or equal to the value of
 // {NGROUPS_MAX}+1.
 
-#warning NOT IMPLEMENTED
-
 int getgroups(int gidsetsize, gid_t grouplist[])
 {
-	(void)gidsetsize;
-	(void)grouplist;
-	errno = ENOSYS;
-	return -1;
+	int ret = _user_syscall(GETGROUPS, 2, gidsetsize, grouplist);
+	set_errno_and_return(ret);
 }
