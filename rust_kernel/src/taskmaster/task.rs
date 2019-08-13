@@ -2,7 +2,7 @@
 
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
-use super::signal::SignalInterface;
+use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use core::ffi::c_void;
