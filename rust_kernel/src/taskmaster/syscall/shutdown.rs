@@ -1,7 +1,6 @@
 use super::SysResult;
 
 use errno::Errno;
-use keyboard::PS2_CONTROLER;
 
 use crate::drivers::ACPI;
 use crate::system::i8086_payload_apm_shutdown;

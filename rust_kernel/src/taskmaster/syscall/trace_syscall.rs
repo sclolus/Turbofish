@@ -5,11 +5,12 @@ use libc_binding::{
     TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
-use super::mmap::{MmapArgStruct, MmapProt};
+use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
 use super::signal::{sigset_t, StructSigaction};
 use super::socket::SocketArgsPtr;
+use super::MmapProt;
 use super::SysResult;
 use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
