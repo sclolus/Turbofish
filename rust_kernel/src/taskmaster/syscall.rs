@@ -96,19 +96,11 @@ unsafe fn sys_test() -> SysResult<u32> {
 
 /// Write something into the screen
 fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
-    if fd != 1 {
+    if fd != 1 && fd != 2 {
         Err(Errno::Ebadf)
     } else {
         unsafe {
             unpreemptible_context!({
-                /*
-                    print!(
-                    "{:?} / {:?} : {}",
-                    _get_pit_time(),
-                    _get_process_end_time(),
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
-                );
-                */
                 print!(
                     "{}",
                     core::str::from_utf8_unchecked(core::slice::from_raw_parts(buf, count))
@@ -235,7 +227,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
-            SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
+        SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
     }}
 }
 
