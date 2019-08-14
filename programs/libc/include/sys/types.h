@@ -1,8 +1,6 @@
 #ifndef _SYS_TYPES_H
 # define _SYS_TYPES_H
 
-#define pid_t int
-
 #define blkcnt_t int
 //    Used for file block counts.
 #define blksize_t int

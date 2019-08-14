@@ -33,14 +33,19 @@ struct lconv {
 //The <locale.h> header shall define NULL (as described in <stddef.h>) and at least the following as macros:
 //
 //
+//TODO: check all LC define
 #define LC_ALL "C"
 //LC_COLLATE
-#define LC_CTYPE "C"
+#define LC_CTYPE "en_US.UTF-8"
+
+#define LC_TIME "nl_NL.UTF-8"
 //[CX] [Option Start]
+
+#define LC_NUMERIC "nl_NL.UTF-8"
+
+#define LC_MONETARY "nl_NL.UTF-8"
 //LC_MESSAGES
 //[Option End]
-//LC_MONETARY
-//LC_NUMERIC
 //LC_TIME
 //
 //which shall expand to integer constant expressions with distinct values for use as the first argument to the setlocale() function.

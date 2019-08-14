@@ -20,8 +20,6 @@ typedef unsigned int uint32_t;
 #define INT_MAX 2147483647
 #define U32_MAX 4294967295
 
-typedef int bool;
-
 #define false 0
 #define true 1
 //#define NULL 0
