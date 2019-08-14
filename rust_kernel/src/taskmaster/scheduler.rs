@@ -323,13 +323,13 @@ impl Scheduler {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        let dead_process_pgid = self
-                            .get_thread_group(dead_process_pid)
-                            .expect("no dead child")
-                            .pgid;
                         let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
                             self.current_task().get_waiting_state()
                         {
+                            let dead_process_pgid = self
+                                .get_thread_group(dead_process_pid)
+                                .expect("no dead child")
+                                .pgid;
                             *wake_pid == -1
                                 || *wake_pid == dead_process_pid
                                 || -*wake_pid == dead_process_pgid
@@ -494,6 +494,12 @@ impl Scheduler {
             log::warn!("No more process");
             loop {}
         }
+    }
+
+    pub fn remove_thread_group(&mut self, pid: Pid) {
+        self.all_process
+            .remove(&pid)
+            .expect("remove_thread_goup, thread group doen't exist");
     }
 
     pub fn current_task_clone(
