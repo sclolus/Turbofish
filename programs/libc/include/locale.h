@@ -34,17 +34,19 @@ struct lconv {
 //
 //
 //TODO: check all LC define
-#define LC_ALL "C"
-//LC_COLLATE
-#define LC_CTYPE "en_US.UTF-8"
-
-#define LC_TIME "nl_NL.UTF-8"
-//[CX] [Option Start]
-
-#define LC_NUMERIC "nl_NL.UTF-8"
-
-#define LC_MONETARY "nl_NL.UTF-8"
-//LC_MESSAGES
+#define LC_CTYPE		 0
+#define LC_NUMERIC		 1
+#define LC_TIME		 2
+#define LC_COLLATE		 3
+#define LC_MONETARY		 4
+#define LC_MESSAGES		 5
+#define LC_ALL		 6
+#define LC_PAPER		 7
+#define LC_NAME		 8
+#define LC_ADDRESS		 9
+#define LC_TELEPHONE		10
+#define LC_MEASUREMENT	11
+#define LC_IDENTIFICATION	12
 //[Option End]
 //LC_TIME
 //
