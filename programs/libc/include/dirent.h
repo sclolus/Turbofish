@@ -31,7 +31,8 @@ struct dirent {
 
 int alphasort(const struct dirent **, const struct dirent **);
 int closedir(DIR *);
-int dirfd(DIR *);
+//TODO: check that for coreutils
+/* int dirfd(DIR *); */
 DIR *fdopendir(int);
 DIR *opendir(const char *);
 struct dirent *readdir(DIR *);

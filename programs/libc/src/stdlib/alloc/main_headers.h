@@ -2,6 +2,7 @@
 # define MAIN_HEADERS_H
 
 # include <sys/mman.h>
+# include <stdbool.h>
 # include "alloc_btree/alloc_btree.h"
 
 /*

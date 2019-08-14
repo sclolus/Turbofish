@@ -32,6 +32,13 @@ int vprintf(const char* format, va_list ap) {
 	return (op.total_size);
 }
 
+#warning THIS IS BULLSHIT, MUST CALL VFDPRINTF
+
+int vfprintf(FILE *stream, const char *format, va_list ap)
+{
+	return vprintf(format, ap);
+}
+
 #warning THE SIZE PARAM OF THE VSNPRINTF FUNCTION MUST BE CONSIDERED
 
 int vsnprintf(char *str, size_t size, const char *format, va_list ap) {
