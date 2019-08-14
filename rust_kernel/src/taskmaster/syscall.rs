@@ -181,7 +181,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ..
     } = (*cpu_state).registers;
 
-    // trace_syscall::trace_syscall(cpu_state);
+    if eax != READ && eax != WRITE {
+        trace_syscall::trace_syscall(cpu_state);
+    }
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
@@ -246,7 +248,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
-    // trace_syscall::trace_syscall_result(cpu_state, result);
+    if eax != READ && eax != WRITE {
+        trace_syscall::trace_syscall_result(cpu_state, result);
+    }
 
     let is_in_blocked_syscall = result == Err(Errno::Eintr);
     // Note: do not erase eax if we've just been interrupted from a blocked syscall as we must keep

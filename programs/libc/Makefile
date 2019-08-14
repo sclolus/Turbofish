@@ -123,7 +123,7 @@ SRC_C += fcntl open
 VPATH += src/fcntl
 HEADERS += include/fcntl.h
 
-SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint tolower
+SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower tolower
 VPATH += src/ctype
 HEADERS += include/ctype.h
 
