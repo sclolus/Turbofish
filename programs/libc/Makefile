@@ -78,12 +78,16 @@ SRC_C += mkfifo stat umask fstat lstat
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
+SRC_C += gettimeofday
+VPATH += src/sys/time
+HEADERS += include/sys/time.h
+
 SRC_ASM += clone
 SRC_C += sched
 VPATH += src/sched
 HEADERS += include/sched.h
 
-SRC_C += nanosleep
+SRC_C += nanosleep localtime
 VPATH += src/time
 HEADERS += include/time.h
 
@@ -119,9 +123,13 @@ SRC_C += fcntl open
 VPATH += src/fcntl
 HEADERS += include/fcntl.h
 
-SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower
+SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint tolower
 VPATH += src/ctype
 HEADERS += include/ctype.h
+
+VPATH += src/math
+SRC_ASM += pow.c
+HEADERS += include/math.h
 
 VPATH += src/setjmp
 SRC_ASM += setjmp
