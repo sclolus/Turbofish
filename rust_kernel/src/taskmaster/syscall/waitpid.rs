@@ -241,19 +241,19 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         return Err(Errno::Einval);
     }
 
-    let task = scheduler.current_task();
+    let thread_group = scheduler.current_thread_group();
 
     // Check if the child is already dead: Return his PID if true or NONE
     // Errno: Return ECHILD if not child or child PID specified is wrong
     let child_pid = if pid < 0 {
         // Check if at leat one child exists
-        if task.child.len() == 0 {
+        if thread_group.child.len() == 0 {
             return Err(Errno::Echild);
         }
         // Check is the at least one child is a already a zombie -> Return immediatly child PID
-        if let Some(&zombie_pid) = task.child.iter().find(|&current_pid| {
+        if let Some(&zombie_pid) = thread_group.child.iter().find(|&current_pid| {
             scheduler
-                .get_task((*current_pid, 0))
+                .get_thread_group(*current_pid)
                 .expect("Pid must be here")
                 .is_zombie()
         }) {
@@ -263,9 +263,13 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         }
     } else {
         // Check if specified child exists
-        if let Some(elem) = task.child.iter().find(|&&current_pid| current_pid == pid) {
+        if let Some(elem) = thread_group
+            .child
+            .iter()
+            .find(|&&current_pid| current_pid == pid)
+        {
             if scheduler
-                .get_task((*elem, 0))
+                .get_thread_group(*elem)
                 .expect("Pid must be here")
                 .is_zombie()
             {
@@ -280,20 +284,18 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     match child_pid {
         Some(pid) => {
-            let child = scheduler.get_task((pid, 0)).expect("Pid must be here");
             // TODO: Manage terminated value with signal
             if wstatus != 0x0 as *mut i32 {
-                unsafe {
-                    *wstatus = match child.process_state {
-                        ProcessState::Zombie(status) => status,
-                        _ => panic!("WTF"),
-                    };
-                }
+                let status = scheduler
+                    .get_thread_group(pid)
+                    .and_then(|tg| tg.get_death_status())
+                    .expect("zombie must be here");
+                unsafe { *wstatus = status }
             }
             // fflush zombie
             scheduler.remove_thread_group(pid);
-            let task = scheduler.current_task_mut();
-            task.remove_child(pid);
+            let thread_group = scheduler.current_thread_group_mut();
+            thread_group.remove_child(pid);
             // Return immediatly
             Ok(pid as u32)
         }
@@ -311,7 +313,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
             if ret < 0 {
                 // Reset as running
-                // scheduler.current_task_mut().set_running();
+                // scheduler.current_thread_group_mut().set_running();
                 return Err(Errno::Eintr);
             } else {
                 let child_pid = match &scheduler.current_task().process_state {
@@ -331,8 +333,8 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 };
                 // Set process as Running, Set return readen value in Ok(x)
                 scheduler.current_task_mut().set_running();
-                let task = scheduler.current_task_mut();
-                task.remove_child(child_pid);
+                let thread_group = scheduler.current_thread_group_mut();
+                thread_group.remove_child(child_pid);
                 Ok(child_pid as u32)
             }
         }

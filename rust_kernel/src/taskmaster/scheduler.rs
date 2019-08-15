@@ -4,8 +4,9 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
-use super::thread_group::ThreadGroup;
+use super::thread_group::{ThreadGroup, ThreadGroupState};
 use super::{SysResult, TaskMode};
+use crate::terminal::ansi_escape_code::Colored;
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
@@ -25,12 +26,7 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 use crate::system::PrivilegeLevel;
 
 extern "C" {
-    fn _exit_resume(
-        new_kernel_esp: u32,
-        process_to_free_pid: Pid,
-        process_to_free_tid: Tid,
-        status: i32,
-    ) -> !;
+    fn _exit_resume(new_kernel_esp: u32, process_to_free_pid: Pid, status: i32) -> !;
 
     fn _auto_preempt() -> i32;
 
@@ -125,19 +121,14 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
 /// Remove ressources of the exited process and note his exit status
 #[no_mangle]
-unsafe extern "C" fn scheduler_exit_resume(
-    process_to_free_pid: Pid,
-    process_to_free_tid: Tid,
-    status: i32,
-) {
+unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     let mut scheduler = SCHEDULER.lock();
-    let dead_process = scheduler
-        .get_task_mut((process_to_free_pid, process_to_free_tid))
-        .unwrap();
 
-    dead_process.process_state = ProcessState::Zombie(status);
+    let dead_process = scheduler
+        .get_thread_group_mut(process_to_free_pid)
+        .expect("WTF");
     // Send a sig child signal to the father
     if let Some(parent_pid) = dead_process.parent {
         let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
@@ -150,6 +141,8 @@ unsafe extern "C" fn scheduler_exit_resume(
             },
         });
     }
+    let dead_process = scheduler.get_thread_group_mut(process_to_free_pid).unwrap();
+    dead_process.thread_group_state = ThreadGroupState::Zombie(status);
     preemptible();
 }
 
@@ -222,8 +215,9 @@ impl Scheduler {
                 }
                 MessageTo::Scheduler { content } => match content {
                     SchedulerMessage::SomethingToRead => {
-                        if let Some(task) =
-                            self.find_task(|t| t.get_waiting_state() == Some(&WaitingState::Read))
+                        if let Some(task) = self
+                            .iter_task_mut()
+                            .find(|t| t.get_waiting_state() == Some(&WaitingState::Read))
                         {
                             task.message_queue
                                 .push_back(ProcessMessage::SomethingToRead);
@@ -235,10 +229,9 @@ impl Scheduler {
                     content: signum,
                 } => {
                     for task in self
-                        .all_process
-                        .values_mut()
+                        .iter_thread_groups_mut()
                         .filter(|thread_group| thread_group.pgid == pgid)
-                        .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
+                        .filter_map(|thread_group| thread_group.get_first_thread())
                     {
                         //TODO: Announce memory error later.
                         mem::forget(task.signal.generate_signal(signum));
@@ -265,7 +258,8 @@ impl Scheduler {
         self.all_process.try_insert(
             pid,
             ThreadGroup::try_new(
-                Task::new(father_pid, ProcessState::Running(process)),
+                father_pid,
+                Task::new(ProcessState::Running(process)),
                 father_pid.unwrap_or(pid),
             )?,
         )?;
@@ -339,18 +333,10 @@ impl Scheduler {
                         if !wake_up {
                             continue;
                         }
-                        let dead_process =
-                            self.get_task((dead_process_pid, 0)).expect("no dead child");
-                        // dbg!(dead_process);
-                        let status = match dead_process.process_state {
-                            ProcessState::Zombie(status) => {
-                                status
-                                // return action;
-                            }
-                            _ => panic!(
-                                "A zombie was found just before, but there is no zombie here"
-                            ),
-                        };
+                        let status = self
+                            .get_thread_group(dead_process_pid)
+                            .and_then(|tg| tg.get_death_status())
+                            .expect("A zombie was found just before, but there is no zombie here");
                         let current_task = self.current_task_mut();
                         current_task
                             .set_waiting(WaitingState::ChildDeath(dead_process_pid, status as u32));
@@ -395,7 +381,6 @@ impl Scheduler {
                         _ => {}
                     }
                 }
-                ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
             };
         }
         self.idle_mode = true;
@@ -468,28 +453,64 @@ impl Scheduler {
     }
 
     pub fn get_task(&self, id: (Pid, Tid)) -> Option<&Task> {
-        self.get_thread_group(id.0)?.all_thread.get(&id.1)
+        self.get_thread_group(id.0)?.get_all_thread()?.get(&id.1)
     }
 
     pub fn get_task_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Task> {
-        self.get_thread_group_mut(id.0)?.all_thread.get_mut(&id.1)
+        self.get_thread_group_mut(id.0)?
+            .get_all_thread_mut()?
+            .get_mut(&id.1)
     }
 
-    pub fn find_task<P>(&mut self, predicate: P) -> Option<&mut Task>
-    where
-        P: FnMut(&&mut Task) -> bool,
-    {
-        self.all_process
-            .values_mut()
-            .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
-            .find(predicate)
+    #[allow(dead_code)]
+    pub fn iter_thread_groups(&self) -> impl Iterator<Item = &ThreadGroup> {
+        self.all_process.values()
     }
 
+    #[allow(dead_code)]
+    pub fn iter_task(&self) -> impl Iterator<Item = &Task> {
+        self.iter_thread_groups()
+            .flat_map(|thread_group| thread_group.get_all_thread())
+            .flat_map(|all_thread| all_thread.values())
+    }
+
+    pub fn iter_thread_groups_mut(&mut self) -> impl Iterator<Item = &mut ThreadGroup> {
+        self.all_process.values_mut()
+    }
+
+    pub fn iter_task_mut(&mut self) -> impl Iterator<Item = &mut Task> {
+        self.iter_thread_groups_mut()
+            .flat_map(|thread_group| thread_group.get_all_thread_mut())
+            .flat_map(|all_thread| all_thread.values_mut())
+    }
+
+    // pub fn find_task<P>(&mut self, predicate: P) -> Option<&mut Task>
+    // where
+    //     P: FnMut(&&mut Task) -> bool,
+    // {
+    //     self.all_process
+    //         .values_mut()
+    //         .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
+    //         .find(predicate)
+    // }
+
+    #[allow(dead_code)]
     /// Remove the current running process
     fn remove_curr_running(&mut self) {
         // Remove process from the running process list
         self.running_process.remove(self.current_task_index);
         // Check if there is altmost one process
+        //TODO: I think we should panic
+        if self.running_process.len() == 0 {
+            log::warn!("No more process");
+            loop {}
+        }
+    }
+
+    fn remove_thread_group_running(&mut self, pid: Pid) {
+        self.running_process
+            .retain(|(running_pid, _)| *running_pid != pid);
+        //TODO: I think we should panic
         if self.running_process.len() == 0 {
             log::warn!("No more process");
             loop {}
@@ -512,24 +533,34 @@ impl Scheduler {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
         self.running_process.try_reserve(1)?;
-        let father_pid = self.current_task_id.0;
-        let current_task = self.current_task_mut();
-
-        let child = current_task.sys_clone(kernel_esp, father_pid, child_stack, flags)?;
+        let (father_pid, father_tid) = self.current_task_id;
 
         let child_pid = if flags.contains(CloneFlags::THREAD) {
+            let current_task = self.current_task_mut();
+
+            let child = current_task.sys_clone(kernel_esp, child_stack, flags)?;
             let thread_group = self.current_thread_group_mut();
             let tid = thread_group.get_available_tid();
-            thread_group.all_thread.try_insert(tid, child)?;
-            let child_pid = self.current_task_id().0;
-            self.running_process.push((child_pid, tid));
-            child_pid
+            thread_group
+                .get_all_thread_mut()
+                .expect("wtf")
+                .try_insert(tid, child)?;
+            self.running_process.push((father_pid, tid));
+            father_pid
         } else {
-            current_task.child.try_reserve(1)?;
             let child_pid = self.get_available_pid();
-            self.current_task_mut().child.push(child_pid);
-            self.all_process
-                .try_insert(child_pid, ThreadGroup::try_new(child, father_pid)?)?;
+            let thread_group = self.current_thread_group_mut();
+
+            let new_thread_group = thread_group.sys_clone(
+                father_pid,
+                father_tid,
+                child_pid,
+                kernel_esp,
+                child_stack,
+                flags,
+            )?;
+
+            self.all_process.try_insert(child_pid, new_thread_group)?;
             self.running_process.push((child_pid, 0));
             child_pid
         };
@@ -548,18 +579,16 @@ impl Scheduler {
         );
 
         match status {
-            139 => println!("segmentation fault"),
+            139 => println!("{}", "segmentation fault".red()),
             137 => println!("killed"),
             _ => {}
         }
 
-        // When the father die, the process 0 adopts all his orphelans
-        if let Some(reaper) = self.get_task((Self::REAPER_PID, 0)) {
-            if let ProcessState::Zombie(_) = reaper.process_state {
-                log::warn!("... the reaper is a zombie ... it is worring ...");
-            }
-            while let Some(child_pid) = self.current_task_mut().child.pop() {
-                self.get_task_mut((child_pid, 0))
+        // When the father die, the process Self::REAPER_PID adopts all his orphelans
+        // TODO: Why we don't add the dead process to the child list of reaper
+        if let Some(_reaper) = self.get_task((Self::REAPER_PID, 0)) {
+            while let Some(child_pid) = self.current_thread_group_mut().child.pop() {
+                self.get_thread_group_mut(child_pid)
                     .expect("Hashmap corrupted")
                     .parent = Some(Self::REAPER_PID);
             }
@@ -567,15 +596,15 @@ impl Scheduler {
             log::warn!("... the reaper is die ... RIP ...");
         }
 
-        let (pid, tid) = self.current_task_id;
+        let (pid, _) = self.current_task_id;
 
-        self.remove_curr_running();
+        self.remove_thread_group_running(pid);
 
         // Switch to the next process
         unsafe {
             let new_kernel_esp = self.load_next_process(0);
 
-            _exit_resume(new_kernel_esp, pid, tid, status);
+            _exit_resume(new_kernel_esp, pid, status);
         };
     }
 

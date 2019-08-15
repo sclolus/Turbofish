@@ -31,11 +31,10 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
         if pid < -1 {
             generate_signal(
                 scheduler
-                    .all_process
-                    .iter_mut()
-                    .filter_map(|(_pid, thread_group)| {
+                    .iter_thread_groups_mut()
+                    .filter_map(|thread_group| {
                         if thread_group.pgid == -pid as Pid {
-                            Some(thread_group.get_first_thread())
+                            thread_group.get_first_thread()
                         } else {
                             None
                         }
@@ -45,9 +44,8 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
         } else if pid == -1 {
             generate_signal(
                 scheduler
-                    .all_process
-                    .iter_mut()
-                    .filter_map(|(_pid, thread_group)| Some(thread_group.get_first_thread())),
+                    .iter_thread_groups_mut()
+                    .filter_map(|thread_group| thread_group.get_first_thread()),
                 signum,
             )
         } else {
