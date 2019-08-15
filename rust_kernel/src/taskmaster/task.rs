@@ -126,6 +126,13 @@ impl Task {
         let uninit = mem::replace(&mut self.process_state, next);
         mem::forget(uninit);
     }
+
+    /// remove pid `pid` from the child list, Panic if not present
+    pub fn remove_child(&mut self, pid: Pid) {
+        self.child
+            .remove_item(&pid)
+            .expect("can't remove child pid it is not present");
+    }
 }
 
 #[derive(Debug, PartialEq)]
