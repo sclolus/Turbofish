@@ -32,6 +32,7 @@ void _exit_qemu(int val)
 
 int main() {
 	for (unsigned int i = 0; i < TEST_PROGRAMS_LEN; i++) {
+		printf("executing %s\n", TEST_PROGRAMS[i].path);
 		char *env[] = {NULL};
 		pid_t pid = fork();
 		if (pid < 0) {

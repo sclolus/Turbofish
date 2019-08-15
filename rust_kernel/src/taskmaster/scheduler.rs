@@ -317,31 +317,32 @@ impl Scheduler {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
+                        if let Some(WaitingState::ChildDeath(wake_pid, _)) =
                             self.current_task().get_waiting_state()
                         {
                             let dead_process_pgid = self
                                 .get_thread_group(dead_process_pid)
                                 .expect("no dead child")
                                 .pgid;
-                            *wake_pid == -1
+                            if *wake_pid == -1
+                                || *wake_pid == 0
+                                    && dead_process_pgid == self.current_thread_group().pgid
                                 || *wake_pid == dead_process_pid
                                 || -*wake_pid == dead_process_pgid
-                        } else {
-                            false
-                        };
-                        if !wake_up {
-                            continue;
+                            {
+                                let status = self
+                                        .get_thread_group(dead_process_pid)
+                                        .and_then(|tg| tg.get_death_status())
+                                        .expect("A zombie was found just before, but there is no zombie here");
+                                let current_task = self.current_task_mut();
+                                current_task.set_waiting(WaitingState::ChildDeath(
+                                    dead_process_pid,
+                                    status as u32,
+                                ));
+                                current_task.set_return_value(0);
+                                return JobAction::default();
+                            }
                         }
-                        let status = self
-                            .get_thread_group(dead_process_pid)
-                            .and_then(|tg| tg.get_death_status())
-                            .expect("A zombie was found just before, but there is no zombie here");
-                        let current_task = self.current_task_mut();
-                        current_task
-                            .set_waiting(WaitingState::ChildDeath(dead_process_pid, status as u32));
-                        current_task.set_return_value(0);
-                        return JobAction::default();
                     }
                     ProcessMessage::SomethingToRead => {
                         let current_task = self.current_task_mut();
