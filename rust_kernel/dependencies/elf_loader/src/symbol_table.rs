@@ -187,11 +187,11 @@ impl SymbolTable {
         }
     }
 
-    /// Get the symbol name corresponding to an EIP value
-    pub fn get_symbol_name(&self, eip: u32) -> Option<&String> {
+    /// Get the symbol name and his address corresponding to an EIP value
+    pub fn get_symbol(&self, eip: u32) -> Option<(&String, u32)> {
         for elem in self.symbols.iter() {
             if eip >= elem.addr && eip < elem.addr + elem.size as u32 {
-                return Some(&elem.name);
+                return Some((&elem.name, elem.addr));
             }
         }
         None

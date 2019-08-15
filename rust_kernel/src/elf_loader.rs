@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 use core::mem;
-use elf_loader::{ElfHeader, ProgramHeader, SymbolTable};
+use elf_loader::{ElfHeader, ProgramHeader};
 
 /// This structure is the result of the parsing of a ELF file
 #[derive(Debug)]
@@ -32,10 +32,6 @@ pub fn load_elf(content: &[u8]) -> Elf {
         }
         ph_table
     };
-    let b = SymbolTable::try_new(content).unwrap();
-    let s = b.get_symbol_name(0x004002f9);
-    println!("{:?}", s);
-
     Elf {
         header,
         program_header_table,

@@ -6,6 +6,7 @@ use super::syscall::signalfn::sys_kill;
 use libc_binding::Signum;
 
 use core::ffi::c_void;
+use elf_loader::SymbolTable;
 
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
@@ -166,6 +167,35 @@ pub unsafe fn reassign_cpu_exceptions() {
     }
 }
 
+/// Get eip from ebp (return tupple of (eip, ebp))
+fn get_eip(ebp: *const u32) -> (u32, *const u32) {
+    let eip = unsafe { *ebp.add(1) };
+    if eip == 0 {
+        (0, ebp)
+    } else {
+        (eip, unsafe { *ebp as *const u32 })
+    }
+}
+
+/// Take the first eip and epb as parameter and trace back up.
+fn trace_process(symbol_table: &SymbolTable, mut s: (u32, *const u32)) {
+    loop {
+        let symbol = symbol_table.get_symbol(s.0);
+        match symbol {
+            Some(sym) => log::info!("{:#X?} on ({:#X?} {:?})", s.0, sym.1, sym.0),
+            // TODO: Stop considering as bullshit if there are no symbol name
+            None => {
+                log::info!("{:#X?} Unexpected Symbol", s.0);
+                break;
+            }
+        }
+        s = get_eip(s.1);
+        if s.0 == 0 {
+            break;
+        }
+    }
+}
+
 #[no_mangle]
 unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
     let cs = (*cpu_state).cs;
@@ -199,7 +229,20 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             (*cpu_state).ss,
             (*cpu_state).esp
         );
-        log::warn!("Cannot display backtrace from a non-kernel routine !");
+
+        // Attempt to display the process backtrace
+        match &SCHEDULER
+            .lock()
+            .current_task()
+            .unwrap_process()
+            .symbol_table
+        {
+            Some(symbol_table) => trace_process(
+                symbol_table,
+                ((*cpu_state).eip, (*cpu_state).registers.ebp as *const u32),
+            ),
+            None => log::warn!("Cannot trace a non-kernel process without his symbol list !"),
+        }
 
         // Send a kill signum to the current process: kernel-sodo mode
         let current_task_pid = SCHEDULER.lock().current_task_id().0;
