@@ -1,12 +1,18 @@
+#![feature(try_reserve)]
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 use bitflags::bitflags;
 use core::convert::TryFrom;
 use core::mem;
 
+pub mod symbol_table;
+pub use symbol_table::SymbolTable;
+
 #[cfg(not(feature = "std-print"))]
 #[allow(unused_imports)]
 #[macro_use]
 extern crate terminal;
+
+extern crate alloc;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ElfParseError {
@@ -442,7 +448,7 @@ impl core::fmt::Display for ProgramHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum SectionHeaderType {
     Null,
     ProgBits,
