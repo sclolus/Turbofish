@@ -11,9 +11,8 @@ use try_clone_derive::TryClone;
 
 #[derive(Debug)]
 pub enum ThreadGroupState {
-    Running {
-        all_thread: ThreadList,
-    },
+    /// The process is running and has a thread list
+    Running { all_thread: ThreadList },
     /// The process is terminated and wait to deliver his testament to his father
     // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
     // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
@@ -63,6 +62,7 @@ pub struct ThreadGroup {
 }
 
 #[derive(Debug, TryClone)]
+/// all the identity associate to a thread group
 pub struct Credentials {
     pub uid: uid_t,
     pub gid: gid_t,
@@ -74,6 +74,7 @@ pub struct Credentials {
 }
 
 impl Credentials {
+    /// the Credential of the ROOT user
     const ROOT: Self = Self {
         uid: 0,
         gid: 0,
@@ -135,6 +136,8 @@ impl ThreadGroup {
         self.get_death_status().is_some()
     }
 
+    /// Clone a thread group
+    /// the clone was called from thread father_tid
     pub fn sys_clone(
         &mut self,
         father_pid: Pid,

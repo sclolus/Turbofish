@@ -464,36 +464,30 @@ impl Scheduler {
     }
 
     #[allow(dead_code)]
+    /// iter on all the thread group
     pub fn iter_thread_groups(&self) -> impl Iterator<Item = &ThreadGroup> {
         self.all_process.values()
     }
 
     #[allow(dead_code)]
+    /// iter on all the thread
     pub fn iter_task(&self) -> impl Iterator<Item = &Task> {
         self.iter_thread_groups()
             .flat_map(|thread_group| thread_group.get_all_thread())
             .flat_map(|all_thread| all_thread.values())
     }
 
+    /// iter on all the thread group mutably
     pub fn iter_thread_groups_mut(&mut self) -> impl Iterator<Item = &mut ThreadGroup> {
         self.all_process.values_mut()
     }
 
+    /// iter on all the thread mutably
     pub fn iter_task_mut(&mut self) -> impl Iterator<Item = &mut Task> {
         self.iter_thread_groups_mut()
             .flat_map(|thread_group| thread_group.get_all_thread_mut())
             .flat_map(|all_thread| all_thread.values_mut())
     }
-
-    // pub fn find_task<P>(&mut self, predicate: P) -> Option<&mut Task>
-    // where
-    //     P: FnMut(&&mut Task) -> bool,
-    // {
-    //     self.all_process
-    //         .values_mut()
-    //         .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
-    //         .find(predicate)
-    // }
 
     #[allow(dead_code)]
     /// Remove the current running process
@@ -508,6 +502,8 @@ impl Scheduler {
         }
     }
 
+    /// remove all thread belonging to thread group `pid` in the
+    /// running list
     fn remove_thread_group_running(&mut self, pid: Pid) {
         self.running_process
             .retain(|(running_pid, _)| *running_pid != pid);
@@ -518,6 +514,7 @@ impl Scheduler {
         }
     }
 
+    /// remove the thread group from all_process
     pub fn remove_thread_group(&mut self, pid: Pid) {
         self.all_process
             .remove(&pid)
