@@ -40,7 +40,8 @@ SRC_C += Clone \
 		SigPause \
 		TcGetAttr \
 		CanonicalRead \
-		Loop
+		Loop \
+		Segfaulter \
 
 CFLAGS = -Wall -Wextra -I include
 ifeq ($(GNU),yes)
