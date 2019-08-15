@@ -245,45 +245,73 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     // Check if the child is already dead: Return his PID if true or NONE
     // Errno: Return ECHILD if not child or child PID specified is wrong
-    let child_pid = if pid < 0 {
-        // Check if at leat one child exists
-        if thread_group.child.len() == 0 {
-            return Err(Errno::Echild);
-        }
-        // Check is the at least one child is a already a zombie -> Return immediatly child PID
-        if let Some(&zombie_pid) = thread_group.child.iter().find(|&current_pid| {
-            scheduler
-                .get_thread_group(*current_pid)
-                .expect("Pid must be here")
-                .is_zombie()
-        }) {
-            Some(zombie_pid)
-        } else {
-            None
-        }
-    } else {
-        // Check if specified child exists
-        if let Some(elem) = thread_group
-            .child
-            .iter()
-            .find(|&&current_pid| current_pid == pid)
-        {
-            if scheduler
-                .get_thread_group(*elem)
-                .expect("Pid must be here")
-                .is_zombie()
-            {
-                Some(*elem)
-            } else {
-                None
+    let child_pid = match pid {
+        -1 => {
+            // Check if at leat one child exists
+            if thread_group.child.len() == 0 {
+                return Err(Errno::Echild);
             }
-        } else {
-            return Err(Errno::Echild);
+            // Check is the at least one child is a already a zombie -> Return immediatly child PID
+            thread_group.child.iter().find(|&current_pid| {
+                scheduler
+                    .get_thread_group(*current_pid)
+                    .expect("Pid must be here")
+                    .is_zombie()
+            })
         }
+        mut pid if (pid < 0 || pid == 0) => {
+            if pid == 0 {
+                pid = thread_group.pgid;
+            }
+            // TODO: can be optim
+            let candidate_number = thread_group
+                .child
+                .iter()
+                .map(|&current_pid| {
+                    scheduler
+                        .get_thread_group(current_pid)
+                        .expect("Pid must be here")
+                })
+                .filter(|tg| tg.pgid == -pid)
+                .count();
+
+            if candidate_number == 0 {
+                return Err(Errno::Echild);
+            }
+
+            thread_group.child.iter().find(|&current_pid| {
+                scheduler
+                    .get_thread_group(*current_pid)
+                    .expect("Pid must be here")
+                    .pgid
+                    == -pid
+            })
+        }
+        pid if pid > 0 => {
+            // Check if specified child exists
+            if let Some(elem) = thread_group
+                .child
+                .iter()
+                .find(|&&current_pid| current_pid == pid)
+            {
+                if scheduler
+                    .get_thread_group(*elem)
+                    .expect("Pid must be here")
+                    .is_zombie()
+                {
+                    Some(elem)
+                } else {
+                    None
+                }
+            } else {
+                return Err(Errno::Echild);
+            }
+        }
+        _ => unreachable!(),
     };
 
     match child_pid {
-        Some(pid) => {
+        Some(&pid) => {
             // TODO: Manage terminated value with signal
             if wstatus != 0x0 as *mut i32 {
                 let status = scheduler
