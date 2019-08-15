@@ -9,7 +9,6 @@ use core::ffi::c_void;
 use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 
 use core::mem;
 
@@ -18,21 +17,15 @@ use core::mem;
 pub struct Task {
     /// Current process state
     pub process_state: ProcessState,
-    /// List of childs
-    pub child: Vec<Pid>,
-    /// Parent
-    pub parent: Option<Pid>,
     /// Signal Interface
     pub signal: SignalInterface,
     pub message_queue: MessageQueue<ProcessMessage>,
 }
 
 impl Task {
-    pub fn new(parent: Option<Pid>, process_state: ProcessState) -> Self {
+    pub fn new(process_state: ProcessState) -> Self {
         Self {
             process_state,
-            child: Vec::new(),
-            parent,
             signal: SignalInterface::new(),
             message_queue: MessageQueue::new(),
         }
@@ -48,13 +41,10 @@ impl Task {
     pub fn sys_clone(
         &self,
         kernel_esp: u32,
-        new_parent_pid: Pid,
         child_stack: *const c_void,
         flags: CloneFlags,
     ) -> SysResult<Self> {
         Ok(Self {
-            child: Vec::new(),
-            parent: Some(new_parent_pid),
             signal: self.signal.fork(),
             process_state: match &self.process_state {
                 ProcessState::Running(p) => {
@@ -69,21 +59,12 @@ impl Task {
     pub fn unwrap_process_mut(&mut self) -> &mut UserProcess {
         match &mut self.process_state {
             ProcessState::Waiting(process, _) | ProcessState::Running(process) => process,
-            _ => panic!("WTF"),
         }
     }
 
     pub fn unwrap_process(&self) -> &UserProcess {
         match &self.process_state {
             ProcessState::Running(process) | ProcessState::Waiting(process, _) => process,
-            _ => panic!("WTF"),
-        }
-    }
-
-    pub fn is_zombie(&self) -> bool {
-        match self.process_state {
-            ProcessState::Zombie(_) => true,
-            _ => false,
         }
     }
 
@@ -126,13 +107,6 @@ impl Task {
         let uninit = mem::replace(&mut self.process_state, next);
         mem::forget(uninit);
     }
-
-    /// remove pid `pid` from the child list, Panic if not present
-    pub fn remove_child(&mut self, pid: Pid) {
-        self.child
-            .remove_item(&pid)
-            .expect("can't remove child pid it is not present");
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -155,11 +129,6 @@ pub enum ProcessState {
     Running(Box<UserProcess>),
     /// The process is currently waiting for something
     Waiting(Box<UserProcess>, WaitingState),
-    /// The process is terminated and wait to deliver his testament to his father
-    /// The process is terminated and wait to deliver his testament to his father
-    // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
-    // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
-    Zombie(i32),
 }
 
 impl ProcessState {
@@ -167,7 +136,6 @@ impl ProcessState {
         match self {
             ProcessState::Running(p) => ProcessState::Waiting(p, waiting_state),
             ProcessState::Waiting(p, _) => ProcessState::Waiting(p, waiting_state),
-            _ => panic!("Not handled by this feature"),
         }
     }
     pub fn set_running(self) -> Self {
