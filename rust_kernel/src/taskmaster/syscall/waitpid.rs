@@ -311,21 +311,22 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     };
 
     match child_pid {
-        Some(&pid) => {
+        Some(&dead_pid) => {
             // TODO: Manage terminated value with signal
             if wstatus != 0x0 as *mut i32 {
                 let status = scheduler
-                    .get_thread_group(pid)
+                    .get_thread_group(dead_pid)
                     .and_then(|tg| tg.get_death_status())
                     .expect("zombie must be here");
                 unsafe { *wstatus = status }
             }
             // fflush zombie
-            scheduler.remove_thread_group(pid);
+            dbg!(dead_pid);
+            scheduler.remove_thread_group(dead_pid);
             let thread_group = scheduler.current_thread_group_mut();
-            thread_group.remove_child(pid);
+            thread_group.remove_child(dead_pid);
             // Return immediatly
-            Ok(pid as u32)
+            Ok(dead_pid as u32)
         }
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
