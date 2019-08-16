@@ -19,13 +19,13 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define PAUSE        29
 #define KILL         37
 #define SETGID       46
-#define GETGID		 47
-#define GETEUID		 49
-#define GETEGID		 50
+#define GETGID       47
+#define GETEUID      49
+#define GETEGID      50
 #define SIGNAL       48
 #define SETPGID      57
-#define GETPPID		 64
-#define GETPGRP		 65
+#define GETPPID      64
+#define GETPGRP      65
 #define SIGACTION    67
 #define SIGSUSPEND   72
 #define GETGROUPS    80
@@ -37,7 +37,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define CLONE       120
 #define MPROTECT    125
 #define SIGPROCMASK 126
-#define GETPGID		132
+#define GETPGID     132
 #define NANOSLEEP   162
 #define SIGRETURN   200
 #define SHUTDOWN    293
