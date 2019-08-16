@@ -50,12 +50,3 @@ pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) 
             .current_task_clone(kernel_esp, child_stack, flags)? as u32)
     })
 }
-
-/// Fork a process
-pub fn sys_fork(kernel_esp: u32) -> SysResult<u32> {
-    sys_clone(
-        kernel_esp,
-        0 as *const c_void,
-        0, /*CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD*/
-    )
-}

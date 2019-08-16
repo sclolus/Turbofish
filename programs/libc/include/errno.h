@@ -23,6 +23,7 @@ enum Errno {
 	EAGAIN         = 11, /* Try again */
 	ENOMEM         = 12, /* Out of memory */
 	EACCES         = 13, /* Permission denied */
+	EACCESS        = EACCES, /* Permission denied */
 	EFAULT         = 14, /* Bad address */
 	ENOTBLK        = 15, /* Block device required */
 	EBUSY          = 16, /* Device or resource busy */

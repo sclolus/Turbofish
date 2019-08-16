@@ -6,7 +6,7 @@ mod process;
 #[macro_use]
 mod scheduler;
 mod safe_ffi;
-mod signal;
+mod signal_interface;
 mod syscall;
 mod task;
 mod tests;
