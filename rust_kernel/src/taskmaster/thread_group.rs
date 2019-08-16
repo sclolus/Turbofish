@@ -10,7 +10,7 @@ use libc_binding::{gid_t, uid_t};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
-pub enum ThreadGroupState {
+enum ThreadGroupState {
     /// The process is running and has a thread list
     Running { all_thread: ThreadList },
     /// The process is terminated and wait to deliver his testament to his father
@@ -50,7 +50,7 @@ pub struct ThreadGroup {
     /// the identity(uid, gid, groups...)
     pub credentials: Credentials,
     /// all the thread in the thread group
-    pub thread_group_state: ThreadGroupState,
+    thread_group_state: ThreadGroupState,
     /// the process group id
     pub pgid: Pid,
     /// List of childs
@@ -174,5 +174,9 @@ impl ThreadGroup {
         self.child
             .remove_item(&pid)
             .expect("can't remove child pid it is not present");
+    }
+
+    pub fn set_zombie(&mut self, status: i32) {
+        self.thread_group_state = ThreadGroupState::Zombie(status);
     }
 }

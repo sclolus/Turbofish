@@ -4,7 +4,7 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::task::{ProcessState, Task, WaitingState};
-use super::thread_group::{ThreadGroup, ThreadGroupState};
+use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
 use crate::terminal::ansi_escape_code::Colored;
 use alloc::boxed::Box;
@@ -142,7 +142,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
         });
     }
     let dead_process = scheduler.get_thread_group_mut(process_to_free_pid).unwrap();
-    dead_process.thread_group_state = ThreadGroupState::Zombie(status);
+    dead_process.set_zombie(status);
     preemptible();
 }
 
@@ -150,7 +150,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
-    pub all_process: BTreeMap<Pid, ThreadGroup>,
+    all_process: BTreeMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
     running_process: Vec<(Pid, Tid)>,
 
