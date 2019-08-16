@@ -41,6 +41,8 @@ use alloc::alloc::{Alloc, Global, Layout};
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 
+use core::uninitialized_array;
+
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
