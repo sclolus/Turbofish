@@ -9,7 +9,7 @@ use core::ffi::c_void;
 use elf_loader::SymbolTable;
 
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::{AddressSpace, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
 use crate::panic::{get_page_fault_origin, qemu_check, trace_back};
 
 extern "C" {
@@ -168,17 +168,27 @@ pub unsafe fn reassign_cpu_exceptions() {
 }
 
 /// Get eip from ebp (return tupple of (eip, ebp))
-fn get_eip(ebp: *const u32) -> (u32, *const u32) {
+fn get_eip(address_space: &AddressSpace, ebp: *const u32) -> Result<(u32, *const u32), ()> {
+    // Check if pointer exists in user virtual address space
+    address_space
+        .check_user_ptr::<u32>(unsafe { ebp.add(1) })
+        .map_err(|_| ())?;
     let eip = unsafe { *ebp.add(1) };
     if eip == 0 {
-        (0, ebp)
+        Ok((0, ebp))
     } else {
-        (eip, unsafe { *ebp as *const u32 })
+        // Check if pointer exists in user virtual address space
+        address_space.check_user_ptr::<u32>(ebp).map_err(|_| ())?;
+        Ok((eip, unsafe { *ebp as *const u32 }))
     }
 }
 
 /// Take the first eip and epb as parameter and trace back up.
-fn trace_process(symbol_table: &SymbolTable, mut s: (u32, *const u32)) {
+fn trace_process(
+    address_space: &AddressSpace,
+    symbol_table: &SymbolTable,
+    mut s: (u32, *const u32),
+) -> Result<(), ()> {
     loop {
         let symbol = symbol_table.get_symbol(s.0);
         match symbol {
@@ -189,11 +199,12 @@ fn trace_process(symbol_table: &SymbolTable, mut s: (u32, *const u32)) {
                 break;
             }
         }
-        s = get_eip(s.1);
+        s = get_eip(address_space, s.1)?;
         if s.0 == 0 {
             break;
         }
     }
+    Ok(())
 }
 
 #[no_mangle]
@@ -230,18 +241,27 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             (*cpu_state).esp
         );
 
-        // Attempt to display the process backtrace
-        match &SCHEDULER
-            .lock()
-            .current_task()
-            .unwrap_process()
-            .symbol_table
         {
-            Some(symbol_table) => trace_process(
-                symbol_table,
-                ((*cpu_state).eip, (*cpu_state).registers.ebp as *const u32),
-            ),
-            None => log::warn!("Cannot trace a non-kernel process without his symbol list !"),
+            let scheduler = SCHEDULER.lock();
+
+            let task = scheduler.current_task();
+            let address_space = &task.unwrap_process().get_virtual_allocator();
+
+            // Attempt to display the process backtrace
+            match &task.unwrap_process().symbol_table {
+                Some(symbol_table) => {
+                    let _r = trace_process(
+                        address_space,
+                        symbol_table,
+                        ((*cpu_state).eip, (*cpu_state).registers.ebp as *const u32),
+                    )
+                    .map_err(|e| {
+                        log::warn!("Unexpected memory location founded in address space !");
+                        e
+                    });
+                }
+                None => log::warn!("Cannot trace a non-kernel process without his symbol list !"),
+            }
         }
 
         // Send a kill signum to the current process: kernel-sodo mode

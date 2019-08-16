@@ -84,7 +84,7 @@ struct ElfSymbolEntry {
 
 /// This structure represents one symbol entry in human readable format style
 #[derive(Debug)]
-pub struct SymbolEntry {
+struct SymbolEntry {
     name: String,
     addr: u32,
     size: usize,
