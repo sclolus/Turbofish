@@ -38,8 +38,7 @@ pub fn sys_getgroups(gidsetsize: i32, grouplist: *mut gid_t) -> SysResult<u32> {
                 .get_virtual_allocator();
 
             // Check if pointer exists in user virtual address space
-            v.check_user_ptr_with_len(grouplist, gidsetsize as usize)?;
-            unsafe { core::slice::from_raw_parts_mut(grouplist, gidsetsize as usize) }
+            v.make_checked_mut_slice(grouplist, gidsetsize as usize)?
         };
         let thread_group = scheduler.current_thread_group();
         let cred = &thread_group.credentials;

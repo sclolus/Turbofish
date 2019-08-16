@@ -363,6 +363,42 @@ impl AddressSpace {
             .map_err(|_| MemoryError::BadAddr)?)
     }
 
+    /// Creates a slice of T, from `ptr`, of `elem_number` elements.
+    /// It checks against the Bullshitship of the ptr, asserting it's a valid userland pointer.
+    ///
+    /// We need to specify some lifetime that is not related to self, as of lifetime ellision,
+    /// in order to make the compiler understand that ultimately the slice returned is not
+    /// some form of borrow of self.
+    pub fn make_checked_slice<'unbound, T>(
+        &self,
+        ptr: *const T,
+        elem_number: usize,
+    ) -> Result<&'unbound [T]> {
+        use core::mem;
+        let byte_len = mem::size_of::<T>() * elem_number;
+
+        self.check_user_ptr_with_len(ptr, byte_len)?;
+        Ok(unsafe { core::slice::from_raw_parts(ptr, elem_number) })
+    }
+
+    /// Creates a mutable slice of T, from `ptr`, of `elem_number` elements.
+    /// It checks against the Bullshitship of the ptr, asserting it's a valid userland pointer.
+    ///
+    /// We need to specify some lifetime that is not related to self, as of lifetime ellision,
+    /// in order to make the compiler understand that ultimately the slice returned is not
+    /// some form of borrow of self..
+    pub fn make_checked_mut_slice<'unbound, T>(
+        &self,
+        ptr: *mut T,
+        elem_number: usize,
+    ) -> Result<&'unbound mut [T]> {
+        use core::mem;
+        let byte_len = mem::size_of::<T>() * elem_number;
+
+        self.check_user_ptr_with_len(ptr, byte_len)?;
+        Ok(unsafe { core::slice::from_raw_parts_mut(ptr, elem_number) })
+    }
+
     pub fn alloc<N>(&mut self, length: N, alloc_flags: AllocFlags) -> Result<*mut u8>
     where
         N: Into<NbrPages>,

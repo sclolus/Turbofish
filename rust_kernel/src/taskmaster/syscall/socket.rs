@@ -267,8 +267,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     len,
                     flags,
                 } = unsafe { *(args as *const SendArgs) };
-                let mem = unsafe { slice::from_raw_parts(buf as *const u8, len as usize) };
-                v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
+                let mem = v.make_checked_slice(buf as *const u8, len as usize)?;
                 drop(v);
                 send(&mut scheduler, socket_fd as i32, mem, flags)
             }
@@ -280,8 +279,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     len,
                     flags,
                 } = unsafe { *(args as *const RecvArgs) };
-                let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
-                v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
+                let mem = v.make_checked_mut_slice(buf as *mut u8, len as usize)?;
                 drop(v);
                 recv(&mut scheduler, socket_fd as i32, mem, flags)
             }
@@ -295,8 +293,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     dst_addr,
                     addr_len,
                 } = unsafe { *(args as *const SendToArgs) };
-                let mem = unsafe { slice::from_raw_parts(buf as *const u8, len as usize) };
-                v.check_user_ptr_with_len::<u8>(mem.as_ptr(), mem.len())?;
+                let mem = v.make_checked_slice(buf as *const u8, len as usize)?;
                 let sockaddr_opt: Option<Sockaddr> = if dst_addr != 0x0 {
                     Some((&v, dst_addr as *const u8, addr_len as usize).try_into()?)
                 } else {
