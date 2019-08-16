@@ -183,7 +183,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     } = (*cpu_state).registers;
 
     if eax != READ && eax != WRITE {
-        trace_syscall::trace_syscall(cpu_state);
+        // trace_syscall::trace_syscall(cpu_state);
     }
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
@@ -250,7 +250,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     };
 
     if eax != READ && eax != WRITE {
-        trace_syscall::trace_syscall_result(cpu_state, result);
+        // trace_syscall::trace_syscall_result(cpu_state, result);
     }
 
     let is_in_blocked_syscall = result == Err(Errno::Eintr);
