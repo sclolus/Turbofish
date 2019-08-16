@@ -28,6 +28,8 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETPGRP		 65
 #define SIGACTION    67
 #define SIGSUSPEND   72
+#define GETGROUPS    80
+#define SETGROUPS    81
 #define REBOOT       88
 #define MMAP         90
 #define MUNMAP       91
@@ -49,7 +51,5 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define TCSETPGRP      0x80000006
 #define SETEGID        0x80000007
 #define SETEUID        0x80000008
-#define GETGROUPS      0x80000009
-#define SETGROUPS      0x80000010
 
 #endif

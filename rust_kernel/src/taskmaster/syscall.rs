@@ -216,6 +216,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             edx as *mut StructSigaction,
         ),
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
+        GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
+        SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(Virt(ebx as usize), ecx as usize),
