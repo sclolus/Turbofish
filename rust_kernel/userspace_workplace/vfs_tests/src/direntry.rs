@@ -1,7 +1,7 @@
-use std::str::FromStr;
-use super::{DcacheResult, DcacheError};
-use crate::path::{Path, Filename};
 use super::inode::InodeId;
+use super::{DcacheError, DcacheResult, FileSystemId};
+use crate::path::{Filename, Path};
+use std::str::FromStr;
 use DcacheError::*;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -18,8 +18,8 @@ impl DirectoryEntryId {
     }
 }
 
-use std::fmt::{Display, Formatter, Error};
 use std::convert::TryFrom;
+use std::fmt::{Display, Error, Formatter};
 impl Display for DirectoryEntryId {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         Ok(write!(f, "D #{}", self.0)?)
@@ -29,6 +29,7 @@ impl Display for DirectoryEntryId {
 #[derive(Debug, Clone)]
 pub struct EntryDirectory {
     entries: Vec<DirectoryEntryId>,
+    mounted: Option<DirectoryEntryId>,
 }
 
 impl EntryDirectory {
@@ -39,13 +40,23 @@ impl EntryDirectory {
     pub fn entries(&self) -> &Vec<DirectoryEntryId> {
         &self.entries
     }
+
+    pub fn is_mounted(&self) -> bool {
+        self.mounted.is_some()
+    }
+
+    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
+        self.mounted.ok_or(DirectoryNotMounted)
+    }
+
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) {
+        self.mounted = Some(on)
+    }
 }
 
 impl Default for EntryDirectory {
     fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new(), mounted: None }
     }
 }
 
@@ -57,7 +68,7 @@ pub enum DirectoryEntryInner {
 }
 
 use DirectoryEntryInner::*;
-macro_rules!    is_variant {
+macro_rules! is_variant {
     ($pat: pat = $it: tt) => {
         if let $pat = $it {
             true
@@ -106,6 +117,19 @@ impl DirectoryEntryInner {
             Symlink(ref path) => path,
             _ => return Err(NotASymlink),
         })
+    }
+
+    pub fn is_mounted(&self) -> DcacheResult<bool> {
+        Ok(self.get_directory()?.is_mounted())
+    }
+
+    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
+        self.get_directory()?.get_mountpoint_entry()
+    }
+
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
+        self.get_directory_mut()?.set_mounted(on);
+        Ok(())
     }
 }
 
@@ -160,7 +184,7 @@ impl DirectoryEntry {
         root_entry
             .set_filename(Filename::try_from("root").unwrap())
             .set_id(DirectoryEntryId::new(2))
-            .set_inode_id(InodeId::new(2))
+            .set_inode_id(InodeId::new(2, FileSystemId(0))) // change this
             .set_directory();
 
         root_entry
@@ -183,7 +207,7 @@ impl DirectoryEntry {
         self.inner.get_symbolic_content()
     }
 
-    pub fn get_directory(& self) -> DcacheResult<&EntryDirectory> {
+    pub fn get_directory(&self) -> DcacheResult<&EntryDirectory> {
         self.inner.get_directory()
     }
 
@@ -193,6 +217,18 @@ impl DirectoryEntry {
 
     pub fn is_directory_empty(&self) -> DcacheResult<bool> {
         self.inner.is_directory_empty()
+    }
+
+    pub fn is_mounted(&self) -> DcacheResult<bool> {
+        self.inner.is_mounted()
+    }
+
+    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
+        self.inner.get_mountpoint_entry()
+    }
+
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
+        self.inner.set_mounted(on)
     }
 
     pub fn add_entry(&mut self, entry: DirectoryEntryId) -> DcacheResult<()> {
@@ -221,7 +257,7 @@ impl Default for DirectoryEntry {
             inner: DirectoryEntryInner::Regular,
             id: DirectoryEntryId::new(0),
             parent_id: DirectoryEntryId::new(0),
-            inode_id: InodeId::new(0),
+            inode_id: InodeId::new(0, FileSystemId::new(0)),
         }
     }
 }

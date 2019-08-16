@@ -77,4 +77,28 @@ impl FilePermissions {
 
         transmute(mode)
     }
+
+    pub fn is_character_device(&self) -> bool {
+        self.contains(Self::S_IFCHR)
+    }
+
+    pub fn is_fifo(&self) -> bool {
+        self.contains(Self::S_IFIFO)
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.contains(Self::S_IFREG)
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.contains(Self::S_IFDIR)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.contains(Self::S_IFLNK)
+    }
+
+    pub fn is_socket(&self) -> bool {
+        self.contains(Self::S_IFSOCK)
+    }
 }

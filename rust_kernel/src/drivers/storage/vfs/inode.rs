@@ -1,10 +1,9 @@
-#[deny(missing_docs)]
-
-use super::DeviceId;
-use super::{off_t, time_t, uid_t, gid_t};
-use super::{Path, VfsResult, open_flags};
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::stat::UserStat;
+#[deny(missing_docs)]
+use super::DeviceId;
+use super::{gid_t, off_t, time_t, uid_t};
+use super::{open_flags, Path, VfsResult};
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
@@ -66,6 +65,7 @@ bitflags! {
 pub struct InodeOperations {
     pub lookup_direntry: Option<fn(&Inode, &Path) -> Option<DirectoryEntry>>,
     pub lookup_inode: Option<fn(InodeId) -> Option<Inode>>,
+    pub lookup_direntries: Option<fn(&Inode) -> impl Iterator<Item = DirectoryEntry>>,
     pub creat: Option<fn(Inode, &mut DirectoryEntry, DirectoryEntry, mode_t) -> VfsResult<impl Into<Inode>>>,
     pub link: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
     pub symlink: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
@@ -80,18 +80,14 @@ pub struct InodeOperations {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct InodeId
-{
+pub struct InodeId {
     pub device_id: DeviceId,
     pub inode_number: InodeNumber,
 }
 
 impl InodeId {
     pub fn new(inode_number: InodeNumber, device_id: DeviceId) -> Self {
-        Self {
-            device_id,
-            inode_number
-        }
+        Self { device_id, inode_number }
     }
 
     pub fn device_id(&self) -> DeviceId {
@@ -129,27 +125,24 @@ pub struct Inode {
     pub inode_operations: InodeOperations,
 }
 
-impl Inode {
+impl Inode {}
 
-}
-
-use core::cmp::{PartialEq, Eq};
+use core::cmp::{Eq, PartialEq};
 impl PartialEq<InodeId> for InodeId {
     fn eq(&self, other: &Self) -> bool {
-        self.device_id.eq(&other.device_id) &&
-            self.inode_number.eq(&other.inode_number)
+        self.device_id.eq(&other.device_id) && self.inode_number.eq(&other.inode_number)
     }
 }
 
 impl Eq for InodeId {}
 
-
-use core::cmp::{PartialOrd, Ordering};
+use core::cmp::{Ordering, PartialOrd};
 impl PartialOrd<Self> for InodeId {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let major = self.device_id.partial_cmp(&other.device_id);
 
-        if let Ordering::Equal = major.unwrap() { // partial_cmp on inode must never fail.
+        if let Ordering::Equal = major.unwrap() {
+            // partial_cmp on inode must never fail.
             self.inode_number.partial_cmp(&other.inode_number)
         } else {
             major
@@ -157,7 +150,7 @@ impl PartialOrd<Self> for InodeId {
     }
 }
 
-use core::cmp::{Ord};
+use core::cmp::Ord;
 impl Ord for InodeId {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap() // partial_cmp on inode must never fail.
@@ -179,16 +172,12 @@ pub struct File {
 
 impl File {
     pub fn from_dentry(dentry: &DirectoryEntry) -> Self {
-        Self {
-            id: dentry.header.inode_id,
-            dentry_id: dentry.header.id,
-            offset: 0,
-            flags: Default::default(),
-        }
+        Self { id: dentry.header.inode_id, dentry_id: dentry.header.id, offset: 0, flags: Default::default() }
     }
 }
 
 #[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq)]
 pub enum SeekType {
     SEEK_SET,
     SEEK_CUR,

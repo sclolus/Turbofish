@@ -1,6 +1,6 @@
 #![feature(underscore_const_names)]
 #![feature(try_trait)]
-use std::cmp::{Eq, PartialEq, Ord, PartialOrd};
+use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -10,9 +10,14 @@ extern crate const_assert;
 #[macro_use]
 extern crate bitflags;
 
-mod posix_consts;
+#[macro_use]
+extern crate itertools;
+
+use itertools::unfold;
+
 mod path;
-use path::{Path, Filename};
+mod posix_consts;
+use path::{Filename, Path};
 
 mod direntry;
 use direntry::{DirectoryEntry, DirectoryEntryId};
@@ -22,16 +27,18 @@ mod dcache;
 use dcache::{Dcache, DcacheError, DcacheResult};
 
 mod inode;
-use inode::{Inode, InodeNumber, InodeId, OpenFlags, File};
+use inode::{File, Inode, InodeId, InodeNumber, Offset, OpenFlags, SeekType};
 
 mod user;
-use user::{UserId, GroupId, Current};
+use user::{Current, GroupId, UserId};
+
+mod fildes;
 
 use errno::Errno;
 use Errno::*;
 
 mod permissions;
-use permissions::{FilePermissions};
+use permissions::FilePermissions;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VfsError {
@@ -44,6 +51,8 @@ pub enum VfsError {
     NotEmpty,
     EntryNotConnected,
     NotEnoughArguments,
+    DirectoryNotMounted,
+    DirectoryIsMounted,
 
     MountError,
     NoSuchInode,
@@ -67,6 +76,8 @@ impl From<DcacheError> for VfsError {
             DcacheError::NotEmpty => VfsError::NotEmpty,
             DcacheError::EntryNotConnected => VfsError::EntryNotConnected,
             DcacheError::NotEnoughArguments => VfsError::NotEnoughArguments,
+            DcacheError::DirectoryNotMounted => VfsError::DirectoryNotMounted,
+            DcacheError::DirectoryIsMounted => VfsError::DirectoryIsMounted,
             DcacheError::Errno(errno) => VfsError::Errno(errno),
         }
     }
@@ -84,13 +95,119 @@ impl From<VfsError> for core::option::NoneError {
     }
 }
 
+pub struct SuperblockOperations {
+    lookup: Option<fn(&mut Superblock)>,
+    create: Option<fn(&mut Superblock)>,
+    unlink: Option<fn(&mut Superblock)>,
+    link: Option<fn(&mut Superblock)>,
+    symlink: Option<fn(&mut Superblock)>,
+    statfs: Option<fn(&mut Superblock)>,
+    mkdir: Option<fn(&mut Superblock)>,
+    rmdir: Option<fn(&mut Superblock)>,
+}
+
+pub struct Superblock {
+    // filesystem_type: FileSystemType,
+    operations: SuperblockOperations,
+}
+
+pub struct StandardFileSystem {}
+
+impl StandardFileSystem {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl FileSystem for StandardFileSystem {
+    fn name(&self) -> &str {
+        "StandardFileSystem"
+    }
+
+    fn get_superblock(&self) -> Superblock {
+        let operations = SuperblockOperations {
+            lookup: None,
+            create: None,
+            unlink: None,
+            link: None,
+            symlink: None,
+            statfs: None,
+            mkdir: None,
+            rmdir: None,
+        };
+
+        Superblock { operations }
+    }
+
+    fn root_dentry(&self) -> DirectoryEntry {
+        unimplemented!()
+    }
+
+    fn root_inode(&self) -> Inode {
+        unimplemented!()
+    }
+
+    fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode> {
+        unimplemented!()
+    }
+}
+
+pub trait FileSystem {
+    fn name(&self) -> &str;
+    fn get_superblock(&self) -> Superblock;
+    fn root_dentry(&self) -> DirectoryEntry;
+    fn root_inode(&self) -> Inode;
+    fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode>;
+}
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq)]
+pub struct FileSystemId(usize);
+
+impl FileSystemId {
+    fn new(id: usize) -> Self {
+        Self(id)
+    }
+}
+
+impl core::ops::Add<usize> for FileSystemId {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
 
 pub struct VirtualFileSystem {
-    // mounted_filesystems: Vec<Box<Filesystem>>,
+    mounted_filesystems: BTreeMap<FileSystemId, Box<FileSystem>>,
+
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
     dcache: Dcache,
-    open_file_descriptions: Vec<File>,
+    open_file_descriptions: BTreeMap<OFDId, File>,
+}
+
+impl KeyGenerator<FileSystemId> for VirtualFileSystem {
+    fn gen_filter(&self, id: FileSystemId) -> bool {
+        !self.mounted_filesystems.contains_key(&id)
+    }
+}
+
+impl Mapper<FileSystemId, Box<FileSystem>> for VirtualFileSystem {
+    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Box<FileSystem>> {
+        &mut self.mounted_filesystems
+    }
+}
+
+use fildes::{Fd, Fildes, KeyGenerator, Mapper, MapperResult, OFDId};
+impl KeyGenerator<OFDId> for VirtualFileSystem {
+    fn gen_filter(&self, fd: Fd) -> bool {
+        !self.open_file_descriptions.contains_key(&fd)
+    }
+}
+
+impl Mapper<OFDId, File> for VirtualFileSystem {
+    fn get_map(&mut self) -> &mut BTreeMap<OFDId, File> {
+        &mut self.open_file_descriptions
+    }
 }
 
 type Vfs = VirtualFileSystem;
@@ -98,11 +215,10 @@ type Vfs = VirtualFileSystem;
 impl VirtualFileSystem {
     pub fn new() -> VfsResult<VirtualFileSystem> {
         let mut new = Self {
-            // mounted_filesystems: Vec::new(),
-            // superblocks: Vec::new(),
+            mounted_filesystems: BTreeMap::new(),
             inodes: BTreeMap::new(),
             dcache: Dcache::new(),
-            open_file_descriptions: Vec::new(),
+            open_file_descriptions: BTreeMap::new(),
         };
 
         let root_inode = Inode::root_inode();
@@ -112,7 +228,88 @@ impl VirtualFileSystem {
         Ok(new)
     }
 
-    pub fn unlink(&mut self, current: &Current, path: Path) -> VfsResult<()> {
+    fn iter_directory_entries(&self, dir: DirectoryEntryId) -> VfsResult<impl Iterator<Item = &DirectoryEntry>> {
+        let dir = self.dcache.get_entry(&dir)?.get_directory()?;
+
+        let mut entries = dir.entries().iter();
+        Ok(unfold((), move |_| {
+            if let Some(entry_id) = entries.next() {
+                let entry = self.dcache.get_entry(&entry_id).expect("Some entries from this directory are corrupted");
+                Some(entry)
+            } else {
+                None
+            }
+        }))
+    }
+
+    fn recursive_build_subtree(&mut self, current_dir_id: DirectoryEntryId, fs_id: FileSystemId) -> VfsResult<()> {
+        let direntry = self.dcache.get_entry(&current_dir_id)?;
+
+        // Inode unexpectedly does not exists...
+        let inode = self.inodes.get(&direntry.inode_id).ok_or(NoSuchInode)?;
+
+        if !inode.is_directory() {
+            return Ok(());
+        }
+        let entries =
+            inode.inode_operations.lookup_entries.expect("Directory does not have lookup_entries() method")(&inode);
+
+        for mut entry in entries {
+            let fs = self.mounted_filesystems.get(&fs_id).unwrap(); // remove this unwrap
+
+            entry.inode_id.filesystem_id = fs_id;
+
+            let mut new_inode = fs.load_inode(entry.inode_id.inode_number).unwrap(); // fix this unwrap
+            new_inode.id.filesystem_id = fs_id;
+            let inode_id = new_inode.id;
+
+            // clean up in error case (if any)
+            let entry_id = self.dcache.add_entry(Some(current_dir_id), entry)?;
+            let is_dir = new_inode.is_directory();
+            self.inodes.insert(inode_id, new_inode).unwrap(); // fix this unwrap.
+            if is_dir {
+                self.recursive_build_subtree(entry_id, fs_id)?
+            }
+        }
+        Ok(())
+    }
+
+    pub fn mount_filesystem(
+        &mut self,
+        // current: &mut Current,
+        mount_dir_id: DirectoryEntryId,
+        filesystem: Box<FileSystem>,
+    ) -> VfsResult<FileSystemId> {
+        let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
+        if !mount_dir.is_directory() {
+            return Err(NotADirectory);
+        }
+
+        if mount_dir.is_mounted()? {
+            return Err(DirectoryIsMounted);
+        }
+        let mut root_dentry = filesystem.root_dentry();
+        let mut root_inode = filesystem.root_inode();
+
+        // So much to undo if any of this fails...
+        let fs_id = self.add_entry(filesystem).unwrap(); // this
+
+        root_inode.id.filesystem_id = fs_id;
+
+        root_dentry.inode_id = root_inode.id;
+
+        let root_dentry_id = self.dcache.add_entry(Some(mount_dir_id), root_dentry)?;
+        let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
+        mount_dir.set_mounted(root_dentry_id);
+
+        let root_inode_id = root_inode.id;
+        self.inodes.insert(root_inode_id, root_inode);
+
+        self.recursive_build_subtree(root_dentry_id, fs_id)?;
+        Ok(fs_id)
+    }
+
+    pub fn unlink(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
         use VfsError::*;
         let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
         let inode_id;
@@ -127,31 +324,31 @@ impl VirtualFileSystem {
 
         corresponding_inode.link_number -= 1;
 
-        if corresponding_inode.link_number == 0
-            && !corresponding_inode.is_opened() {
-                self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
-            }
+        if corresponding_inode.link_number == 0 && !corresponding_inode.is_opened() {
+            self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+        }
         Ok(())
     }
 
-    fn get_available_id(&self) -> InodeId {
-        let mut current_id = InodeId::new(2); // check this
+    fn get_available_id(&self, filesystem_id: FileSystemId) -> InodeId {
+        let mut current_id = InodeId::new(2, filesystem_id); // check this
         loop {
             if let None = self.inodes.get(&current_id) {
-                return current_id
+                return current_id;
             }
 
             // this is unchecked
-            current_id = InodeId::new(current_id.inode_number + 1);
+            current_id = InodeId::new(current_id.inode_number + 1, filesystem_id);
         }
     }
 
-
-    pub fn open(&mut self,
-                current: &Current,
-                path: Path,
-                flags: OpenFlags,
-                mode: FilePermissions) -> VfsResult<File> {
+    pub fn open(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        flags: OpenFlags,
+        mode: FilePermissions,
+    ) -> VfsResult<Fd> {
         let entry_id;
         match self.dcache.pathname_resolution(current.cwd, path.clone()) {
             Ok(id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => return Err(Errno(Errno::Eexist)),
@@ -159,22 +356,16 @@ impl VirtualFileSystem {
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
                 let mut new_inode = Inode::default();
-                let new_id = self.get_available_id();
+                let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
 
-                new_inode
-                    .set_id(new_id)
-                    .set_access_mode(mode)
-                    .set_uid(current.uid)
-                    .set_gid(current.gid); // posix does not really like this.
+                new_inode.set_id(new_id).set_access_mode(mode).set_uid(current.uid).set_gid(current.gid); // posix does not really like this.
 
                 new_inode.link_number += 1;
                 assert!(self.inodes.insert(new_id, new_inode).is_none());
                 let mut new_direntry = DirectoryEntry::default();
                 let parent_id = self.dcache.pathname_resolution(current.cwd, path.parent())?;
 
-                new_direntry
-                    .set_filename(*path.filename().unwrap())
-                    .set_inode_id(new_id);
+                new_direntry.set_filename(*path.filename().unwrap()).set_inode_id(new_id);
 
                 if flags.contains(OpenFlags::O_DIRECTORY) {
                     new_direntry.set_directory();
@@ -187,27 +378,38 @@ impl VirtualFileSystem {
         }
 
         let entry = self.dcache.get_entry(&entry_id)?;
-        if flags.contains(OpenFlags::O_DIRECTORY)
-            && !entry.is_directory() {
-                return Err(NotADirectory);
-            }
-
-        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
-        Ok(inode.open(entry.id, flags))
+        if flags.contains(OpenFlags::O_DIRECTORY) && !entry.is_directory() {
+            return Err(NotADirectory);
+        }
+        self.open_inode(current, entry.inode_id, entry.id, flags)
     }
 
-    pub fn creat(&mut self,
-                 current: &Current,
-                 path: Path,
-                 mode: FilePermissions) -> VfsResult<File> {
-        let flags = OpenFlags::O_WRONLY |
-        OpenFlags::O_CREAT |
-        OpenFlags::O_TRUNC;
+    fn open_inode(
+        &mut self,
+        current: &mut Current,
+        inode_id: InodeId,
+        dentry_id: DirectoryEntryId,
+        flags: OpenFlags,
+    ) -> VfsResult<Fd> {
+        let inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
+        let offset = if flags.contains(OpenFlags::O_APPEND) { inode.size } else { 0 };
+
+        inode.open();
+        let ofd = File { id: inode_id, dentry_id, offset, flags };
+
+        let ofd_id = self.add_entry(ofd).unwrap(); // remove this unwrap
+
+        let fildes = Fildes::new(ofd_id);
+        Ok(current.add_fd(fildes).unwrap()) // remove this_unwrap
+    }
+
+    pub fn creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
+        let flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
 
         Ok(self.open(current, path, flags, mode)?)
     }
 
-    pub fn chmod(&mut self, current: &Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
+    pub fn chmod(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
         let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
 
         let entry = self.dcache.get_entry(&entry_id)?;
@@ -218,7 +420,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn chown(&mut self, current: &Current, path: Path, owner: UserId, group: GroupId) -> VfsResult<()> {
+    pub fn chown(&mut self, current: &mut Current, path: Path, owner: UserId, group: GroupId) -> VfsResult<()> {
         let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
 
         let entry = self.dcache.get_entry(&entry_id)?;
@@ -230,14 +432,14 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn mkdir(&mut self, current: &Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
+    pub fn mkdir(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
         let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
 
         self.open(current, path, flags, mode)?;
         Ok(())
     }
 
-    pub fn rmdir(&mut self, current: &Current, path: Path) -> VfsResult<()> {
+    pub fn rmdir(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
         let filename = path.filename().ok_or(Errno(Einval))?;
         if filename == &"." || filename == &".." {
             return Err(Errno(Einval));
@@ -252,11 +454,12 @@ impl VirtualFileSystem {
         self.unlink(current, path)
     }
 
-    pub fn link(&mut self, current: &Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
+    pub fn link(&mut self, current: &mut Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
         let oldentry_id = self.dcache.pathname_resolution(current.cwd, oldpath)?;
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
-        if oldentry.is_directory() {//link on directories not currently supported.
+        if oldentry.is_directory() {
+            //link on directories not currently supported.
             return Err(Errno(Eisdir));
         }
 
@@ -276,37 +479,40 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn rename(&mut self, current: &Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
+    pub fn rename(&mut self, current: &mut Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
         let oldentry_id = self.dcache.pathname_resolution(current.cwd, oldpath)?;
 
         self.dcache.rename_dentry(current.cwd, oldentry_id, newpath)?;
         Ok(())
     }
+
+    pub fn read(&mut self, current: &mut Current, fd: Fd, buf: &mut [u8]) -> VfsResult<usize> {
+        Ok(0)
+    }
+
+    pub fn write(&mut self, current: &mut Current, fd: Fd, buf: &mut [u8]) -> VfsResult<usize> {
+        Ok(0)
+    }
+
+    pub fn lseek(&mut self, current: &mut Current, fd: Fd, offset: Offset, seek: SeekType) -> VfsResult<Offset> {
+        Ok(0)
+    }
 }
 
-
-
-
-
-use walkdir::WalkDir;
-use std::fs::{FileType, DirEntry, read_dir};
+use std::convert::{TryFrom, TryInto};
+use std::fs::{read_dir, DirEntry, FileType};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path as StdPath;
-use std::convert::{TryFrom, TryInto};
+use walkdir::WalkDir;
 fn main() {
     use std::env;
     let mut vfs = Vfs::new().unwrap();
 
     let mut args = env::args().skip(1);
-    let current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-    };
+    let mut current =
+        Current { cwd: DirectoryEntryId::new(2), uid: 0, euid: 0, gid: 0, egid: 0, open_fds: BTreeMap::new() };
 
-    fn construct_tree(vfs: &mut Vfs, current: &Current, root: &StdPath, current_path: Path) {
+    fn construct_tree(vfs: &mut Vfs, current: &mut Current, root: &StdPath, current_path: Path) {
         let mut iter = read_dir(root).unwrap().filter_map(|e| e.ok());
 
         for entry in iter {
@@ -332,7 +538,7 @@ fn main() {
             }
 
             // println!("{}", path);
-            vfs.open(&current, path.clone(), flags, mode).unwrap();
+            vfs.open(current, path.clone(), flags, mode).unwrap();
             if entry.file_type().unwrap().is_dir() {
                 construct_tree(vfs, current, &entry.path(), path);
             }
@@ -341,8 +547,7 @@ fn main() {
 
     let path = args.next().unwrap();
 
-    construct_tree(&mut vfs, &current, &StdPath::new(&path), "/".try_into().unwrap());
-
+    construct_tree(&mut vfs, &mut current, &StdPath::new(&path), "/".try_into().unwrap());
 
     let mut line = String::new();
     let mut stdin = stdin();
@@ -368,7 +573,6 @@ fn main() {
     //             entry = dc.d_entries.get(cwd).ok_or(NoSuchEntry)?;
     //         }
     //     }
-
 
     //     if entry.is_directory() {
     //         let directory = entry.get_directory()?;

@@ -1,24 +1,43 @@
-
-use super::user::{UserId, GroupId};
-use super::posix_consts::{time_t, timespec};
+use super::direntry::{DirectoryEntry, DirectoryEntryId};
+use super::path::Filename;
 use super::permissions::FilePermissions;
-use super::direntry::DirectoryEntryId;
+use super::posix_consts::{time_t, timespec};
+use super::user::{GroupId, UserId};
 pub type InodeNumber = usize;
+use super::{FileSystemId, VfsResult};
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
+    pub filesystem_id: FileSystemId,
 }
 
 impl InodeId {
-    pub fn new(inode_number: InodeNumber) -> Self {
-        Self {
-            inode_number
-        }
+    pub fn new(inode_number: InodeNumber, filesystem_id: FileSystemId) -> Self {
+        Self { inode_number, filesystem_id }
     }
 }
 
+#[derive(Default, Copy, Clone)]
+pub struct InodeOperations {
+    pub open: Option<fn(&mut Inode, &mut File) -> VfsResult<i32>>,
+    pub lookup_direntry: Option<fn(&Inode, &Filename) -> Option<DirectoryEntry>>,
+    pub lookup_inode: Option<fn(InodeId) -> Option<Inode>>,
 
+    // This is temporary.
+    pub lookup_entries: Option<fn(&Inode) -> Vec<DirectoryEntry>>,
+    // pub creat: Option<fn(Inode, &mut DirectoryEntry, DirectoryEntry, mode_t) -> VfsResult<impl Into<Inode>>>,
+    // pub link: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    // pub symlink: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    pub rename: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
+    // pub stat: Option<fn(&mut Inode, &mut DirectoryEntry, &mut UserStat) -> VfsResult<i32>>,
+    // pub mkdir: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
+    // pub rmdir: Option<fn(&mut Inode, &mut DirectoryEntry) -> VfsResult<i32>>,
+    pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FilePermissions) -> VfsResult<i32>>,
+    pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, UserId, GroupId) -> VfsResult<i32>>,
+    pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, UserId, GroupId) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
+    pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, Offset) -> VfsResult<i32>>,
+}
 
 /// Type of file
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -42,7 +61,6 @@ pub struct Inode {
     opened_by: usize,
     pub access_mode: FilePermissions,
     // pub file_type: Filetype, ??????????
-
     pub uid: UserId,
     pub gid: GroupId,
 
@@ -53,9 +71,8 @@ pub struct Inode {
     pub size: usize,
     // pub status: InodeStatus,
     // pub ref_count: AtomicU32,;
-    // pub inode_operations: InodeOperations,
+    pub inode_operations: InodeOperations,
 }
-
 
 impl Inode {
     // Builder Pattern
@@ -80,11 +97,10 @@ impl Inode {
     }
 
     pub fn root_inode() -> Self {
-        let access_mode = FilePermissions::S_IRWXU
-            | FilePermissions::S_IFDIR;
+        let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
 
         Self {
-            id: InodeId::new(2),
+            id: InodeId::new(2, FileSystemId::new(0)),
             link_number: 1,
             opened_by: 0,
             access_mode,
@@ -94,30 +110,47 @@ impl Inode {
             ctime: 0,
             mtime: 0,
             size: 4096,
+            inode_operations: Default::default(),
         }
     }
 
+    pub fn set_inode_operations(&mut self, inode_operations: InodeOperations) -> &mut Self {
+        self.inode_operations = inode_operations;
+        self
+    }
     // Builder Pattern end
 
     pub fn is_opened(&self) -> bool {
         self.opened_by == 0
     }
 
-    pub fn open(&mut self, dentry_id: DirectoryEntryId, flags: OpenFlags) -> File {
-        let offset = if flags.contains(OpenFlags::O_APPEND) {
-            self.size
-        } else {
-            0
-        };
-
+    // Explain this
+    pub fn open(&mut self) {
         self.opened_by += 1;
+    }
 
-        File {
-            id: self.id,
-            dentry_id,
-            offset,
-            flags,
-        }
+    pub fn is_character_device(&self) -> bool {
+        self.access_mode.is_character_device()
+    }
+
+    pub fn is_fifo(&self) -> bool {
+        self.access_mode.is_fifo()
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.access_mode.is_regular()
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.access_mode.is_directory()
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.access_mode.is_symlink()
+    }
+
+    pub fn is_socket(&self) -> bool {
+        self.access_mode.is_socket()
     }
 }
 
@@ -134,8 +167,31 @@ pub struct File {
     pub flags: OpenFlags,
 }
 
-impl File {
+impl File {}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum SeekType {
+    SEEK_SET,
+    SEEK_CUR,
+    SEEK_END,
+}
 
+type ssize_t = i64;
+
+pub type Offset = usize; // change this
+
+/// Filesystem specific operations on 'OpenFileDescriptions' `File`s
+pub struct FileOperations {
+    pub read: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
+    pub lseek: Option<fn(&mut File, Offset, SeekType) -> Offset>,
+    // pub flush: Option<fn()>,
+    pub write: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
+    pub release: Option<fn(&mut File) -> VfsResult<i32>>,
+    pub ftruncate: Option<fn(&mut File, Offset) -> VfsResult<i32>>,
+    // pub fstat: Option<fn(&mut File, &mut UserStat) -> VfsResult<i32>>,
+    pub fchmod: Option<fn(&mut File, FilePermissions) -> VfsResult<i32>>,
+    pub fchown: Option<fn(&mut File, UserId, GroupId) -> VfsResult<i32>>,
+    // pub open: Option<fn(&mut Inode, &mut File, i32, mode_t) -> VfsResult<i32>>,
 }
 
 bitflags! {

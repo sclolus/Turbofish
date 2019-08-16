@@ -1,10 +1,10 @@
-use std::cmp::{Eq, PartialEq, Ord, PartialOrd};
-use std::collections::BTreeMap;
-use std::str::FromStr;
-use super::path::{Path, Filename};
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
+use super::path::{Filename, Path};
 use errno::Errno;
+use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
+use std::collections::BTreeMap;
 use std::convert::TryInto;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
 pub enum DcacheError {
@@ -17,6 +17,8 @@ pub enum DcacheError {
     NotEmpty,
     EntryNotConnected,
     NotEnoughArguments,
+    DirectoryNotMounted,
+    DirectoryIsMounted,
     Errno(Errno),
 }
 
@@ -39,11 +41,7 @@ impl Dcache {
     pub fn new() -> Self {
         let root_entry = DirectoryEntry::root_entry();
 
-        let mut new = Self {
-            root_id: root_entry.id,
-            d_entries: BTreeMap::new(),
-            path_cache: BTreeMap::new(),
-        };
+        let mut new = Self { root_id: root_entry.id, d_entries: BTreeMap::new(), path_cache: BTreeMap::new() };
 
         new.add_entry(None, root_entry).expect("Could not add a root to the Dcache");
         new
@@ -61,13 +59,17 @@ impl Dcache {
         self.get_entry(id).is_ok()
     }
 
-    pub fn add_entry(&mut self, parent: Option<DirectoryEntryId>, mut entry: DirectoryEntry) -> DcacheResult<DirectoryEntryId> {
+    pub fn add_entry(
+        &mut self,
+        parent: Option<DirectoryEntryId>,
+        mut entry: DirectoryEntry,
+    ) -> DcacheResult<DirectoryEntryId> {
         let id = self.get_available_id();
 
         entry.id = id;
         entry.parent_id = parent.unwrap_or(self.root_id); //eeeeeh yeah
         if self.d_entries.contains_key(&id) {
-            return Err(FileAlreadyExists)
+            return Err(FileAlreadyExists);
         }
         self.d_entries.insert(id, entry);
 
@@ -90,8 +92,12 @@ impl Dcache {
                 Some(entry) => entry,
             };
 
-            if entry.is_directory() && !entry.is_directory_empty()? {
-                return Err(NotEmpty)
+            if entry.is_directory() {
+                if !entry.is_directory_empty()? {
+                    return Err(NotEmpty);
+                } else if entry.is_mounted()? {
+                    return Err(DirectoryIsMounted)?;
+                }
             }
             parent_id = entry.parent_id;
         }
@@ -124,7 +130,11 @@ impl Dcache {
         Ok(path)
     }
 
-    pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(&self, root: &DirectoryEntry, mut callback: &mut F) -> DcacheResult<()>  {
+    pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(
+        &self,
+        root: &DirectoryEntry,
+        mut callback: &mut F,
+    ) -> DcacheResult<()> {
         let directory = root.get_directory()?;
 
         let mapping_closure = |entry_id| self.d_entries.get(entry_id).expect("Invalid entry_id in directory in dcache");
@@ -152,7 +162,12 @@ impl Dcache {
         Ok(())
     }
 
-    pub fn rename_dentry(&mut self, cwd: DirectoryEntryId, id: DirectoryEntryId, new_pathname: Path) -> DcacheResult<()> {
+    pub fn rename_dentry(
+        &mut self,
+        cwd: DirectoryEntryId,
+        id: DirectoryEntryId,
+        new_pathname: Path,
+    ) -> DcacheResult<()> {
         let new_filename = new_pathname.filename().unwrap(); // ?
 
         if new_filename == &"." || new_filename == &".." {
@@ -177,15 +192,20 @@ impl Dcache {
         let mut current_id = self.root_id; // check this
         loop {
             if let None = self.d_entries.get(&current_id) {
-                return current_id
+                return current_id;
             }
             current_id = current_id.next_id().expect("No space left inside the dcache lool");
         }
     }
-    fn _pathname_resolution(&self, mut root: DirectoryEntryId, pathname: Path, recursion_level: usize) -> DcacheResult<DirectoryEntryId> {
+    fn _pathname_resolution(
+        &self,
+        mut root: DirectoryEntryId,
+        pathname: Path,
+        recursion_level: usize,
+    ) -> DcacheResult<DirectoryEntryId> {
         use crate::posix_consts::SYMLOOP_MAX;
         if recursion_level > SYMLOOP_MAX {
-            return Err(Errno(Errno::Eloop))
+            return Err(Errno(Errno::Eloop));
         }
 
         if pathname.is_absolute() {
@@ -193,7 +213,7 @@ impl Dcache {
         }
 
         if !self.contains_entry(&root) {
-            return Err(RootDoesNotExists)
+            return Err(RootDoesNotExists);
         }
 
         let mut current_dir_id = root;
@@ -202,27 +222,34 @@ impl Dcache {
         let mut current_entry = self.get_entry(&current_dir_id)?;
         let mut current_next_entry_id = root;
         for component in components.by_ref() {
+            if current_entry.is_mounted()? {
+                current_dir_id = current_entry.get_mountpoint_entry()?;
+                current_entry = self.get_entry(&current_dir_id)?;
+            }
             let current_dir = current_entry.get_directory()?;
 
             if component == &"." {
-                continue ;
+                continue;
             } else if component == &".." {
                 current_dir_id = current_entry.parent_id;
                 current_entry = self.get_entry(&current_dir_id)?;
-                continue ;
+                continue;
             }
-            let next_entry_id = current_dir.entries().iter()
+            let next_entry_id = current_dir
+                .entries()
+                .iter()
                 .find(|x| {
-                    let filename = &self.get_entry(x)
-                        .expect("Invalid entry id in a directory entry that is a directory").filename;
+                    let filename =
+                        &self.get_entry(x).expect("Invalid entry id in a directory entry that is a directory").filename;
                     filename == component
-                }).ok_or(NoSuchEntry)?;
+                })
+                .ok_or(NoSuchEntry)?;
 
             current_next_entry_id = *next_entry_id;
             current_entry = self.get_entry(next_entry_id)?;
             if current_entry.is_symlink() {
                 was_symlink = true;
-                break ;
+                break;
             }
             current_dir_id = *next_entry_id;
         }
@@ -234,20 +261,22 @@ impl Dcache {
         } else {
             Ok(self.get_entry(&current_dir_id).unwrap().id)
         }
-
     }
 
     pub fn pathname_resolution(&self, root: DirectoryEntryId, pathname: Path) -> DcacheResult<DirectoryEntryId> {
         self._pathname_resolution(root, pathname, 0)
     }
-
 }
 use core::fmt::{Display, Error, Formatter};
 
 impl Display for Dcache {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         let root = self.d_entries.get(&self.root_id).unwrap();
-        self.walk_tree(root, &mut |entry: &DirectoryEntry| {writeln!(f, "-{}-", entry.filename ); Ok(())}).unwrap();
+        self.walk_tree(root, &mut |entry: &DirectoryEntry| {
+            writeln!(f, "-{}-", entry.filename);
+            Ok(())
+        })
+        .unwrap();
 
         Ok(())
     }
