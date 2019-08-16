@@ -4,8 +4,9 @@
 
 .global _start
 _start:
-# Set up end of the stack frame linked list.
-	push ebp
+	# Set up end of the stack frame linked list.
+	push 0x0
+	push 0x0
 	mov ebp, esp
 
 	push ecx # envp

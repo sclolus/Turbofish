@@ -14,7 +14,7 @@ use core::ffi::c_void;
 use core::slice;
 use fallible_collections::FallibleArc;
 
-use elf_loader::SegmentType;
+use elf_loader::{SegmentType, SymbolTable};
 
 use fallible_collections::{try_vec, FallibleBox};
 
@@ -97,6 +97,8 @@ pub struct UserProcess {
     pub kernel_esp: u32,
     /// Page directory of the process
     pub virtual_allocator: Arc<DeadMutex<AddressSpace>>,
+    /// Symbol Table of a user process
+    pub symbol_table: Option<Arc<SymbolTable>>,
 }
 
 /// This structure represents an entire kernel process
@@ -191,6 +193,7 @@ impl UserProcess {
                 // TODO: change that to Arc::try_new
                 Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
+            symbol_table: self.symbol_table.as_ref().map(|elem| elem.clone()),
         })?)
     }
     pub fn get_virtual_allocator(&self) -> DeadMutexGuard<AddressSpace> {
@@ -219,7 +222,7 @@ impl Process for UserProcess {
         // Switch to this process Page Directory
         virtual_allocator.context_switch();
 
-        let eip = match origin {
+        let (eip, symbol_table) = match origin {
             TaskOrigin::Elf(content) => {
                 // Parse Elf and generate stuff
                 let elf = load_elf(content);
@@ -254,7 +257,13 @@ impl Process for UserProcess {
                             .expect("page must have been alloc by alloc on");
                     }
                 }
-                elf.header.entry_point as u32
+                (
+                    elf.header.entry_point as u32,
+                    match SymbolTable::try_new(content).ok() {
+                        Some(elem) => Some(Arc::try_new(elem)?),
+                        None => None,
+                    },
+                )
             }
             TaskOrigin::Raw(code, code_len) => {
                 // Allocate one page for code segment of the Dummy process
@@ -262,7 +271,7 @@ impl Process for UserProcess {
                     .alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)?;
                 // Copy the code segment
                 base_addr.copy_from(code, code_len);
-                base_addr as u32
+                (base_addr as u32, None)
             }
         };
 
@@ -327,8 +336,8 @@ impl Process for UserProcess {
         Ok(Box::try_new(UserProcess {
             kernel_stack,
             kernel_esp,
-            // TODO: change that to Arc::try_new
             virtual_allocator: Arc::try_new(DeadMutex::new(virtual_allocator))?,
+            symbol_table,
         })?)
     }
 

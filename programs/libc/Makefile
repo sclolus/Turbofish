@@ -129,7 +129,7 @@ HEADERS += include/setjmp.h
 
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
-CFLAGS += -O2 -Wall -Wextra -masm=intel $(IFLAGS)
+CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 
 #ifeq ($(DEBUG),yes)
 #	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
