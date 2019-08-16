@@ -14,15 +14,16 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    gid_t, termios, uid_t, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
-    PAUSE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
+    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
+    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
+    TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use errno::Errno;
+use libc_binding::{gid_t, termios, uid_t};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -242,8 +243,6 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TCGETPGRP => sys_tcgetpgrp(ebx as i32),
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
-        GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
-        SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
 
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
