@@ -1,6 +1,7 @@
 #!/bin/bash
 export TARGET="i686-turbofish"
 export PATH="/toolchain_turbofish/cross/bin:$PATH"
+export TARGET_DIR="../../../rust_kernel/src/userland"
 
 mkdir -pv build_coreutils
 cp patch-coreutils build_coreutils
@@ -21,3 +22,7 @@ make -C src cat
 make -C src echo
 make -C src kill
 make -C src yes
+cp -v src/echo $TARGET_DIR
+cp -v src/cat $TARGET_DIR
+cp -v src/kill $TARGET_DIR
+cp -v src/yes $TARGET_DIR
