@@ -374,10 +374,7 @@ impl AddressSpace {
         ptr: *const T,
         elem_number: usize,
     ) -> Result<&'unbound [T]> {
-        use core::mem;
-        let byte_len = mem::size_of::<T>() * elem_number;
-
-        self.check_user_ptr_with_len(ptr, byte_len)?;
+        self.check_user_ptr_with_len(ptr, elem_number)?;
         Ok(unsafe { core::slice::from_raw_parts(ptr, elem_number) })
     }
 
@@ -392,10 +389,7 @@ impl AddressSpace {
         ptr: *mut T,
         elem_number: usize,
     ) -> Result<&'unbound mut [T]> {
-        use core::mem;
-        let byte_len = mem::size_of::<T>() * elem_number;
-
-        self.check_user_ptr_with_len(ptr, byte_len)?;
+        self.check_user_ptr_with_len(ptr, elem_number)?;
         Ok(unsafe { core::slice::from_raw_parts_mut(ptr, elem_number) })
     }
 
