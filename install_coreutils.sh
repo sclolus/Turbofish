@@ -9,7 +9,11 @@ wget -c 'https://ftp.gnu.org/gnu/coreutils/coreutils-5.0.tar.bz2'
 tar -xf 'coreutils-5.0.tar.bz2'
 patch -p0 < patch-coreutils
 cd coreutils-5.0
+cp ../../patch-coreutils-configure .
+patch configure < patch-coreutils-configure
 mkdir build
 cd build
-../configure --host=$TARGET
+CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --host=$TARGET
+cp ../../../patch-coreutils-config-h .
+patch config.h < patch-coreutils-config-h
 make
