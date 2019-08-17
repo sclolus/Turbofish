@@ -14,14 +14,16 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    termios, CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, KILL,
-    MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
-    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
+    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
+    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
+    TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use errno::Errno;
+use libc_binding::{gid_t, termios, uid_t};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -74,6 +76,18 @@ use getppid::sys_getppid;
 mod exit;
 use exit::sys_exit;
 
+mod setgroups;
+use setgroups::sys_setgroups;
+
+mod getgroups;
+use getgroups::sys_getgroups;
+
+mod setegid;
+use setegid::sys_setegid;
+
+mod seteuid;
+use seteuid::sys_seteuid;
+
 mod sigsuspend;
 use sigsuspend::sys_sigsuspend;
 
@@ -125,6 +139,24 @@ use getpgid::sys_getpgid;
 mod setpgid;
 use setpgid::sys_setpgid;
 
+mod getuid;
+use getuid::sys_getuid;
+
+mod setgid;
+use setgid::sys_setgid;
+
+mod setuid;
+use setuid::sys_setuid;
+
+mod getgid;
+use getgid::sys_getgid;
+
+mod geteuid;
+use geteuid::sys_geteuid;
+
+mod getegid;
+use getegid::sys_getegid;
+
 mod trace_syscall;
 
 extern "C" {
@@ -150,7 +182,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ..
     } = (*cpu_state).registers;
 
-    // trace_syscall::trace_syscall(cpu_state);
+    if eax != READ && eax != WRITE {
+        trace_syscall::trace_syscall(cpu_state);
+    }
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
@@ -165,9 +199,14 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             edx as *const *const c_char,
         ),
         GETPID => sys_getpid(),
-        // GETUID             //        // => sys_getuid(), TODO: need to be implemented
+        SETUID => sys_setuid(ebx as uid_t),
+        GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
+        SETGID => sys_setgid(ebx as gid_t),
+        GETGID => sys_getgid(),
+        GETEUID => sys_geteuid(),
+        GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
         GETPPID => sys_getppid(),
@@ -178,6 +217,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             edx as *mut StructSigaction,
         ),
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
+        GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
+        SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(Virt(ebx as usize), ecx as usize),
@@ -200,13 +241,17 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TCSETATTR => sys_tcsetattr(ebx as i32, ecx as u32, edx as *const termios),
         TCSETPGRP => sys_tcsetpgrp(ebx as i32, ecx as Pid),
         TCGETPGRP => sys_tcgetpgrp(ebx as i32),
+        SETEGID => sys_setegid(ebx as gid_t),
+        SETEUID => sys_seteuid(ebx as uid_t),
 
         // set thread area: WTF
         0xf3 => Err(Errno::Eperm),
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
-    // trace_syscall::trace_syscall_result(cpu_state, result);
+    if eax != READ && eax != WRITE {
+        trace_syscall::trace_syscall_result(cpu_state, result);
+    }
 
     let is_in_blocked_syscall = result == Err(Errno::Eintr);
     // Note: do not erase eax if we've just been interrupted from a blocked syscall as we must keep

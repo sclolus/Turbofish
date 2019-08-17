@@ -89,10 +89,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 }
             }
             // fflush zombie
-            scheduler
-                .all_process
-                .remove(&pid)
-                .expect("Pid must be here");
+            scheduler.remove_thread_group(pid);
             let task = scheduler.current_task_mut();
             task.child.remove_item(&pid).unwrap();
             // Return immediatly
@@ -125,10 +122,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                                 *wstatus = *status as i32;
                             }
                         }
-                        scheduler
-                            .all_process
-                            .remove(&dead_pid)
-                            .expect("Pid must be here");
+                        scheduler.remove_thread_group(dead_pid);
                         dead_pid
                     }
                     _ => panic!("WTF"),

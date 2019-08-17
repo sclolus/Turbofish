@@ -1,8 +1,9 @@
 use libc_binding::{
-    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL,
-    MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT, SETPGID, SHUTDOWN, SIGACTION, SIGNAL,
-    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
+    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
+    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
+    TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -16,8 +17,7 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::termios;
-use libc_binding::Pid;
+use libc_binding::{gid_t, termios, uid_t, Pid};
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -54,9 +54,14 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *const c_char, ecx as *const *const c_char, edx as *const *const c_char,
             ),
             GETPID => eprintln!("getpid()"),
-            // GETUID             // => eprintln!("getuid({:#?})",), TODO: need to be implemented
+            SETUID => eprintln!("setuid({:#?})", ebx as uid_t),
+            GETUID => eprintln!("getuid()"),
             PAUSE => eprintln!("pause()"),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
+            SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
+            GETGID => eprintln!("getgid()"),
+            GETEUID => eprintln!("geteuid()"),
+            GETEGID => eprintln!("getegid()"),
             SIGNAL => eprintln!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => eprintln!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => eprintln!("getppid()"),
@@ -66,6 +71,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as u32, ecx as *const StructSigaction, edx as *mut StructSigaction,
             ),
             SIGSUSPEND => eprintln!("sigsuspend({:#?})", ebx as *const sigset_t),
+            GETGROUPS => eprintln!("getgroups({:#?}, {:#?})", ebx as i32, ecx as *mut gid_t),
+            SETGROUPS => eprintln!("setgroups({:#?}, {:#?})", ebx as i32, ecx as *const gid_t),
             REBOOT => eprintln!("reboot()"),
             MMAP => unsafe { eprintln!("mmap({:#?})", *(ebx as *const MmapArgStruct)) },
             MUNMAP => eprintln!("munmap({:#?}, {:#?})", Virt(ebx as usize), ecx as usize),
@@ -101,6 +108,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             ),
             TCSETPGRP => eprintln!("tcsetpgrp({:#?}, {:#?})", ebx as i32, ecx as Pid),
             TCGETPGRP => eprintln!("tcgetpgrp({:#?})", ebx as i32),
+            SETEGID => eprintln!("setegid({:#?})", ebx as gid_t),
+            SETEUID => eprintln!("seteuid({:#?})", ebx as uid_t),
             _ => eprintln!("unknown syscall()",),
         }
     })
@@ -120,15 +129,21 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         UNLINK => "unlink",
         EXECVE => "execve",
         GETPID => "getpid",
+        SETUID => "setuid",
         GETUID => "getuid",
         PAUSE => "pause",
         KILL => "kill",
+        GETGID => "getgid",
+        GETEUID => "geteuid",
+        GETEGID => "getegid",
         SIGNAL => "signal",
         SETPGID => "setpgid",
         GETPPID => "getppid",
         GETPGRP => "getpgrp",
         SIGACTION => "sigaction",
         SIGSUSPEND => "sigsuspend",
+        GETGROUPS => "getgroups",
+        SETGROUPS => "setgroups",
         REBOOT => "reboot",
         MMAP => "mmap",
         MUNMAP => "munmap",
@@ -147,6 +162,8 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         TCSETATTR => "tcsetattr",
         TCSETPGRP => "tcsetpgrp",
         TCGETPGRP => "tcgetpgrp",
+        SETEGID => "setegid",
+        SETEUID => "seteuid",
         _ => "unknown syscall",
     };
     unpreemptible_context!({

@@ -13,7 +13,7 @@ use core::ffi::c_void;
 use core::mem;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
-use hashmap_core::fnv::FnvHashMap as HashMap;
+use fallible_collections::btree::BTreeMap;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
@@ -157,7 +157,7 @@ unsafe extern "C" fn scheduler_exit_resume(
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
-    pub all_process: HashMap<Pid, ThreadGroup>,
+    pub all_process: BTreeMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
     running_process: Vec<(Pid, Tid)>,
 
@@ -185,7 +185,7 @@ impl Scheduler {
     pub fn new() -> Self {
         Self {
             running_process: Vec::new(),
-            all_process: HashMap::new(),
+            all_process: BTreeMap::new(),
             next_pid: AtomicI32::new(1),
             current_task_index: 0,
             current_task_id: (1, 0),
@@ -261,15 +261,14 @@ impl Scheduler {
         process: Box<UserProcess>,
     ) -> Result<Pid, CollectionAllocErr> {
         let pid = self.get_available_pid();
-        self.all_process.try_reserve(1)?;
         self.running_process.try_reserve(1)?;
-        self.all_process.insert(
+        self.all_process.try_insert(
             pid,
             ThreadGroup::try_new(
                 Task::new(father_pid, ProcessState::Running(process)),
                 father_pid.unwrap_or(pid),
             )?,
-        );
+        )?;
         self.running_process.push((pid, 0));
         Ok(pid)
     }
@@ -324,13 +323,13 @@ impl Scheduler {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        let dead_process_pgid = self
-                            .get_thread_group(dead_process_pid)
-                            .expect("no dead child")
-                            .pgid;
                         let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
                             self.current_task().get_waiting_state()
                         {
+                            let dead_process_pgid = self
+                                .get_thread_group(dead_process_pid)
+                                .expect("no dead child")
+                                .pgid;
                             *wake_pid == -1
                                 || *wake_pid == dead_process_pid
                                 || -*wake_pid == dead_process_pgid
@@ -497,6 +496,12 @@ impl Scheduler {
         }
     }
 
+    pub fn remove_thread_group(&mut self, pid: Pid) {
+        self.all_process
+            .remove(&pid)
+            .expect("remove_thread_goup, thread group doen't exist");
+    }
+
     pub fn current_task_clone(
         &mut self,
         kernel_esp: u32,
@@ -515,7 +520,7 @@ impl Scheduler {
         let child_pid = if flags.contains(CloneFlags::THREAD) {
             let thread_group = self.current_thread_group_mut();
             let tid = thread_group.get_available_tid();
-            thread_group.all_thread.insert(tid, child);
+            thread_group.all_thread.try_insert(tid, child)?;
             let child_pid = self.current_task_id().0;
             self.running_process.push((child_pid, tid));
             child_pid
@@ -523,9 +528,8 @@ impl Scheduler {
             current_task.child.try_reserve(1)?;
             let child_pid = self.get_available_pid();
             self.current_task_mut().child.push(child_pid);
-            self.all_process.try_reserve(1)?;
             self.all_process
-                .insert(child_pid, ThreadGroup::try_new(child, father_pid)?);
+                .try_insert(child_pid, ThreadGroup::try_new(child, father_pid)?)?;
             self.running_process.push((child_pid, 0));
             child_pid
         };
