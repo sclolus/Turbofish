@@ -6,6 +6,5 @@
 
 gid_t getegid(void)
 {
-	gid_t ret = _user_syscall(GETEGID, 0);
-	return ret;
+	return (gid_t)_user_syscall(GETEGID, 0);
 }

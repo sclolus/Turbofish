@@ -6,6 +6,5 @@
 
 uid_t geteuid(void)
 {
-	uid_t ret = _user_syscall(GETEUID, 0);
-	return ret;
+	return (uid_t)_user_syscall(GETEUID, 0);
 }
