@@ -39,6 +39,7 @@ all:
 fclean:
 	make fclean -C libc
 	make fclean -C c
+	make fclean -C system
 	make fclean -C shell
 
 re: fclean all

@@ -9,7 +9,7 @@ CC = i686-turbofish-gcc
 
 SRC_C += init
 
-CFLAGS = -Wall -Wextra -I include
+CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
 CFLAGS += -m32 -D GNU
 CC = gcc
