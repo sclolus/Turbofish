@@ -15,16 +15,15 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        {
+        let output = {
             let v = scheduler
                 .current_task_mut()
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
             // Check if pointer exists in user virtual address space
-            v.check_user_ptr_with_len::<u8>(buf, count)?;
-        }
-        let output = unsafe { core::slice::from_raw_parts_mut(buf, count) };
+            v.make_checked_mut_slice(buf, count)?
+        };
 
         if fd == 0 {
             // TODO: change that, read on tty 1 for the moment
