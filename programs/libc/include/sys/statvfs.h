@@ -32,6 +32,6 @@ struct statvfs {
 //    The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 //
 //    int fstatvfs(int, struct statvfs *);
-//    int statvfs(const char *restrict, struct statvfs *restrict);
+int statvfs(const char *restrict, struct statvfs *restrict);
 
 #endif

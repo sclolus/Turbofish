@@ -9,13 +9,14 @@
 #define _POSIX_VERSION 200809L
 
 
-#define F_OK 42
+
+#define	F_OK	0
 //    Test for existence of file.
-#define R_OK 42
+#define	R_OK	4
 //   Test for read permission.
-#define W_OK 42
+#define	W_OK	2
 //   Test for write permission.
-#define X_OK 42
+#define	X_OK	1
 //    Test for execute (search) permission. 
 //The <unistd.h> header shall define the intptr_t type as described in <stdint.h>.
 //#include <sys/stdint.h>

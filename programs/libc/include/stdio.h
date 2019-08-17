@@ -135,9 +135,12 @@ int      getchar(void);
 //[CX][Option Start]
 int      getc_unlocked(FILE *);
 int      getchar_unlocked(void);
-ssize_t  getdelim(char **restrict, size_t *restrict, int,
-             FILE *restrict);
-ssize_t  getline(char **restrict, size_t *restrict, FILE *restrict);
+//TODO: This prototypes conflict with corutils
+/*
+ * ssize_t  getdelim(char **restrict, size_t *restrict, int,
+ *              FILE *restrict);
+ */
+/* ssize_t  getline(char **restrict, size_t *restrict, FILE *restrict); */
 //[Option End]
 //[OB][Option Start]
 char    *gets(char *);

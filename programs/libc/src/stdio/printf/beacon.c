@@ -108,9 +108,22 @@ int eprintf(const char *restrict format, ...)
 	return (op.total_size);
 }
 
+//TODO: factorize that
 int fprintf(FILE *stream, const char *format, ...)
 {
-	return dprintf(stream->fd, format);
+	t_status	op;
+	int		ret;
+
+	ft_memset(&op, 0, sizeof(t_status));
+	op.s = format;
+	op.fd = stream->fd;
+	va_start(op.ap, format);
+	ret = new_chain(&op);
+	va_end(op.ap);
+	if (ret < 0)
+		return (ret);
+	fflush_buffer(&op);
+	return (op.total_size);
 }
 
 int dprintf(int const fd, const char *restrict format, ...)

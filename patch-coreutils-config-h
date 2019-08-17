@@ -1,0 +1,204 @@
+--- config.h	2019-08-17 20:01:00.353474069 +0200
++++ ../../corutils_back/build/config.h	2019-08-17 19:41:35.829554554 +0200
+@@ -138,7 +138,7 @@
+ 
+ /* Define to 1 if you have the declaration of `dirfd', and to 0 if you don't.
+    */
+-#define HAVE_DECL_DIRFD 0
++#define HAVE_DECL_DIRFD 1
+ 
+ /* Define to 1 if you have the declaration of `euidaccess', and to 0 if you
+    don't. */
+@@ -226,11 +226,11 @@
+ 
+ /* Define to 1 if you have the declaration of `malloc', and to 0 if you don't.
+    */
+-#define HAVE_DECL_MALLOC 0
++#define HAVE_DECL_MALLOC 1
+ 
+ /* Define to 1 if you have the declaration of `memchr', and to 0 if you don't.
+    */
+-#define HAVE_DECL_MEMCHR 0
++#define HAVE_DECL_MEMCHR 1
+ 
+ /* Define to 1 if you have the declaration of `memrchr', and to 0 if you
+    don't. */
+@@ -238,7 +238,7 @@
+ 
+ /* Define to 1 if you have the declaration of `nanosleep', and to 0 if you
+    don't. */
+-#define HAVE_DECL_NANOSLEEP 0
++#define HAVE_DECL_NANOSLEEP 1
+ 
+ /* Define to 1 if you have the declaration of `putchar_unlocked', and to 0 if
+    you don't. */
+@@ -250,7 +250,7 @@
+ 
+ /* Define to 1 if you have the declaration of `realloc', and to 0 if you
+    don't. */
+-#define HAVE_DECL_REALLOC 0
++#define HAVE_DECL_REALLOC 1
+ 
+ /* Define to 1 if you have the declaration of `stpcpy', and to 0 if you don't.
+    */
+@@ -282,27 +282,27 @@
+ 
+ /* Define to 1 if you have the declaration of `strtoimax', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRTOIMAX 0
++#define HAVE_DECL_STRTOIMAX 1
+ 
+ /* Define to 1 if you have the declaration of `strtol', and to 0 if you don't.
+    */
+-#define HAVE_DECL_STRTOL 0
++#define HAVE_DECL_STRTOL 1
+ 
+ /* Define to 1 if you have the declaration of `strtoll', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRTOLL 0
++#define HAVE_DECL_STRTOLL 1
+ 
+ /* Define to 1 if you have the declaration of `strtoul', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRTOUL 0
++#define HAVE_DECL_STRTOUL 1
+ 
+ /* Define to 1 if you have the declaration of `strtoull', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRTOULL 0
++#define HAVE_DECL_STRTOULL 1
+ 
+ /* Define to 1 if you have the declaration of `strtoumax', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRTOUMAX 0
++#define HAVE_DECL_STRTOUMAX 1
+ 
+ /* Define to 1 if you have the declaration of `sys_siglist', and to 0 if you
+    don't. */
+@@ -395,7 +395,7 @@
+ /* #undef HAVE_GETDELIM */
+ 
+ /* Define to 1 if your system has a working `getgroups' function. */
+-#define HAVE_GETGROUPS 1
++/* #undef HAVE_GETGROUPS */
+ 
+ /* Define to 1 if you have the `gethostbyaddr' function. */
+ /* #undef HAVE_GETHOSTBYADDR */
+@@ -679,6 +679,7 @@
+ /* #undef HAVE_SQRT */
+ 
+ /* Define to 1 if you have the `statvfs' function. */
++#define HAVE_STATVFS 1
+ /* #undef HAVE_STATVFS */
+ 
+ /* Define if stat has the bug that it succeeds when given the zero-length file
+@@ -827,6 +828,7 @@
+ 
+ /* Define if struct utimbuf is declared -- usually in <utime.h>. Some systems
+    have utime.h but don't declare the struct anywhere. */
++#define HAVE_STRUCT_UTIMBUF
+ /* #undef HAVE_STRUCT_UTIMBUF */
+ 
+ /* Define to 1 if `ut_exit.e_exit' is member of `struct utmpx'. */
+@@ -956,7 +958,7 @@
+ /* #undef HAVE_SYS_STATFS_H */
+ 
+ /* Define to 1 if you have the <sys/statvfs.h> header file. */
+-#define HAVE_SYS_STATVFS_H 1
++#undef HAVE_SYS_STATVFS_H
+ 
+ /* Define to 1 if you have the <sys/stat.h> header file. */
+ #define HAVE_SYS_STAT_H 1
+@@ -1030,9 +1032,11 @@
+ #define HAVE_UNSIGNED_LONG_LONG 1
+ 
+ /* Define to 1 if you have the `utime' function. */
++#define HAVE_UTIME 1
+ /* #undef HAVE_UTIME */
+ 
+ /* Define if utimes accepts a null argument */
++#define HAVE_UTIMES_NULL 1
+ /* #undef HAVE_UTIMES_NULL */
+ 
+ /* Define to 1 if you have the <utime.h> header file. */
+@@ -1205,7 +1209,7 @@
+ #define RETSIGTYPE int
+ 
+ /* the value to which errno is set when rmdir fails on a nonempty directory */
+-#define RMDIR_ERRNO_NOT_EMPTY configure error in rmdir-errno.m4
++#define RMDIR_ERRNO_NOT_EMPTY 42
+ 
+ /* Define to 1 if the `setvbuf' function takes the buffering type as its
+    second argument and the buffer pointer as the third, as on System V before
+@@ -1252,6 +1256,7 @@
+ /* #undef STAT_STATFS4 */
+ 
+ /* Define if there is a function named statvfs. (SVR4) */
++#define STAT_STATVFS 1
+ /* #undef STAT_STATVFS */
+ 
+ /* Define to 1 if you have the ANSI C header files. */
+@@ -1284,7 +1289,7 @@
+ /* #undef UMAX4_3 */
+ 
+ /* the maximum number of simultaneously open files per process */
+-#define UTILS_OPEN_MAX internal error in open-max.m4
++#define UTILS_OPEN_MAX 256
+ 
+ /* Version number of package */
+ #define VERSION "5.0"
+@@ -1343,13 +1348,13 @@
+ /* #undef getcwd */
+ 
+ /* Define as rpl_getgroups if getgroups doesn't work right. */
+-/* #undef getgroups */
++#define getgroups rpl_getgroups
+ 
+ /* Define to rpl_gettimeofday if the replacement function should be used. */
+ #define gettimeofday rpl_gettimeofday
+ 
+ /* Define to `int' if <sys/types.h> doesn't define. */
+-#define gid_t int
++/* #define gid_t int */
+ 
+ /* Define as `__inline' if that's what the C compiler calls it, or to nothing
+    if it is not supported. */
+@@ -1368,7 +1373,7 @@
+ #define major_t unsigned int
+ 
+ /* Define to rpl_malloc if the replacement function should be used. */
+-#define malloc rpl_malloc
++/* #define malloc rpl_malloc */
+ 
+ /* Define to a type if <wchar.h> does not define. */
+ #define mbstate_t int
+@@ -1395,7 +1400,7 @@
+ #define my_strftime nstrftime
+ 
+ /* Define to rpl_nanosleep if the replacement function should be used. */
+-#define nanosleep rpl_nanosleep
++/* #define nanosleep rpl_nanosleep */
+ 
+ /* Define to `long' if <sys/types.h> does not define. */
+ #define off_t long
+@@ -1407,17 +1412,17 @@
+ #define putenv rpl_putenv
+ 
+ /* Define to rpl_realloc if the replacement function should be used. */
+-#define realloc rpl_realloc
++/* #define realloc rpl_realloc */
+ 
+ /* Define to equivalent of C99 restrict keyword, or to nothing if this is not
+    supported. Do not define if restrict is supported directly. */
+ /* #undef restrict */
+ 
+ /* Define to `unsigned' if <sys/types.h> does not define. */
+-#define size_t unsigned
++/* #define size_t unsigned */
+ 
+ /* Define to `int' if <sys/types.h> does not define. */
+-#define ssize_t int
++/* #define ssize_t int */
+ 
+ /* Define to `int' if <sys/types.h> doesn't define. */
+ #define uid_t int
