@@ -14,9 +14,8 @@ enum ThreadGroupState {
     /// The process is running and has a thread list
     Running { all_thread: ThreadList },
     /// The process is terminated and wait to deliver his testament to his father
-    // TODO: Use bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
-    // TODO: Use bits 8..15 for signal exit. Interpreted as i8 and set bit 30
-    // Zombie(i32),
+    /// bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
+    /// bits 8..15 for signal exit. Interpreted as i8 and set bit 30
     Zombie(i32),
 }
 
