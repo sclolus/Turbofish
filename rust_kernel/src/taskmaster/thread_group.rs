@@ -55,7 +55,7 @@ pub struct ThreadGroup {
     /// List of childs
     pub child: Vec<Pid>,
     /// Parent
-    pub parent: Option<Pid>,
+    pub parent: Pid,
     /// the next availabel tid for a new thread
     next_tid: Tid,
 }
@@ -86,11 +86,7 @@ impl Credentials {
 }
 
 impl ThreadGroup {
-    pub fn try_new(
-        father_pid: Option<Pid>,
-        thread: Thread,
-        pgid: Pid,
-    ) -> Result<Self, CollectionAllocErr> {
+    pub fn try_new(father_pid: Pid, thread: Thread, pgid: Pid) -> Result<Self, CollectionAllocErr> {
         let mut all_thread = BTreeMap::new();
         all_thread.try_insert(0, thread)?;
         Ok(ThreadGroup {
@@ -158,7 +154,7 @@ impl ThreadGroup {
         all_thread.try_insert(0, new_thread)?;
         Ok(Self {
             child: Vec::new(),
-            parent: Some(father_pid),
+            parent: father_pid,
             credentials: self.credentials.try_clone()?,
             thread_group_state: ThreadGroupState::Running {
                 all_thread: all_thread,

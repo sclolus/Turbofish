@@ -7,6 +7,9 @@ all:
 	make -C ./c/
 	make install -C c
 
+	make -C system
+	make install -C system
+
 	make -C shell
 	make install -C shell
 	cp shell/build/shell $(TARGET_DIR)
@@ -36,6 +39,7 @@ all:
 fclean:
 	make fclean -C libc
 	make fclean -C c
+	make fclean -C system
 	make fclean -C shell
 
 re: fclean all

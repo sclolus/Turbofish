@@ -96,7 +96,7 @@ pub extern "C" fn kmain(
     // println!("{:#X?}", elf);
     // crate::shell::shell();
 
-    use crate::taskmaster::{Process, TaskOrigin, UserProcess};
+    use crate::taskmaster::{Process, ProcessOrigin, UserProcess};
     // Load some processes into the scheduler
     let user_process_list = unsafe {
         vec![UserProcess::new(ProcessOrigin::Elf(

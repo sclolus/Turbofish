@@ -71,7 +71,8 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
     syscall::init();
     for (_i, p) in user_process_list.into_iter().enumerate() {
         // println!("user pocess no: {} : {:?}", i, p);
-        SCHEDULER.lock().add_user_process(None, p).unwrap();
+        // all starting process inherit init for now, so their parent is 1
+        SCHEDULER.lock().add_user_process(1, p).unwrap();
     }
 
     unsafe {

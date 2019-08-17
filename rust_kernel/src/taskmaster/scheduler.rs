@@ -15,6 +15,7 @@ use core::mem;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use fallible_collections::btree::BTreeMap;
+use fallible_collections::FallibleVec;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
@@ -130,17 +131,16 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
         .get_thread_group_mut(process_to_free_pid)
         .expect("WTF");
     // Send a sig child signal to the father
-    if let Some(parent_pid) = dead_process.parent {
-        let parent = scheduler.get_thread_mut((parent_pid, 0)).expect("WTF");
-        //TODO: Announce memory error later.
-        mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
-        messaging::push_message(MessageTo::Process {
-            pid: parent_pid,
-            content: ProcessMessage::ProcessDied {
-                pid: process_to_free_pid,
-            },
-        });
-    }
+    let parent_pid = dead_process.parent;
+    let parent = scheduler.get_thread_mut((parent_pid, 0)).expect("WTF");
+    //TODO: Announce memory error later.
+    mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
+    messaging::push_message(MessageTo::Process {
+        pid: parent_pid,
+        content: ProcessMessage::ProcessDied {
+            pid: process_to_free_pid,
+        },
+    });
     let dead_process = scheduler.get_thread_group_mut(process_to_free_pid).unwrap();
     dead_process.set_zombie(status);
     preemptible();
@@ -251,18 +251,14 @@ impl Scheduler {
     /// Add a process into the scheduler (transfert ownership)
     pub fn add_user_process(
         &mut self,
-        father_pid: Option<Pid>,
+        father_pid: Pid,
         process: Box<UserProcess>,
     ) -> Result<Pid, CollectionAllocErr> {
         let pid = self.get_available_pid();
         self.running_process.try_reserve(1)?;
         self.all_process.try_insert(
             pid,
-            ThreadGroup::try_new(
-                father_pid,
-                Thread::new(ProcessState::Running(process)),
-                father_pid.unwrap_or(pid),
-            )?,
+            ThreadGroup::try_new(father_pid, Thread::new(ProcessState::Running(process)), pid)?,
         )?;
         self.running_process.push((pid, 0));
         Ok(pid)
@@ -584,15 +580,16 @@ impl Scheduler {
         }
 
         // When the father die, the process Self::REAPER_PID adopts all his orphelans
-        // TODO: Why we don't add the dead process to the child list of reaper
-        if let Some(_reaper) = self.get_thread((Self::REAPER_PID, 0)) {
-            while let Some(child_pid) = self.current_thread_group_mut().child.pop() {
-                self.get_thread_group_mut(child_pid)
-                    .expect("Hashmap corrupted")
-                    .parent = Some(Self::REAPER_PID);
-            }
-        } else {
-            log::warn!("... the reaper is die ... RIP ...");
+        while let Some(child_pid) = self.current_thread_group_mut().child.pop() {
+            self.get_thread_group_mut(child_pid)
+                .expect("Hashmap corrupted")
+                .parent = Self::REAPER_PID;
+
+            self.get_thread_group_mut(Self::REAPER_PID)
+                .expect("no reaper process")
+                .child
+                .try_push(child_pid)
+                .expect("no memory to push on the reaper pid");
         }
 
         let (pid, _) = self.current_task_id;
