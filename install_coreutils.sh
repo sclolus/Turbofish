@@ -17,3 +17,7 @@ CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --host=$TARGET
 cp ../../../patch-coreutils-config-h .
 patch config.h < patch-coreutils-config-h
 make
+make -C src cat
+make -C src echo
+make -C src kill
+make -C src yes
