@@ -246,11 +246,11 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         {
             let scheduler = SCHEDULER.lock();
 
-            let task = scheduler.current_task();
-            let address_space = &task.unwrap_process().get_virtual_allocator();
+            let thread = scheduler.current_thread();
+            let address_space = &thread.unwrap_process().get_virtual_allocator();
 
             // Attempt to display the process backtrace
-            match &task.unwrap_process().symbol_table {
+            match &thread.unwrap_process().symbol_table {
                 Some(symbol_table) => {
                     let _r = trace_process(
                         address_space,
@@ -267,22 +267,22 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         }
 
         // Send a kill signum to the current process: kernel-sodo mode
-        let current_task_pid = SCHEDULER.lock().current_task_id().0;
+        let current_thread_pid = SCHEDULER.lock().current_task_id().0;
         let _res = match (*cpu_state).cpu_isr_reserved {
-            14 => sys_kill(current_task_pid as i32, Signum::SIGSEGV as u32),
+            14 => sys_kill(current_thread_pid as i32, Signum::SIGSEGV as u32),
             _ => {
                 log::warn!(
                     "{}",
                     CPU_EXCEPTIONS[(*cpu_state).cpu_isr_reserved as usize].1
                 );
-                sys_kill(current_task_pid as i32, Signum::SIGKILL as u32)
+                sys_kill(current_thread_pid as i32, Signum::SIGKILL as u32)
             }
         };
 
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
         SCHEDULER
             .lock()
-            .current_task_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL);
+            .current_thread_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL);
     // Unknown ring
     } else {
         eprintln!(

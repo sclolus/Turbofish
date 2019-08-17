@@ -17,7 +17,7 @@ pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
 
         let mut scheduler = SCHEDULER.lock();
         let struct_sigaction = scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .signal
             .new_handler(signum.try_into().map_err(|_| Errno::Einval)?, &s)?;
         Ok(struct_sigaction.sa_handler as u32)

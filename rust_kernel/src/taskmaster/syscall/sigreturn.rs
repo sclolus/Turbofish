@@ -10,7 +10,7 @@ pub unsafe fn sys_sigreturn(cpu_state: *mut CpuState) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
         scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .signal
             .terminate_pending_signal(cpu_state as u32);
         Ok((*cpu_state).registers.eax)

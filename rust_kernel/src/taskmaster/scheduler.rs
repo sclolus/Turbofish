@@ -3,9 +3,10 @@
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
-use super::task::{ProcessState, Task, WaitingState};
+use super::thread::{ProcessState, Thread, WaitingState};
 use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
+use crate::terminal::ansi_escape_code::Colored;
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
@@ -25,12 +26,7 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 use crate::system::PrivilegeLevel;
 
 extern "C" {
-    fn _exit_resume(
-        new_kernel_esp: u32,
-        process_to_free_pid: Pid,
-        process_to_free_tid: Tid,
-        status: i32,
-    ) -> !;
+    fn _exit_resume(new_kernel_esp: u32, process_to_free_pid: Pid, status: i32) -> !;
 
     fn _auto_preempt() -> i32;
 
@@ -125,22 +121,17 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
 /// Remove ressources of the exited process and note his exit status
 #[no_mangle]
-unsafe extern "C" fn scheduler_exit_resume(
-    process_to_free_pid: Pid,
-    process_to_free_tid: Tid,
-    status: i32,
-) {
+unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32) {
     SCHEDULER.force_unlock();
 
     let mut scheduler = SCHEDULER.lock();
-    let dead_process = scheduler
-        .get_task_mut((process_to_free_pid, process_to_free_tid))
-        .unwrap();
 
-    dead_process.process_state = ProcessState::Zombie(status);
+    let dead_process = scheduler
+        .get_thread_group_mut(process_to_free_pid)
+        .expect("WTF");
     // Send a sig child signal to the father
     if let Some(parent_pid) = dead_process.parent {
-        let parent = scheduler.get_task_mut((parent_pid, 0)).expect("WTF");
+        let parent = scheduler.get_thread_mut((parent_pid, 0)).expect("WTF");
         //TODO: Announce memory error later.
         mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
         messaging::push_message(MessageTo::Process {
@@ -150,6 +141,8 @@ unsafe extern "C" fn scheduler_exit_resume(
             },
         });
     }
+    let dead_process = scheduler.get_thread_group_mut(process_to_free_pid).unwrap();
+    dead_process.set_zombie(status);
     preemptible();
 }
 
@@ -157,7 +150,7 @@ unsafe extern "C" fn scheduler_exit_resume(
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
-    pub all_process: BTreeMap<Pid, ThreadGroup>,
+    all_process: BTreeMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
     running_process: Vec<(Pid, Tid)>,
 
@@ -217,15 +210,17 @@ impl Scheduler {
             // eprintln!("{:#?}", message);
             match message {
                 MessageTo::Process { pid, content } => {
-                    self.get_task_mut((pid, 0))
-                        .map(|task| task.message_queue.push_back(content));
+                    self.get_thread_mut((pid, 0))
+                        .map(|thread| thread.message_queue.push_back(content));
                 }
                 MessageTo::Scheduler { content } => match content {
                     SchedulerMessage::SomethingToRead => {
-                        if let Some(task) =
-                            self.find_task(|t| t.get_waiting_state() == Some(&WaitingState::Read))
+                        if let Some(thread) = self
+                            .iter_thread_mut()
+                            .find(|t| t.get_waiting_state() == Some(&WaitingState::Read))
                         {
-                            task.message_queue
+                            thread
+                                .message_queue
                                 .push_back(ProcessMessage::SomethingToRead);
                         }
                     }
@@ -234,14 +229,13 @@ impl Scheduler {
                     pgid,
                     content: signum,
                 } => {
-                    for task in self
-                        .all_process
-                        .values_mut()
+                    for thread in self
+                        .iter_thread_groups_mut()
                         .filter(|thread_group| thread_group.pgid == pgid)
-                        .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
+                        .filter_map(|thread_group| thread_group.get_first_thread())
                     {
                         //TODO: Announce memory error later.
-                        mem::forget(task.signal.generate_signal(signum));
+                        mem::forget(thread.signal.generate_signal(signum));
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
@@ -265,7 +259,8 @@ impl Scheduler {
         self.all_process.try_insert(
             pid,
             ThreadGroup::try_new(
-                Task::new(father_pid, ProcessState::Running(process)),
+                father_pid,
+                Thread::new(ProcessState::Running(process)),
                 father_pid.unwrap_or(pid),
             )?,
         )?;
@@ -290,7 +285,7 @@ impl Scheduler {
                 self.idle_mode = false;
             }
             false => {
-                self.current_task_mut().unwrap_process_mut().kernel_esp = kernel_esp;
+                self.current_thread_mut().unwrap_process_mut().kernel_esp = kernel_esp;
             }
         }
     }
@@ -310,66 +305,59 @@ impl Scheduler {
             // else create a signal var with option<SignalStatus>
 
             // whether the parent must be wake up
-            let p = self.current_task();
+            let p = self.current_thread();
             let action = p.signal.get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
             }
-            while let Some(message) = self.current_task_mut().message_queue.pop_front() {
+            while let Some(message) = self.current_thread_mut().message_queue.pop_front() {
                 // eprintln!("Process message: {:#?}", message);
                 match message {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        let wake_up = if let Some(WaitingState::ChildDeath(wake_pid, _)) =
-                            self.current_task().get_waiting_state()
+                        if let Some(WaitingState::ChildDeath(wake_pid, _)) =
+                            self.current_thread().get_waiting_state()
                         {
                             let dead_process_pgid = self
                                 .get_thread_group(dead_process_pid)
                                 .expect("no dead child")
                                 .pgid;
-                            *wake_pid == -1
+                            if *wake_pid == -1
+                                || *wake_pid == 0
+                                    && dead_process_pgid == self.current_thread_group().pgid
                                 || *wake_pid == dead_process_pid
                                 || -*wake_pid == dead_process_pgid
-                        } else {
-                            false
-                        };
-                        if !wake_up {
-                            continue;
-                        }
-                        let dead_process =
-                            self.get_task((dead_process_pid, 0)).expect("no dead child");
-                        // dbg!(dead_process);
-                        let status = match dead_process.process_state {
-                            ProcessState::Zombie(status) => {
-                                status
-                                // return action;
+                            {
+                                let status = self
+                                        .get_thread_group(dead_process_pid)
+                                        .and_then(|tg| tg.get_death_status())
+                                        .expect("A zombie was found just before, but there is no zombie here");
+                                let current_thread = self.current_thread_mut();
+                                current_thread.set_waiting(WaitingState::ChildDeath(
+                                    dead_process_pid,
+                                    status as u32,
+                                ));
+                                current_thread.set_return_value(0);
+                                return JobAction::default();
                             }
-                            _ => panic!(
-                                "A zombie was found just before, but there is no zombie here"
-                            ),
-                        };
-                        let current_task = self.current_task_mut();
-                        current_task
-                            .set_waiting(WaitingState::ChildDeath(dead_process_pid, status as u32));
-                        current_task.set_return_value(0);
-                        return JobAction::default();
+                        }
                     }
                     ProcessMessage::SomethingToRead => {
-                        let current_task = self.current_task_mut();
-                        current_task
+                        let current_thread = self.current_thread_mut();
+                        current_thread
                             .message_queue
                             .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        current_task.set_return_value(0);
-                        current_task.set_running();
+                        current_thread.set_return_value(0);
+                        current_thread.set_running();
                         return JobAction::default();
                     }
                 }
             }
 
-            match &self.current_task().process_state {
+            match &self.current_thread().process_state {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
                     if action.intersects(JobAction::TERMINATE) {
@@ -378,8 +366,8 @@ impl Scheduler {
                     } else if action.intersects(JobAction::INTERRUPT) {
                         // Check if signal var contains something, set return value as
                         // negative (rel to SIGNUM), set process as running then return
-                        self.current_task_mut().set_running();
-                        self.current_task_mut()
+                        self.current_thread_mut().set_running();
+                        self.current_thread_mut()
                             .set_return_value(-(Errno::Eintr as i32));
                         return action;
                     }
@@ -387,15 +375,14 @@ impl Scheduler {
                         WaitingState::Sleeping(time) => {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {
-                                self.current_task_mut().set_running();
-                                self.current_task_mut().set_return_value(0);
+                                self.current_thread_mut().set_running();
+                                self.current_thread_mut().set_return_value(0);
                                 return action;
                             }
                         }
                         _ => {}
                     }
                 }
-                ProcessState::Zombie(_) => panic!("A zombie cannot be in the running list"),
             };
         }
         self.idle_mode = true;
@@ -410,7 +397,7 @@ impl Scheduler {
                 process.expect("No idle mode process").kernel_esp
             }
             false => {
-                let p = self.current_task_mut();
+                let p = self.current_thread_mut();
 
                 let process = p.unwrap_process();
                 unsafe {
@@ -425,7 +412,7 @@ impl Scheduler {
                     || action.intersects(JobAction::INTERRUPT)
                 {
                     if ring == PrivilegeLevel::Ring3 {
-                        self.current_task_deliver_pending_signals(
+                        self.current_thread_deliver_pending_signals(
                             kernel_esp as *mut CpuState,
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
                         )
@@ -442,13 +429,13 @@ impl Scheduler {
     }
 
     /// Get current process
-    pub fn current_task(&self) -> &Task {
-        self.get_task(self.current_task_id).unwrap()
+    pub fn current_thread(&self) -> &Thread {
+        self.get_thread(self.current_task_id).unwrap()
     }
 
     /// Get current process mutably
-    pub fn current_task_mut(&mut self) -> &mut Task {
-        self.get_task_mut(self.current_task_id).unwrap()
+    pub fn current_thread_mut(&mut self) -> &mut Thread {
+        self.get_thread_mut(self.current_task_id).unwrap()
     }
 
     pub fn current_thread_group(&self) -> &ThreadGroup {
@@ -467,42 +454,75 @@ impl Scheduler {
         self.all_process.get_mut(&pid)
     }
 
-    pub fn get_task(&self, id: (Pid, Tid)) -> Option<&Task> {
-        self.get_thread_group(id.0)?.all_thread.get(&id.1)
+    pub fn get_thread(&self, id: (Pid, Tid)) -> Option<&Thread> {
+        self.get_thread_group(id.0)?.get_all_thread()?.get(&id.1)
     }
 
-    pub fn get_task_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Task> {
-        self.get_thread_group_mut(id.0)?.all_thread.get_mut(&id.1)
+    pub fn get_thread_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Thread> {
+        self.get_thread_group_mut(id.0)?
+            .get_all_thread_mut()?
+            .get_mut(&id.1)
     }
 
-    pub fn find_task<P>(&mut self, predicate: P) -> Option<&mut Task>
-    where
-        P: FnMut(&&mut Task) -> bool,
-    {
-        self.all_process
-            .values_mut()
-            .map(|thread_group| thread_group.all_thread.get_mut(&0).unwrap())
-            .find(predicate)
+    #[allow(dead_code)]
+    /// iter on all the thread group
+    pub fn iter_thread_groups(&self) -> impl Iterator<Item = &ThreadGroup> {
+        self.all_process.values()
     }
 
+    #[allow(dead_code)]
+    /// iter on all the thread
+    pub fn iter_thread(&self) -> impl Iterator<Item = &Thread> {
+        self.iter_thread_groups()
+            .flat_map(|thread_group| thread_group.get_all_thread())
+            .flat_map(|all_thread| all_thread.values())
+    }
+
+    /// iter on all the thread group mutably
+    pub fn iter_thread_groups_mut(&mut self) -> impl Iterator<Item = &mut ThreadGroup> {
+        self.all_process.values_mut()
+    }
+
+    /// iter on all the thread mutably
+    pub fn iter_thread_mut(&mut self) -> impl Iterator<Item = &mut Thread> {
+        self.iter_thread_groups_mut()
+            .flat_map(|thread_group| thread_group.get_all_thread_mut())
+            .flat_map(|all_thread| all_thread.values_mut())
+    }
+
+    #[allow(dead_code)]
     /// Remove the current running process
     fn remove_curr_running(&mut self) {
         // Remove process from the running process list
         self.running_process.remove(self.current_task_index);
         // Check if there is altmost one process
+        //TODO: I think we should panic
         if self.running_process.len() == 0 {
             log::warn!("No more process");
             loop {}
         }
     }
 
+    /// remove all thread belonging to thread group `pid` in the
+    /// running list
+    fn remove_thread_group_running(&mut self, pid: Pid) {
+        self.running_process
+            .retain(|(running_pid, _)| *running_pid != pid);
+        //TODO: I think we should panic
+        if self.running_process.len() == 0 {
+            log::warn!("No more process");
+            loop {}
+        }
+    }
+
+    /// remove the thread group from all_process
     pub fn remove_thread_group(&mut self, pid: Pid) {
         self.all_process
             .remove(&pid)
             .expect("remove_thread_goup, thread group doen't exist");
     }
 
-    pub fn current_task_clone(
+    pub fn current_thread_clone(
         &mut self,
         kernel_esp: u32,
         child_stack: *const c_void,
@@ -512,24 +532,34 @@ impl Scheduler {
             panic!("It'a illogical to fork a process when we are in monotask mode");
         }
         self.running_process.try_reserve(1)?;
-        let father_pid = self.current_task_id.0;
-        let current_task = self.current_task_mut();
-
-        let child = current_task.sys_clone(kernel_esp, father_pid, child_stack, flags)?;
+        let (father_pid, father_tid) = self.current_task_id;
 
         let child_pid = if flags.contains(CloneFlags::THREAD) {
+            let current_thread = self.current_thread_mut();
+
+            let child = current_thread.sys_clone(kernel_esp, child_stack, flags)?;
             let thread_group = self.current_thread_group_mut();
             let tid = thread_group.get_available_tid();
-            thread_group.all_thread.try_insert(tid, child)?;
-            let child_pid = self.current_task_id().0;
-            self.running_process.push((child_pid, tid));
-            child_pid
+            thread_group
+                .get_all_thread_mut()
+                .expect("wtf")
+                .try_insert(tid, child)?;
+            self.running_process.push((father_pid, tid));
+            father_pid
         } else {
-            current_task.child.try_reserve(1)?;
             let child_pid = self.get_available_pid();
-            self.current_task_mut().child.push(child_pid);
-            self.all_process
-                .try_insert(child_pid, ThreadGroup::try_new(child, father_pid)?)?;
+            let thread_group = self.current_thread_group_mut();
+
+            let new_thread_group = thread_group.sys_clone(
+                father_pid,
+                father_tid,
+                child_pid,
+                kernel_esp,
+                child_stack,
+                flags,
+            )?;
+
+            self.all_process.try_insert(child_pid, new_thread_group)?;
             self.running_process.push((child_pid, 0));
             child_pid
         };
@@ -540,7 +570,7 @@ impl Scheduler {
     const REAPER_PID: Pid = 1;
 
     /// Exit form a process and go to the current process
-    pub fn current_task_exit(&mut self, status: i32) -> ! {
+    pub fn current_thread_group_exit(&mut self, status: i32) -> ! {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -548,18 +578,16 @@ impl Scheduler {
         );
 
         match status {
-            139 => println!("segmentation fault"),
+            139 => println!("{}", "segmentation fault".red()),
             137 => println!("killed"),
             _ => {}
         }
 
-        // When the father die, the process 0 adopts all his orphelans
-        if let Some(reaper) = self.get_task((Self::REAPER_PID, 0)) {
-            if let ProcessState::Zombie(_) = reaper.process_state {
-                log::warn!("... the reaper is a zombie ... it is worring ...");
-            }
-            while let Some(child_pid) = self.current_task_mut().child.pop() {
-                self.get_task_mut((child_pid, 0))
+        // When the father die, the process Self::REAPER_PID adopts all his orphelans
+        // TODO: Why we don't add the dead process to the child list of reaper
+        if let Some(_reaper) = self.get_thread((Self::REAPER_PID, 0)) {
+            while let Some(child_pid) = self.current_thread_group_mut().child.pop() {
+                self.get_thread_group_mut(child_pid)
                     .expect("Hashmap corrupted")
                     .parent = Some(Self::REAPER_PID);
             }
@@ -567,15 +595,15 @@ impl Scheduler {
             log::warn!("... the reaper is die ... RIP ...");
         }
 
-        let (pid, tid) = self.current_task_id;
+        let (pid, _) = self.current_task_id;
 
-        self.remove_curr_running();
+        self.remove_thread_group_running(pid);
 
         // Switch to the next process
         unsafe {
             let new_kernel_esp = self.load_next_process(0);
 
-            _exit_resume(new_kernel_esp, pid, tid, status);
+            _exit_resume(new_kernel_esp, pid, status);
         };
     }
 
@@ -607,7 +635,7 @@ impl Scheduler {
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
-    pub fn current_task_deliver_pending_signals(
+    pub fn current_thread_deliver_pending_signals(
         &mut self,
         cpu_state: *mut CpuState,
         in_blocked_syscall: bool,
@@ -618,11 +646,11 @@ impl Scheduler {
             "Cannot apply signal from ring0 process"
         );
         let signum: Option<Signum> = self
-            .current_task_mut()
+            .current_thread_mut()
             .signal
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
-            self.current_task_exit(signum as i32 + 128);
+            self.current_thread_group_exit(signum as i32 + 128);
         }
     }
 }
@@ -666,7 +694,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     scheduler.time_interval = t;
 
     // Initialise the first process and get a reference on it
-    let p = scheduler.current_task_mut().unwrap_process_mut();
+    let p = scheduler.current_thread_mut().unwrap_process_mut();
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

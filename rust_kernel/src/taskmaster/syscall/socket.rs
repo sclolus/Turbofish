@@ -192,7 +192,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         let mut scheduler = SCHEDULER.lock();
 
         let v = scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .unwrap_process_mut()
             .get_virtual_allocator();
 

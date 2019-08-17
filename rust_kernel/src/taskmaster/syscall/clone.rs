@@ -47,6 +47,6 @@ pub fn sys_clone(kernel_esp: u32, child_stack: *const c_void, clone_flags: u32) 
     unpreemptible_context!({
         Ok(SCHEDULER
             .lock()
-            .current_task_clone(kernel_esp, child_stack, flags)? as u32)
+            .current_thread_clone(kernel_esp, child_stack, flags)? as u32)
     })
 }

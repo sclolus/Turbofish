@@ -79,7 +79,7 @@ pub fn sys_tcsetattr(
         {
             let scheduler = SCHEDULER.lock();
             let v = scheduler
-                .current_task()
+                .current_thread()
                 .unwrap_process()
                 .get_virtual_allocator();
 

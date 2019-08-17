@@ -80,7 +80,7 @@ ds: 0x{:X?} es: 0x{:X?} fs: 0x{:X?} gs: 0x{:X?}
 /// Declaration of shared Process trait. Kernel and User processes must implements these methods
 pub trait Process {
     /// Return a new process
-    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>>;
+    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>>;
     /// TSS initialisation method (necessary for ring3 switch)
     unsafe fn init_tss(&self);
     /// Start the process
@@ -133,7 +133,7 @@ impl core::fmt::Debug for KernelProcess {
 
 /// This enum describe the origin of the process
 #[allow(unused)]
-pub enum TaskOrigin<'a> {
+pub enum ProcessOrigin<'a> {
     /// ELF file
     Elf(&'a [u8]),
     /// Just a dummy function
@@ -214,7 +214,7 @@ impl KernelProcess {
 
 /// Main implementation of process trait for UserProcess
 impl Process for UserProcess {
-    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>> {
+    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
@@ -223,7 +223,7 @@ impl Process for UserProcess {
         virtual_allocator.context_switch();
 
         let (eip, symbol_table) = match origin {
-            TaskOrigin::Elf(content) => {
+            ProcessOrigin::Elf(content) => {
                 // Parse Elf and generate stuff
                 let elf = load_elf(content);
                 for h in &elf.program_header_table {
@@ -265,7 +265,7 @@ impl Process for UserProcess {
                     },
                 )
             }
-            TaskOrigin::Raw(code, code_len) => {
+            ProcessOrigin::Raw(code, code_len) => {
                 // Allocate one page for code segment of the Dummy process
                 let base_addr = virtual_allocator
                     .alloc(Self::RING3_RAW_PROCESS_MAX_SIZE, AllocFlags::USER_MEMORY)?;
@@ -370,12 +370,12 @@ impl Process for UserProcess {
 // Maybe we need to check CS of the caller of the TSS segment in the syscall handler to unallow use of them.
 /// Main implementation of a KernelProcess
 impl Process for KernelProcess {
-    unsafe fn new(origin: TaskOrigin) -> SysResult<Box<Self>> {
+    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>> {
         let eip = match origin {
-            TaskOrigin::Elf(_content) => {
+            ProcessOrigin::Elf(_content) => {
                 unimplemented!();
             }
-            TaskOrigin::Raw(code, code_len) => {
+            ProcessOrigin::Raw(code, code_len) => {
                 // Allocate a chunk of memory for the process code
                 let base_addr = KERNEL_VIRTUAL_PAGE_ALLOCATOR
                     .as_mut()

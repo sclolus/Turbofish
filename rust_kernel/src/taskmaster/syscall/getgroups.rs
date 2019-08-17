@@ -33,7 +33,7 @@ pub fn sys_getgroups(gidsetsize: i32, grouplist: *mut gid_t) -> SysResult<u32> {
         let scheduler = SCHEDULER.lock();
         let grouplist_slice = {
             let v = scheduler
-                .current_task()
+                .current_thread()
                 .unwrap_process()
                 .get_virtual_allocator();
 

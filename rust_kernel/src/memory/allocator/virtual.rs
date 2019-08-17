@@ -337,7 +337,7 @@ impl AddressSpace {
         Ok(self
             .0
             .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
-                entry.intersects((AllocFlags::USER_MEMORY).into())
+                entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
             })
             .map_err(|_| MemoryError::BadAddr)?)
     }
@@ -358,7 +358,7 @@ impl AddressSpace {
         Ok(self
             .0
             .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
-                entry.intersects((AllocFlags::USER_MEMORY).into())
+                entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
             })
             .map_err(|_| MemoryError::BadAddr)?)
     }
