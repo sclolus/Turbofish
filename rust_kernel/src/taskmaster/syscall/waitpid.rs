@@ -2,7 +2,7 @@
 
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
-use super::task::{ProcessState, WaitingState};
+use super::thread::{ProcessState, WaitingState};
 use super::SysResult;
 
 use errno::Errno;
@@ -196,7 +196,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     {
         let v = scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .unwrap_process_mut()
             .get_virtual_allocator();
 
@@ -327,7 +327,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
-                .current_task_mut()
+                .current_thread_mut()
                 .set_waiting(WaitingState::ChildDeath(pid, 0));
 
             let ret = auto_preempt();
@@ -341,7 +341,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 // scheduler.current_thread_group_mut().set_running();
                 return Err(Errno::Eintr);
             } else {
-                let child_pid = match &scheduler.current_task().process_state {
+                let child_pid = match &scheduler.current_thread().process_state {
                     // Read the fields of the WaintingState::ChildDeath(x, y)
                     ProcessState::Waiting(_, WaitingState::ChildDeath(dead_pid, status)) => {
                         let dead_pid = *dead_pid;
@@ -357,7 +357,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     _ => panic!("WTF"),
                 };
                 // Set process as Running, Set return readen value in Ok(x)
-                scheduler.current_task_mut().set_running();
+                scheduler.current_thread_mut().set_running();
                 let thread_group = scheduler.current_thread_group_mut();
                 thread_group.remove_child(child_pid);
                 Ok(child_pid as u32)

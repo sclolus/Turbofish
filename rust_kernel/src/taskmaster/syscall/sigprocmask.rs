@@ -16,7 +16,7 @@ pub unsafe fn sys_sigprocmask(
         let checked_set;
         {
             let v = scheduler
-                .current_task_mut()
+                .current_thread_mut()
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
@@ -35,7 +35,7 @@ pub unsafe fn sys_sigprocmask(
             };
         }
         scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .signal
             .change_signal_mask(how, checked_set, checked_oldset)
     })

@@ -4,7 +4,7 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
-use super::task::WaitingState;
+use super::thread::WaitingState;
 
 use errno::Errno;
 
@@ -17,7 +17,7 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
 
         let output = {
             let v = scheduler
-                .current_task_mut()
+                .current_thread_mut()
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
@@ -35,7 +35,9 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
             }
             // else the read was blocking
 
-            scheduler.current_task_mut().set_waiting(WaitingState::Read);
+            scheduler
+                .current_thread_mut()
+                .set_waiting(WaitingState::Read);
             let ret = auto_preempt();
 
             unpreemptible();

@@ -18,7 +18,7 @@ pub fn sys_tcgetattr(_fildes: i32, termios_p: *mut termios) -> SysResult<u32> {
         {
             let scheduler = SCHEDULER.lock();
             let v = scheduler
-                .current_task()
+                .current_thread()
                 .unwrap_process()
                 .get_virtual_allocator();
 

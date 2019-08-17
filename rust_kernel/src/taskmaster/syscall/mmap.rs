@@ -24,7 +24,7 @@ fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
     let mut scheduler = SCHEDULER.lock();
 
     let mut v = scheduler
-        .current_task_mut()
+        .current_thread_mut()
         .unwrap_process_mut()
         .get_virtual_allocator();
 

@@ -8,11 +8,11 @@ mod scheduler;
 mod safe_ffi;
 mod signal_interface;
 mod syscall;
-mod task;
 mod tests;
+mod thread;
 mod thread_group;
 
-pub use process::{KernelProcess, Process, TaskOrigin, UserProcess};
+pub use process::{KernelProcess, Process, ProcessOrigin, UserProcess};
 use scheduler::SCHEDULER;
 
 #[allow(unused)]
@@ -84,7 +84,7 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
     SCHEDULER
         .lock()
         .set_idle_process(unsafe {
-            KernelProcess::new(TaskOrigin::Raw(
+            KernelProcess::new(ProcessOrigin::Raw(
                 _idle_process_code as *const u8,
                 _idle_process_len,
             ))

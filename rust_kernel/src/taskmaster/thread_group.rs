@@ -1,6 +1,6 @@
 use super::scheduler::{Pid, Tid};
 use super::syscall::clone::CloneFlags;
-use super::task::Task;
+use super::thread::Thread;
 use super::SysResult;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
@@ -20,7 +20,7 @@ enum ThreadGroupState {
     Zombie(i32),
 }
 
-type ThreadList = BTreeMap<Tid, Task>;
+type ThreadList = BTreeMap<Tid, Thread>;
 
 impl ThreadGroupState {
     pub fn get_thread_list_mut(&mut self) -> Option<&mut ThreadList> {
@@ -89,11 +89,11 @@ impl Credentials {
 impl ThreadGroup {
     pub fn try_new(
         father_pid: Option<Pid>,
-        task: Task,
+        thread: Thread,
         pgid: Pid,
     ) -> Result<Self, CollectionAllocErr> {
         let mut all_thread = BTreeMap::new();
-        all_thread.try_insert(0, task)?;
+        all_thread.try_insert(0, thread)?;
         Ok(ThreadGroup {
             child: Vec::new(),
             parent: father_pid,
@@ -106,11 +106,11 @@ impl ThreadGroup {
         })
     }
 
-    pub fn get_first_thread(&mut self) -> Option<&mut Task> {
+    pub fn get_first_thread(&mut self) -> Option<&mut Thread> {
         self.get_all_thread_mut()?.get_mut(&0)
     }
 
-    pub fn get_thread(&mut self, thread_id: Tid) -> Option<&mut Task> {
+    pub fn get_thread(&mut self, thread_id: Tid) -> Option<&mut Thread> {
         self.get_all_thread_mut()?.get_mut(&thread_id)
     }
 
@@ -150,13 +150,13 @@ impl ThreadGroup {
         // TODO: if new_thread_group fail remove that
         self.child.try_push(child_pid)?;
 
-        let new_task = self
+        let new_thread = self
             .get_thread(father_tid)
             .expect("no father tid wtf")
             .sys_clone(kernel_esp, child_stack, flags)?;
 
         let mut all_thread = BTreeMap::new();
-        all_thread.try_insert(0, new_task)?;
+        all_thread.try_insert(0, new_thread)?;
         Ok(Self {
             child: Vec::new(),
             parent: Some(father_pid),

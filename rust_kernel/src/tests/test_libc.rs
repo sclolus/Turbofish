@@ -99,7 +99,7 @@ pub extern "C" fn kmain(
     use crate::taskmaster::{Process, TaskOrigin, UserProcess};
     // Load some processes into the scheduler
     let user_process_list = unsafe {
-        vec![UserProcess::new(TaskOrigin::Elf(
+        vec![UserProcess::new(ProcessOrigin::Elf(
             &include_bytes!("../userland/DeepThought")[..],
         ))
         .unwrap()]

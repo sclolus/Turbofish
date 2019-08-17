@@ -2,10 +2,10 @@
 
 use super::SysResult;
 
-use super::process::{CpuState, Process, TaskOrigin, UserProcess};
+use super::process::{CpuState, Process, ProcessOrigin, UserProcess};
 use super::safe_ffi::{c_char, CString, CStringArray};
 use super::scheduler::SCHEDULER;
-use super::task::ProcessState;
+use super::thread::ProcessState;
 
 use alloc::format;
 use alloc::vec::Vec;
@@ -49,7 +49,7 @@ pub fn sys_execve(
         let mut scheduler = SCHEDULER.lock();
 
         let v = scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .unwrap_process_mut()
             .get_virtual_allocator();
 
@@ -66,9 +66,9 @@ pub fn sys_execve(
         }
         let content = get_file_content(&pathname)?;
 
-        let mut new_process = unsafe { UserProcess::new(TaskOrigin::Elf(content.as_ref()))? };
+        let mut new_process = unsafe { UserProcess::new(ProcessOrigin::Elf(content.as_ref()))? };
 
-        let old_process = scheduler.current_task_mut().unwrap_process_mut();
+        let old_process = scheduler.current_thread_mut().unwrap_process_mut();
         /*
          * We cannot move directly into the new process kernel stack, or just copy its content,
          * because rust made some optimizations with current process kernel stack.
@@ -102,15 +102,15 @@ pub fn sys_execve(
         /*
          * Now, we can drop safety the old process
          */
-        scheduler.current_task_mut().process_state = ProcessState::Running(new_process);
+        scheduler.current_thread_mut().process_state = ProcessState::Running(new_process);
 
         // Reset the signal interface
         scheduler
-            .current_task_mut()
+            .current_thread_mut()
             .signal
             .reset_for_new_process_image();
 
-        let p = scheduler.current_task_mut().unwrap_process_mut();
+        let p = scheduler.current_thread_mut().unwrap_process_mut();
         let cpu_state = unsafe {
             p.kernel_stack
                 .as_ptr()

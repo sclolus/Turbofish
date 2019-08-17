@@ -7,7 +7,7 @@ use super::scheduler;
 use super::scheduler::{Pid, SCHEDULER};
 use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
-use super::task;
+use super::thread;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
-        SCHEDULER.lock().current_task_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
+        SCHEDULER.lock().current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
     }}
 }
 

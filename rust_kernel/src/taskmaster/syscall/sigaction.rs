@@ -18,7 +18,7 @@ pub unsafe fn sys_sigaction(
         let mut scheduler = SCHEDULER.lock();
         {
             let v = scheduler
-                .current_task_mut()
+                .current_thread_mut()
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
@@ -29,7 +29,7 @@ pub unsafe fn sys_sigaction(
             }
         }
         // TODO: Use old_act
-        *old_act = scheduler.current_task_mut().signal.new_handler(
+        *old_act = scheduler.current_thread_mut().signal.new_handler(
             signum.try_into().map_err(|_| Errno::Einval)?,
             act.as_ref().expect("Null PTR"),
         )?;

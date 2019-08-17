@@ -14,7 +14,7 @@ use core::mem;
 
 /// Main Task definition
 #[derive(Debug)]
-pub struct Task {
+pub struct Thread {
     /// Current process state
     pub process_state: ProcessState,
     /// Signal Interface
@@ -22,7 +22,7 @@ pub struct Task {
     pub message_queue: MessageQueue<ProcessMessage>,
 }
 
-impl Task {
+impl Thread {
     pub fn new(process_state: ProcessState) -> Self {
         Self {
             process_state,
