@@ -203,10 +203,7 @@ impl Scheduler {
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
-                    TERMINAL
-                        .as_mut()
-                        .unwrap()
-                        .handle_key_pressed(key_pressed, 1);
+                    TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
                 },
             }
         }

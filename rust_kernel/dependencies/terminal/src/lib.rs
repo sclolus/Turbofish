@@ -78,8 +78,11 @@ impl Terminal {
     }
 
     /// Get the foregounded TTY
-    pub fn get_foreground_tty(&mut self) -> Option<&mut BufferedTty> {
-        Some(&mut self.ttys.iter_mut().find(|l| l.get_tty().foreground)?.tty)
+    pub fn get_foreground_tty(&mut self) -> &mut LineDiscipline {
+        self.ttys
+            .iter_mut()
+            .find(|l| l.get_tty().foreground)
+            .expect("no foreground tty")
     }
 
     /// Read a Key from the buffer
@@ -87,10 +90,10 @@ impl Terminal {
         self.ttys[tty_index].read(buf)
     }
 
-    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb, tty_index: usize) {
+    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb) {
         // eprintln!("write_input {:?}", buff);
         if !self.handle_tty_control(key_pressed) {
-            self.ttys[tty_index]
+            self.get_foreground_tty()
                 .handle_key_pressed(key_pressed)
                 //TODO: remove this expect later
                 .expect("write input failed");
@@ -162,7 +165,7 @@ pub fn init_terminal() {
     // unlock mutex
     drop(screen_monad);
 
-    term.get_foreground_tty().unwrap().tty.refresh();
+    term.get_foreground_tty().tty.tty.refresh();
     unsafe {
         TERMINAL = Some(term);
     }

@@ -43,7 +43,7 @@ macro_rules! print_bypass_mutex {
                         // I consider it's works !
                         Some(term) => {
                             use core::fmt::Write;
-                            term.get_foreground_tty().unwrap().write_fmt(a).unwrap();
+                            term.get_foreground_tty().tty.tty.write_fmt(a).unwrap();
                         }
                     }
                 }
