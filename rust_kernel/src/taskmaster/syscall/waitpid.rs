@@ -36,24 +36,6 @@ use errno::Errno;
 /// its behavior shall be modified by the values of the pid and
 /// options arguments.
 ///
-/// The pid argument specifies a set of child processes for which
-/// status is requested. The waitpid() function shall only return the
-/// status of a child process from this set:
-///
-///     If pid is equal to (pid_t)-1, status is requested for any
-///     child process. In this respect, waitpid() is then equivalent
-///     to wait().
-///
-///     If pid is greater than 0, it specifies the process ID of a
-///     single child process for which status is requested.
-///
-///     If pid is 0, status is requested for any child process whose
-///     process group ID is equal to that of the calling process.
-///
-///     If pid is less than (pid_t)-1, status is requested for any
-///     child process whose process group ID is equal to the absolute
-///     value of pid.
-///
 /// The options argument is constructed from the bitwise-inclusive OR
 /// of zero or more of the following flags, defined in the
 /// <sys/wait.h> header:
@@ -243,9 +225,15 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     let thread_group = scheduler.current_thread_group();
 
-    // Check if the child is already dead: Return his PID if true or NONE
-    // Errno: Return ECHILD if not child or child PID specified is wrong
+    // The pid argument specifies a set of child processes for which
+    // status is requested. The waitpid() function shall only return the
+    // status of a child process from this set:
+    // child_pid is a Option. Some(child_pid) if some child is dead, None
+    // otherwise
     let child_pid = match pid {
+        // If pid is equal to (pid_t)-1, status is requested for any
+        // child process. In this respect, waitpid() is then
+        // equivalent to wait().
         -1 => {
             // Check if at leat one child exists
             if thread_group.child.len() == 0 {
@@ -259,7 +247,13 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     .is_zombie()
             })
         }
+        // If pid is less than (pid_t)-1, status is requested for any
+        // child process whose process group ID is equal to the
+        // absolute value of pid.
         mut pid if (pid < 0 || pid == 0) => {
+            // If pid is 0, status is requested for any child process
+            // whose process group ID is equal to that of the calling
+            // process.
             if pid == 0 {
                 pid = thread_group.pgid;
             }
@@ -287,6 +281,8 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     == -pid
             })
         }
+        // If pid is greater than 0, it specifies the process ID of a
+        // single child process for which status is requested.
         pid if pid > 0 => {
             // Check if specified child exists
             if let Some(elem) = thread_group

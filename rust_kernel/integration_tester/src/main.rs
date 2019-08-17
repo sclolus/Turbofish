@@ -8,7 +8,7 @@ use std::time::Duration;
 use toml::Value;
 use wait_timeout::ChildExt;
 
-const TIMEOUT: Duration = Duration::from_secs(1000);
+const TIMEOUT: Duration = Duration::from_secs(40);
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
