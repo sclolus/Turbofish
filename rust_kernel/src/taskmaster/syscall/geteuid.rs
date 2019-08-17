@@ -1,3 +1,5 @@
+//! sys_geteuid()
+
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 

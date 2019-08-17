@@ -1,3 +1,5 @@
+//! sys_setgid()
+
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 use errno::Errno;

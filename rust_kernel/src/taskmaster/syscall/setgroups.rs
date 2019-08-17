@@ -1,3 +1,5 @@
+//! sys_setgroups()
+
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 use alloc::vec::Vec;

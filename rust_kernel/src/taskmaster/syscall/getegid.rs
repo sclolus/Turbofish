@@ -1,3 +1,5 @@
+//! sys_getegid()
+
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 

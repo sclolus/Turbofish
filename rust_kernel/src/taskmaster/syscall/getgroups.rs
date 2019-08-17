@@ -1,3 +1,5 @@
+//! sys_getgroups()
+
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 use core::cmp::min;
