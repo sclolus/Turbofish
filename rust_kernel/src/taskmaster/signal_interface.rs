@@ -10,6 +10,7 @@ use core::mem;
 use core::ops::{BitAnd, BitOr, BitOrAssign, Index, IndexMut, Not};
 use errno::Errno;
 use libc_binding::Signum;
+use libc_binding::{SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK};
 
 #[allow(non_camel_case_types)]
 pub type sigset_t = u32;
@@ -402,18 +403,9 @@ impl SignalInterface {
         Ok(0)
     }
 
-    pub const SIG_BLOCK: i32 = 0;
-    // The resulting set shall be the union of the current set and the
-    // signal set pointed to by set.
-    pub const SIG_UNBLOCK: i32 = 1;
-    // The resulting set shall be the intersection of the current set and
-    // the complement of the signal set pointed to by set.
-    pub const SIG_SETMASK: i32 = 2;
-    // The resulting set shall be the signal set pointed to by set.
-
     pub fn change_signal_mask(
         &mut self,
-        how: i32,
+        how: u32,
         set: Option<&sigset_t>,
         oldset: Option<&mut sigset_t>,
     ) -> SysResult<u32> {
@@ -421,11 +413,9 @@ impl SignalInterface {
             let mask = SaMask::from(*set);
             let current_sa_mask = self.current_sa_mask;
             let oldval = match how {
-                Self::SIG_BLOCK => mem::replace(&mut self.current_sa_mask, current_sa_mask | mask),
-                Self::SIG_UNBLOCK => {
-                    mem::replace(&mut self.current_sa_mask, current_sa_mask & !mask)
-                }
-                Self::SIG_SETMASK => mem::replace(&mut self.current_sa_mask, mask),
+                SIG_BLOCK => mem::replace(&mut self.current_sa_mask, current_sa_mask | mask),
+                SIG_UNBLOCK => mem::replace(&mut self.current_sa_mask, current_sa_mask & !mask),
+                SIG_SETMASK => mem::replace(&mut self.current_sa_mask, mask),
                 _ => {
                     return Err(Errno::Einval);
                 }

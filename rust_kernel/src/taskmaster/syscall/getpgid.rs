@@ -2,6 +2,10 @@ use super::scheduler::{Pid, SCHEDULER};
 use super::SysResult;
 use errno::Errno;
 
+/// The getpgid() function shall return the process group ID of the
+/// process whose process ID is equal to pid. If pid is equal to 0,
+/// getpgid() shall return the process group ID of the calling
+/// process.
 pub fn sys_getpgid(pid: Pid) -> SysResult<u32> {
     unpreemptible_context!({
         let scheduler = SCHEDULER.lock();
