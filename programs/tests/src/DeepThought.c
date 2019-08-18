@@ -17,7 +17,9 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/signal/SignalSimple"},
 	{.path = "/bin/signal/SignalSimpleDuo"},
 	{.path = "/bin/ProcessGroup"},
-	{.path = "/bin/execve/argv"}
+	{.path = "/bin/execve/argv"},
+	{.path = "/bin/wait/wait"},
+	{.path = "/bin/sigprocmask/sigprocmask"}
 };
 
 void _exit_qemu(int val)
@@ -51,8 +53,6 @@ int main() {
 			_exit_qemu(1);
 		} else {
 			pid_t father_pid = getpid();
-			printf("father_pid: %d\n", father_pid);
-			printf("I am the father, i wait my child\n");
 			int status;
 			int ret = wait(&status);
 			if (ret == -1) {
@@ -61,8 +61,8 @@ int main() {
 			}
 			if (status != 0) {
 				// qemu exit fail
-				printf("test: '%s' failed", TEST_PROGRAMS[i].path);
-				printf("status '%d'", status);
+				dprintf(2, "test: '%s' failed", TEST_PROGRAMS[i].path);
+				dprintf(2, "status '%d'", status);
 				sleep(1000);
 				if (!WIFEXITED(status)) {
 					_exit_qemu(1);
@@ -73,6 +73,6 @@ int main() {
 			}
 		}
 	}
-	sleep(3);
+	/* sleep(100); */
 	_exit_qemu(0);
 }

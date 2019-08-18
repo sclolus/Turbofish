@@ -12,7 +12,9 @@ SRC_C += DeepThought \
 		signal/SignalSimple \
 		signal/SignalSimpleDuo \
 		execve/argv \
-		execve/check_argv
+		execve/check_argv \
+		sigprocmask/sigprocmask \
+		wait/wait
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

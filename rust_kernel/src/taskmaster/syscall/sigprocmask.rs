@@ -13,9 +13,10 @@ use super::SysResult;
 /// following values:
 ///
 /// SIG_BLOCK The resulting set shall be the union of the current set
-///     and the signal set pointed to by set.  SIG_SETMASK The
-///     resulting set shall be the signal set pointed to by set.
-///     SIG_UNBLOCK The resulting set shall be the intersection of the
+///     and the signal set pointed to by set.
+/// SIG_SETMASK The resulting set shall be the signal set pointed to
+///     by set.
+/// SIG_UNBLOCK The resulting set shall be the intersection of the
 ///     current set and the complement of the signal set pointed to by
 ///     set.
 ///
