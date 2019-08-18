@@ -11,7 +11,6 @@ use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
-use core::mem;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use fallible_collections::btree::BTreeMap;
@@ -100,7 +99,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
         .get_thread_mut((parent_pid, 0))
         .expect("WTF: Parent not alive");
     //TODO: Announce memory error later.
-    mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
+    let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
 
     // Send a death testament message to the parent
     messaging::push_message(MessageTo::Process {
@@ -209,7 +208,7 @@ impl Scheduler {
                         .filter_map(|thread_group| thread_group.get_first_thread())
                     {
                         //TODO: Announce memory error later.
-                        mem::forget(thread.signal.generate_signal(signum));
+                        let _ignored_result = thread.signal.generate_signal(signum);
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
@@ -667,17 +666,17 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             }
         }
     };
-    /*
-    // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
-    // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
-    // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
-    // this is a critical point. Never change that without a serious good reason.
-    if let Some(period) = t {
-        if period < 2 {
-            panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
-        }
-    }
-    */
+
+    // TIPS: If waiting state are correctly managed, these below lines are useless: Use only for hard debug
+    // // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
+    // // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
+    // // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
+    // // this is a critical point. Never change that without a serious good reason.
+    // if let Some(period) = t {
+    //     if period < 2 {
+    //         panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
+    //     }
+    // }
 
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;
@@ -721,7 +720,7 @@ pub fn preemptible() {
         // Check if the Time to live of the current process is expired
         if _get_pit_time() >= _get_process_end_time() {
             // Go to the next elligible process
-            auto_preempt();
+            let _ignored_result = auto_preempt();
         } else {
             // Just reallow scheduler interrupt
             _preemptible();
@@ -761,13 +760,4 @@ macro_rules! unpreemptible_context {
 
         $code
     }};
-}
-
-/// Auto-preempt will cause schedule into the next process
-/// In some critical cases like signal, avoid this switch
-pub fn auto_preempt() -> i32 {
-    unsafe {
-        SCHEDULER.force_unlock();
-        _auto_preempt()
-    }
 }

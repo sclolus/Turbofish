@@ -2,7 +2,6 @@ use super::SysResult;
 
 use super::scheduler::{auto_preempt, SCHEDULER};
 use super::thread::WaitingState;
-use core::mem;
 
 use errno::Errno;
 /// Wait for signal
@@ -16,7 +15,7 @@ pub unsafe fn sys_pause() -> SysResult<u32> {
          * pause() returns only when a signal was caught and the signal-catching function returned.
          * In this case, pause() returns -1, and errno is set to EINTR
          */
-        mem::forget(auto_preempt());
+        let _ignored_result = auto_preempt();
         Err(Errno::Eintr)
     })
 }
