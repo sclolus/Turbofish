@@ -453,4 +453,7 @@ impl AddressSpace {
             .to_addr()
             .0 as *mut u8)
     }
+    pub fn unmap_addr(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
+        self.0.unmap_addr(vaddr, size)
+    }
 }
