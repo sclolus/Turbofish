@@ -57,16 +57,6 @@ extern "C" {
 pub type Tid = u32;
 pub use libc_binding::Pid;
 
-/// Auto-preempt will cause schedule into the next process
-/// In some critical cases like signal, avoid this switch
-pub fn auto_preempt() -> SysResult<AutoPreemptReturnValue> {
-    unsafe {
-        SCHEDULER.force_unlock();
-        let ret = _auto_preempt() as *const SysResult<AutoPreemptReturnValue>;
-        *ret
-    }
-}
-
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
@@ -701,6 +691,16 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
 lazy_static! {
     pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
+}
+
+/// Auto-preempt will cause schedule into the next process
+/// In some critical cases like signal, avoid this switch
+pub fn auto_preempt() -> SysResult<AutoPreemptReturnValue> {
+    unsafe {
+        SCHEDULER.force_unlock();
+        let ret = _auto_preempt() as *const SysResult<AutoPreemptReturnValue>;
+        *ret
+    }
 }
 
 /// Protect process again scheduler interruption
