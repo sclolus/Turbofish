@@ -2,7 +2,7 @@
 
 use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
-use super::thread::{ProcessState, WaitingState};
+use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
 use errno::Errno;
@@ -328,40 +328,33 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_thread_mut()
-                .set_waiting(WaitingState::ChildDeath(pid, 0));
+                .set_waiting(WaitingState::ChildDeath(pid));
 
-            let ret = auto_preempt();
+            let ret = auto_preempt()?;
 
             // Re-Lock immediatly critical ressources (auto_preempt unlocked all)
             unpreemptible();
             let mut scheduler = SCHEDULER.lock();
 
-            if ret < 0 {
-                // Reset as running
-                // scheduler.current_thread_group_mut().set_running();
-                return Err(Errno::Eintr);
-            } else {
-                let child_pid = match &scheduler.current_thread().process_state {
-                    // Read the fields of the WaintingState::ChildDeath(x, y)
-                    ProcessState::Waiting(_, WaitingState::ChildDeath(dead_pid, status)) => {
-                        let dead_pid = *dead_pid;
-                        // Set wstatus pointer is not null by reading y
-                        if wstatus != 0x0 as *mut i32 {
-                            unsafe {
-                                *wstatus = *status as i32;
-                            }
+            let child_pid = match ret {
+                AutoPreemptReturnValue::Wait {
+                    dead_process_pid,
+                    status,
+                } => {
+                    // Set wstatus pointer is not null by reading y
+                    if wstatus != 0x0 as *mut i32 {
+                        unsafe {
+                            *wstatus = status as i32;
                         }
-                        scheduler.remove_thread_group(dead_pid);
-                        dead_pid
                     }
-                    _ => panic!("WTF"),
-                };
-                // Set process as Running, Set return readen value in Ok(x)
-                scheduler.current_thread_mut().set_running();
-                let thread_group = scheduler.current_thread_group_mut();
-                thread_group.remove_child(child_pid);
-                Ok(child_pid as u32)
-            }
+                    scheduler.remove_thread_group(dead_process_pid);
+                    dead_process_pid
+                }
+                _ => panic!("WTF"),
+            };
+            let thread_group = scheduler.current_thread_group_mut();
+            thread_group.remove_child(child_pid);
+            Ok(child_pid as u32)
         }
     }
 }

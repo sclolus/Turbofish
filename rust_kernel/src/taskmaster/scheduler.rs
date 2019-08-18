@@ -3,15 +3,14 @@
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
-use super::thread::{ProcessState, Thread, WaitingState};
+use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
-use crate::terminal::ansi_escape_code::Colored;
+
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
-use core::mem;
 use core::sync::atomic::{AtomicI32, Ordering};
 use errno::Errno;
 use fallible_collections::btree::BTreeMap;
@@ -25,90 +24,38 @@ use crate::drivers::PIT0;
 use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use crate::system::PrivilegeLevel;
+use crate::terminal::ansi_escape_code::Colored;
 
+/// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {
+    /// This function is called by scheduler.current_thread_group_exit(). It can be considered as a hack.
+    /// It switch the kernel stack from the existed_process to the next_process then call scheduler_exit_resume().
     fn _exit_resume(new_kernel_esp: u32, process_to_free_pid: Pid, status: i32) -> !;
 
+    /// Usable by blocking syscalls. 'Freeze' a given proces then switch to another process.
     fn _auto_preempt() -> i32;
 
-    pub fn _get_pit_time() -> u32;
-    pub fn _get_process_end_time() -> u32;
+    /// This function function is associated to _auto_preempt() and will be handled by IRQ 81
+    fn _schedule_force_preempt();
 
+    /// Get the pit realtime.
+    fn _get_pit_time() -> u32;
+
+    /// Get the process avalable time to life.
+    fn _get_process_end_time() -> u32;
+
+    /// Give time to life for the next launched process.
     fn _update_process_end_time(update: u32);
 
-    pub fn _unpreemptible();
-    pub fn _preemptible();
-    pub fn _schedule_force_preempt();
+    /// Prevent the current execution thread by some scheduler interrupt.
+    fn _unpreemptible();
+
+    /// Allow the current execution thread to be interruptible by the scheduler again.
+    fn _preemptible();
 }
 
 pub type Tid = u32;
 pub use libc_binding::Pid;
-
-/// Protect process again scheduler interruption
-#[inline(always)]
-pub fn unpreemptible() {
-    unsafe {
-        _unpreemptible();
-    }
-}
-
-/// Allow scheduler to interrupt process execution
-#[inline(always)]
-pub fn preemptible() {
-    unsafe {
-        // Check if the Time to live of the current process is expired
-        // TODO: If scheduler is disable, the kernel will crash
-        // TODO: After Exit, the next process seems to be skiped !
-        if _get_pit_time() >= _get_process_end_time() {
-            auto_preempt();
-        } else {
-            _preemptible();
-        }
-    }
-}
-
-/// A Finalizer-pattern Struct that disables preemption upon instantiation.
-/// then reenables it at Drop time.
-pub struct PreemptionGuard;
-
-impl PreemptionGuard {
-    /// The instantiation methods that disables preemption and creates the guard.
-    pub fn new() -> Self {
-        unpreemptible();
-        Self
-    }
-}
-
-impl Drop for PreemptionGuard {
-    /// The drop implementation of the guard reenables preemption.
-    fn drop(&mut self) {
-        preemptible();
-    }
-}
-
-#[macro_export]
-/// This macro executes the block given as parameter in an unpreemptible context.
-macro_rules! unpreemptible_context {
-    ($code: block) => {{
-        /// You probably shouldn't use it outside of taskmaster, but we never know.
-        /// The absolute path is used not to fuck up the compilation if the parent module
-        /// does not have the module scheduler as submodule.
-        use crate::taskmaster::scheduler::PreemptionGuard;
-
-        let _guard = PreemptionGuard::new();
-
-        $code
-    }};
-}
-
-/// Auto-preempt will cause schedule into the next process
-/// In some critical cases like signal, avoid this switch
-pub fn auto_preempt() -> i32 {
-    unsafe {
-        SCHEDULER.force_unlock();
-        _auto_preempt()
-    }
-}
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
@@ -117,32 +64,48 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
+
+    // Switch to the next elligible process then return new kernel ESP
     scheduler.load_next_process(1)
 }
 
 /// Remove ressources of the exited process and note his exit status
+/// This function is not similar than scheduler_interrupt_handler()
 #[no_mangle]
 unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32) {
+    // Scheduler was previously lock by the caller scheduler.current_thread_group_exit(), unlock it
     SCHEDULER.force_unlock();
 
     let mut scheduler = SCHEDULER.lock();
 
+    // Get a reference to the dead process
     let dead_process = scheduler
         .get_thread_group_mut(process_to_free_pid)
-        .expect("WTF");
+        .expect("WTF: No Dead Process");
+
     // Send a sig child signal to the father
     let parent_pid = dead_process.parent;
-    let parent = scheduler.get_thread_mut((parent_pid, 0)).expect("WTF");
+    let parent = scheduler
+        .get_thread_mut((parent_pid, 0))
+        .expect("WTF: Parent not alive");
     //TODO: Announce memory error later.
-    mem::forget(parent.signal.generate_signal(Signum::SIGCHLD));
+    let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
+
+    // Send a death testament message to the parent
     messaging::push_message(MessageTo::Process {
         pid: parent_pid,
         content: ProcessMessage::ProcessDied {
             pid: process_to_free_pid,
         },
     });
-    let dead_process = scheduler.get_thread_group_mut(process_to_free_pid).unwrap();
+
+    // Set the dead process as zombie
+    let dead_process = scheduler
+        .get_thread_group_mut(process_to_free_pid)
+        .expect("WTF: No Dead Process");
     dead_process.set_zombie(status);
+
+    // To avoid race conditions. the current execution thread was set as unpreemptible. Reallow it now
     preemptible();
 }
 
@@ -235,14 +198,11 @@ impl Scheduler {
                         .filter_map(|thread_group| thread_group.get_first_thread())
                     {
                         //TODO: Announce memory error later.
-                        mem::forget(thread.signal.generate_signal(signum));
+                        let _ignored_result = thread.signal.generate_signal(signum);
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
-                    TERMINAL
-                        .as_mut()
-                        .unwrap()
-                        .handle_key_pressed(key_pressed, 1);
+                    TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
                 },
             }
         }
@@ -314,7 +274,7 @@ impl Scheduler {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        if let Some(WaitingState::ChildDeath(wake_pid, _)) =
+                        if let Some(WaitingState::ChildDeath(wake_pid)) =
                             self.current_thread().get_waiting_state()
                         {
                             let dead_process_pgid = self
@@ -332,11 +292,18 @@ impl Scheduler {
                                         .and_then(|tg| tg.get_death_status())
                                         .expect("A zombie was found just before, but there is no zombie here");
                                 let current_thread = self.current_thread_mut();
-                                current_thread.set_waiting(WaitingState::ChildDeath(
-                                    dead_process_pid,
-                                    status as u32,
+                                // current_thread.set_waiting(WaitingState::ChildDeath(
+                                //     dead_process_pid,
+                                //     status as u32,
+                                // ));
+                                // current_thread.set_return_value(0);
+                                current_thread.set_running();
+                                current_thread.set_return_value_autopreempt(Ok(
+                                    AutoPreemptReturnValue::Wait {
+                                        dead_process_pid,
+                                        status,
+                                    },
                                 ));
-                                current_thread.set_return_value(0);
                                 return JobAction::default();
                             }
                         }
@@ -346,7 +313,8 @@ impl Scheduler {
                         current_thread
                             .message_queue
                             .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        current_thread.set_return_value(0);
+                        current_thread
+                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
                         current_thread.set_running();
                         return JobAction::default();
                     }
@@ -364,7 +332,7 @@ impl Scheduler {
                         // negative (rel to SIGNUM), set process as running then return
                         self.current_thread_mut().set_running();
                         self.current_thread_mut()
-                            .set_return_value(-(Errno::Eintr as i32));
+                            .set_return_value_autopreempt(Err(Errno::Eintr));
                         return action;
                     }
                     match waiting_state {
@@ -372,7 +340,8 @@ impl Scheduler {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {
                                 self.current_thread_mut().set_running();
-                                self.current_thread_mut().set_return_value(0);
+                                self.current_thread_mut()
+                                    .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
                                 return action;
                             }
                         }
@@ -687,6 +656,18 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             }
         }
     };
+
+    // TIPS: If waiting state are correctly managed, these below lines are useless: Use only for hard debug
+    // // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
+    // // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
+    // // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
+    // // this is a critical point. Never change that without a serious good reason.
+    // if let Some(period) = t {
+    //     if period < 2 {
+    //         panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
+    //     }
+    // }
+
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;
 
@@ -710,4 +691,73 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
 lazy_static! {
     pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
+}
+
+/// Auto-preempt will cause schedule into the next process
+/// In some critical cases like signal, avoid this switch
+pub fn auto_preempt() -> SysResult<AutoPreemptReturnValue> {
+    unsafe {
+        SCHEDULER.force_unlock();
+        let ret = _auto_preempt() as *const SysResult<AutoPreemptReturnValue>;
+        *ret
+    }
+}
+
+/// Protect process again scheduler interruption
+#[inline(always)]
+pub fn unpreemptible() {
+    unsafe {
+        _unpreemptible();
+    }
+}
+
+// TODO: If scheduler is disable, the kernel will crash
+// TODO: After Exit, the next process seems to be skiped !
+/// Allow scheduler to interrupt process execution
+#[inline(always)]
+pub fn preemptible() {
+    unsafe {
+        // Check if the Time to live of the current process is expired
+        if _get_pit_time() >= _get_process_end_time() {
+            // Go to the next elligible process
+            let _ignored_result = auto_preempt();
+        } else {
+            // Just reallow scheduler interrupt
+            _preemptible();
+        }
+    }
+}
+
+/// A Finalizer-pattern Struct that disables preemption upon instantiation.
+/// then reenables it at Drop time.
+pub struct PreemptionGuard;
+
+impl PreemptionGuard {
+    /// The instantiation methods that disables preemption and creates the guard.
+    pub fn new() -> Self {
+        unpreemptible();
+        Self
+    }
+}
+
+impl Drop for PreemptionGuard {
+    /// The drop implementation of the guard reenables preemption.
+    fn drop(&mut self) {
+        preemptible();
+    }
+}
+
+#[macro_export]
+/// This macro executes the block given as parameter in an unpreemptible context.
+macro_rules! unpreemptible_context {
+    ($code: block) => {{
+        /// You probably shouldn't use it outside of taskmaster, but we never know.
+        /// The absolute path is used not to fuck up the compilation if the parent module
+        /// does not have the module scheduler as submodule.
+        use crate::taskmaster::scheduler::PreemptionGuard;
+
+        let _guard = PreemptionGuard::new();
+
+        $code
+    }};
 }

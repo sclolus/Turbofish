@@ -51,18 +51,20 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
         .set_waiting(WaitingState::Sleeping(next_wake));
 
     // auto preemption mechanism set environement as preemptible
-    if auto_preempt() < 0 {
-        let now = unsafe { _get_pit_time() };
-        if now < next_wake {
-            let remaining_time = (next_wake - now) as f32 * pit_period;
-            unsafe {
-                (*rem).tv_sec = remaining_time.trunc() as u32;
-                (*rem).tv_nsec = ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
+    match auto_preempt() {
+        Err(Errno::Eintr) => {
+            let now = unsafe { _get_pit_time() };
+            if now < next_wake {
+                let remaining_time = (next_wake - now) as f32 * pit_period;
+                unsafe {
+                    (*rem).tv_sec = remaining_time.trunc() as u32;
+                    (*rem).tv_nsec =
+                        ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
+                }
             }
+            Err(Errno::Eintr)
         }
-        Err(Errno::Eintr)
-    } else {
-        Ok(0)
+        _ => Ok(0),
     }
 }
 
