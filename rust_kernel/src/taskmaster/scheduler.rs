@@ -3,7 +3,7 @@
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
-use super::thread::{ProcessState, Thread, WaitingState};
+use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::ThreadGroup;
 use super::{SysResult, TaskMode};
 
@@ -55,8 +55,19 @@ extern "C" {
     fn _preemptible();
 }
 
+
 pub type Tid = u32;
 pub use libc_binding::Pid;
+
+/// Auto-preempt will cause schedule into the next process
+/// In some critical cases like signal, avoid this switch
+pub fn auto_preempt() -> SysResult<AutoPreemptReturnValue> {
+    unsafe {
+        SCHEDULER.force_unlock();
+        let ret = _auto_preempt() as *const SysResult<AutoPreemptReturnValue>;
+        *ret
+    }
+}
 
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
@@ -293,11 +304,17 @@ impl Scheduler {
                                         .and_then(|tg| tg.get_death_status())
                                         .expect("A zombie was found just before, but there is no zombie here");
                                 let current_thread = self.current_thread_mut();
-                                current_thread.set_waiting(WaitingState::ChildDeath(
-                                    dead_process_pid,
-                                    status as u32,
+                                // current_thread.set_waiting(WaitingState::ChildDeath(
+                                //     dead_process_pid,
+                                //     status as u32,
+                                // ));
+                                // current_thread.set_return_value(0);
+                                current_thread.set_return_value_autopreempt(Ok(
+                                    AutoPreemptReturnValue::Wait {
+                                        dead_process_pid,
+                                        status,
+                                    },
                                 ));
-                                current_thread.set_return_value(0);
                                 return JobAction::default();
                             }
                         }
@@ -307,7 +324,8 @@ impl Scheduler {
                         current_thread
                             .message_queue
                             .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        current_thread.set_return_value(0);
+                        current_thread
+                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
                         current_thread.set_running();
                         return JobAction::default();
                     }
@@ -325,7 +343,7 @@ impl Scheduler {
                         // negative (rel to SIGNUM), set process as running then return
                         self.current_thread_mut().set_running();
                         self.current_thread_mut()
-                            .set_return_value(-(Errno::Eintr as i32));
+                            .set_return_value_autopreempt(Err(Errno::Eintr));
                         return action;
                     }
                     match waiting_state {
@@ -333,7 +351,8 @@ impl Scheduler {
                             let now = unsafe { _get_pit_time() };
                             if now >= *time {
                                 self.current_thread_mut().set_running();
-                                self.current_thread_mut().set_return_value(0);
+                                self.current_thread_mut()
+                                    .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
                                 return action;
                             }
                         }

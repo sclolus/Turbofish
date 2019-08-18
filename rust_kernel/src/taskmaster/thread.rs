@@ -6,11 +6,24 @@ use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use core::ffi::c_void;
+use fallible_collections::FallibleBox;
 use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
 
 use core::mem;
+
+#[derive(Debug, Copy, Clone)]
+pub enum AutoPreemptReturnValue {
+    None,
+    Wait { dead_process_pid: Pid, status: i32 },
+}
+
+impl Default for AutoPreemptReturnValue {
+    fn default() -> Self {
+        Self::None
+    }
+}
 
 /// Main Task definition
 #[derive(Debug)]
@@ -20,6 +33,7 @@ pub struct Thread {
     /// Signal Interface
     pub signal: SignalInterface,
     pub message_queue: MessageQueue<ProcessMessage>,
+    autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
 }
 
 impl Thread {
@@ -28,6 +42,7 @@ impl Thread {
             process_state,
             signal: SignalInterface::new(),
             message_queue: MessageQueue::new(),
+            autopreempt_return_value: Box::new(Ok(Default::default())),
         }
     }
 
@@ -53,6 +68,7 @@ impl Thread {
                 _ => panic!("Non running process should not clone"),
             },
             message_queue: MessageQueue::new(),
+            autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
         })
     }
 
@@ -68,13 +84,26 @@ impl Thread {
         }
     }
 
-    /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
-    pub fn set_return_value(&self, return_value: i32) {
+    pub fn set_return_value_autopreempt(
+        &mut self,
+        return_value: SysResult<AutoPreemptReturnValue>,
+    ) {
         let cpu_state = self.unwrap_process().kernel_esp as *mut CpuState;
+        *self.autopreempt_return_value = return_value;
         unsafe {
-            (*(cpu_state)).registers.eax = return_value as u32;
+            (*(cpu_state)).registers.eax = self.autopreempt_return_value.as_ref()
+                as *const SysResult<AutoPreemptReturnValue>
+                as u32;
         }
     }
+
+    // /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
+    // pub fn set_return_value(&self, return_value: i32) {
+    //     let cpu_state = self.unwrap_process().kernel_esp as *mut CpuState;
+    //     unsafe {
+    //         (*(cpu_state)).registers.eax = return_value as u32;
+    //     }
+    // }
 
     #[allow(dead_code)]
     pub fn is_waiting(&self) -> bool {

@@ -3,6 +3,7 @@ use super::SysResult;
 use super::scheduler::{auto_preempt, Pid, SCHEDULER};
 use super::signal_interface::JobAction;
 use super::thread::Thread;
+use core::mem;
 use libc_binding::Signum;
 
 use core::convert::TryInto;
@@ -65,7 +66,8 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
 
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
-                auto_preempt();
+                // TODO: is this still necessary to autopreempt ?
+                mem::forget(auto_preempt());
             }
         }
         Ok(0)
