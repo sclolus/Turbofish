@@ -328,7 +328,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
                 .current_thread_mut()
-                .set_waiting(WaitingState::ChildDeath(pid, 0));
+                .set_waiting(WaitingState::ChildDeath(pid));
 
             let ret = auto_preempt();
 

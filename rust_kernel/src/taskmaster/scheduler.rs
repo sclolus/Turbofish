@@ -275,7 +275,7 @@ impl Scheduler {
                     ProcessMessage::ProcessDied {
                         pid: dead_process_pid,
                     } => {
-                        if let Some(WaitingState::ChildDeath(wake_pid, _)) =
+                        if let Some(WaitingState::ChildDeath(wake_pid)) =
                             self.current_thread().get_waiting_state()
                         {
                             let dead_process_pgid = self
