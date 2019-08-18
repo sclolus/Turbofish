@@ -21,11 +21,11 @@ use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
 use terminal::TERMINAL;
 
-use crate::terminal::ansi_escape_code::Colored;
 use crate::drivers::PIT0;
 use crate::interrupts;
 use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use crate::system::PrivilegeLevel;
+use crate::terminal::ansi_escape_code::Colored;
 
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {
@@ -54,7 +54,6 @@ extern "C" {
     /// Allow the current execution thread to be interruptible by the scheduler again.
     fn _preemptible();
 }
-
 
 pub type Tid = u32;
 pub use libc_binding::Pid;
@@ -309,6 +308,7 @@ impl Scheduler {
                                 //     status as u32,
                                 // ));
                                 // current_thread.set_return_value(0);
+                                current_thread.set_running();
                                 current_thread.set_return_value_autopreempt(Ok(
                                     AutoPreemptReturnValue::Wait {
                                         dead_process_pid,
@@ -667,6 +667,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             }
         }
     };
+    /*
     // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
     // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
     // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
@@ -676,6 +677,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
         }
     }
+    */
 
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;

@@ -352,8 +352,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 }
                 _ => panic!("WTF"),
             };
-            // Set process as Running, Set return readen value in Ok(x)
-            scheduler.current_thread_mut().set_running();
             let thread_group = scheduler.current_thread_group_mut();
             thread_group.remove_child(child_pid);
             Ok(child_pid as u32)
