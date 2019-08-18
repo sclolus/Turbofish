@@ -9,12 +9,16 @@ fn main() {
     // if !res.status.success() {
     //     panic!("{:?}", res);
     // }
-    let out = Command::new("./bindgen.sh")
-        .arg("all_includes.h")
-        .output()
-        .unwrap();
+    let out = Command::new("make").output().unwrap();
     if !out.status.success() {
         panic!("{:?}", String::from_utf8(out.stderr));
     }
-    std::fs::write("src/libc.rs", out.stdout).unwrap();
+    // let out = Command::new("./bindgen.sh")
+    //     .arg("all_includes.h")
+    //     .output()
+    //     .unwrap();
+    // if !out.status.success() {
+    //     panic!("{:?}", String::from_utf8(out.stderr));
+    // }
+    // std::fs::write("src/libc.rs", out.stdout).unwrap();
 }
