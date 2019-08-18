@@ -6,12 +6,24 @@
 int main(void)
 {
 	pid_t father_pid = getpid();
-	printf("aaaa\n");
 	printf("father_pid: %d\n", father_pid);
-	printf("bbb\n");
 	// create a new process group
 	if (setpgid(0, 0) == -1) {
 		perror("setpgid failed");
+		exit(1);
+	}
+	pid_t pgid = getpgrp();
+	if (pgid == -1) {
+		perror("getprgp failed");
+		exit(1);
+	}
+	pid_t pid = getpid();
+	if (pid == -1) {
+		perror("getpid failed");
+		exit(1);
+	}
+	if (pgid != pid) {
+		dprintf(2, "pgid != pid");
 		exit(1);
 	}
 	int f = fork();
@@ -37,8 +49,18 @@ int main(void)
 		}
 		exit(0);
 	} else {
-		int id;
-		wait(&id);
+		int status;
+		int ret = wait(&status);
+		if (ret == -1) {
+			perror("wait failed");
+			exit(1);
+		}
+		if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+			exit(0);
+		}
+		else {
+			exit(1);
+		}
 	}
 	return 0;
 }
