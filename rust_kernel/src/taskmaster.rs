@@ -94,7 +94,7 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         .unwrap();
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(1000.)) }
+    unsafe { scheduler::start(TaskMode::Multi(500.)) }
 }
 
 extern "C" {

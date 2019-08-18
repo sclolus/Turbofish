@@ -687,6 +687,16 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             }
         }
     };
+    // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
+    // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
+    // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
+    // this is a critical point. Never change that without a serious good reason.
+    if let Some(period) = t {
+        if period < 2 {
+            panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
+        }
+    }
+
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;
 
