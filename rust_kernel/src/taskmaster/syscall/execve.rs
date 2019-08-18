@@ -38,8 +38,87 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
         Ok(v)
     }
 }
-
+/// File descriptors open in the calling process image shall remain
+/// open in the new process image, except for those whose close-on-
+/// exec flag FD_CLOEXEC is set. For those file descriptors that
+/// remain open, all attributes of the open file description remain
+/// unchanged. For any file descriptor that is closed for this reason,
+/// file locks are removed as a result of the close as described in
+/// close(). Locks that are not removed by closing of file descriptors
+/// remain unchanged.
+///
+/// Directory streams open in the calling process image shall be
+/// closed in the new process image.
+///
+/// Signals set to the default action (SIG_DFL) in the calling process
+/// image shall be set to the default action in the new process
+/// image. Except for SIGCHLD, signals set to be ignored (SIG_IGN) by
+/// the calling process image shall be set to be ignored by the new
+/// process image. Signals set to be caught by the calling process
+/// image shall be set to the default action in the new process image
+/// (see <signal.h>).
+///
+/// After a successful call to any of the exec functions, alternate
+/// signal stacks are not preserved and the SA_ONSTACK flag shall be
+/// cleared for all signals.
+/// If the SIGCHLD signal is set to be ignored by the calling process
+/// image, it is unspecified whether the SIGCHLD signal is set to be
+/// ignored or to the default action in the new process image.
 /// Execute a program
+///
+///The new process shall inherit at least the following attributes from the calling process image:
+///
+///    [XSI] [Option Start] Nice value (see nice()) [Option End]
+///
+///    [XSI] [Option Start] semadj values (see semop()) [Option End]
+///
+///    Process ID
+///
+///    Parent process ID
+///
+///    Process group ID
+///
+///    Session membership
+///
+///    Real user ID
+///
+///    Real group ID
+///
+///    Supplementary group IDs
+///
+///    Time left until an alarm clock signal (see alarm())
+///
+///    Current working directory
+///
+///    Root directory
+///
+///    File mode creation mask (see umask())
+///
+///    [XSI] [Option Start] File size limit (see getrlimit() and setrlimit()) [Option End]
+///
+///    Process signal mask (see pthread_sigmask())
+///
+///    Pending signal (see sigpending())
+///
+///    tms_utime, tms_stime, tms_cutime, and tms_cstime (see times())
+///
+///    [XSI] [Option Start] Resource limits [Option End]
+///
+///    Controlling terminal
+///
+///    [XSI] [Option Start] Interval timers [Option End]
+///
+///The initial thread of the new process shall inherit at least the following attributes from the calling thread:
+///
+///    Signal mask (see sigprocmask() and pthread_sigmask())
+///
+///    Pending signals (see sigpending())
+///
+// TODO:
+/// A call to any exec function from a process with more than one
+/// thread shall result in all threads being terminated and the new
+/// executable image being loaded and executed. No destructor
+/// functions or cleanup handlers shall be called.
 pub fn sys_execve(
     filename: *const c_char,
     argv: *const *const c_char,

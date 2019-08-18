@@ -7,37 +7,12 @@ VPATH += src
 # AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
-SRC_C += Clone \
-		ConnectionlessSimpleTest \
-		ConnectionOrientedSimpleTest \
-		Continue \
-		ContinueHardcore \
-		Csignal \
-		DummyRead \
-		GetArgs \
-		Getuid \
-		Kill \
-		NoSaRestart \
-		NoSaRestartMultiple \
-		RecursiveSignal \
-		SaRestart \
-		SaRestartMultiple \
-		SegFault \
-		SignalSimpleDuoRecurse \
-		SignalSimpleStopContinue \
-		SignalStopContinueOverload \
-		SonSendSignal \
-		Timer \
-		Ud2 \
-		Wait \
-		env \
-		SetJmp \
-		SigSuspend \
-		SigPause \
-		TcGetAttr \
-		CanonicalRead \
-		Loop \
-		Segfaulter \
+SRC_C += DeepThought \
+		ProcessGroup \
+		signal/SignalSimple \
+		signal/SignalSimpleDuo \
+		execve/argv \
+		execve/check_argv
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

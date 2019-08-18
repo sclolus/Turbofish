@@ -14,9 +14,10 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
-	{.path = "/bin/SignalSimple"},
-	{.path = "/bin/SignalSimpleDuo"},
-	{.path = "/bin/ProcessGroup"}
+	{.path = "/bin/signal/SignalSimple"},
+	{.path = "/bin/signal/SignalSimpleDuo"},
+	{.path = "/bin/ProcessGroup"},
+	{.path = "/bin/execve/argv"}
 };
 
 void _exit_qemu(int val)
@@ -55,7 +56,7 @@ int main() {
 			int status;
 			int ret = wait(&status);
 			if (ret == -1) {
-				perror("wait failed");
+				perror("Deepthought wait failed");
 				_exit_qemu(1);
 			}
 			if (status != 0) {
@@ -72,5 +73,6 @@ int main() {
 			}
 		}
 	}
+	sleep(3);
 	_exit_qemu(0);
 }

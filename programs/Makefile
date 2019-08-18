@@ -7,6 +7,9 @@ all:
 	make -C ./c/
 	make install -C c
 
+	make -C tests
+	make install -C tests
+
 	make -C system
 	make install -C system
 
