@@ -93,7 +93,6 @@ extern FILE* stdin;
 void     clearerr(FILE *);
 //[CX][Option Start]
 char    *ctermid(char *);
-int      dprintf(int, const char *restrict, ...);
 //[Option End]
 int      fclose(FILE *);
 //[CX][Option Start]
@@ -111,7 +110,6 @@ void     flockfile(FILE *);
 FILE    *fmemopen(void *restrict, size_t, const char *restrict);
 //[Option End]
 FILE    *fopen(const char *restrict, const char *restrict);
-int      fprintf(FILE *restrict, const char *restrict, ...);
 int      fputc(int, FILE *);
 int      fputs(const char *restrict, FILE *restrict);
 size_t   fread(void *restrict, size_t, size_t, FILE *restrict);
@@ -153,8 +151,6 @@ void     perror(const char *);
 //[CX][Option Start]
 FILE    *popen(const char *, const char *);
 //[Option End]
-int      printf(const char *restrict, ...);
-int      eprintf(const char *restrict, ...);
 int      putc(int, FILE *);
 int      putchar(int);
 //[CX][Option Start]
@@ -171,8 +167,6 @@ void     rewind(FILE *);
 int      scanf(const char *restrict, ...);
 void     setbuf(FILE *restrict, char *restrict);
 int      setvbuf(FILE *restrict, char *restrict, int, size_t);
-int      snprintf(char *restrict, size_t, const char *restrict, ...);
-int      sprintf(char *restrict, const char *restrict, ...);
 int      sscanf(const char *restrict, const char *restrict, ...);
 //[OB XSI][Option Start]
 char    *tempnam(const char *, const char *);
@@ -182,18 +176,43 @@ FILE    *tmpfile(void);
 char    *tmpnam(char *);
 //[Option End]
 int      ungetc(int, FILE *);
-//[CX][Option Start]
-int      vdprintf(int, const char *restrict, va_list);
-//[Option End]
-int      vfprintf(FILE *restrict, const char *restrict, va_list);
 int      vfscanf(FILE *restrict, const char *restrict, va_list);
-int      vprintf(const char *restrict, va_list);
 int      vscanf(const char *restrict, va_list);
-int      vsnprintf(char *restrict, size_t, const char *restrict,
-             va_list);
-int      vsprintf(char *restrict, const char *restrict, va_list);
 int      vsscanf(const char *restrict, const char *restrict, va_list);
 
 //[CX] [Option Start] Inclusion of the <stdio.h> header may also make visible all symbols from <stddef.h>. [Option End]
+
+/*
+ * PRINTF FAMILY
+ */
+
+/*
+ * #include <stdio.h>
+ */
+int printf(const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...);
+int dprintf(int fd, const char *format, ...);
+
+int sprintf(char *str, const char *format, ...);
+int snprintf(char *str, size_t size, const char *format, ...);
+
+int asprintf(char **strp, const char *format, ...);
+
+/*
+ * #include <stdarg.h>
+ */
+int vprintf(const char *format, va_list ap);
+int vfprintf(FILE *stream, const char *format, va_list ap);
+int vdprintf(int fd, const char *format, va_list ap);
+
+int vsprintf(char *str, const char *format, va_list ap);
+int vsnprintf(char *str, size_t size, const char *format, va_list ap);
+
+int vasprintf(char **strp, const char *format, va_list ap);
+
+/*
+ * Custom printf methods
+ */
+int eprintf(const char *format, ...);
 
 #endif

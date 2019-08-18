@@ -19,7 +19,6 @@ typedef short int		t_s_int;
 typedef long int		t_l_int;
 typedef long long int		t_ll_int;
 
-//typedef unsigned int		size_t;
 typedef unsigned int		uintmax_t;
 typedef signed int		intmax_t;
 typedef signed int		wchar_t;
@@ -52,6 +51,7 @@ typedef struct			s_status
 	const char *restrict	s;
 	int			fd;
 	int			buff_len;
+	size_t			max_size;
 	int			total_size;
 	char			*str;
 }				t_status;

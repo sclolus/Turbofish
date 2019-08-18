@@ -271,4 +271,13 @@ typedef unsigned int		uintptr_t;
 #define PTR_ALIGN_DOWN(base, size) \
   ((__typeof__ (base)) ALIGN_DOWN ((uintptr_t) (base), (size)))
 
+/* Limit of `size_t' type.  */
+# if __WORDSIZE == 64
+#  define SIZE_MAX              (18446744073709551615UL)
+#  define SSIZE_MAX             (9223372036854775807UL)
+# else
+#  define SIZE_MAX              (4294967295U)
+#  define SSIZE_MAX             (2147483647U)
+# endif
+
 #endif
