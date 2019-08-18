@@ -2,7 +2,7 @@ PATH  := $(PATH):/toolchain_turbofish/cross/bin/
 SHELL := env PATH=$(PATH) /bin/bash
 
 TARGET = libc.a
-SYSROOT = ../../toolchain_turbofish/sysroot
+SYSROOT = /toolchain_turbofish/sysroot
 
 AS = i686-turbofish-as
 CC = i686-turbofish-gcc
