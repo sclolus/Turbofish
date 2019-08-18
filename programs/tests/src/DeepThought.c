@@ -19,6 +19,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/ProcessGroup"},
 	{.path = "/bin/execve/argv"},
 	{.path = "/bin/wait/wait"},
+	{.path = "/bin/munmap/munmap"},
 	{.path = "/bin/sigprocmask/sigprocmask"}
 };
 
@@ -52,7 +53,6 @@ int main() {
 			perror("execve failed");
 			_exit_qemu(1);
 		} else {
-			pid_t father_pid = getpid();
 			int status;
 			int ret = wait(&status);
 			if (ret == -1) {
