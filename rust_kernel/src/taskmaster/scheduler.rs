@@ -158,7 +158,6 @@ impl Scheduler {
         self.dispatch_messages();
         // Switch between processes
         let action = self.advance_next_process(next_process);
-
         // Set all the context of the illigible process
         let new_kernel_esp = self.load_new_context(action);
 

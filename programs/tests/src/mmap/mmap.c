@@ -1,3 +1,5 @@
+
+
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -14,16 +16,9 @@ void segv_handler(int signum) {
 }
 
 int main() {
-	int *addr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	int *addr = mmap(NULL, 4096, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (addr == MAP_FAILED) {
 		perror("mmap");
-		exit(1);
-	}
-	*addr = 42;
-	printf("write to addr\n");
-	int ret = munmap(addr, 4096);
-	if (ret == -1) {
-		perror("munmap");
 		exit(1);
 	}
 	signal(SIGSEGV, &segv_handler);

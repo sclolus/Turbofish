@@ -1,3 +1,4 @@
+
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -21,9 +22,9 @@ int main() {
 	}
 	*addr = 42;
 	printf("write to addr\n");
-	int ret = munmap(addr, 4096);
+	int ret = mprotect(addr, 4096, PROT_READ);
 	if (ret == -1) {
-		perror("munmap");
+		perror("mprotect");
 		exit(1);
 	}
 	signal(SIGSEGV, &segv_handler);

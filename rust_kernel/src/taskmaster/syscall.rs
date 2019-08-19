@@ -12,7 +12,6 @@ use super::thread_group;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
@@ -226,7 +225,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SOCKETCALL => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
         CLONE => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
         MPROTECT => sys_mprotect(
-            Virt(ebx as usize),
+            ebx as *mut u8,
             ecx as usize,
             MmapProt::from_bits_truncate(edx),
         ),

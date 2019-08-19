@@ -20,6 +20,7 @@ use libc_binding::gid_t;
 /// IDs that it would otherwise return without modifying the array
 /// pointed to by grouplist.
 ///
+// TODO:
 /// If the effective group ID of the process is returned with the
 /// supplementary group IDs, the value returned shall always be greater
 /// than or equal to one and less than or equal to the value of

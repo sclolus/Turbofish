@@ -15,7 +15,9 @@ SRC_C += DeepThought \
 		execve/check_argv \
 		sigprocmask/sigprocmask \
 		wait/wait \
-		munmap/munmap
+		munmap/munmap \
+		mprotect/mprotect \
+		mmap/mmap
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
