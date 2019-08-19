@@ -81,6 +81,10 @@ extern FILE* stderr;
 extern FILE* stdout;
 extern FILE* stdin;
 
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
 #define stderr stderr
 //    Standard error output stream.
 #define stdin stdin

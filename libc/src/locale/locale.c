@@ -1,13 +1,12 @@
 #include <locale.h>
 #include <stddef.h>
 
-#include <custom.h>
-
 #warning SETLOCALE FUNCTION MUST BE DEFINED
+#include <custom.h>
 
 char *setlocale(int category, const char *locale)
 {
-	FUNC
+	DUMMY
 	(void)category;
 	(void)locale;
 	return NULL;
@@ -17,7 +16,7 @@ char *setlocale(int category, const char *locale)
 
 char *bindtextdomain(const char *domainname, const char *dirname)
 {
-	FUNC
+	DUMMY
 	(void)domainname;
 	(void)dirname;
 	return NULL;
@@ -27,7 +26,7 @@ char *bindtextdomain(const char *domainname, const char *dirname)
 
 char *textdomain(const char *domainname)
 {
-	FUNC
+	DUMMY
 	(void)domainname;
 	return NULL;
 }

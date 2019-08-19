@@ -82,9 +82,11 @@
 // bit is set in flag.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int stat(const char *restrict path, struct stat *restrict buf)
 {
+	DUMMY
 	(void)path;
 	(void)buf;
 	errno = ENOSYS;
@@ -93,6 +95,7 @@ int stat(const char *restrict path, struct stat *restrict buf)
 
 int stat64(const char *restrict path, struct stat *restrict buf)
 {
+	DUMMY
 	(void)path;
 	(void)buf;
 	errno = ENOSYS;

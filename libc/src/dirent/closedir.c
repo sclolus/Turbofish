@@ -8,9 +8,11 @@
 // shall be closed.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int closedir(DIR *dirp)
 {
+	DUMMY
 	(void)dirp;
 	errno = ENOSYS;
 	return -1;

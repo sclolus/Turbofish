@@ -24,9 +24,11 @@
 // shall not be changed.
 
 #warning "NOT IMPLEMENTED"
+#include <custom.h>
 
 int dup2(int fildes, int fildes2)
 {
+	DUMMY
 	(void)fildes;
 	(void)fildes2;
 	errno = ENOSYS;

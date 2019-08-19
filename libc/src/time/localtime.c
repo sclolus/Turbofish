@@ -48,11 +48,13 @@
 /// Start] and set errno to indicate the error.
 
 #warning DUMMY IMPLEMENTATION
+#include <custom.h>
 
 static struct tm TM;
 
 struct tm *localtime(const time_t *timer)
 {
+	DUMMY
 	(void)timer;
 	TM.tm_sec   = 0; // Seconds [0,60].
 	TM.tm_min   = 0; // Minutes [0,59].

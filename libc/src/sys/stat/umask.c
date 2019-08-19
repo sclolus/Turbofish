@@ -22,9 +22,11 @@
 // created file.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 mode_t umask(mode_t cmask)
 {
+	DUMMY
 	(void)cmask;
 	return 42;
 }

@@ -9,9 +9,11 @@
 // able to open up to a total of {OPEN_MAX} files and directories.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 DIR *opendir(const char *dirname)
 {
+	DUMMY
 	(void)dirname;
 	errno = ENOSYS;
 	return NULL;

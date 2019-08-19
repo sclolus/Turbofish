@@ -2,9 +2,11 @@
 #include <errno.h>
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int open(const char *path, int oflag, ...)
 {
+	DUMMY
 	(void)path;
 	(void)oflag;
 	errno = ENOSYS;
@@ -13,6 +15,7 @@ int open(const char *path, int oflag, ...)
 
 int open64(const char *path, int oflag, ...)
 {
+	DUMMY
 	(void)path;
 	(void)oflag;
 	errno = ENOSYS;

@@ -14,9 +14,11 @@
 // be set to the file serial number of the symbolic link itself.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 struct dirent *readdir(DIR *dirp)
 {
+	DUMMY
 	(void)dirp;
 	errno = ENOSYS;
 	return NULL;

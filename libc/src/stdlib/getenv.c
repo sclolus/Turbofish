@@ -8,9 +8,11 @@
 extern char **environ;
 
 #warning DUMMY IMPLEMENTATION
+#include <custom.h>
 
 char *getenv (const char *name)
 {
+	DUMMY
 	(void)name;
 	return NULL;
 }

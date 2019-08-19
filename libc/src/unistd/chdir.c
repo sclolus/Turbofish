@@ -7,9 +7,11 @@
 // for pathnames not beginning with '/'.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int chdir(const char *path)
 {
+	DUMMY
 	(void)path;
 	errno = ENOSYS;
 	return -1;

@@ -2,9 +2,11 @@
 #include <errno.h>
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int lstat(const char *restrict path, struct stat *restrict buf)
 {
+	DUMMY
 	(void)path;
 	(void)buf;
 	errno = ENOSYS;
@@ -13,6 +15,7 @@ int lstat(const char *restrict path, struct stat *restrict buf)
 
 int lstat64(const char *restrict path, struct stat *restrict buf)
 {
+	DUMMY
 	(void)path;
 	(void)buf;
 	errno = ENOSYS;

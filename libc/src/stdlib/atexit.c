@@ -1,12 +1,11 @@
 #include <stdlib.h>
 
-#include <custom.h>
-
 #warning ATEXIT FUNCTION MUST BE DEFINED
+#include <custom.h>
 
 int atexit(void(*f)(void))
 {
-	FUNC
+	DUMMY
 	(void)f;
 	return 0;
 }

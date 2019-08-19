@@ -19,9 +19,11 @@
 // behavior of getcwd() is unspecified.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 char *getcwd(char *buf, size_t size)
 {
+	DUMMY
 	(void)buf;
 	(void)size;
 	errno = ENOSYS;

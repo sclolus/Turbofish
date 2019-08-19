@@ -8,9 +8,11 @@
 /// the behavior is unspecified.  gettimeofday() function shall return
 /// 0 and no value shall be reserved to indicate an error.
 #warning DUMMY IMPLEMENTATION
+#include <custom.h>
 
 int gettimeofday(struct timeval *restrict tp, void *restrict tzp)
 {
+	DUMMY
 	(void)tzp;
 	if (tp != NULL) {
 		tp->tv_sec = 0;

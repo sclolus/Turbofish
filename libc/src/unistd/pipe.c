@@ -31,9 +31,11 @@
 // timestamps of the pipe.
 
 #warning NOT IMPLEMENTED
+#include <custom.h>
 
 int pipe(int fildes[2])
 {
+	DUMMY
 	(void)fildes;
 	errno = ENOSYS;
 	return -1;
