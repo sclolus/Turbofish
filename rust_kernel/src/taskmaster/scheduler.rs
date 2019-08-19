@@ -584,9 +584,11 @@ impl Scheduler {
     /// ID shall not be reused by the system until the process group lifetime ends. A process that is not
     /// a system process shall not have a process ID of 1.
     fn get_available_pid(&self) -> Pid {
-        fn posix_constraits(_pid: Pid) -> bool {
-            true // TODO: We don't have process groups yet so we can't implement the posix requirements
-        }
+        // this check if the candidate does't pid match any active process group
+        let posix_constraits = |pid: Pid| -> bool {
+            // TODO: optimize that maybe
+            !self.iter_thread_groups().any(|pg| pg.pgid == pid)
+        };
 
         let pred = |pid| pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid);
         let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);

@@ -8,7 +8,6 @@ use core::ffi::c_void;
 ///
 ///     The child process shall have a unique process ID.
 ///
-//TODO:
 ///     The child process ID also shall not match any active process
 ///     group ID.
 ///
