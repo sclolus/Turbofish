@@ -22,6 +22,34 @@ extern "C" {
     fn _get_pit_time() -> u32;
 }
 
+/// The nanosleep() function shall cause the current thread to be
+/// suspended from execution until either the time interval specified
+/// by the rqtp argument has elapsed or a signal is delivered to the
+/// calling thread, and its action is to invoke a signal-catching
+/// function or to terminate the process. The suspension time may be
+/// longer than requested because the argument value is rounded up to
+/// an integer multiple of the sleep resolution or because of the
+/// scheduling of other activity by the system. But, except for the
+/// case of being interrupted by a signal, the suspension time shall
+/// not be less than the time specified by rqtp, as measured by the
+/// system clock CLOCK_REALTIME.
+///
+/// The use of the nanosleep() function has no effect on the action or
+/// blockage of any signal.  If the nanosleep() function returns
+/// because the requested time has elapsed, its return value shall be
+/// zero.
+///
+/// If the nanosleep() function returns because it has been
+/// interrupted by a signal, it shall return a value of -1 and set
+/// errno to indicate the interruption. If the rmtp argument is
+/// non-NULL, the timespec structure referenced by it is updated to
+/// contain the amount of time remaining in the interval (the
+/// requested time minus the time actually slept). The rqtp and rmtp
+/// arguments can point to the same object. If the rmtp argument is
+/// NULL, the remaining time is not returned.
+///
+/// If nanosleep() fails, it shall return a value of -1 and set errno
+/// to indicate the error.
 fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 

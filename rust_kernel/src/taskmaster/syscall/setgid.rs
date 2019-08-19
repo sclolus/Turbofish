@@ -26,7 +26,6 @@ use libc_binding::gid_t;
 /// [EPERM] The process does not
 ///     have appropriate privileges and gid does not match the real
 ///     group ID or the saved set-group-ID.
-
 pub fn sys_setgid(gid: gid_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();

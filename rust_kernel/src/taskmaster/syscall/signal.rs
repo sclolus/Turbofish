@@ -5,6 +5,7 @@ use super::signal_interface::StructSigaction;
 
 use core::convert::TryInto;
 use errno::Errno;
+
 /// Register a new handler for a specified signum
 pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
     unpreemptible_context!({

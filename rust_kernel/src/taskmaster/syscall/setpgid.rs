@@ -14,16 +14,16 @@ use errno::Errno;
 /// As a special case, if pid is 0, the process ID of the calling
 /// process shall be used. Also, if pgid is 0, the process ID of the
 /// indicated process shall be used.
-pub fn sys_setpgid(pid: Pid, pgid: Pid) -> SysResult<u32> {
+pub fn sys_setpgid(mut pid: Pid, mut pgid: Pid) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let pid = if pid == 0 {
-            scheduler.current_task_id().0
-        } else {
-            pid
-        };
-        let pgid = if pgid == 0 { pid } else { pgid };
+        if pid == 0 {
+            pid = scheduler.current_task_id().0
+        }
+        if pgid == 0 {
+            pgid = pid
+        }
         scheduler
             .get_thread_group_mut(pid)
             .ok_or(Errno::Esrch)?
