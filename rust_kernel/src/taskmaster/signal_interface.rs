@@ -10,6 +10,10 @@ use core::mem;
 use core::ops::{BitAnd, BitOr, BitOrAssign, Index, IndexMut, Not};
 use errno::Errno;
 use libc_binding::Signum;
+use libc_binding::{
+    SA_NOCLDSTOP, SA_NOCLDWAIT, SA_NODEFER, SA_ONSTACK, SA_RESETHAND, SA_RESTART, SA_RESTORER,
+    SA_SIGINFO,
+};
 use libc_binding::{SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK};
 
 #[allow(non_camel_case_types)]
@@ -140,14 +144,14 @@ pub struct StructSigaction {
 bitflags! {
     #[derive(Default)]
     pub struct SaFlags: u32 {
-        const SA_NOCLDSTOP = 1 << 0;
-        const SA_NOCLDWAIT = 1 << 1;
-        const SA_SIGINFO   = 1 << 2;
-        const SA_RESTORER  = 1 << 26;
-        const SA_ONSTACK   = 1 << 27;
-        const SA_RESTART   = 1 << 28;
-        const SA_NODEFER   = 1 << 30;
-        const SA_RESETHAND = 1 << 31;
+        const SA_NOCLDSTOP = SA_NOCLDSTOP;
+        const SA_NOCLDWAIT = SA_NOCLDWAIT;
+        const SA_SIGINFO   = SA_SIGINFO;
+        const SA_RESTORER  = SA_RESTORER;
+        const SA_ONSTACK   = SA_ONSTACK;
+        const SA_RESTART   = SA_RESTART;
+        const SA_NODEFER   = SA_NODEFER;
+        const SA_RESETHAND = SA_RESETHAND;
     }
 }
 
