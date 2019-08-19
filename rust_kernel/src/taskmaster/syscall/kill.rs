@@ -2,11 +2,11 @@ use super::SysResult;
 
 use super::scheduler::{auto_preempt, Pid, SCHEDULER};
 use super::signal_interface::JobAction;
-use super::thread::Thread;
+use super::thread_group::{Credentials, ThreadGroup};
 
 use core::convert::TryInto;
 use errno::Errno;
-use libc_binding::Signum;
+use libc_binding::{uid_t, Signum};
 
 /// The kill() function shall send a signal to a process or a group of
 /// processes specified by pid. The signal to be sent is specified by
@@ -58,18 +58,40 @@ use libc_binding::Signum;
 /// The kill() function is successful if the process has permission to
 /// send sig to any of the processes specified by pid. If kill()
 /// fails, no signal shall be sent.
-pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
-    fn generate_signal<'a, T: Iterator<Item = &'a mut Thread>>(
+pub unsafe fn sys_kill(mut pid: i32, signum: u32) -> SysResult<u32> {
+    fn generate_signal<'a, T: Iterator<Item = &'a mut ThreadGroup>>(
         iter: T,
         signum: Signum,
+        self_uid: uid_t,
+        self_euid: uid_t,
     ) -> SysResult<u32> {
         let mut present = false;
-        for thread in iter {
-            present = true;
-            thread.signal.generate_signal(signum)?;
+        let mut has_perm = false;
+        for tg in iter {
+            if let Some(_thread) = tg.get_first_thread() {
+                present = true;
+            }
+            // For a process to have permission to send a signal to a process
+            // designated by pid, unless the sending process has appropriate
+            // privileges, the real or effective user ID of the sending process
+            // shall match the real or saved set-user-ID of the receiving
+            // process.
+            if tg.credentials.uid == self_uid
+                || tg.credentials.uid == self_euid
+                || tg.credentials.euid == self_uid
+                || tg.credentials.euid == self_euid
+            {
+                if let Some(thread) = tg.get_first_thread() {
+                    thread.signal.generate_signal(signum)?;
+                    has_perm = true;
+                }
+            }
         }
         if !present {
             return Err(Errno::Esrch);
+        }
+        if !has_perm {
+            return Err(Errno::Eperm);
         }
         Ok(0)
     }
@@ -77,45 +99,58 @@ pub unsafe fn sys_kill(pid: i32, signum: u32) -> SysResult<u32> {
         let signum = signum.try_into().map_err(|_| Errno::Einval)?;
         let mut scheduler = SCHEDULER.lock();
 
-        if pid < -1 {
+        let Credentials {
+            uid: self_uid,
+            euid: self_euid,
+            ..
+        } = scheduler.current_thread_group().credentials;
+
+        if pid == 0 || pid < -1 {
+            if pid == 0 {
+                pid = -scheduler.current_thread_group().pgid;
+            }
             generate_signal(
                 scheduler
                     .iter_thread_groups_mut()
                     .filter_map(|thread_group| {
-                        if thread_group.pgid == -pid as Pid {
-                            thread_group.get_first_thread()
+                        if thread_group.pgid == -pid {
+                            Some(thread_group)
                         } else {
                             None
                         }
                     }),
                 signum,
+                self_uid,
+                self_euid,
             )
         } else if pid == -1 {
             generate_signal(
-                scheduler
-                    .iter_thread_groups_mut()
-                    .filter_map(|thread_group| thread_group.get_first_thread()),
+                scheduler.iter_thread_groups_mut(),
                 signum,
+                self_uid,
+                self_euid,
             )
         } else {
             generate_signal(
-                scheduler.get_thread_mut((pid as Pid, 0)).into_iter(),
+                scheduler.get_thread_group_mut(pid).into_iter(),
                 signum,
+                self_uid,
+                self_euid,
             )
         }?;
         // auto-sodo mode
-        let current_thread_pid = scheduler.current_task_id().0;
-        if (pid > 0 && current_thread_pid == pid)
+        let current_task_pid = scheduler.current_task_id().0;
+        if (pid > 0 && current_task_pid == pid)
             || (pid < -1 && scheduler.current_thread_group().pgid == -pid as Pid)
+            || pid == 0
             || pid == -1
         {
-            let thread = scheduler.current_thread();
-            let action = thread.signal.get_job_action();
+            let task = scheduler.current_thread();
+            let action = task.signal.get_job_action();
 
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
-                // TODO: is this still necessary to autopreempt ?
-                let _ignored_result = auto_preempt();
+                let _ret = auto_preempt();
             }
         }
         Ok(0)

@@ -8,6 +8,7 @@ use super::scheduler::{Pid, SCHEDULER};
 use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
+use super::thread_group;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
