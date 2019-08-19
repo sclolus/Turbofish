@@ -15,7 +15,7 @@ extern "C" {
 
 //The <stdlib.h> header shall define the following macro which shall expand to a positive integer expression with type size_t:
 
-#define MB_CUR_MAX 42
+#define MB_CUR_MAX 4
 //    Maximum number of bytes in a character specified by the current locale (category LC_CTYPE).
 
 ////[CX] [Option Start] In the POSIX locale the value of {MB_CUR_MAX} shall be 1. [Option End]

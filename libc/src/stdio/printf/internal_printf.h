@@ -2,6 +2,7 @@
 # define INTERNAL_PRINTF_H
 
 #include <stddef.h>
+#include <stdlib.h>
 
 typedef __builtin_va_list	va_list;
 # define va_start(v,l)		__builtin_va_start(v,l)
@@ -26,7 +27,6 @@ typedef signed int		bool;
 
 # define false			0
 # define true			1
-# define MB_CUR_MAX		4
 
 # define MASK7			0x0000007f
 # define MASK11			0x000007ff
@@ -45,15 +45,43 @@ typedef signed int		bool;
 # define SPECIFIERS_QUANTITY 	16
 # define UTF8_MAX_SIZE		4
 
+typedef enum e_params {
+	Fd,
+	GivenString,
+	AllocatedString,
+} t_params;
+
+// Usable in printf, vprintf, fprintf, vfprintf, dprintf and vdprintf context
+struct fd {
+	int fd;
+};
+
+// Usable in sprintf, snprintf, vsprintf and vsnprintf context
+struct given_string {
+	char *str;
+	size_t max_size;
+};
+
+// Usable in snprintf and vsnprintf context
+struct allocated_string {
+	char *str;
+};
+
+union opt {
+	struct fd fd;
+	struct given_string given_string;
+	struct allocated_string allocated_string;
+};
+
 typedef struct			s_status
 {
 	va_list			ap;
-	const char *restrict	s;
-	int			fd;
+	const char 	        *s;
 	int			buff_len;
-	size_t			max_size;
 	int			total_size;
-	char			*str;
+
+	t_params params;
+	union opt opt;
 }				t_status;
 
 typedef enum			e_flags
