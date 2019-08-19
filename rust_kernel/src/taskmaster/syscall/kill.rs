@@ -5,7 +5,7 @@ use super::signal_interface::JobAction;
 use super::thread_group::{Credentials, ThreadGroup};
 
 use core::convert::TryInto;
-use errno::Errno;
+use libc_binding::Errno;
 use libc_binding::{uid_t, Signum};
 
 /// The kill() function shall send a signal to a process or a group of
@@ -88,15 +88,15 @@ pub unsafe fn sys_kill(mut pid: i32, signum: u32) -> SysResult<u32> {
             }
         }
         if !present {
-            return Err(Errno::Esrch);
+            return Err(Errno::ESRCH);
         }
         if !has_perm {
-            return Err(Errno::Eperm);
+            return Err(Errno::EPERM);
         }
         Ok(0)
     }
     unpreemptible_context!({
-        let signum = signum.try_into().map_err(|_| Errno::Einval)?;
+        let signum = signum.try_into().map_err(|_| Errno::EINVAL)?;
         let mut scheduler = SCHEDULER.lock();
 
         let Credentials {

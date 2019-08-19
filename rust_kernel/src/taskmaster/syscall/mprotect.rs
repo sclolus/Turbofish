@@ -1,7 +1,7 @@
 use super::SysResult;
 
 use bitflags::bitflags;
-use errno::Errno;
+use libc_binding::Errno;
 
 use super::SCHEDULER;
 use crate::memory::tools::{Address, AllocFlags, NbrPages, Virt, PAGE_SIZE};
@@ -73,7 +73,7 @@ pub unsafe fn sys_mprotect(addr: *mut u8, length: usize, prot: MmapProt) -> SysR
         let vaddr = Virt(addr as usize);
         if !vaddr.is_aligned_on(PAGE_SIZE) {
             log::warn!("a munmap addr was unaligned: {:?}", vaddr);
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
         let mut scheduler = SCHEDULER.lock();
         let mut v = scheduler

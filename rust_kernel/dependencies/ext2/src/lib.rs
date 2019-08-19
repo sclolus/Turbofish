@@ -9,7 +9,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-use errno::Errno;
+use libc_binding::Errno;
 pub use syscall::OpenFlags;
 
 mod tools;
@@ -139,7 +139,7 @@ impl Ext2Filesystem {
             entry = self
                 .iter_entries(inode_nbr)?
                 .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent)?;
+                .ok_or(Errno::ENOENT)?;
 
             inode_nbr = entry.0.get_inode();
         }
@@ -303,7 +303,7 @@ impl Ext2Filesystem {
         let bitmap_addr = self.to_addr(block_dtr.inode_usage_bitmap);
         let bitmap: u8 = self.disk.read_struct(bitmap_addr + index / 8)?;
         if !bitmap.get_bit((index % 8) as usize) {
-            return Err(Errno::Enoent);
+            return Err(Errno::ENOENT);
         }
 
         let inode_addr = self.to_addr(block_dtr.inode_table) + inode_offset;
@@ -354,7 +354,7 @@ impl Ext2Filesystem {
 
     /// create a directory entry and an inode on the Directory inode: `inode_nbr`, return the new inode nbr
     fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<InodeNbr> {
-        let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::DIRECTORY);
         self.disk.write_struct(inode_addr, &inode)?;
@@ -371,7 +371,7 @@ impl Ext2Filesystem {
         parent_inode_nbr: u32,
         _flags: OpenFlags,
     ) -> IoResult<InodeNbr> {
-        let inode_nbr = self.alloc_inode().ok_or(Errno::Enomem)?;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
         self.disk.write_struct(inode_addr, &inode)?;
@@ -452,7 +452,7 @@ impl Ext2Filesystem {
     pub fn iter_entries<'a>(&'a mut self, inode: InodeNbr) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
         if !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
-            return Err(Errno::Enotdir);
+            return Err(Errno::ENOTDIR);
         }
         Ok(EntryIter {
             filesystem: self,
@@ -556,7 +556,7 @@ impl Ext2Filesystem {
         err_if_zero({
             let pointer = self.disk.read_struct(pointer_addr)?;
             if alloc && pointer == Block(0) {
-                let new_block = self.alloc_block().ok_or(Errno::Enomem)?;
+                let new_block = self.alloc_block().ok_or(Errno::ENOMEM)?;
                 self.disk.write_struct(pointer_addr, &new_block)?;
                 new_block
             } else {
@@ -569,7 +569,7 @@ impl Ext2Filesystem {
     fn free_pointer(&mut self, pointer_addr: u64) -> IoResult<()> {
         let pointer = self.disk.read_struct(pointer_addr)?;
         if pointer == Block(0) {
-            Err(Errno::Ebadf)
+            Err(Errno::EBADF)
         } else {
             self.disk.write_struct(pointer_addr, &Block(0))?;
             self.free_block(pointer)
@@ -693,7 +693,7 @@ impl Ext2Filesystem {
             }
             return Ok(());
         }
-        Err(Errno::Efbig)
+        Err(Errno::EFBIG)
     }
 
     /// Get the file location at offset 'offset'
@@ -712,7 +712,7 @@ impl Ext2Filesystem {
         if block_off >= offset_start && block_off < offset_end {
             if alloc && inode.direct_block_pointers[block_off as usize] == Block(0) {
                 inode.direct_block_pointers[block_off as usize] =
-                    self.alloc_block().ok_or(Errno::Enomem)?;
+                    self.alloc_block().ok_or(Errno::ENOMEM)?;
                 self.disk.write_struct(inode_addr, inode)?;
             }
             return Ok(self.to_addr(err_if_zero(
@@ -732,7 +732,7 @@ impl Ext2Filesystem {
             let singly_indirect = err_if_zero({
                 if alloc && inode.singly_indirect_block_pointers == Block(0) {
                     inode.singly_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::Enomem)?;
+                        self.alloc_block().ok_or(Errno::ENOMEM)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.singly_indirect_block_pointers
@@ -755,7 +755,7 @@ impl Ext2Filesystem {
             let doubly_indirect = err_if_zero({
                 if alloc && inode.doubly_indirect_block_pointers == Block(0) {
                     inode.doubly_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::Enomem)?;
+                        self.alloc_block().ok_or(Errno::ENOMEM)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.doubly_indirect_block_pointers
@@ -785,7 +785,7 @@ impl Ext2Filesystem {
             let tripply_indirect = err_if_zero({
                 if alloc && inode.triply_indirect_block_pointers == Block(0) {
                     inode.triply_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::Enomem)?;
+                        self.alloc_block().ok_or(Errno::ENOMEM)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.triply_indirect_block_pointers
@@ -813,6 +813,6 @@ impl Ext2Filesystem {
 
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
-        Err(Errno::Efbig)
+        Err(Errno::EFBIG)
     }
 }

@@ -8,7 +8,7 @@ use bit_field::BitField;
 use bitflags::bitflags;
 use core::mem;
 use core::ops::{BitAnd, BitOr, BitOrAssign, Index, IndexMut, Not};
-use errno::Errno;
+use libc_binding::Errno;
 use libc_binding::Signum;
 use libc_binding::{
     SA_NOCLDSTOP, SA_NOCLDWAIT, SA_NODEFER, SA_ONSTACK, SA_RESETHAND, SA_RESTART, SA_RESTORER,
@@ -325,7 +325,7 @@ impl SignalInterface {
                             } else {
                                 // Else the syscall must return Eintr
                                 unsafe {
-                                    (*cpu_state).registers.eax = (-(Errno::Eintr as i32)) as u32
+                                    (*cpu_state).registers.eax = (-(Errno::EINTR as i32)) as u32
                                 };
                             }
                         }
@@ -364,12 +364,12 @@ impl SignalInterface {
         if (signum == Signum::SIGKILL || signum == Signum::SIGSTOP)
             && sigaction.sa_handler != SIG_DFL
         {
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
 
         // SIGCONT cannot be ignored (job control mandatory cf POSIX)
         if signum == Signum::SIGCONT && sigaction.sa_handler == SIG_IGN {
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
 
         // Associate a new action for a specified Signum
@@ -421,7 +421,7 @@ impl SignalInterface {
                 SIG_UNBLOCK => mem::replace(&mut self.current_sa_mask, current_sa_mask & !mask),
                 SIG_SETMASK => mem::replace(&mut self.current_sa_mask, mask),
                 _ => {
-                    return Err(Errno::Einval);
+                    return Err(Errno::EINVAL);
                 }
             };
             if let Some(oldset) = oldset {

@@ -8,7 +8,8 @@ edition = "2018"
 bitflags = "1.0.4"
 bit_field = "0.9.0"
 terminal = { path = "../terminal" }
-errno = { path = "../errno" }
+fallible_collections = { path = "../fallible_collections" }
+libc_binding = { path = "../libc_binding" }
 
 [dependencies.num-traits]
 version = "0.2"

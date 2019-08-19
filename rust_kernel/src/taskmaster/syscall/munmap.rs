@@ -1,7 +1,7 @@
 use super::SysResult;
 use super::SCHEDULER;
 use crate::memory::tools::{Address, NbrPages, Virt, PAGE_SIZE};
-use errno::Errno;
+use libc_binding::Errno;
 
 /// The munmap() function shall remove any mappings for those entire
 /// pages containing any part of the address space of the process
@@ -52,7 +52,7 @@ pub unsafe fn sys_munmap(addr: *mut u8, length: usize) -> SysResult<u32> {
         let vaddr = Virt(addr as usize);
         if !vaddr.is_aligned_on(PAGE_SIZE) {
             log::warn!("a munmap addr was unaligned: {:?}", vaddr);
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
 
         let mut scheduler = SCHEDULER.lock();

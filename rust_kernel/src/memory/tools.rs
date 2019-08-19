@@ -41,14 +41,14 @@ pub enum MemoryError {
 
 pub type Result<T> = core::result::Result<T, MemoryError>;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 impl From<MemoryError> for Errno {
     // for the moment errno a memory error is Enomem
     fn from(e: MemoryError) -> Self {
         match e {
-            MemoryError::BadAddr => Errno::Efault,
-            _ => Errno::Enomem,
+            MemoryError::BadAddr => Errno::EFAULT,
+            _ => Errno::ENOMEM,
         }
     }
 }

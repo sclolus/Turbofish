@@ -2,8 +2,8 @@
 
 use super::SysResult;
 
-use errno::Errno;
 use keyboard::PS2_CONTROLER;
+use libc_binding::Errno;
 
 use crate::drivers::ACPI;
 
@@ -26,5 +26,5 @@ pub fn sys_reboot() -> SysResult<u32> {
             None => unsafe { PS2_CONTROLER.reboot_computer() },
         }
     });
-    Err(Errno::Eacces)
+    Err(Errno::EACCES)
 }

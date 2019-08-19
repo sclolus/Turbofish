@@ -12,9 +12,9 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
-use errno::Errno;
 use fallible_collections::btree::BTreeMap;
 use fallible_collections::FallibleVec;
+use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
 use sync::Spinlock;
@@ -331,7 +331,7 @@ impl Scheduler {
                         // negative (rel to SIGNUM), set process as running then return
                         self.current_thread_mut().set_running();
                         self.current_thread_mut()
-                            .set_return_value_autopreempt(Err(Errno::Eintr));
+                            .set_return_value_autopreempt(Err(Errno::EINTR));
                         return action;
                     }
                     match waiting_state {

@@ -22,7 +22,7 @@ use libc_binding::{
 };
 
 use core::ffi::c_void;
-use errno::Errno;
+use libc_binding::Errno;
 use libc_binding::{gid_t, termios, uid_t};
 
 mod mmap;
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEUID => sys_seteuid(ebx as uid_t),
 
         // set thread area: WTF
-        0xf3 => Err(Errno::Eperm),
+        0xf3 => Err(Errno::EPERM),
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         // trace_syscall::trace_syscall_result(cpu_state, result);
     }
 
-    let is_in_blocked_syscall = result == Err(Errno::Eintr);
+    let is_in_blocked_syscall = result == Err(Errno::EINTR);
     // Note: do not erase eax if we've just been interrupted from a blocked syscall as we must keep
     // the syscall number contained in eax, in case of SA_RESTART behavior
     if is_in_blocked_syscall == false {

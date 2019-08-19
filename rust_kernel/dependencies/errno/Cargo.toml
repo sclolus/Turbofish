@@ -1,7 +1,0 @@
-[package]
-name = "errno"
-version = "0.1.0"
-authors = ["vcombey <vcombey@student.42.fr>"]
-edition = "2018"
-
-[dependencies]

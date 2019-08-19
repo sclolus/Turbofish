@@ -5,7 +5,7 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -222,7 +222,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
     if options != 0 {
-        return Err(Errno::Einval);
+        return Err(Errno::EINVAL);
     }
 
     let thread_group = scheduler.current_thread_group();
@@ -239,7 +239,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         -1 => {
             // Check if at leat one child exists
             if thread_group.child.len() == 0 {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
             // Check is the at least one child is a already a zombie -> Return immediatly child PID
             thread_group.child.iter().find(|&current_pid| {
@@ -272,7 +272,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .count();
 
             if candidate_number == 0 {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
 
             thread_group.child.iter().find(|&current_pid| {
@@ -302,7 +302,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     None
                 }
             } else {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
         }
         _ => unreachable!(),

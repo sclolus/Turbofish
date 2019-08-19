@@ -6,7 +6,7 @@ use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::WaitingState;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 use crate::terminal::{ReadResult, TERMINAL};
 
@@ -53,7 +53,7 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
                 }
             }
         } else {
-            Err(Errno::Eperm)
+            Err(Errno::EPERM)
         }
     })
 }

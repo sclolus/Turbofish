@@ -4,7 +4,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::cmp::min;
 use core::fmt::{self, Debug};
-use errno::Errno;
+use libc_binding::Errno;
 use mbr::Mbr;
 
 use ext2::DiskIo;
@@ -58,7 +58,7 @@ impl DiskIo for DiskIoBios {
                     .as_mut()
                     .unwrap()
                     .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
-                    .map_err(|_| Errno::Eio)?;
+                    .map_err(|_| Errno::EIO)?;
             }
             let target_read = (offset % SECTOR_SIZE as u64) as usize;
             self.buf[target_read..target_read + size_read].copy_from_slice(&buf[0..size_read]);
@@ -70,7 +70,7 @@ impl DiskIo for DiskIoBios {
                     .as_mut()
                     .unwrap()
                     .write(sector, NbrSectors(1), self.buf.as_ptr())
-                    .map_err(|_| Errno::Eio)?;
+                    .map_err(|_| Errno::EIO)?;
             }
             buf = &buf[size_read..];
             offset += size_read as u64;
@@ -92,7 +92,7 @@ impl DiskIo for DiskIoBios {
                     .as_mut()
                     .unwrap()
                     .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
-                    .map_err(|_| Errno::Eio)?;
+                    .map_err(|_| Errno::EIO)?;
             }
             let target_read = (offset % SECTOR_SIZE as u64) as usize;
             buf[0..size_read].copy_from_slice(&self.buf[target_read..target_read + size_read]);

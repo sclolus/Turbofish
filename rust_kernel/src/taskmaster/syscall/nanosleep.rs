@@ -6,7 +6,7 @@ use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 use crate::drivers::PIT0;
 use crate::math::convert::Convert;
@@ -65,7 +65,7 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
 
     let nsec = unsafe { (*req).tv_nsec };
     if nsec < 0 || nsec >= 1000000000 {
-        return Err(Errno::Einval);
+        return Err(Errno::EINVAL);
     }
 
     // Set precision as 1/1000
@@ -80,7 +80,7 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
 
     // auto preemption mechanism set environement as preemptible
     match auto_preempt() {
-        Err(Errno::Eintr) => {
+        Err(Errno::EINTR) => {
             let now = unsafe { _get_pit_time() };
             if now < next_wake {
                 let remaining_time = (next_wake - now) as f32 * pit_period;
@@ -90,7 +90,7 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
                         ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
                 }
             }
-            Err(Errno::Eintr)
+            Err(Errno::EINTR)
         }
         _ => Ok(0),
     }

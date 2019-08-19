@@ -1,7 +1,7 @@
 use super::scheduler::SCHEDULER;
 use super::SysResult;
-use errno::Errno;
 use libc_binding::gid_t;
+use libc_binding::Errno;
 
 /// If gid is equal to the real group ID or the saved set-group-ID, or
 /// if the process has appropriate privileges, setegid() shall set the
@@ -20,7 +20,7 @@ pub fn sys_setegid(gid: gid_t) -> SysResult<u32> {
             cred.egid = gid;
             Ok(0)
         } else {
-            Err(Errno::Eperm)
+            Err(Errno::EPERM)
         }
     })
 }

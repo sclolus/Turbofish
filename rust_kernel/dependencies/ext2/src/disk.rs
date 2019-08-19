@@ -1,7 +1,7 @@
 use crate::tools::IoResult;
 use core::fmt::Debug;
 use core::mem::size_of;
-use errno::Errno;
+use libc_binding::Errno;
 extern crate alloc;
 use alloc::boxed::Box;
 
@@ -37,7 +37,7 @@ impl Disk {
     pub fn write_all(&mut self, mut offset: u64, mut buf: &[u8]) -> IoResult<()> {
         while !buf.is_empty() {
             match self.0.write_buffer(offset, buf) {
-                Ok(0) => return Err(Errno::Eio),
+                Ok(0) => return Err(Errno::EIO),
                 Ok(n) => {
                     offset += n;
                     buf = &buf[n as usize..]
@@ -64,7 +64,7 @@ impl Disk {
                 core::slice::from_raw_parts_mut(&t as *const T as *mut u8, size_of::<T>()),
             )?;
             if count as usize != size_of::<T>() {
-                return Err(Errno::Eio);
+                return Err(Errno::EIO);
             }
         }
         Ok(t)

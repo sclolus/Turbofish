@@ -5,7 +5,7 @@ use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
-use errno::Errno;
+use libc_binding::Errno;
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
@@ -130,7 +130,7 @@ impl TryFrom<&str> for Filename {
     fn try_from(s: &str) -> Result<Self, Errno> {
         let mut n = [0; 256];
         if s.len() >= 256 {
-            return Err(Errno::Enametoolong);
+            return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
                 *n = c;

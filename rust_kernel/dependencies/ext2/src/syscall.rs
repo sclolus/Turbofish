@@ -6,7 +6,7 @@ use core::cmp::min;
 pub mod data;
 pub use data::OpenFlags;
 pub use data::*;
-use errno::Errno;
+use libc_binding::Errno;
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -63,7 +63,7 @@ impl Ext2Filesystem {
     pub fn truncate(&mut self, path: &str, length: u64) -> IoResult<()> {
         let (mut inode, inode_addr) = self.find_inode(path)?;
         if !inode.is_a_regular_file() {
-            return Err(Errno::Eisdir);
+            return Err(Errno::EISDIR);
         }
         self.truncate_inode((&mut inode, inode_addr), length)
     }
@@ -77,7 +77,7 @@ impl Ext2Filesystem {
             let entry = self
                 .iter_entries(inode_nbr)?
                 .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent);
+                .ok_or(Errno::ENOENT);
             // dbg!(entry?.0.get_filename());
             if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::O_CREAT) {
                 inode_nbr = self.create_file(p, inode_nbr, flags)?;
@@ -108,7 +108,7 @@ impl Ext2Filesystem {
             let entry = self
                 .iter_entries(inode_nbr)?
                 .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::Enoent);
+                .ok_or(Errno::ENOENT);
             // dbg!(entry?.0.get_filename());
             if entry.is_err() && iter_path.peek().is_none() {
                 inode_nbr = self.create_dir(p, inode_nbr)?;
@@ -127,14 +127,14 @@ impl Ext2Filesystem {
         let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
 
         if !inode.is_a_directory() {
-            return Err(Errno::Enotdir);
+            return Err(Errno::ENOTDIR);
         }
         if self
             .iter_entries(inode_nbr)?
             .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
             || inode.nbr_hard_links > 2
         {
-            return Err(Errno::Enotempty);
+            return Err(Errno::ENOTEMPTY);
         }
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         self.free_inode((&mut inode, inode_addr), inode_nbr)
@@ -148,7 +148,7 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
         let file_curr_offset_start = file.curr_offset;
         if file.curr_offset > inode.get_size() {
-            return Err(Errno::Ebadf);
+            return Err(Errno::EBADF);
         }
         if file.curr_offset == inode.get_size() {
             return Ok(0);
@@ -191,7 +191,7 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
         let file_curr_offset_start = file.curr_offset;
         if file.curr_offset > inode.get_size() {
-            return Err(Errno::Ebadf);
+            return Err(Errno::EBADF);
         }
         if buf.len() == 0 {
             return Ok(0);

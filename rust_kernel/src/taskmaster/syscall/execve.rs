@@ -10,9 +10,9 @@ use super::thread::ProcessState;
 use alloc::format;
 use alloc::vec::Vec;
 use core::convert::TryInto;
-use errno::Errno;
 use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
+use libc_binding::Errno;
 
 use crate::drivers::storage::ext2::EXT2;
 
@@ -21,7 +21,7 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
     let ext2 = unsafe {
         EXT2.as_mut()
             .ok_or("ext2 not init")
-            .map_err(|_| Errno::Enodev)?
+            .map_err(|_| Errno::ENODEV)?
     };
 
     let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
@@ -33,7 +33,7 @@ fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
     let len = ext2.read(&mut file, v.as_mut())?;
 
     if len != inode.0.low_size as u64 {
-        Err(Errno::Eio)
+        Err(Errno::EIO)
     } else {
         Ok(v)
     }

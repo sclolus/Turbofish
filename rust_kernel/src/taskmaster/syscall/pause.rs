@@ -3,7 +3,7 @@ use super::SysResult;
 use super::scheduler::{auto_preempt, SCHEDULER};
 use super::thread::WaitingState;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 /// The pause() function shall suspend the calling thread until
 /// delivery of a signal whose action is either to execute a
@@ -31,6 +31,6 @@ pub unsafe fn sys_pause() -> SysResult<u32> {
          * returns -1, and errno is set to EINTR
          */
         let _ignored_result = auto_preempt();
-        Err(Errno::Eintr)
+        Err(Errno::EINTR)
     })
 }

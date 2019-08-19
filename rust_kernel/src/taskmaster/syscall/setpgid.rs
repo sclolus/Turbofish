@@ -1,6 +1,6 @@
 use super::scheduler::{Pid, SCHEDULER};
 use super::SysResult;
-use errno::Errno;
+use libc_binding::Errno;
 
 /// The setpgid() function shall either join an existing process group
 /// or create a new process group within the session of the calling
@@ -26,7 +26,7 @@ pub fn sys_setpgid(mut pid: Pid, mut pgid: Pid) -> SysResult<u32> {
         }
         scheduler
             .get_thread_group_mut(pid)
-            .ok_or(Errno::Esrch)?
+            .ok_or(Errno::ESRCH)?
             .pgid = pgid;
 
         Ok(0)
