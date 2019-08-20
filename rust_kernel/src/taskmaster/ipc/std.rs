@@ -2,8 +2,8 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
 mod stdin;

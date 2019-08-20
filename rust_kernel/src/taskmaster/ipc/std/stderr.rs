@@ -2,15 +2,15 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
 use errno::Errno;
 
 use crate::terminal::ansi_escape_code::Colored;
 
-/// This structure represents a KernelFileDescriptor of type Stderr
+/// This structure represents a FileOperation of type Stderr
 #[derive(Debug, Default)]
 pub struct Stderr {}
 
@@ -22,7 +22,7 @@ impl Stderr {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Stderr {
+impl FileOperation for Stderr {
     fn register(&mut self, access_mode: Mode) {
         assert_eq!(access_mode, Mode::WriteOnly);
     }

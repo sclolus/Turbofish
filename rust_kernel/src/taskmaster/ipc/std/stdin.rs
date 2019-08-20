@@ -2,15 +2,15 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
 use errno::Errno;
 
 use crate::terminal::{ReadResult, TERMINAL};
 
-/// This structure represents a KernelFileDescriptor of type Stdin
+/// This structure represents a FileOperation of type Stdin
 #[derive(Debug, Default)]
 pub struct Stdin {}
 
@@ -22,7 +22,7 @@ impl Stdin {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Stdin {
+impl FileOperation for Stdin {
     fn register(&mut self, access_mode: Mode) {
         assert_eq!(access_mode, Mode::ReadOnly);
     }

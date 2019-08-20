@@ -2,13 +2,13 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
 use errno::Errno;
 
-/// This structure represents a KernelFileDescriptor of type Stdout
+/// This structure represents a FileOperation of type Stdout
 #[derive(Debug, Default)]
 pub struct Stdout {}
 
@@ -20,7 +20,7 @@ impl Stdout {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Stdout {
+impl FileOperation for Stdout {
     fn register(&mut self, access_mode: Mode) {
         assert_eq!(access_mode, Mode::WriteOnly);
     }

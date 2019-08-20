@@ -2,11 +2,11 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
-/// This structure represents a KernelFileDescriptor of type Fifo
+/// This structure represents a FileOperation of type Fifo
 #[derive(Debug, Default)]
 pub struct Fifo {}
 
@@ -18,7 +18,7 @@ impl Fifo {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Fifo {
+impl FileOperation for Fifo {
     fn register(&mut self, _access_mode: Mode) {
         unimplemented!();
     }

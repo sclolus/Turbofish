@@ -2,11 +2,11 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
-/// This structure represents a KernelFileDescriptor of type Pipe
+/// This structure represents a FileOperation of type Pipe
 #[derive(Debug, Default)]
 pub struct Pipe {
     input_ref: usize,
@@ -24,7 +24,7 @@ impl Pipe {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Pipe {
+impl FileOperation for Pipe {
     fn register(&mut self, access_mode: Mode) {
         match access_mode {
             Mode::ReadOnly => self.input_ref += 1,

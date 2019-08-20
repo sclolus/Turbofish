@@ -2,11 +2,11 @@
 
 use super::SysResult;
 
+use super::FileOperation;
 use super::IpcResult;
-use super::KernelFileDescriptor;
 use super::Mode;
 
-/// This structure represents a KernelFileDescriptor of type Socket
+/// This structure represents a FileOperation of type Socket
 #[derive(Debug, Default)]
 pub struct Socket {}
 
@@ -18,7 +18,7 @@ impl Socket {
 }
 
 /// Main Trait implementation
-impl KernelFileDescriptor for Socket {
+impl FileOperation for Socket {
     fn register(&mut self, _access_mode: Mode) {
         unimplemented!();
     }

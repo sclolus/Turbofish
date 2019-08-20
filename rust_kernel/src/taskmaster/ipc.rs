@@ -26,10 +26,10 @@ mod std;
 use std::{Stderr, Stdin, Stdout};
 
 /// The User File Descriptor are sorted into a Binary Tree
-/// Key is the user number and value the structure UserFileDescriptor
+/// Key is the user number and value the structure FileDescriptor
 #[derive(Debug, TryClone)]
 pub struct FileDescriptorInterface {
-    user_fd_list: BTreeMap<Fd, UserFileDescriptor>,
+    user_fd_list: BTreeMap<Fd, FileDescriptor>,
 }
 
 /// Describe what to do after an IPC request and result return
@@ -51,7 +51,7 @@ pub enum Mode {
 
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
-trait KernelFileDescriptor: core::fmt::Debug + Send {
+trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
     fn register(&mut self, access_mode: Mode);
     /// Invoqued quen a FD is droped
@@ -64,7 +64,7 @@ trait KernelFileDescriptor: core::fmt::Debug + Send {
 
 /// Here the type of the Kernel File Descriptor
 #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-enum KernelFileDescriptorType {
+enum FileOperationType {
     Pipe,
     Fifo,
     Socket,
@@ -76,19 +76,19 @@ enum KernelFileDescriptorType {
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
 #[derive(Debug, TryClone)]
-struct UserFileDescriptor {
+struct FileDescriptor {
     access_mode: Mode,
-    fd_type: KernelFileDescriptorType,
-    kernel_fd: Arc<DeadMutex<dyn KernelFileDescriptor>>,
+    fd_type: FileOperationType,
+    kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
 }
 
 /// Standard implementation of an user File Descriptor
-impl UserFileDescriptor {
-    /// When a new UserFileDescriptor is invoqued, Increment reference
+impl FileDescriptor {
+    /// When a new FileDescriptor is invoqued, Increment reference
     fn new(
         access_mode: Mode,
-        fd_type: KernelFileDescriptorType,
-        kernel_fd: Arc<DeadMutex<dyn KernelFileDescriptor>>,
+        fd_type: FileOperationType,
+        kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
     ) -> Self {
         kernel_fd.lock().register(access_mode);
         Self {
@@ -99,8 +99,8 @@ impl UserFileDescriptor {
     }
 }
 
-/// Drop boilerplate for an UserFileDescriptor structure. Decremente reference
-impl Drop for UserFileDescriptor {
+/// Drop boilerplate for an FileDescriptor structure. Decremente reference
+impl Drop for FileDescriptor {
     fn drop(&mut self) {
         self.kernel_fd.lock().unregister(self.access_mode);
     }
@@ -133,15 +133,15 @@ impl FileDescriptorInterface {
 
         let _fd = self.user_fd_list.try_insert(
             0,
-            UserFileDescriptor::new(Mode::ReadOnly, KernelFileDescriptorType::Stdin, stdin),
+            FileDescriptor::new(Mode::ReadOnly, FileOperationType::Stdin, stdin),
         )?;
         let _fd = self.user_fd_list.try_insert(
             1,
-            UserFileDescriptor::new(Mode::WriteOnly, KernelFileDescriptorType::Stdout, stdout),
+            FileDescriptor::new(Mode::WriteOnly, FileOperationType::Stdout, stdout),
         )?;
         let _fd = self.user_fd_list.try_insert(
             2,
-            UserFileDescriptor::new(Mode::WriteOnly, KernelFileDescriptorType::Stderr, stderr),
+            FileDescriptor::new(Mode::WriteOnly, FileOperationType::Stderr, stderr),
         )?;
         Ok(())
     }
@@ -151,9 +151,9 @@ impl FileDescriptorInterface {
         let pipe = Arc::try_new(DeadMutex::new(Pipe::new()))?;
         let cloned_pipe = pipe.clone();
 
-        let input_fd = self.insert_user_fd(Mode::ReadOnly, KernelFileDescriptorType::Pipe, pipe)?;
+        let input_fd = self.insert_user_fd(Mode::ReadOnly, FileOperationType::Pipe, pipe)?;
         let output_fd = self
-            .insert_user_fd(Mode::ReadOnly, KernelFileDescriptorType::Pipe, cloned_pipe)
+            .insert_user_fd(Mode::ReadOnly, FileOperationType::Pipe, cloned_pipe)
             .map_err(|e| {
                 let _r = self.user_fd_list.remove(&input_fd);
                 e
@@ -170,7 +170,7 @@ impl FileDescriptorInterface {
         }
 
         let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
-        let fd = self.insert_user_fd(access_mode, KernelFileDescriptorType::Fifo, fifo)?;
+        let fd = self.insert_user_fd(access_mode, FileOperationType::Fifo, fifo)?;
 
         Ok(IpcResult::Done(fd))
     }
@@ -180,7 +180,7 @@ impl FileDescriptorInterface {
     #[allow(dead_code)]
     pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
         let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
-        let fd = self.insert_user_fd(access_mode, KernelFileDescriptorType::Socket, socket)?;
+        let fd = self.insert_user_fd(access_mode, FileOperationType::Socket, socket)?;
 
         Ok(fd)
     }
@@ -247,12 +247,12 @@ impl FileDescriptorInterface {
     fn insert_user_fd(
         &mut self,
         mode: Mode,
-        fd_type: KernelFileDescriptorType,
-        kernel_fd: Arc<DeadMutex<dyn KernelFileDescriptor>>,
+        fd_type: FileOperationType,
+        kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
     ) -> SysResult<Fd> {
         let user_fd = self.get_lower_fd_value().ok_or::<Errno>(Errno::Emfile)?;
         self.user_fd_list
-            .try_insert(user_fd, UserFileDescriptor::new(mode, fd_type, kernel_fd))?;
+            .try_insert(user_fd, FileDescriptor::new(mode, fd_type, kernel_fd))?;
         Ok(user_fd)
     }
 
