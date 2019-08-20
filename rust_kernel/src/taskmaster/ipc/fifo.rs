@@ -19,13 +19,17 @@ impl Fifo {
 
 /// Main Trait implementation
 impl KernelFileDescriptor for Fifo {
-    fn register(&mut self, _access_mode: Mode) {}
-    fn unregister(&mut self, _access_mode: Mode) {}
+    fn register(&mut self, _access_mode: Mode) {
+        unimplemented!();
+    }
+    fn unregister(&mut self, _access_mode: Mode) {
+        unimplemented!();
+    }
     fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::Continue(0))
+        unimplemented!();
     }
     fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::Continue(0))
+        unimplemented!();
     }
 }
 
