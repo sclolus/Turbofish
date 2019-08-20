@@ -31,6 +31,41 @@ pub struct FileDescriptorInterface {
     user_fd_list: BTreeMap<Fd, UserFileDescriptor>,
 }
 
+/// Describe what to do after an IPC request
+#[derive(Debug)]
+pub enum IpcStatus {
+    /// Can continue thread execution normally
+    Continue,
+    /// the user should wait for his IPC request
+    Wait,
+}
+
+/// Result of an IPC Request when blocking request is possible
+#[derive(Debug)]
+pub struct IpcResult<T> {
+    /// Number of bytes that they are transfered (cf: Write and Read)
+    pub res: T,
+    /// Describe what to do after an IPC request
+    pub status: IpcStatus,
+}
+
+/// Standard boilerplate
+impl<T> IpcResult<T> {
+    #[allow(dead_code)]
+    fn wait(res: T) -> Self {
+        IpcResult {
+            res,
+            status: IpcStatus::Wait,
+        }
+    }
+    fn cont(res: T) -> Self {
+        IpcResult {
+            res,
+            status: IpcStatus::Continue,
+        }
+    }
+}
+
 /// The Access Mode of the File Descriptor
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
@@ -47,9 +82,9 @@ trait KernelFileDescriptor: core::fmt::Debug + Send {
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, access_mode: Mode);
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<i32>;
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
-    fn write(&mut self, buf: &[u8]) -> SysResult<i32>;
+    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
 }
 
 /// Here the type of the Kernel File Descriptor
@@ -192,9 +227,9 @@ impl FileDescriptorInterface {
         Ok((input_fd, output_fd))
     }
 
-    /// Open a Fifo
+    /// Open a Fifo. Block until the fifo is not open in two directions.
     #[allow(dead_code)]
-    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<Fd> {
+    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
         if access_mode == Mode::ReadWrite {
             return Err(Errno::Eacces);
         }
@@ -212,7 +247,7 @@ impl FileDescriptorInterface {
                     )
                     .map(|_| fd)
             })??;
-        Ok(fd)
+        Ok(IpcResult::cont(fd))
     }
 
     /// Open a Socket
@@ -239,21 +274,20 @@ impl FileDescriptorInterface {
         Ok(fd)
     }
 
-    /// Read something from the File Descriptor:
+    /// Read something from the File Descriptor: Can block
     /// Important ! When in blocked syscall, the slice must be verified before read op and
     /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
     #[allow(dead_code)]
-    pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<i32> {
+    pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
 
         elem.kernel.lock().read(buf)
     }
 
-    /// Write something into the File Descriptor:
+    /// Write something into the File Descriptor: Can block
     /// Important ! When in blocked syscall, the slice must be verified before write op and
     /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
-    #[allow(dead_code)]
-    pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<i32> {
+    pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
 
         elem.kernel.lock().write(buf)

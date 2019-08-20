@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::IpcResult;
 use super::KernelFileDescriptor;
 use super::Mode;
 
@@ -26,14 +27,14 @@ impl KernelFileDescriptor for Stdout {
     fn unregister(&mut self, access_mode: Mode) {
         assert_eq!(access_mode, Mode::WriteOnly);
     }
-    fn read(&mut self, _buf: &mut [u8]) -> SysResult<i32> {
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         Err(Errno::Ebadf)
     }
-    fn write(&mut self, buf: &[u8]) -> SysResult<i32> {
+    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
         unsafe {
             print!("{}", core::str::from_utf8_unchecked(buf));
         }
-        Ok(buf.len() as _)
+        Ok(IpcResult::cont(buf.len() as _))
     }
 }
 

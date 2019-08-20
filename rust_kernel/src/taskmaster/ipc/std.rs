@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::IpcResult;
 use super::KernelFileDescriptor;
 use super::Mode;
 

@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::IpcResult;
 use super::KernelFileDescriptor;
 use super::Mode;
 
@@ -20,11 +21,11 @@ impl Stdin {
 impl KernelFileDescriptor for Stdin {
     fn register(&mut self, _access_mode: Mode) {}
     fn unregister(&mut self, _access_mode: Mode) {}
-    fn read(&mut self, _buf: &mut [u8]) -> SysResult<i32> {
-        Ok(0)
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        Ok(IpcResult::cont(0))
     }
-    fn write(&mut self, _buf: &[u8]) -> SysResult<i32> {
-        Ok(0)
+    fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        Ok(IpcResult::cont(0))
     }
 }
 

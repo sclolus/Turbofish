@@ -23,6 +23,7 @@ pub fn sys_write(fd: i32, buf: *const u8, count: usize) -> SysResult<u32> {
 
         task.fd_interface
             .write(fd as _, unsafe { core::slice::from_raw_parts(buf, count) })?
+            .res
     });
-    Ok(ret as _)
+    Ok(ret)
 }

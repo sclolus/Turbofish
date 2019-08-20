@@ -25,6 +25,19 @@ pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
             v.make_checked_mut_slice(buf, count)?
         };
 
+        let task = scheduler.current_thread_mut();
+        // Abstract: GetContext -> Context
+
+        // TODO: Get Sheduler & Task
+        // TODO: Check slice: Race conditions may happened
+
+        let _r = task.fd_interface.read(fd as _, unsafe {
+            core::slice::from_raw_parts_mut(buf, count)
+        });
+
+        // TODO: Result may be blocked -> if else... autopreempt();
+        // loop while not filled
+
         if fd == 0 {
             // TODO: change that, read on tty 1 for the moment
             let read_result = unsafe { TERMINAL.as_mut().unwrap().read(output, 1) };
