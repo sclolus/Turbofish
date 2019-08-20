@@ -217,7 +217,17 @@ typedef unsigned int		uintptr_t;
 //     {SIG_ATOMIC_MAX}
 //         See below.
 // 
+
 //     Limit of size_t:
+
+# if __WORDSIZE == 64
+#  define SIZE_MAX              (~0UL)
+# else
+#  define SIZE_MAX              (~0U)
+# endif
+
+#  define SSIZE_MAX             (SIZE_MAX >> 1)
+
 // 
 //     {SIZE_MAX}
 //         65535
@@ -270,14 +280,5 @@ typedef unsigned int		uintptr_t;
 /* Same as ALIGN_DOWN(), but automatically casts when base is a pointer.  */
 #define PTR_ALIGN_DOWN(base, size) \
   ((__typeof__ (base)) ALIGN_DOWN ((uintptr_t) (base), (size)))
-
-/* Limit of `size_t' type.  */
-# if __WORDSIZE == 64
-#  define SIZE_MAX              (18446744073709551615UL)
-#  define SSIZE_MAX             (9223372036854775807UL)
-# else
-#  define SIZE_MAX              (4294967295U)
-#  define SSIZE_MAX             (2147483647U)
-# endif
 
 #endif
