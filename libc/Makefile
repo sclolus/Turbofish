@@ -33,7 +33,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
-	stdio _doprnt putchar puts
+	stdio _doprnt putchar puts getc fopen
 VPATH += src/stdio/printf src/stdio/
 HEADERS += include/stdio.h internal_printf.h
 
@@ -76,7 +76,7 @@ SRC_C += mkfifo stat umask fstat lstat
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
-SRC_C += gettimeofday
+SRC_C += gettimeofday settimeofday
 VPATH += src/sys/time
 HEADERS += include/sys/time.h
 
@@ -85,7 +85,7 @@ SRC_C += sched
 VPATH += src/sched
 HEADERS += include/sched.h
 
-SRC_C += nanosleep localtime
+SRC_C += nanosleep localtime time gmtime
 VPATH += src/time
 HEADERS += include/time.h
 
