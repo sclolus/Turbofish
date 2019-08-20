@@ -6,6 +6,10 @@ use super::IpcResult;
 use super::KernelFileDescriptor;
 use super::Mode;
 
+use errno::Errno;
+
+use crate::terminal::{ReadResult, TERMINAL};
+
 /// This structure represents a KernelFileDescriptor of type Stdin
 #[derive(Debug, Default)]
 pub struct Stdin {}
@@ -21,11 +25,18 @@ impl Stdin {
 impl KernelFileDescriptor for Stdin {
     fn register(&mut self, _access_mode: Mode) {}
     fn unregister(&mut self, _access_mode: Mode) {}
-    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::cont(0))
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        // TODO: change that, read on tty 1 for the moment
+        let read_result = unsafe { TERMINAL.as_mut().expect("WTF").read(buf, 1) };
+
+        match read_result {
+            ReadResult::NonBlocking(read_count) => Ok(IpcResult::cont(read_count as _)),
+            // Apply a local terminal rule: A blocked call cannot have character
+            ReadResult::Blocking => Ok(IpcResult::wait(0)),
+        }
     }
     fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::cont(0))
+        Err(Errno::Ebadf)
     }
 }
 
