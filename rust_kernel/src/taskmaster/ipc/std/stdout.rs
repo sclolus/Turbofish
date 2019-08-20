@@ -34,7 +34,7 @@ impl KernelFileDescriptor for Stdout {
         unsafe {
             print!("{}", core::str::from_utf8_unchecked(buf));
         }
-        Ok(IpcResult::Continue(buf.len() as _))
+        Ok(IpcResult::Done(buf.len() as _))
     }
 }
 

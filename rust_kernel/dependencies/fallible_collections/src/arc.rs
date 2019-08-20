@@ -1,8 +1,11 @@
 //! Implement a Fallible Arc
 use super::FallibleBox;
+use super::TryClone;
+
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::sync::Arc;
+
 /// trait to implement Fallible Arc
 pub trait FallibleArc<T> {
     /// try creating a new Arc, returning a Result<Box<T>,
@@ -17,6 +20,13 @@ impl<T> FallibleArc<T> for Arc<T> {
         // doesn't work as the inner variable of arc are also stocked in the box
         let b = Box::try_new(t)?;
         Ok(Arc::from(b))
+    }
+}
+
+/// Just a TryClone boilerplate for Arc
+impl<T> TryClone for Arc<T> {
+    fn try_clone(&self) -> Result<Self, alloc::collections::CollectionAllocErr> {
+        Ok(self.clone())
     }
 }
 

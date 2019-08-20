@@ -34,7 +34,7 @@ impl KernelFileDescriptor for Stdin {
         let read_result = unsafe { TERMINAL.as_mut().expect("WTF").read(buf, 1) };
 
         match read_result {
-            ReadResult::NonBlocking(read_count) => Ok(IpcResult::Continue(read_count as _)),
+            ReadResult::NonBlocking(read_count) => Ok(IpcResult::Done(read_count as _)),
             // Apply a local terminal rule: A blocked call cannot have character
             ReadResult::Blocking => Ok(IpcResult::Wait(0)),
         }

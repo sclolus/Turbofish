@@ -3,8 +3,8 @@
 use super::SysResult;
 
 use super::ipc::IpcResult;
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, preemptible};
 use super::thread::WaitingState;
 
 /// Write something into a file descriptor
@@ -36,10 +36,7 @@ pub fn sys_write(fd: i32, mut buf: *const u8, mut count: usize) -> SysResult<u32
                         .set_waiting(WaitingState::Write);
                     let _ret = auto_preempt()?;
                 }
-                IpcResult::Continue(res) => {
-                    preemptible();
-                    return Ok(written_bytes + res);
-                }
+                IpcResult::Done(res) => return Ok(written_bytes + res),
             }
         })
     }

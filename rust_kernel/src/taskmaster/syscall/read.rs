@@ -3,8 +3,8 @@
 use super::SysResult;
 
 use super::ipc::IpcResult;
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, preemptible};
 use super::thread::WaitingState;
 
 /// Read something from a file descriptor
@@ -36,10 +36,7 @@ pub fn sys_read(fd: i32, mut buf: *mut u8, mut count: usize) -> SysResult<u32> {
                         .set_waiting(WaitingState::Read);
                     let _ret = auto_preempt()?;
                 }
-                IpcResult::Continue(res) => {
-                    preemptible();
-                    return Ok(readen_bytes + res);
-                }
+                IpcResult::Done(res) => return Ok(readen_bytes + res),
             }
         })
     }
