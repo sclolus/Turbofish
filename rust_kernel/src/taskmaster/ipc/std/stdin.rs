@@ -12,12 +12,16 @@ use crate::terminal::{ReadResult, TERMINAL};
 
 /// This structure represents a FileOperation of type Stdin
 #[derive(Debug, Default)]
-pub struct Stdin {}
+pub struct Stdin {
+    controlling_terminal: usize,
+}
 
 /// Main implementation for Stdin
 impl Stdin {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(controlling_terminal: usize) -> Self {
+        Self {
+            controlling_terminal,
+        }
     }
 }
 
@@ -30,8 +34,12 @@ impl FileOperation for Stdin {
         assert_eq!(access_mode, Mode::ReadOnly);
     }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        // TODO: change that, read on tty 1 for the moment
-        let read_result = unsafe { TERMINAL.as_mut().expect("WTF").read(buf, 1) };
+        let read_result = unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .read(buf, self.controlling_terminal)
+        };
 
         match read_result {
             ReadResult::NonBlocking(read_count) => Ok(IpcResult::Done(read_count as _)),
@@ -47,6 +55,6 @@ impl FileOperation for Stdin {
 /// Some boilerplate to check if all is okay
 impl Drop for Stdin {
     fn drop(&mut self) {
-        println!("Stdin droped !");
+        //        println!("Stdin droped !");
     }
 }

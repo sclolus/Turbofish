@@ -16,7 +16,7 @@ void		*get_new_pages(size_t size)
 		MAP_ANON | MAP_PRIVATE,
 		-1,
 		0);
-	return (u32)new_page == MAP_FAILED ? NULL : new_page;
+	return new_page == MAP_FAILED ? NULL : new_page;
 }
 
 /*
@@ -25,7 +25,5 @@ void		*get_new_pages(size_t size)
 
 int		destroy_pages(void *addr, size_t size)
 {
-	return (munmap(
-		addr,
-		size));
+	return munmap(addr, size);
 }

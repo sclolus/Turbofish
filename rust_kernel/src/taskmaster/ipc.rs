@@ -23,7 +23,7 @@ use pipe::Pipe;
 mod socket;
 use socket::Socket;
 mod std;
-use std::{Stderr, Stdin, Stdout};
+use self::std::{Stderr, Stdin, Stdout};
 
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure FileDescriptor
@@ -116,20 +116,20 @@ impl FileDescriptorInterface {
             // New BTreeMap does not allocate memory
             user_fd_list: BTreeMap::new(),
         };
-        r.open_std()
+        r.open_std(1)
             .expect("Global constructor of STD devices fail");
         r
     }
 
     /// Open Stdin, Stdout and Stderr
     /// The File Descriptors between 0..2 are automaticely closed
-    fn open_std(&mut self) -> SysResult<()> {
+    pub fn open_std(&mut self, controlling_terminal: usize) -> SysResult<()> {
         let _r = self.close_fd(0);
         let _r = self.close_fd(1);
         let _r = self.close_fd(2);
-        let stdin = Arc::try_new(DeadMutex::new(Stdin::new()))?;
-        let stdout = Arc::try_new(DeadMutex::new(Stdout::new()))?;
-        let stderr = Arc::try_new(DeadMutex::new(Stderr::new()))?;
+        let stdin = Arc::try_new(DeadMutex::new(Stdin::new(controlling_terminal)))?;
+        let stdout = Arc::try_new(DeadMutex::new(Stdout::new(controlling_terminal)))?;
+        let stderr = Arc::try_new(DeadMutex::new(Stderr::new(controlling_terminal)))?;
 
         let _fd = self.user_fd_list.try_insert(
             0,

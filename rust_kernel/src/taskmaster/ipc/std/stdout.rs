@@ -10,12 +10,16 @@ use libc_binding::Errno;
 
 /// This structure represents a FileOperation of type Stdout
 #[derive(Debug, Default)]
-pub struct Stdout {}
+pub struct Stdout {
+    controlling_terminal: usize,
+}
 
 /// Main implementation for Stdout
 impl Stdout {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(controlling_terminal: usize) -> Self {
+        Self {
+            controlling_terminal,
+        }
     }
 }
 
@@ -31,9 +35,9 @@ impl FileOperation for Stdout {
         Err(Errno::EBADF)
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        unsafe {
-            print!("{}", core::str::from_utf8_unchecked(buf));
-        }
+        print_tty!(self.controlling_terminal, "{}", unsafe {
+            core::str::from_utf8_unchecked(buf)
+        });
         Ok(IpcResult::Done(buf.len() as _))
     }
 }
@@ -41,6 +45,6 @@ impl FileOperation for Stdout {
 /// Some boilerplate to check if all is okay
 impl Drop for Stdout {
     fn drop(&mut self) {
-        println!("Stdout droped !");
+        //        println!("Stdout droped !");
     }
 }

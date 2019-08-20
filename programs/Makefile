@@ -1,9 +1,5 @@
 TARGET_DIR = ../rust_kernel/src/userland/
 all:
-
-	# make -C libc
-	# make install -C libc
-
 	make -C ./c/
 	make install -C c
 
@@ -40,7 +36,6 @@ all:
 # cp ./rust/sys_stack_overflow/sys_stack_overflow $(TARGET_DIR)
 
 fclean:
-	make fclean -C libc
 	make fclean -C c
 	make fclean -C system
 	make fclean -C shell
