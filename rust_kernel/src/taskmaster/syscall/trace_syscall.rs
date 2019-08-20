@@ -1,17 +1,17 @@
 use libc_binding::{
-    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
-    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
-    TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
+    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
 use super::signal_interface::{sigset_t, StructSigaction};
-use super::socket::SocketArgsPtr;
 use super::MmapProt;
+use super::SocketArgsPtr;
 use super::SysResult;
 use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
@@ -58,6 +58,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             GETUID => eprintln!("getuid()"),
             PAUSE => eprintln!("pause()"),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
+            PIPE => eprintln!("pipe({:#?})", ebx as *const i32),
+            DUP => eprintln!("dup({:#?})", ebx as u32),
             SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
             GETGID => eprintln!("getgid()"),
             GETEUID => eprintln!("geteuid()"),
@@ -65,6 +67,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SIGNAL => eprintln!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => eprintln!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => eprintln!("getppid()"),
+            DUP2 => eprintln!("dup2({:#?}, {:#?})", ebx as u32, ecx as u32),
             GETPGRP => eprintln!("getpgrp()"),
             SIGACTION => eprintln!(
                 "sigaction({:#?}, {:#?}, {:#?})",

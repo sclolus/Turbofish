@@ -1,10 +1,9 @@
 //! this file contains the scheduler description
-
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
-use super::thread_group::ThreadGroup;
+use super::thread_group::{RunningThreadGroup, ThreadGroup};
 use super::ProcessOrigin;
 use super::{SysResult, TaskMode};
 
@@ -410,73 +409,6 @@ impl Scheduler {
         }
     }
 
-    /// Get current process pid
-    pub fn current_task_id(&self) -> (Pid, Tid) {
-        self.current_task_id
-    }
-
-    /// Get current process
-    pub fn current_thread(&self) -> &Thread {
-        self.get_thread(self.current_task_id).unwrap()
-    }
-
-    /// Get current process mutably
-    pub fn current_thread_mut(&mut self) -> &mut Thread {
-        self.get_thread_mut(self.current_task_id).unwrap()
-    }
-
-    pub fn current_thread_group(&self) -> &ThreadGroup {
-        self.get_thread_group(self.current_task_id.0).unwrap()
-    }
-
-    pub fn current_thread_group_mut(&mut self) -> &mut ThreadGroup {
-        self.get_thread_group_mut(self.current_task_id.0).unwrap()
-    }
-
-    pub fn get_thread_group(&self, pid: Pid) -> Option<&ThreadGroup> {
-        self.all_process.get(&pid)
-    }
-
-    pub fn get_thread_group_mut(&mut self, pid: Pid) -> Option<&mut ThreadGroup> {
-        self.all_process.get_mut(&pid)
-    }
-
-    pub fn get_thread(&self, id: (Pid, Tid)) -> Option<&Thread> {
-        self.get_thread_group(id.0)?.get_all_thread()?.get(&id.1)
-    }
-
-    pub fn get_thread_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Thread> {
-        self.get_thread_group_mut(id.0)?
-            .get_all_thread_mut()?
-            .get_mut(&id.1)
-    }
-
-    #[allow(dead_code)]
-    /// iter on all the thread group
-    pub fn iter_thread_groups(&self) -> impl Iterator<Item = &ThreadGroup> {
-        self.all_process.values()
-    }
-
-    #[allow(dead_code)]
-    /// iter on all the thread
-    pub fn iter_thread(&self) -> impl Iterator<Item = &Thread> {
-        self.iter_thread_groups()
-            .flat_map(|thread_group| thread_group.get_all_thread())
-            .flat_map(|all_thread| all_thread.values())
-    }
-
-    /// iter on all the thread group mutably
-    pub fn iter_thread_groups_mut(&mut self) -> impl Iterator<Item = &mut ThreadGroup> {
-        self.all_process.values_mut()
-    }
-
-    /// iter on all the thread mutably
-    #[allow(dead_code)]
-    pub fn iter_thread_mut(&mut self) -> impl Iterator<Item = &mut Thread> {
-        self.iter_thread_groups_mut()
-            .flat_map(|thread_group| thread_group.iter_thread_mut())
-    }
-
     #[allow(dead_code)]
     /// Remove the current running process
     fn remove_curr_running(&mut self) {
@@ -571,13 +503,14 @@ impl Scheduler {
         }
 
         // When the father die, the process Self::REAPER_PID adopts all his orphelans
-        while let Some(child_pid) = self.current_thread_group_mut().child.pop() {
+        while let Some(child_pid) = self.current_thread_group_running_mut().child.pop() {
             self.get_thread_group_mut(child_pid)
                 .expect("Hashmap corrupted")
                 .parent = Self::REAPER_PID;
 
             self.get_thread_group_mut(Self::REAPER_PID)
                 .expect("no reaper process")
+                .unwrap_running_mut()
                 .child
                 .try_push(child_pid)
                 .expect("no memory to push on the reaper pid");
@@ -642,6 +575,82 @@ impl Scheduler {
         if let Some(signum) = signum {
             self.current_thread_group_exit(signum as i32 + 128);
         }
+    }
+
+    /// Get current process pid
+    pub fn current_task_id(&self) -> (Pid, Tid) {
+        self.current_task_id
+    }
+
+    /// Get current process
+    pub fn current_thread(&self) -> &Thread {
+        self.get_thread(self.current_task_id).unwrap()
+    }
+
+    /// Get current process mutably
+    pub fn current_thread_mut(&mut self) -> &mut Thread {
+        self.get_thread_mut(self.current_task_id).unwrap()
+    }
+
+    pub fn current_thread_group(&self) -> &ThreadGroup {
+        self.get_thread_group(self.current_task_id.0).unwrap()
+    }
+
+    pub fn current_thread_group_mut(&mut self) -> &mut ThreadGroup {
+        self.get_thread_group_mut(self.current_task_id.0).unwrap()
+    }
+
+    pub fn get_thread_group(&self, pid: Pid) -> Option<&ThreadGroup> {
+        self.all_process.get(&pid)
+    }
+
+    pub fn get_thread_group_mut(&mut self, pid: Pid) -> Option<&mut ThreadGroup> {
+        self.all_process.get_mut(&pid)
+    }
+
+    #[allow(dead_code)]
+    pub fn current_thread_group_running(&self) -> &RunningThreadGroup {
+        self.current_thread_group().unwrap_running()
+    }
+
+    pub fn current_thread_group_running_mut(&mut self) -> &mut RunningThreadGroup {
+        self.current_thread_group_mut().unwrap_running_mut()
+    }
+
+    pub fn get_thread(&self, id: (Pid, Tid)) -> Option<&Thread> {
+        self.get_thread_group(id.0)?.get_all_thread()?.get(&id.1)
+    }
+
+    pub fn get_thread_mut(&mut self, id: (Pid, Tid)) -> Option<&mut Thread> {
+        self.get_thread_group_mut(id.0)?
+            .get_all_thread_mut()?
+            .get_mut(&id.1)
+    }
+
+    #[allow(dead_code)]
+    /// iter on all the thread group
+    pub fn iter_thread_groups(&self) -> impl Iterator<Item = &ThreadGroup> {
+        self.all_process.values()
+    }
+
+    #[allow(dead_code)]
+    /// iter on all the thread
+    pub fn iter_thread(&self) -> impl Iterator<Item = &Thread> {
+        self.iter_thread_groups()
+            .flat_map(|thread_group| thread_group.get_all_thread())
+            .flat_map(|all_thread| all_thread.values())
+    }
+
+    /// iter on all the thread group mutably
+    pub fn iter_thread_groups_mut(&mut self) -> impl Iterator<Item = &mut ThreadGroup> {
+        self.all_process.values_mut()
+    }
+
+    /// iter on all the thread mutably
+    #[allow(dead_code)]
+    pub fn iter_thread_mut(&mut self) -> impl Iterator<Item = &mut Thread> {
+        self.iter_thread_groups_mut()
+            .flat_map(|thread_group| thread_group.iter_thread_mut())
     }
 }
 

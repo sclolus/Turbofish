@@ -1,8 +1,8 @@
 TARGET_DIR = ../rust_kernel/src/userland/
 all:
 
-	make -C libc
-	make install -C libc
+	# make -C libc
+	# make install -C libc
 
 	make -C ./c/
 	make install -C c
