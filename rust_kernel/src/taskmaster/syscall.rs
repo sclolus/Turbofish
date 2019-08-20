@@ -34,17 +34,8 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 mod waitpid;
 use waitpid::sys_waitpid;
 
-mod close;
-use close::sys_close;
-
 mod unlink;
 use unlink::sys_unlink;
-
-mod ipc;
-use ipc::{sys_dup, sys_dup2, sys_pipe, sys_socketcall, sys_write, SocketArgsPtr};
-
-pub mod read;
-use read::sys_read;
 
 mod execve;
 use execve::sys_execve;
@@ -153,6 +144,24 @@ use geteuid::sys_geteuid;
 
 mod getegid;
 use getegid::sys_getegid;
+
+/*
+ * These below declarations are IPC related
+ */
+mod dup;
+use dup::sys_dup;
+mod dup2;
+use dup2::sys_dup2;
+mod pipe;
+use pipe::sys_pipe;
+mod socket;
+use socket::{sys_socketcall, SocketArgsPtr};
+mod read;
+use read::sys_read;
+mod write;
+use write::sys_write;
+mod close;
+use close::sys_close;
 
 mod trace_syscall;
 

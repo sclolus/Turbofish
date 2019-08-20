@@ -1,11 +1,12 @@
 //! This file contains definition of a task
 
-use super::ipcmaster::FileDescriptorInterface;
+use super::ipc::FileDescriptorInterface;
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
+
 use core::ffi::c_void;
 use fallible_collections::FallibleBox;
 use messaging::{MessageQueue, ProcessMessage};

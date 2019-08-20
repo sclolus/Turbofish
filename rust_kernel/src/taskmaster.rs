@@ -1,7 +1,7 @@
 //! This file contains the task manager
 
 mod cpu_isr;
-mod ipcmaster;
+mod ipc;
 mod process;
 #[macro_use]
 mod scheduler;
