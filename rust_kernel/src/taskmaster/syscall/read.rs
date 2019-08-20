@@ -2,58 +2,44 @@
 
 use super::SysResult;
 
+use super::ipc::IpcResult;
+use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
-use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::WaitingState;
 
-use errno::Errno;
-
-use crate::terminal::{ReadResult, TERMINAL};
-
 /// Read something from a file descriptor
-pub fn sys_read(fd: i32, buf: *mut u8, count: usize) -> SysResult<u32> {
-    unpreemptible_context!({
-        let mut scheduler = SCHEDULER.lock();
+pub fn sys_read(fd: i32, mut buf: *mut u8, mut count: usize) -> SysResult<u32> {
+    let mut readen_bytes = 0;
+    loop {
+        unpreemptible_context!({
+            let mut scheduler = SCHEDULER.lock();
 
-        let output = {
-            let v = scheduler
-                .current_thread_mut()
-                .unwrap_process_mut()
-                .get_virtual_allocator();
+            let output = {
+                let v = scheduler
+                    .current_thread_mut()
+                    .unwrap_process_mut()
+                    .get_virtual_allocator();
 
-            // Check if pointer exists in user virtual address space
-            v.make_checked_mut_slice(buf, count)?
-        };
+                // Check if pointer exists in user virtual address space
+                v.make_checked_mut_slice(buf, count)?
+            };
 
-        if fd == 0 {
-            // TODO: change that, read on tty 1 for the moment
-            let read_result = unsafe { TERMINAL.as_mut().unwrap().read(output, 1) };
+            let fd_interface = &mut scheduler
+                .current_thread_group_running_mut()
+                .file_descriptor_interface;
 
-            // the read was non blocking
-            if let ReadResult::NonBlocking(read_count) = read_result {
-                return Ok(read_count as u32);
-            }
-            // else the read was blocking
-
-            scheduler
-                .current_thread_mut()
-                .set_waiting(WaitingState::Read);
-            let _ret = auto_preempt()?;
-
-            unpreemptible();
-
-            // TODO: change that, read on tty 1 for the moment
-            let read_result = unsafe { TERMINAL.as_mut().unwrap().read(output, 1) };
-            match read_result {
-                ReadResult::NonBlocking(read_count) => {
-                    return Ok(read_count as u32);
+            match fd_interface.read(fd as _, output)? {
+                IpcResult::Wait(res) => {
+                    readen_bytes += res;
+                    buf = unsafe { buf.add(res as _) };
+                    count -= res as usize;
+                    scheduler
+                        .current_thread_mut()
+                        .set_waiting(WaitingState::Read);
+                    let _ret = auto_preempt()?;
                 }
-                ReadResult::Blocking => {
-                    panic!("read has been wake up but there is nothing to read")
-                }
+                IpcResult::Done(res) => return Ok(readen_bytes + res),
             }
-        } else {
-            Err(Errno::Eperm)
-        }
-    })
+        })
+    }
 }

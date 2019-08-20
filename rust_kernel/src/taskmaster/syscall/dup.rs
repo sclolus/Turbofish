@@ -1,16 +1,18 @@
-//! Close a file descriptor
+//! This file contains the description of the dup syscall
 
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 
-pub fn sys_close(fd: i32) -> SysResult<u32> {
-    unpreemptible_context!({
+/// Duplicate a file descriptor
+pub fn sys_dup(old_fd: u32) -> SysResult<u32> {
+    let ret = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
+
         let fd_interface = &mut scheduler
             .current_thread_group_running_mut()
             .file_descriptor_interface;
 
-        fd_interface.close_fd(fd as u32)?;
+        fd_interface.dup(old_fd)?
     });
-    Ok(0)
+    Ok(ret)
 }

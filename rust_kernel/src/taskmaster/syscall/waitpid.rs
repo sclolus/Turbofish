@@ -236,16 +236,20 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         // equivalent to wait().
         -1 => {
             // Check if at leat one child exists
-            if thread_group.child.len() == 0 {
+            if thread_group.unwrap_running().child.len() == 0 {
                 return Err(Errno::Echild);
             }
             // Check is the at least one child is a already a zombie -> Return immediatly child PID
-            thread_group.child.iter().find(|&current_pid| {
-                scheduler
-                    .get_thread_group(*current_pid)
-                    .expect("Pid must be here")
-                    .is_zombie()
-            })
+            thread_group
+                .unwrap_running()
+                .child
+                .iter()
+                .find(|&current_pid| {
+                    scheduler
+                        .get_thread_group(*current_pid)
+                        .expect("Pid must be here")
+                        .is_zombie()
+                })
         }
         // If pid is less than (pid_t)-1, status is requested for any
         // child process whose process group ID is equal to the
@@ -259,6 +263,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             }
             // TODO: can be optim
             let candidate_number = thread_group
+                .unwrap_running()
                 .child
                 .iter()
                 .map(|&current_pid| {
@@ -273,19 +278,24 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 return Err(Errno::Echild);
             }
 
-            thread_group.child.iter().find(|&current_pid| {
-                scheduler
-                    .get_thread_group(*current_pid)
-                    .expect("Pid must be here")
-                    .pgid
-                    == -pid
-            })
+            thread_group
+                .unwrap_running()
+                .child
+                .iter()
+                .find(|&current_pid| {
+                    scheduler
+                        .get_thread_group(*current_pid)
+                        .expect("Pid must be here")
+                        .pgid
+                        == -pid
+                })
         }
         // If pid is greater than 0, it specifies the process ID of a
         // single child process for which status is requested.
         pid if pid > 0 => {
             // Check if specified child exists
             if let Some(elem) = thread_group
+                .unwrap_running()
                 .child
                 .iter()
                 .find(|&&current_pid| current_pid == pid)

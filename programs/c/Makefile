@@ -42,6 +42,7 @@ SRC_C += Clone \
 		CanonicalRead \
 		Loop \
 		Segfaulter \
+		PipeCreater \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

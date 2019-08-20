@@ -1,5 +1,6 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
+use super::ipc;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -14,11 +15,11 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE, READ, REBOOT,
-    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP,
-    TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
+    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -34,17 +35,8 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 mod waitpid;
 use waitpid::sys_waitpid;
 
-mod close;
-use close::sys_close;
-
 mod unlink;
 use unlink::sys_unlink;
-
-mod socket;
-use socket::{sys_socketcall, SocketArgsPtr};
-
-pub mod read;
-use read::sys_read;
 
 mod execve;
 use execve::sys_execve;
@@ -63,9 +55,6 @@ use tcsetpgrp::sys_tcsetpgrp;
 
 mod tcgetpgrp;
 use tcgetpgrp::sys_tcgetpgrp;
-
-mod write;
-use write::sys_write;
 
 mod getpid;
 use getpid::sys_getpid;
@@ -157,6 +146,24 @@ use geteuid::sys_geteuid;
 mod getegid;
 use getegid::sys_getegid;
 
+/*
+ * These below declarations are IPC related
+ */
+mod dup;
+use dup::sys_dup;
+mod dup2;
+use dup2::sys_dup2;
+mod pipe;
+use pipe::sys_pipe;
+mod socket;
+use socket::{sys_socketcall, SocketArgsPtr};
+mod read;
+use read::sys_read;
+mod write;
+use write::sys_write;
+mod close;
+use close::sys_close;
+
 mod trace_syscall;
 
 extern "C" {
@@ -203,12 +210,15 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         KILL => sys_kill(ebx as i32, ecx as u32),
+        PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
+        DUP => sys_dup(ebx as u32),
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),
         GETEUID => sys_geteuid(),
         GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
+        DUP2 => sys_dup2(ebx as u32, ecx as u32),
         GETPPID => sys_getppid(),
         GETPGRP => sys_getpgrp(),
         SIGACTION => sys_sigaction(

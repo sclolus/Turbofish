@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <errno.h>
+#include <user_syscall.h>
 
 // The pipe() function shall create a pipe and place two file
 // descriptors, one each into the arguments fildes[0] and fildes[1],
@@ -30,13 +31,24 @@
 // data access, last data modification, and last file status change
 // timestamps of the pipe.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
-int pipe(int fildes[2])
+/*
+ * Create an IO pipe
+ * The first FD is open for reading
+ * The second FD is open for writing
+ * If there are multiple readers (after fork() or threads for example), race conditions between them may occured,
+ * the message is transfered just one time. There are no 'broadcasting' !
+ */
+int pipe(int fd[2])
 {
-	DUMMY
-	(void)fildes;
-	errno = ENOSYS;
-	return -1;
+	if (fd[0] < 0 || fd[1] < 0) {
+		errno = EBADF;
+		return -1;
+	}
+
+	int ret = _user_syscall(PIPE, 1, fd);
+	/*
+	 * On success, zero is returned.  On error, -1 is returned,
+	 * and errno is set appropriately.
+	 */
+	set_errno_and_return(ret);
 }

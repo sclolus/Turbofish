@@ -5,6 +5,7 @@ use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
+
 use core::ffi::c_void;
 use fallible_collections::FallibleBox;
 use messaging::{MessageQueue, ProcessMessage};
@@ -146,8 +147,10 @@ pub enum WaitingState {
     Pause,
     /// The Process is looking for the death of his child
     ChildDeath(Pid),
-    /// Waiting for a custom event
+    /// In Waiting to read
     Read,
+    /// In Waiting to write
+    Write,
     // Event(fn() -> Option<u32>),
 }
 
