@@ -42,7 +42,7 @@ pub enum IpcResult<T> {
 }
 
 /// The Access Mode of the File Descriptor
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
 pub enum Mode {
     ReadOnly,
     WriteOnly,
@@ -63,7 +63,7 @@ trait KernelFileDescriptor: core::fmt::Debug + Send {
 }
 
 /// Here the type of the Kernel File Descriptor
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
 enum KernelFileDescriptorType {
     Pipe,
     Fifo,
@@ -75,23 +75,11 @@ enum KernelFileDescriptorType {
 
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
-#[derive(Debug)]
+#[derive(Debug, TryClone)]
 struct UserFileDescriptor {
     access_mode: Mode,
     fd_type: KernelFileDescriptorType,
     kernel_fd: Arc<DeadMutex<dyn KernelFileDescriptor>>,
-}
-
-/// TryClone boilerplate for UserFileDescriptor: Contains exception for Arc
-impl TryClone for UserFileDescriptor {
-    fn try_clone(&self) -> Result<Self, alloc::collections::CollectionAllocErr> {
-        Ok(Self {
-            access_mode: self.access_mode,
-            fd_type: self.fd_type,
-            // Cloning a Arc does not allocate memory. Just increments the ref count
-            kernel_fd: self.kernel_fd.clone(),
-        })
-    }
 }
 
 /// Standard implementation of an user File Descriptor

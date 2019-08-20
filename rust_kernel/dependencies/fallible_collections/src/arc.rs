@@ -24,7 +24,7 @@ impl<T> FallibleArc<T> for Arc<T> {
 }
 
 /// Just a TryClone boilerplate for Arc
-impl<T> TryClone for Arc<T> {
+impl<T: ?Sized> TryClone for Arc<T> {
     fn try_clone(&self) -> Result<Self, alloc::collections::CollectionAllocErr> {
         Ok(self.clone())
     }
