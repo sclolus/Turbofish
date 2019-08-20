@@ -85,6 +85,7 @@ pub fn exec(args: &[&str]) -> u8 {
                 tcsetpgrp(0, f);
                 let mut status: i32 = 0;
                 let w = wait(&mut status as *mut i32);
+                tcsetpgrp(0, getpgrp());
                 println!("wait finished: ret = {} status = {}", w, status);
                 0
             }
@@ -104,5 +105,6 @@ extern "C" {
     fn wait(status: *mut i32) -> i32;
     fn perror(msg: *const u8);
     fn tcsetpgrp(fildes: i32, pgid: i32);
+    fn getpgrp() -> i32;
     fn setpgid(pid: i32, pgid: i32);
 }

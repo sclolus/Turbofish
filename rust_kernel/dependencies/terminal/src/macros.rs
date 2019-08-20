@@ -22,6 +22,26 @@ macro_rules! print {
     })
 }
 
+#[macro_export]
+macro_rules! print_tty {
+    ($tty_number:expr, $($arg:tt)*) => ({
+        use core::fmt::Write;
+        match format_args!($($arg)*) {
+            a => {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    match $crate::TERMINAL.as_mut() {
+                        None => {
+                            use $crate::EARLY_TERMINAL;
+                            core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
+                        },
+                        Some(term) => term.get_tty($tty_number).write_fmt(a).unwrap(),
+                    }
+                }
+            }
+        }
+    })
+}
 /// Print_screen allow to write directly into the SCREEN_MONAD and bypass his mutex,
 /// Use only when Panic or some fatal error occured !
 #[macro_export]

@@ -1,4 +1,5 @@
 //! tcsetpgrp syscall
+use super::scheduler::SCHEDULER;
 use super::Pid;
 use super::SysResult;
 use crate::terminal::TERMINAL;
@@ -22,12 +23,15 @@ use crate::terminal::TERMINAL;
 // TODO: file descriptor argument
 pub fn sys_tcsetpgrp(_fildes: i32, pgid_id: Pid) -> SysResult<u32> {
     unpreemptible_context!({
+        let scheduler = SCHEDULER.lock();
+        let controlling_terminal = scheduler.current_thread_group().controlling_terminal;
+        // dbg!(controlling_terminal);
+        // dbg!(pgid_id);
         unsafe {
             TERMINAL
                 .as_mut()
                 .unwrap()
-                //TODO: change this 1
-                .get_line_discipline(1)
+                .get_line_discipline(controlling_terminal)
                 .tcsetpgrp(pgid_id);
         }
     });

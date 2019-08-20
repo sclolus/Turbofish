@@ -31,15 +31,31 @@ pub enum ProcessMessage {
     SomethingToRead,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ProcessGroupMessage {
+    Signal(Signum),
+    SomethingToRead,
+}
+
 /// enum MessageTo contains the receiver in its variant and the
 /// message in its variant content
 #[derive(Debug, Copy, Clone)]
 pub enum MessageTo {
     // Tty { content: TtyMessage },
-    Process { pid: Pid, content: ProcessMessage },
-    ProcessGroup { pgid: Pid, content: Signum },
-    Scheduler { content: SchedulerMessage },
-    Tty { key_pressed: KeySymb },
+    Process {
+        pid: Pid,
+        content: ProcessMessage,
+    },
+    ProcessGroup {
+        pgid: Pid,
+        content: ProcessGroupMessage,
+    },
+    Scheduler {
+        content: SchedulerMessage,
+    },
+    Tty {
+        key_pressed: KeySymb,
+    },
 }
 
 #[derive(Debug)]
