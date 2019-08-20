@@ -8,9 +8,9 @@ pub fn sys_dup2(old_fd: u32, new_fd: u32) -> SysResult<u32> {
     let ret = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let task = scheduler.current_thread_mut();
+        let fd_interface = &mut scheduler.current_thread_group_mut().fd_interface;
 
-        task.fd_interface.dup2(old_fd, new_fd)?
+        fd_interface.dup2(old_fd, new_fd)?
     });
     Ok(ret)
 }

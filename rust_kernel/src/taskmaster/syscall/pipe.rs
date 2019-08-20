@@ -16,9 +16,9 @@ pub fn sys_pipe(fd: &mut [i32]) -> SysResult<u32> {
             // Check if pointer exists in user virtual address space
             v.check_user_ptr_with_len::<i32>(fd.as_ptr(), core::mem::size_of::<[i32; 2]>())?;
         }
-        let task = scheduler.current_thread_mut();
+        let fd_interface = &mut scheduler.current_thread_group_mut().fd_interface;
 
-        let ret = task.fd_interface.new_pipe()?;
+        let ret = fd_interface.new_pipe()?;
         fd[0] = ret.0 as _;
         fd[1] = ret.1 as _;
     });

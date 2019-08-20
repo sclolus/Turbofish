@@ -1,7 +1,9 @@
+use super::ipc::FileDescriptorInterface;
 use super::scheduler::{Pid, Tid};
 use super::syscall::clone::CloneFlags;
 use super::thread::Thread;
 use super::SysResult;
+
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
@@ -58,6 +60,8 @@ pub struct ThreadGroup {
     pub parent: Pid,
     /// the next availabel tid for a new thread
     next_tid: Tid,
+    /// File Descriptors
+    pub fd_interface: FileDescriptorInterface,
 }
 
 #[derive(Debug, TryClone)]
@@ -98,6 +102,7 @@ impl ThreadGroup {
             },
             next_tid: 1,
             pgid,
+            fd_interface: FileDescriptorInterface::new(),
         })
     }
 
@@ -161,6 +166,7 @@ impl ThreadGroup {
             },
             pgid: self.pgid,
             next_tid: 1,
+            fd_interface: self.fd_interface.try_clone()?,
         })
     }
 

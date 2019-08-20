@@ -24,9 +24,9 @@ pub fn sys_write(fd: i32, mut buf: *const u8, mut count: usize) -> SysResult<u32
                 v.make_checked_slice(buf, count)?
             };
 
-            let task = scheduler.current_thread_mut();
+            let fd_interface = &mut scheduler.current_thread_group_mut().fd_interface;
 
-            match task.fd_interface.write(fd as _, output)? {
+            match fd_interface.write(fd as _, output)? {
                 IpcResult::Wait(res) => {
                     written_bytes += res;
                     buf = unsafe { buf.add(res as _) };

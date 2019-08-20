@@ -8,9 +8,9 @@ pub fn sys_dup(old_fd: u32) -> SysResult<u32> {
     let ret = unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let task = scheduler.current_thread_mut();
+        let fd_interface = &mut scheduler.current_thread_group_mut().fd_interface;
 
-        task.fd_interface.dup(old_fd)?
+        fd_interface.dup(old_fd)?
     });
     Ok(ret)
 }
