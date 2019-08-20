@@ -34,6 +34,13 @@ pub struct RunningThreadGroup {
 type ThreadList = BTreeMap<Tid, Thread>;
 
 impl ThreadGroupState {
+    fn get_death_status(&self) -> Option<i32> {
+        match self {
+            Self::Zombie(status) => Some(*status),
+            _ => None,
+        }
+    }
+
     pub fn get_thread_list(&self) -> Option<&ThreadList> {
         match self {
             Self::Running(running_thread_group) => Some(&running_thread_group.all_thread),
@@ -61,13 +68,6 @@ impl ThreadGroupState {
             Self::Zombie(_) => panic!("Cannot unwrap a zombie !"),
         }
     }
-
-    fn get_death_status(&self) -> Option<i32> {
-        match self {
-            Self::Zombie(status) => Some(*status),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -75,7 +75,7 @@ pub struct ThreadGroup {
     /// the identity(uid, gid, groups...)
     pub credentials: Credentials,
     /// all the thread in the thread group
-    pub thread_group_state: ThreadGroupState,
+    thread_group_state: ThreadGroupState,
     /// the process group id
     pub pgid: Pid,
     /// Parent
@@ -126,22 +126,6 @@ impl ThreadGroup {
         })
     }
 
-    pub fn get_first_thread(&mut self) -> Option<&mut Thread> {
-        self.get_all_thread_mut()?.get_mut(&0)
-    }
-
-    pub fn get_thread(&mut self, thread_id: Tid) -> Option<&mut Thread> {
-        self.get_all_thread_mut()?.get_mut(&thread_id)
-    }
-
-    pub fn get_all_thread(&self) -> Option<&ThreadList> {
-        self.thread_group_state.get_thread_list()
-    }
-
-    pub fn get_all_thread_mut(&mut self) -> Option<&mut ThreadList> {
-        self.thread_group_state.get_thread_list_mut()
-    }
-
     pub fn get_available_tid(&mut self) -> Tid {
         let res = self.next_tid;
         self.next_tid += 1;
@@ -168,10 +152,7 @@ impl ThreadGroup {
         flags: CloneFlags,
     ) -> SysResult<Self> {
         // TODO: if new_thread_group fail remove that
-        self.thread_group_state
-            .unwrap_running_mut()
-            .child
-            .try_push(child_pid)?;
+        self.unwrap_running_mut().child.try_push(child_pid)?;
 
         let new_thread = self
             .get_thread(father_tid)
@@ -187,7 +168,6 @@ impl ThreadGroup {
                 all_thread: all_thread,
                 child: Vec::new(),
                 file_descriptor_interface: self
-                    .thread_group_state
                     .unwrap_running()
                     .file_descriptor_interface
                     .try_clone()?,
@@ -199,8 +179,7 @@ impl ThreadGroup {
 
     /// remove pid `pid` from the child list, Panic if not present
     pub fn remove_child(&mut self, pid: Pid) {
-        self.thread_group_state
-            .unwrap_running_mut()
+        self.unwrap_running_mut()
             .child
             .remove_item(&pid)
             .expect("can't remove child pid it is not present");
@@ -208,5 +187,31 @@ impl ThreadGroup {
 
     pub fn set_zombie(&mut self, status: i32) {
         self.thread_group_state = ThreadGroupState::Zombie(status);
+    }
+
+    pub fn get_first_thread(&mut self) -> Option<&mut Thread> {
+        self.get_all_thread_mut()?.get_mut(&0)
+    }
+
+    pub fn get_thread(&mut self, thread_id: Tid) -> Option<&mut Thread> {
+        self.get_all_thread_mut()?.get_mut(&thread_id)
+    }
+
+    pub fn get_all_thread(&self) -> Option<&ThreadList> {
+        self.thread_group_state.get_thread_list()
+    }
+
+    pub fn get_all_thread_mut(&mut self) -> Option<&mut ThreadList> {
+        self.thread_group_state.get_thread_list_mut()
+    }
+
+    /// Unwrap directly the field thread_group_state as Running
+    pub fn unwrap_running(&self) -> &RunningThreadGroup {
+        self.thread_group_state.unwrap_running()
+    }
+
+    /// Unwrap directly the field thread_group_state as Running
+    pub fn unwrap_running_mut(&mut self) -> &mut RunningThreadGroup {
+        self.thread_group_state.unwrap_running_mut()
     }
 }

@@ -236,12 +236,11 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         // equivalent to wait().
         -1 => {
             // Check if at leat one child exists
-            if thread_group.thread_group_state.unwrap_running().child.len() == 0 {
+            if thread_group.unwrap_running().child.len() == 0 {
                 return Err(Errno::Echild);
             }
             // Check is the at least one child is a already a zombie -> Return immediatly child PID
             thread_group
-                .thread_group_state
                 .unwrap_running()
                 .child
                 .iter()
@@ -264,7 +263,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             }
             // TODO: can be optim
             let candidate_number = thread_group
-                .thread_group_state
                 .unwrap_running()
                 .child
                 .iter()
@@ -281,7 +279,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             }
 
             thread_group
-                .thread_group_state
                 .unwrap_running()
                 .child
                 .iter()
@@ -298,7 +295,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         pid if pid > 0 => {
             // Check if specified child exists
             if let Some(elem) = thread_group
-                .thread_group_state
                 .unwrap_running()
                 .child
                 .iter()

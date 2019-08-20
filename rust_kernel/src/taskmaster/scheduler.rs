@@ -489,7 +489,6 @@ impl Scheduler {
 
             self.get_thread_group_mut(Self::REAPER_PID)
                 .expect("no reaper process")
-                .thread_group_state
                 .unwrap_running_mut()
                 .child
                 .try_push(child_pid)
@@ -588,15 +587,11 @@ impl Scheduler {
 
     #[allow(dead_code)]
     pub fn current_thread_group_running(&self) -> &RunningThreadGroup {
-        self.current_thread_group()
-            .thread_group_state
-            .unwrap_running()
+        self.current_thread_group().unwrap_running()
     }
 
     pub fn current_thread_group_running_mut(&mut self) -> &mut RunningThreadGroup {
-        self.current_thread_group_mut()
-            .thread_group_state
-            .unwrap_running_mut()
+        self.current_thread_group_mut().unwrap_running_mut()
     }
 
     pub fn get_thread(&self, id: (Pid, Tid)) -> Option<&Thread> {
