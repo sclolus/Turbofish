@@ -12,29 +12,53 @@ use libc_binding::{gid_t, uid_t};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
-enum ThreadGroupState {
+pub enum ThreadGroupState {
     /// The process is running and has a thread list
-    Running { all_thread: ThreadList },
+    Running(RunningThreadGroup),
     /// The process is terminated and wait to deliver his testament to his father
     /// bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
     /// bits 8..15 for signal exit. Interpreted as i8 and set bit 30
     Zombie(i32),
 }
 
+/// Main boilerplate
+#[derive(Debug)]
+pub struct RunningThreadGroup {
+    all_thread: ThreadList,
+    /// List of childs
+    pub child: Vec<Pid>,
+    /// File Descriptors
+    pub file_descriptor_interface: FileDescriptorInterface,
+}
+
 type ThreadList = BTreeMap<Tid, Thread>;
 
 impl ThreadGroupState {
-    pub fn get_thread_list_mut(&mut self) -> Option<&mut ThreadList> {
+    pub fn get_thread_list(&self) -> Option<&ThreadList> {
         match self {
-            Self::Running { all_thread } => Some(all_thread),
+            Self::Running(running_thread_group) => Some(&running_thread_group.all_thread),
             Self::Zombie(_) => None,
         }
     }
 
-    pub fn get_thread_list(&self) -> Option<&ThreadList> {
+    pub fn get_thread_list_mut(&mut self) -> Option<&mut ThreadList> {
         match self {
-            Self::Running { all_thread } => Some(all_thread),
+            Self::Running(running_thread_group) => Some(&mut running_thread_group.all_thread),
             Self::Zombie(_) => None,
+        }
+    }
+
+    pub fn unwrap_running(&self) -> &RunningThreadGroup {
+        match self {
+            Self::Running(running_thread_group) => running_thread_group,
+            Self::Zombie(_) => panic!("Cannot unwrap a zombie !"),
+        }
+    }
+
+    pub fn unwrap_running_mut(&mut self) -> &mut RunningThreadGroup {
+        match self {
+            Self::Running(running_thread_group) => running_thread_group,
+            Self::Zombie(_) => panic!("Cannot unwrap a zombie !"),
         }
     }
 
@@ -51,17 +75,13 @@ pub struct ThreadGroup {
     /// the identity(uid, gid, groups...)
     pub credentials: Credentials,
     /// all the thread in the thread group
-    thread_group_state: ThreadGroupState,
+    pub thread_group_state: ThreadGroupState,
     /// the process group id
     pub pgid: Pid,
-    /// List of childs
-    pub child: Vec<Pid>,
     /// Parent
     pub parent: Pid,
     /// the next availabel tid for a new thread
     next_tid: Tid,
-    /// File Descriptors
-    pub fd_interface: FileDescriptorInterface,
 }
 
 #[derive(Debug, TryClone)]
@@ -94,15 +114,15 @@ impl ThreadGroup {
         let mut all_thread = BTreeMap::new();
         all_thread.try_insert(0, thread)?;
         Ok(ThreadGroup {
-            child: Vec::new(),
             parent: father_pid,
             credentials: Credentials::ROOT,
-            thread_group_state: ThreadGroupState::Running {
+            thread_group_state: ThreadGroupState::Running(RunningThreadGroup {
                 all_thread: all_thread,
-            },
+                child: Vec::new(),
+                file_descriptor_interface: FileDescriptorInterface::new(),
+            }),
             next_tid: 1,
             pgid,
-            fd_interface: FileDescriptorInterface::new(),
         })
     }
 
@@ -148,7 +168,10 @@ impl ThreadGroup {
         flags: CloneFlags,
     ) -> SysResult<Self> {
         // TODO: if new_thread_group fail remove that
-        self.child.try_push(child_pid)?;
+        self.thread_group_state
+            .unwrap_running_mut()
+            .child
+            .try_push(child_pid)?;
 
         let new_thread = self
             .get_thread(father_tid)
@@ -158,21 +181,27 @@ impl ThreadGroup {
         let mut all_thread = BTreeMap::new();
         all_thread.try_insert(0, new_thread)?;
         Ok(Self {
-            child: Vec::new(),
             parent: father_pid,
             credentials: self.credentials.try_clone()?,
-            thread_group_state: ThreadGroupState::Running {
+            thread_group_state: ThreadGroupState::Running(RunningThreadGroup {
                 all_thread: all_thread,
-            },
+                child: Vec::new(),
+                file_descriptor_interface: self
+                    .thread_group_state
+                    .unwrap_running()
+                    .file_descriptor_interface
+                    .try_clone()?,
+            }),
             pgid: self.pgid,
             next_tid: 1,
-            fd_interface: self.fd_interface.try_clone()?,
         })
     }
 
     /// remove pid `pid` from the child list, Panic if not present
     pub fn remove_child(&mut self, pid: Pid) {
-        self.child
+        self.thread_group_state
+            .unwrap_running_mut()
+            .child
             .remove_item(&pid)
             .expect("can't remove child pid it is not present");
     }

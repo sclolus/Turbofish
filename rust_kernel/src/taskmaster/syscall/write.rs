@@ -24,7 +24,9 @@ pub fn sys_write(fd: i32, mut buf: *const u8, mut count: usize) -> SysResult<u32
                 v.make_checked_slice(buf, count)?
             };
 
-            let fd_interface = &mut scheduler.current_thread_group_mut().fd_interface;
+            let fd_interface = &mut scheduler
+                .current_thread_group_running_mut()
+                .file_descriptor_interface;
 
             match fd_interface.write(fd as _, output)? {
                 IpcResult::Wait(res) => {
