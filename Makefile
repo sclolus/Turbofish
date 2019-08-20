@@ -5,6 +5,7 @@ LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 
 all: $(IMG_DISK)
+	make -C libc
 	make -C programs
 	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 	sudo losetup -fP $(IMG_DISK)
@@ -38,10 +39,12 @@ $(IMG_DISK):
 
 clean:
 	make -C programs fclean
+	make -C libc fclean
 	make -C $(KERNEL_DIRECTORY) fclean
 
 fclean:
 	make -C programs fclean
+	make -C libc fclean
 	make -C $(KERNEL_DIRECTORY) fclean
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
