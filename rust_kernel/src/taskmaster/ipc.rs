@@ -31,39 +31,13 @@ pub struct FileDescriptorInterface {
     user_fd_list: BTreeMap<Fd, UserFileDescriptor>,
 }
 
-/// Describe what to do after an IPC request
+/// Describe what to do after an IPC request and result return
 #[derive(Debug)]
-pub enum IpcStatus {
+pub enum IpcResult<T> {
     /// Can continue thread execution normally
-    Continue,
+    Continue(T),
     /// the user should wait for his IPC request
-    Wait,
-}
-
-/// Result of an IPC Request when blocking request is possible
-#[derive(Debug)]
-pub struct IpcResult<T> {
-    /// Number of bytes that they are transfered (cf: Write and Read)
-    pub res: T,
-    /// Describe what to do after an IPC request
-    pub status: IpcStatus,
-}
-
-/// Standard boilerplate
-impl<T> IpcResult<T> {
-    #[allow(dead_code)]
-    fn wait(res: T) -> Self {
-        IpcResult {
-            res,
-            status: IpcStatus::Wait,
-        }
-    }
-    fn cont(res: T) -> Self {
-        IpcResult {
-            res,
-            status: IpcStatus::Continue,
-        }
-    }
+    Wait(T),
 }
 
 /// The Access Mode of the File Descriptor
@@ -247,7 +221,7 @@ impl FileDescriptorInterface {
                     )
                     .map(|_| fd)
             })??;
-        Ok(IpcResult::cont(fd))
+        Ok(IpcResult::Continue(fd))
     }
 
     /// Open a Socket
@@ -277,7 +251,6 @@ impl FileDescriptorInterface {
     /// Read something from the File Descriptor: Can block
     /// Important ! When in blocked syscall, the slice must be verified before read op and
     /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
-    #[allow(dead_code)]
     pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
 

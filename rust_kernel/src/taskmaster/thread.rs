@@ -153,8 +153,10 @@ pub enum WaitingState {
     Pause,
     /// The Process is looking for the death of his child
     ChildDeath(Pid),
-    /// Waiting for a custom event
+    /// In Waiting to read
     Read,
+    /// In Waiting to write
+    Write,
     // Event(fn() -> Option<u32>),
 }
 

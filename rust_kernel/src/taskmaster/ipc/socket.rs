@@ -22,10 +22,10 @@ impl KernelFileDescriptor for Socket {
     fn register(&mut self, _access_mode: Mode) {}
     fn unregister(&mut self, _access_mode: Mode) {}
     fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::cont(0))
+        Ok(IpcResult::Continue(0))
     }
     fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        Ok(IpcResult::cont(0))
+        Ok(IpcResult::Continue(0))
     }
 }
 
