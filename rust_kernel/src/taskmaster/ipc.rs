@@ -51,7 +51,6 @@ pub enum IpcResult<T> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
 pub enum Mode {
     ReadOnly,
-    #[allow(dead_code)]
     WriteOnly,
     ReadWrite,
 }
@@ -145,7 +144,7 @@ impl FileDescriptorInterface {
 
         let input_fd = self.insert_user_fd(Mode::ReadOnly, pipe)?;
         let output_fd = self
-            .insert_user_fd(Mode::ReadOnly, cloned_pipe)
+            .insert_user_fd(Mode::WriteOnly, cloned_pipe)
             .map_err(|e| {
                 let _r = self.user_fd_list.remove(&input_fd);
                 e
