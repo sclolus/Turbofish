@@ -7,13 +7,6 @@ use super::FileOperation;
 use super::IpcResult;
 use super::Mode;
 
-mod stdin;
-pub use stdin::Stdin;
-mod stdout;
-pub use stdout::Stdout;
-mod stderr;
-pub use stderr::Stderr;
-
 use alloc::sync::Arc;
 use sync::dead_mutex::DeadMutex;
 
@@ -75,6 +68,7 @@ pub struct Tty {
 
 impl Tty {
     pub fn new(operation: Arc<DeadMutex<Std>>) -> Self {
+        println!("Tty created !");
         Self {
             inode_id: None,
             operation,
@@ -84,6 +78,7 @@ impl Tty {
 
 impl Driver for Tty {
     fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>> {
+        println!("Tty opened !");
         self.operation.clone()
     }
     fn set_inode_id(&mut self, inode_id: usize) {

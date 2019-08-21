@@ -26,8 +26,6 @@ use socket::Socket;
 pub mod std;
 pub use std::{Std, Tty};
 
-use self::std::{Stderr, Stdin, Stdout};
-
 /// Dependance du Vfs
 use super::dummy_vfs::DUMMY_VFS;
 
@@ -51,6 +49,7 @@ pub enum IpcResult<T> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
 pub enum Mode {
     ReadOnly,
+    #[allow(dead_code)]
     WriteOnly,
     ReadWrite,
 }
@@ -74,18 +73,16 @@ pub trait Driver: core::fmt::Debug + Send {
     fn set_inode_id(&mut self, inode_id: usize);
 }
 
-/*
-/// Here the type of the Kernel File Descriptor
-#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-enum FileOperationType {
-    Pipe,
-    Fifo,
-    Socket,
-    Stdin,
-    Stdout,
-    Stderr,
-}
-*/
+// /// Here the type of the Kernel File Descriptor
+// #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
+// enum FileOperationType {
+//     Pipe,
+//     Fifo,
+//     Socket,
+//     Stdin,
+//     Stdout,
+//     Stderr,
+// }
 
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
@@ -120,13 +117,10 @@ impl FileDescriptorInterface {
 
     /// Global constructor
     pub fn new() -> Self {
-        let mut r = Self {
+        Self {
             // New BTreeMap does not allocate memory
             user_fd_list: BTreeMap::new(),
-        };
-        r.open_std(1)
-            .expect("Global constructor of STD devices fail");
-        r
+        }
     }
 
     /// Open a file and give a file descriptor
@@ -139,28 +133,6 @@ impl FileDescriptorInterface {
         let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
         // TODO: Manage blocked open
         Ok(IpcResult::Done(fd))
-    }
-
-    /// Open Stdin, Stdout and Stderr
-    /// The File Descriptors between 0..2 are automaticely closed
-    pub fn open_std(&mut self, controlling_terminal: usize) -> SysResult<()> {
-        let _r = self.close_fd(0);
-        let _r = self.close_fd(1);
-        let _r = self.close_fd(2);
-        let stdin = Arc::try_new(DeadMutex::new(Stdin::new(controlling_terminal)))?;
-        let stdout = Arc::try_new(DeadMutex::new(Stdout::new(controlling_terminal)))?;
-        let stderr = Arc::try_new(DeadMutex::new(Stderr::new(controlling_terminal)))?;
-
-        let _fd = self
-            .user_fd_list
-            .try_insert(0, FileDescriptor::new(Mode::ReadOnly, stdin))?;
-        let _fd = self
-            .user_fd_list
-            .try_insert(1, FileDescriptor::new(Mode::WriteOnly, stdout))?;
-        let _fd = self
-            .user_fd_list
-            .try_insert(2, FileDescriptor::new(Mode::WriteOnly, stderr))?;
-        Ok(())
     }
 
     /// Made two File Descriptors connected with a Pipe
@@ -302,7 +274,7 @@ use crate::alloc::string::ToString;
 
 pub fn start() {
     let file_operation = Arc::try_new(DeadMutex::new(Std::new(1))).unwrap();
-    // C'est un exemple, le ou les file_operation peuvent etre alloues dans le new() ou via les open()
+    // C'est un exemple, le ou les file_operation peuvent aussi etre alloues dans le new() ou via les open()
     let driver = Arc::try_new(DeadMutex::new(Tty::new(file_operation))).unwrap();
     // L'essentiel pour le vfs c'est que j'y inscrit un driver attache a un pathname
     DUMMY_VFS

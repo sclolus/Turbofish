@@ -7,6 +7,10 @@ const char program[] = "/bin/shell";
 
 int main(void)
 {
+	int fd = open("tty1", 0);
+	dup(fd);
+	dup(fd);
+
 	pid_t pid = fork();
 	if (pid < 0) {
 		printf("%s: Fork failed\n", __func__);
