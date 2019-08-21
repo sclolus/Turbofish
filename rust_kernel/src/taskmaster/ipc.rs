@@ -28,6 +28,9 @@ pub use std::Std;
 
 use self::std::{Stderr, Stdin, Stdout};
 
+/// Dependance du Vfs
+use super::dummy_vfs::{DummyVfs, DUMMY_VFS};
+
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure FileDescriptor
 #[derive(Debug, TryClone)]
@@ -63,6 +66,12 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
+}
+
+/// This Trait represent a File Driver in the VFS
+pub trait Driver: core::fmt::Debug + Send {
+    fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>>;
+    fn set_inode_id(&mut self, inode_id: usize);
 }
 
 /// Here the type of the Kernel File Descriptor
