@@ -5,6 +5,7 @@ mod ipc;
 mod process;
 #[macro_use]
 mod scheduler;
+mod dummy_vfs;
 mod safe_ffi;
 mod signal_interface;
 mod syscall;

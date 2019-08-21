@@ -22,7 +22,10 @@ mod pipe;
 use pipe::Pipe;
 mod socket;
 use socket::Socket;
-mod std;
+
+pub mod std;
+pub use std::Std;
+
 use self::std::{Stderr, Stdin, Stdout};
 
 /// The User File Descriptor are sorted into a Binary Tree
@@ -51,7 +54,7 @@ pub enum Mode {
 
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
-trait FileOperation: core::fmt::Debug + Send {
+pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
     fn register(&mut self, access_mode: Mode);
     /// Invoqued quen a FD is droped
