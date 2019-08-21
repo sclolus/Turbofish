@@ -1,25 +1,26 @@
-//! This file contains all the stuff about std File Descriptors
+//! This file contains all the stuff about TTY
 
 use super::SysResult;
 
-use super::Driver;
-use super::FileOperation;
 use super::IpcResult;
 use super::Mode;
 
+use super::{Driver, FileOperation};
+
 use alloc::sync::Arc;
+use fallible_collections::FallibleArc;
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
 
-/// This structure represents a FileOperation of type Std
+/// This structure represents a FileOperation of type TtyFileOperation
 #[derive(Debug, Default)]
-pub struct Std {
+pub struct TtyFileOperation {
     controlling_terminal: usize,
 }
 
-/// Main implementation for Std
-impl Std {
+/// Main implementation of TtyFileOperation
+impl TtyFileOperation {
     pub fn new(controlling_terminal: usize) -> Self {
         Self {
             controlling_terminal,
@@ -27,8 +28,8 @@ impl Std {
     }
 }
 
-/// Main Trait implementation
-impl FileOperation for Std {
+/// Main Trait implementation of TtyFileOperation
+impl FileOperation for TtyFileOperation {
     fn register(&mut self, _access_mode: Mode) {}
     fn unregister(&mut self, _access_mode: Mode) {}
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
@@ -53,32 +54,41 @@ impl FileOperation for Std {
     }
 }
 
-/// Some boilerplate to check if all is okay
-impl Drop for Std {
+/// Drop boilerplate
+impl Drop for TtyFileOperation {
     fn drop(&mut self) {
-        println!("Std file operation droped !");
+        log::info!("TTY {} file operation droped !", self.controlling_terminal);
     }
 }
 
+/// Stucture of TtyDevice
 #[derive(Debug)]
-pub struct Tty {
+pub struct TtyDevice {
+    /// Refer ta an 'father' inode
     inode_id: Option<usize>,
-    operation: Arc<DeadMutex<Std>>,
+    /// A Tty got just one FileOperation structure which share with all
+    operation: Arc<DeadMutex<TtyFileOperation>>,
 }
 
-impl Tty {
-    pub fn new(operation: Arc<DeadMutex<Std>>) -> Self {
-        println!("Tty created !");
-        Self {
+/// Main implementation of TtyDevice
+impl TtyDevice {
+    pub fn try_new(controlling_terminal: usize) -> SysResult<Self> {
+        let r = Ok(Self {
             inode_id: None,
-            operation,
-        }
+            operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(controlling_terminal)))?,
+        });
+        log::info!("TTY {} created !", controlling_terminal);
+        r
     }
 }
 
-impl Driver for Tty {
+/// Driver trait implementation of TtyDevice
+impl Driver for TtyDevice {
     fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>> {
-        println!("Tty opened !");
+        log::info!(
+            "TTY {} opened !",
+            self.operation.lock().controlling_terminal
+        );
         self.operation.clone()
     }
     fn set_inode_id(&mut self, inode_id: usize) {
@@ -86,9 +96,12 @@ impl Driver for Tty {
     }
 }
 
-/// Some boilerplate to check if all is okay
-impl Drop for Tty {
+/// Drop boilerplate
+impl Drop for TtyDevice {
     fn drop(&mut self) {
-        println!("tty driver droped !");
+        log::info!(
+            "TTY {} droped !",
+            self.operation.lock().controlling_terminal
+        );
     }
 }

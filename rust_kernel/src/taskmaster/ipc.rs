@@ -23,8 +23,10 @@ use pipe::Pipe;
 mod socket;
 use socket::Socket;
 
-pub mod std;
-pub use std::{Std, Tty};
+pub mod drivers;
+pub use drivers::{Driver, FileOperation};
+
+use drivers::TtyDevice;
 
 /// Dependance du Vfs
 use super::dummy_vfs::DUMMY_VFS;
@@ -53,36 +55,6 @@ pub enum Mode {
     WriteOnly,
     ReadWrite,
 }
-
-/// This Trait represent a File Descriptor in Kernel
-/// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
-pub trait FileOperation: core::fmt::Debug + Send {
-    /// Invoqued when a new FD is registered
-    fn register(&mut self, access_mode: Mode);
-    /// Invoqued quen a FD is droped
-    fn unregister(&mut self, access_mode: Mode);
-    /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
-    /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
-    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
-}
-
-/// This Trait represent a File Driver in the VFS
-pub trait Driver: core::fmt::Debug + Send {
-    fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>>;
-    fn set_inode_id(&mut self, inode_id: usize);
-}
-
-// /// Here the type of the Kernel File Descriptor
-// #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-// enum FileOperationType {
-//     Pipe,
-//     Fifo,
-//     Socket,
-//     Stdin,
-//     Stdout,
-//     Stderr,
-// }
 
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
@@ -273,10 +245,9 @@ impl Drop for FileDescriptorInterface {
 use crate::alloc::string::ToString;
 
 pub fn start() {
-    let file_operation = Arc::try_new(DeadMutex::new(Std::new(1))).unwrap();
-    // C'est un exemple, le ou les file_operation peuvent aussi etre alloues dans le new() ou via les open()
-    let driver = Arc::try_new(DeadMutex::new(Tty::new(file_operation))).unwrap();
-    // L'essentiel pour le vfs c'est que j'y inscrit un driver attache a un pathname
+    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
+    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(1).unwrap())).unwrap();
+    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
     DUMMY_VFS
         .lock()
         .new_driver("tty1".to_string(), driver)
