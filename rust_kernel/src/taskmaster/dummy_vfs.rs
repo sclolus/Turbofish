@@ -44,6 +44,7 @@ impl DummyVfs {
     /// L'essentiel pour cette fonction. c'est qu'elle active le trait Drop() du driver
     /// Ca me permet de marquer les FileOperation associes au driver comme 'Broken' par exemple
     /// contrainte: Supprimer un fichier doit appelr Drop du driver
+    #[allow(dead_code)]
     pub fn remove_file(&mut self, filename: &str) -> SysResult<()> {
         self.root.remove(&String::from(filename));
         Ok(())

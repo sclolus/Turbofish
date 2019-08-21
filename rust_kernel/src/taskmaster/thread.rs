@@ -151,7 +151,8 @@ pub enum WaitingState {
     Read,
     /// In Waiting to write
     Write,
-    // Event(fn() -> Option<u32>),
+    /// In Waiting to open
+    Open,
 }
 
 #[derive(Debug)]

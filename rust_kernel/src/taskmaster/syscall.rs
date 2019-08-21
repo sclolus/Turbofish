@@ -16,10 +16,10 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
-    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
+    PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
+    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -161,6 +161,8 @@ mod read;
 use read::sys_read;
 mod write;
 use write::sys_write;
+mod open;
+use open::sys_open;
 mod close;
 use close::sys_close;
 
@@ -197,6 +199,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
+        // TODO: type parameter are not set and manage the third argument
+        OPEN => sys_open(ebx as *const c_char, ecx as u32 /* edx as u32 */),
         CLOSE => sys_close(ebx as i32),
         WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
         UNLINK => sys_unlink(ebx as *const u8),

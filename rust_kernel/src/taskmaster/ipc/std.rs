@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::Driver;
 use super::FileOperation;
 use super::IpcResult;
 use super::Mode;
@@ -12,6 +13,9 @@ mod stdout;
 pub use stdout::Stdout;
 mod stderr;
 pub use stderr::Stderr;
+
+use alloc::sync::Arc;
+use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
 
@@ -59,6 +63,37 @@ impl FileOperation for Std {
 /// Some boilerplate to check if all is okay
 impl Drop for Std {
     fn drop(&mut self) {
-        println!("Std droped !");
+        println!("Std file operation droped !");
+    }
+}
+
+#[derive(Debug)]
+pub struct Tty {
+    inode_id: Option<usize>,
+    operation: Arc<DeadMutex<Std>>,
+}
+
+impl Tty {
+    pub fn new(operation: Arc<DeadMutex<Std>>) -> Self {
+        Self {
+            inode_id: None,
+            operation,
+        }
+    }
+}
+
+impl Driver for Tty {
+    fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>> {
+        self.operation.clone()
+    }
+    fn set_inode_id(&mut self, inode_id: usize) {
+        self.inode_id = Some(inode_id);
+    }
+}
+
+/// Some boilerplate to check if all is okay
+impl Drop for Tty {
+    fn drop(&mut self) {
+        println!("tty driver droped !");
     }
 }

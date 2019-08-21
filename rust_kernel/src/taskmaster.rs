@@ -94,6 +94,8 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         })
         .unwrap();
 
+    ipc::start();
+
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }
 }

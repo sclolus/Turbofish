@@ -1,9 +1,9 @@
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
-    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
+    PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
+    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -43,6 +43,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 "write({:#?}, {:#?}, {:#?})",
                 ebx as i32, ecx as *const u8, edx as usize
             ),
+            // TODO: type parameter are not set and manage the third argument
+            OPEN => eprintln!("open({:#?}, {:#?})", ebx as *const u8, ecx as u32),
             CLOSE => eprintln!("close({:#?})", ebx as i32),
             WAITPID => eprintln!(
                 "waitpid({:#?}, {:#?}, {:#?})",
