@@ -12,6 +12,8 @@ use lazy_static::lazy_static;
 /// IPC dependances list
 use super::ipc::Driver;
 use super::ipc::FileOperation;
+use super::ipc::IpcResult;
+
 use alloc::sync::Arc;
 use sync::DeadMutex;
 
@@ -59,9 +61,9 @@ impl DummyVfs {
     pub fn open(
         &mut self,
         filename: &str, /* access_mode: Mode ? */
-    ) -> SysResult<Arc<DeadMutex<dyn FileOperation>>> {
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         match self.root.get_mut(&String::from(filename)) {
-            Some(elem) => Ok(elem.lock().open()),
+            Some(elem) => elem.lock().open(),
             None => Err(Errno::ENOENT),
         }
     }

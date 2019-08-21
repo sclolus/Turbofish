@@ -27,7 +27,7 @@ pub trait FileOperation: core::fmt::Debug + Send {
 /// This Trait represent a File Driver in the VFS
 pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
-    fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>>;
+    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
     /// Get a reference to the inode
     fn set_inode_id(&mut self, inode_id: usize);
 }

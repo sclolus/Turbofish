@@ -95,55 +95,29 @@ impl FileDescriptorInterface {
         }
     }
 
+    // TODO: fix dummy access_mode && manage flags
     /// Open a file and give a file descriptor
     pub fn open(
         &mut self,
         filename: &str, /* access_mode: Mode ? */
     ) -> SysResult<IpcResult<Fd>> {
         let file_operator = DUMMY_VFS.lock().open(filename /* access_mode */)?;
-        // TODO: fix dummy access_mode && manage flags
-        let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
-        // TODO: Manage blocked open
-        Ok(IpcResult::Done(fd))
-    }
-
-    /// Made two File Descriptors connected with a Pipe
-    pub fn new_pipe(&mut self) -> SysResult<(Fd, Fd)> {
-        let pipe = Arc::try_new(DeadMutex::new(Pipe::new()))?;
-        let cloned_pipe = pipe.clone();
-
-        let input_fd = self.insert_user_fd(Mode::ReadOnly, pipe)?;
-        let output_fd = self
-            .insert_user_fd(Mode::ReadOnly, cloned_pipe)
-            .map_err(|e| {
-                let _r = self.user_fd_list.remove(&input_fd);
-                e
-            })?;
-
-        Ok((input_fd, output_fd))
-    }
-
-    /// Open a Fifo. Block until the fifo is not open in two directions.
-    #[allow(dead_code)]
-    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
-        if access_mode == Mode::ReadWrite {
-            return Err(Errno::EACCES);
+        match file_operator {
+            IpcResult::Done(file_operator) => {
+                let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
+                Ok(IpcResult::Done(fd))
+            }
+            IpcResult::Wait(file_operator) => {
+                let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
+                Ok(IpcResult::Wait(fd))
+            }
         }
-
-        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
-        let fd = self.insert_user_fd(access_mode, fifo)?;
-
-        Ok(IpcResult::Done(fd))
     }
 
-    /// Open a Socket
-    /// The socket type must be pass as parameter
-    #[allow(dead_code)]
-    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
-        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
-        let fd = self.insert_user_fd(access_mode, socket)?;
-
-        Ok(fd)
+    /// Clone one file descriptor
+    pub fn close_fd(&mut self, fd: Fd) -> SysResult<()> {
+        self.user_fd_list.remove(&fd).ok_or::<Errno>(Errno::EBADF)?;
+        Ok(())
     }
 
     /// Read something from the File Descriptor: Can block
@@ -162,6 +136,22 @@ impl FileDescriptorInterface {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
         elem.kernel_fd.lock().write(buf)
+    }
+
+    /// Made two File Descriptors connected with a Pipe
+    pub fn new_pipe(&mut self) -> SysResult<(Fd, Fd)> {
+        let pipe = Arc::try_new(DeadMutex::new(Pipe::new()))?;
+        let cloned_pipe = pipe.clone();
+
+        let input_fd = self.insert_user_fd(Mode::ReadOnly, pipe)?;
+        let output_fd = self
+            .insert_user_fd(Mode::ReadOnly, cloned_pipe)
+            .map_err(|e| {
+                let _r = self.user_fd_list.remove(&input_fd);
+                e
+            })?;
+
+        Ok((input_fd, output_fd))
     }
 
     /// Duplicate one File Descriptor
@@ -197,12 +187,6 @@ impl FileDescriptorInterface {
         Err(Errno::EBADF)
     }
 
-    /// Clone one file descriptor
-    pub fn close_fd(&mut self, fd: Fd) -> SysResult<()> {
-        self.user_fd_list.remove(&fd).ok_or::<Errno>(Errno::EBADF)?;
-        Ok(())
-    }
-
     /// Insert a new User File Descriptor atached to a Kernel File Descriptor:
     /// return value: User File Descriptor index
     fn insert_user_fd(
@@ -232,6 +216,31 @@ impl FileDescriptorInterface {
         } else {
             Some(lower_fd)
         }
+    }
+
+    // TODO: This function may be trashed in the furure
+    /// Open a Fifo. Block until the fifo is not open in two directions.
+    #[allow(dead_code)]
+    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
+        if access_mode == Mode::ReadWrite {
+            return Err(Errno::EACCES);
+        }
+
+        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
+        let fd = self.insert_user_fd(access_mode, fifo)?;
+
+        Ok(IpcResult::Done(fd))
+    }
+
+    // TODO: This function may be trashed in the future
+    /// Open a Socket
+    /// The socket type must be pass as parameter
+    #[allow(dead_code)]
+    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
+        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
+        let fd = self.insert_user_fd(access_mode, socket)?;
+
+        Ok(fd)
     }
 }
 

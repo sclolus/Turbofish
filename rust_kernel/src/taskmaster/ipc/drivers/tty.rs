@@ -84,12 +84,12 @@ impl TtyDevice {
 
 /// Driver trait implementation of TtyDevice
 impl Driver for TtyDevice {
-    fn open(&mut self) -> Arc<DeadMutex<dyn FileOperation>> {
+    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         log::info!(
             "TTY {} opened !",
             self.operation.lock().controlling_terminal
         );
-        self.operation.clone()
+        Ok(IpcResult::Done(self.operation.clone()))
     }
     fn set_inode_id(&mut self, inode_id: usize) {
         self.inode_id = Some(inode_id);
