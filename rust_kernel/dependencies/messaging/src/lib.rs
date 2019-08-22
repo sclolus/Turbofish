@@ -29,6 +29,10 @@ pub enum ProcessMessage {
     ProcessDied { pid: Pid },
     /// there is something to read
     SomethingToRead,
+    /// there is something to write
+    SomethingToWrite,
+    /// there is something to open
+    SomethingToOpen,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -42,6 +46,18 @@ pub enum ProcessGroupMessage {
 #[derive(Debug, Copy, Clone)]
 pub enum MessageTo {
     // Tty { content: TtyMessage },
+    /// IPC: Adressed to a specific reader
+    Reader {
+        uid_file_op: usize,
+    },
+    /// IPC: Adressed to a specific writer
+    Writer {
+        uid_file_op: usize,
+    },
+    /// IPC: Adressed to a specific opener
+    Opener {
+        uid_file_op: usize,
+    },
     Process {
         pid: Pid,
         content: ProcessMessage,

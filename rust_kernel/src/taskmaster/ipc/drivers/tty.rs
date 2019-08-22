@@ -5,7 +5,7 @@ use super::SysResult;
 use super::IpcResult;
 use super::Mode;
 
-use super::{Driver, FileOperation};
+use super::{get_file_op_uid, Driver, FileOperation};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
@@ -17,6 +17,7 @@ use crate::terminal::{ReadResult, TERMINAL};
 #[derive(Debug, Default)]
 pub struct TtyFileOperation {
     controlling_terminal: usize,
+    file_op_uid: usize,
 }
 
 /// Main implementation of TtyFileOperation
@@ -24,6 +25,7 @@ impl TtyFileOperation {
     pub fn new(controlling_terminal: usize) -> Self {
         Self {
             controlling_terminal,
+            file_op_uid: get_file_op_uid(),
         }
     }
 }
@@ -43,7 +45,9 @@ impl FileOperation for TtyFileOperation {
         match read_result {
             ReadResult::NonBlocking(read_count) => Ok(IpcResult::Done(read_count as _)),
             // Apply a local terminal rule: A blocked call cannot have character
-            ReadResult::Blocking => Ok(IpcResult::Wait(0)),
+            // TODO: Change that in the future
+            ReadResult::Blocking => Ok(IpcResult::Wait(0, 0)),
+            // ReadResult::Blocking => Ok(IpcResult::Wait(0, self.file_op_uid)),
         }
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {

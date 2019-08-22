@@ -6,11 +6,15 @@ use super::FileOperation;
 use super::IpcResult;
 use super::Mode;
 
+use super::get_file_op_uid;
+
 use libc_binding::Errno;
 
 use core::cmp;
 
 const BUF_SIZE: usize = 16;
+
+use messaging::MessageTo;
 
 /// This structure represents a FileOperation of type Pipe
 #[derive(Debug, Default)]
@@ -19,6 +23,7 @@ pub struct Pipe {
     output_ref: usize,
     buf: [u8; BUF_SIZE],
     current_index: usize,
+    file_op_uid: usize,
 }
 
 /// Main implementation for Pipe
@@ -29,6 +34,7 @@ impl Pipe {
             output_ref: Default::default(),
             buf: [0; BUF_SIZE],
             current_index: 0,
+            file_op_uid: get_file_op_uid(),
         }
     }
 }
@@ -51,7 +57,7 @@ impl FileOperation for Pipe {
     }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if self.current_index == 0 {
-            return Ok(IpcResult::Wait(0));
+            return Ok(IpcResult::Wait(0, self.file_op_uid));
         }
 
         // memcpy(buf, self.buf, MIN(buf.len(), self.current_index)
@@ -67,6 +73,9 @@ impl FileOperation for Pipe {
                 .copy_from(self.buf.as_mut_ptr().add(min), self.current_index - min);
         }
         self.current_index -= min;
+        messaging::push_message(MessageTo::Writer {
+            uid_file_op: self.file_op_uid,
+        });
         Ok(IpcResult::Done(min as _))
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
@@ -83,9 +92,12 @@ impl FileOperation for Pipe {
         }
         self.current_index += min;
         if min == buf.len() {
+            messaging::push_message(MessageTo::Reader {
+                uid_file_op: self.file_op_uid,
+            });
             Ok(IpcResult::Done(min as _))
         } else {
-            Ok(IpcResult::Wait(min as _))
+            Ok(IpcResult::Wait(min as _, self.file_op_uid))
         }
     }
 }

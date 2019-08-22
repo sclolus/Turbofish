@@ -18,15 +18,13 @@ pub type Fd = u32;
 
 mod fifo;
 use fifo::Fifo;
-mod pipe;
-use pipe::Pipe;
 mod socket;
 use socket::Socket;
 
 pub mod drivers;
 pub use drivers::{Driver, FileOperation};
 
-use drivers::TtyDevice;
+use drivers::{Pipe, TtyDevice};
 
 /// Dependance du Vfs
 use super::dummy_vfs::DUMMY_VFS;
@@ -44,7 +42,7 @@ pub enum IpcResult<T> {
     /// Can continue thread execution normally
     Done(T),
     /// the user should wait for his IPC request
-    Wait(T),
+    Wait(T, usize),
 }
 
 /// The Access Mode of the File Descriptor
@@ -106,9 +104,9 @@ impl FileDescriptorInterface {
                 let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
                 Ok(IpcResult::Done(fd))
             }
-            IpcResult::Wait(file_operator) => {
+            IpcResult::Wait(file_operator, file_op_uid) => {
                 let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
-                Ok(IpcResult::Wait(fd))
+                Ok(IpcResult::Wait(fd, file_op_uid))
             }
         }
     }

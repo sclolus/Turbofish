@@ -16,6 +16,7 @@ int main(void)
 		printf("Fork failure\n");
 		exit(1);
 	} else if (pid == 0) {
+		sleep(1);
 		write(fd[1], "banane", 6);
 	} else {
 		char buf[100];

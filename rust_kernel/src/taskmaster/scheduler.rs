@@ -171,6 +171,39 @@ impl Scheduler {
         for message in messaging::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
+                MessageTo::Reader { uid_file_op } => {
+                    self.iter_thread_mut()
+                        .find(|thread| {
+                            thread.get_waiting_state() == Some(&WaitingState::Read(uid_file_op))
+                        })
+                        .map(|thread| {
+                            thread
+                                .message_queue
+                                .push_back(ProcessMessage::SomethingToRead)
+                        });
+                }
+                MessageTo::Writer { uid_file_op } => {
+                    self.iter_thread_mut()
+                        .find(|thread| {
+                            thread.get_waiting_state() == Some(&WaitingState::Write(uid_file_op))
+                        })
+                        .map(|thread| {
+                            thread
+                                .message_queue
+                                .push_back(ProcessMessage::SomethingToWrite)
+                        });
+                }
+                MessageTo::Opener { uid_file_op } => {
+                    self.iter_thread_mut()
+                        .find(|thread| {
+                            thread.get_waiting_state() == Some(&WaitingState::Open(uid_file_op))
+                        })
+                        .map(|thread| {
+                            thread
+                                .message_queue
+                                .push_back(ProcessMessage::SomethingToOpen)
+                        });
+                }
                 MessageTo::Process { pid, content } => {
                     self.get_thread_mut((pid, 0))
                         .map(|thread| thread.message_queue.push_back(content));
@@ -182,7 +215,7 @@ impl Scheduler {
                                 thread_group
                                     .iter_thread_mut()
                                     .find(|thread| {
-                                        thread.get_waiting_state() == Some(&WaitingState::Read)
+                                        thread.get_waiting_state() == Some(&WaitingState::Read(0))
                                     })
                                     .map(|thread| {
                                         // dbg!("send message");
@@ -339,6 +372,26 @@ impl Scheduler {
                         current_thread
                             .message_queue
                             .retain(|message| *message != ProcessMessage::SomethingToRead);
+                        current_thread
+                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        current_thread.set_running();
+                        return JobAction::default();
+                    }
+                    ProcessMessage::SomethingToWrite => {
+                        let current_thread = self.current_thread_mut();
+                        current_thread
+                            .message_queue
+                            .retain(|message| *message != ProcessMessage::SomethingToWrite);
+                        current_thread
+                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        current_thread.set_running();
+                        return JobAction::default();
+                    }
+                    ProcessMessage::SomethingToOpen => {
+                        let current_thread = self.current_thread_mut();
+                        current_thread
+                            .message_queue
+                            .retain(|message| *message != ProcessMessage::SomethingToOpen);
                         current_thread
                             .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
                         current_thread.set_running();

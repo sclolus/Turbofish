@@ -148,11 +148,11 @@ pub enum WaitingState {
     /// The Process is looking for the death of his child
     ChildDeath(Pid),
     /// In Waiting to read
-    Read,
+    Read(usize),
     /// In Waiting to write
-    Write,
+    Write(usize),
     /// In Waiting to open
-    Open,
+    Open(usize),
 }
 
 #[derive(Debug)]

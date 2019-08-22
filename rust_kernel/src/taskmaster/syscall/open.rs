@@ -39,10 +39,10 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
             .file_descriptor_interface;
 
         match fd_interface.open(file /* flags, mode etc... */)? {
-            IpcResult::Wait(fd) => {
+            IpcResult::Wait(fd, file_op_uid) => {
                 scheduler
                     .current_thread_mut()
-                    .set_waiting(WaitingState::Open);
+                    .set_waiting(WaitingState::Open(file_op_uid));
                 let _ret = auto_preempt()?;
                 return Ok(fd);
             }

@@ -11,6 +11,9 @@ use sync::dead_mutex::DeadMutex;
 pub mod tty;
 pub use tty::TtyDevice;
 
+pub mod pipe;
+pub use pipe::Pipe;
+
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
@@ -31,6 +34,16 @@ pub trait Driver: core::fmt::Debug + Send {
     /// Get a reference to the inode
     fn set_inode_id(&mut self, inode_id: usize);
 }
+
+/// Get an universal file operation identifiant
+pub fn get_file_op_uid() -> usize {
+    unsafe {
+        FILE_OP_UID += 1;
+        FILE_OP_UID
+    }
+}
+
+static mut FILE_OP_UID: usize = 0;
 
 // /// Here the type of the Kernel File Descriptor
 // #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
