@@ -198,7 +198,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         CLOSE => sys_close(ebx as i32),
-        WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
+        WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),
         UNLINK => sys_unlink(ebx as *const u8),
         EXECVE => sys_execve(
             ebx as *const c_char,

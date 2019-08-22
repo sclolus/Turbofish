@@ -5,7 +5,7 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
-use libc_binding::Errno;
+use libc_binding::{Errno, WNOHANG};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -193,7 +193,7 @@ use libc_binding::Errno;
 ///     interrupted by a signal. The value of the location pointed to
 ///     by stat_loc is undefined.  [EINVAL] The options argument is
 ///     not valid.
-fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
+fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
     {
@@ -221,7 +221,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
-    if options != 0 {
+    if options > 3 {
         return Err(Errno::EINVAL);
     }
 
@@ -336,6 +336,9 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
             // Return immediatly
             Ok(dead_pid as u32)
         }
+        None if options & WNOHANG != 0 => {
+            return Ok(0);
+        }
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
             scheduler
@@ -371,6 +374,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     }
 }
 
-pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
+pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     unpreemptible_context!({ waitpid(pid, wstatus, options) })
 }
