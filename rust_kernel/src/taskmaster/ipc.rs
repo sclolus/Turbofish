@@ -16,15 +16,10 @@ use sync::DeadMutex;
 
 pub type Fd = u32;
 
-mod fifo;
-use fifo::Fifo;
-mod socket;
-use socket::Socket;
-
 pub mod drivers;
 pub use drivers::{Driver, FileOperation};
 
-use drivers::{Pipe, TtyDevice};
+use drivers::{Fifo, Pipe, Socket, TtyDevice};
 
 /// Dependance du Vfs
 use super::dummy_vfs::DUMMY_VFS;

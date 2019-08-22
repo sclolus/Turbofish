@@ -5,14 +5,20 @@ use super::SysResult;
 use super::IpcResult;
 use super::Mode;
 
-use alloc::sync::Arc;
-use sync::dead_mutex::DeadMutex;
-
 pub mod tty;
 pub use tty::TtyDevice;
 
 pub mod pipe;
 pub use pipe::Pipe;
+
+pub mod fifo;
+pub use fifo::Fifo;
+
+pub mod socket;
+pub use socket::Socket;
+
+use alloc::sync::Arc;
+use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
