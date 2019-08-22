@@ -9,10 +9,10 @@ use super::scheduler::{Pid, SCHEDULER};
 use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
+use super::thread_group;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
@@ -23,7 +23,7 @@ use libc_binding::{
 };
 
 use core::ffi::c_void;
-use errno::Errno;
+use libc_binding::Errno;
 use libc_binding::{gid_t, termios, uid_t};
 
 mod mmap;
@@ -231,15 +231,15 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
-        MUNMAP => sys_munmap(Virt(ebx as usize), ecx as usize),
+        MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),
         SOCKETCALL => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
         CLONE => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
         MPROTECT => sys_mprotect(
-            Virt(ebx as usize),
+            ebx as *mut u8,
             ecx as usize,
             MmapProt::from_bits_truncate(edx),
         ),
-        SIGPROCMASK => sys_sigprocmask(ebx as i32, ecx as *const sigset_t, edx as *mut sigset_t),
+        SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         SIGRETURN => sys_sigreturn(cpu_state),
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEUID => sys_seteuid(ebx as uid_t),
 
         // set thread area: WTF
-        0xf3 => Err(Errno::Eperm),
+        0xf3 => Err(Errno::EPERM),
         sysnum => panic!("wrong syscall {}", sysnum),
     };
 
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         // trace_syscall::trace_syscall_result(cpu_state, result);
     }
 
-    let is_in_blocked_syscall = result == Err(Errno::Eintr);
+    let is_in_blocked_syscall = result == Err(Errno::EINTR);
     // Note: do not erase eax if we've just been interrupted from a blocked syscall as we must keep
     // the syscall number contained in eax, in case of SA_RESTART behavior
     if is_in_blocked_syscall == false {

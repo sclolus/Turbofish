@@ -20,7 +20,7 @@ use tests::*;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use errno::Errno;
+use libc_binding::Errno;
 use messaging::MessageTo;
 
 /// SysResult is just made to handle module errors. Return optional return and errno

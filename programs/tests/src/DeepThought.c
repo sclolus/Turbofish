@@ -14,9 +14,15 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
-	{.path = "/bin/SignalSimple"},
-	{.path = "/bin/SignalSimpleDuo"},
-	{.path = "/bin/ProcessGroup"}
+	{.path = "/bin/signal/SignalSimple"},
+	{.path = "/bin/signal/SignalSimpleDuo"},
+	{.path = "/bin/ProcessGroup"},
+	{.path = "/bin/execve/argv"},
+	{.path = "/bin/wait/wait"},
+	{.path = "/bin/mprotect/mprotect"},
+	{.path = "/bin/mmap/mmap"},
+	{.path = "/bin/munmap/munmap"},
+	{.path = "/bin/sigprocmask/sigprocmask"}
 };
 
 void _exit_qemu(int val)
@@ -49,19 +55,16 @@ int main() {
 			perror("execve failed");
 			_exit_qemu(1);
 		} else {
-			pid_t father_pid = getpid();
-			printf("father_pid: %d\n", father_pid);
-			printf("I am the father, i wait my child\n");
 			int status;
 			int ret = wait(&status);
 			if (ret == -1) {
-				perror("wait failed");
+				perror("Deepthought wait failed");
 				_exit_qemu(1);
 			}
 			if (status != 0) {
 				// qemu exit fail
-				printf("test: '%s' failed", TEST_PROGRAMS[i].path);
-				printf("status '%d'", status);
+				dprintf(2, "test: '%s' failed", TEST_PROGRAMS[i].path);
+				dprintf(2, "status '%d'", status);
 				sleep(1000);
 				if (!WIFEXITED(status)) {
 					_exit_qemu(1);
@@ -72,5 +75,6 @@ int main() {
 			}
 		}
 	}
+	/* sleep(100); */
 	_exit_qemu(0);
 }

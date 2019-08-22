@@ -1,5 +1,5 @@
 use core::ops::{Add, Mul, Sub};
-use errno::Errno;
+use libc_binding::Errno;
 use num_traits::Num;
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
@@ -39,7 +39,7 @@ impl Mul<u32> for Block {
 /// return an error if block x is 0
 pub fn err_if_zero(x: Block) -> Result<Block, Errno> {
     if x == Block(0) {
-        Err(Errno::Ebadf)
+        Err(Errno::EBADF)
     } else {
         Ok(x)
     }

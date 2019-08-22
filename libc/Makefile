@@ -17,10 +17,6 @@ SRC_C += libc_ctor
 SRC_ASM += user_syscall
 HEADERS += include/user_syscall.h
 
-SRC_C += errno
-VPATH += src/errno
-HEADERS += include/errno.h
-
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
 	strchr strrchr strstr strnstr strcmp strncmp \
@@ -36,7 +32,7 @@ HEADERS += include/string.h
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
-	cast buffer norme \
+	cast buffer norme perror \
 	stdio _doprnt putchar puts
 VPATH += src/stdio/printf src/stdio/
 HEADERS += include/stdio.h internal_printf.h

@@ -1,4 +1,5 @@
 //! tcgetpgrp syscall
+use super::scheduler::SCHEDULER;
 use super::SysResult;
 use crate::terminal::TERMINAL;
 
@@ -16,13 +17,14 @@ use crate::terminal::TERMINAL;
 /// foreground process group.
 // TODO: file descriptor argument
 pub fn sys_tcgetpgrp(_fildes: i32) -> SysResult<u32> {
+    let scheduler = SCHEDULER.lock();
+    let controlling_terminal = scheduler.current_thread_group().controlling_terminal;
     unpreemptible_context!({
         unsafe {
             TERMINAL
                 .as_mut()
                 .unwrap()
-                //TODO: change this 1
-                .get_line_discipline(1)
+                .get_line_discipline(controlling_terminal)
                 .tcgetpgrp()
         }
     });

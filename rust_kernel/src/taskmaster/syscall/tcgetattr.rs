@@ -14,9 +14,11 @@ use libc_binding::termios;
 /// The tcgetattr() operation is allowed from any process.
 // TODO: file descriptor argument
 pub fn sys_tcgetattr(_fildes: i32, termios_p: *mut termios) -> SysResult<u32> {
+    let controlling_terminal;
     unpreemptible_context!({
         {
             let scheduler = SCHEDULER.lock();
+            controlling_terminal = scheduler.current_thread_group().controlling_terminal;
             let v = scheduler
                 .current_thread()
                 .unwrap_process()
@@ -30,7 +32,7 @@ pub fn sys_tcgetattr(_fildes: i32, termios_p: *mut termios) -> SysResult<u32> {
                 .as_mut()
                 .unwrap()
                 // TODO: change this 1
-                .get_line_discipline(1)
+                .get_line_discipline(controlling_terminal)
                 .tcgetattr(&mut *termios_p);
         }
     });

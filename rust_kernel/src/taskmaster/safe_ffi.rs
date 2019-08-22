@@ -3,8 +3,8 @@
 pub use crate::ffi::{c_char, CString, CStringArray};
 use crate::memory::{tools::PAGE_SIZE, AddressSpace};
 
-use errno::Errno;
 use fallible_collections::{try_vec, FallibleVec};
+use libc_binding::Errno;
 use sync::DeadMutexGuard;
 
 use alloc::vec::Vec;

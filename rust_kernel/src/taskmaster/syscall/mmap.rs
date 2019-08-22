@@ -20,38 +20,37 @@ pub struct MmapArgStruct {
     offset: usize,
 }
 
-fn mmap(mmap_arg: *const MmapArgStruct) -> SysResult<(*mut u8, usize)> {
-    let mut scheduler = SCHEDULER.lock();
-
-    let mut v = scheduler
-        .current_thread_mut()
-        .unwrap_process_mut()
-        .get_virtual_allocator();
-
-    // Check if pointer exists in user virtual address space
-    v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
-
-    #[allow(unused_variables)]
-    let MmapArgStruct {
-        virt_addr,
-        length,
-        prot,
-        flags,
-        fd,
-        offset,
-    } = unsafe { *mmap_arg };
-
-    let addr = v.alloc(length, AllocFlags::USER_MEMORY)?;
-    Ok((addr, length))
-}
-
 /// Map files or devices into memory
 pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
-    unpreemptible_context!({ mmap(mmap_arg) }).map(|(address, length)| {
-        unsafe {
-            address.write_bytes(0, length);
+    unpreemptible_context!({
+        let mut scheduler = SCHEDULER.lock();
+
+        let mut v = scheduler
+            .current_thread_mut()
+            .unwrap_process_mut()
+            .get_virtual_allocator();
+
+        // Check if pointer exists in user virtual address space
+        v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
+
+        #[allow(unused_variables)]
+        let MmapArgStruct {
+            virt_addr,
+            length,
+            prot,
+            flags,
+            fd,
+            offset,
+        } = unsafe { *mmap_arg };
+
+        let alloc_flags = AllocFlags::from(prot);
+        let addr = v.alloc(length, alloc_flags)?;
+        if !alloc_flags.contains(AllocFlags::READ_ONLY) {
+            unsafe {
+                addr.write_bytes(0, length);
+            }
         }
-        address as u32
+        Ok(addr as u32)
     })
 }
 

@@ -1,6 +1,6 @@
 use super::SysResult;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 use crate::drivers::ACPI;
 use crate::system::i8086_payload_apm_shutdown;
@@ -26,5 +26,5 @@ pub fn sys_shutdown() -> SysResult<u32> {
         }
         log::error!("shutdown failure ... it is very disapointing ...");
     });
-    Err(Errno::Eacces)
+    Err(Errno::EACCES)
 }

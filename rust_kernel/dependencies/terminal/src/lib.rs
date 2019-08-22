@@ -29,7 +29,6 @@ use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
 use crate::monitor::{AdvancedGraphic, Drawer};
-use alloc::collections::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
 use keyboard::keysymb::KeySymb;
@@ -37,8 +36,11 @@ use keyboard::keysymb::KeySymb;
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
-    buf: VecDeque<KeySymb>,
     ttys: Vec<LineDiscipline>,
+}
+
+pub struct NewTty {
+    pub tty_index: usize,
 }
 
 /// No initialized at the beginning
@@ -49,32 +51,47 @@ const MAX_SCREEN_BUFFER: usize = 10;
 impl Terminal {
     /// Construct all the TTY
     pub fn new() -> Self {
-        let size = SCREEN_MONAD.lock().query_window_size();
-        Self {
-            buf: VecDeque::new(),
-            // do not create a vec directly because BufferedTty::new() as side efect of chosing capacity of buffer
-            ttys: (0..2)
-                .map(|_| {
-                    LineDiscipline::new(BufferedTty::new(Tty::new(
-                        false,
-                        size.line,
-                        size.column,
-                        MAX_SCREEN_BUFFER,
-                        None,
-                    )))
-                })
-                .collect(),
-        }
+        let mut res = Self {
+            ttys: Vec::with_capacity(2),
+        };
+        res.add_tty();
+        res.add_tty();
+        res
     }
 
-    fn switch_foreground_tty(&mut self, new_foreground_tty: usize) {
+    fn add_tty(&mut self) -> usize {
+        let size = SCREEN_MONAD.lock().query_window_size();
+        //TODO: Memory Error
+        let index = self.ttys.len();
+        self.ttys
+            .push(LineDiscipline::new(BufferedTty::new(Tty::new(
+                false,
+                size.line,
+                size.column,
+                MAX_SCREEN_BUFFER,
+                None,
+            ))));
+        index
+    }
+
+    fn switch_foreground_tty(&mut self, new_foreground_tty: usize) -> Option<NewTty> {
         self.ttys
             .iter_mut()
             .find(|l| l.get_tty().foreground)
             .map(|l| l.get_tty_mut().foreground = false);
-        let new_tty = self.ttys[new_foreground_tty].get_tty_mut();
-        new_tty.foreground = true;
-        new_tty.refresh();
+        match self.ttys.get_mut(new_foreground_tty) {
+            Some(tty) => {
+                let new_tty = tty.get_tty_mut();
+                new_tty.foreground = true;
+                new_tty.refresh();
+                return None;
+            }
+            None => {
+                let tty_index = self.add_tty();
+                self.switch_foreground_tty(new_foreground_tty);
+                return Some(NewTty { tty_index });
+            }
+        }
     }
 
     /// Get the foregounded TTY
@@ -90,14 +107,16 @@ impl Terminal {
         self.ttys[tty_index].read(buf)
     }
 
-    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb) {
+    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb) -> Option<NewTty> {
         // eprintln!("write_input {:?}", buff);
-        if !self.handle_tty_control(key_pressed) {
+        let (new_tty, handled) = self.handle_tty_control(key_pressed);
+        if !handled {
             self.get_foreground_tty()
                 .handle_key_pressed(key_pressed)
                 //TODO: remove this expect later
                 .expect("write input failed");
         }
+        return new_tty;
     }
 
     /// Get the TTY n
@@ -109,15 +128,18 @@ impl Terminal {
         &mut self.ttys[tty_index]
     }
     /// Provide a tiny interface to sontrol some features on the tty
-    pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
-        match keysymb {
-            KeySymb::F1 => self.switch_foreground_tty(1),
-            KeySymb::F2 => self.switch_foreground_tty(0),
-            _ => {
-                return false;
-            }
-        };
-        true
+    pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> (Option<NewTty>, bool) {
+        (
+            match keysymb {
+                KeySymb::F1 => self.switch_foreground_tty(1),
+                KeySymb::F2 => self.switch_foreground_tty(0),
+                KeySymb::F3 => self.switch_foreground_tty(2),
+                _ => {
+                    return (None, false);
+                }
+            },
+            true,
+        )
     }
 }
 
@@ -129,7 +151,7 @@ extern "C" {
 /// Extern function for initialisation
 pub fn init_terminal() {
     let mut term = Terminal::new();
-    term.get_tty(1).tty.cursor.visible = true;
+    term.get_tty(0).tty.cursor.visible = false;
 
     term.switch_foreground_tty(1);
 

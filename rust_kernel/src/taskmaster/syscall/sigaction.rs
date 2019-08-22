@@ -6,7 +6,7 @@ use super::scheduler::SCHEDULER;
 use super::signal_interface::StructSigaction;
 
 use core::convert::TryInto;
-use errno::Errno;
+use libc_binding::Errno;
 
 /// Register a new handler for a specified signum with sigaction params
 pub unsafe fn sys_sigaction(
@@ -30,7 +30,7 @@ pub unsafe fn sys_sigaction(
         }
         // TODO: Use old_act
         *old_act = scheduler.current_thread_mut().signal.new_handler(
-            signum.try_into().map_err(|_| Errno::Einval)?,
+            signum.try_into().map_err(|_| Errno::EINVAL)?,
             act.as_ref().expect("Null PTR"),
         )?;
         Ok(0)

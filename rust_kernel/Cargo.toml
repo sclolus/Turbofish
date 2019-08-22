@@ -32,7 +32,6 @@ terminal = { path = "dependencies/terminal" }
 registers = { path = "dependencies/registers" }
 sync = { path = "dependencies/sync" }
 elf_loader = { path = "dependencies/elf_loader" }
-errno = { path = "dependencies/errno" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
@@ -69,7 +68,6 @@ members = [
 "dependencies/registers",
 "dependencies/sync",
 "dependencies/elf_loader",
-"dependencies/errno",
 "dependencies/try_clone_derive",
 "dependencies/fallible_collections",
 "dependencies/messaging",

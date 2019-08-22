@@ -2,7 +2,7 @@
 
 use super::SysResult;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 use alloc::sync::Arc;
 
@@ -23,7 +23,7 @@ use pipe::Pipe;
 mod socket;
 use socket::Socket;
 mod std;
-use std::{Stderr, Stdin, Stdout};
+use self::std::{Stderr, Stdin, Stdout};
 
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure FileDescriptor
@@ -116,20 +116,20 @@ impl FileDescriptorInterface {
             // New BTreeMap does not allocate memory
             user_fd_list: BTreeMap::new(),
         };
-        r.open_std()
+        r.open_std(1)
             .expect("Global constructor of STD devices fail");
         r
     }
 
     /// Open Stdin, Stdout and Stderr
     /// The File Descriptors between 0..2 are automaticely closed
-    fn open_std(&mut self) -> SysResult<()> {
+    pub fn open_std(&mut self, controlling_terminal: usize) -> SysResult<()> {
         let _r = self.close_fd(0);
         let _r = self.close_fd(1);
         let _r = self.close_fd(2);
-        let stdin = Arc::try_new(DeadMutex::new(Stdin::new()))?;
-        let stdout = Arc::try_new(DeadMutex::new(Stdout::new()))?;
-        let stderr = Arc::try_new(DeadMutex::new(Stderr::new()))?;
+        let stdin = Arc::try_new(DeadMutex::new(Stdin::new(controlling_terminal)))?;
+        let stdout = Arc::try_new(DeadMutex::new(Stdout::new(controlling_terminal)))?;
+        let stderr = Arc::try_new(DeadMutex::new(Stderr::new(controlling_terminal)))?;
 
         let _fd = self.user_fd_list.try_insert(
             0,
@@ -166,7 +166,7 @@ impl FileDescriptorInterface {
     #[allow(dead_code)]
     pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
         if access_mode == Mode::ReadWrite {
-            return Err(Errno::Eacces);
+            return Err(Errno::EACCES);
         }
 
         let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
@@ -189,7 +189,7 @@ impl FileDescriptorInterface {
     /// Important ! When in blocked syscall, the slice must be verified before read op and
     /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
     pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
+        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
         elem.kernel_fd.lock().read(buf)
     }
@@ -198,7 +198,7 @@ impl FileDescriptorInterface {
     /// Important ! When in blocked syscall, the slice must be verified before write op and
     /// we have fo find a solution to avoid the DeadLock when multiple access to fd occured
     pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::Ebadf)?;
+        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
         elem.kernel_fd.lock().write(buf)
     }
@@ -208,19 +208,19 @@ impl FileDescriptorInterface {
         for (key, elem) in &self.user_fd_list {
             if *key == oldfd {
                 let new_elem = elem.try_clone()?;
-                let newfd = self.get_lower_fd_value().ok_or::<Errno>(Errno::Emfile)?;
+                let newfd = self.get_lower_fd_value().ok_or::<Errno>(Errno::EMFILE)?;
 
                 self.user_fd_list.try_insert(newfd, new_elem)?;
                 return Ok(newfd);
             }
         }
-        Err(Errno::Ebadf)
+        Err(Errno::EBADF)
     }
 
     /// Duplicate one file descriptor with possible override
     pub fn dup2(&mut self, oldfd: Fd, newfd: Fd) -> SysResult<Fd> {
         if newfd > Self::MAX_FD {
-            return Err(Errno::Ebadf);
+            return Err(Errno::EBADF);
         }
 
         // If oldfd is not a valid file descriptor, then the call fails, and newfd is not closed.
@@ -233,12 +233,12 @@ impl FileDescriptorInterface {
                 return Ok(newfd);
             }
         }
-        Err(Errno::Ebadf)
+        Err(Errno::EBADF)
     }
 
     /// Clone one file descriptor
     pub fn close_fd(&mut self, fd: Fd) -> SysResult<()> {
-        self.user_fd_list.remove(&fd).ok_or::<Errno>(Errno::Ebadf)?;
+        self.user_fd_list.remove(&fd).ok_or::<Errno>(Errno::EBADF)?;
         Ok(())
     }
 
@@ -250,7 +250,7 @@ impl FileDescriptorInterface {
         fd_type: FileOperationType,
         kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
     ) -> SysResult<Fd> {
-        let user_fd = self.get_lower_fd_value().ok_or::<Errno>(Errno::Emfile)?;
+        let user_fd = self.get_lower_fd_value().ok_or::<Errno>(Errno::EMFILE)?;
         self.user_fd_list
             .try_insert(user_fd, FileDescriptor::new(mode, fd_type, kernel_fd))?;
         Ok(user_fd)

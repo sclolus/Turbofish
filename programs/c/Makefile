@@ -13,20 +13,16 @@ SRC_C += Clone \
 		Continue \
 		ContinueHardcore \
 		Csignal \
-		DeepThought \
 		DummyRead \
 		GetArgs \
 		Getuid \
 		Kill \
 		NoSaRestart \
 		NoSaRestartMultiple \
-		ProcessGroup \
 		RecursiveSignal \
 		SaRestart \
 		SaRestartMultiple \
 		SegFault \
-		SignalSimple \
-		SignalSimpleDuo \
 		SignalSimpleDuoRecurse \
 		SignalSimpleStopContinue \
 		SignalStopContinueOverload \

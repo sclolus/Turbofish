@@ -6,18 +6,22 @@ use super::FileOperation;
 use super::IpcResult;
 use super::Mode;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 use crate::terminal::ansi_escape_code::Colored;
 
 /// This structure represents a FileOperation of type Stderr
 #[derive(Debug, Default)]
-pub struct Stderr {}
+pub struct Stderr {
+    controlling_terminal: usize,
+}
 
 /// Main implementation for Stderr
 impl Stderr {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(controlling_terminal: usize) -> Self {
+        Self {
+            controlling_terminal,
+        }
     }
 }
 
@@ -30,12 +34,14 @@ impl FileOperation for Stderr {
         assert_eq!(access_mode, Mode::WriteOnly);
     }
     fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        Err(Errno::Ebadf)
+        Err(Errno::EBADF)
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        unsafe {
-            print!("{}", core::str::from_utf8_unchecked(buf).yellow());
-        }
+        print_tty!(
+            self.controlling_terminal,
+            "{}",
+            unsafe { core::str::from_utf8_unchecked(buf) }.yellow()
+        );
         Ok(IpcResult::Done(buf.len() as _))
     }
 }
@@ -43,6 +49,6 @@ impl FileOperation for Stderr {
 /// Some boilerplate to check if all is okay
 impl Drop for Stderr {
     fn drop(&mut self) {
-        println!("Stderr droped !");
+        //        println!("Stderr droped !");
     }
 }

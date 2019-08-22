@@ -6,7 +6,7 @@ use super::scheduler::{Scheduler, SCHEDULER};
 
 pub type SocketArgsPtr = *const u8;
 
-use errno::Errno;
+use libc_binding::Errno;
 use sync::DeadMutexGuard;
 
 use core::convert::TryInto;
@@ -41,7 +41,7 @@ macro_rules! safe_convertible_enum {
                 use $name::*;
                 match n {
                     $($value => Ok($variant),)*
-                    _ => Err(Errno::Einval),
+                    _ => Err(Errno::EINVAL),
                 }
             }
         }
@@ -175,11 +175,11 @@ impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const u8, usize
                         Ok(Sockaddr::Unix(
                             (arg.1 as *const SockaddrUnix)
                                 .as_ref()
-                                .ok_or(Errno::Einval)?,
+                                .ok_or(Errno::EINVAL)?,
                         ))
                     }
                 } else {
-                    Err(Errno::Einval)
+                    Err(Errno::EINVAL)
                 }
             }
         }

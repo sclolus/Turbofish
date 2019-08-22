@@ -3,8 +3,8 @@
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 use core::cmp::min;
-use errno::Errno;
 use libc_binding::gid_t;
+use libc_binding::Errno;
 
 /// The getgroups() function shall fill in the array grouplist with the
 /// current supplementary group IDs of the calling process. It is
@@ -20,6 +20,7 @@ use libc_binding::gid_t;
 /// IDs that it would otherwise return without modifying the array
 /// pointed to by grouplist.
 ///
+// TODO:
 /// If the effective group ID of the process is returned with the
 /// supplementary group IDs, the value returned shall always be greater
 /// than or equal to one and less than or equal to the value of
@@ -28,7 +29,7 @@ use libc_binding::gid_t;
 pub fn sys_getgroups(gidsetsize: i32, grouplist: *mut gid_t) -> SysResult<u32> {
     unpreemptible_context!({
         if gidsetsize < 0 {
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
         let scheduler = SCHEDULER.lock();
         let grouplist_slice = {

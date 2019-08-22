@@ -2,8 +2,8 @@
 
 use super::scheduler::SCHEDULER;
 use super::SysResult;
-use errno::Errno;
 use libc_binding::uid_t;
+use libc_binding::Errno;
 
 /// If the process has appropriate privileges, setuid() shall set the
 /// real user ID, effective user ID, and the saved set-user-ID of the
@@ -39,7 +39,7 @@ pub fn sys_setuid(uid: uid_t) -> SysResult<u32> {
             cred.euid = uid;
             Ok(0)
         } else {
-            Err(Errno::Eperm)
+            Err(Errno::EPERM)
         }
     })
 }

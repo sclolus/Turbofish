@@ -82,6 +82,8 @@ pub struct ThreadGroup {
     pub parent: Pid,
     /// the next availabel tid for a new thread
     next_tid: Tid,
+    /// currently the index of the controlling tty
+    pub controlling_terminal: usize,
 }
 
 #[derive(Debug, TryClone)]
@@ -123,6 +125,7 @@ impl ThreadGroup {
             }),
             next_tid: 1,
             pgid,
+            controlling_terminal: 1,
         })
     }
 
@@ -174,6 +177,7 @@ impl ThreadGroup {
             }),
             pgid: self.pgid,
             next_tid: 1,
+            controlling_terminal: self.controlling_terminal,
         })
     }
 
@@ -187,6 +191,12 @@ impl ThreadGroup {
 
     pub fn set_zombie(&mut self, status: i32) {
         self.thread_group_state = ThreadGroupState::Zombie(status);
+    }
+
+    pub fn iter_thread_mut(&mut self) -> impl Iterator<Item = &mut Thread> {
+        self.get_all_thread_mut()
+            .into_iter()
+            .flat_map(|all_thread| all_thread.values_mut())
     }
 
     pub fn get_first_thread(&mut self) -> Option<&mut Thread> {

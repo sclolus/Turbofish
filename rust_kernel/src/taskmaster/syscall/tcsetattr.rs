@@ -74,10 +74,11 @@ pub fn sys_tcsetattr(
     optional_actions: u32,
     termios_p: *const termios,
 ) -> SysResult<u32> {
+    let controlling_terminal;
     unpreemptible_context!({
-        // TODO: change this 1
         {
             let scheduler = SCHEDULER.lock();
+            controlling_terminal = scheduler.current_thread_group().controlling_terminal;
             let v = scheduler
                 .current_thread()
                 .unwrap_process()
@@ -90,7 +91,7 @@ pub fn sys_tcsetattr(
             TERMINAL
                 .as_mut()
                 .unwrap()
-                .get_line_discipline(1)
+                .get_line_discipline(controlling_terminal)
                 .tcsetattr(optional_actions, &*termios_p);
         }
     });

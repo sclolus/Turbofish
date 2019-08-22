@@ -1,10 +1,10 @@
 //! this file contains the scheduler description
-
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, ThreadGroup};
+use super::ProcessOrigin;
 use super::{SysResult, TaskMode};
 
 use alloc::boxed::Box;
@@ -12,13 +12,13 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
-use errno::Errno;
 use fallible_collections::btree::BTreeMap;
 use fallible_collections::FallibleVec;
+use libc_binding::Errno;
 use libc_binding::Signum;
-use messaging::{MessageTo, ProcessMessage, SchedulerMessage};
+use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
 use sync::Spinlock;
-use terminal::TERMINAL;
+use terminal::{NewTty, TERMINAL};
 
 use crate::drivers::PIT0;
 use crate::interrupts;
@@ -158,7 +158,6 @@ impl Scheduler {
         self.dispatch_messages();
         // Switch between processes
         let action = self.advance_next_process(next_process);
-
         // Set all the context of the illigible process
         let new_kernel_esp = self.load_new_context(action);
 
@@ -176,34 +175,61 @@ impl Scheduler {
                     self.get_thread_mut((pid, 0))
                         .map(|thread| thread.message_queue.push_back(content));
                 }
-                MessageTo::Scheduler { content } => match content {
-                    SchedulerMessage::SomethingToRead => {
-                        if let Some(thread) = self
-                            .iter_thread_mut()
-                            .find(|t| t.get_waiting_state() == Some(&WaitingState::Read))
-                        {
-                            thread
-                                .message_queue
-                                .push_back(ProcessMessage::SomethingToRead);
+                MessageTo::ProcessGroup { pgid, content } => {
+                    for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
+                        match content {
+                            ProcessGroupMessage::SomethingToRead => {
+                                thread_group
+                                    .iter_thread_mut()
+                                    .find(|thread| {
+                                        thread.get_waiting_state() == Some(&WaitingState::Read)
+                                    })
+                                    .map(|thread| {
+                                        // dbg!("send message");
+                                        thread
+                                            .message_queue
+                                            .push_back(ProcessMessage::SomethingToRead)
+                                    });
+                            }
+                            ProcessGroupMessage::Signal(signum) => {
+                                //TODO: Announce memory error later.
+
+                                thread_group.get_first_thread().map(|thread| {
+                                    let _ignored_result = thread.signal.generate_signal(signum);
+                                });
+                            }
                         }
-                    }
-                },
-                MessageTo::ProcessGroup {
-                    pgid,
-                    content: signum,
-                } => {
-                    for thread in self
-                        .iter_thread_groups_mut()
-                        .filter(|thread_group| thread_group.pgid == pgid)
-                        .filter_map(|thread_group| thread_group.get_first_thread())
-                    {
-                        //TODO: Announce memory error later.
-                        let _ignored_result = thread.signal.generate_signal(signum);
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
-                    TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
+                    if let Some(NewTty { tty_index }) =
+                        TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
+                    {
+                        //TODO: Maybe not the good way as init doesn't get its child
+                        let pid = self
+                            .add_user_process(
+                                1,
+                                UserProcess::new(ProcessOrigin::Elf(
+                                    &include_bytes!("../userland/shell")[..],
+                                ))
+                                .unwrap(),
+                            )
+                            .unwrap();
+                        let new_thread_group = self.get_thread_group_mut(pid).unwrap();
+                        new_thread_group.controlling_terminal = tty_index;
+                        // TODO: Handle alloc error
+                        let _r = new_thread_group
+                            .unwrap_running_mut()
+                            .file_descriptor_interface
+                            .open_std(tty_index);
+                        TERMINAL
+                            .as_mut()
+                            .unwrap()
+                            .get_line_discipline(tty_index)
+                            .tcsetpgrp(new_thread_group.pgid);
+                    }
                 },
+                _ => panic!("message not covered"),
             }
         }
     }
@@ -332,7 +358,7 @@ impl Scheduler {
                         // negative (rel to SIGNUM), set process as running then return
                         self.current_thread_mut().set_running();
                         self.current_thread_mut()
-                            .set_return_value_autopreempt(Err(Errno::Eintr));
+                            .set_return_value_autopreempt(Err(Errno::EINTR));
                         return action;
                     }
                     match waiting_state {
@@ -518,9 +544,11 @@ impl Scheduler {
     /// ID shall not be reused by the system until the process group lifetime ends. A process that is not
     /// a system process shall not have a process ID of 1.
     fn get_available_pid(&self) -> Pid {
-        fn posix_constraits(_pid: Pid) -> bool {
-            true // TODO: We don't have process groups yet so we can't implement the posix requirements
-        }
+        // this check if the candidate does't pid match any active process group
+        let posix_constraits = |pid: Pid| -> bool {
+            // TODO: optimize that maybe
+            !self.iter_thread_groups().any(|pg| pg.pgid == pid)
+        };
 
         let pred = |pid| pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid);
         let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
@@ -624,10 +652,10 @@ impl Scheduler {
     }
 
     /// iter on all the thread mutably
+    #[allow(dead_code)]
     pub fn iter_thread_mut(&mut self) -> impl Iterator<Item = &mut Thread> {
         self.iter_thread_groups_mut()
-            .flat_map(|thread_group| thread_group.get_all_thread_mut())
-            .flat_map(|all_thread| all_thread.values_mut())
+            .flat_map(|thread_group| thread_group.iter_thread_mut())
     }
 }
 

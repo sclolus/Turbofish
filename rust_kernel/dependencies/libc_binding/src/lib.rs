@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
+#![feature(try_reserve)]
 #![cfg_attr(not(test), no_std)]
 pub mod libc;
 pub use libc::*;
@@ -30,5 +31,13 @@ impl TryFrom<u32> for Signum {
         } else {
             Ok(unsafe { transmute(n) })
         }
+    }
+}
+
+extern crate alloc;
+use alloc::collections::CollectionAllocErr;
+impl From<CollectionAllocErr> for Errno {
+    fn from(_e: CollectionAllocErr) -> Self {
+        Errno::ENOMEM
     }
 }

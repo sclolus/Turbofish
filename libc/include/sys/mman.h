@@ -3,8 +3,6 @@
 
 #include <stddef.h>
 
-#define MAP_FAILED 0xFFFFFFFF
-
 //    The <sys/mman.h> header shall define the following symbolic constants for use as protection options:
 #define PROT_NONE 0
 //    Page cannot be accessed.
@@ -48,6 +46,7 @@
 //
 //The <sys/mman.h> header shall define the symbolic constant MAP_FAILED which shall have type void * and shall be used to indicate a failure from the mmap() function .
 //
+#define MAP_FAILED ((void *) -1)
 //[ADV] [Option Start] If the Advisory Information option is supported, the <sys/mman.h> header shall define symbolic constants for the advice argument to the posix_madvise() function as follows:
 //
 //POSIX_MADV_DONTNEED

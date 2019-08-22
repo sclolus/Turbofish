@@ -138,7 +138,7 @@ impl Tty {
                 pos: Default::default(),
                 nb_lines,
                 nb_columns,
-                visible: false,
+                visible: true,
             },
             text_color: AnsiColor::WHITE,
             write_mode: WriteMode::Dynamic,
@@ -501,7 +501,7 @@ use arrayvec::{ArrayVec, CapacityError};
 use core::cmp::min;
 use core::convert::TryFrom;
 use keyboard::keysymb::KeySymb;
-use messaging::{MessageTo, SchedulerMessage};
+use messaging::{MessageTo, ProcessGroupMessage};
 
 pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
     // particular case of convertion
@@ -651,8 +651,9 @@ impl LineDiscipline {
                 }
                 if key as u32 == self.termios.c_cc[VEOF as usize] {
                     self.end_of_file_set = true;
-                    messaging::push_message(MessageTo::Scheduler {
-                        content: SchedulerMessage::SomethingToRead,
+                    messaging::push_message(MessageTo::ProcessGroup {
+                        pgid: self.foreground_process_group,
+                        content: ProcessGroupMessage::SomethingToRead,
                     });
                     return Ok(());;
                 }
@@ -662,21 +663,21 @@ impl LineDiscipline {
                 if key as u32 == self.termios.c_cc[VINTR as usize] {
                     messaging::push_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: Signum::SIGINT,
+                        content: ProcessGroupMessage::Signal(Signum::SIGINT),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VSUSP as usize] {
                     messaging::push_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: Signum::SIGSTOP,
+                        content: ProcessGroupMessage::Signal(Signum::SIGSTOP),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VQUIT as usize] {
                     messaging::push_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: Signum::SIGQUIT,
+                        content: ProcessGroupMessage::Signal(Signum::SIGQUIT),
                     });
                     return Ok(());;
                 }
@@ -693,8 +694,9 @@ impl LineDiscipline {
             if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
                 || !self.termios.c_lflag & ICANON != 0
             {
-                messaging::push_message(MessageTo::Scheduler {
-                    content: SchedulerMessage::SomethingToRead,
+                messaging::push_message(MessageTo::ProcessGroup {
+                    pgid: self.foreground_process_group,
+                    content: ProcessGroupMessage::SomethingToRead,
                 });
             }
             if self.termios.c_lflag & ECHO != 0 {

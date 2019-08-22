@@ -12,6 +12,8 @@ int main(void)
 		printf("%s: Fork failed\n", __func__);
 		exit(1);
 	} else if (pid == 0) {
+		// TODO : check if its the good way
+		tcsetpgrp(0, getpgrp());
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);

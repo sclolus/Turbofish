@@ -5,7 +5,7 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
-use errno::Errno;
+use libc_binding::Errno;
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -40,16 +40,18 @@ use errno::Errno;
 /// of zero or more of the following flags, defined in the
 /// <sys/wait.h> header:
 ///
+//TODO:
 /// WCONTINUED [XSI] [Option Start] The waitpid() function shall
 ///     report the status of any continued child process specified by
 ///     pid whose status has not been reported since it continued from
-///     a job control stop. [Option End] WNOHANG The waitpid()
-///     function shall not suspend execution of the calling thread if
-///     status is not immediately available for one of the child
-///     processes specified by pid.  WUNTRACED The status of any child
-///     processes specified by pid that are stopped, and whose status
-///     has not yet been reported since they stopped, shall also be
-///     reported to the requesting process.
+///     a job control stop. [Option End]
+/// WNOHANG The waitpid() function shall not suspend execution of the
+///     calling thread if status is not immediately available for one
+///     of the child processes specified by pid.
+/// WUNTRACED The status of any child processes specified by pid that
+///     are stopped, and whose status has not yet been reported since
+///     they stopped, shall also be reported to the requesting
+///     process.
 ///
 /// If wait() or waitpid() return because the status of a child
 /// process is available, these functions shall return a value equal
@@ -75,19 +77,19 @@ use errno::Errno;
 ///
 /// WIFEXITED(stat_val) Evaluates to a non-zero value if status was
 ///     returned for a child process that terminated normally.
-///     WEXITSTATUS(stat_val) If the value of WIFEXITED(stat_val) is
+/// WEXITSTATUS(stat_val) If the value of WIFEXITED(stat_val) is
 ///     non-zero, this macro evaluates to the low-order 8 bits of the
 ///     status argument that the child process passed to _exit() or
 ///     exit(), or the value the child process returned from main().
-///     WIFSIGNALED(stat_val) Evaluates to a non-zero value if status
+/// WIFSIGNALED(stat_val) Evaluates to a non-zero value if status
 ///     was returned for a child process that terminated due to the
 ///     receipt of a signal that was not caught (see <signal.h>).
-///     WTERMSIG(stat_val) If the value of WIFSIGNALED(stat_val) is
+/// WTERMSIG(stat_val) If the value of WIFSIGNALED(stat_val) is
 ///     non-zero, this macro evaluates to the number of the signal
 ///     that caused the termination of the child process.
-///     WIFSTOPPED(stat_val) Evaluates to a non-zero value if status
+/// WIFSTOPPED(stat_val) Evaluates to a non-zero value if status
 ///     was returned for a child process that is currently stopped.
-///     WSTOPSIG(stat_val) If the value of WIFSTOPPED(stat_val) is
+/// WSTOPSIG(stat_val) If the value of WIFSTOPPED(stat_val) is
 ///     non-zero, this macro evaluates to the number of the signal
 ///     that caused the child process to stop.  WIFCONTINUED(stat_val)
 ///     [XSI] [Option Start] Evaluates to a non-zero value if status
@@ -220,7 +222,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
     if options != 0 {
-        return Err(Errno::Einval);
+        return Err(Errno::EINVAL);
     }
 
     let thread_group = scheduler.current_thread_group();
@@ -237,7 +239,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
         -1 => {
             // Check if at leat one child exists
             if thread_group.unwrap_running().child.len() == 0 {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
             // Check is the at least one child is a already a zombie -> Return immediatly child PID
             thread_group
@@ -275,7 +277,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .count();
 
             if candidate_number == 0 {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
 
             thread_group
@@ -310,7 +312,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     None
                 }
             } else {
-                return Err(Errno::Echild);
+                return Err(Errno::ECHILD);
             }
         }
         _ => unreachable!(),

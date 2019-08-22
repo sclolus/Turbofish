@@ -2,8 +2,8 @@
 
 use super::scheduler::SCHEDULER;
 use super::SysResult;
-use errno::Errno;
 use libc_binding::gid_t;
+use libc_binding::Errno;
 
 /// If the process has appropriate privileges, setgid() shall set the
 /// real group ID, effective group ID, and the saved set-group-ID of
@@ -26,7 +26,6 @@ use libc_binding::gid_t;
 /// [EPERM] The process does not
 ///     have appropriate privileges and gid does not match the real
 ///     group ID or the saved set-group-ID.
-
 pub fn sys_setgid(gid: gid_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
@@ -41,7 +40,7 @@ pub fn sys_setgid(gid: gid_t) -> SysResult<u32> {
             cred.egid = gid;
             Ok(0)
         } else {
-            Err(Errno::Eperm)
+            Err(Errno::EPERM)
         }
     })
 }
