@@ -17,16 +17,15 @@ use crate::terminal::TERMINAL;
 /// foreground process group.
 // TODO: file descriptor argument
 pub fn sys_tcgetpgrp(_fildes: i32) -> SysResult<u32> {
-    let scheduler = SCHEDULER.lock();
-    let controlling_terminal = scheduler.current_thread_group().controlling_terminal;
     unpreemptible_context!({
+        let scheduler = SCHEDULER.lock();
+        let controlling_terminal = scheduler.current_thread_group().controlling_terminal;
         unsafe {
-            TERMINAL
+            Ok(TERMINAL
                 .as_mut()
                 .unwrap()
                 .get_line_discipline(controlling_terminal)
-                .tcgetpgrp()
+                .tcgetpgrp() as u32)
         }
-    });
-    Ok(0)
+    })
 }
