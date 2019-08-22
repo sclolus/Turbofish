@@ -1,5 +1,18 @@
 --- config.h	2019-08-17 20:01:00.353474069 +0200
-+++ ../../corutils_back/build/config.h	2019-08-17 19:41:35.829554554 +0200
++++ ../../coreutils-5.0/build/config.h	2019-08-20 22:51:07.595214072 +0200
+@@ -117,10 +117,10 @@
+ /* #undef HAVE_CHSIZE */
+ 
+ /* Define to 1 if you have the `clock_gettime' function. */
+-/* #undef HAVE_CLOCK_GETTIME */
++#define HAVE_CLOCK_GETTIME 1
+ 
+ /* Define to 1 if you have the `clock_settime' function. */
+-/* #undef HAVE_CLOCK_SETTIME */
++#define HAVE_CLOCK_SETTIME 1
+ 
+ /* Define if backslash-a works in C strings. */
+ #define HAVE_C_BACKSLASH_A 1
 @@ -138,7 +138,7 @@
  
  /* Define to 1 if you have the declaration of `dirfd', and to 0 if you don't.
@@ -40,6 +53,15 @@
 +#define HAVE_DECL_REALLOC 1
  
  /* Define to 1 if you have the declaration of `stpcpy', and to 0 if you don't.
+    */
+@@ -274,7 +274,7 @@
+ 
+ /* Define to 1 if you have the declaration of `strsignal', and to 0 if you
+    don't. */
+-#define HAVE_DECL_STRSIGNAL 0
++#define HAVE_DECL_STRSIGNAL 1
+ 
+ /* Define to 1 if you have the declaration of `strstr', and to 0 if you don't.
     */
 @@ -282,27 +282,27 @@
  
@@ -84,6 +106,24 @@
  
  /* Define to 1 if you have the `gethostbyaddr' function. */
  /* #undef HAVE_GETHOSTBYADDR */
+@@ -437,7 +437,7 @@
+ /* #undef HAVE_GETTEXT */
+ 
+ /* Define to 1 if you have the `gettimeofday' function. */
+-#define HAVE_GETTIMEOFDAY 1
++/* #define HAVE_GETTIMEOFDAY 1 */
+ 
+ /* Define to 1 if you have the `getusershell' function. */
+ /* #undef HAVE_GETUSERSHELL */
+@@ -561,7 +561,7 @@
+ #define HAVE_MEMCHR 1
+ 
+ /* Define to 1 if you have the `memcmp' function. */
+-/* #undef HAVE_MEMCMP */
++#define HAVE_MEMCMP 1
+ 
+ /* Define to 1 if you have the `memcpy' function. */
+ #define HAVE_MEMCPY 1
 @@ -679,6 +679,7 @@
  /* #undef HAVE_SQRT */
  
@@ -163,15 +203,15 @@
  
  /* Define as `__inline' if that's what the C compiler calls it, or to nothing
     if it is not supported. */
-@@ -1368,7 +1373,7 @@
- #define major_t unsigned int
- 
- /* Define to rpl_malloc if the replacement function should be used. */
--#define malloc rpl_malloc
-+/* #define malloc rpl_malloc */
- 
- /* Define to a type if <wchar.h> does not define. */
+@@ -1374,7 +1379,7 @@
  #define mbstate_t int
+ 
+ /* Define to rpl_memcmp if the replacement function should be used. */
+-#define memcmp rpl_memcmp
++/* #undef memcmp */
+ 
+ /* Define to `unsigned int' if <sys/types.h> does not define. */
+ #define minor_t unsigned int
 @@ -1395,7 +1400,7 @@
  #define my_strftime nstrftime
  
