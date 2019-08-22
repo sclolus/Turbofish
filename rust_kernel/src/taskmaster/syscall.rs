@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::ipc;
+use super::ipc::Fd;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -15,11 +16,11 @@ use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, PAUSE,
-    PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
+    PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
+    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -146,6 +147,8 @@ use geteuid::sys_geteuid;
 mod getegid;
 use getegid::sys_getegid;
 
+mod fcntl;
+use fcntl::sys_fcntl;
 /*
  * These below declarations are IPC related
  */
@@ -215,6 +218,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),
         GETEUID => sys_geteuid(),
+        FCNTL => sys_fcntl(ebx as Fd, ecx as u32, edx as Fd),
         GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
