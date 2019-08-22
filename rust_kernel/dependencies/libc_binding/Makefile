@@ -1,4 +1,4 @@
-all: src/libc.rs
+all: updated
 
 updated: all_includes.h ../../programs/libc/include/* Makefile
 	@echo updated > updated
