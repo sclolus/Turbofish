@@ -101,3 +101,18 @@ pub fn push_message(message: MessageTo) {
 pub fn drain_messages() -> impl Iterator<Item = MessageTo> {
     MESSAGE_QUEUE.drain()
 }
+
+mod scheduler {
+    use super::MessageTo;
+    extern "C" {
+        #[allow(improper_ctypes)]
+        pub fn send_message(message: MessageTo);
+    }
+}
+
+pub fn send_message(message: MessageTo) {
+    unsafe {
+        // call with the linker the send message function of the scheduler
+        scheduler::send_message(message);
+    }
+}

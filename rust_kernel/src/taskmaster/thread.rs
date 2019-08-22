@@ -8,7 +8,6 @@ use super::SysResult;
 
 use core::ffi::c_void;
 use fallible_collections::FallibleBox;
-use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
 
@@ -33,7 +32,6 @@ pub struct Thread {
     pub process_state: ProcessState,
     /// Signal Interface
     pub signal: SignalInterface,
-    pub message_queue: MessageQueue<ProcessMessage>,
     autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
 }
 
@@ -42,7 +40,6 @@ impl Thread {
         Self {
             process_state,
             signal: SignalInterface::new(),
-            message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::new(Ok(Default::default())),
         }
     }
@@ -68,7 +65,6 @@ impl Thread {
                 }
                 _ => panic!("Non running process should not clone"),
             },
-            message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
         })
     }

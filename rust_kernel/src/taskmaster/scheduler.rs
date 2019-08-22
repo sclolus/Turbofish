@@ -174,36 +174,6 @@ impl Scheduler {
         for message in messaging::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
-                MessageTo::Process { pid, content } => {
-                    self.get_thread_mut((pid, 0))
-                        .map(|thread| thread.message_queue.push_back(content));
-                }
-                MessageTo::ProcessGroup { pgid, content } => {
-                    for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
-                        match content {
-                            ProcessGroupMessage::SomethingToRead => {
-                                thread_group
-                                    .iter_thread_mut()
-                                    .find(|thread| {
-                                        thread.get_waiting_state() == Some(&WaitingState::Read)
-                                    })
-                                    .map(|thread| {
-                                        // dbg!("send message");
-                                        thread
-                                            .message_queue
-                                            .push_back(ProcessMessage::SomethingToRead)
-                                    });
-                            }
-                            ProcessGroupMessage::Signal(signum) => {
-                                //TODO: Announce memory error later.
-
-                                thread_group.get_first_thread().map(|thread| {
-                                    let _ignored_result = thread.signal.generate_signal(signum);
-                                });
-                            }
-                        }
-                    }
-                }
                 MessageTo::Tty { key_pressed } => unsafe {
                     if let Some(NewTty { tty_index }) =
                         TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
@@ -297,60 +267,6 @@ impl Scheduler {
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
             }
-            while let Some(message) = self.current_thread_mut().message_queue.pop_front() {
-                // eprintln!("Process message: {:#?}", message);
-                match message {
-                    // ProcessMessage::ProcessDied {
-                    //     pid: dead_process_pid,
-                    // } => {
-                    //     if let Some(WaitingState::Waitpid(wake_pid, options)) =
-                    //         self.current_thread().get_waiting_state()
-                    //     {
-                    //         let dead_process_pgid = self
-                    //             .get_thread_group(dead_process_pid)
-                    //             .expect("no dead child")
-                    //             .pgid;
-                    //         if *wake_pid == -1
-                    //             || *wake_pid == 0
-                    //                 && dead_process_pgid == self.current_thread_group().pgid
-                    //             || *wake_pid == dead_process_pid
-                    //             || -*wake_pid == dead_process_pgid
-                    //         {
-                    //             let status = self
-                    //                     .get_thread_group(dead_process_pid)
-                    //                     .and_then(|tg| tg.get_death_status())
-                    //                     .expect("A zombie was found just before, but there is no zombie here");
-                    //             let current_thread = self.current_thread_mut();
-                    //             // current_thread.set_waiting(WaitingState::ChildDeath(
-                    //             //     dead_process_pid,
-                    //             //     status as u32,
-                    //             // ));
-                    //             // current_thread.set_return_value(0);
-                    //             current_thread.set_running();
-                    //             current_thread.set_return_value_autopreempt(Ok(
-                    //                 AutoPreemptReturnValue::Wait {
-                    //                     dead_process_pid,
-                    //                     status,
-                    //                 },
-                    //             ));
-                    //             return JobAction::default();
-                    //         }
-                    //     }
-                    // }
-                    ProcessMessage::SomethingToRead => {
-                        let current_thread = self.current_thread_mut();
-                        current_thread
-                            .message_queue
-                            .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        current_thread
-                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
-                        current_thread.set_running();
-                        return JobAction::default();
-                    }
-                    _ => panic!("message not covered"),
-                }
-            }
-
             match &self.current_thread().process_state {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
@@ -697,14 +613,7 @@ impl Scheduler {
                                 }
                             }
                         }
-                        ProcessMessage::SomethingToRead => {
-                            thread
-                                .message_queue
-                                .retain(|message| *message != ProcessMessage::SomethingToRead);
-                            thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
-                            thread.set_running();
-                            // return JobAction::default();
-                        }
+                        ProcessMessage::SomethingToRead => {}
                     }
                 }
             }
@@ -718,10 +627,10 @@ impl Scheduler {
                                     thread.get_waiting_state() == Some(&WaitingState::Read)
                                 })
                                 .map(|thread| {
-                                    // dbg!("send message");
-                                    thread
-                                        .message_queue
-                                        .push_back(ProcessMessage::SomethingToRead)
+                                    thread.set_return_value_autopreempt(Ok(
+                                        AutoPreemptReturnValue::None,
+                                    ));
+                                    thread.set_running();
                                 });
                         }
                         ProcessGroupMessage::Signal(signum) => {
@@ -734,34 +643,6 @@ impl Scheduler {
                     }
                 }
             }
-            // MessageTo::Tty { key_pressed } => unsafe {
-            //     if let Some(NewTty { tty_index }) =
-            //         TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
-            //     {
-            //         //TODO: Maybe not the good way as init doesn't get its child
-            //         let pid = self
-            //             .add_user_process(
-            //                 1,
-            //                 UserProcess::new(ProcessOrigin::Elf(
-            //                     &include_bytes!("../userland/shell")[..],
-            //                 ))
-            //                 .unwrap(),
-            //             )
-            //             .unwrap();
-            //         let new_thread_group = self.get_thread_group_mut(pid).unwrap();
-            //         new_thread_group.controlling_terminal = tty_index;
-            //         // TODO: Handle alloc error
-            //         let _r = new_thread_group
-            //             .unwrap_running_mut()
-            //             .file_descriptor_interface
-            //             .open_std(tty_index);
-            //         TERMINAL
-            //             .as_mut()
-            //             .unwrap()
-            //             .get_line_discipline(tty_index)
-            //             .tcsetpgrp(new_thread_group.pgid);
-            //     }
-            // },
             _ => panic!("message not covered"),
         }
     }
