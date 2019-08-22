@@ -358,23 +358,26 @@ impl SignalInterface {
     pub fn new_handler(
         &mut self,
         signum: Signum,
-        sigaction: &StructSigaction,
+        sigaction: Option<&StructSigaction>,
     ) -> SysResult<StructSigaction> {
-        // The system shall not allow the action for the signals SIGKILL or SIGSTOP to be set to SIG_IGN.
-        if (signum == Signum::SIGKILL || signum == Signum::SIGSTOP)
-            && sigaction.sa_handler != SIG_DFL
-        {
-            return Err(Errno::EINVAL);
-        }
-
-        // SIGCONT cannot be ignored (job control mandatory cf POSIX)
-        if signum == Signum::SIGCONT && sigaction.sa_handler == SIG_IGN {
-            return Err(Errno::EINVAL);
-        }
-
         // Associate a new action for a specified Signum
-        let former = mem::replace(&mut self.signal_actions[signum], *sigaction);
-        Ok(former)
+        match sigaction {
+            None => Ok(self.signal_actions[signum]),
+            Some(sigaction) => {
+                // The system shall not allow the action for the signals SIGKILL or SIGSTOP to be set to SIG_IGN.
+                if (signum == Signum::SIGKILL || signum == Signum::SIGSTOP)
+                    && sigaction.sa_handler != SIG_DFL
+                {
+                    return Err(Errno::EINVAL);
+                }
+
+                // SIGCONT cannot be ignored (job control mandatory cf POSIX)
+                if signum == Signum::SIGCONT && sigaction.sa_handler == SIG_IGN {
+                    return Err(Errno::EINVAL);
+                }
+                Ok(mem::replace(&mut self.signal_actions[signum], *sigaction))
+            }
+        }
     }
 
     /// Register a new signal
