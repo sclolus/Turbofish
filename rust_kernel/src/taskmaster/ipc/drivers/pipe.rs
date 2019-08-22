@@ -33,7 +33,7 @@ impl Pipe {
             input_ref: Default::default(),
             output_ref: Default::default(),
             buf: [0; BUF_SIZE],
-            current_index: 0,
+            current_index: Default::default(),
             file_op_uid: get_file_op_uid(),
         }
     }
@@ -73,6 +73,7 @@ impl FileOperation for Pipe {
                 .copy_from(self.buf.as_mut_ptr().add(min), self.current_index - min);
         }
         self.current_index -= min;
+        // TODO: Maybe find a way to know if there are writers
         messaging::push_message(MessageTo::Writer {
             uid_file_op: self.file_op_uid,
         });
@@ -92,6 +93,7 @@ impl FileOperation for Pipe {
         }
         self.current_index += min;
         if min == buf.len() {
+            // TODO: Maybe find a way to know if there are readers
             messaging::push_message(MessageTo::Reader {
                 uid_file_op: self.file_op_uid,
             });

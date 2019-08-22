@@ -406,6 +406,8 @@ pub struct BufferedTty {
     pub tty: Tty,
     /// contains unfinished escaped sequence, capacity max = 256
     escaped_buf: String,
+    /// global ipc uid associated to the tty
+    uid_file_op: Option<usize>,
 }
 
 impl AsRef<Tty> for BufferedTty {
@@ -428,6 +430,7 @@ impl BufferedTty {
         Self {
             tty,
             escaped_buf: String::with_capacity(ESCAPED_BUF_CAPACITY),
+            uid_file_op: None,
         }
     }
 }
@@ -651,10 +654,15 @@ impl LineDiscipline {
                 }
                 if key as u32 == self.termios.c_cc[VEOF as usize] {
                     self.end_of_file_set = true;
-                    messaging::push_message(MessageTo::ProcessGroup {
-                        pgid: self.foreground_process_group,
-                        content: ProcessGroupMessage::SomethingToRead,
-                    });
+
+                    // meuh xD !
+                    messaging::push_message(MessageTo::Reader {
+                        uid_file_op: self.tty.uid_file_op.expect("WTF"),
+                    });;
+                    // messaging::push_message(MessageTo::ProcessGroup {
+                    //     pgid: self.foreground_process_group,
+                    //     content: ProcessGroupMessage::SomethingToRead,
+                    // });
                     return Ok(());;
                 }
             }
@@ -694,10 +702,14 @@ impl LineDiscipline {
             if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
                 || !self.termios.c_lflag & ICANON != 0
             {
-                messaging::push_message(MessageTo::ProcessGroup {
-                    pgid: self.foreground_process_group,
-                    content: ProcessGroupMessage::SomethingToRead,
-                });
+                // meuh ! xD
+                messaging::push_message(MessageTo::Reader {
+                    uid_file_op: self.tty.uid_file_op.expect("WTF"),
+                });;
+                // messaging::push_message(MessageTo::ProcessGroup {
+                //     pgid: self.foreground_process_group,
+                //     content: ProcessGroupMessage::SomethingToRead,
+                // });
             }
             if self.termios.c_lflag & ECHO != 0 {
                 self.write(b);
@@ -718,6 +730,11 @@ impl LineDiscipline {
             *dest = src;
         }
         len_data_to_read
+    }
+
+    /// open a tty
+    pub fn open(&mut self, uid_file_op: usize) {
+        self.tty.uid_file_op = Some(uid_file_op);
     }
 
     /// read (from a process) on the tty

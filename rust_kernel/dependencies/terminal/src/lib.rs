@@ -102,6 +102,11 @@ impl Terminal {
             .expect("no foreground tty")
     }
 
+    /// Open a TTY in point of view of IPC !
+    pub fn open(&mut self, uid_file_op: usize, tty_index: usize) {
+        self.ttys[tty_index].open(uid_file_op);
+    }
+
     /// Read a Key from the buffer
     pub fn read(&mut self, buf: &mut [u8], tty_index: usize) -> ReadResult {
         self.ttys[tty_index].read(buf)

@@ -211,19 +211,20 @@ impl Scheduler {
                 MessageTo::ProcessGroup { pgid, content } => {
                     for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
                         match content {
-                            ProcessGroupMessage::SomethingToRead => {
-                                thread_group
-                                    .iter_thread_mut()
-                                    .find(|thread| {
-                                        thread.get_waiting_state() == Some(&WaitingState::Read(0))
-                                    })
-                                    .map(|thread| {
-                                        // dbg!("send message");
-                                        thread
-                                            .message_queue
-                                            .push_back(ProcessMessage::SomethingToRead)
-                                    });
-                            }
+                            // ProcessGroupMessage::SomethingToRead => {
+                            //     thread_group
+                            //         .iter_thread_mut()
+                            //         .find(|thread| {
+                            //             // WOOT: Our implementation are not compatibles. 0 is a mistake here
+                            //             thread.get_waiting_state() == Some(&WaitingState::Read(0))
+                            //         })
+                            //         .map(|thread| {
+                            //             // dbg!("send message");
+                            //             thread
+                            //                 .message_queue
+                            //                 .push_back(ProcessMessage::SomethingToRead)
+                            //        });
+                            // }
                             ProcessGroupMessage::Signal(signum) => {
                                 //TODO: Announce memory error later.
 
@@ -231,6 +232,7 @@ impl Scheduler {
                                     let _ignored_result = thread.signal.generate_signal(signum);
                                 });
                             }
+                            _ => panic!("I dont know what to do"),
                         }
                     }
                 }
