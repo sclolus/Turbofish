@@ -26,7 +26,7 @@ pub enum SchedulerMessage {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ProcessMessage {
     /// this process has died
-    ProcessDied { pid: Pid },
+    ProcessDied { pid: Pid, pgid: Pid, status: i32 },
     /// there is something to read
     SomethingToRead,
 }

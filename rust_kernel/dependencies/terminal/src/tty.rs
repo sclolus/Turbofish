@@ -670,7 +670,7 @@ impl LineDiscipline {
                 if key as u32 == self.termios.c_cc[VSUSP as usize] {
                     messaging::push_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: ProcessGroupMessage::Signal(Signum::SIGSTOP),
+                        content: ProcessGroupMessage::Signal(Signum::SIGTSTP),
                     });
                     return Ok(());;
                 }

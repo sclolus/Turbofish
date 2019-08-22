@@ -91,19 +91,22 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
     //TODO: Announce memory error later.
     let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
 
-    // Send a death testament message to the parent
-    messaging::push_message(MessageTo::Process {
-        pid: parent_pid,
-        content: ProcessMessage::ProcessDied {
-            pid: process_to_free_pid,
-        },
-    });
-
     // Set the dead process as zombie
     let dead_process = scheduler
         .get_thread_group_mut(process_to_free_pid)
         .expect("WTF: No Dead Process");
+
     dead_process.set_zombie(status);
+
+    // Send a death testament message to the parent
+    send_message(MessageTo::Process {
+        pid: parent_pid,
+        content: ProcessMessage::ProcessDied {
+            pid: process_to_free_pid,
+            pgid: dead_process.pgid,
+            status,
+        },
+    });
 
     // To avoid race conditions. the current execution thread was set as unpreemptible. Reallow it now
     preemptible();
@@ -297,43 +300,43 @@ impl Scheduler {
             while let Some(message) = self.current_thread_mut().message_queue.pop_front() {
                 // eprintln!("Process message: {:#?}", message);
                 match message {
-                    ProcessMessage::ProcessDied {
-                        pid: dead_process_pid,
-                    } => {
-                        if let Some(WaitingState::ChildDeath(wake_pid)) =
-                            self.current_thread().get_waiting_state()
-                        {
-                            let dead_process_pgid = self
-                                .get_thread_group(dead_process_pid)
-                                .expect("no dead child")
-                                .pgid;
-                            if *wake_pid == -1
-                                || *wake_pid == 0
-                                    && dead_process_pgid == self.current_thread_group().pgid
-                                || *wake_pid == dead_process_pid
-                                || -*wake_pid == dead_process_pgid
-                            {
-                                let status = self
-                                        .get_thread_group(dead_process_pid)
-                                        .and_then(|tg| tg.get_death_status())
-                                        .expect("A zombie was found just before, but there is no zombie here");
-                                let current_thread = self.current_thread_mut();
-                                // current_thread.set_waiting(WaitingState::ChildDeath(
-                                //     dead_process_pid,
-                                //     status as u32,
-                                // ));
-                                // current_thread.set_return_value(0);
-                                current_thread.set_running();
-                                current_thread.set_return_value_autopreempt(Ok(
-                                    AutoPreemptReturnValue::Wait {
-                                        dead_process_pid,
-                                        status,
-                                    },
-                                ));
-                                return JobAction::default();
-                            }
-                        }
-                    }
+                    // ProcessMessage::ProcessDied {
+                    //     pid: dead_process_pid,
+                    // } => {
+                    //     if let Some(WaitingState::Waitpid(wake_pid, options)) =
+                    //         self.current_thread().get_waiting_state()
+                    //     {
+                    //         let dead_process_pgid = self
+                    //             .get_thread_group(dead_process_pid)
+                    //             .expect("no dead child")
+                    //             .pgid;
+                    //         if *wake_pid == -1
+                    //             || *wake_pid == 0
+                    //                 && dead_process_pgid == self.current_thread_group().pgid
+                    //             || *wake_pid == dead_process_pid
+                    //             || -*wake_pid == dead_process_pgid
+                    //         {
+                    //             let status = self
+                    //                     .get_thread_group(dead_process_pid)
+                    //                     .and_then(|tg| tg.get_death_status())
+                    //                     .expect("A zombie was found just before, but there is no zombie here");
+                    //             let current_thread = self.current_thread_mut();
+                    //             // current_thread.set_waiting(WaitingState::ChildDeath(
+                    //             //     dead_process_pid,
+                    //             //     status as u32,
+                    //             // ));
+                    //             // current_thread.set_return_value(0);
+                    //             current_thread.set_running();
+                    //             current_thread.set_return_value_autopreempt(Ok(
+                    //                 AutoPreemptReturnValue::Wait {
+                    //                     dead_process_pid,
+                    //                     status,
+                    //                 },
+                    //             ));
+                    //             return JobAction::default();
+                    //         }
+                    //     }
+                    // }
                     ProcessMessage::SomethingToRead => {
                         let current_thread = self.current_thread_mut();
                         current_thread
@@ -344,6 +347,7 @@ impl Scheduler {
                         current_thread.set_running();
                         return JobAction::default();
                     }
+                    _ => panic!("message not covered"),
                 }
             }
 
@@ -657,6 +661,119 @@ impl Scheduler {
         self.iter_thread_groups_mut()
             .flat_map(|thread_group| thread_group.iter_thread_mut())
     }
+
+    pub fn send_message(&mut self, message: MessageTo) {
+        match message {
+            MessageTo::Process { pid, content } => {
+                for thread in self
+                    .get_thread_group_mut(pid)
+                    .iter_mut()
+                    .flat_map(|thread| thread.iter_thread_mut())
+                {
+                    match content {
+                        ProcessMessage::ProcessDied {
+                            pid: dead_process_pid,
+                            pgid: dead_process_pgid,
+                            status,
+                        } => {
+                            if let Some(WaitingState::Waitpid {
+                                pid: wake_pid,
+                                pgid,
+                                options,
+                            }) = thread.get_waiting_state()
+                            {
+                                if *wake_pid == -1
+                                    || *wake_pid == 0 && dead_process_pgid == *pgid
+                                    || *wake_pid == dead_process_pid
+                                    || -*wake_pid == dead_process_pgid
+                                {
+                                    thread.set_running();
+                                    thread.set_return_value_autopreempt(Ok(
+                                        AutoPreemptReturnValue::Wait {
+                                            dead_process_pid,
+                                            status: status,
+                                        },
+                                    ));
+                                }
+                            }
+                        }
+                        ProcessMessage::SomethingToRead => {
+                            thread
+                                .message_queue
+                                .retain(|message| *message != ProcessMessage::SomethingToRead);
+                            thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                            thread.set_running();
+                            // return JobAction::default();
+                        }
+                    }
+                }
+            }
+            MessageTo::ProcessGroup { pgid, content } => {
+                for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
+                    match content {
+                        ProcessGroupMessage::SomethingToRead => {
+                            thread_group
+                                .iter_thread_mut()
+                                .find(|thread| {
+                                    thread.get_waiting_state() == Some(&WaitingState::Read)
+                                })
+                                .map(|thread| {
+                                    // dbg!("send message");
+                                    thread
+                                        .message_queue
+                                        .push_back(ProcessMessage::SomethingToRead)
+                                });
+                        }
+                        ProcessGroupMessage::Signal(signum) => {
+                            //TODO: Announce memory error later.
+
+                            thread_group.get_first_thread().map(|thread| {
+                                let _ignored_result = thread.signal.generate_signal(signum);
+                            });
+                        }
+                    }
+                }
+            }
+            // MessageTo::Tty { key_pressed } => unsafe {
+            //     if let Some(NewTty { tty_index }) =
+            //         TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
+            //     {
+            //         //TODO: Maybe not the good way as init doesn't get its child
+            //         let pid = self
+            //             .add_user_process(
+            //                 1,
+            //                 UserProcess::new(ProcessOrigin::Elf(
+            //                     &include_bytes!("../userland/shell")[..],
+            //                 ))
+            //                 .unwrap(),
+            //             )
+            //             .unwrap();
+            //         let new_thread_group = self.get_thread_group_mut(pid).unwrap();
+            //         new_thread_group.controlling_terminal = tty_index;
+            //         // TODO: Handle alloc error
+            //         let _r = new_thread_group
+            //             .unwrap_running_mut()
+            //             .file_descriptor_interface
+            //             .open_std(tty_index);
+            //         TERMINAL
+            //             .as_mut()
+            //             .unwrap()
+            //             .get_line_discipline(tty_index)
+            //             .tcsetpgrp(new_thread_group.pgid);
+            //     }
+            // },
+            _ => panic!("message not covered"),
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn send_message(message: MessageTo) {
+    // TODO : check force_lock
+    unsafe {
+        SCHEDULER.force_unlock();
+    }
+    SCHEDULER.lock().send_message(message);
 }
 
 /// Start the whole scheduler

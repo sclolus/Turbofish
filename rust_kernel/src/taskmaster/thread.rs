@@ -146,7 +146,7 @@ pub enum WaitingState {
     /// The sys_pause command was invoqued, the process is waiting for a signal
     Pause,
     /// The Process is looking for the death of his child
-    ChildDeath(Pid),
+    Waitpid { pid: Pid, pgid: Pid, options: u32 },
     /// In Waiting to read
     Read,
     /// In Waiting to write

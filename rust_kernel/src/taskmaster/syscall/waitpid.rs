@@ -5,7 +5,7 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
-use libc_binding::{Errno, WNOHANG};
+use libc_binding::{Errno, WNOHANG, WUNTRACED};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -91,7 +91,8 @@ use libc_binding::{Errno, WNOHANG};
 ///     was returned for a child process that is currently stopped.
 /// WSTOPSIG(stat_val) If the value of WIFSTOPPED(stat_val) is
 ///     non-zero, this macro evaluates to the number of the signal
-///     that caused the child process to stop.  WIFCONTINUED(stat_val)
+///     that caused the child process to stop.
+/// WIFCONTINUED(stat_val)
 ///     [XSI] [Option Start] Evaluates to a non-zero value if status
 ///     was returned for a child process that has continued from a job
 ///     control stop. [Option End]
@@ -341,9 +342,10 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
         }
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
+            let pgid = thread_group.pgid;
             scheduler
                 .current_thread_mut()
-                .set_waiting(WaitingState::ChildDeath(pid));
+                .set_waiting(WaitingState::Waitpid { pid, pgid, options });
 
             let ret = auto_preempt()?;
 
