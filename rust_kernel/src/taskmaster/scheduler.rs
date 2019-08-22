@@ -96,7 +96,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
         .get_thread_group_mut(process_to_free_pid)
         .expect("WTF: No Dead Process");
 
-    dead_process.set_zombie(status);
+    dead_process.set_zombie(status.into());
 
     // Send a death testament message to the parent
     send_message(MessageTo::Process {
@@ -260,8 +260,8 @@ impl Scheduler {
             // else create a signal var with option<SignalStatus>
 
             // whether the parent must be wake up
-            let p = self.current_thread();
-            let action = p.signal.get_job_action();
+            //let p = self.current_thread();
+            let action = self.current_thread_mut().get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
@@ -499,8 +499,8 @@ impl Scheduler {
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
             self.current_thread_group_exit(signum as i32 + 128);
-        }
-    }
+        } // exitstatus::new_signaled(signum) ->
+    } //            new_exited(value) ->
 
     /// Get current process pid
     pub fn current_task_id(&self) -> (Pid, Tid) {

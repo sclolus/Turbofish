@@ -16,6 +16,13 @@
  * bit 14     : signal continue state  (with WCONTINUED)
  */
 
+#define EXITED_STATUS_BITS      0x00ff
+#define SIGNALED_STATUS_BITS    0x1f00
+#define STOPPED_STATUS_BIT      0x2000
+#define CONTINUED_STATUS_BIT    0x4000
+
+#define SIGNALED_STATUS_SHIFT   8
+
 /*
  * Option bits for the second argument of waitpid.  WNOHANG causes the
  * wait to not hang if there are no stopped or terminated processes, rather
@@ -37,11 +44,11 @@
  * returned true.
  * We can interpret the return value as unsigned [0;+255] or as signed [-128;+127]
  */
-#define	WEXITSTATUS(status)	((status) & 0xff)
+#define	WEXITSTATUS(status)	((status) & EXITED_STATUS_BITS))
 
 /* returns true if the child process was terminated by a signal. */
 #define WIFSIGNALED(status) \
-	(((signed char) (status & 0x1f00)) > 0)
+	(((signed char) ((status) & SIGNALED_STATUS_BITS) > 0))
 
 /* 
  * returns the number of the signal that caused the child process to
@@ -49,7 +56,7 @@
  * true.
  * As unsigned, the range is [0;+31]
  */
-#define	WTERMSIG(status)	((status) & 0x1f00 >> 8)
+#define	WTERMSIG(status)	(((status) & SIGNALED_STATUS_BITS) >> SIGNALED_STATUS_SHIFT)
 
 /*
  * TRUE if STATUS indicates normal termination by exit(n) or return(n) from main.
@@ -62,7 +69,7 @@
  * this is possible only if the call was done using WUNTRACED or when the
  * child is being traced (see ptrace(2)).
  */
-#define	WIFSTOPPED(status)	((status) & 0x20)
+#define	WIFSTOPPED(status)	((status) & STOPPED_STATUS_BIT)
 
 /*
  * returns the number of the signal which caused the child to stop.
@@ -73,7 +80,7 @@
 /*
  * Since turbofish 0.5: returns true if the child process was resumed by delivery of SIGCONT
  */
-#define WIFCONTINUED(wstatus)   ((status) & 0x40)
+#define WIFCONTINUED(wstatus)   ((status) & CONTINUED_STATUS_BIT)
 
 // The <sys/wait.h> header shall define the following symbolic constants as possible values for the options argument to waitid():
 //
@@ -104,6 +111,7 @@ typedef enum idtype {
 
 pid_t   wait(int *status);
 
+// DUMMY PROTOTYPE
 int     waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
 
 pid_t   waitpid(pid_t pid, int *status, int options);

@@ -18,7 +18,7 @@ pub enum ThreadGroupState {
     /// The process is terminated and wait to deliver his testament to his father
     /// bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
     /// bits 8..15 for signal exit. Interpreted as i8 and set bit 30
-    Zombie(i32),
+    Zombie(Status),
 }
 
 /// Main boilerplate
@@ -36,7 +36,7 @@ type ThreadList = BTreeMap<Tid, Thread>;
 impl ThreadGroupState {
     fn get_death_status(&self) -> Option<i32> {
         match self {
-            Self::Zombie(status) => Some(*status),
+            Self::Zombie(status) => Some((*status).into()),
             _ => None,
         }
     }
@@ -189,7 +189,7 @@ impl ThreadGroup {
             .expect("can't remove child pid it is not present");
     }
 
-    pub fn set_zombie(&mut self, status: i32) {
+    pub fn set_zombie(&mut self, status: Status) {
         self.thread_group_state = ThreadGroupState::Zombie(status);
     }
 
@@ -223,5 +223,52 @@ impl ThreadGroup {
     /// Unwrap directly the field thread_group_state as Running
     pub fn unwrap_running_mut(&mut self) -> &mut RunningThreadGroup {
         self.thread_group_state.unwrap_running_mut()
+    }
+}
+
+/// Global design of User Program Status
+#[derive(Debug, Copy, Clone)]
+pub enum Status {
+    Exited(i32),
+    Signaled(i32),
+    Stopped,
+    Continued,
+}
+
+use libc_binding::{
+    CONTINUED_STATUS_BIT, EXITED_STATUS_BITS, SIGNALED_STATUS_BITS, SIGNALED_STATUS_SHIFT,
+    STOPPED_STATUS_BIT,
+};
+
+/// Boilerlate
+impl From<Status> for i32 {
+    fn from(status: Status) -> Self {
+        use Status::*;
+        match status {
+            Exited(v) => v,
+            Signaled(signum) => signum << SIGNALED_STATUS_SHIFT as i32,
+            Stopped => STOPPED_STATUS_BIT as _,
+            Continued => CONTINUED_STATUS_BIT as _,
+        }
+    }
+}
+
+/// Another boilerplate
+impl From<i32> for Status {
+    fn from(status: i32) -> Self {
+        use Status::*;
+        if status & !EXITED_STATUS_BITS as i32 == 0 {
+            Exited(status)
+        } else if status & EXITED_STATUS_BITS as i32 == 0
+            && status & !SIGNALED_STATUS_BITS as i32 == 0
+        {
+            Signaled(status >> SIGNALED_STATUS_SHIFT)
+        } else if status & !STOPPED_STATUS_BIT as i32 == 0 {
+            Stopped
+        } else if status & !CONTINUED_STATUS_BIT as i32 == 0 {
+            Continued
+        } else {
+            panic!("Status is Bullshit !");
+        }
     }
 }

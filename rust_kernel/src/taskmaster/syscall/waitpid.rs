@@ -5,7 +5,7 @@ use super::scheduler::{auto_preempt, unpreemptible};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::SysResult;
 
-use libc_binding::{Errno, WNOHANG, WUNTRACED};
+use libc_binding::{Errno, WCONTINUED, WNOHANG, WUNTRACED};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child

@@ -2,7 +2,7 @@
 
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
-use super::signal_interface::SignalInterface;
+use super::signal_interface::{JobAction, SignalInterface};
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 
@@ -32,6 +32,9 @@ pub struct Thread {
     pub process_state: ProcessState,
     /// Signal Interface
     pub signal: SignalInterface,
+    /// Current job status of a process
+    pub job: Job,
+    /// Return value for auto_preempt
     autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
 }
 
@@ -40,6 +43,7 @@ impl Thread {
         Self {
             process_state,
             signal: SignalInterface::new(),
+            job: Job::new(),
             autopreempt_return_value: Box::new(Ok(Default::default())),
         }
     }
@@ -65,6 +69,7 @@ impl Thread {
                 }
                 _ => panic!("Non running process should not clone"),
             },
+            job: Job::new(),
             autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
         })
     }
@@ -92,6 +97,23 @@ impl Thread {
                 as *const SysResult<AutoPreemptReturnValue>
                 as u32;
         }
+    }
+
+    /// Update the Job process state regarding to the get_job_action() return value
+    pub fn get_job_action(&mut self) -> JobAction {
+        let action = self.signal.get_job_action();
+        if action != JobAction::TERMINATE {
+            if action == JobAction::STOP {
+                if self.job.try_set_stoped() {
+                    // TODO: Send a message to father PID
+                }
+            } else {
+                if self.job.try_set_continued() {
+                    // TODO: Send a message to father PID
+                }
+            }
+        }
+        action
     }
 
     // /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
@@ -170,5 +192,57 @@ impl ProcessState {
             ProcessState::Waiting(p, _) => ProcessState::Running(p),
             _ => panic!("already running"),
         }
+    }
+}
+
+/// State of a process in the point of view of JobAction
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum JobState {
+    Stoped,
+    Continued,
+}
+
+/// Mais Job structure
+#[derive(Debug)]
+pub struct Job {
+    /// Current JobState
+    state: JobState,
+    /// Last change state (this event may be consumed by waitpid)
+    last_event: Option<JobState>,
+}
+
+/// Main Job implementation
+impl Job {
+    const fn new() -> Self {
+        Self {
+            state: JobState::Continued,
+            last_event: None,
+        }
+    }
+    /// Try to set as continue, return TRUE is state is changing
+    fn try_set_continued(&mut self) -> bool {
+        if self.state == JobState::Stoped {
+            self.state = JobState::Continued;
+            self.last_event = Some(JobState::Continued);
+            true
+        } else {
+            false
+        }
+    }
+    /// Try to set as stoped, return TRUE is state is changing
+    fn try_set_stoped(&mut self) -> bool {
+        if self.state == JobState::Continued {
+            self.state = JobState::Stoped;
+            self.last_event = Some(JobState::Stoped);
+            true
+        } else {
+            false
+        }
+    }
+    /// Usable method for waitpid for exemple
+    pub fn consume_last_event(&mut self) -> Option<JobState> {
+        let evt = self.last_event;
+        self.last_event = None;
+        evt
     }
 }
