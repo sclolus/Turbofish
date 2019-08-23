@@ -14,7 +14,6 @@ use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 use crate::watch_dog;
-use core::time::Duration;
 
 #[no_mangle]
 pub extern "C" fn kmain(

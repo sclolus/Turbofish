@@ -248,38 +248,16 @@ impl Drop for FileDescriptorInterface {
     }
 }
 
-use crate::alloc::string::ToString;
+use alloc::format;
 
 pub fn start() {
-    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(1).unwrap())).unwrap();
-    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-    DUMMY_VFS
-        .lock()
-        .new_driver("tty1".to_string(), driver)
-        .unwrap();
-
-    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(2).unwrap())).unwrap();
-    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-    DUMMY_VFS
-        .lock()
-        .new_driver("tty2".to_string(), driver)
-        .unwrap();
-
-    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(3).unwrap())).unwrap();
-    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-    DUMMY_VFS
-        .lock()
-        .new_driver("tty3".to_string(), driver)
-        .unwrap();
-
-    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(4).unwrap())).unwrap();
-    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-    DUMMY_VFS
-        .lock()
-        .new_driver("tty4".to_string(), driver)
-        .unwrap();
+    for i in 1..=4 {
+        // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
+        let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
+        // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
+        DUMMY_VFS
+            .lock()
+            .new_driver(format!("tty{}", i), driver)
+            .unwrap();
+    }
 }

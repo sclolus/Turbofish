@@ -4,7 +4,6 @@ use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, ThreadGroup};
-use super::ProcessOrigin;
 use super::{SysResult, TaskMode};
 
 use alloc::boxed::Box;
