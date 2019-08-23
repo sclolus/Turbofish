@@ -223,7 +223,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
-    if options > 3 {
+    if options > 7 {
         return Err(Errno::EINVAL);
     }
 
@@ -312,7 +312,12 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 .expect("Pid must be here");
 
             let status = match tg.get_death_status() {
-                Some(status) => status,
+                Some(status) => {
+                    dbg!(dead_pid);
+                    scheduler.current_thread_group_mut().remove_child(dead_pid);
+                    scheduler.remove_thread_group(dead_pid);
+                    status
+                }
                 None => Status::from(tg.job.consume_last_event().expect("no status")).into(),
             };
             // TODO: Manage terminated value with signal
@@ -320,10 +325,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 unsafe { *wstatus = status }
             }
             // fflush zombie
-            dbg!(dead_pid);
-            scheduler.remove_thread_group(dead_pid);
-            let thread_group = scheduler.current_thread_group_mut();
-            thread_group.remove_child(dead_pid);
             // Return immediatly
             Ok(dead_pid as u32)
         }
@@ -348,19 +349,21 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                     dead_process_pid,
                     status,
                 } => {
+                    if status.is_terminated() {
+                        let thread_group = scheduler.current_thread_group_mut();
+                        thread_group.remove_child(dead_process_pid);
+                        scheduler.remove_thread_group(dead_process_pid);
+                    }
                     // Set wstatus pointer is not null by reading y
                     if wstatus != 0x0 as *mut i32 {
                         unsafe {
-                            *wstatus = status as i32;
+                            *wstatus = status.into();
                         }
                     }
-                    scheduler.remove_thread_group(dead_process_pid);
                     dead_process_pid
                 }
                 _ => panic!("WTF"),
             };
-            let thread_group = scheduler.current_thread_group_mut();
-            thread_group.remove_child(child_pid);
             Ok(child_pid as u32)
         }
     }

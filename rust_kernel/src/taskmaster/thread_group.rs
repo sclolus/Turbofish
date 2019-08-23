@@ -246,6 +246,12 @@ impl Status {
             _ => false,
         }
     }
+    pub fn is_terminated(&self) -> bool {
+        match self {
+            Self::Exited(_) | Self::Signaled(_) => true,
+            _ => false,
+        }
+    }
     pub fn is_signaled(&self) -> bool {
         match self {
             Self::Signaled(_) => true,

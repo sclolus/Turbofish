@@ -12,13 +12,13 @@ int main(void)
 		raise(SIGSTOP);
 		printf("end child of life\n");
 		while(1) {
-			sleep(0.01);
+			/* sleep(0.01); */
 		}
 	} else {
 		int status;
 		pid_t ret = waitpid(pid, &status, WUNTRACED);
-		if (ret < 0) {
-			perror("waitpid failed:");
+		if (ret == -1) {
+			perror("waitpid failed 1");
 			exit(1);
 		}
 		if (!WIFSTOPPED(status)) {
@@ -28,8 +28,8 @@ int main(void)
 		kill(pid, SIGCONT);
 		printf("raw son status: %hhx   WIFSTOPPED result: %i WIFCONTINUED result: %i\n", status, WIFSTOPPED(status), WIFCONTINUED(status));
 		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-		if (ret < 0) {
-			perror("waitpid failed:");
+		if (ret == -1) {
+			perror("waitpid failed 2");
 			exit(1);
 		}
 		if (!WIFCONTINUED(status)) {
@@ -40,12 +40,12 @@ int main(void)
 
 		sleep(1);
 		kill(pid, SIGKILL);
-		if (ret < 0) {
-			perror("kill failed:");
+		if (ret == -1) {
+			perror("kill failed");
 			exit(1);
 		}
 		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-		if (ret < 0) {
+		if (ret == -1) {
 			perror("waitpid failed:");
 			exit(1);
 		}

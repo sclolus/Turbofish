@@ -14,16 +14,20 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
-	{.path = "/bin/signal/SignalSimple"},
-	{.path = "/bin/signal/SignalSimpleDuo"},
-	{.path = "/bin/ProcessGroup"},
-	{.path = "/bin/execve/argv"},
-	{.path = "/bin/wait/wait"},
-	{.path = "/bin/wait/wuntraced"},
-	{.path = "/bin/mprotect/mprotect"},
-	{.path = "/bin/mmap/mmap"},
-	{.path = "/bin/munmap/munmap"},
-	{.path = "/bin/sigprocmask/sigprocmask"}
+	/* 
+	 * {.path = "/bin/signal/SignalSimple"},
+	 * {.path = "/bin/signal/SignalSimpleDuo"},
+	 * {.path = "/bin/ProcessGroup"},
+	 * {.path = "/bin/execve/argv"},
+	 * {.path = "/bin/wait/wait"},
+	 */
+	{.path = "/bin/wait/wuntraced"}
+	/* 
+	 * {.path = "/bin/mprotect/mprotect"},
+	 * {.path = "/bin/mmap/mmap"},
+	 * {.path = "/bin/munmap/munmap"},
+	 * {.path = "/bin/sigprocmask/sigprocmask"}
+	 */
 };
 
 void _exit_qemu(int val)

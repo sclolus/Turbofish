@@ -903,5 +903,5 @@ TRANS
 const int sys_nerr = NERR;
 
 void perror(const char *msg) {
-	dprintf(2, "%s: %s\n", msg, sys_errlist[errno]);
+	dprintf(2, "%s: errno = %d %s\n", msg, errno, sys_errlist[errno]);
 }

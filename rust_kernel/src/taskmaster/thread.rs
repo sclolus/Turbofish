@@ -4,6 +4,7 @@ use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
+use super::thread_group::Status;
 use super::SysResult;
 
 use core::ffi::c_void;
@@ -16,7 +17,10 @@ use core::mem;
 #[derive(Debug, Copy, Clone)]
 pub enum AutoPreemptReturnValue {
     None,
-    Wait { dead_process_pid: Pid, status: i32 },
+    Wait {
+        dead_process_pid: Pid,
+        status: Status,
+    },
 }
 
 impl Default for AutoPreemptReturnValue {

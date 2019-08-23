@@ -651,7 +651,7 @@ impl Scheduler {
                                         thread.set_return_value_autopreempt(Ok(
                                             AutoPreemptReturnValue::Wait {
                                                 dead_process_pid,
-                                                status,
+                                                status: s,
                                             },
                                         ));
                                     }
