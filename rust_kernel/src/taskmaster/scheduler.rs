@@ -615,7 +615,7 @@ impl Scheduler {
     }
 
     pub fn send_message(&mut self, message: MessageTo) {
-        use libc_binding::{WCONTINUED, WUNTRACED};
+        use super::syscall::WaitOption;
         // dbg!(message);
         match message {
             MessageTo::Process { pid, content } => {
@@ -637,8 +637,9 @@ impl Scheduler {
                                 options,
                             }) = thread.get_waiting_state()
                             {
-                                if (options & WUNTRACED != 0 && s == Status::Stopped)
-                                    || (options & WCONTINUED != 0 && s == Status::Continued)
+                                if (options.contains(WaitOption::WUNTRACED) && s == Status::Stopped)
+                                    || (options.contains(WaitOption::WCONTINUED)
+                                        && s == Status::Continued)
                                     || s.is_exited()
                                     || s.is_signaled()
                                 {

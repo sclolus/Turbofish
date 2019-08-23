@@ -35,6 +35,7 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 
 mod waitpid;
 use waitpid::sys_waitpid;
+pub use waitpid::WaitOption;
 
 mod unlink;
 use unlink::sys_unlink;

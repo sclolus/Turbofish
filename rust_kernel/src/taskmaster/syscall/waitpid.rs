@@ -5,8 +5,9 @@ use super::scheduler::{Scheduler, SCHEDULER};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
 use super::thread_group::{JobState, Status};
 use super::SysResult;
+use bitflags::bitflags;
 
-use libc_binding::{Errno, Pid, WCONTINUED, WNOHANG, WUNTRACED};
+use libc_binding::{Errno, Pid};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -223,9 +224,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
-    if options > 7 {
-        return Err(Errno::EINVAL);
-    }
+    let options = WaitOption::from_bits(options).ok_or(Errno::EINVAL)?;
 
     let thread_group = scheduler.current_thread_group();
 
@@ -327,7 +326,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
             // Return immediatly
             Ok(dead_pid as u32)
         }
-        None if options & WNOHANG != 0 => {
+        None if options.contains(WaitOption::WNOHANG) => {
             return Ok(0);
         }
         None => {
@@ -368,14 +367,23 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     }
 }
 
-fn has_status_available(scheduler: &Scheduler, pid: Pid, options: u32) -> bool {
+fn has_status_available(scheduler: &Scheduler, pid: Pid, options: WaitOption) -> bool {
     let thread_group = scheduler.get_thread_group(pid).expect("Pid must be here");
     thread_group.is_zombie()
-        || (options & WUNTRACED != 0 && thread_group.job.get_lat_event() == Some(JobState::Stopped))
-        || (options & WCONTINUED != 0
+        || (options.contains(WaitOption::WUNTRACED)
+            && thread_group.job.get_lat_event() == Some(JobState::Stopped))
+        || (options.contains(WaitOption::WUNTRACED)
             && thread_group.job.get_lat_event() == Some(JobState::Continued))
 }
 
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     unpreemptible_context!({ waitpid(pid, wstatus, options) })
+}
+
+bitflags! {
+    pub struct WaitOption: u32 {
+        const WUNTRACED = libc_binding::WUNTRACED;
+        const WCONTINUED = libc_binding::WCONTINUED;
+        const WNOHANG = libc_binding::WNOHANG;
+    }
 }

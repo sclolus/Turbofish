@@ -4,6 +4,7 @@ use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
+use super::syscall::WaitOption;
 use super::thread_group::Status;
 use super::SysResult;
 
@@ -147,7 +148,11 @@ pub enum WaitingState {
     /// The sys_pause command was invoqued, the process is waiting for a signal
     Pause,
     /// The Process is looking for the death of his child
-    Waitpid { pid: Pid, pgid: Pid, options: u32 },
+    Waitpid {
+        pid: Pid,
+        pgid: Pid,
+        options: WaitOption,
+    },
     /// In Waiting to read
     Read,
     /// In Waiting to write
