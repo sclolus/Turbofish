@@ -544,20 +544,24 @@ impl Scheduler {
 
     /// Get current process
     pub fn current_thread(&self) -> &Thread {
-        self.get_thread(self.current_task_id).unwrap()
+        self.get_thread(self.current_task_id)
+            .expect("wtf current thread doesn't exist")
     }
 
     /// Get current process mutably
     pub fn current_thread_mut(&mut self) -> &mut Thread {
-        self.get_thread_mut(self.current_task_id).unwrap()
+        self.get_thread_mut(self.current_task_id)
+            .expect("wtf current thread doesn't exist")
     }
 
     pub fn current_thread_group(&self) -> &ThreadGroup {
-        self.get_thread_group(self.current_task_id.0).unwrap()
+        self.get_thread_group(self.current_task_id.0)
+            .expect("wtf current thread group doesn't exist")
     }
 
     pub fn current_thread_group_mut(&mut self) -> &mut ThreadGroup {
-        self.get_thread_group_mut(self.current_task_id.0).unwrap()
+        self.get_thread_group_mut(self.current_task_id.0)
+            .expect("wtf current thread group doesn't exist")
     }
 
     pub fn get_thread_group(&self, pid: Pid) -> Option<&ThreadGroup> {
