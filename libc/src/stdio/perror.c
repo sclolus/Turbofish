@@ -1,8 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-int errno = 0;
-
 #ifndef N_
 # define N_(s) ((char *)s)
 #endif
