@@ -3,7 +3,7 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
-use super::thread_group::{RunningThreadGroup, ThreadGroup};
+use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
 use super::ProcessOrigin;
 use super::{SysResult, TaskMode};
 
@@ -101,7 +101,7 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
     // Send a death testament message to the parent
     send_message(MessageTo::Process {
         pid: parent_pid,
-        content: ProcessMessage::ProcessDied {
+        content: ProcessMessage::ProcessUpdated {
             pid: process_to_free_pid,
             pgid: dead_process.pgid,
             status,
@@ -261,7 +261,7 @@ impl Scheduler {
 
             // whether the parent must be wake up
             //let p = self.current_thread();
-            let action = self.current_thread_mut().get_job_action();
+            let action = self.current_thread_get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
@@ -502,6 +502,41 @@ impl Scheduler {
         } // exitstatus::new_signaled(signum) ->
     } //            new_exited(value) ->
 
+    /// Update the Job process state regarding to the get_job_action() return value
+    pub fn current_thread_get_job_action(&mut self) -> JobAction {
+        let pid = self.current_task_id.0;
+        let current_thread_group = self.current_thread_group();
+        let pgid = current_thread_group.pgid;
+        let parent_pid = current_thread_group.parent;
+        let current = self.current_thread_mut();
+        let action = current.signal.get_job_action();
+        if action != JobAction::TERMINATE {
+            if action == JobAction::STOP {
+                if current.job.try_set_stoped() {
+                    self.send_message(MessageTo::Process {
+                        pid: parent_pid,
+                        content: ProcessMessage::ProcessUpdated {
+                            pid: pid,
+                            pgid: pgid,
+                            status: Status::Stopped.into(),
+                        },
+                    });
+                }
+            } else {
+                if current.job.try_set_continued() {
+                    self.send_message(MessageTo::Process {
+                        pid: parent_pid,
+                        content: ProcessMessage::ProcessUpdated {
+                            pid: pid,
+                            pgid: pgid,
+                            status: Status::Continued.into(),
+                        },
+                    });
+                }
+            }
+        }
+        action
+    }
     /// Get current process pid
     pub fn current_task_id(&self) -> (Pid, Tid) {
         self.current_task_id
@@ -579,6 +614,8 @@ impl Scheduler {
     }
 
     pub fn send_message(&mut self, message: MessageTo) {
+        use libc_binding::{WCONTINUED, WUNTRACED};
+        dbg!(message);
         match message {
             MessageTo::Process { pid, content } => {
                 for thread in self
@@ -587,29 +624,36 @@ impl Scheduler {
                     .flat_map(|thread| thread.iter_thread_mut())
                 {
                     match content {
-                        ProcessMessage::ProcessDied {
+                        ProcessMessage::ProcessUpdated {
                             pid: dead_process_pid,
                             pgid: dead_process_pgid,
                             status,
                         } => {
+                            let s: Status = status.into();
                             if let Some(WaitingState::Waitpid {
                                 pid: wake_pid,
                                 pgid,
                                 options,
                             }) = thread.get_waiting_state()
                             {
-                                if *wake_pid == -1
-                                    || *wake_pid == 0 && dead_process_pgid == *pgid
-                                    || *wake_pid == dead_process_pid
-                                    || -*wake_pid == dead_process_pgid
+                                if (options & WUNTRACED != 0 && s == Status::Stopped)
+                                    || (options & WCONTINUED != 0 && s == Status::Continued)
+                                    || s.is_exited()
+                                    || s.is_signaled()
                                 {
-                                    thread.set_running();
-                                    thread.set_return_value_autopreempt(Ok(
-                                        AutoPreemptReturnValue::Wait {
-                                            dead_process_pid,
-                                            status: status,
-                                        },
-                                    ));
+                                    if *wake_pid == -1
+                                        || *wake_pid == 0 && dead_process_pgid == *pgid
+                                        || *wake_pid == dead_process_pid
+                                        || -*wake_pid == dead_process_pgid
+                                    {
+                                        thread.set_running();
+                                        thread.set_return_value_autopreempt(Ok(
+                                            AutoPreemptReturnValue::Wait {
+                                                dead_process_pid,
+                                                status,
+                                            },
+                                        ));
+                                    }
                                 }
                             }
                         }

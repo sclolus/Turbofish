@@ -2,7 +2,7 @@
 
 use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
-use super::signal_interface::{JobAction, SignalInterface};
+use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 
@@ -97,23 +97,6 @@ impl Thread {
                 as *const SysResult<AutoPreemptReturnValue>
                 as u32;
         }
-    }
-
-    /// Update the Job process state regarding to the get_job_action() return value
-    pub fn get_job_action(&mut self) -> JobAction {
-        let action = self.signal.get_job_action();
-        if action != JobAction::TERMINATE {
-            if action == JobAction::STOP {
-                if self.job.try_set_stoped() {
-                    // TODO: Send a message to father PID
-                }
-            } else {
-                if self.job.try_set_continued() {
-                    // TODO: Send a message to father PID
-                }
-            }
-        }
-        action
     }
 
     // /// For blocking call, set the return value witch will be transmitted by auto_preempt fn
@@ -220,7 +203,7 @@ impl Job {
         }
     }
     /// Try to set as continue, return TRUE is state is changing
-    fn try_set_continued(&mut self) -> bool {
+    pub fn try_set_continued(&mut self) -> bool {
         if self.state == JobState::Stoped {
             self.state = JobState::Continued;
             self.last_event = Some(JobState::Continued);
@@ -230,7 +213,7 @@ impl Job {
         }
     }
     /// Try to set as stoped, return TRUE is state is changing
-    fn try_set_stoped(&mut self) -> bool {
+    pub fn try_set_stoped(&mut self) -> bool {
         if self.state == JobState::Continued {
             self.state = JobState::Stoped;
             self.last_event = Some(JobState::Stoped);

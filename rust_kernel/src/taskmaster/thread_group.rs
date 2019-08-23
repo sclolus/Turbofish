@@ -227,12 +227,27 @@ impl ThreadGroup {
 }
 
 /// Global design of User Program Status
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Status {
     Exited(i32),
     Signaled(i32),
     Stopped,
     Continued,
+}
+
+impl Status {
+    pub fn is_exited(&self) -> bool {
+        match self {
+            Self::Exited(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_signaled(&self) -> bool {
+        match self {
+            Self::Signaled(_) => true,
+            _ => false,
+        }
+    }
 }
 
 use libc_binding::{

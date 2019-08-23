@@ -145,8 +145,7 @@ pub unsafe fn sys_kill(mut pid: i32, signum: u32) -> SysResult<u32> {
             || pid == 0
             || pid == -1
         {
-            let task = scheduler.current_thread_mut();
-            let action = task.get_job_action();
+            let action = scheduler.current_thread_get_job_action();
 
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 // Auto-preempt calling in case of Self stop
