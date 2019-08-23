@@ -9,6 +9,7 @@ use super::{get_file_op_uid, Driver, FileOperation};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
+use libc_binding::{termios, Pid};
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
@@ -60,6 +61,49 @@ impl FileOperation for TtyFileOperation {
             core::str::from_utf8_unchecked(buf)
         });
         Ok(IpcResult::Done(buf.len() as _))
+    }
+    fn tcgetattr(&self, termios_p: &mut termios) -> SysResult<u32> {
+        dbg!("tcgetattr");
+        unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .get_line_discipline(self.controlling_terminal)
+                .tcgetattr(termios_p);
+        }
+        Ok(0)
+    }
+    fn tcsetattr(&mut self, optional_actions: u32, termios_p: &termios) -> SysResult<u32> {
+        dbg!("tcsetattr");
+        unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .get_line_discipline(self.controlling_terminal)
+                .tcsetattr(optional_actions, termios_p);
+        }
+        Ok(0)
+    }
+    fn tcgetpgrp(&self) -> SysResult<Pid> {
+        dbg!("tcgetpgrp");
+        unsafe {
+            Ok(TERMINAL
+                .as_mut()
+                .unwrap()
+                .get_line_discipline(self.controlling_terminal)
+                .tcgetpgrp())
+        }
+    }
+    fn tcsetpgrp(&mut self, pgid_id: Pid) -> SysResult<u32> {
+        dbg!("tcsetpgrp");
+        unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .get_line_discipline(self.controlling_terminal)
+                .tcsetpgrp(pgid_id);
+        }
+        Ok(0)
     }
 }
 

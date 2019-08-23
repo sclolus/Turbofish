@@ -251,7 +251,6 @@ impl Scheduler {
                             )
                             .unwrap();
                         let new_thread_group = self.get_thread_group_mut(pid).unwrap();
-                        new_thread_group.controlling_terminal = tty_index;
                         // TODO: Handle alloc error
                         // let _r = new_thread_group
                         //     .unwrap_running_mut()

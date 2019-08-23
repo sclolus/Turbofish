@@ -1,8 +1,8 @@
 //! tcsetpgrp syscall
 use super::scheduler::SCHEDULER;
+use super::Fd;
 use super::Pid;
 use super::SysResult;
-use crate::terminal::TERMINAL;
 
 /// If the process has a controlling terminal, tcsetpgrp() shall set
 /// the foreground process group ID associated with the terminal to
@@ -20,20 +20,20 @@ use crate::terminal::TERMINAL;
 /// SIGTTOU signal. If the calling thread is blocking SIGTTOU signals
 /// or the process is ignoring SIGTTOU signals, the process shall be
 /// allowed to perform the operation, and no signal is sent.
-// TODO: file descriptor argument
-pub fn sys_tcsetpgrp(_fildes: i32, pgid_id: Pid) -> SysResult<u32> {
+/// [EBADF]
+///     The fildes argument is not a valid file descriptor.
+/// [ENOTTY]
+///     The calling process does not have a controlling terminal, or
+///     the file is not the controlling terminal.
+pub fn sys_tcsetpgrp(fildes: Fd, pgid_id: Pid) -> SysResult<u32> {
     unpreemptible_context!({
+        dbg!("tcsetpgrp");
         let scheduler = SCHEDULER.lock();
-        let controlling_terminal = scheduler.current_thread_group().controlling_terminal;
-        // dbg!(controlling_terminal);
-        // dbg!(pgid_id);
-        unsafe {
-            TERMINAL
-                .as_mut()
-                .unwrap()
-                .get_line_discipline(controlling_terminal)
-                .tcsetpgrp(pgid_id);
-        }
-    });
-    Ok(0)
+        let fd_interface = &scheduler
+            .current_thread_group_running()
+            .file_descriptor_interface;
+
+        let file_operation = &mut fd_interface.get_file_operation(fildes)?;
+        file_operation.tcsetpgrp(pgid_id)
+    })
 }

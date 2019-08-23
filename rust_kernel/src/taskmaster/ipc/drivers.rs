@@ -18,6 +18,7 @@ pub mod socket;
 pub use socket::Socket;
 
 use alloc::sync::Arc;
+use libc_binding::{termios, Errno, Pid};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -31,6 +32,19 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
+
+    fn tcgetattr(&self, _termios_p: &mut termios) -> SysResult<u32> {
+        return Err(Errno::ENOTTY);
+    }
+    fn tcsetattr(&mut self, _optional_actions: u32, _termios_p: &termios) -> SysResult<u32> {
+        return Err(Errno::ENOTTY);
+    }
+    fn tcgetpgrp(&self) -> SysResult<Pid> {
+        return Err(Errno::ENOTTY);
+    }
+    fn tcsetpgrp(&mut self, _pgid_id: Pid) -> SysResult<u32> {
+        return Err(Errno::ENOTTY);
+    }
 }
 
 /// This Trait represent a File Driver in the VFS

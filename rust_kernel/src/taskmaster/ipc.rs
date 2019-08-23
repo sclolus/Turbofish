@@ -12,7 +12,7 @@ use fallible_collections::TryClone;
 
 use try_clone_derive::TryClone;
 
-use sync::DeadMutex;
+use sync::{DeadMutex, DeadMutexGuard};
 
 pub type Fd = u32;
 
@@ -85,6 +85,12 @@ impl FileDescriptorInterface {
             // New BTreeMap does not allocate memory
             user_fd_list: BTreeMap::new(),
         }
+    }
+
+    pub fn get_file_operation(&self, fd: Fd) -> SysResult<DeadMutexGuard<dyn FileOperation>> {
+        dbg!("get file operation");
+        let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
+        Ok(elem.kernel_fd.lock())
     }
 
     // TODO: fix dummy access_mode && manage flags

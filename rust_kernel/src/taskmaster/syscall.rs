@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::ipc;
+use super::ipc::Fd;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -251,10 +252,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TEST => sys_test(),
         STACK_OVERFLOW => sys_stack_overflow(0, 0, 0, 0, 0, 0),
         EXIT_QEMU => crate::tests::helpers::exit_qemu(ebx as u32),
-        TCGETATTR => sys_tcgetattr(ebx as i32, ecx as *mut termios),
-        TCSETATTR => sys_tcsetattr(ebx as i32, ecx as u32, edx as *const termios),
-        TCSETPGRP => sys_tcsetpgrp(ebx as i32, ecx as Pid),
-        TCGETPGRP => sys_tcgetpgrp(ebx as i32),
+        TCGETATTR => sys_tcgetattr(ebx as Fd, ecx as *mut termios),
+        TCSETATTR => sys_tcsetattr(ebx as Fd, ecx as u32, edx as *const termios),
+        TCSETPGRP => sys_tcsetpgrp(ebx as Fd, ecx as Pid),
+        TCGETPGRP => sys_tcgetpgrp(ebx as Fd),
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
 
