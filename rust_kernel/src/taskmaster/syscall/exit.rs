@@ -1,4 +1,5 @@
 use super::scheduler::{unpreemptible, SCHEDULER};
+use super::thread_group::Status;
 
 /// [CX] [Option Start] Process termination caused by any reason shall
 /// have the following consequences: [Option End]
@@ -126,5 +127,7 @@ use super::scheduler::{unpreemptible, SCHEDULER};
 ///  trace streams may be deallocated. [Option End]
 pub unsafe fn sys_exit(status: i32) -> ! {
     unpreemptible();
-    SCHEDULER.lock().current_thread_group_exit(status);
+    SCHEDULER
+        .lock()
+        .current_thread_group_exit(Status::Exited(status));
 }

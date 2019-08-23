@@ -49,8 +49,9 @@ int main(void)
 			perror("waitpid failed:");
 			exit(1);
 		}
+		printf("raw son status: addr: %p, %x %i\n", &status, status, WIFSIGNALED(status));
 		if (!WIFSIGNALED(status)) {
-			dprintf(2, "WIFCONTINUED should be true");
+			dprintf(2, "WIFSIGNALED should be true");
 			exit(1);
 		}
 		if (WTERMSIG(status) != SIGKILL) {

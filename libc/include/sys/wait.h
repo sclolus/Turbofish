@@ -48,7 +48,7 @@
 
 /* returns true if the child process was terminated by a signal. */
 #define WIFSIGNALED(status) \
-	(((signed char) ((status) & SIGNALED_STATUS_BITS) > 0))
+	((((status) & SIGNALED_STATUS_BITS) > 0))
 
 /* 
  * returns the number of the signal that caused the child process to

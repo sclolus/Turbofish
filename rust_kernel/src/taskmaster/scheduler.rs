@@ -411,7 +411,7 @@ impl Scheduler {
     const REAPER_PID: Pid = 1;
 
     /// Exit form a process and go to the current process
-    pub fn current_thread_group_exit(&mut self, status: i32) -> ! {
+    pub fn current_thread_group_exit(&mut self, status: Status) -> ! {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -419,8 +419,8 @@ impl Scheduler {
         );
 
         match status {
-            139 => println!("{}", "segmentation fault".red()),
-            137 => println!("killed"),
+            Status::Signaled(Signum::SIGSEGV) => println!("{}", "segmentation fault".red()),
+            Status::Signaled(signum) => println!("killed by signal: {:?}", signum),
             _ => {}
         }
 
@@ -446,7 +446,7 @@ impl Scheduler {
         unsafe {
             let new_kernel_esp = self.load_next_process(0);
 
-            _exit_resume(new_kernel_esp, pid, status);
+            _exit_resume(new_kernel_esp, pid, status.into());
         };
     }
 
@@ -495,7 +495,7 @@ impl Scheduler {
             .signal
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
-            self.current_thread_group_exit(signum as i32 + 128);
+            self.current_thread_group_exit(Status::Signaled(signum));
         } // exitstatus::new_signaled(signum) ->
     } //            new_exited(value) ->
 
@@ -616,7 +616,7 @@ impl Scheduler {
 
     pub fn send_message(&mut self, message: MessageTo) {
         use libc_binding::{WCONTINUED, WUNTRACED};
-        dbg!(message);
+        // dbg!(message);
         match message {
             MessageTo::Process { pid, content } => {
                 for thread in self

@@ -8,7 +8,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use fallible_collections::{btree::BTreeMap, FallibleVec, TryClone};
-use libc_binding::{gid_t, uid_t};
+use libc_binding::{gid_t, uid_t, Signum};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
@@ -34,9 +34,9 @@ pub struct RunningThreadGroup {
 type ThreadList = BTreeMap<Tid, Thread>;
 
 impl ThreadGroupState {
-    fn get_death_status(&self) -> Option<i32> {
+    fn get_death_status(&self) -> Option<Status> {
         match self {
-            Self::Zombie(status) => Some((*status).into()),
+            Self::Zombie(status) => Some(*status),
             _ => None,
         }
     }
@@ -138,7 +138,7 @@ impl ThreadGroup {
         res
     }
 
-    pub fn get_death_status(&self) -> Option<i32> {
+    pub fn get_death_status(&self) -> Option<Status> {
         self.thread_group_state.get_death_status()
     }
 
@@ -234,7 +234,7 @@ impl ThreadGroup {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Status {
     Exited(i32),
-    Signaled(i32),
+    Signaled(Signum),
     Stopped,
     Continued,
 }
@@ -280,7 +280,7 @@ impl From<Status> for i32 {
         use Status::*;
         match status {
             Exited(v) => v,
-            Signaled(signum) => signum << SIGNALED_STATUS_SHIFT as i32,
+            Signaled(signum) => (signum as i32) << SIGNALED_STATUS_SHIFT as i32,
             Stopped => STOPPED_STATUS_BIT as _,
             Continued => CONTINUED_STATUS_BIT as _,
         }
@@ -296,7 +296,7 @@ impl From<i32> for Status {
         } else if status & EXITED_STATUS_BITS as i32 == 0
             && status & !SIGNALED_STATUS_BITS as i32 == 0
         {
-            Signaled(status >> SIGNALED_STATUS_SHIFT)
+            Signaled(unsafe { core::mem::transmute(status >> SIGNALED_STATUS_SHIFT) })
         } else if status & !STOPPED_STATUS_BIT as i32 == 0 {
             Stopped
         } else if status & !CONTINUED_STATUS_BIT as i32 == 0 {

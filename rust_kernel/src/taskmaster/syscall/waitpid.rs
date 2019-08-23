@@ -313,16 +313,15 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
             let status = match tg.get_death_status() {
                 Some(status) => {
-                    dbg!(dead_pid);
                     scheduler.current_thread_group_mut().remove_child(dead_pid);
                     scheduler.remove_thread_group(dead_pid);
                     status
                 }
-                None => Status::from(tg.job.consume_last_event().expect("no status")).into(),
+                None => Status::from(tg.job.consume_last_event().expect("no status")),
             };
             // TODO: Manage terminated value with signal
-            if wstatus != 0x0 as *mut i32 {
-                unsafe { *wstatus = status }
+            if !wstatus.is_null() {
+                unsafe { *wstatus = status.into() }
             }
             // fflush zombie
             // Return immediatly
@@ -355,7 +354,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                         scheduler.remove_thread_group(dead_process_pid);
                     }
                     // Set wstatus pointer is not null by reading y
-                    if wstatus != 0x0 as *mut i32 {
+                    if !wstatus.is_null() {
                         unsafe {
                             *wstatus = status.into();
                         }
