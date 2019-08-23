@@ -43,7 +43,6 @@ pub extern "C" fn kmain(
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
-    println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
     PIT0.lock().start_at_frequency(1000.).unwrap();
@@ -82,14 +81,12 @@ pub extern "C" fn kmain(
     // PCI.lock().scan_pci_buses();
     // log::info!("PCI buses has been scanned");
 
-    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
+    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
-    println!("{}", date);
-
-    log::error!("this is an example of error");
+    log::info!("{}", date);
 
     watch_dog();
 

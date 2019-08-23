@@ -655,14 +655,9 @@ impl LineDiscipline {
                 if key as u32 == self.termios.c_cc[VEOF as usize] {
                     self.end_of_file_set = true;
 
-                    // meuh xD !
                     messaging::push_message(MessageTo::Reader {
-                        uid_file_op: self.tty.uid_file_op.expect("WTF"),
+                        uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
                     });;
-                    // messaging::push_message(MessageTo::ProcessGroup {
-                    //     pgid: self.foreground_process_group,
-                    //     content: ProcessGroupMessage::SomethingToRead,
-                    // });
                     return Ok(());;
                 }
             }
@@ -702,14 +697,9 @@ impl LineDiscipline {
             if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
                 || !self.termios.c_lflag & ICANON != 0
             {
-                // meuh ! xD
                 messaging::push_message(MessageTo::Reader {
-                    uid_file_op: self.tty.uid_file_op.expect("WTF"),
+                    uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
                 });;
-                // messaging::push_message(MessageTo::ProcessGroup {
-                //     pgid: self.foreground_process_group,
-                //     content: ProcessGroupMessage::SomethingToRead,
-                // });
             }
             if self.termios.c_lflag & ECHO != 0 {
                 self.write(b);

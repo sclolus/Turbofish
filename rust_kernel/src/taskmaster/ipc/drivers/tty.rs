@@ -63,7 +63,6 @@ impl FileOperation for TtyFileOperation {
         Ok(IpcResult::Done(buf.len() as _))
     }
     fn tcgetattr(&self, termios_p: &mut termios) -> SysResult<u32> {
-        dbg!("tcgetattr");
         unsafe {
             TERMINAL
                 .as_mut()
@@ -74,7 +73,6 @@ impl FileOperation for TtyFileOperation {
         Ok(0)
     }
     fn tcsetattr(&mut self, optional_actions: u32, termios_p: &termios) -> SysResult<u32> {
-        dbg!("tcsetattr");
         unsafe {
             TERMINAL
                 .as_mut()
@@ -85,7 +83,6 @@ impl FileOperation for TtyFileOperation {
         Ok(0)
     }
     fn tcgetpgrp(&self) -> SysResult<Pid> {
-        dbg!("tcgetpgrp");
         unsafe {
             Ok(TERMINAL
                 .as_mut()
@@ -95,7 +92,6 @@ impl FileOperation for TtyFileOperation {
         }
     }
     fn tcsetpgrp(&mut self, pgid_id: Pid) -> SysResult<u32> {
-        dbg!("tcsetpgrp");
         unsafe {
             TERMINAL
                 .as_mut()
@@ -138,10 +134,15 @@ impl TtyDevice {
 /// Driver trait implementation of TtyDevice
 impl Driver for TtyDevice {
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        log::info!(
-            "TTY {} opened !",
-            self.operation.lock().controlling_terminal
-        );
+        let controlling_terminal = self.operation.lock().controlling_terminal;
+        let file_op_uid = self.operation.lock().file_op_uid;
+        unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .open(controlling_terminal, file_op_uid);
+        }
+        log::info!("TTY {} opened !", controlling_terminal);
         Ok(IpcResult::Done(self.operation.clone()))
     }
     fn set_inode_id(&mut self, inode_id: usize) {

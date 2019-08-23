@@ -84,8 +84,6 @@ pub fn sys_tcsetattr(
     termios_p: *const termios,
 ) -> SysResult<u32> {
     unpreemptible_context!({
-        dbg!("tcsetattr");
-
         let scheduler = SCHEDULER.lock();
         {
             let v = scheduler

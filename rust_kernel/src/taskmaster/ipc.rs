@@ -88,7 +88,6 @@ impl FileDescriptorInterface {
     }
 
     pub fn get_file_operation(&self, fd: Fd) -> SysResult<DeadMutexGuard<dyn FileOperation>> {
-        dbg!("get file operation");
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
         Ok(elem.kernel_fd.lock())
     }
@@ -258,5 +257,29 @@ pub fn start() {
     DUMMY_VFS
         .lock()
         .new_driver("tty1".to_string(), driver)
+        .unwrap();
+
+    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
+    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(2).unwrap())).unwrap();
+    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
+    DUMMY_VFS
+        .lock()
+        .new_driver("tty2".to_string(), driver)
+        .unwrap();
+
+    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
+    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(3).unwrap())).unwrap();
+    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
+    DUMMY_VFS
+        .lock()
+        .new_driver("tty3".to_string(), driver)
+        .unwrap();
+
+    // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
+    let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(4).unwrap())).unwrap();
+    // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
+    DUMMY_VFS
+        .lock()
+        .new_driver("tty4".to_string(), driver)
         .unwrap();
 }

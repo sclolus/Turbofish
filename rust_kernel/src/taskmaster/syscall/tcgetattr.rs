@@ -18,7 +18,6 @@ use libc_binding::termios;
 ///     The file associated with fildes is not a terminal.
 pub fn sys_tcgetattr(fildes: Fd, termios_p: *mut termios) -> SysResult<u32> {
     unpreemptible_context!({
-        dbg!("tcgetattr");
         let scheduler = SCHEDULER.lock();
         {
             let v = scheduler

@@ -46,7 +46,7 @@ pub fn init(multiboot_info: &MultibootInfo) {
     // Intialize SATA controller
     match SataController::init() {
         Some(sata_controller) => {
-            println!("{:#X?}", sata_controller);
+            log::info!("Sata Controller detected: {:#X?}", sata_controller);
             sata_controller.dump_hba();
         }
         None => {}
@@ -55,11 +55,10 @@ pub fn init(multiboot_info: &MultibootInfo) {
     // Initialize IDE controller
     let mut disk = IdeAtaController::new();
 
-    println!("{:#X?}", disk);
     if let Some(d) = disk.as_mut() {
         match d.select_drive(Rank::Primary(Hierarchy::Master)) {
             Ok(drive) => {
-                println!("Selecting drive: {:#X?}", drive);
+                log::info!("Ide Controller detected: Selecting drive -> {:#X?}", drive);
             }
             Err(_) => {}
         }

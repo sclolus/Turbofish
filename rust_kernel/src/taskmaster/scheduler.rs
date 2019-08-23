@@ -18,7 +18,7 @@ use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
 use sync::Spinlock;
-use terminal::{NewTty, TERMINAL};
+use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
 use crate::interrupts;
@@ -211,20 +211,6 @@ impl Scheduler {
                 MessageTo::ProcessGroup { pgid, content } => {
                     for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
                         match content {
-                            // ProcessGroupMessage::SomethingToRead => {
-                            //     thread_group
-                            //         .iter_thread_mut()
-                            //         .find(|thread| {
-                            //             // WOOT: Our implementation are not compatibles. 0 is a mistake here
-                            //             thread.get_waiting_state() == Some(&WaitingState::Read(0))
-                            //         })
-                            //         .map(|thread| {
-                            //             // dbg!("send message");
-                            //             thread
-                            //                 .message_queue
-                            //                 .push_back(ProcessMessage::SomethingToRead)
-                            //        });
-                            // }
                             ProcessGroupMessage::Signal(signum) => {
                                 //TODO: Announce memory error later.
 
@@ -237,30 +223,16 @@ impl Scheduler {
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
-                    if let Some(NewTty { tty_index }) =
+                    if let Some(tty_index) =
                         TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
                     {
-                        //TODO: Maybe not the good way as init doesn't get its child
-                        let pid = self
-                            .add_user_process(
-                                1,
-                                UserProcess::new(ProcessOrigin::Elf(
-                                    &include_bytes!("../userland/shell")[..],
-                                ))
-                                .unwrap(),
-                            )
-                            .unwrap();
-                        let new_thread_group = self.get_thread_group_mut(pid).unwrap();
-                        // TODO: Handle alloc error
-                        // let _r = new_thread_group
-                        //     .unwrap_running_mut()
-                        //     .file_descriptor_interface
-                        //     .open_std(tty_index);
+                        let (pid, _) = self.current_task_id();
+                        let thread_group = self.get_thread_group_mut(pid).unwrap();
                         TERMINAL
                             .as_mut()
                             .unwrap()
                             .get_line_discipline(tty_index)
-                            .tcsetpgrp(new_thread_group.pgid);
+                            .tcsetpgrp(thread_group.pgid);
                     }
                 },
                 _ => panic!("message not covered"),
@@ -352,11 +324,6 @@ impl Scheduler {
                                         .and_then(|tg| tg.get_death_status())
                                         .expect("A zombie was found just before, but there is no zombie here");
                                 let current_thread = self.current_thread_mut();
-                                // current_thread.set_waiting(WaitingState::ChildDeath(
-                                //     dead_process_pid,
-                                //     status as u32,
-                                // ));
-                                // current_thread.set_return_value(0);
                                 current_thread.set_running();
                                 current_thread.set_return_value_autopreempt(Ok(
                                     AutoPreemptReturnValue::Wait {

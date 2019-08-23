@@ -14,7 +14,7 @@ macro_rules! print {
                             use $crate::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
-                        Some(term) => term.get_tty(1).write_fmt(a).unwrap(),
+                        Some(term) => term.get_foreground_tty().tty.write_fmt(a).unwrap(),
                     }
                 }
             }
@@ -89,7 +89,14 @@ macro_rules! print_syslog {
         match format_args!($($arg)*) {
             a => {
                 use core::fmt::Write;
-                unsafe {$crate::TERMINAL.as_mut().unwrap().get_tty(0).write_fmt(a).unwrap();}
+                unsafe {
+                    match {$crate::TERMINAL.as_mut()} {
+                        None => {},
+                        Some(term) => {
+                            term.get_tty($crate::SYSTEM_LOG_TTY_IDX).write_fmt(a).unwrap();
+                        }
+                    }
+                }
             }
         }
     })
@@ -109,7 +116,7 @@ macro_rules! printfixed {
                             use $crate::Pos;
                             use core::fmt::Write;
 
-                            let btty = term.get_tty(1);
+                            let btty = &mut term.get_foreground_tty().tty;
                             let (save_write_mode, save_cursor) = (btty.tty.write_mode, btty.tty.cursor.pos);
                             btty.tty.write_mode = WriteMode::Fixed;
                             btty.tty.cursor.pos = $cursor_pos;

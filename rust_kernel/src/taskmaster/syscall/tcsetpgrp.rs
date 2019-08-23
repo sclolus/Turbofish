@@ -27,7 +27,6 @@ use super::SysResult;
 ///     the file is not the controlling terminal.
 pub fn sys_tcsetpgrp(fildes: Fd, pgid_id: Pid) -> SysResult<u32> {
     unpreemptible_context!({
-        dbg!("tcsetpgrp");
         let scheduler = SCHEDULER.lock();
         let fd_interface = &scheduler
             .current_thread_group_running()
