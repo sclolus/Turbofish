@@ -201,7 +201,7 @@ impl FileDescriptorInterface {
 
         for &key in self.user_fd_list.keys().skip_while(|&key| *key < minimum) {
             if lower_fd < key {
-                return Some(lower_fd);
+                break;
             } else {
                 lower_fd += 1;
             }
