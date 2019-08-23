@@ -32,8 +32,6 @@ pub struct Thread {
     pub process_state: ProcessState,
     /// Signal Interface
     pub signal: SignalInterface,
-    /// Current job status of a process
-    pub job: Job,
     /// Return value for auto_preempt
     autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
 }
@@ -43,7 +41,6 @@ impl Thread {
         Self {
             process_state,
             signal: SignalInterface::new(),
-            job: Job::new(),
             autopreempt_return_value: Box::new(Ok(Default::default())),
         }
     }
@@ -69,7 +66,6 @@ impl Thread {
                 }
                 _ => panic!("Non running process should not clone"),
             },
-            job: Job::new(),
             autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
         })
     }
@@ -175,57 +171,5 @@ impl ProcessState {
             ProcessState::Waiting(p, _) => ProcessState::Running(p),
             _ => panic!("already running"),
         }
-    }
-}
-
-/// State of a process in the point of view of JobAction
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum JobState {
-    Stoped,
-    Continued,
-}
-
-/// Mais Job structure
-#[derive(Debug)]
-pub struct Job {
-    /// Current JobState
-    state: JobState,
-    /// Last change state (this event may be consumed by waitpid)
-    last_event: Option<JobState>,
-}
-
-/// Main Job implementation
-impl Job {
-    const fn new() -> Self {
-        Self {
-            state: JobState::Continued,
-            last_event: None,
-        }
-    }
-    /// Try to set as continue, return TRUE is state is changing
-    pub fn try_set_continued(&mut self) -> bool {
-        if self.state == JobState::Stoped {
-            self.state = JobState::Continued;
-            self.last_event = Some(JobState::Continued);
-            true
-        } else {
-            false
-        }
-    }
-    /// Try to set as stoped, return TRUE is state is changing
-    pub fn try_set_stoped(&mut self) -> bool {
-        if self.state == JobState::Continued {
-            self.state = JobState::Stoped;
-            self.last_event = Some(JobState::Stoped);
-            true
-        } else {
-            false
-        }
-    }
-    /// Usable method for waitpid for exemple
-    pub fn consume_last_event(&mut self) -> Option<JobState> {
-        let evt = self.last_event;
-        self.last_event = None;
-        evt
     }
 }

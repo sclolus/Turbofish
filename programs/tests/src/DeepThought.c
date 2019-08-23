@@ -19,6 +19,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/ProcessGroup"},
 	{.path = "/bin/execve/argv"},
 	{.path = "/bin/wait/wait"},
+	{.path = "/bin/wait/wuntraced"},
 	{.path = "/bin/mprotect/mprotect"},
 	{.path = "/bin/mmap/mmap"},
 	{.path = "/bin/munmap/munmap"},

@@ -44,7 +44,7 @@
  * returned true.
  * We can interpret the return value as unsigned [0;+255] or as signed [-128;+127]
  */
-#define	WEXITSTATUS(status)	((status) & EXITED_STATUS_BITS))
+#define	WEXITSTATUS(status)	((status) & EXITED_STATUS_BITS)
 
 /* returns true if the child process was terminated by a signal. */
 #define WIFSIGNALED(status) \

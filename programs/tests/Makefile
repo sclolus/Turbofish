@@ -15,6 +15,7 @@ SRC_C += DeepThought \
 		execve/check_argv \
 		sigprocmask/sigprocmask \
 		wait/wait \
+		wait/wuntraced \
 		munmap/munmap \
 		mprotect/mprotect \
 

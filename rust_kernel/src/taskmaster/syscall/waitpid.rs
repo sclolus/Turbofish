@@ -1,11 +1,12 @@
 //! waitpid (wait) implementations
 
-use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
+use super::scheduler::{Scheduler, SCHEDULER};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
+use super::thread_group::{JobState, Status};
 use super::SysResult;
 
-use libc_binding::{Errno, WCONTINUED, WNOHANG, WUNTRACED};
+use libc_binding::{Errno, Pid, WCONTINUED, WNOHANG, WUNTRACED};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -247,12 +248,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 .unwrap_running()
                 .child
                 .iter()
-                .find(|&current_pid| {
-                    scheduler
-                        .get_thread_group(*current_pid)
-                        .expect("Pid must be here")
-                        .is_zombie()
-                })
+                .find(|&current_pid| has_status_available(&*scheduler, *current_pid, options))
         }
         // If pid is less than (pid_t)-1, status is requested for any
         // child process whose process group ID is equal to the
@@ -285,13 +281,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 .unwrap_running()
                 .child
                 .iter()
-                .find(|&current_pid| {
-                    scheduler
-                        .get_thread_group(*current_pid)
-                        .expect("Pid must be here")
-                        .pgid
-                        == -pid
-                })
+                .find(|&current_pid| has_status_available(&*scheduler, *current_pid, options))
         }
         // If pid is greater than 0, it specifies the process ID of a
         // single child process for which status is requested.
@@ -303,11 +293,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 .iter()
                 .find(|&&current_pid| current_pid == pid)
             {
-                if scheduler
-                    .get_thread_group(*elem)
-                    .expect("Pid must be here")
-                    .is_zombie()
-                {
+                if has_status_available(&*scheduler, *elem, options) {
                     Some(elem)
                 } else {
                     None
@@ -321,12 +307,16 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
     match child_pid {
         Some(&dead_pid) => {
+            let tg = scheduler
+                .get_thread_group_mut(dead_pid)
+                .expect("Pid must be here");
+
+            let status = match tg.get_death_status() {
+                Some(status) => status,
+                None => Status::from(tg.job.consume_last_event().expect("no status")).into(),
+            };
             // TODO: Manage terminated value with signal
             if wstatus != 0x0 as *mut i32 {
-                let status = scheduler
-                    .get_thread_group(dead_pid)
-                    .and_then(|tg| tg.get_death_status())
-                    .expect("zombie must be here");
                 unsafe { *wstatus = status }
             }
             // fflush zombie
@@ -374,6 +364,14 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
             Ok(child_pid as u32)
         }
     }
+}
+
+fn has_status_available(scheduler: &Scheduler, pid: Pid, options: u32) -> bool {
+    let thread_group = scheduler.get_thread_group(pid).expect("Pid must be here");
+    thread_group.is_zombie()
+        || (options & WUNTRACED != 0 && thread_group.job.get_lat_event() == Some(JobState::Stopped))
+        || (options & WCONTINUED != 0
+            && thread_group.job.get_lat_event() == Some(JobState::Continued))
 }
 
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {

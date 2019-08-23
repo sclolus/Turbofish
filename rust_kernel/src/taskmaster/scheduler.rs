@@ -258,9 +258,6 @@ impl Scheduler {
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
-
-            // whether the parent must be wake up
-            //let p = self.current_thread();
             let action = self.current_thread_get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
@@ -505,14 +502,14 @@ impl Scheduler {
     /// Update the Job process state regarding to the get_job_action() return value
     pub fn current_thread_get_job_action(&mut self) -> JobAction {
         let pid = self.current_task_id.0;
-        let current_thread_group = self.current_thread_group();
+        let current = self.current_thread();
+        let action = current.signal.get_job_action();
+        let current_thread_group = self.current_thread_group_mut();
         let pgid = current_thread_group.pgid;
         let parent_pid = current_thread_group.parent;
-        let current = self.current_thread_mut();
-        let action = current.signal.get_job_action();
         if action != JobAction::TERMINATE {
             if action == JobAction::STOP {
-                if current.job.try_set_stoped() {
+                if current_thread_group.job.try_set_stoped() {
                     self.send_message(MessageTo::Process {
                         pid: parent_pid,
                         content: ProcessMessage::ProcessUpdated {
@@ -523,7 +520,7 @@ impl Scheduler {
                     });
                 }
             } else {
-                if current.job.try_set_continued() {
+                if current_thread_group.job.try_set_continued() {
                     self.send_message(MessageTo::Process {
                         pid: parent_pid,
                         content: ProcessMessage::ProcessUpdated {

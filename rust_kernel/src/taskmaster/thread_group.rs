@@ -84,6 +84,8 @@ pub struct ThreadGroup {
     next_tid: Tid,
     /// currently the index of the controlling tty
     pub controlling_terminal: usize,
+    /// Current job status of a process
+    pub job: Job,
 }
 
 #[derive(Debug, TryClone)]
@@ -126,6 +128,7 @@ impl ThreadGroup {
             next_tid: 1,
             pgid,
             controlling_terminal: 1,
+            job: Job::new(),
         })
     }
 
@@ -178,6 +181,7 @@ impl ThreadGroup {
             pgid: self.pgid,
             next_tid: 1,
             controlling_terminal: self.controlling_terminal,
+            job: Job::new(),
         })
     }
 
@@ -250,6 +254,15 @@ impl Status {
     }
 }
 
+impl From<JobState> for Status {
+    fn from(job_state: JobState) -> Self {
+        match job_state {
+            JobState::Continued => Self::Continued,
+            JobState::Stopped => Self::Stopped,
+        }
+    }
+}
+
 use libc_binding::{
     CONTINUED_STATUS_BIT, EXITED_STATUS_BITS, SIGNALED_STATUS_BITS, SIGNALED_STATUS_SHIFT,
     STOPPED_STATUS_BIT,
@@ -285,5 +298,58 @@ impl From<i32> for Status {
         } else {
             panic!("Status is Bullshit !");
         }
+    }
+}
+
+/// State of a process in the point of view of JobAction
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum JobState {
+    Stopped,
+    Continued,
+}
+
+/// Mais Job structure
+#[derive(Debug)]
+pub struct Job {
+    /// Current JobState
+    state: JobState,
+    /// Last change state (this event may be consumed by waitpid)
+    last_event: Option<JobState>,
+}
+
+/// Main Job implementation
+impl Job {
+    const fn new() -> Self {
+        Self {
+            state: JobState::Continued,
+            last_event: None,
+        }
+    }
+    /// Try to set as continue, return TRUE is state is changing
+    pub fn try_set_continued(&mut self) -> bool {
+        if self.state == JobState::Stopped {
+            self.state = JobState::Continued;
+            self.last_event = Some(JobState::Continued);
+            true
+        } else {
+            false
+        }
+    }
+    /// Try to set as stoped, return TRUE is state is changing
+    pub fn try_set_stoped(&mut self) -> bool {
+        if self.state == JobState::Continued {
+            self.state = JobState::Stopped;
+            self.last_event = Some(JobState::Stopped);
+            true
+        } else {
+            false
+        }
+    }
+    /// Usable method for waitpid for exemple
+    pub fn consume_last_event(&mut self) -> Option<JobState> {
+        self.last_event.take()
+    }
+    pub fn get_lat_event(&self) -> Option<JobState> {
+        self.last_event
     }
 }
