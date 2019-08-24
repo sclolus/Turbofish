@@ -622,10 +622,11 @@ impl LineDiscipline {
             if self.termios.c_lflag & ICANON != 0 {
                 // handle delete key
                 if key as u32 == self.termios.c_cc[VERASE as usize] {
-                    self.read_buffer.pop();
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                    self.tty.write_char('\0').unwrap();
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    if self.read_buffer.pop().is_some() {
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                        self.tty.write_char('\0').unwrap();
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    }
                     return Ok(());;
                 }
                 // dbg!(key);
