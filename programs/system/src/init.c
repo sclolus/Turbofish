@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *envp[])
 {
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 		setpgid(0, 0);
 		tcsetpgrp(fd, getpgid(0));
 		printf("argc: %i -> self: %s to_execve: %s\n", argc, argv[0], argv[1]);
-		int ret = execve(argv[1], argv, NULL);
+		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
 			exit(1);
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		setpgid(0, 0);
 		tcsetpgrp(fd, getpgid(0));
 		printf("argc: %i -> self: %s to_execve: %s\n", argc, argv[0], argv[1]);
-		int ret = execve(argv[1], argv, NULL);
+		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
 			exit(1);
