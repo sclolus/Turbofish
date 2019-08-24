@@ -190,7 +190,7 @@ impl Tty {
     }
 
     /// Allow a shell for example to move cursor manually
-    fn move_cursor(&mut self, direction: CursorMove) {
+    pub fn move_cursor(&mut self, direction: CursorMove) {
         if !self.cursor.visible || !self.foreground {
             return;
         }

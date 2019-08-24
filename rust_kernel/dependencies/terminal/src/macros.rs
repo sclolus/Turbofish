@@ -35,7 +35,10 @@ macro_rules! print_tty {
                             use $crate::EARLY_TERMINAL;
                             core::fmt::write(&mut EARLY_TERMINAL, a).unwrap()
                         },
-                        Some(term) => term.get_tty($tty_number).write_fmt(a).unwrap(),
+                        Some(term) => {
+                            term.get_tty($tty_number).write_fmt(a).unwrap();
+                            term.get_tty($tty_number).as_mut().move_cursor($crate::ansi_escape_code::CursorMove::Forward(0));
+                        }
                     }
                 }
             }
