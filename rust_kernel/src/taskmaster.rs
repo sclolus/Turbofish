@@ -13,7 +13,9 @@ mod tests;
 mod thread;
 mod thread_group;
 
-pub use process::{KernelProcess, Process, ProcessOrigin, UserProcess};
+pub use process::{KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess};
+pub use safe_ffi::CStringArray;
+
 use scheduler::SCHEDULER;
 
 #[allow(unused)]
@@ -86,10 +88,10 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
     SCHEDULER
         .lock()
         .set_idle_process(unsafe {
-            KernelProcess::new(ProcessOrigin::Raw(
-                _idle_process_code as *const u8,
-                _idle_process_len,
-            ))
+            KernelProcess::new(
+                ProcessOrigin::Raw(_idle_process_code as *const u8, _idle_process_len),
+                None,
+            )
             .unwrap()
         })
         .unwrap();

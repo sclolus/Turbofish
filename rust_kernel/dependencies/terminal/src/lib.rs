@@ -29,10 +29,10 @@ use self::monitor::SCREEN_MONAD;
 use self::monitor::{bmp_loader, bmp_loader::BmpImage};
 
 use crate::monitor::{AdvancedGraphic, Drawer};
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
-use alloc::boxed::Box;
 use keyboard::keysymb::KeySymb;
 
 /// Main structure of the terminal center

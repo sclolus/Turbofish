@@ -4,21 +4,24 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-const char program[] = "/bin/shell";
-
-int main(void)
+int main(int argc, char *argv[])
 {
 	pid_t pid = fork();
 	if (pid < 0) {
-		printf("%s: Fork failed\n", __func__);
+		// printf("%s: Fork failed\n", __func__);
 		exit(1);
 	} else if (pid == 0) {
 		int fd = open("tty1", 0);
 		dup(fd);
 		dup(fd);
+		if (argc != 2) {
+			printf("Bad argument number %i: should be 2\n", argc);
+			while (1) {}
+		}
 		setpgid(0, 0);
 		tcsetpgrp(fd, getpgid(0));
-		int ret = execve(program, NULL, NULL);
+		printf("argc: %i -> self: %s to_execve: %s\n", argc, argv[0], argv[1]);
+		int ret = execve(argv[1], argv, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
 			exit(1);
@@ -27,16 +30,20 @@ int main(void)
 
 	pid = fork();
 	if (pid < 0) {
-		printf("%s: Fork failed\n", __func__);
+		// printf("%s: Fork failed\n", __func__);
 		exit(1);
 	} else if (pid == 0) {
 		int fd = open("tty2", 0);
 		dup(fd);
 		dup(fd);
-
+		if (argc != 2) {
+			printf("Bad argument number %i: should be 2\n", argc);
+			while (1) {}
+		}
 		setpgid(0, 0);
 		tcsetpgrp(fd, getpgid(0));
-		int ret = execve(program, NULL, NULL);
+		printf("argc: %i -> self: %s to_execve: %s\n", argc, argv[0], argv[1]);
+		int ret = execve(argv[1], argv, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
 			exit(1);
