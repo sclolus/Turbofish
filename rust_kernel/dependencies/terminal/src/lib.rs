@@ -32,12 +32,13 @@ use crate::monitor::{AdvancedGraphic, Drawer};
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
+use alloc::boxed::Box;
 use keyboard::keysymb::KeySymb;
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
-    ttys: BTreeMap<usize, LineDiscipline>,
+    ttys: BTreeMap<usize, Box<LineDiscipline>>,
 }
 
 /// No initialized at the beginning
@@ -74,13 +75,13 @@ impl Terminal {
         let size = SCREEN_MONAD.lock().query_window_size();
         self.ttys.insert(
             index,
-            LineDiscipline::new(BufferedTty::new(Tty::new(
+            Box::new(LineDiscipline::new(BufferedTty::new(Tty::new(
                 false,
                 size.line,
                 size.column,
                 MAX_SCREEN_BUFFER,
                 None,
-            ))),
+            )))),
         );
         index
     }

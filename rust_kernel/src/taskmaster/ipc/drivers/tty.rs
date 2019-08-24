@@ -25,12 +25,6 @@ pub struct TtyFileOperation {
 impl TtyFileOperation {
     pub fn new(controlling_terminal: usize) -> Self {
         let file_op_uid = get_file_op_uid();
-        unsafe {
-            TERMINAL
-                .as_mut()
-                .unwrap()
-                .open(file_op_uid, controlling_terminal);
-        }
         Self {
             controlling_terminal,
             file_op_uid,
