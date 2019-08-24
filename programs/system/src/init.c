@@ -15,8 +15,8 @@ int main(void)
 		int fd = open("tty1", 0);
 		dup(fd);
 		dup(fd);
-		setpgid(getpid(), 1);
-		tcsetpgrp(getpid(), getgid());
+		setpgid(0, 0);
+		tcsetpgrp(fd, getpgid(0));
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
@@ -33,8 +33,8 @@ int main(void)
 		dup(fd);
 		dup(fd);
 
-		setpgid(getpid(), 2);
-		tcsetpgrp(getpid(), getgid());
+		setpgid(0, 1);
+		tcsetpgrp(fd, getpgid(0));
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
