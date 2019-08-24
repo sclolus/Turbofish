@@ -152,15 +152,15 @@ impl FileDescriptorInterface {
     }
 
     /// Duplicate one File Descriptor
-    pub fn dup(&mut self, oldfd: Fd) -> SysResult<Fd> {
-        for (key, elem) in &self.user_fd_list {
-            if *key == oldfd {
-                let new_elem = elem.try_clone()?;
-                let newfd = self.get_lower_fd_value().ok_or::<Errno>(Errno::EMFILE)?;
+    pub fn dup(&mut self, oldfd: Fd, minimum: Option<Fd>) -> SysResult<Fd> {
+        if let Some(elem) = self.user_fd_list.get(&oldfd) {
+            let new_elem = elem.try_clone()?;
+            let newfd = self
+                .get_lower_fd_value(minimum.unwrap_or(0))
+                .ok_or::<Errno>(Errno::EMFILE)?;
 
-                self.user_fd_list.try_insert(newfd, new_elem)?;
-                return Ok(newfd);
-            }
+            self.user_fd_list.try_insert(newfd, new_elem)?;
+            return Ok(newfd);
         }
         Err(Errno::EBADF)
     }
@@ -172,14 +172,12 @@ impl FileDescriptorInterface {
         }
 
         // If oldfd is not a valid file descriptor, then the call fails, and newfd is not closed.
-        for (key, elem) in &self.user_fd_list {
-            if *key == oldfd {
-                let new_elem = elem.try_clone()?;
-                let _r = self.close_fd(newfd);
+        if let Some(elem) = self.user_fd_list.get(&oldfd) {
+            let new_elem = elem.try_clone()?;
+            let _r = self.close_fd(newfd);
 
-                self.user_fd_list.try_insert(newfd, new_elem)?;
-                return Ok(newfd);
-            }
+            self.user_fd_list.try_insert(newfd, new_elem)?;
+            return Ok(newfd);
         }
         Err(Errno::EBADF)
     }
@@ -191,18 +189,18 @@ impl FileDescriptorInterface {
         mode: Mode,
         kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
     ) -> SysResult<Fd> {
-        let user_fd = self.get_lower_fd_value().ok_or::<Errno>(Errno::EMFILE)?;
+        let user_fd = self.get_lower_fd_value(0).ok_or::<Errno>(Errno::EMFILE)?;
         self.user_fd_list
             .try_insert(user_fd, FileDescriptor::new(mode, kernel_fd))?;
         Ok(user_fd)
     }
 
-    /// Get the first available File Descriptor number
-    fn get_lower_fd_value(&self) -> Option<Fd> {
-        let mut lower_fd = 0;
+    /// Get the first available File Descriptor number that is superior to `minimum`
+    fn get_lower_fd_value(&self, minimum: Fd) -> Option<Fd> {
+        let mut lower_fd = minimum;
 
-        for (key, _) in &self.user_fd_list {
-            if lower_fd < *key {
+        for &key in self.user_fd_list.keys().skip_while(|&key| *key < minimum) {
+            if lower_fd < key {
                 return Some(lower_fd);
             } else {
                 lower_fd += 1;

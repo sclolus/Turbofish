@@ -16,11 +16,11 @@ use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
-    PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
-    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
-    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
+    OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
+    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
+    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -35,6 +35,7 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 
 mod waitpid;
 use waitpid::sys_waitpid;
+pub use waitpid::WaitOption;
 
 mod unlink;
 use unlink::sys_unlink;
@@ -147,6 +148,8 @@ use geteuid::sys_geteuid;
 mod getegid;
 use getegid::sys_getegid;
 
+mod fcntl;
+use fcntl::sys_fcntl;
 /*
  * These below declarations are IPC related
  */
@@ -203,7 +206,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         // TODO: type parameter are not set and manage the third argument
         OPEN => sys_open(ebx as *const c_char, ecx as u32 /* edx as u32 */),
         CLOSE => sys_close(ebx as i32),
-        WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as i32),
+        WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),
         UNLINK => sys_unlink(ebx as *const u8),
         EXECVE => sys_execve(
             ebx as *const c_char,
@@ -220,6 +223,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),
         GETEUID => sys_geteuid(),
+        FCNTL => sys_fcntl(ebx as Fd, ecx as u32, edx as Fd),
         GETEGID => sys_getegid(),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),

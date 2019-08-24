@@ -4,11 +4,12 @@ use super::process::{CpuState, UserProcess};
 use super::scheduler::Pid;
 use super::signal_interface::SignalInterface;
 use super::syscall::clone::CloneFlags;
+use super::syscall::WaitOption;
+use super::thread_group::Status;
 use super::SysResult;
 
 use core::ffi::c_void;
 use fallible_collections::FallibleBox;
-use messaging::{MessageQueue, ProcessMessage};
 
 use alloc::boxed::Box;
 
@@ -17,7 +18,10 @@ use core::mem;
 #[derive(Debug, Copy, Clone)]
 pub enum AutoPreemptReturnValue {
     None,
-    Wait { dead_process_pid: Pid, status: i32 },
+    Wait {
+        dead_process_pid: Pid,
+        status: Status,
+    },
 }
 
 impl Default for AutoPreemptReturnValue {
@@ -33,7 +37,7 @@ pub struct Thread {
     pub process_state: ProcessState,
     /// Signal Interface
     pub signal: SignalInterface,
-    pub message_queue: MessageQueue<ProcessMessage>,
+    /// Return value for auto_preempt
     autopreempt_return_value: Box<SysResult<AutoPreemptReturnValue>>,
 }
 
@@ -42,7 +46,6 @@ impl Thread {
         Self {
             process_state,
             signal: SignalInterface::new(),
-            message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::new(Ok(Default::default())),
         }
     }
@@ -68,7 +71,6 @@ impl Thread {
                 }
                 _ => panic!("Non running process should not clone"),
             },
-            message_queue: MessageQueue::new(),
             autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
         })
     }
@@ -146,7 +148,11 @@ pub enum WaitingState {
     /// The sys_pause command was invoqued, the process is waiting for a signal
     Pause,
     /// The Process is looking for the death of his child
-    ChildDeath(Pid),
+    Waitpid {
+        pid: Pid,
+        pgid: Pid,
+        options: WaitOption,
+    },
     /// In Waiting to read
     Read(usize),
     /// In Waiting to write

@@ -1,8 +1,6 @@
 #include <user_syscall.h>
 #include <errno.h>
 
-extern int errno;
-
 /*
  * Execute program
  */

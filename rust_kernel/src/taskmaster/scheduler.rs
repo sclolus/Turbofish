@@ -3,7 +3,7 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
-use super::thread_group::{RunningThreadGroup, ThreadGroup};
+use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
 use super::{SysResult, TaskMode};
 
 use alloc::boxed::Box;
@@ -90,19 +90,22 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
     //TODO: Announce memory error later.
     let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
 
-    // Send a death testament message to the parent
-    messaging::push_message(MessageTo::Process {
-        pid: parent_pid,
-        content: ProcessMessage::ProcessDied {
-            pid: process_to_free_pid,
-        },
-    });
-
     // Set the dead process as zombie
     let dead_process = scheduler
         .get_thread_group_mut(process_to_free_pid)
         .expect("WTF: No Dead Process");
-    dead_process.set_zombie(status);
+
+    dead_process.set_zombie(status.into());
+
+    // Send a death testament message to the parent
+    send_message(MessageTo::Process {
+        pid: parent_pid,
+        content: ProcessMessage::ProcessUpdated {
+            pid: process_to_free_pid,
+            pgid: dead_process.pgid,
+            status,
+        },
+    });
 
     // To avoid race conditions. the current execution thread was set as unpreemptible. Reallow it now
     preemptible();
@@ -170,57 +173,6 @@ impl Scheduler {
         for message in messaging::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
-                MessageTo::Reader { uid_file_op } => {
-                    self.iter_thread_mut()
-                        .find(|thread| {
-                            thread.get_waiting_state() == Some(&WaitingState::Read(uid_file_op))
-                        })
-                        .map(|thread| {
-                            thread
-                                .message_queue
-                                .push_back(ProcessMessage::SomethingToRead)
-                        });
-                }
-                MessageTo::Writer { uid_file_op } => {
-                    self.iter_thread_mut()
-                        .find(|thread| {
-                            thread.get_waiting_state() == Some(&WaitingState::Write(uid_file_op))
-                        })
-                        .map(|thread| {
-                            thread
-                                .message_queue
-                                .push_back(ProcessMessage::SomethingToWrite)
-                        });
-                }
-                MessageTo::Opener { uid_file_op } => {
-                    self.iter_thread_mut()
-                        .find(|thread| {
-                            thread.get_waiting_state() == Some(&WaitingState::Open(uid_file_op))
-                        })
-                        .map(|thread| {
-                            thread
-                                .message_queue
-                                .push_back(ProcessMessage::SomethingToOpen)
-                        });
-                }
-                MessageTo::Process { pid, content } => {
-                    self.get_thread_mut((pid, 0))
-                        .map(|thread| thread.message_queue.push_back(content));
-                }
-                MessageTo::ProcessGroup { pgid, content } => {
-                    for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
-                        match content {
-                            ProcessGroupMessage::Signal(signum) => {
-                                //TODO: Announce memory error later.
-
-                                thread_group.get_first_thread().map(|thread| {
-                                    let _ignored_result = thread.signal.generate_signal(signum);
-                                });
-                            }
-                            _ => panic!("I dont know what to do"),
-                        }
-                    }
-                }
                 MessageTo::Tty { key_pressed } => unsafe {
                     let _r = TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
                 },
@@ -280,83 +232,12 @@ impl Scheduler {
             // Check if pending signal: Signal Can interrupt all except zombie
             // some signals may be marked as IGNORED, Remove signal and dont DO anything in this case
             // else create a signal var with option<SignalStatus>
-
-            // whether the parent must be wake up
-            let p = self.current_thread();
-            let action = p.signal.get_job_action();
+            let action = self.current_thread_get_job_action();
 
             // Job control: STOP lock thread, CONTINUE (witch erase STOP) or TERMINATE unlock it
             if action.intersects(JobAction::STOP) && !action.intersects(JobAction::TERMINATE) {
                 continue;
             }
-            while let Some(message) = self.current_thread_mut().message_queue.pop_front() {
-                // eprintln!("Process message: {:#?}", message);
-                match message {
-                    ProcessMessage::ProcessDied {
-                        pid: dead_process_pid,
-                    } => {
-                        if let Some(WaitingState::ChildDeath(wake_pid)) =
-                            self.current_thread().get_waiting_state()
-                        {
-                            let dead_process_pgid = self
-                                .get_thread_group(dead_process_pid)
-                                .expect("no dead child")
-                                .pgid;
-                            if *wake_pid == -1
-                                || *wake_pid == 0
-                                    && dead_process_pgid == self.current_thread_group().pgid
-                                || *wake_pid == dead_process_pid
-                                || -*wake_pid == dead_process_pgid
-                            {
-                                let status = self
-                                        .get_thread_group(dead_process_pid)
-                                        .and_then(|tg| tg.get_death_status())
-                                        .expect("A zombie was found just before, but there is no zombie here");
-                                let current_thread = self.current_thread_mut();
-                                current_thread.set_running();
-                                current_thread.set_return_value_autopreempt(Ok(
-                                    AutoPreemptReturnValue::Wait {
-                                        dead_process_pid,
-                                        status,
-                                    },
-                                ));
-                                return JobAction::default();
-                            }
-                        }
-                    }
-                    ProcessMessage::SomethingToRead => {
-                        let current_thread = self.current_thread_mut();
-                        current_thread
-                            .message_queue
-                            .retain(|message| *message != ProcessMessage::SomethingToRead);
-                        current_thread
-                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
-                        current_thread.set_running();
-                        return JobAction::default();
-                    }
-                    ProcessMessage::SomethingToWrite => {
-                        let current_thread = self.current_thread_mut();
-                        current_thread
-                            .message_queue
-                            .retain(|message| *message != ProcessMessage::SomethingToWrite);
-                        current_thread
-                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
-                        current_thread.set_running();
-                        return JobAction::default();
-                    }
-                    ProcessMessage::SomethingToOpen => {
-                        let current_thread = self.current_thread_mut();
-                        current_thread
-                            .message_queue
-                            .retain(|message| *message != ProcessMessage::SomethingToOpen);
-                        current_thread
-                            .set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
-                        current_thread.set_running();
-                        return JobAction::default();
-                    }
-                }
-            }
-
             match &self.current_thread().process_state {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
@@ -504,7 +385,7 @@ impl Scheduler {
     const REAPER_PID: Pid = 1;
 
     /// Exit form a process and go to the current process
-    pub fn current_thread_group_exit(&mut self, status: i32) -> ! {
+    pub fn current_thread_group_exit(&mut self, status: Status) -> ! {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -512,8 +393,8 @@ impl Scheduler {
         );
 
         match status {
-            139 => println!("{}", "segmentation fault".red()),
-            137 => println!("killed"),
+            Status::Signaled(Signum::SIGSEGV) => println!("{}", "segmentation fault".red()),
+            Status::Signaled(signum) => println!("killed by signal: {:?}", signum),
             _ => {}
         }
 
@@ -539,7 +420,7 @@ impl Scheduler {
         unsafe {
             let new_kernel_esp = self.load_next_process(0);
 
-            _exit_resume(new_kernel_esp, pid, status);
+            _exit_resume(new_kernel_esp, pid, status.into());
         };
     }
 
@@ -588,10 +469,45 @@ impl Scheduler {
             .signal
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
-            self.current_thread_group_exit(signum as i32 + 128);
-        }
-    }
+            self.current_thread_group_exit(Status::Signaled(signum));
+        } // exitstatus::new_signaled(signum) ->
+    } //            new_exited(value) ->
 
+    /// Update the Job process state regarding to the get_job_action() return value
+    pub fn current_thread_get_job_action(&mut self) -> JobAction {
+        let pid = self.current_task_id.0;
+        let current = self.current_thread();
+        let action = current.signal.get_job_action();
+        let current_thread_group = self.current_thread_group_mut();
+        let pgid = current_thread_group.pgid;
+        let parent_pid = current_thread_group.parent;
+        if action != JobAction::TERMINATE {
+            if action == JobAction::STOP {
+                if current_thread_group.job.try_set_stoped() {
+                    self.send_message(MessageTo::Process {
+                        pid: parent_pid,
+                        content: ProcessMessage::ProcessUpdated {
+                            pid: pid,
+                            pgid: pgid,
+                            status: Status::Stopped.into(),
+                        },
+                    });
+                }
+            } else {
+                if current_thread_group.job.try_set_continued() {
+                    self.send_message(MessageTo::Process {
+                        pid: parent_pid,
+                        content: ProcessMessage::ProcessUpdated {
+                            pid: pid,
+                            pgid: pgid,
+                            status: Status::Continued.into(),
+                        },
+                    });
+                }
+            }
+        }
+        action
+    }
     /// Get current process pid
     pub fn current_task_id(&self) -> (Pid, Tid) {
         self.current_task_id
@@ -599,20 +515,24 @@ impl Scheduler {
 
     /// Get current process
     pub fn current_thread(&self) -> &Thread {
-        self.get_thread(self.current_task_id).unwrap()
+        self.get_thread(self.current_task_id)
+            .expect("wtf current thread doesn't exist")
     }
 
     /// Get current process mutably
     pub fn current_thread_mut(&mut self) -> &mut Thread {
-        self.get_thread_mut(self.current_task_id).unwrap()
+        self.get_thread_mut(self.current_task_id)
+            .expect("wtf current thread doesn't exist")
     }
 
     pub fn current_thread_group(&self) -> &ThreadGroup {
-        self.get_thread_group(self.current_task_id.0).unwrap()
+        self.get_thread_group(self.current_task_id.0)
+            .expect("wtf current thread group doesn't exist")
     }
 
     pub fn current_thread_group_mut(&mut self) -> &mut ThreadGroup {
-        self.get_thread_group_mut(self.current_task_id.0).unwrap()
+        self.get_thread_group_mut(self.current_task_id.0)
+            .expect("wtf current thread group doesn't exist")
     }
 
     pub fn get_thread_group(&self, pid: Pid) -> Option<&ThreadGroup> {
@@ -667,6 +587,112 @@ impl Scheduler {
         self.iter_thread_groups_mut()
             .flat_map(|thread_group| thread_group.iter_thread_mut())
     }
+
+    pub fn send_message(&mut self, message: MessageTo) {
+        use super::syscall::WaitOption;
+        // dbg!(message);
+        match message {
+            MessageTo::Reader { uid_file_op } => {
+                self.iter_thread_mut()
+                    .find(|thread| {
+                        thread.get_waiting_state() == Some(&WaitingState::Read(uid_file_op))
+                    })
+                    .map(|thread| {
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        thread.set_running();
+                    });
+            }
+            MessageTo::Writer { uid_file_op } => {
+                self.iter_thread_mut()
+                    .find(|thread| {
+                        thread.get_waiting_state() == Some(&WaitingState::Write(uid_file_op))
+                    })
+                    .map(|thread| {
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        thread.set_running();
+                    });
+            }
+            MessageTo::Opener { uid_file_op } => {
+                self.iter_thread_mut()
+                    .find(|thread| {
+                        thread.get_waiting_state() == Some(&WaitingState::Open(uid_file_op))
+                    })
+                    .map(|thread| {
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        thread.set_running();
+                    });
+            }
+            MessageTo::Process { pid, content } => {
+                for thread in self
+                    .get_thread_group_mut(pid)
+                    .iter_mut()
+                    .flat_map(|thread| thread.iter_thread_mut())
+                {
+                    match content {
+                        ProcessMessage::ProcessUpdated {
+                            pid: dead_process_pid,
+                            pgid: dead_process_pgid,
+                            status,
+                        } => {
+                            let s: Status = status.into();
+                            if let Some(WaitingState::Waitpid {
+                                pid: wake_pid,
+                                pgid,
+                                options,
+                            }) = thread.get_waiting_state()
+                            {
+                                if (options.contains(WaitOption::WUNTRACED) && s == Status::Stopped)
+                                    || (options.contains(WaitOption::WCONTINUED)
+                                        && s == Status::Continued)
+                                    || s.is_exited()
+                                    || s.is_signaled()
+                                {
+                                    if *wake_pid == -1
+                                        || *wake_pid == 0 && dead_process_pgid == *pgid
+                                        || *wake_pid == dead_process_pid
+                                        || -*wake_pid == dead_process_pgid
+                                    {
+                                        thread.set_running();
+                                        thread.set_return_value_autopreempt(Ok(
+                                            AutoPreemptReturnValue::Wait {
+                                                dead_process_pid,
+                                                status: s,
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        _ => panic!("message not cevered"),
+                    }
+                }
+            }
+            MessageTo::ProcessGroup { pgid, content } => {
+                for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
+                    match content {
+                        ProcessGroupMessage::Signal(signum) => {
+                            //TODO: Announce memory error later.
+
+                            thread_group.get_first_thread().map(|thread| {
+                                let _ignored_result = thread.signal.generate_signal(signum);
+                            });
+                        }
+                        _ => panic!("message not covered"),
+                    }
+                }
+            }
+            _ => panic!("message not covered"),
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn send_message(message: MessageTo) {
+    // TODO : check force_lock
+    unsafe {
+        SCHEDULER.force_unlock();
+    }
+    SCHEDULER.lock().send_message(message);
 }
 
 /// Start the whole scheduler

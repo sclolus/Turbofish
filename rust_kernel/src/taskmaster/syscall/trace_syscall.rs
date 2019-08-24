@@ -1,15 +1,16 @@
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FORK, GETEGID, GETEUID, GETGID, GETGROUPS,
-    GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
-    PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
-    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, TCGETATTR,
-    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
+    OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
+    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
+    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
 use super::signal_interface::{sigset_t, StructSigaction};
+use super::Fd;
 use super::MmapProt;
 use super::SocketArgsPtr;
 use super::SysResult;
@@ -65,6 +66,10 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETGID => eprintln!("setgid({:#?})", ebx as gid_t),
             GETGID => eprintln!("getgid()"),
             GETEUID => eprintln!("geteuid()"),
+            FCNTL => eprintln!(
+                "fcntl({:#?}, {:#?}, {:#?})",
+                ebx as Fd, ecx as u32, edx as Fd
+            ),
             GETEGID => eprintln!("getegid()"),
             SIGNAL => eprintln!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => eprintln!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
@@ -140,6 +145,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         KILL => "kill",
         GETGID => "getgid",
         GETEUID => "geteuid",
+        FCNTL => "fcntl",
         GETEGID => "getegid",
         SIGNAL => "signal",
         SETPGID => "setpgid",

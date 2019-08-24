@@ -35,7 +35,6 @@ use super::SysResult;
 ///     process in the same session as the calling process.
 pub fn sys_tcgetpgrp(fildes: Fd) -> SysResult<u32> {
     unpreemptible_context!({
-        dbg!("tcgetpgrp");
         let scheduler = SCHEDULER.lock();
         let fd_interface = &scheduler
             .current_thread_group_running()

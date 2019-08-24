@@ -25,6 +25,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETGID       47
 #define GETEUID      49
 #define GETEGID      50
+#define FCNTL        55
 #define SIGNAL       48
 #define SETPGID      57
 #define DUP2         63

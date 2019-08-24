@@ -8,8 +8,6 @@
 #include <sys/un.h>
 #include <string.h>
 
-extern int errno;
-
 #define PATH "banane"
 
 int main(void)

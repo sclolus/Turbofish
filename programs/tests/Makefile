@@ -15,6 +15,7 @@ SRC_C += DeepThought \
 		execve/check_argv \
 		sigprocmask/sigprocmask \
 		wait/wait \
+		wait/wuntraced \
 		munmap/munmap \
 		mprotect/mprotect \
 
@@ -40,7 +41,7 @@ INSTALL_DIR = ../../rust_kernel/src/userland/
 
 all: $(TARGET_C)
 
-build/%: %.c Makefile
+build/%: %.c Makefile /toolchain_turbofish/sysroot/usr/lib/libc.a
 	$(CC) $(CFLAGS) -o $@ $<
 
 install:

@@ -655,7 +655,7 @@ impl LineDiscipline {
                 if key as u32 == self.termios.c_cc[VEOF as usize] {
                     self.end_of_file_set = true;
 
-                    messaging::push_message(MessageTo::Reader {
+                    messaging::send_message(MessageTo::Reader {
                         uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
                     });;
                     return Ok(());;
@@ -664,21 +664,21 @@ impl LineDiscipline {
             if self.termios.c_lflag & ISIG != 0 {
                 // handle control_c
                 if key as u32 == self.termios.c_cc[VINTR as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
                         content: ProcessGroupMessage::Signal(Signum::SIGINT),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VSUSP as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: ProcessGroupMessage::Signal(Signum::SIGSTOP),
+                        content: ProcessGroupMessage::Signal(Signum::SIGTSTP),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VQUIT as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
                         content: ProcessGroupMessage::Signal(Signum::SIGQUIT),
                     });
@@ -697,7 +697,7 @@ impl LineDiscipline {
             if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
                 || !self.termios.c_lflag & ICANON != 0
             {
-                messaging::push_message(MessageTo::Reader {
+                messaging::send_message(MessageTo::Reader {
                     uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
                 });;
             }

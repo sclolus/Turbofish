@@ -1,8 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-int errno = 0;
-
 #ifndef N_
 # define N_(s) ((char *)s)
 #endif
@@ -903,5 +901,5 @@ TRANS
 const int sys_nerr = NERR;
 
 void perror(const char *msg) {
-	dprintf(2, "%s: %s\n", msg, sys_errlist[errno]);
+	dprintf(2, "%s: errno = %d %s\n", msg, errno, sys_errlist[errno]);
 }

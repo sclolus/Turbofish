@@ -6,6 +6,7 @@ KERNEL_DIRECTORY = $(KERNEL)_kernel
 
 all: $(IMG_DISK)
 	make -C libc
+	make install -C libc
 	make -C programs
 	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 	sudo losetup -fP $(IMG_DISK)

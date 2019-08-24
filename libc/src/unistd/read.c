@@ -2,8 +2,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-extern int errno;
-
 /*
  * Read from a file descriptor
  */
