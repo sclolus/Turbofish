@@ -622,51 +622,61 @@ impl Scheduler {
                         thread.set_running();
                     });
             }
-            MessageTo::Process { pid, content } => {
-                for thread in self
-                    .get_thread_group_mut(pid)
-                    .iter_mut()
-                    .flat_map(|thread| thread.iter_thread_mut())
-                {
-                    match content {
-                        ProcessMessage::ProcessUpdated {
-                            pid: dead_process_pid,
-                            pgid: dead_process_pgid,
-                            status,
-                        } => {
-                            let s: Status = status.into();
+            MessageTo::Process { pid, content } => match content {
+                ProcessMessage::ProcessUpdated {
+                    pid: dead_process_pid,
+                    pgid: dead_process_pgid,
+                    status,
+                } => {
+                    // let mut finded = false;
+                    let s: Status = status.into();
+                    if let Some(thread) = self
+                        .get_thread_group_mut(pid)
+                        .iter_mut()
+                        .flat_map(|thread| thread.iter_thread_mut())
+                        .find(|thread| {
+                            /* Wake Condition of the Waitpid */
                             if let Some(WaitingState::Waitpid {
                                 pid: wake_pid,
                                 pgid,
                                 options,
                             }) = thread.get_waiting_state()
                             {
-                                if (options.contains(WaitOption::WUNTRACED) && s == Status::Stopped)
+                                ((options.contains(WaitOption::WUNTRACED) && s == Status::Stopped)
                                     || (options.contains(WaitOption::WCONTINUED)
                                         && s == Status::Continued)
                                     || s.is_exited()
-                                    || s.is_signaled()
-                                {
-                                    if *wake_pid == -1
+                                    || s.is_signaled())
+                                    && (*wake_pid == -1
                                         || *wake_pid == 0 && dead_process_pgid == *pgid
                                         || *wake_pid == dead_process_pid
-                                        || -*wake_pid == dead_process_pgid
-                                    {
-                                        thread.set_running();
-                                        thread.set_return_value_autopreempt(Ok(
-                                            AutoPreemptReturnValue::Wait {
-                                                dead_process_pid,
-                                                status: s,
-                                            },
-                                        ));
-                                    }
-                                }
+                                        || -*wake_pid == dead_process_pgid)
+                            } else {
+                                false
                             }
-                        }
-                        _ => panic!("message not cevered"),
+                            /* end Wake Condition of the Waitpid */
+                        })
+                    {
+                        // finded = true;
+                        thread.set_running();
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::Wait {
+                            dead_process_pid,
+                            status: s,
+                        }));
                     }
+                    // consume the state
+                    // if finded && (s == Status::Stopped || s == Status::Continued) {
+                    //     let thread_group = self
+                    //         .get_thread_group_mut(dead_process_pid)
+                    //         .expect("no dead pid");
+                    //     thread_group
+                    //         .job
+                    //         .consume_last_event()
+                    //         .expect("no status after autopreempt");
+                    // }
                 }
-            }
+                _ => panic!("message not cevered"),
+            },
             MessageTo::ProcessGroup { pgid, content } => {
                 for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
                     match content {
