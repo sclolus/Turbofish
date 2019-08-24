@@ -628,7 +628,7 @@ impl Scheduler {
                     pgid: dead_process_pgid,
                     status,
                 } => {
-                    // let mut finded = false;
+                    let mut finded = false;
                     let s: Status = status.into();
                     if let Some(thread) = self
                         .get_thread_group_mut(pid)
@@ -657,7 +657,7 @@ impl Scheduler {
                             /* end Wake Condition of the Waitpid */
                         })
                     {
-                        // finded = true;
+                        finded = true;
                         thread.set_running();
                         thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::Wait {
                             dead_process_pid,
@@ -665,15 +665,15 @@ impl Scheduler {
                         }));
                     }
                     // consume the state
-                    // if finded && (s == Status::Stopped || s == Status::Continued) {
-                    //     let thread_group = self
-                    //         .get_thread_group_mut(dead_process_pid)
-                    //         .expect("no dead pid");
-                    //     thread_group
-                    //         .job
-                    //         .consume_last_event()
-                    //         .expect("no status after autopreempt");
-                    // }
+                    if finded && (s == Status::Stopped || s == Status::Continued) {
+                        let thread_group = self
+                            .get_thread_group_mut(dead_process_pid)
+                            .expect("no dead pid");
+                        thread_group
+                            .job
+                            .consume_last_event()
+                            .expect("no status after autopreempt");
+                    }
                 }
                 _ => panic!("message not cevered"),
             },
