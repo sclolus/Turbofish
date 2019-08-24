@@ -33,7 +33,7 @@ int main(void)
 		dup(fd);
 		dup(fd);
 
-		setpgid(0, 1);
+		setpgid(0, 0);
 		tcsetpgrp(fd, getpgid(0));
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
