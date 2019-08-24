@@ -15,7 +15,7 @@ int main(void)
 		int fd = open("tty1", 0);
 		dup(fd);
 		dup(fd);
-
+		setpgid(getpid(), 1);
 		tcsetpgrp(getpid(), getgid());
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
@@ -33,6 +33,7 @@ int main(void)
 		dup(fd);
 		dup(fd);
 
+		setpgid(getpid(), 2);
 		tcsetpgrp(getpid(), getgid());
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
