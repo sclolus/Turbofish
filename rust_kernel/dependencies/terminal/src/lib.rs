@@ -44,7 +44,8 @@ pub struct Terminal {
 pub static mut TERMINAL: Option<Terminal> = None;
 
 const MAX_SCREEN_BUFFER: usize = 10;
-const MAX_TTY_IDX: usize = 11;
+
+/// Index of the system log TTY
 pub const SYSTEM_LOG_TTY_IDX: usize = 0;
 
 /// Describe the output if the `handle_tty_control` function`
@@ -92,9 +93,9 @@ impl Terminal {
             Some(_) => {
                 // Set the current tty as 'background'
                 self.ttys
-                    .iter_mut()
-                    .find(|(_, l)| l.get_tty().foreground)
-                    .map(|(_, l)| l.get_tty_mut().foreground = false);
+                    .values_mut()
+                    .find(|l| l.get_tty().foreground)
+                    .map(|l| l.get_tty_mut().foreground = false);
 
                 // Set the new tty as 'foreground'
                 self.ttys.get_mut(&new_foreground_tty).map(|tty| {
@@ -110,19 +111,20 @@ impl Terminal {
     /// Get the foregounded TTY
     pub fn get_foreground_tty(&mut self) -> &mut LineDiscipline {
         self.ttys
-            .iter_mut()
-            .find(|(_, l)| l.get_tty().foreground)
+            .values_mut()
+            .find(|l| l.get_tty().foreground)
             .expect("no foreground tty")
-            .1
     }
 
     /// Open a TTY in point of view of IPC !
     pub fn open(&mut self, tty_index: usize, uid_file_op: usize) {
-        self.add_tty(tty_index);
-        self.ttys
-            .get_mut(&tty_index)
-            .expect("Cannot open a non existant TTY")
-            .open(uid_file_op);
+        if self.ttys.get(&tty_index).is_none() {
+            self.add_tty(tty_index);
+            self.ttys
+                .get_mut(&tty_index)
+                .expect("Cannot open a non existant TTY")
+                .open(uid_file_op);
+        }
     }
 
     /// Read a Key from the buffer
@@ -176,7 +178,7 @@ impl Terminal {
             KeySymb::F9 => Some(8),
             KeySymb::F10 => Some(9),
             KeySymb::F11 => Some(10),
-            KeySymb::F12 => Some(MAX_TTY_IDX),
+            KeySymb::F12 => Some(11),
             _ => None,
         };
         use TtyControlOutput::*;

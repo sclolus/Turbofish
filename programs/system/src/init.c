@@ -16,8 +16,7 @@ int main(void)
 		dup(fd);
 		dup(fd);
 
-		// TODO : check if its the good way
-		tcsetpgrp(0, getpgrp());
+		tcsetpgrp(getpid(), getgid());
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);
@@ -34,8 +33,7 @@ int main(void)
 		dup(fd);
 		dup(fd);
 
-		// TODO : check if its the good way
-		tcsetpgrp(0, getpgrp());
+		tcsetpgrp(getpid(), getgid());
 		int ret = execve(program, NULL, NULL);
 		if (ret < 0) {
 			printf("%s: Execve failed\n", __func__);

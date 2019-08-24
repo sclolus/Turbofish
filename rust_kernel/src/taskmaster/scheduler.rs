@@ -222,17 +222,7 @@ impl Scheduler {
                     }
                 }
                 MessageTo::Tty { key_pressed } => unsafe {
-                    if let Some(tty_index) =
-                        TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed)
-                    {
-                        let (pid, _) = self.current_task_id();
-                        let thread_group = self.get_thread_group_mut(pid).unwrap();
-                        TERMINAL
-                            .as_mut()
-                            .unwrap()
-                            .get_line_discipline(tty_index)
-                            .tcsetpgrp(thread_group.pgid);
-                    }
+                    let _r = TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
                 },
                 _ => panic!("message not covered"),
             }
