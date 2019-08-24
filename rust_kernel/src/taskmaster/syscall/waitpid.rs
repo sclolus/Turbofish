@@ -371,9 +371,9 @@ fn has_status_available(scheduler: &Scheduler, pid: Pid, options: WaitOption) ->
     let thread_group = scheduler.get_thread_group(pid).expect("Pid must be here");
     thread_group.is_zombie()
         || (options.contains(WaitOption::WUNTRACED)
-            && thread_group.job.get_lat_event() == Some(JobState::Stopped))
+            && thread_group.job.get_last_event() == Some(JobState::Stopped))
         || (options.contains(WaitOption::WUNTRACED)
-            && thread_group.job.get_lat_event() == Some(JobState::Continued))
+            && thread_group.job.get_last_event() == Some(JobState::Continued))
 }
 
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {

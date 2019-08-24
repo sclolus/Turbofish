@@ -355,7 +355,7 @@ impl Job {
     pub fn consume_last_event(&mut self) -> Option<JobState> {
         self.last_event.take()
     }
-    pub fn get_lat_event(&self) -> Option<JobState> {
+    pub fn get_last_event(&self) -> Option<JobState> {
         self.last_event
     }
 }
