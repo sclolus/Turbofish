@@ -7,30 +7,29 @@
 
 //    The <fcntl.h> header shall define the following symbolic constants for the cmd argument used by fcntl(). The values shall be unique and shall be suitable for use in #if preprocessing directives.
 
-enum FcntlCmd {
-	F_DUPFD	 = 0,
-	//	Duplicate file descriptor.
-	F_DUPFD_CLOEXEC = 1030,
-	//	Duplicate file descriptor with the close-on- exec flag FD_CLOEXEC set.
-	F_GETFD	 = 1,
-	//	Get file descriptor flags.
-	F_SETFD	 = 2,
-	//	Set file descriptor flags.
-	F_GETFL	 = 3,
-	//	Get file status flags and file access modes.
-	F_SETFL	 = 4,
-	//	Set file status flags.
-	F_GETLK = 5,
-	//	Get record locking information.
-	F_SETLK = 6,
-	//	Set record locking information.
-	F_SETLKW = 7,
-	//	Set record locking information; wait if blocked.
-	F_GETOWN = 9,
-	//	Get process or process group ID to receive SIGURG signals.
-	F_SETOWN = 8,
+// WARN: if you add or change a value, add it also in libc_binding/lib.rs
+#define F_DUPFD 0
+//	Duplicate file descriptor.
+#define F_DUPFD_CLOEXEC 1030
+//	Duplicate file descriptor with the close-on- exec flag FD_CLOEXEC set.
+#define F_GETFD 1
+//	Get file descriptor flags.
+#define F_SETFD 2
+//	Set file descriptor flags.
+#define F_GETFL 3
+//	Get file status flags and file access modes.
+#define F_SETFL 4
+//	Set file status flags.
+#define F_GETLK 5
+//	Get record locking information.
+#define F_SETLK 6
+//	Set record locking information.
+#define F_SETLKW 7
+//	Set record locking information; wait if blocked.
+#define F_GETOWN 9
+//	Get process or process group ID to receive SIGURG signals.
+#define F_SETOWN 8
 	//	Set process or process group ID to receive SIGURG signals.
-};
 
 //    The <fcntl.h> header shall define the following symbolic constant used for the fcntl() file descriptor flags, which shall be suitable for use in #if preprocessing directives.
 
