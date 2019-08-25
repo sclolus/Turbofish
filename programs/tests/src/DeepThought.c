@@ -77,5 +77,7 @@ int main() {
 		}
 	}
 	/* sleep(100); */
+	printf("All tests succesfull\n");
+	sleep(5);
 	_exit_qemu(0);
 }
