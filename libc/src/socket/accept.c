@@ -2,8 +2,6 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-extern int errno;
-
 struct s_accept {
 	int sockfd;
 	struct sockaddr *addr;

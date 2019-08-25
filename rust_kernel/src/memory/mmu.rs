@@ -17,11 +17,19 @@ extern "C" {
     pub fn _read_cr3() -> Phys;
     fn _enable_pse();
     fn _invlpg(addr: Virt);
+    fn _invlpg_range(addr: Virt, nbr_pages: NbrPages);
 }
 
 #[inline(always)]
 pub fn invalidate_page(page: Page<Virt>) {
     unsafe {
         _invlpg(page.into());
+    }
+}
+
+#[inline(always)]
+pub fn invalidate_page_range(page: Page<Virt>, nbr_pages: NbrPages) {
+    unsafe {
+        _invlpg_range(page.into(), nbr_pages);
     }
 }

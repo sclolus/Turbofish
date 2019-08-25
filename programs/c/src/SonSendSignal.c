@@ -4,8 +4,6 @@
 #include <errno.h>
 #include <wait.h>
 
-extern int errno;
-
 void hello_signal(int signum) {
 	printf("Signal Received 5/5: %i\n", signum);
 }

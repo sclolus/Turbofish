@@ -53,23 +53,23 @@ extern "C" {
 fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    {
-        let v = scheduler
-            .current_thread_mut()
-            .unwrap_process_mut()
-            .get_virtual_allocator();
+    let v = scheduler
+        .current_thread_mut()
+        .unwrap_process_mut()
+        .get_virtual_allocator();
 
-        v.check_user_ptr::<TimeSpec>(req)?;
-        v.check_user_ptr::<TimeSpec>(rem)?;
-    }
+    let req = v.make_checked_ref(req)?;
+    let rem = v.make_checked_ref_mut(rem)?;
+    // drop the mutex
+    drop(v);
 
-    let nsec = unsafe { (*req).tv_nsec };
+    let nsec = req.tv_nsec;
     if nsec < 0 || nsec >= 1000000000 {
         return Err(Errno::EINVAL);
     }
 
     // Set precision as 1/1000
-    let request_time = unsafe { (*req).tv_sec as f32 + ((*req).tv_nsec / 1000000) as f32 / 1000. };
+    let request_time = req.tv_sec as f32 + (req.tv_nsec / 1000000) as f32 / 1000.;
     let pit_period = 1. / PIT0.lock().get_frequency().expect("PIT0 not initialized");
     let next_wake = (request_time / pit_period) as u32 + unsafe { _get_pit_time() };
 
@@ -84,11 +84,8 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
             let now = unsafe { _get_pit_time() };
             if now < next_wake {
                 let remaining_time = (next_wake - now) as f32 * pit_period;
-                unsafe {
-                    (*rem).tv_sec = remaining_time.trunc() as u32;
-                    (*rem).tv_nsec =
-                        ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
-                }
+                rem.tv_sec = remaining_time.trunc() as u32;
+                rem.tv_nsec = ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
             }
             Err(Errno::EINTR)
         }

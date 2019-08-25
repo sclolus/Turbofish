@@ -21,7 +21,7 @@ use libc_binding::SIG_SETMASK;
 /// It is not possible to block signals that cannot be ignored. This
 /// is enforced by the system without causing an error to be
 /// indicated.
-pub unsafe fn sys_sigsuspend(sigmask: *const sigset_t) -> SysResult<u32> {
+pub fn sys_sigsuspend(sigmask: *const sigset_t) -> SysResult<u32> {
     let mut oldmask: sigset_t = 0;
     sys_sigprocmask(SIG_SETMASK, sigmask, &mut oldmask)?;
     let ret = sys_pause();

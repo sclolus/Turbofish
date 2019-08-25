@@ -1,11 +1,13 @@
 //! waitpid (wait) implementations
 
-use super::scheduler::SCHEDULER;
 use super::scheduler::{auto_preempt, unpreemptible};
+use super::scheduler::{Scheduler, SCHEDULER};
 use super::thread::{AutoPreemptReturnValue, WaitingState};
+use super::thread_group::{JobState, Status};
 use super::SysResult;
+use bitflags::bitflags;
 
-use libc_binding::Errno;
+use libc_binding::{Errno, Pid};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -91,7 +93,8 @@ use libc_binding::Errno;
 ///     was returned for a child process that is currently stopped.
 /// WSTOPSIG(stat_val) If the value of WIFSTOPPED(stat_val) is
 ///     non-zero, this macro evaluates to the number of the signal
-///     that caused the child process to stop.  WIFCONTINUED(stat_val)
+///     that caused the child process to stop.
+/// WIFCONTINUED(stat_val)
 ///     [XSI] [Option Start] Evaluates to a non-zero value if status
 ///     was returned for a child process that has continued from a job
 ///     control stop. [Option End]
@@ -193,10 +196,10 @@ use libc_binding::Errno;
 ///     interrupted by a signal. The value of the location pointed to
 ///     by stat_loc is undefined.  [EINVAL] The options argument is
 ///     not valid.
-fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
+fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    {
+    let wstatus = {
         let v = scheduler
             .current_thread_mut()
             .unwrap_process_mut()
@@ -204,10 +207,12 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
         // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
         // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
-        if wstatus != 0x0 as *mut i32 {
-            v.check_user_ptr::<i32>(wstatus)?;
+        if wstatus.is_null() {
+            None
+        } else {
+            Some(v.make_checked_ref_mut::<i32>(wstatus)?)
         }
-    }
+    };
 
     // WIFEXITED(wstatus)
     // returns true if the child terminated normally, that is, by calling exit(3) or _exit(2), or by returning from main().
@@ -221,9 +226,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     // Return EINVAL for any unknown option
     // TODO: Code at least WNOHANG and WUNTRACED for Posix
-    if options != 0 {
-        return Err(Errno::EINVAL);
-    }
+    let options = WaitOption::from_bits(options).ok_or(Errno::EINVAL)?;
 
     let thread_group = scheduler.current_thread_group();
 
@@ -246,12 +249,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .unwrap_running()
                 .child
                 .iter()
-                .find(|&current_pid| {
-                    scheduler
-                        .get_thread_group(*current_pid)
-                        .expect("Pid must be here")
-                        .is_zombie()
-                })
+                .find(|&current_pid| scheduler.has_status_available(*current_pid, options))
         }
         // If pid is less than (pid_t)-1, status is requested for any
         // child process whose process group ID is equal to the
@@ -284,13 +282,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .unwrap_running()
                 .child
                 .iter()
-                .find(|&current_pid| {
-                    scheduler
-                        .get_thread_group(*current_pid)
-                        .expect("Pid must be here")
-                        .pgid
-                        == -pid
-                })
+                .find(|&current_pid| scheduler.has_status_available(*current_pid, options))
         }
         // If pid is greater than 0, it specifies the process ID of a
         // single child process for which status is requested.
@@ -302,11 +294,7 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                 .iter()
                 .find(|&&current_pid| current_pid == pid)
             {
-                if scheduler
-                    .get_thread_group(*elem)
-                    .expect("Pid must be here")
-                    .is_zombie()
-                {
+                if scheduler.has_status_available(*elem, options) {
                     Some(elem)
                 } else {
                     None
@@ -320,27 +308,35 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
 
     match child_pid {
         Some(&dead_pid) => {
+            let tg = scheduler
+                .get_thread_group_mut(dead_pid)
+                .expect("Pid must be here");
+
+            let status = match tg.get_death_status() {
+                Some(status) => {
+                    scheduler.current_thread_group_mut().remove_child(dead_pid);
+                    scheduler.remove_thread_group(dead_pid);
+                    status
+                }
+                None => Status::from(tg.job.consume_last_event().expect("no status")),
+            };
             // TODO: Manage terminated value with signal
-            if wstatus != 0x0 as *mut i32 {
-                let status = scheduler
-                    .get_thread_group(dead_pid)
-                    .and_then(|tg| tg.get_death_status())
-                    .expect("zombie must be here");
-                unsafe { *wstatus = status }
+            if let Some(wstatus) = wstatus {
+                *wstatus = status.into()
             }
             // fflush zombie
-            dbg!(dead_pid);
-            scheduler.remove_thread_group(dead_pid);
-            let thread_group = scheduler.current_thread_group_mut();
-            thread_group.remove_child(dead_pid);
             // Return immediatly
             Ok(dead_pid as u32)
         }
+        None if options.contains(WaitOption::WNOHANG) => {
+            return Ok(0);
+        }
         None => {
             // Set process as Waiting for ChildDeath. set the PID option inside
+            let pgid = thread_group.pgid;
             scheduler
                 .current_thread_mut()
-                .set_waiting(WaitingState::ChildDeath(pid));
+                .set_waiting(WaitingState::Waitpid { pid, pgid, options });
 
             let ret = auto_preempt()?;
 
@@ -353,24 +349,43 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
                     dead_process_pid,
                     status,
                 } => {
-                    // Set wstatus pointer is not null by reading y
-                    if wstatus != 0x0 as *mut i32 {
-                        unsafe {
-                            *wstatus = status as i32;
-                        }
+                    if status.is_terminated() {
+                        let thread_group = scheduler.current_thread_group_mut();
+                        thread_group.remove_child(dead_process_pid);
+                        scheduler.remove_thread_group(dead_process_pid);
                     }
-                    scheduler.remove_thread_group(dead_process_pid);
+                    // Set wstatus pointer is not null by reading y
+                    if let Some(wstatus) = wstatus {
+                        *wstatus = status.into();
+                    }
                     dead_process_pid
                 }
                 _ => panic!("WTF"),
             };
-            let thread_group = scheduler.current_thread_group_mut();
-            thread_group.remove_child(child_pid);
             Ok(child_pid as u32)
         }
     }
 }
 
-pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: i32) -> SysResult<u32> {
+pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     unpreemptible_context!({ waitpid(pid, wstatus, options) })
+}
+
+bitflags! {
+    pub struct WaitOption: u32 {
+        const WUNTRACED = libc_binding::WUNTRACED;
+        const WCONTINUED = libc_binding::WCONTINUED;
+        const WNOHANG = libc_binding::WNOHANG;
+    }
+}
+
+impl Scheduler {
+    fn has_status_available(&self, pid: Pid, options: WaitOption) -> bool {
+        let thread_group = self.get_thread_group(pid).expect("Pid must be here");
+        thread_group.is_zombie()
+            || (options.contains(WaitOption::WUNTRACED)
+                && thread_group.job.get_last_event() == Some(JobState::Stopped))
+            || (options.contains(WaitOption::WUNTRACED)
+                && thread_group.job.get_last_event() == Some(JobState::Continued))
+    }
 }

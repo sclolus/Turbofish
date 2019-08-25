@@ -29,13 +29,13 @@ pub fn sys_write(fd: i32, mut buf: *const u8, mut count: usize) -> SysResult<u32
                 .file_descriptor_interface;
 
             match fd_interface.write(fd as _, output)? {
-                IpcResult::Wait(res) => {
+                IpcResult::Wait(res, file_op_uid) => {
                     written_bytes += res;
                     buf = unsafe { buf.add(res as _) };
                     count -= res as usize;
                     scheduler
                         .current_thread_mut()
-                        .set_waiting(WaitingState::Write);
+                        .set_waiting(WaitingState::Write(file_op_uid));
                     let _ret = auto_preempt()?;
                 }
                 IpcResult::Done(res) => return Ok(written_bytes + res),

@@ -25,10 +25,14 @@ pub enum SchedulerMessage {
 /// message for a process
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ProcessMessage {
-    /// this process has died
-    ProcessDied { pid: Pid },
+    /// this process has died, or continued, or stopped
+    ProcessUpdated { pid: Pid, pgid: Pid, status: i32 },
     /// there is something to read
     SomethingToRead,
+    /// there is something to write
+    SomethingToWrite,
+    /// there is something to open
+    SomethingToOpen,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -42,6 +46,18 @@ pub enum ProcessGroupMessage {
 #[derive(Debug, Copy, Clone)]
 pub enum MessageTo {
     // Tty { content: TtyMessage },
+    /// IPC: Adressed to a specific reader
+    Reader {
+        uid_file_op: usize,
+    },
+    /// IPC: Adressed to a specific writer
+    Writer {
+        uid_file_op: usize,
+    },
+    /// IPC: Adressed to a specific opener
+    Opener {
+        uid_file_op: usize,
+    },
     Process {
         pid: Pid,
         content: ProcessMessage,
@@ -100,4 +116,19 @@ pub fn push_message(message: MessageTo) {
 
 pub fn drain_messages() -> impl Iterator<Item = MessageTo> {
     MESSAGE_QUEUE.drain()
+}
+
+mod scheduler {
+    use super::MessageTo;
+    extern "C" {
+        #[allow(improper_ctypes)]
+        pub fn send_message(message: MessageTo);
+    }
+}
+
+pub fn send_message(message: MessageTo) {
+    unsafe {
+        // call with the linker the send message function of the scheduler
+        scheduler::send_message(message);
+    }
 }

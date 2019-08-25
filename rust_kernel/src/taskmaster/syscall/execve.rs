@@ -2,7 +2,7 @@
 
 use super::SysResult;
 
-use super::process::{CpuState, Process, ProcessOrigin, UserProcess};
+use super::process::{CpuState, Process, ProcessArguments, ProcessOrigin, UserProcess};
 use super::safe_ffi::{c_char, CString, CStringArray};
 use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
@@ -133,7 +133,11 @@ pub fn sys_execve(
             .get_virtual_allocator();
 
         let filename: CString = (&v, filename).try_into()?;
+
         let argv_content: CStringArray = (&v, argv).try_into()?;
+        // Get the argv len to store the argc value
+        let argv_content_len = argv_content.len();
+
         let envp_content: CStringArray = (&v, envp).try_into()?;
         drop(v);
 
@@ -145,7 +149,12 @@ pub fn sys_execve(
         }
         let content = get_file_content(&pathname)?;
 
-        let mut new_process = unsafe { UserProcess::new(ProcessOrigin::Elf(content.as_ref()))? };
+        let mut new_process = unsafe {
+            UserProcess::new(
+                ProcessOrigin::Elf(content.as_ref()),
+                Some(ProcessArguments::new(argv_content, envp_content)),
+            )?
+        };
 
         let old_process = scheduler.current_thread_mut().unwrap_process_mut();
         /*
@@ -189,29 +198,8 @@ pub fn sys_execve(
             .signal
             .reset_for_new_process_image();
 
-        let p = scheduler.current_thread_mut().unwrap_process_mut();
-        let cpu_state = unsafe {
-            p.kernel_stack
-                .as_ptr()
-                .add(p.kernel_stack.len() - core::mem::size_of::<CpuState>())
-                as *mut CpuState
-        };
-
-        let align = 4;
-        unsafe {
-            // Set the argv argument: EBX
-            (*cpu_state).esp -= argv_content.get_serialized_len(align).expect("WTF") as u32;
-            (*cpu_state).registers.ebx = argv_content
-                .serialize(align, (*cpu_state).esp as *mut c_char)
-                .expect("WTF") as u32;
-            // set the envp argument: ECX
-            (*cpu_state).esp -= envp_content.get_serialized_len(align).expect("WTF") as u32;
-            (*cpu_state).registers.ecx = envp_content
-                .serialize(align, (*cpu_state).esp as *mut c_char)
-                .expect("WTF") as u32;
-        }
         // Set the argc argument: EAX
-        argv_content.len() as u32
+        argv_content_len as u32
     });
     Ok(argc)
 }

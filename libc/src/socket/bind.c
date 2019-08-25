@@ -2,8 +2,6 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-extern int errno;
-
 struct s_bind {
 	int sockfd;
 	const struct sockaddr *addr;

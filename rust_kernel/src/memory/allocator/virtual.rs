@@ -1,5 +1,5 @@
 use super::{BuddyAllocator, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::{invalidate_page, Entry, PageDirectory};
+use crate::memory::mmu::{invalidate_page, invalidate_page_range, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
@@ -26,7 +26,7 @@ impl VirtualPageAllocator {
     /// Modify the allocFlags for a specific and existing Page
     #[inline(always)]
     pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
-        self.mmu.modify_page_entry(page, Into::<Entry>::into(flags));
+        self.change_flags_range_page_entry(page, NbrPages(1), flags)
     }
 
     /// Modify the AllocFlags of a given range of existing Virtual pages
@@ -37,19 +37,17 @@ impl VirtualPageAllocator {
         flags: AllocFlags,
     ) {
         for i in 0..nbr_pages.0 {
-            self.change_flags_page_entry(start_page + NbrPages(i), flags);
+            self.mmu
+                .modify_page_entry(start_page + NbrPages(i), Into::<Entry>::into(flags));
         }
+        invalidate_page_range(start_page, nbr_pages);
     }
 
     pub fn change_page_entry<U>(&mut self, page: Page<Virt>, update: &mut U) -> Result<()>
     where
         U: FnMut(&mut Entry),
     {
-        Ok(update(
-            self.mmu
-                .get_entry_mut(page)
-                .ok_or::<MemoryError>(MemoryError::PageNotPresent)?,
-        ))
+        self.change_range_page_entry(page, NbrPages(1), update)
     }
 
     pub fn change_range_page_entry<U>(
@@ -61,10 +59,16 @@ impl VirtualPageAllocator {
     where
         U: FnMut(&mut Entry),
     {
-        for i in 0..nbr_pages.0 {
-            self.change_page_entry(start_page + NbrPages(i), update)?;
-        }
-        Ok(())
+        Ok({
+            for i in 0..nbr_pages.0 {
+                update(
+                    self.mmu
+                        .get_entry_mut(start_page + NbrPages(i))
+                        .ok_or::<MemoryError>(MemoryError::PageNotPresent)?,
+                );
+            }
+            invalidate_page_range(start_page, nbr_pages)
+        })
     }
 
     /// Check if the predicate is satisfied into a chunk of pages
@@ -326,7 +330,10 @@ impl AddressSpace {
     }
 
     /// Check if a pointer given by user process is not bullshit
-    pub fn check_user_ptr<T>(&self, ptr: *const T) -> Result<()> {
+    fn check_user_ptr_predicate<T, P>(&self, ptr: *const T, predicate: P) -> Result<()>
+    where
+        P: Fn(Entry) -> bool,
+    {
         let start_ptr = Virt(ptr as usize);
         let end_ptr = Virt(
             (ptr as usize)
@@ -336,15 +343,21 @@ impl AddressSpace {
 
         Ok(self
             .0
-            .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
-                entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
-            })
+            .check_page_range(start_ptr.into(), end_ptr.into(), predicate)
             .map_err(|_| MemoryError::BadAddr)?)
     }
 
     /// Check if a pointer given by user process is not bullshit
     /// length is in number of T
-    pub fn check_user_ptr_with_len<T>(&self, ptr: *const T, length: usize) -> Result<()> {
+    fn check_user_ptr_predicate_with_len<T, P>(
+        &self,
+        ptr: *const T,
+        length: usize,
+        predicate: P,
+    ) -> Result<()>
+    where
+        P: Fn(Entry) -> bool,
+    {
         if length == 0 {
             return Ok(());
         }
@@ -357,12 +370,24 @@ impl AddressSpace {
 
         Ok(self
             .0
-            .check_page_range(start_ptr.into(), end_ptr.into(), |entry| {
-                entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
-            })
+            .check_page_range(start_ptr.into(), end_ptr.into(), predicate)
             .map_err(|_| MemoryError::BadAddr)?)
     }
 
+    /// check is a user ptr with len is valid for READING
+    pub fn check_user_ptr_with_len<T>(&self, ptr: *const T, length: usize) -> Result<()> {
+        self.check_user_ptr_predicate_with_len(ptr, length, |entry| {
+            entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
+        })
+    }
+
+    /// check is a user ptr with len is valid and READ WRITE
+    pub fn check_user_mut_ptr_with_len<T>(&self, ptr: *mut T, length: usize) -> Result<()> {
+        self.check_user_ptr_predicate_with_len(ptr, length, |entry| {
+            entry
+                .contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::READ_WRITE | Entry::PRESENT)
+        })
+    }
     /// Creates a slice of T, from `ptr`, of `elem_number` elements.
     /// It checks against the Bullshitship of the ptr, asserting it's a valid userland pointer.
     ///
@@ -378,6 +403,31 @@ impl AddressSpace {
         Ok(unsafe { core::slice::from_raw_parts(ptr, elem_number) })
     }
 
+    /// check is a user ptr is valid and READ WRITE
+    pub fn check_user_ptr<T>(&self, ptr: *const T) -> Result<()> {
+        self.check_user_ptr_predicate(ptr, |entry| {
+            entry
+                .contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::READ_WRITE | Entry::PRESENT)
+        })
+    }
+
+    /// create a safe ref from a raw pointer
+    pub fn make_checked_ref<'unbound, T>(&self, ptr: *const T) -> Result<&'unbound T> {
+        self.check_user_ptr_predicate(ptr, |entry| {
+            entry.contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::PRESENT)
+        })?;
+        unsafe { Ok(&*ptr) }
+    }
+
+    /// create a safe mut ref from a raw mut pointer
+    pub fn make_checked_ref_mut<'unbound, T>(&self, ptr: *mut T) -> Result<&'unbound mut T> {
+        self.check_user_ptr_predicate(ptr, |entry| {
+            entry
+                .contains(Entry::from(AllocFlags::USER_MEMORY) | Entry::READ_WRITE | Entry::PRESENT)
+        })?;
+        unsafe { Ok(&mut *ptr) }
+    }
+
     /// Creates a mutable slice of T, from `ptr`, of `elem_number` elements.
     /// It checks against the Bullshitship of the ptr, asserting it's a valid userland pointer.
     ///
@@ -389,7 +439,7 @@ impl AddressSpace {
         ptr: *mut T,
         elem_number: usize,
     ) -> Result<&'unbound mut [T]> {
-        self.check_user_ptr_with_len(ptr, elem_number)?;
+        self.check_user_mut_ptr_with_len(ptr, elem_number)?;
         Ok(unsafe { core::slice::from_raw_parts_mut(ptr, elem_number) })
     }
 

@@ -1,7 +1,7 @@
 //! tcsetattr syscall
 use super::scheduler::SCHEDULER;
+use super::Fd;
 use super::SysResult;
-use crate::terminal::TERMINAL;
 use libc_binding::termios;
 
 /// The tcsetattr() function shall set the parameters associated with
@@ -68,32 +68,37 @@ use libc_binding::termios;
 /// no signal is sent.
 ///
 /// Otherwise, a SIGTTOU signal shall be sent to the process group.
-// TODO: file descriptor argument
+/// [EBADF]
+///     The fildes argument is not a valid file descriptor.
+/// [EINTR]
+///     A signal interrupted tcsetattr().
+/// [EINVAL]
+///     The optional_actions argument is not a supported value, or an attempt was made to change an attribute represented in the termios structure to an unsupported value.
+/// [EIO]
+///     The process group of the writing process is orphaned, the calling thread is not blocking SIGTTOU, and the process is not ignoring SIGTTOU.
+/// [ENOTTY]
+///     The file associated with fildes is not a terminal.
 pub fn sys_tcsetattr(
-    _fildes: i32,
+    fildes: Fd,
     optional_actions: u32,
     termios_p: *const termios,
 ) -> SysResult<u32> {
-    let controlling_terminal;
     unpreemptible_context!({
-        {
-            let scheduler = SCHEDULER.lock();
-            controlling_terminal = scheduler.current_thread_group().controlling_terminal;
+        let scheduler = SCHEDULER.lock();
+        let termios_p = {
             let v = scheduler
                 .current_thread()
                 .unwrap_process()
                 .get_virtual_allocator();
 
             // Check if pointer exists in user virtual address space
-            v.check_user_ptr(termios_p)?;
-        }
-        unsafe {
-            TERMINAL
-                .as_mut()
-                .unwrap()
-                .get_line_discipline(controlling_terminal)
-                .tcsetattr(optional_actions, &*termios_p);
-        }
-    });
-    Ok(0)
+            v.make_checked_ref(termios_p)?
+        };
+        let fd_interface = &scheduler
+            .current_thread_group_running()
+            .file_descriptor_interface;
+
+        let file_operation = &mut fd_interface.get_file_operation(fildes)?;
+        file_operation.tcsetattr(optional_actions, termios_p)
+    })
 }

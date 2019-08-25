@@ -14,7 +14,6 @@ use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::timer::Rtc;
 use crate::watch_dog;
-use core::time::Duration;
 
 #[no_mangle]
 pub extern "C" fn kmain(
@@ -43,7 +42,6 @@ pub extern "C" fn kmain(
     }
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
     init_terminal();
-    println!("TTY system initialized");
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
     PIT0.lock().start_at_frequency(1000.).unwrap();
@@ -82,24 +80,30 @@ pub extern "C" fn kmain(
     // PCI.lock().scan_pci_buses();
     // log::info!("PCI buses has been scanned");
 
-    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
+    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
-    println!("{}", date);
-
-    log::error!("this is an example of error");
+    log::info!("{}", date);
 
     watch_dog();
 
     crate::drivers::storage::init(&multiboot_info);
 
-    use crate::taskmaster::{Process, ProcessOrigin, UserProcess};
+    use crate::taskmaster::{Process, ProcessArguments, ProcessOrigin, UserProcess};
+
     // Load some processes into the scheduler
     let user_process_list = unsafe {
         vec![
-            UserProcess::new(ProcessOrigin::Elf(&include_bytes!("userland/init")[..])).unwrap(),
+            UserProcess::new(
+                ProcessOrigin::Elf(&include_bytes!("userland/init")[..]),
+                Some(ProcessArguments::new(
+                    (&["/bin/init", "/bin/shell"] as &[&str]).into(),
+                    (&[] as &[&str]).into(),
+                )),
+            )
+            .unwrap(),
             // UserProcess::new(ProcessOrigin::Elf(&include_bytes!("userland/shell")[..])).unwrap(),
             // UserProcess::new(TaskOrigin::Elf(
             // UserProcess::new(ProcessOrigin::Elf(

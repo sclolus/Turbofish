@@ -9,6 +9,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define FORK          2
 #define READ          3
 #define WRITE         4
+#define OPEN          5
 #define CLOSE         6
 #define WAITPID       7
 #define UNLINK       10
@@ -24,6 +25,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETGID       47
 #define GETEUID      49
 #define GETEGID      50
+#define FCNTL        55
 #define SIGNAL       48
 #define SETPGID      57
 #define DUP2         63

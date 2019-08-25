@@ -92,17 +92,19 @@ pub extern "C" fn kmain(
 
     crate::drivers::storage::init(&multiboot_info);
 
-    // let elf = crate::elf_loader::load_elf();
-    // println!("{:#X?}", elf);
-    // crate::shell::shell();
-
-    use crate::taskmaster::{Process, ProcessOrigin, UserProcess};
+    use crate::taskmaster::{Process, ProcessArguments, ProcessOrigin, UserProcess};
     // Load some processes into the scheduler
+
     let user_process_list = unsafe {
-        vec![UserProcess::new(ProcessOrigin::Elf(
-            &include_bytes!("../userland/DeepThought")[..],
-        ))
+        vec![UserProcess::new(
+            ProcessOrigin::Elf(&include_bytes!("../userland/init")[..]),
+            Some(ProcessArguments::new(
+                (&["/bin/init", "/bin/DeepThought"] as &[&str]).into(),
+                (&[] as &[&str]).into(),
+            )),
+        )
         .unwrap()]
     };
+
     crate::taskmaster::start(user_process_list)
 }

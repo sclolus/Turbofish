@@ -2,8 +2,6 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-extern int errno;
-
 struct s_socket {
 	int domain;
 	int type;

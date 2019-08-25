@@ -3,6 +3,7 @@
 mod tss;
 use tss::TSS;
 
+use super::safe_ffi::{c_char, CStringArray};
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
@@ -28,6 +29,18 @@ use crate::system::{BaseRegisters, PrivilegeLevel};
 
 extern "C" {
     fn _start_process(kernel_esp: u32) -> !;
+}
+
+/// Arguments given to a process
+pub struct ProcessArguments {
+    argv: CStringArray,
+    envp: CStringArray,
+}
+
+impl ProcessArguments {
+    pub fn new(argv: CStringArray, envp: CStringArray) -> Self {
+        Self { argv, envp }
+    }
 }
 
 /// Represent all the cpu states of a process according to the TSS context
@@ -80,7 +93,10 @@ ds: 0x{:X?} es: 0x{:X?} fs: 0x{:X?} gs: 0x{:X?}
 /// Declaration of shared Process trait. Kernel and User processes must implements these methods
 pub trait Process {
     /// Return a new process
-    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>>;
+    unsafe fn new(
+        origin: ProcessOrigin,
+        arguments: Option<ProcessArguments>,
+    ) -> SysResult<Box<Self>>;
     /// TSS initialisation method (necessary for ring3 switch)
     unsafe fn init_tss(&self);
     /// Start the process
@@ -214,7 +230,10 @@ impl KernelProcess {
 
 /// Main implementation of process trait for UserProcess
 impl Process for UserProcess {
-    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>> {
+    unsafe fn new(
+        origin: ProcessOrigin,
+        arguments: Option<ProcessArguments>,
+    ) -> SysResult<Box<Self>> {
         // Store kernel CR3
         let old_cr3 = _read_cr3();
         // Create the process Page directory
@@ -305,13 +324,40 @@ impl Process for UserProcess {
         );
 
         // stack go downwards set esp to the end of the allocation
-        let esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
+        let mut esp = stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32;
+
+        let (mut eax, mut ebx, mut ecx) = (0, 0, 0);
+
+        // Assign arguments of the main function
+        if let Some(arguments) = arguments {
+            let align = 4;
+
+            // Set the argc argument: EAX
+            eax = arguments.argv.len() as u32;
+
+            // Set the argv argument: EBX
+            esp -= arguments.argv.get_serialized_len(align).expect("WTF") as u32;
+            ebx = arguments
+                .argv
+                .serialize(align, esp as *mut c_char)
+                .expect("WTF") as u32;
+
+            // set the envp argument: ECX
+            esp -= arguments.envp.get_serialized_len(align).expect("WTF") as u32;
+            ecx = arguments
+                .envp
+                .serialize(align, esp as *mut c_char)
+                .expect("WTF") as u32;
+        }
 
         // Create the process identity
         let cpu_state: CpuState = CpuState {
             stack_reserved: 0,
             registers: BaseRegisters {
                 esp,
+                eax,
+                ebx,
+                ecx,
                 ..Default::default()
             }, // Be carefull, never trust ESP
             ds: Self::RING3_DATA_SEGMENT + Self::RING3_DPL,
@@ -370,7 +416,13 @@ impl Process for UserProcess {
 // Maybe we need to check CS of the caller of the TSS segment in the syscall handler to unallow use of them.
 /// Main implementation of a KernelProcess
 impl Process for KernelProcess {
-    unsafe fn new(origin: ProcessOrigin) -> SysResult<Box<Self>> {
+    unsafe fn new(
+        origin: ProcessOrigin,
+        arguments: Option<ProcessArguments>,
+    ) -> SysResult<Box<Self>> {
+        if let Some(_arguments) = arguments {
+            panic!("Giving process arguments to a kernel process is a non-implemented feature !");
+        }
         let eip = match origin {
             ProcessOrigin::Elf(_content) => {
                 unimplemented!();

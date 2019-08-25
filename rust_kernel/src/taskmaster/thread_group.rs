@@ -8,7 +8,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use fallible_collections::{btree::BTreeMap, FallibleVec, TryClone};
-use libc_binding::{gid_t, uid_t};
+use libc_binding::{gid_t, uid_t, Signum};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum ThreadGroupState {
     /// The process is terminated and wait to deliver his testament to his father
     /// bits 0..7 for normal exit(). Interpreted as i8 and set bit 31
     /// bits 8..15 for signal exit. Interpreted as i8 and set bit 30
-    Zombie(i32),
+    Zombie(Status),
 }
 
 /// Main boilerplate
@@ -34,7 +34,7 @@ pub struct RunningThreadGroup {
 type ThreadList = BTreeMap<Tid, Thread>;
 
 impl ThreadGroupState {
-    fn get_death_status(&self) -> Option<i32> {
+    fn get_death_status(&self) -> Option<Status> {
         match self {
             Self::Zombie(status) => Some(*status),
             _ => None,
@@ -82,8 +82,8 @@ pub struct ThreadGroup {
     pub parent: Pid,
     /// the next availabel tid for a new thread
     next_tid: Tid,
-    /// currently the index of the controlling tty
-    pub controlling_terminal: usize,
+    /// Current job status of a process
+    pub job: Job,
 }
 
 #[derive(Debug, TryClone)]
@@ -125,7 +125,7 @@ impl ThreadGroup {
             }),
             next_tid: 1,
             pgid,
-            controlling_terminal: 1,
+            job: Job::new(),
         })
     }
 
@@ -135,7 +135,7 @@ impl ThreadGroup {
         res
     }
 
-    pub fn get_death_status(&self) -> Option<i32> {
+    pub fn get_death_status(&self) -> Option<Status> {
         self.thread_group_state.get_death_status()
     }
 
@@ -177,7 +177,7 @@ impl ThreadGroup {
             }),
             pgid: self.pgid,
             next_tid: 1,
-            controlling_terminal: self.controlling_terminal,
+            job: Job::new(),
         })
     }
 
@@ -189,7 +189,7 @@ impl ThreadGroup {
             .expect("can't remove child pid it is not present");
     }
 
-    pub fn set_zombie(&mut self, status: i32) {
+    pub fn set_zombie(&mut self, status: Status) {
         self.thread_group_state = ThreadGroupState::Zombie(status);
     }
 
@@ -223,5 +223,137 @@ impl ThreadGroup {
     /// Unwrap directly the field thread_group_state as Running
     pub fn unwrap_running_mut(&mut self) -> &mut RunningThreadGroup {
         self.thread_group_state.unwrap_running_mut()
+    }
+}
+
+/// Global design of User Program Status
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Status {
+    Exited(i32),
+    Signaled(Signum),
+    Stopped,
+    Continued,
+}
+
+impl Status {
+    pub fn is_exited(&self) -> bool {
+        match self {
+            Self::Exited(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_terminated(&self) -> bool {
+        match self {
+            Self::Exited(_) | Self::Signaled(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_signaled(&self) -> bool {
+        match self {
+            Self::Signaled(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<JobState> for Status {
+    fn from(job_state: JobState) -> Self {
+        match job_state {
+            JobState::Continued => Self::Continued,
+            JobState::Stopped => Self::Stopped,
+        }
+    }
+}
+
+use libc_binding::{
+    CONTINUED_STATUS_BIT, EXITED_STATUS_BITS, SIGNALED_STATUS_BITS, SIGNALED_STATUS_SHIFT,
+    STOPPED_STATUS_BIT,
+};
+
+/// Boilerlate
+impl From<Status> for i32 {
+    fn from(status: Status) -> Self {
+        use Status::*;
+        match status {
+            Exited(v) => v,
+            Signaled(signum) => (signum as i32) << SIGNALED_STATUS_SHIFT as i32,
+            Stopped => STOPPED_STATUS_BIT as _,
+            Continued => CONTINUED_STATUS_BIT as _,
+        }
+    }
+}
+
+/// Another boilerplate
+impl From<i32> for Status {
+    fn from(status: i32) -> Self {
+        use Status::*;
+        if status & !EXITED_STATUS_BITS as i32 == 0 {
+            Exited(status)
+        } else if status & EXITED_STATUS_BITS as i32 == 0
+            && status & !SIGNALED_STATUS_BITS as i32 == 0
+        {
+            Signaled(unsafe { core::mem::transmute(status >> SIGNALED_STATUS_SHIFT) })
+        } else if status & !STOPPED_STATUS_BIT as i32 == 0 {
+            Stopped
+        } else if status & !CONTINUED_STATUS_BIT as i32 == 0 {
+            Continued
+        } else {
+            panic!("Status is Bullshit !");
+        }
+    }
+}
+
+/// State of a process in the point of view of JobAction
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum JobState {
+    Stopped,
+    Continued,
+}
+
+/// Mais Job structure
+#[derive(Debug)]
+pub struct Job {
+    /// Current JobState
+    state: JobState,
+    /// Last change state (this event may be consumed by waitpid)
+    last_event: Option<JobState>,
+}
+
+/// Main Job implementation
+impl Job {
+    const fn new() -> Self {
+        Self {
+            state: JobState::Continued,
+            last_event: None,
+        }
+    }
+    /// Try to set as continue, return TRUE is state is changing
+    pub fn try_set_continued(&mut self) -> bool {
+        if self.state == JobState::Stopped {
+            self.state = JobState::Continued;
+            self.last_event = Some(JobState::Continued);
+            true
+        } else {
+            false
+        }
+    }
+    /// Try to set as stoped, return TRUE is state is changing
+    pub fn try_set_stoped(&mut self) -> bool {
+        if self.state == JobState::Continued {
+            self.state = JobState::Stopped;
+            self.last_event = Some(JobState::Stopped);
+            true
+        } else {
+            false
+        }
+    }
+    /// Usable method for waitpid for exemple
+    pub fn consume_last_event(&mut self) -> Option<JobState> {
+        self.last_event.take()
+    }
+
+    /// get the last event
+    pub fn get_last_event(&self) -> Option<JobState> {
+        self.last_event
     }
 }

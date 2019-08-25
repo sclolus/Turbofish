@@ -35,13 +35,16 @@ pid_t wait(int *wstatus)
 }
 
 /*
- * wait3, wait4 - wait for process to change state, BSD style
+ * wait3, wait for process to change state, BSD style
  */
+
+#include <custom.h>
 
 #warning RUSAGE PARAM OF WAIT3 FUNCTION MUST BE DEFINED AND USED
 
 pid_t wait3(int *wstatus, int options, struct rusage *rusage)
 {
+	DUMMY
 	(void)rusage;
 
 	return waitpid(-1, wstatus, options);

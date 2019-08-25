@@ -190,7 +190,7 @@ impl Tty {
     }
 
     /// Allow a shell for example to move cursor manually
-    fn move_cursor(&mut self, direction: CursorMove) {
+    pub fn move_cursor(&mut self, direction: CursorMove) {
         if !self.cursor.visible || !self.foreground {
             return;
         }
@@ -406,6 +406,8 @@ pub struct BufferedTty {
     pub tty: Tty,
     /// contains unfinished escaped sequence, capacity max = 256
     escaped_buf: String,
+    /// global ipc uid associated to the tty
+    uid_file_op: Option<usize>,
 }
 
 impl AsRef<Tty> for BufferedTty {
@@ -428,6 +430,7 @@ impl BufferedTty {
         Self {
             tty,
             escaped_buf: String::with_capacity(ESCAPED_BUF_CAPACITY),
+            uid_file_op: None,
         }
     }
 }
@@ -619,10 +622,11 @@ impl LineDiscipline {
             if self.termios.c_lflag & ICANON != 0 {
                 // handle delete key
                 if key as u32 == self.termios.c_cc[VERASE as usize] {
-                    self.read_buffer.pop();
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                    self.tty.write_char('\0').unwrap();
-                    self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    if self.read_buffer.pop().is_some() {
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                        self.tty.write_char('\0').unwrap();
+                        self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+                    }
                     return Ok(());;
                 }
                 // dbg!(key);
@@ -651,31 +655,31 @@ impl LineDiscipline {
                 }
                 if key as u32 == self.termios.c_cc[VEOF as usize] {
                     self.end_of_file_set = true;
-                    messaging::push_message(MessageTo::ProcessGroup {
-                        pgid: self.foreground_process_group,
-                        content: ProcessGroupMessage::SomethingToRead,
-                    });
+
+                    messaging::send_message(MessageTo::Reader {
+                        uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
+                    });;
                     return Ok(());;
                 }
             }
             if self.termios.c_lflag & ISIG != 0 {
                 // handle control_c
                 if key as u32 == self.termios.c_cc[VINTR as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
                         content: ProcessGroupMessage::Signal(Signum::SIGINT),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VSUSP as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
-                        content: ProcessGroupMessage::Signal(Signum::SIGSTOP),
+                        content: ProcessGroupMessage::Signal(Signum::SIGTSTP),
                     });
                     return Ok(());;
                 }
                 if key as u32 == self.termios.c_cc[VQUIT as usize] {
-                    messaging::push_message(MessageTo::ProcessGroup {
+                    messaging::send_message(MessageTo::ProcessGroup {
                         pgid: self.foreground_process_group,
                         content: ProcessGroupMessage::Signal(Signum::SIGQUIT),
                     });
@@ -694,10 +698,9 @@ impl LineDiscipline {
             if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
                 || !self.termios.c_lflag & ICANON != 0
             {
-                messaging::push_message(MessageTo::ProcessGroup {
-                    pgid: self.foreground_process_group,
-                    content: ProcessGroupMessage::SomethingToRead,
-                });
+                messaging::send_message(MessageTo::Reader {
+                    uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
+                });;
             }
             if self.termios.c_lflag & ECHO != 0 {
                 self.write(b);
@@ -718,6 +721,11 @@ impl LineDiscipline {
             *dest = src;
         }
         len_data_to_read
+    }
+
+    /// open a tty
+    pub fn open(&mut self, uid_file_op: usize) {
+        self.tty.uid_file_op = Some(uid_file_op);
     }
 
     /// read (from a process) on the tty

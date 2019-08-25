@@ -29,13 +29,13 @@ pub fn sys_read(fd: i32, mut buf: *mut u8, mut count: usize) -> SysResult<u32> {
                 .file_descriptor_interface;
 
             match fd_interface.read(fd as _, output)? {
-                IpcResult::Wait(res) => {
+                IpcResult::Wait(res, file_op_uid) => {
                     readen_bytes += res;
                     buf = unsafe { buf.add(res as _) };
                     count -= res as usize;
                     scheduler
                         .current_thread_mut()
-                        .set_waiting(WaitingState::Read);
+                        .set_waiting(WaitingState::Read(file_op_uid));
                     let _ret = auto_preempt()?;
                 }
                 IpcResult::Done(res) => return Ok(readen_bytes + res),

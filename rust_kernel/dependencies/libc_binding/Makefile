@@ -1,6 +1,5 @@
 all: src/libc.rs
 
-updated: all_includes.h ../../programs/libc/include/* Makefile
-	@echo updated > updated
+src/libc.rs: all_includes.h ../../../libc/include/* Makefile
 	@./bindgen.sh all_includes.h > src/libc.rs
-	@# echo $?
+	#@echo $?

@@ -131,7 +131,8 @@ pub fn init(driver: DiskDriver) -> IoResult<()> {
             let mbr = unsafe { Mbr::new(&a) };
 
             let disk_io = DiskIoBios::new(
-                dbg!(mbr.parts[0].start as u64 * 512),
+                // dbg!(mbr.parts[0].start as u64 * 512),
+                mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
             );
             unsafe {

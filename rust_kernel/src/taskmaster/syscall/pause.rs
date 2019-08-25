@@ -19,7 +19,7 @@ use libc_binding::Errno;
 /// interrupted by a signal, there is no successful completion return
 /// value. A value of -1 shall be returned and errno set to indicate
 /// the error.
-pub unsafe fn sys_pause() -> SysResult<u32> {
+pub fn sys_pause() -> SysResult<u32> {
     unpreemptible_context!({
         SCHEDULER
             .lock()
