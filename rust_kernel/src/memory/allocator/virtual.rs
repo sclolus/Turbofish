@@ -26,8 +26,7 @@ impl VirtualPageAllocator {
     /// Modify the allocFlags for a specific and existing Page
     #[inline(always)]
     pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
-        self.mmu.modify_page_entry(page, Into::<Entry>::into(flags));
-        invalidate_page(page);
+        self.change_flags_range_page_entry(page, NbrPages(1), flags)
     }
 
     /// Modify the AllocFlags of a given range of existing Virtual pages
@@ -48,11 +47,7 @@ impl VirtualPageAllocator {
     where
         U: FnMut(&mut Entry),
     {
-        Ok(update(
-            self.mmu
-                .get_entry_mut(page)
-                .ok_or::<MemoryError>(MemoryError::PageNotPresent)?,
-        ))
+        self.change_range_page_entry(page, NbrPages(1), update)
     }
 
     pub fn change_range_page_entry<U>(
@@ -64,10 +59,16 @@ impl VirtualPageAllocator {
     where
         U: FnMut(&mut Entry),
     {
-        for i in 0..nbr_pages.0 {
-            self.change_page_entry(start_page + NbrPages(i), update)?;
-        }
-        Ok(())
+        Ok({
+            for i in 0..nbr_pages.0 {
+                update(
+                    self.mmu
+                        .get_entry_mut(start_page + NbrPages(i))
+                        .ok_or::<MemoryError>(MemoryError::PageNotPresent)?,
+                );
+            }
+            invalidate_page_range(start_page, nbr_pages)
+        })
     }
 
     /// Check if the predicate is satisfied into a chunk of pages
