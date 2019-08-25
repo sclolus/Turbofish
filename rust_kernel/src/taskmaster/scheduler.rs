@@ -675,7 +675,7 @@ impl Scheduler {
                             .expect("no status after autopreempt");
                     }
                 }
-                _ => panic!("message not cevered"),
+                _ => panic!("message not covered"),
             },
             MessageTo::ProcessGroup { pgid, content } => {
                 for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
