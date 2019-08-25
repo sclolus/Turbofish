@@ -1,5 +1,5 @@
 use super::{BuddyAllocator, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::{invalidate_page, Entry, PageDirectory};
+use crate::memory::mmu::{invalidate_page, invalidate_page_range, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
@@ -27,6 +27,7 @@ impl VirtualPageAllocator {
     #[inline(always)]
     pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
         self.mmu.modify_page_entry(page, Into::<Entry>::into(flags));
+        invalidate_page(page);
     }
 
     /// Modify the AllocFlags of a given range of existing Virtual pages
@@ -37,8 +38,10 @@ impl VirtualPageAllocator {
         flags: AllocFlags,
     ) {
         for i in 0..nbr_pages.0 {
-            self.change_flags_page_entry(start_page + NbrPages(i), flags);
+            self.mmu
+                .modify_page_entry(start_page + NbrPages(i), Into::<Entry>::into(flags));
         }
+        invalidate_page_range(start_page, nbr_pages);
     }
 
     pub fn change_page_entry<U>(&mut self, page: Page<Virt>, update: &mut U) -> Result<()>
