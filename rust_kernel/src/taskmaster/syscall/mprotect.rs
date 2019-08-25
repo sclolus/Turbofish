@@ -94,6 +94,9 @@ pub unsafe fn sys_mprotect(addr: *mut u8, length: usize, prot: MmapProt) -> SysR
                     NbrPages::from(length),
                     AllocFlags::from(prot),
                 );
+
+                // ... Faut faire ca sur tout la range...
+                crate::memory::mmu::invalidate_page(vaddr.into());
             }
         }
     });
