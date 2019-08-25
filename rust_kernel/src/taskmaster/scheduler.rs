@@ -628,6 +628,9 @@ impl Scheduler {
                     pgid: dead_process_pgid,
                     status,
                 } => {
+                    // to avoid the borrow checker we declare a bool
+                    // which comes to true if we find the father Waiting
+                    // with the right options
                     let mut finded = false;
                     let s: Status = status.into();
                     if let Some(thread) = self
@@ -664,12 +667,13 @@ impl Scheduler {
                             status: s,
                         }));
                     }
-                    // consume the state
                     if finded && (s == Status::Stopped || s == Status::Continued) {
-                        let thread_group = self
-                            .get_thread_group_mut(dead_process_pid)
-                            .expect("no dead pid");
-                        thread_group
+                        // consume the state, because at the return of
+                        // auto_preempt after scheduling, the state
+                        // can change and it maybe too late to consume
+                        // the state
+                        self.get_thread_group_mut(dead_process_pid)
+                            .expect("no dead pid")
                             .job
                             .consume_last_event()
                             .expect("no status after autopreempt");
