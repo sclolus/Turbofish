@@ -4,6 +4,7 @@ use core::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use try_clone_derive::TryClone;
 
 /// new type representing a number of page
+#[repr(C)]
 #[derive(Debug, Copy, Clone, TryClone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NbrPages(pub usize);
 

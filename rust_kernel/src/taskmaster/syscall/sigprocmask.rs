@@ -42,11 +42,7 @@ use super::SysResult;
 ///
 /// If sigprocmask() fails, the thread's signal mask shall not be
 /// changed.
-pub unsafe fn sys_sigprocmask(
-    how: u32,
-    set: *const sigset_t,
-    oldset: *mut sigset_t,
-) -> SysResult<u32> {
+pub fn sys_sigprocmask(how: u32, set: *const sigset_t, oldset: *mut sigset_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
         let checked_oldset;
@@ -61,14 +57,12 @@ pub unsafe fn sys_sigprocmask(
             checked_set = if set.is_null() {
                 None
             } else {
-                v.check_user_ptr::<u32>(set)?;
-                Some(&*set)
+                Some(v.make_checked_ref(set)?)
             };
             checked_oldset = if oldset.is_null() {
                 None
             } else {
-                v.check_user_ptr::<u32>(oldset)?;
-                Some(&mut *oldset)
+                Some(v.make_checked_ref_mut(oldset)?)
             };
         }
         scheduler

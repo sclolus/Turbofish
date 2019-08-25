@@ -242,7 +242,7 @@ impl FileDescriptorInterface {
 /// Some boilerplate to check if all is okay
 impl Drop for FileDescriptorInterface {
     fn drop(&mut self) {
-        println!("FD interface droped");
+        //         println!("FD interface droped");
     }
 }
 

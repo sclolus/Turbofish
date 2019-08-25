@@ -2,12 +2,16 @@
 [BITS 32]
 
 section .text
+
 global _enable_paging
+
 global _read_cr2
 global _read_cr3
+
 global _invlpg
-;; global _enable_paging
-;; global _disable_paging
+global _invlpg_range
+
+%define PAGE_SIZE 4096
 
 ;; It loads the argument as the page directory pointer in cr3,
 ;; then actives paging.
@@ -39,6 +43,20 @@ _invlpg:
 	mov ebp, esp
 	mov eax, [ebp + 8]
 	invlpg [eax]
+	pop ebp
+	ret
+
+_invlpg_range:
+	push ebp
+	mov ebp, esp
+
+	mov eax, [ebp + 8]
+	mov ecx, [ebp + 12]
+.repeat:
+	invlpg [eax]
+	add eax, PAGE_SIZE
+	loop .repeat
+
 	pop ebp
 	ret
 

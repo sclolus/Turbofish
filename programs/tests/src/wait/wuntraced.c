@@ -21,22 +21,22 @@ int main(void)
 			perror("waitpid failed 1");
 			exit(1);
 		}
+		printf("raw son status: %hhx   WIFSTOPPED result: %i WIFCONTINUED result: %i\n", status, WIFSTOPPED(status), WIFCONTINUED(status));
 		if (!WIFSTOPPED(status)) {
 			dprintf(2, "WIFSTOPPED should be true");
 			exit(1);
 		}
 		kill(pid, SIGCONT);
-		printf("raw son status: %hhx   WIFSTOPPED result: %i WIFCONTINUED result: %i\n", status, WIFSTOPPED(status), WIFCONTINUED(status));
 		ret = waitpid(pid, &status, WUNTRACED | WCONTINUED);
 		if (ret == -1) {
 			perror("waitpid failed 2");
 			exit(1);
 		}
+		printf("raw son status: %hhx   WIFSTOPPED result: %i WIFCONTINUED result: %i\n", status, WIFSTOPPED(status), WIFCONTINUED(status));
 		if (!WIFCONTINUED(status)) {
 			dprintf(2, "WIFCONTINUED should be true");
 			exit(1);
 		}
-		printf("raw son status: %hhx   WIFSTOPPED result: %i\n", status, WIFSTOPPED(status));
 
 		sleep(1);
 		kill(pid, SIGKILL);
@@ -49,7 +49,7 @@ int main(void)
 			perror("waitpid failed:");
 			exit(1);
 		}
-		printf("raw son status: addr: %p, %x %i\n", &status, status, WIFSIGNALED(status));
+		printf("raw son status: addr: %p, status: %x WIFSIGNALED: %i\n", &status, status, WIFSIGNALED(status));
 		if (!WIFSIGNALED(status)) {
 			dprintf(2, "WIFSIGNALED should be true");
 			exit(1);
