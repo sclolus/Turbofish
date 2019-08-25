@@ -7,7 +7,7 @@ use core::convert::TryInto;
 use libc_binding::Errno;
 
 /// Register a new handler for a specified signum
-pub unsafe fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
+pub fn sys_signal(signum: u32, handler: usize) -> SysResult<u32> {
     unpreemptible_context!({
         let s: StructSigaction = StructSigaction {
             sa_handler: handler,

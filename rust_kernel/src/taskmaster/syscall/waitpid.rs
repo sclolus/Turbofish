@@ -199,7 +199,7 @@ use libc_binding::{Errno, Pid};
 fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    {
+    let wstatus = {
         let v = scheduler
             .current_thread_mut()
             .unwrap_process_mut()
@@ -207,10 +207,12 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
         // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
         // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
-        if wstatus != 0x0 as *mut i32 {
-            v.check_user_ptr::<i32>(wstatus)?;
+        if wstatus.is_null() {
+            None
+        } else {
+            Some(v.make_checked_ref_mut::<i32>(wstatus)?)
         }
-    }
+    };
 
     // WIFEXITED(wstatus)
     // returns true if the child terminated normally, that is, by calling exit(3) or _exit(2), or by returning from main().
@@ -319,8 +321,8 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                 None => Status::from(tg.job.consume_last_event().expect("no status")),
             };
             // TODO: Manage terminated value with signal
-            if !wstatus.is_null() {
-                unsafe { *wstatus = status.into() }
+            if let Some(wstatus) = wstatus {
+                *wstatus = status.into()
             }
             // fflush zombie
             // Return immediatly
@@ -353,10 +355,8 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                         scheduler.remove_thread_group(dead_process_pid);
                     }
                     // Set wstatus pointer is not null by reading y
-                    if !wstatus.is_null() {
-                        unsafe {
-                            *wstatus = status.into();
-                        }
+                    if let Some(wstatus) = wstatus {
+                        *wstatus = status.into();
                     }
                     dead_process_pid
                 }

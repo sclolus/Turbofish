@@ -9,7 +9,7 @@ use core::convert::TryInto;
 use libc_binding::Errno;
 
 /// Register a new handler for a specified signum with sigaction params
-pub unsafe fn sys_sigaction(
+pub fn sys_sigaction(
     signum: u32,
     act: *const StructSigaction,
     old_act: *mut StructSigaction,
@@ -28,14 +28,12 @@ pub unsafe fn sys_sigaction(
             checked_act = if act.is_null() {
                 None
             } else {
-                v.check_user_ptr::<StructSigaction>(act)?;
-                Some(&*act)
+                Some(v.make_checked_ref(act)?)
             };
             checked_old_act = if old_act.is_null() {
                 None
             } else {
-                v.check_user_ptr::<StructSigaction>(old_act)?;
-                Some(&mut *old_act)
+                Some(v.make_checked_ref_mut(old_act)?)
             }
         }
         // TODO: Use old_act

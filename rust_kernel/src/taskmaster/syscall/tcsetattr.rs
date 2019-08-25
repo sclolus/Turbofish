@@ -85,20 +85,20 @@ pub fn sys_tcsetattr(
 ) -> SysResult<u32> {
     unpreemptible_context!({
         let scheduler = SCHEDULER.lock();
-        {
+        let termios_p = {
             let v = scheduler
                 .current_thread()
                 .unwrap_process()
                 .get_virtual_allocator();
 
             // Check if pointer exists in user virtual address space
-            v.check_user_ptr(termios_p)?;
-        }
+            v.make_checked_ref(termios_p)?
+        };
         let fd_interface = &scheduler
             .current_thread_group_running()
             .file_descriptor_interface;
 
         let file_operation = &mut fd_interface.get_file_operation(fildes)?;
-        file_operation.tcsetattr(optional_actions, unsafe { &*termios_p })
+        file_operation.tcsetattr(optional_actions, termios_p)
     })
 }

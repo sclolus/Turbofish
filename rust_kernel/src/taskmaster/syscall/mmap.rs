@@ -31,7 +31,7 @@ pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
             .get_virtual_allocator();
 
         // Check if pointer exists in user virtual address space
-        v.check_user_ptr::<MmapArgStruct>(mmap_arg)?;
+        let mmap_arg = v.make_checked_ref(mmap_arg)?;
 
         #[allow(unused_variables)]
         let MmapArgStruct {
@@ -41,7 +41,7 @@ pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
             flags,
             fd,
             offset,
-        } = unsafe { *mmap_arg };
+        } = *mmap_arg;
 
         let alloc_flags = AllocFlags::from(prot);
         let addr = v.alloc(length, alloc_flags)?;
