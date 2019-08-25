@@ -1,9 +1,9 @@
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
-    OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
-    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
-    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, MMAP, MPROTECT, MUNMAP,
+    NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
+    SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -120,6 +120,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             TCGETPGRP => eprintln!("tcgetpgrp({:#?})", ebx as i32),
             SETEGID => eprintln!("setegid({:#?})", ebx as gid_t),
             SETEUID => eprintln!("seteuid({:#?})", ebx as uid_t),
+            ISATTY => eprintln!("isatty({:#?})", ebx as u32),
             _ => eprintln!("unknown syscall()",),
         }
     })
@@ -175,6 +176,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         TCGETPGRP => "tcgetpgrp",
         SETEGID => "setegid",
         SETEUID => "seteuid",
+        ISATTY => "isatty",
         _ => "unknown syscall",
     };
     unpreemptible_context!({

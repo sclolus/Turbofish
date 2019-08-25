@@ -19,6 +19,7 @@ SRC_C += DeepThought \
 		munmap/munmap \
 		mprotect/mprotect \
 		mmap/mmap \
+		isatty/isatty
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

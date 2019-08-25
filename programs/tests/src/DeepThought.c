@@ -23,7 +23,8 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/mprotect/mprotect"},
 	{.path = "/bin/mmap/mmap"},
 	{.path = "/bin/munmap/munmap"},
-	{.path = "/bin/sigprocmask/sigprocmask"}
+	{.path = "/bin/sigprocmask/sigprocmask"},
+	{.path = "/bin/isatty/isatty"}
 };
 
 void _exit_qemu(int val)

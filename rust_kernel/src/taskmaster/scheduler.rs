@@ -171,7 +171,7 @@ impl Scheduler {
         // get the keypress from the keybuffer
 
         for message in messaging::drain_messages() {
-            // eprintln!("{:#?}", message);
+            eprintln!("{:#?}", message);
             match message {
                 MessageTo::Tty { key_pressed } => unsafe {
                     let _r = TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
