@@ -7,12 +7,15 @@
 
 extern char **environ;
 
-#warning DUMMY IMPLEMENTATION
-#include <custom.h>
-
 char *getenv (const char *name)
 {
-	DUMMY
-	(void)name;
+	if (environ == NULL) {
+		return NULL;
+	}
+	for (size_t i = 0; environ[i] != NULL; i++) {
+		if (strcmp(environ[i], name) == '=') {
+			return environ[i] + strlen(name) + 1;
+		}
+	}
 	return NULL;
 }
