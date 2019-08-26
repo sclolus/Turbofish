@@ -4,8 +4,7 @@ pub mod direntry;
 use direntry::{DirectoryEntry, DirectoryEntryHeader, DirectoryEntryId};
 
 pub mod inode;
-use inode::{Inode, InodeId, InodeStatus, InodeNumber, mode_t, File, InodeOperations};
-
+use inode::{mode_t, File, Inode, InodeId, InodeNumber, InodeOperations, InodeStatus};
 
 pub mod posix_consts;
 pub use posix_consts::*;
@@ -13,14 +12,13 @@ pub use posix_consts::*;
 pub mod stat;
 use stat::UserStat;
 
-use alloc::vec::Vec;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 
-
-use core::str::{Split};
+use core::cell::RefCell;
 use core::iter::Filter;
 use core::option::NoneError;
-use core::cell::RefCell;
+use core::str::Split;
 
 use alloc::collections::btree_map::BTreeMap;
 
@@ -64,7 +62,6 @@ impl From<VfsError> for NoneError {
     }
 }
 
-
 pub type VfsResult<T> = Result<T, VfsError>;
 
 pub trait Filesystem {
@@ -75,16 +72,13 @@ pub trait Filesystem {
 
 enum FileSystemType {}
 
-pub struct SuperBlockOperations {
-
-}
+pub struct SuperBlockOperations {}
 
 pub struct Superblock {
     file_system_type: FileSystemType,
     blocksize: usize,
     super_operations: SuperBlockOperations,
 }
-
 
 pub struct Dcache {
     root_dentry: DirectoryEntryId,
@@ -93,10 +87,7 @@ pub struct Dcache {
 
 impl Dcache {
     pub fn new() -> Self {
-        let mut new = Self {
-            root_dentry: 2,
-            dentries: BTreeMap::new(),
-        };
+        let mut new = Self { root_dentry: 2, dentries: BTreeMap::new() };
 
         let root_dentry = DirectoryEntry::new("/", Filetype::Directory, InodeId::new(2, 0)).unwrap();
         new.add_direntry(root_dentry).unwrap();
@@ -107,7 +98,7 @@ impl Dcache {
         let mut current_id = self.root_dentry; // check this
         loop {
             if let None = self.dentries.get(&current_id) {
-                return current_id
+                return current_id;
             }
             current_id = current_id.checked_add(1).expect("No space left inside the dcache lool");
         }
@@ -141,7 +132,6 @@ pub struct VirtualFileSystem {
     dcache: Dcache,
 }
 type Path = str;
-
 
 bitflags! {
     #[derive(Default)] // I wonder for this derive <.<
@@ -228,9 +218,8 @@ impl VirtualFileSystem {
         new.dcache.add_direntry(DirectoryEntry::new("test1", Filetype::Directory, InodeId::new(3, 0))?);
         new.dcache.add_direntry(DirectoryEntry::new("test2", Filetype::Directory, InodeId::new(3, 0))?);
         new.dcache.add_direntry(DirectoryEntry::new("test3", Filetype::Directory, InodeId::new(3, 0))?);
-o        Ok(new)
+        Ok(new)
     }
-
 
     fn pathname_resolution(&mut self, path: &Path) -> Option<&DirectoryEntry> {
         // fn aux<'a>(virtual_file_system: &'a mut VirtualFileSystem, mut components: Split<char>, root: &'a mut DirectoryEntry) -> Option<&'a DirectoryEntry> {
@@ -279,16 +268,16 @@ o        Ok(new)
         let mut components = path_components;
         let mut current_dir_id = self.dcache.root_dentry;
         'walk: loop {
-            let component = loop { // rewrite all of this with skip_while.
+            let component = loop {
+                // rewrite all of this with skip_while.
                 match components.next() {
                     Some(component) => {
                         if component == "" {
                             continue;
                         }
-                        break component
-
-                    },
-                    None => return Some(self.dcache.get_direntry(current_dir_id)?)
+                        break component;
+                    }
+                    None => return Some(self.dcache.get_direntry(current_dir_id)?),
                 }
             };
             let current_dir_inode_id;
@@ -296,7 +285,7 @@ o        Ok(new)
                 let current_dir = self.dcache.get_direntry(current_dir_id)?;
                 current_dir_inode_id = current_dir.header.inode_id;
                 if !current_dir.is_directory() {
-                    return None
+                    return None;
                 }
                 for &d_id in current_dir.directory_entries().unwrap() {
                     let dirent = self.dcache.get_direntry(d_id)?;
@@ -307,7 +296,8 @@ o        Ok(new)
                 }
             }
             let current_dir_inode = self.inodes.get(&current_dir_inode_id)?;
-            let new_direntry = (current_dir_inode.inode_operations.lookup_direntry.unwrap())(&current_dir_inode, component); // remove this unwrap
+            let new_direntry =
+                (current_dir_inode.inode_operations.lookup_direntry.unwrap())(&current_dir_inode, component); // remove this unwrap
 
             if let Some(direntry) = new_direntry {
                 let direntry = self.dcache.add_direntry(direntry)?;
@@ -321,11 +311,7 @@ o        Ok(new)
         }
     }
 
-    fn mount_on_dentry(&mut self,
-                       filesystem: Box<Filesystem>,
-                       dentry: &mut DirectoryEntry) -> VfsResult<()> {
-
-
+    fn mount_on_dentry(&mut self, filesystem: Box<Filesystem>, dentry: &mut DirectoryEntry) -> VfsResult<()> {
         let new_superblock = filesystem.read_superblock();
 
         self.superblocks.push(new_superblock);
@@ -333,8 +319,7 @@ o        Ok(new)
         Ok(())
     }
 
-    fn add_inode(&mut self,
-                 inode: Inode) -> VfsResult<()> {
+    fn add_inode(&mut self, inode: Inode) -> VfsResult<()> {
         if self.inodes.contains_key(&inode.id) {
             Result::Err(VfsError::InodeAlreadyExists)
         } else {
@@ -342,8 +327,6 @@ o        Ok(new)
             Result::Ok(())
         }
     }
-
-
 
     pub fn get_inode(&self, id: InodeId) -> Option<&Inode> {
         self.inodes.get(&id)
@@ -370,44 +353,43 @@ o        Ok(new)
         if (ref_count == 0) {
             self.inodes.remove(&id);
         }
-        return Ok(())
+        return Ok(());
     }
 
     pub fn open(&mut self, path: &Path, flags: open_flags, mode: mode_t) -> VfsResult<File> {
         // Applications shall specify exactly one of the first five values (file access modes)
         let unique_necessary = open_flags::O_EXEC
-                                | open_flags::O_RDONLY
-                                | open_flags::O_RDWR
-                                | open_flags::O_SEARCH
-                                | open_flags::O_WRONLY;
+            | open_flags::O_RDONLY
+            | open_flags::O_RDWR
+            | open_flags::O_SEARCH
+            | open_flags::O_WRONLY;
         if !flags.intersects(unique_necessary) {
-            return Err(VfsError::Errno(Einval))
+            return Err(VfsError::Errno(Einval));
         }
 
         // This checks for the exclusivity of those 5 flags.
         // problably should make this clearer
         if !((flags.bits()) & (unique_necessary.bits())).is_power_of_two() {
-            return Err(VfsError::Errno(Einval))
+            return Err(VfsError::Errno(Einval));
         }
-
 
         let dirent = match self.pathname_resolution(path) {
             None => {
                 if flags.contains(open_flags::O_CREAT) {
                     unimplemented!()
                 } else {
-                    return Err(VfsError::Errno(Eacces))
+                    return Err(VfsError::Errno(Eacces));
                 }
-            },
+            }
             Some(dirent) => dirent,
         };
 
         if flags.contains(open_flags::O_CREAT | open_flags::O_EXCL) {
-            return Err(VfsError::Errno(Eexist))
+            return Err(VfsError::Errno(Eexist));
         }
 
         let mut file = File::from_dentry(dirent);
-        let mut inode = self.get_inode_mut(dirent.header.inode_id).unwrap();// remove this unwrap
+        let mut inode = self.get_inode_mut(dirent.header.inode_id).unwrap(); // remove this unwrap
         file.flags = flags;
 
         (inode.inode_operations.open.unwrap())(inode, file, flags, mode)
@@ -489,7 +471,9 @@ pub fn init() -> VfsResult<VirtualFileSystem> {
     let vfs = VirtualFileSystem::new()?;
 
     println!("{}", vfs);
-    let result: Result<(), VfsError> = vfs.dcache.walk_tree_mut(&mut |entry| { entry.add_direntry(DirectoryEntry::new("lol", Filetype::Directory, InodeId::new(5, 0))?);; Ok(())});
+    let result: Result<(), VfsError> = vfs.dcache.walk_tree_mut(&mut |entry| {
+        entry.add_direntry(DirectoryEntry::new("lol", Filetype::Directory, InodeId::new(5, 0))?);;        Ok(())
+    });
 
     println!("{}", vfs);
     println!("pathname resolution {:?}", vfs.pathname_resolution("/test/lol"));
@@ -497,4 +481,40 @@ pub fn init() -> VfsResult<VirtualFileSystem> {
     println!("pathname resolution {:?}", vfs.pathname_resolution("/test/dlol"));
 
     Ok(vfs)
+}
+
+mod test {
+    macro_rules!    make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name {
+
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_fail]
+            fn $name {
+
+            }
+        };
+
+    }
+
+    macro_rules! vfs_test {
+        ($body: expr, $name: ident) => {
+            make_test! {$body, $name}
+        };
+        (failing, $body: expr, $name: ident) => {
+            make_test! {$body, $name}
+        };
+    }
+
+    vfs_test! {
+        {
+            let vfs = Vfs::new();
+
+            assert!(vfs.file_exists("/"));
+        }, file_exists_root
+    }
 }

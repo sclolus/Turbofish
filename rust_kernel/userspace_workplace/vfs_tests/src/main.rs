@@ -1,4 +1,5 @@
 #![feature(underscore_const_names)]
+#![feature(type_ascription)]
 #![feature(try_trait)]
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::collections::BTreeMap;
@@ -406,7 +407,20 @@ impl VirtualFileSystem {
     pub fn creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
         let flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
 
+        // This effectively does not release fd.
         Ok(self.open(current, path, flags, mode)?)
+    }
+
+    pub fn recursive_creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
+        let mut ancestors = path.ancestors();
+
+        let child = ancestors.next().unwrap(); // remove this unwrap.
+                                               // let mut ancestors = ancestors.rev(); //uncomment this
+        for ancestor in ancestors {
+            self.creat(current, ancestor, FilePermissions::S_IFDIR).unwrap(); // forget fd?
+        }
+
+        Ok(self.creat(current, child, mode)?)
     }
 
     pub fn chmod(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
@@ -496,6 +510,11 @@ impl VirtualFileSystem {
 
     pub fn lseek(&mut self, current: &mut Current, fd: Fd, offset: Offset, seek: SeekType) -> VfsResult<Offset> {
         Ok(0)
+    }
+
+    pub fn file_exists(&self, current: &Current, path: Path) -> VfsResult<bool> {
+        self.dcache.pathname_resolution(current.cwd, path).unwrap();
+        Ok(true)
     }
 }
 
@@ -727,4 +746,117 @@ fn main() {
     //         println!("Error(e) => {:?}", e);
     //     }
     // }
+}
+
+#[cfg(test)]
+mod vfs {
+
+    fn default_current() -> Current {
+        Current { cwd: DirectoryEntryId::new(2), uid: 0, euid: 0, gid: 0, egid: 0, open_fds: BTreeMap::new() }
+    }
+
+    use super::*;
+    // rename this
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    macro_rules! vfs_test {
+        ($body: block, $name: ident) => {
+            make_test! {$body, $name}
+        };
+        (failing, $body: block, $name: ident) => {
+            make_test! {failing, $body, $name}
+        };
+    }
+
+    macro_rules! vfs_file_exists_test {
+        ($body: block, $path: expr, $name: ident) => {
+            make_test! {{
+                let mut vfs = Vfs::new().unwrap();
+                let mut current = default_current();
+                let path: &str = $path;
+                let path: Path = path.try_into().unwrap();
+
+                if path != "/".try_into().unwrap() {
+                    vfs.creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+                }
+                assert!(vfs.file_exists(&current, path).unwrap())
+            }, $name}
+        };
+        (failing, $body: block, $name: ident) => {
+            make_test! {failing, {
+                let mut vfs = Vfs::new().unwrap();
+                let mut current = default_current();
+                let path: &str = $path;
+                let path: Path = path.try_into().unwrap();
+
+                if path != "/".try_into().unwrap() {
+                    vfs.creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+                }
+                assert!(vfs.file_exists(&current, path).unwrap())
+            }, $name}
+        };
+    }
+
+    vfs_file_exists_test! {{}, "/", file_exists_root}
+    vfs_file_exists_test! {{
+    }, "a", file_exists_basic_a}
+
+    vfs_file_exists_test! {{
+    }, "a/b", file_exists_basic_a_b}
+
+    vfs_file_exists_test! {{
+    }, "/a/b", file_exists_basic_root_a_b}
+
+    macro_rules! vfs_recursive_creat_test {
+        ($path: expr, $name: ident) => {
+            make_test! {{
+                let mut vfs = Vfs::new().unwrap();
+                let mut current = default_current();
+                let path: &str = $path;
+                let path: Path = path.try_into().unwrap();
+
+                vfs.recursive_creat(&mut current
+                                    , path.clone()
+                                    , FilePermissions::S_IRWXU).unwrap();
+                assert!(vfs.file_exists(&current, path).unwrap())
+            }, $name}
+        };
+        (failing, $path: expr, $name: ident) => {
+            make_test! {failing, {
+                let mut vfs = Vfs::new().unwrap();
+                let mut current = default_current();
+                let path: &str = $path;
+                let path: Path = path.try_into().unwrap();
+
+                vfs.recursive_creat(&mut current
+                                    , path.clone()
+                                    , FilePermissions::S_IRWXU).unwrap();
+                for ancestors in path.ancestors() {
+                    assert!(vfs.file_exists(&current, ancestor).unwrap())
+                }
+            }, $name}
+        };
+    }
+
+    vfs_recursive_creat_test! {"a/b/c/d/e/f/g", recursive_creat_a_b_c_d_e_f_g}
+    vfs_recursive_creat_test! {"a/b/c/d/e/f  ", recursive_creat_a_b_c_d_e_f}
+    vfs_recursive_creat_test! {"a/b/c/d/e    ", recursive_creat_a_b_c_d_e}
+    vfs_recursive_creat_test! {"a/b/c/d      ", recursive_creat_a_b_c_d}
+    vfs_recursive_creat_test! {"a/b/c        ", recursive_creat_a_b_c}
+    // vfs_recursive_creat_test! {"a/b          ", recursive_creat_a_b} // infinite loop
+    // vfs_recursive_creat_test! {"a            ", recursive_creat_a}
 }

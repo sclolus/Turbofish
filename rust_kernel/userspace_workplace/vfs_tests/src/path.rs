@@ -1,13 +1,16 @@
 use core::cmp::Ordering;
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem;
+use core::result::Result as StdResult;
 use core::slice::Iter;
 use errno::Errno;
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
 
 use itertools::unfold;
+
+type Result<T> = StdResult<T, Errno>;
 
 /// Newtype of filename
 #[derive(Copy, Clone)]
@@ -16,7 +19,7 @@ pub struct Filename(pub [u8; NAME_MAX], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self, Errno> {
+    fn try_from(s: &str) -> Result<Self> {
         let mut n = [0; NAME_MAX];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
             return Err(Errno::Einval);
@@ -91,7 +94,7 @@ impl fmt::Display for Filename {
 }
 
 use core::ops::Range;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone)] // Copy right ?
 pub struct Components<'a> {
     path: &'a Path,
     current: Option<Range<usize>>,
@@ -112,6 +115,19 @@ impl<'a> Components<'a> {
         } else {
             self.path.is_absolute() && self.current.as_ref().unwrap().start == 0
         }
+    }
+
+    pub fn divide_at(mut self, offset: usize) -> (Self, Self) {
+        if !self.current.as_ref().unwrap_or(&(0..0)).contains(&offset) {
+            self.current = None;
+            let (mut a, mut b) = (self.clone(), self.clone());
+            return (a, b);
+        }
+
+        let (mut a, mut b) = (self.clone(), self.clone());
+        a.current = dbg!(a.current.map(|range| range.start..offset));
+        b.current = b.current.map(|range| offset..range.end);
+        (a, b)
     }
 }
 
@@ -172,7 +188,7 @@ impl Path {
         Self::null_path()
     }
 
-    fn set_absolute(&mut self, value: bool) -> Result<&mut Self, Errno> {
+    fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
         if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
             return Err(Errno::Enametoolong);
         }
@@ -204,13 +220,36 @@ impl Path {
         Self::try_from(components).unwrap() // well for now this should not be happening
     }
 
-    // pub fn ancestors(&self) -> impl Iterator<Item = Components> {
-    //     let iter = self.components();
-    //     let mut pop = 1;
-    //     unfold((), move |_| if pop == iter.path.depth() { None } else { Some(iter.clone().rev().skip(pop)) })
-    // }
+    pub fn ancestors<'a>(&'a self) -> impl Iterator<Item = Path> + 'a {
+        struct Ancestors<'a> {
+            iter: Components<'a>,
+            path: &'a Path,
+        }
 
-    pub fn push(&mut self, component: Filename) -> Result<&mut Self, Errno> {
+        impl<'a> Iterator for Ancestors<'a> {
+            type Item = Path;
+            fn next(&mut self) -> Option<Self::Item> {
+                let path = self.iter.clone().try_into().ok();
+                self.iter.next_back();
+                path
+            }
+        }
+
+        // impl<'a> DoubleEndedIterator for Ancestors<'a> {
+        //     fn next_back(&mut self) -> Option<Self::Item> {
+
+        //     }
+
+        // }
+        let mut components = self.components();
+        unfold((), move |_| {
+            let res = components.clone().try_into().ok();
+            components.next_back();
+            res
+        })
+    }
+
+    pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
         // this is an Option return type actually
         let total_length;
         if self.depth() != 0 {
@@ -258,23 +297,52 @@ impl Path {
         Components::from_path(self)
     }
 
-    pub fn chain(&mut self, other: Path) -> Result<&mut Self, Errno> {
+    pub fn chain(&mut self, other: Path) -> Result<&mut Self> {
         if self == &Path::null_path() {
             *self = other;
             Ok(self)
         } else {
-            for component in other.components() {
-                // implement into iter to prevent useless copies of components
-                self.push(*component)?;
-            }
+            self.chain_components(other.components())?;
             Ok(self)
         }
+    }
+
+    pub fn chain_components<'a, T>(&mut self, comps: T) -> Result<&mut Self>
+    where
+        T: Iterator<Item = &'a Filename>,
+    {
+        for comp in comps {
+            self.push(*comp)?;
+        }
+        Ok(self)
+    }
+
+    pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
+        let mut stack = self.clone(); // well need to copy data temporary.
+        let (mut comps_begin, mut comps_end) = stack.components().divide_at(offset);
+
+        // comps_begin.next_back();
+        // comps_end.next();
+
+        println!("Begin: {:?}", comps_begin);
+        println!("End: {:?}", comps_end);
+        let mut new = Self::try_from(comps_begin)?;
+
+        new.chain(other)?.chain_components(comps_end)?;
+        *self = new;
+        Ok(self)
+    }
+}
+
+impl<'a> From<&'a Path> for Components<'a> {
+    fn from(value: &'a Path) -> Components<'a> {
+        value.components()
     }
 }
 
 impl<'a> TryFrom<Components<'a>> for Path {
     type Error = Errno;
-    fn try_from(comps: Components<'a>) -> Result<Self, Errno> {
+    fn try_from(comps: Components<'a>) -> Result<Self> {
         let mut path = Path::new();
 
         path.set_absolute(comps.is_absolute());
@@ -287,7 +355,7 @@ impl<'a> TryFrom<Components<'a>> for Path {
 
 impl TryFrom<&str> for Path {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self, Errno> {
+    fn try_from(s: &str) -> Result<Self> {
         if s.len() > PATH_MAX - 1 {
             return Err(Errno::Enametoolong);
         }
@@ -307,7 +375,7 @@ impl TryFrom<&str> for Path {
 
 impl PartialEq for Path {
     fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
+        if self.len() != other.len() || self.depth() != other.depth() || self.is_absolute() != other.is_absolute() {
             return false;
         }
 
@@ -741,16 +809,17 @@ mod test {
     make_path_chain_test! {("a/", "b"),
     {"a/b"},
     test_path_chain_a_b}
+
     make_path_chain_test! {("/a/", "b"),
     {"/a/b"},
     test_path_chain_root_a_b}
 
     make_path_chain_test! {("/a/b/", "b/c/d/"),
-        {"/a/b/b/c/d/"},
+    {"/a/b/b/c/d/"},
     test_path_chain_root_a_b_b_c_d}
 
     make_path_chain_test! {("/a/b/", "b/c/d/"),
-            {"/a/b/b/c/d/"},
+    {"/a/b/b/c/d/"},
     test_path_chain_root_a_b__b_c_d}
 
     make_path_chain_test! {("", "a"),
@@ -870,5 +939,168 @@ mod test {
             }
         };
     }
+
+    #[test]
+    fn path_replace_basic() {
+        let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
+
+        let a = expect(Path::try_from("a/b/c"));
+        let b = expect(Path::try_from("e/f"));
+        let expected =
+            [expect(Path::try_from("e/f/b/c")), expect(Path::try_from("a/e/f/c")), expect(Path::try_from("a/b/e/f"))];
+
+        for offset in 0..a.depth() {
+            let mut test = a.clone();
+
+            test.replace(offset, b.clone());
+            assert_eq!(test, expected[offset]);
+        }
+    }
+
+    #[test]
+    fn components_divide_at() {
+        let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
+
+        let a = expect(Path::try_from("/a/b/c/d/e/f"));
+        let expected = [
+            (expect(Path::try_from("/")), expect(Path::try_from("a/b/c/d/e/f"))),
+            (expect(Path::try_from("/a/")), expect(Path::try_from("b/c/d/e/f"))),
+            (expect(Path::try_from("/a/b/")), expect(Path::try_from("c/d/e/f"))),
+            (expect(Path::try_from("/a/b/c/")), expect(Path::try_from("d/e/f"))),
+            (expect(Path::try_from("/a/b/c/d/")), expect(Path::try_from("e/f"))),
+            (expect(Path::try_from("/a/b/c/d/e/")), expect(Path::try_from("f"))),
+            (expect(Path::try_from("/a/b/c/d/e/f")), expect(Path::try_from(""))),
+        ];
+
+        for offset in 0..a.depth() {
+            let test = a.clone();
+            let (test_1, test_2) = test.components().divide_at(offset);
+
+            println!("test_1 {:?}\nexpect: {:?}", test_1, expected[offset].0.components());
+            println!("test_2 {:?}\nexpect: {:?}", test_2, expected[offset].1.components());
+
+            assert!(test_1.eq(expected[offset].0.components()));
+            assert!(test_2.eq(expected[offset].1.components()));
+        }
+    }
+
+    use core::convert::TryInto;
+
+    macro_rules! make_path_assert {
+        ($a: expr, $b: expr, $name: ident, $assertion: ident) => {
+            make_test! {pass, $name, {
+                let a: Path = $a.try_into().unwrap();
+                let b: Path = $b.try_into().unwrap();
+
+                $assertion!(a, b)
+            }}
+        };
+        (failing, $a: expr, $b: expr, $name: ident, $assertion: ident) => {
+            make_test! {failing, $name, {
+                let a: Path = $a.try_into().unwrap();
+                let b: Path = $b.try_into().unwrap();
+
+                $assertion!(a, b)
+            }}
+        };
+    }
+
+    make_path_assert! {"/", "/", path_eq_root_root, assert_eq}
+    make_path_assert! {"a", "a", path_eq_a_b, assert_eq}
+    make_path_assert! {"a/b", "a/b", path_eq_a_b_a_b, assert_eq}
+    make_path_assert! {"/a/b", "/a/b", path_eq_absolute_a_b_a_b, assert_eq}
+    make_path_assert! {"/", "a", path_neq_root_a, assert_ne}
+    make_path_assert! {"/", "/a", path_neq_root_root_a, assert_ne}
+    make_path_assert! {"/", "/a/b", path_neq_root_root_a_b, assert_ne}
+    make_path_assert! {"a/b", "/a/b", path_neq_relative_absolute, assert_ne}
+
+    macro_rules! make_path_ancestors_assert {
+        ($path: expr, $ancestors: expr, $name: ident, $assertion: ident) => {
+            make_test! {pass, $name, {
+                let path: Path = $path.try_into().unwrap();
+                let ancestors: &[&str] = $ancestors;
+
+                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter()) {
+                    $assertion!(ancestor, Path::try_from(expected).unwrap())
+                }
+            }}
+        };
+        (failing, $path: expr, $ancestors: expr, $name: ident, $assertion: ident) => {
+            make_test! {failing, $name, {
+                let path: Path = $path.try_into().unwrap();
+                let ancestors = $ancestors;
+
+                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter()) {
+                    $assertion!(ancestor, Path::try_from(expected).unwrap())
+                }
+            }}
+        };
+    }
+
+    make_path_ancestors_assert! {"a", &["a"], path_ancestors_basic_a, assert_eq}
+    make_path_ancestors_assert! {"/a", &["/a"], path_ancestors_basic_root_a, assert_eq}
+    make_path_ancestors_assert! {"a/b", &["a/b",
+    "a"], path_ancestors_basic_a_b, assert_eq}
+    make_path_ancestors_assert! {"a/b/c/d/e/f/g/h/", &[
+        "a/b/c/d/e/f/g/h/",
+            "a/b/c/d/e/f/g",
+            "a/b/c/d/e/f",
+            "a/b/c/d/e",
+            "a/b/c/d",
+            "a/b/c",
+            "a/b",
+            "a",
+    ], path_ancestors_basic_a_b_c_d_e_f_g_h, assert_eq}
+
+    make_path_ancestors_assert! {"/a/b/c/d/e/f/g/h/", &[
+        "/a/b/c/d/e/f/g/h/",
+            "/a/b/c/d/e/f/g",
+            "/a/b/c/d/e/f",
+            "/a/b/c/d/e",
+            "/a/b/c/d",
+            "/a/b/c",
+            "/a/b",
+            "/a",
+    ], path_ancestors_basic_root_a_b_c_d_e_f_g_h, assert_eq}
+
+    make_path_ancestors_assert! {"a/b/c/d/e/f/g", &[
+        "a/b/c/d/e/f/g",
+            "a/b/c/d/e/f",
+            "a/b/c/d/e",
+            "a/b/c/d",
+            "a/b/c",
+            "a/b",
+            "a",
+    ], path_ancestors_basic_a_b_c_d_e_f_g, assert_eq}
+
+    make_path_ancestors_assert! {"a/b/c/d/e/f", &[
+        "a/b/c/d/e/f",
+            "a/b/c/d/e",
+            "a/b/c/d",
+            "a/b/c",
+            "a/b",
+            "a",
+    ], path_ancestors_basic_a_b_c_d_e_f, assert_eq}
+
+    make_path_ancestors_assert! {"a/b/c/d/e", &[
+        "a/b/c/d/e",
+            "a/b/c/d",
+            "a/b/c",
+            "a/b",
+            "a",
+    ], path_ancestors_a_b_c_d_e, assert_eq}
+
+    make_path_ancestors_assert! {"a/b/c/d", &[
+        "a/b/c/d",
+            "a/b/c",
+            "a/b",
+            "a",
+    ], path_ancestors_a_b_c_d, assert_eq}
+
+    make_path_ancestors_assert! {"a/b/c", &[
+        "a/b/c",
+        "a/b",
+        "a",
+    ], path_ancestors_basic_a_b_c, assert_eq}
 
 }
