@@ -22,6 +22,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/wait/wuntraced"},
 	{.path = "/bin/mprotect/mprotect"},
 	{.path = "/bin/mmap/mmap"},
+	{.path = "/bin/atexit/atexit"},
 	{.path = "/bin/munmap/munmap"},
 	{.path = "/bin/sigprocmask/sigprocmask"},
 	{.path = "/bin/isatty/isatty"}

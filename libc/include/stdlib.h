@@ -58,6 +58,9 @@ long          a64l(const char *);
 void          abort(void);
 int           abs(int);
 int           atexit(void (*)(void));
+/*SHOULD BE PRIVATE */
+void          execute_atexit_handlers();
+/**/
 double        atof(const char *);
 int           atoi(const char *);
 long          atol(const char *);
