@@ -13,6 +13,7 @@
 #![feature(vec_remove_item)]
 #![feature(type_alias_enum_variants)]
 #![feature(const_vec_new)]
+#![feature(try_trait)]
 // #![deny(missing_docs)]
 
 extern crate alloc;
