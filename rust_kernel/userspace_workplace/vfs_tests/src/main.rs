@@ -54,6 +54,7 @@ pub enum VfsError {
     NotEnoughArguments,
     DirectoryNotMounted,
     DirectoryIsMounted,
+    UndefinedHandler,
 
     MountError,
     NoSuchInode,
@@ -174,6 +175,66 @@ impl core::ops::Add<usize> for FileSystemId {
     type Output = Self;
     fn add(self, rhs: usize) -> Self::Output {
         Self(self.0 + rhs)
+    }
+}
+
+pub type VfsHandler<T> = fn(VfsHandlerParams) -> VfsResult<T>;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum VfsHandlerKind {
+    Open,
+    LookupInode,
+    LookupEntries,
+    Creat,
+    Rename,
+    Chmod,
+    Chown,
+    Lchown,
+    Truncate,
+    TestOpen,
+}
+
+// #[derive(Debug, Clone, Default)]
+#[derive(Default)]
+pub struct VfsHandlerParams<'a> {
+    inode: Option<&'a Inode>,
+    file: Option<&'a File>,
+    path: Option<&'a Path>,
+}
+
+impl<'a> VfsHandlerParams<'a> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_inode(mut self, inode: &'a Inode) -> Self {
+        self.inode = Some(inode);
+        self
+    }
+
+    pub fn set_file(mut self, file: &'a File) -> Self {
+        self.file = Some(file);
+        self
+    }
+
+    pub fn set_path(mut self, path: &'a Path) -> Self {
+        self.path = Some(path);
+        self
+    }
+
+    pub fn unset_inode(mut self) -> Self {
+        self.inode = None;
+        self
+    }
+
+    pub fn unset_file(mut self) -> Self {
+        self.file = None;
+        self
+    }
+
+    pub fn unset_path(mut self) -> Self {
+        self.path = None;
+        self
     }
 }
 
@@ -405,7 +466,11 @@ impl VirtualFileSystem {
     }
 
     pub fn creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
-        let flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
+        let mut flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
+
+        if mode.contains(FilePermissions::S_IFDIR) {
+            flags |= OpenFlags::O_DIRECTORY
+        }
 
         // This effectively does not release fd.
         Ok(self.open(current, path, flags, mode)?)
@@ -414,8 +479,8 @@ impl VirtualFileSystem {
     pub fn recursive_creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
         let mut ancestors = path.ancestors();
 
-        let child = ancestors.next().unwrap(); // remove this unwrap.
-                                               // let mut ancestors = ancestors.rev(); //uncomment this
+        let child = ancestors.next_back().ok_or(Errno(Einval))?;
+        let mut ancestors = ancestors; //uncomment this
         for ancestor in ancestors {
             self.creat(current, ancestor, FilePermissions::S_IFDIR).unwrap(); // forget fd?
         }
@@ -791,12 +856,12 @@ mod vfs {
                 let path: Path = path.try_into().unwrap();
 
                 if path != "/".try_into().unwrap() {
-                    vfs.creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+                    vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
                 }
                 assert!(vfs.file_exists(&current, path).unwrap())
             }, $name}
         };
-        (failing, $body: block, $name: ident) => {
+        (failing, $body: block, $path: expr, $name: ident) => {
             make_test! {failing, {
                 let mut vfs = Vfs::new().unwrap();
                 let mut current = default_current();
@@ -804,7 +869,7 @@ mod vfs {
                 let path: Path = path.try_into().unwrap();
 
                 if path != "/".try_into().unwrap() {
-                    vfs.creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+                    vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
                 }
                 assert!(vfs.file_exists(&current, path).unwrap())
             }, $name}
@@ -812,14 +877,29 @@ mod vfs {
     }
 
     vfs_file_exists_test! {{}, "/", file_exists_root}
+    vfs_file_exists_test! {failing, {}, "", file_exists_null}
     vfs_file_exists_test! {{
     }, "a", file_exists_basic_a}
+    vfs_file_exists_test! {{
+    }, "/a", file_exists_basic_root_a}
 
     vfs_file_exists_test! {{
     }, "a/b", file_exists_basic_a_b}
+    vfs_file_exists_test! {{
+    }, "a/b/c", file_exists_basic_a_b_c}
+    vfs_file_exists_test! {{
+    }, "a/b/c/d", file_exists_basic_a_b_c_d}
+    vfs_file_exists_test! {{
+    }, "a/b/c/d/e/f", file_exists_basic_a_b_c_d_e_f}
 
     vfs_file_exists_test! {{
     }, "/a/b", file_exists_basic_root_a_b}
+    vfs_file_exists_test! {{
+    }, "/a/b/c", file_exists_basic_root_a_b_c}
+    vfs_file_exists_test! {{
+    }, "/a/b/c/d", file_exists_basic_root_a_b_c_d}
+    vfs_file_exists_test! {{
+    }, "/a/b/c/d/e/f", file_exists_basic_root_a_b_c_d_e_f}
 
     macro_rules! vfs_recursive_creat_test {
         ($path: expr, $name: ident) => {
@@ -857,6 +937,6 @@ mod vfs {
     vfs_recursive_creat_test! {"a/b/c/d/e    ", recursive_creat_a_b_c_d_e}
     vfs_recursive_creat_test! {"a/b/c/d      ", recursive_creat_a_b_c_d}
     vfs_recursive_creat_test! {"a/b/c        ", recursive_creat_a_b_c}
-    // vfs_recursive_creat_test! {"a/b          ", recursive_creat_a_b} // infinite loop
-    // vfs_recursive_creat_test! {"a            ", recursive_creat_a}
+    vfs_recursive_creat_test! {"a/b          ", recursive_creat_a_b} // infinite loop
+    vfs_recursive_creat_test! {"a            ", recursive_creat_a}
 }

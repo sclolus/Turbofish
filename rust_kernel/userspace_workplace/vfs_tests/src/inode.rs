@@ -4,7 +4,7 @@ use super::permissions::FilePermissions;
 use super::posix_consts::{time_t, timespec};
 use super::user::{GroupId, UserId};
 pub type InodeNumber = usize;
-use super::{FileSystemId, VfsResult};
+use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
@@ -37,6 +37,110 @@ pub struct InodeOperations {
     pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, UserId, GroupId) -> VfsResult<i32>>,
     pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, UserId, GroupId) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
     pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, Offset) -> VfsResult<i32>>,
+
+    pub test_open: Option<fn(params: VfsHandlerParams) -> VfsResult<i32>>,
+}
+
+impl InodeOperations {
+    // pub fn set_open(mut self, open: VfsHandler<i32>) -> Self {
+    //     self.open = Some(open);
+    //     self
+    // }
+
+    // pub fn set_lookup_inode(mut self, lookup_inode: VfsHandler<i32>) -> Self {
+    //     self.lookup_inode = Some(lookup_inode);
+    //     self
+    // }
+
+    // pub fn set_lookup_entries(mut self, lookup_entries: VfsHandler<i32>) -> Self {
+    //     self.lookup_entries = Some(lookup_entries);
+    //     self
+    // }
+
+    // pub fn set_creat(mut self, creat: VfsHandler<i32>) -> Self {
+    //     self.creat = Some(creat);
+    //     self
+    // }
+
+    // pub fn set_rename(mut self, rename: VfsHandler<i32>) -> Self {
+    //     self.rename = Some(rename);
+    //     self
+    // }
+
+    // pub fn set_chmod(mut self, chmod: VfsHandler<i32>) -> Self {
+    //     self.chmod = Some(chmod);
+    //     self
+    // }
+
+    // pub fn set_chown(mut self, chown: VfsHandler<i32>) -> Self {
+    //     self.chown = Some(chown);
+    //     self
+    // }
+
+    // pub fn set_lchown(mut self, lchown: VfsHandler<i32>) -> Self {
+    //     self.lchown = Some(lchown);
+    //     self
+    // }
+
+    // pub fn set_truncate(mut self, truncate: VfsHandler<i32>) -> Self {
+    //     self.truncate = Some(truncate);
+    //     self
+    // }
+
+    pub fn set_test_open(mut self, test_open: VfsHandler<i32>) -> Self {
+        self.test_open = Some(test_open);
+        self
+    }
+
+    // pub fn unset_open(mut self) -> Self {
+    //     self.open = None;
+    //     self
+    // }
+
+    // pub fn unset_lookup_inode(mut self) -> Self {
+    //     self.lookup_inode = None;
+    //     self
+    // }
+
+    // pub fn unset_lookup_entries(mut self) -> Self {
+    //     self.lookup_entries = None;
+    //     self
+    // }
+
+    // // pub fn unset_creat(mut self) -> Self {
+    // //     self.creat = None;
+    // //     self
+    // // }
+
+    // pub fn unset_rename(mut self) -> Self {
+    //     self.rename = None;
+    //     self
+    // }
+
+    // pub fn unset_chmod(mut self) -> Self {
+    //     self.chmod = None;
+    //     self
+    // }
+
+    // pub fn unset_chown(mut self) -> Self {
+    //     self.chown = None;
+    //     self
+    // }
+
+    // pub fn unset_lchown(mut self) -> Self {
+    //     self.lchown = None;
+    //     self
+    // }
+
+    // pub fn unset_truncate(mut self) -> Self {
+    //     self.truncate = None;
+    //     self
+    // }
+
+    // pub fn unset_test_open(mut self) -> Self {
+    //     self.test_open = None;
+    //     self
+    // }
 }
 
 /// Type of file
@@ -152,6 +256,23 @@ impl Inode {
     pub fn is_socket(&self) -> bool {
         self.access_mode.is_socket()
     }
+
+    pub fn dispatch_handler(&self, params: VfsHandlerParams, kind: VfsHandlerKind) -> VfsResult<i32> {
+        let ops = self.inode_operations;
+        match kind {
+            // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
+            // LookupInode => ops.lookup_inode.ok_or(VfsError::UndefinedHandler)?(params),
+            // LookupEntries => ops.lookup_entries.ok_or(VfsError::UndefinedHandler)?(params),
+            // Creat => ops.creat.ok_or(VfsError::UndefinedHandler)?(params),
+            // Rename => ops.rename.ok_or(VfsError::UndefinedHandler)?(params),
+            // Chmod => ops.chmod.ok_or(VfsError::UndefinedHandler)?(params),
+            // Chown => ops.chown.ok_or(VfsError::UndefinedHandler)?(params),
+            // Lchown => ops.lchown.ok_or(VfsError::UndefinedHandler)?(params),
+            // Truncate => ops.truncate.ok_or(VfsError::UndefinedHandler)?(params),
+            TestOpen => ops.test_open.ok_or(VfsError::UndefinedHandler)?(params),
+            _ => unimplemented!(),
+        }
+    }
 }
 
 //make some tests
@@ -167,7 +288,11 @@ pub struct File {
     pub flags: OpenFlags,
 }
 
-impl File {}
+impl File {
+    pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
+        Self { id, dentry_id, offset: 0, flags: OpenFlags::default() }
+    }
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SeekType {
@@ -263,5 +388,50 @@ bitflags! {
 
         /// If path identifies a terminal device other than a pseudo-terminal, the device is not already open in any process, and either O_TTY_INIT is set in oflag or O_TTY_INIT has the value zero, open() shall set any non-standard termios structure terminal parameters to a state that provides conforming behavior; see XBD Parameters that Can be Set. It is unspecified whether O_TTY_INIT has any effect if the device is already open in any process. If path identifies the slave side of a pseudo-terminal that is not already open in any process, open() shall set any non-standard termios structure terminal parameters to a state that provides conforming behavior, regardless of whether O_TTY_INIT is set. If path does not identify a terminal device, O_TTY_INIT shall be ignored.
         const O_TTY_INIT = 0x20000;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::VfsHandlerParams;
+
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    fn test_open(_params: VfsHandlerParams) -> VfsResult<i32> {
+        Ok(0)
+    }
+
+    make_test! {
+        {
+            let mut inode = Inode::default();
+            let mut file = File::new(InodeId::new(0, FileSystemId::new(0)), DirectoryEntryId::new(0));
+
+            let mut inode_operations = InodeOperations::default()
+                .set_test_open(test_open);
+
+
+            inode.set_inode_operations(inode_operations);
+            let params = VfsHandlerParams::new()
+                .set_inode(&inode)
+                .set_file(&file);
+
+            let res = inode.dispatch_handler(params, VfsHandlerKind::TestOpen).unwrap();
+            assert_eq!(res, 0);
+        }, inode_open
     }
 }

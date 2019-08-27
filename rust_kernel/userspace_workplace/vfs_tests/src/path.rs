@@ -94,7 +94,7 @@ impl fmt::Display for Filename {
 }
 
 use core::ops::Range;
-#[derive(Debug, Clone)] // Copy right ?
+#[derive(Debug, Clone, Eq, PartialEq)] // Copy right ?
 pub struct Components<'a> {
     path: &'a Path,
     current: Option<Range<usize>>,
@@ -172,6 +172,72 @@ impl<'a> DoubleEndedIterator for Components<'a> {
     }
 }
 
+pub struct Ancestors<'a> {
+    path: &'a Path,
+    left_ancestors: Range<usize>,
+}
+
+impl<'a> Ancestors<'a> {
+    pub fn from_path(path: &'a Path) -> Self {
+        let left_ancestors = 1..path.depth();
+
+        Self { path, left_ancestors }
+    }
+}
+
+impl<'a> Iterator for Ancestors<'a> {
+    type Item = Path;
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = &self.left_ancestors;
+
+        let start = current.start;
+        let end = current.end;
+        if start > end {
+            None
+        } else {
+            let depth = self.path.depth();
+            let mut components = self.path.components();
+            for _ in 0..depth - start {
+                components.next_back();
+            }
+            let path = components.try_into().ok();
+            let res = start.checked_add(1).map(|new_start| new_start..end);
+            if res.is_none() {
+                return None;
+            }
+
+            self.left_ancestors = res.unwrap();
+            path
+        }
+    }
+}
+
+impl<'a> DoubleEndedIterator for Ancestors<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let current = &self.left_ancestors;
+
+        let start = current.start;
+        let end = current.end;
+        if start > end {
+            None
+        } else {
+            let depth = self.path.depth();
+            let mut components = self.path.components();
+            for _ in 0..depth - end {
+                components.next_back();
+            }
+            let path = components.try_into().ok();
+            let res = end.checked_sub(1).map(|new_end| start..new_end);
+            if res.is_none() {
+                return None;
+            }
+
+            self.left_ancestors = res.unwrap();
+            path
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Path {
     components: Vec<Filename>,
@@ -220,33 +286,8 @@ impl Path {
         Self::try_from(components).unwrap() // well for now this should not be happening
     }
 
-    pub fn ancestors<'a>(&'a self) -> impl Iterator<Item = Path> + 'a {
-        struct Ancestors<'a> {
-            iter: Components<'a>,
-            path: &'a Path,
-        }
-
-        impl<'a> Iterator for Ancestors<'a> {
-            type Item = Path;
-            fn next(&mut self) -> Option<Self::Item> {
-                let path = self.iter.clone().try_into().ok();
-                self.iter.next_back();
-                path
-            }
-        }
-
-        // impl<'a> DoubleEndedIterator for Ancestors<'a> {
-        //     fn next_back(&mut self) -> Option<Self::Item> {
-
-        //     }
-
-        // }
-        let mut components = self.components();
-        unfold((), move |_| {
-            let res = components.clone().try_into().ok();
-            components.next_back();
-            res
-        })
+    pub fn ancestors(&self) -> Ancestors {
+        Ancestors::from_path(self)
     }
 
     pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
@@ -1020,7 +1061,7 @@ mod test {
                 let path: Path = $path.try_into().unwrap();
                 let ancestors: &[&str] = $ancestors;
 
-                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter()) {
+                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter().rev()) {
                     $assertion!(ancestor, Path::try_from(expected).unwrap())
                 }
             }}
@@ -1030,7 +1071,7 @@ mod test {
                 let path: Path = $path.try_into().unwrap();
                 let ancestors = $ancestors;
 
-                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter()) {
+                for (ancestor, &expected) in path.ancestors().zip(ancestors.iter().rev()) {
                     $assertion!(ancestor, Path::try_from(expected).unwrap())
                 }
             }}
@@ -1103,4 +1144,24 @@ mod test {
         "a",
     ], path_ancestors_basic_a_b_c, assert_eq}
 
+    make_test! {
+        pass, ancestors_basic, {
+            let path: Path = "a/b/c/".try_into().unwrap();
+            let mut ancestors = path.ancestors();
+
+            assert_eq!(ancestors.next_back().unwrap(), path);
+            // assert_eq!(ancestors.next_back().unwrap(), "a".try_into().unwrap());
+            assert_eq!(ancestors.next_back().unwrap(), "a/b".try_into().unwrap());
+            assert_eq!(ancestors.next_back().unwrap(), "a".try_into().unwrap());
+            assert_eq!(ancestors.next_back(), None);
+            assert_eq!(ancestors.next(), None);
+
+            let mut ancestors = path.ancestors();
+            assert_eq!(ancestors.next().unwrap(), "a".try_into().unwrap());
+            assert_eq!(ancestors.next().unwrap(), "a/b".try_into().unwrap());
+            assert_eq!(ancestors.next().unwrap(), path);
+            assert_eq!(ancestors.next(), None);
+            assert_eq!(ancestors.next_back(), None);
+        }
+    }
 }
