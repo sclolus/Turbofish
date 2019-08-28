@@ -3,8 +3,10 @@ use super::path::Filename;
 use super::permissions::FilePermissions;
 use super::posix_consts::{time_t, timespec};
 use super::user::{GroupId, UserId};
+use alloc::vec::Vec;
 pub type InodeNumber = usize;
 use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
+use bitflags::bitflags;
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
@@ -14,7 +16,10 @@ pub struct InodeId {
 
 impl InodeId {
     pub fn new(inode_number: InodeNumber, filesystem_id: FileSystemId) -> Self {
-        Self { inode_number, filesystem_id }
+        Self {
+            inode_number,
+            filesystem_id,
+        }
     }
 }
 
@@ -257,7 +262,11 @@ impl Inode {
         self.access_mode.is_socket()
     }
 
-    pub fn dispatch_handler(&self, params: VfsHandlerParams, kind: VfsHandlerKind) -> VfsResult<i32> {
+    pub fn dispatch_handler(
+        &self,
+        params: VfsHandlerParams,
+        kind: VfsHandlerKind,
+    ) -> VfsResult<i32> {
         let ops = self.inode_operations;
         match kind {
             // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
@@ -290,7 +299,12 @@ pub struct File {
 
 impl File {
     pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
-        Self { id, dentry_id, offset: 0, flags: OpenFlags::default() }
+        Self {
+            id,
+            dentry_id,
+            offset: 0,
+            flags: OpenFlags::default(),
+        }
     }
 }
 #[repr(u32)]

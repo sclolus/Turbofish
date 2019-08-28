@@ -16,6 +16,9 @@
 #![feature(try_trait)]
 // #![deny(missing_docs)]
 
+#[macro_use]
+extern crate itertools;
+
 extern crate alloc;
 
 // Our Crates

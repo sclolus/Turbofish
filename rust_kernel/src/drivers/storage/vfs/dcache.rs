@@ -4,7 +4,7 @@ use alloc::collections::BTreeMap;
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use core::convert::TryInto;
 use core::str::FromStr;
-use errno::Errno;
+use libc_binding::Errno;
 
 #[derive(Debug, Copy, Clone)]
 pub enum DcacheError {
@@ -195,7 +195,7 @@ impl Dcache {
         let new_filename = new_pathname.filename().unwrap(); // ?
 
         if new_filename == &"." || new_filename == &".." {
-            return Err(Errno(Errno::Einval));
+            return Err(Errno(Errno::EINVAL));
         }
 
         if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
@@ -229,9 +229,9 @@ impl Dcache {
         pathname: Path,
         recursion_level: usize,
     ) -> DcacheResult<DirectoryEntryId> {
-        use crate::posix_consts::SYMLOOP_MAX;
+        use super::posix_consts::SYMLOOP_MAX;
         if recursion_level > SYMLOOP_MAX {
-            return Err(Errno(Errno::Eloop));
+            return Err(Errno(Errno::ELOOP));
         }
 
         if pathname.is_absolute() {

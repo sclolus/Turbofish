@@ -15,7 +15,7 @@ impl Fildes {
     }
 }
 
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
 
 pub trait KeyGenerator<K>
 where
@@ -66,6 +66,8 @@ where
         if !map.contains_key(&key) {
             return Err(MapperError::NoSuchEntry);
         }
-        Ok(map.remove(&key).expect("Entry is unexpectedly not contained"))
+        Ok(map
+            .remove(&key)
+            .expect("Entry is unexpectedly not contained"))
     }
 }

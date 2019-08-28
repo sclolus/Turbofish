@@ -6,9 +6,6 @@ use alloc::collections::BTreeMap;
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use core::str::FromStr;
 
-#[macro_use]
-extern crate itertools;
-
 use itertools::unfold;
 
 mod path;
@@ -421,7 +418,7 @@ impl VirtualFileSystem {
         let entry_id;
         match self.dcache.pathname_resolution(current.cwd, path.clone()) {
             Ok(id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
-                return Err(Errno(Errno::Eexist))
+                return Err(Errno(Errno::EEXIST))
             }
             Ok(id) => entry_id = id,
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
@@ -515,7 +512,7 @@ impl VirtualFileSystem {
     ) -> VfsResult<Fd> {
         let mut ancestors = path.ancestors();
 
-        let child = ancestors.next_back().ok_or(Errno(Einval))?;
+        let child = ancestors.next_back().ok_or(Errno(Errno::EINVAL))?;
         let mut ancestors = ancestors; //uncomment this
         for ancestor in ancestors {
             self.creat(current, ancestor, FilePermissions::S_IFDIR)
@@ -572,9 +569,9 @@ impl VirtualFileSystem {
     }
 
     pub fn rmdir(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
-        let filename = path.filename().ok_or(Errno(Einval))?;
+        let filename = path.filename().ok_or(Errno(EINVAL))?;
         if filename == &"." || filename == &".." {
-            return Err(Errno(Einval));
+            return Err(Errno(EINVAL));
         }
 
         let entry_id = self.dcache.pathname_resolution(current.cwd, path.clone())?;
@@ -592,7 +589,7 @@ impl VirtualFileSystem {
 
         if oldentry.is_directory() {
             //link on directories not currently supported.
-            return Err(Errno(Eisdir));
+            return Err(Errno(EISDIR));
         }
 
         if self
@@ -600,7 +597,7 @@ impl VirtualFileSystem {
             .pathname_resolution(current.cwd, newpath.clone())
             .is_ok()
         {
-            return Err(Errno(Eexist));
+            return Err(Errno(EEXIST));
         }
 
         let parent_new = self
@@ -649,11 +646,12 @@ impl VirtualFileSystem {
     }
 }
 
-use std::convert::{TryFrom, TryInto};
-use std::fs::{read_dir, DirEntry, FileType};
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path as StdPath;
-use walkdir::WalkDir;
+pub fn init() {}
+// use core::convert::{TryFrom, TryInto};
+// use core::fs::{read_dir, DirEntry, FileType};
+// use core::os::unix::fs::PermissionsExt;
+// use core::path::Path as StdPath;
+// use walkdir::WalkDir;
 // fn main() {
 //     use std::env;
 //     let mut vfs = Vfs::new().unwrap();

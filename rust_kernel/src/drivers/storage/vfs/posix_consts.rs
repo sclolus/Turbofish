@@ -1,5 +1,5 @@
 #[macro_use]
-use const_assert;
+use const_assert::const_assert;
 
 /// The maximum size (in bytes) of any component of a pathname.
 /// By POSIX-2018 as:
@@ -8,7 +8,6 @@ use const_assert;
 /// that component. If any pathname component is longer than {NAME_MAX},
 /// the implementation shall consider this an error."
 pub const NAME_MAX: usize = 256;
-
 
 /// The maximum size (in bytes) of any path.
 pub const PATH_MAX: usize = 4096;

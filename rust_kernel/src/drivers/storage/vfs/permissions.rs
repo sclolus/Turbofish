@@ -73,7 +73,7 @@ bitflags! {
 
 impl FilePermissions {
     pub unsafe fn from_u32(mode: u32) -> Self {
-        use std::mem::transmute;
+        use core::mem::transmute;
 
         transmute(mode)
     }

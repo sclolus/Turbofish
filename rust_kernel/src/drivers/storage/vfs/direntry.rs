@@ -1,6 +1,7 @@
 use super::inode::InodeId;
+use super::path::{Filename, Path};
 use super::{DcacheError, DcacheResult, FileSystemId};
-use crate::path::{Filename, Path};
+use alloc::vec::Vec;
 use core::str::FromStr;
 use DcacheError::*;
 

@@ -1,10 +1,11 @@
+use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem;
 use core::result::Result as StdResult;
 use core::slice::Iter;
-use errno::Errno;
+use libc_binding::Errno;
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
 
@@ -22,10 +23,10 @@ impl TryFrom<&str> for Filename {
     fn try_from(s: &str) -> Result<Self> {
         let mut n = [0; NAME_MAX];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
-            return Err(Errno::Einval);
+            return Err(Errno::EINVAL);
         }
         if s.len() > NAME_MAX || s.len() == 0 {
-            return Err(Errno::Enametoolong);
+            return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
                 *n = c;
@@ -181,7 +182,10 @@ impl<'a> Ancestors<'a> {
     pub fn from_path(path: &'a Path) -> Self {
         let left_ancestors = 1..path.depth();
 
-        Self { path, left_ancestors }
+        Self {
+            path,
+            left_ancestors,
+        }
     }
 }
 
@@ -247,7 +251,11 @@ pub struct Path {
 
 impl Path {
     fn null_path() -> Self {
-        Self { components: Vec::new(), total_length: 0, is_absolute: false }
+        Self {
+            components: Vec::new(),
+            total_length: 0,
+            is_absolute: false,
+        }
     }
 
     pub fn new() -> Self {
@@ -256,7 +264,7 @@ impl Path {
 
     fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
         if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
-            return Err(Errno::Enametoolong);
+            return Err(Errno::ENAMETOOLONG);
         }
         self.is_absolute = value;
         self.update_len();
@@ -300,7 +308,7 @@ impl Path {
         }
 
         if total_length > PATH_MAX - 1 {
-            return Err(Errno::Enametoolong);
+            return Err(Errno::ENAMETOOLONG);
         }
         self.total_length = total_length;
         self.components.push(component);
@@ -398,7 +406,7 @@ impl TryFrom<&str> for Path {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self> {
         if s.len() > PATH_MAX - 1 {
-            return Err(Errno::Enametoolong);
+            return Err(Errno::ENAMETOOLONG);
         }
         let is_absolute = s.starts_with('/');
         let components = s.split('/').filter(|&x| x != "");
@@ -416,7 +424,10 @@ impl TryFrom<&str> for Path {
 
 impl PartialEq for Path {
     fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() || self.depth() != other.depth() || self.is_absolute() != other.is_absolute() {
+        if self.len() != other.len()
+            || self.depth() != other.depth()
+            || self.is_absolute() != other.is_absolute()
+        {
             return false;
         }
 
@@ -902,14 +913,27 @@ mod test {
     fn test_components_iter_basic() {
         let path = Path::try_from("a/b/c/d/e/f/g/h").unwrap();
         let expected_filenames = ["a", "b", "c", "d", "e", "f", "g", "h"];
-        let filenames = expected_filenames.iter().map(|&f| Filename::try_from(f).unwrap()).collect::<Vec<Filename>>();
+        let filenames = expected_filenames
+            .iter()
+            .map(|&f| Filename::try_from(f).unwrap())
+            .collect::<Vec<Filename>>();
         let components = Components::from_path(&path);
 
         assert_eq!(filenames.iter().count(), components.clone().count());
-        assert_eq!(filenames.iter().rev().count(), components.clone().rev().count());
-        assert!(filenames.iter().zip(components.clone()).all(|(expect, component)| expect == component));
+        assert_eq!(
+            filenames.iter().rev().count(),
+            components.clone().rev().count()
+        );
+        assert!(filenames
+            .iter()
+            .zip(components.clone())
+            .all(|(expect, component)| expect == component));
         // The rev method uses the DoubleEndedIterator implementation.
-        assert!(filenames.iter().rev().zip(components.clone().rev()).all(|(expect, component)| expect == component));
+        assert!(filenames
+            .iter()
+            .rev()
+            .zip(components.clone().rev())
+            .all(|(expect, component)| expect == component));
     }
 
     macro_rules! make_components_iteration_test {
@@ -948,10 +972,22 @@ mod test {
     make_components_iteration_test!("a/b/c/d/e", test_components_iter_basic_a_b_c_d_e);
     make_components_iteration_test!("a/b/c/d/e/f", test_components_iter_basic_a_b_c_d_e_f);
     make_components_iteration_test!("a/b/c/d/e/f/g", test_components_iter_basic_a_b_c_d_e_f_g);
-    make_components_iteration_test!("a/b/c/axiom/e/f/g/h", test_components_iter_basic_a_b_c_axiom_e_f_g_h);
-    make_components_iteration_test!("a/b/c/d/e/f/g/h/i", test_components_iter_basic_a_b_c_d_e_f_g_h_i);
-    make_components_iteration_test!("a/b/c/d/e/f/g/h/i/k", test_components_iter_basic_a_b_c_d_e_f_g_h_i_k);
-    make_components_iteration_test!("a/b/c/d/e/f/g/h/i/k/8", test_components_iter_basic_a_b_c_d_e_f_g_h_i_k_8);
+    make_components_iteration_test!(
+        "a/b/c/axiom/e/f/g/h",
+        test_components_iter_basic_a_b_c_axiom_e_f_g_h
+    );
+    make_components_iteration_test!(
+        "a/b/c/d/e/f/g/h/i",
+        test_components_iter_basic_a_b_c_d_e_f_g_h_i
+    );
+    make_components_iteration_test!(
+        "a/b/c/d/e/f/g/h/i/k",
+        test_components_iter_basic_a_b_c_d_e_f_g_h_i_k
+    );
+    make_components_iteration_test!(
+        "a/b/c/d/e/f/g/h/i/k/8",
+        test_components_iter_basic_a_b_c_d_e_f_g_h_i_k_8
+    );
 
     macro_rules! make_components_iteration_test {
         ($path: expr, $test_name: ident) => {
@@ -987,8 +1023,11 @@ mod test {
 
         let a = expect(Path::try_from("a/b/c"));
         let b = expect(Path::try_from("e/f"));
-        let expected =
-            [expect(Path::try_from("e/f/b/c")), expect(Path::try_from("a/e/f/c")), expect(Path::try_from("a/b/e/f"))];
+        let expected = [
+            expect(Path::try_from("e/f/b/c")),
+            expect(Path::try_from("a/e/f/c")),
+            expect(Path::try_from("a/b/e/f")),
+        ];
 
         for offset in 0..a.depth() {
             let mut test = a.clone();
@@ -1004,21 +1043,50 @@ mod test {
 
         let a = expect(Path::try_from("/a/b/c/d/e/f"));
         let expected = [
-            (expect(Path::try_from("/")), expect(Path::try_from("a/b/c/d/e/f"))),
-            (expect(Path::try_from("/a/")), expect(Path::try_from("b/c/d/e/f"))),
-            (expect(Path::try_from("/a/b/")), expect(Path::try_from("c/d/e/f"))),
-            (expect(Path::try_from("/a/b/c/")), expect(Path::try_from("d/e/f"))),
-            (expect(Path::try_from("/a/b/c/d/")), expect(Path::try_from("e/f"))),
-            (expect(Path::try_from("/a/b/c/d/e/")), expect(Path::try_from("f"))),
-            (expect(Path::try_from("/a/b/c/d/e/f")), expect(Path::try_from(""))),
+            (
+                expect(Path::try_from("/")),
+                expect(Path::try_from("a/b/c/d/e/f")),
+            ),
+            (
+                expect(Path::try_from("/a/")),
+                expect(Path::try_from("b/c/d/e/f")),
+            ),
+            (
+                expect(Path::try_from("/a/b/")),
+                expect(Path::try_from("c/d/e/f")),
+            ),
+            (
+                expect(Path::try_from("/a/b/c/")),
+                expect(Path::try_from("d/e/f")),
+            ),
+            (
+                expect(Path::try_from("/a/b/c/d/")),
+                expect(Path::try_from("e/f")),
+            ),
+            (
+                expect(Path::try_from("/a/b/c/d/e/")),
+                expect(Path::try_from("f")),
+            ),
+            (
+                expect(Path::try_from("/a/b/c/d/e/f")),
+                expect(Path::try_from("")),
+            ),
         ];
 
         for offset in 0..a.depth() {
             let test = a.clone();
             let (test_1, test_2) = test.components().divide_at(offset);
 
-            println!("test_1 {:?}\nexpect: {:?}", test_1, expected[offset].0.components());
-            println!("test_2 {:?}\nexpect: {:?}", test_2, expected[offset].1.components());
+            println!(
+                "test_1 {:?}\nexpect: {:?}",
+                test_1,
+                expected[offset].0.components()
+            );
+            println!(
+                "test_2 {:?}\nexpect: {:?}",
+                test_2,
+                expected[offset].1.components()
+            );
 
             assert!(test_1.eq(expected[offset].0.components()));
             assert!(test_2.eq(expected[offset].1.components()));
