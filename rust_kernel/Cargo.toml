@@ -37,6 +37,11 @@ fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
 libc_binding = { path = "dependencies/libc_binding" }
 
+[dependencies.itertools]
+version = "0.8.0"
+default-features = false
+
+
 [dependencies.lazy_static]
 version = "1.3.0"
 features = ["spin_no_std"]
