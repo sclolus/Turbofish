@@ -700,6 +700,13 @@ impl Scheduler {
     }
 }
 
+pub unsafe fn get_current_pgid() -> Pid {
+    unsafe {
+        SCHEDULER.force_unlock();
+    }
+    SCHEDULER.lock().current_thread_group().pgid
+}
+
 #[no_mangle]
 pub extern "C" fn send_message(message: MessageTo) {
     // TODO : check force_lock
