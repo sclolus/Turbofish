@@ -58,11 +58,11 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit exit_qemu atexit getenv abort abs qsort _exit
+SRC_C += exit exit_qemu atexit getenv abort abs qsort _Exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups _exit
 SRC_C += dup dup2 pipe
 
 VPATH += src/unistd

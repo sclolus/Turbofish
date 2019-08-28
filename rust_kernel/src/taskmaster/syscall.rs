@@ -17,10 +17,10 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, KILL, MMAP, MPROTECT, MUNMAP, NANOSLEEP,
-    OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
-    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
-    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, MMAP, MPROTECT, MUNMAP,
+    NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
+    SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -169,6 +169,8 @@ mod open;
 use open::sys_open;
 mod close;
 use close::sys_close;
+mod isatty;
+use isatty::sys_isatty;
 
 mod trace_syscall;
 
@@ -262,6 +264,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         TCGETPGRP => sys_tcgetpgrp(ebx as Fd),
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
+        ISATTY => sys_isatty(ebx as u32),
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),

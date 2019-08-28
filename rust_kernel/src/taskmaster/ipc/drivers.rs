@@ -45,6 +45,9 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn tcsetpgrp(&mut self, _pgid_id: Pid) -> SysResult<u32> {
         return Err(Errno::ENOTTY);
     }
+    fn isatty(&mut self) -> SysResult<u32> {
+        return Err(Errno::ENOTTY);
+    }
 }
 
 /// This Trait represent a File Driver in the VFS

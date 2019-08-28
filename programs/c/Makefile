@@ -41,6 +41,7 @@ SRC_C += Clone \
 		PipeCreater \
 		pipe_com1 \
 		westoped \
+		getenv
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

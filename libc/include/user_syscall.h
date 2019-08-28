@@ -56,5 +56,6 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define TCSETPGRP      0x80000006
 #define SETEGID        0x80000007
 #define SETEUID        0x80000008
+#define ISATTY         0x80000009
 
 #endif

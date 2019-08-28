@@ -95,6 +95,9 @@ impl FileOperation for TtyFileOperation {
         }
         Ok(0)
     }
+    fn isatty(&mut self) -> SysResult<u32> {
+        return Ok(1);
+    }
 }
 
 /// Drop boilerplate
