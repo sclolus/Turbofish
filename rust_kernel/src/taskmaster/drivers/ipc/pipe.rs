@@ -50,14 +50,40 @@ impl FileOperation for Pipe {
     }
     fn unregister(&mut self, access_mode: Mode) {
         match access_mode {
-            Mode::ReadOnly => self.input_ref -= 1,
-            Mode::WriteOnly => self.output_ref -= 1,
+            Mode::ReadOnly => {
+                self.input_ref -= 1;
+                // Announce to writer(s) that the last reader is gone
+                if self.input_ref == 0 {
+                    unsafe {
+                        messaging::send_message(MessageTo::Writer {
+                            uid_file_op: self.file_op_uid,
+                        });
+                    }
+                }
+            }
+            Mode::WriteOnly => {
+                self.output_ref -= 1;
+                // Announce to reader(s) that the last writer is gone
+                if self.output_ref == 0 {
+                    unsafe {
+                        messaging::send_message(MessageTo::Reader {
+                            uid_file_op: self.file_op_uid,
+                        });
+                    }
+                }
+            }
             _ => panic!("Pipe invalid access mode"),
         };
     }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if self.current_index == 0 {
-            return Ok(IpcResult::Wait(0, self.file_op_uid));
+            if self.output_ref == 0 {
+                // Writers are gone, returns immediatly
+                return Ok(IpcResult::Done(0));
+            } else {
+                // Waiting for a writer
+                return Ok(IpcResult::Wait(0, self.file_op_uid));
+            }
         }
 
         // memcpy(buf, self.buf, MIN(buf.len(), self.current_index)
@@ -73,13 +99,15 @@ impl FileOperation for Pipe {
                 .copy_from(self.buf.as_mut_ptr().add(min), self.current_index - min);
         }
         self.current_index -= min;
-        // TODO: Maybe find a way to know if there are writers
-        messaging::push_message(MessageTo::Writer {
-            uid_file_op: self.file_op_uid,
-        });
+        unsafe {
+            messaging::send_message(MessageTo::Writer {
+                uid_file_op: self.file_op_uid,
+            });
+        }
         Ok(IpcResult::Done(min as _))
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        // Readers are gone, returns immediatly
         if self.input_ref == 0 {
             return Err(Errno::EPIPE);
         }
@@ -93,10 +121,11 @@ impl FileOperation for Pipe {
         }
         self.current_index += min;
         if min == buf.len() {
-            // TODO: Maybe find a way to know if there are readers
-            messaging::push_message(MessageTo::Reader {
-                uid_file_op: self.file_op_uid,
-            });
+            unsafe {
+                messaging::send_message(MessageTo::Reader {
+                    uid_file_op: self.file_op_uid,
+                });
+            }
             Ok(IpcResult::Done(min as _))
         } else {
             Ok(IpcResult::Wait(min as _, self.file_op_uid))
@@ -107,6 +136,6 @@ impl FileOperation for Pipe {
 /// Some boilerplate to check if all is okay
 impl Drop for Pipe {
     fn drop(&mut self) {
-        println!("Pipe droped !");
+        // println!("Pipe droped !");
     }
 }

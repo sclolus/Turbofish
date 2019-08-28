@@ -37,6 +37,11 @@ impl FileDescriptorInterface {
         }
     }
 
+    /// Clear all the owned content into the File Descriptor Interface
+    pub fn delete(&mut self) {
+        self.user_fd_list.clear();
+    }
+
     pub fn get_file_operation(&self, fd: Fd) -> SysResult<DeadMutexGuard<dyn FileOperation>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
         Ok(elem.kernel_fd.lock())
@@ -218,10 +223,23 @@ impl Drop for FileDescriptorInterface {
 
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
-#[derive(Debug, TryClone)]
+#[derive(Debug)]
 struct FileDescriptor {
     access_mode: Mode,
     kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
+}
+
+use alloc::collections::CollectionAllocErr;
+
+/// TryClone Boilerplate. The ref counter of the FileOperation must be incremented when Cloning
+impl TryClone for FileDescriptor {
+    fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
+        self.kernel_fd.lock().register(self.access_mode);
+        Ok(Self {
+            access_mode: self.access_mode.clone(),
+            kernel_fd: self.kernel_fd.clone(),
+        })
+    }
 }
 
 /// Standard implementation of an user File Descriptor

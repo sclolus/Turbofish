@@ -126,9 +126,7 @@ mod scheduler {
     }
 }
 
-pub fn send_message(message: MessageTo) {
-    unsafe {
-        // call with the linker the send message function of the scheduler
-        scheduler::send_message(message);
-    }
+pub unsafe fn send_message(message: MessageTo) {
+    // call with the linker the send message function of the scheduler
+    scheduler::send_message(message);
 }
