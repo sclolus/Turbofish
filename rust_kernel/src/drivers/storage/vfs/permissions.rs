@@ -1,73 +1,77 @@
 use bitflags::bitflags;
-
+use libc_binding::{
+    S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, S_IFSOCK, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG,
+    S_IRWXO, S_IRWXU, S_ISGID, S_ISUID, S_ISVTX, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH,
+    S_IXUSR,
+};
 bitflags! {
     #[derive(Default)]
     #[allow(snake_case)]
     pub struct FilePermissions: u32 {
         /// Read, write, execute/search by owner.
-        const S_IRWXU = 0o700;
+        const S_IRWXU = S_IRWXU;
 
         /// Read permission, owner.
-        const S_IRUSR = 0o400;
+        const S_IRUSR = S_IRUSR;
 
         /// Write permission, owner.
-        const S_IWUSR = 0o200;
+        const S_IWUSR = S_IWUSR;
 
         /// Execute/search permission, owner.
-        const S_IXUSR = 0o100;
+        const S_IXUSR = S_IXUSR;
 
         /// Read, write, execute/search by group.
-        const S_IRWXG = 0o70;
+        const S_IRWXG = S_IRWXG;
 
         /// Read permission, group.
-        const S_IRGRP = 0o40;
+        const S_IRGRP = S_IRGRP;
 
         /// Write permission, group.
-        const S_IWGRP = 0o20;
+        const S_IWGRP = S_IWGRP;
 
         /// Execute/search permission, group.
-        const S_IXGRP = 0o10;
+        const S_IXGRP = S_IXGRP;
 
         /// Read, write, execute/search by others.
-        const S_IRWXO = 0o7;
+        const S_IRWXO = S_IRWXO;
 
         ///Read permission, others.
-        const S_IROTH = 0o4;
+        const S_IROTH = S_IROTH;
 
         /// Write permission, others.
-        const S_IWOTH = 0o2;
+        const S_IWOTH = S_IWOTH;
 
         /// Execute/search permission, others.
-        const S_IXOTH = 0o1;
+        const S_IXOTH = S_IXOTH;
 
         /// Set-user-ID on execution.
-        const S_ISUID = 0o4000;
+        const S_ISUID = S_ISUID;
 
         /// Set-group-ID on execution.
-        const S_ISGID = 0o2000;
+        const S_ISGID = S_ISGID;
 
         /// On directories, restricted deletion flag.   [Option End]
-        const S_ISVTX = 0o1000;
+        const S_ISVTX = S_ISVTX;
 
         /// Filetypes.
 
         /// Character special
-        const S_IFCHR = 0o10000;
+        const S_IFCHR = S_IFCHR;
 
         /// FIFO special
-        const S_IFIFO = 0o20000;
+        const S_IFIFO = S_IFIFO;
 
         /// Regular
-        const S_IFREG = 0o40000;
+        const S_IFREG = S_IFREG;
 
         /// Directory
-        const S_IFDIR = 0o100000;
+        const S_IFDIR = S_IFDIR;
 
         /// Symbolic link
-        const S_IFLNK = 0o200000;
+        const S_IFLNK = S_IFLNK;
 
         /// Socket
-        const S_IFSOCK = 0o40000;
+        const S_IFSOCK = S_IFSOCK;
     }
 }
 
