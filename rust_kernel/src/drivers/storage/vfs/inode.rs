@@ -1,12 +1,13 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Filename;
 use super::permissions::FilePermissions;
-use super::posix_consts::{time_t, timespec};
+use super::posix_consts::time_t;
 use super::user::{GroupId, UserId};
 use alloc::vec::Vec;
 pub type InodeNumber = usize;
 use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 use bitflags::bitflags;
+// use libc_binding::ssize_t;
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
@@ -148,17 +149,17 @@ impl InodeOperations {
     // }
 }
 
-/// Type of file
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Filetype {
-    RegularFile,
-    Directory,
-    CharacterDevice,
-    BlockDevice,
-    Fifo,
-    Socket,
-    SymbolicLink,
-}
+// /// Type of file
+// #[derive(Debug, Copy, Clone, PartialEq)]
+// pub enum Filetype {
+//     RegularFile,
+//     Directory,
+//     CharacterDevice,
+//     BlockDevice,
+//     Fifo,
+//     Socket,
+//     SymbolicLink,
+// }
 
 #[derive(Default)]
 pub struct Inode {
@@ -267,6 +268,7 @@ impl Inode {
         params: VfsHandlerParams,
         kind: VfsHandlerKind,
     ) -> VfsResult<i32> {
+        use VfsHandlerKind::*;
         let ops = self.inode_operations;
         match kind {
             // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
@@ -310,16 +312,15 @@ impl File {
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SeekType {
-    SEEK_SET,
-    SEEK_CUR,
-    SEEK_END,
+    SeekSet,
+    SeekCur,
+    SeekEnd,
 }
 
-type ssize_t = i64;
-
-pub type Offset = usize; // change this
+pub type Offset = usize; //TODO:  change this
 
 /// Filesystem specific operations on 'OpenFileDescriptions' `File`s
+#[allow(unused)] // TODO: remove this
 pub struct FileOperations {
     pub read: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
     pub lseek: Option<fn(&mut File, Offset, SeekType) -> Offset>,

@@ -2,21 +2,17 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
-use core::mem;
 use core::result::Result as StdResult;
-use core::slice::Iter;
 use libc_binding::Errno;
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
-
-use itertools::unfold;
 
 type Result<T> = StdResult<T, Errno>;
 
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct Filename(pub [u8; NAME_MAX], pub usize);
+pub struct Filename(pub [u8; NAME_MAX as usize], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
@@ -121,7 +117,7 @@ impl<'a> Components<'a> {
     pub fn divide_at(mut self, offset: usize) -> (Self, Self) {
         if !self.current.as_ref().unwrap_or(&(0..0)).contains(&offset) {
             self.current = None;
-            let (mut a, mut b) = (self.clone(), self.clone());
+            let (a, b) = (self.clone(), self.clone());
             return (a, b);
         }
 
@@ -367,8 +363,8 @@ impl Path {
     }
 
     pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
-        let mut stack = self.clone(); // well need to copy data temporary.
-        let (mut comps_begin, mut comps_end) = stack.components().divide_at(offset);
+        let stack = self.clone(); // well need to copy data temporary.
+        let (comps_begin, comps_end) = stack.components().divide_at(offset);
 
         // comps_begin.next_back();
         // comps_end.next();
@@ -394,7 +390,7 @@ impl<'a> TryFrom<Components<'a>> for Path {
     fn try_from(comps: Components<'a>) -> Result<Self> {
         let mut path = Path::new();
 
-        path.set_absolute(comps.is_absolute());
+        path.set_absolute(comps.is_absolute())?;
         for filename in comps {
             path.push(*filename)?;
         }
@@ -413,7 +409,7 @@ impl TryFrom<&str> for Path {
 
         let mut path = Path::new();
 
-        path.set_absolute(is_absolute);
+        path.set_absolute(is_absolute)?;
         for component in components {
             let filename = Filename::try_from(component)?;
             path.push(filename)?;
@@ -466,7 +462,7 @@ impl fmt::Display for Path {
         let depth = self.depth();
         for (index, component) in self.components().enumerate() {
             write!(f, "{}", component)?;
-            if (index + 1 != depth) {
+            if index + 1 != depth {
                 write!(f, "/")?;
             }
         }

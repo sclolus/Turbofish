@@ -6,6 +6,7 @@ pub type OFDId = usize;
 pub struct Fildes {
     // fd: Fd,
     /// Ofd for OpenFileDescription
+    #[allow(unused)]
     ofd_id: OFDId,
 }
 
@@ -30,7 +31,7 @@ where
         cur
     }
 
-    fn gen_filter(&self, key: K) -> bool {
+    fn gen_filter(&self, _key: K) -> bool {
         true
     }
 }

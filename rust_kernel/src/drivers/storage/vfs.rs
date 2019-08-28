@@ -1,16 +1,11 @@
-#![feature(underscore_const_names)]
-#![feature(type_ascription)]
-#![feature(try_trait)]
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
-use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
-use core::str::FromStr;
 
 use itertools::unfold;
 
 mod path;
 mod posix_consts;
-use path::{Filename, Path};
+use path::Path;
 
 mod direntry;
 use direntry::{DirectoryEntry, DirectoryEntryId};
@@ -26,6 +21,7 @@ mod user;
 use user::{Current, GroupId, UserId};
 
 mod fildes;
+use fildes::{Fd, Fildes, KeyGenerator, Mapper, OFDId};
 
 use libc_binding::Errno;
 use Errno::*;
@@ -90,18 +86,27 @@ impl From<VfsError> for core::option::NoneError {
 }
 
 pub struct SuperblockOperations {
+    #[allow(unused)]
     lookup: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     create: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     unlink: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     link: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     symlink: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     statfs: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     mkdir: Option<fn(&mut Superblock)>,
+    #[allow(unused)]
     rmdir: Option<fn(&mut Superblock)>,
 }
 
 pub struct Superblock {
     // filesystem_type: FileSystemType,
+    #[allow(unused)]
     operations: SuperblockOperations,
 }
 
@@ -141,7 +146,7 @@ impl FileSystem for StandardFileSystem {
         unimplemented!()
     }
 
-    fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode> {
+    fn load_inode(&self, _inode_number: InodeNumber) -> VfsResult<Inode> {
         unimplemented!()
     }
 }
@@ -231,7 +236,7 @@ impl<'a> VfsHandlerParams<'a> {
 }
 
 pub struct VirtualFileSystem {
-    mounted_filesystems: BTreeMap<FileSystemId, Box<FileSystem>>,
+    mounted_filesystems: BTreeMap<FileSystemId, Box<dyn FileSystem>>,
 
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
@@ -245,13 +250,12 @@ impl KeyGenerator<FileSystemId> for VirtualFileSystem {
     }
 }
 
-impl Mapper<FileSystemId, Box<FileSystem>> for VirtualFileSystem {
-    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Box<FileSystem>> {
+impl Mapper<FileSystemId, Box<dyn FileSystem>> for VirtualFileSystem {
+    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Box<dyn FileSystem>> {
         &mut self.mounted_filesystems
     }
 }
 
-use fildes::{Fd, Fildes, KeyGenerator, Mapper, MapperResult, OFDId};
 impl KeyGenerator<OFDId> for VirtualFileSystem {
     fn gen_filter(&self, fd: Fd) -> bool {
         !self.open_file_descriptions.contains_key(&fd)
@@ -264,6 +268,7 @@ impl Mapper<OFDId, File> for VirtualFileSystem {
     }
 }
 
+#[allow(unused)]
 type Vfs = VirtualFileSystem;
 
 impl VirtualFileSystem {
@@ -282,6 +287,7 @@ impl VirtualFileSystem {
         Ok(new)
     }
 
+    #[allow(dead_code)]
     fn iter_directory_entries(
         &self,
         dir: DirectoryEntryId,
@@ -303,6 +309,7 @@ impl VirtualFileSystem {
     }
 
     fn recursive_build_subtree(
+        // This should be refactored with recursive_creat.
         &mut self,
         current_dir_id: DirectoryEntryId,
         fs_id: FileSystemId,
@@ -344,7 +351,7 @@ impl VirtualFileSystem {
         &mut self,
         // current: &mut Current,
         mount_dir_id: DirectoryEntryId,
-        filesystem: Box<FileSystem>,
+        filesystem: Box<dyn FileSystem>,
     ) -> VfsResult<FileSystemId> {
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         if !mount_dir.is_directory() {
@@ -366,7 +373,7 @@ impl VirtualFileSystem {
 
         let root_dentry_id = self.dcache.add_entry(Some(mount_dir_id), root_dentry)?;
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
-        mount_dir.set_mounted(root_dentry_id);
+        mount_dir.set_mounted(root_dentry_id)?;
 
         let root_inode_id = root_inode.id;
         self.inodes.insert(root_inode_id, root_inode);
@@ -417,7 +424,7 @@ impl VirtualFileSystem {
     ) -> VfsResult<Fd> {
         let entry_id;
         match self.dcache.pathname_resolution(current.cwd, path.clone()) {
-            Ok(id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
+            Ok(_id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
                 return Err(Errno(Errno::EEXIST))
             }
             Ok(id) => entry_id = id,
@@ -454,10 +461,12 @@ impl VirtualFileSystem {
         }
 
         let entry = self.dcache.get_entry(&entry_id)?;
+        let entry_inode_id = entry.inode_id;
+        let entry_id = entry.id;
         if flags.contains(OpenFlags::O_DIRECTORY) && !entry.is_directory() {
             return Err(NotADirectory);
         }
-        self.open_inode(current, entry.inode_id, entry.id, flags)
+        self.open_inode(current, entry_inode_id, entry_id, flags)
     }
 
     fn open_inode(
@@ -513,7 +522,7 @@ impl VirtualFileSystem {
         let mut ancestors = path.ancestors();
 
         let child = ancestors.next_back().ok_or(Errno(Errno::EINVAL))?;
-        let mut ancestors = ancestors; //uncomment this
+        let ancestors = ancestors; //uncomment this
         for ancestor in ancestors {
             self.creat(current, ancestor, FilePermissions::S_IFDIR)
                 .unwrap(); // forget fd?
@@ -622,22 +631,22 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn read(&mut self, current: &mut Current, fd: Fd, buf: &mut [u8]) -> VfsResult<usize> {
-        Ok(0)
+    pub fn read(&mut self, _current: &mut Current, _fd: Fd, _buf: &mut [u8]) -> VfsResult<usize> {
+        unimplemented!()
     }
 
-    pub fn write(&mut self, current: &mut Current, fd: Fd, buf: &mut [u8]) -> VfsResult<usize> {
-        Ok(0)
+    pub fn write(&mut self, _current: &mut Current, _fd: Fd, _buf: &mut [u8]) -> VfsResult<usize> {
+        unimplemented!()
     }
 
     pub fn lseek(
         &mut self,
-        current: &mut Current,
-        fd: Fd,
-        offset: Offset,
-        seek: SeekType,
+        _current: &mut Current,
+        _fd: Fd,
+        _offset: Offset,
+        _seek: SeekType,
     ) -> VfsResult<Offset> {
-        Ok(0)
+        unimplemented!()
     }
 
     pub fn file_exists(&self, current: &Current, path: Path) -> VfsResult<bool> {

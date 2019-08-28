@@ -2,7 +2,6 @@ use super::inode::InodeId;
 use super::path::{Filename, Path};
 use super::{DcacheError, DcacheResult, FileSystemId};
 use alloc::vec::Vec;
-use core::str::FromStr;
 use DcacheError::*;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]

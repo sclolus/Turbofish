@@ -1,9 +1,7 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
-use super::path::{Filename, Path};
+use super::path::Path;
 use alloc::collections::BTreeMap;
-use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use core::convert::TryInto;
-use core::str::FromStr;
 use libc_binding::Errno;
 
 #[derive(Debug, Copy, Clone)]
@@ -118,13 +116,14 @@ impl Dcache {
         })
     }
 
+    #[allow(dead_code)]
     pub fn dentry_path(&self, id: DirectoryEntryId) -> DcacheResult<Path> {
         let mut current_id = id;
         let mut rev_path = Path::new();
         loop {
             let entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
 
-            rev_path.push(entry.filename);
+            rev_path.push(entry.filename)?;
             if entry.id == entry.parent_id {
                 break;
             }
@@ -133,7 +132,7 @@ impl Dcache {
         let mut path = Path::new();
 
         while let Some(component) = rev_path.pop() {
-            path.push(component);
+            path.push(component)?;
         }
         Ok(path)
     }
@@ -141,7 +140,7 @@ impl Dcache {
     pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(
         &self,
         root: &DirectoryEntry,
-        mut callback: &mut F,
+        callback: &mut F,
     ) -> DcacheResult<()> {
         let directory = root.get_directory()?;
 
@@ -246,7 +245,6 @@ impl Dcache {
         let mut components = pathname.components();
         let mut was_symlink = false;
         let mut current_entry = self.get_entry(&current_dir_id)?;
-        let mut current_next_entry_id = root;
         for component in components.by_ref() {
             if current_entry.is_mounted()? {
                 current_dir_id = current_entry.get_mountpoint_entry()?;
@@ -273,7 +271,6 @@ impl Dcache {
                 })
                 .ok_or(NoSuchEntry)?;
 
-            current_next_entry_id = *next_entry_id;
             current_entry = self.get_entry(next_entry_id)?;
             if current_entry.is_symlink() {
                 was_symlink = true;
@@ -303,9 +300,12 @@ use core::fmt::{Display, Error, Formatter};
 
 impl Display for Dcache {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        let root = self.d_entries.get(&self.root_id).unwrap();
+        let root = self
+            .d_entries
+            .get(&self.root_id)
+            .expect("There is no root direntry for Dcache");
         self.walk_tree(root, &mut |entry: &DirectoryEntry| {
-            writeln!(f, "-{}-", entry.filename);
+            writeln!(f, "-{}-", entry.filename).unwrap(); // take care of this if possible.
             Ok(())
         })
         .unwrap();

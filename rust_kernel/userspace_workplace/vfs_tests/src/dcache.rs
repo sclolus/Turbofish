@@ -1,5 +1,5 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
-use super::path::{Filename, Path};
+use super::path::Path;
 use errno::Errno;
 use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::collections::BTreeMap;
@@ -41,9 +41,14 @@ impl Dcache {
     pub fn new() -> Self {
         let root_entry = DirectoryEntry::root_entry();
 
-        let mut new = Self { root_id: root_entry.id, d_entries: BTreeMap::new(), path_cache: BTreeMap::new() };
+        let mut new = Self {
+            root_id: root_entry.id,
+            d_entries: BTreeMap::new(),
+            path_cache: BTreeMap::new(),
+        };
 
-        new.add_entry(None, root_entry).expect("Could not add a root to the Dcache");
+        new.add_entry(None, root_entry)
+            .expect("Could not add a root to the Dcache");
         new
     }
 
@@ -101,7 +106,10 @@ impl Dcache {
             }
             parent_id = entry.parent_id;
         }
-        let parent_dir = self.d_entries.get_mut(&parent_id).ok_or(EntryNotConnected)?;
+        let parent_dir = self
+            .d_entries
+            .get_mut(&parent_id)
+            .ok_or(EntryNotConnected)?;
 
         parent_dir.remove_entry(id)?;
         Ok(match self.d_entries.remove(&id) {
@@ -137,24 +145,40 @@ impl Dcache {
     ) -> DcacheResult<()> {
         let directory = root.get_directory()?;
 
-        let mapping_closure = |entry_id| self.d_entries.get(entry_id).expect("Invalid entry_id in directory in dcache");
+        let mapping_closure = |entry_id| {
+            self.d_entries
+                .get(entry_id)
+                .expect("Invalid entry_id in directory in dcache")
+        };
         for entry in directory.entries().iter().map(mapping_closure) {
             callback(entry)?;
         }
 
-        for entry in directory.entries().iter().map(mapping_closure).filter(|x| x.is_directory()) {
+        for entry in directory
+            .entries()
+            .iter()
+            .map(mapping_closure)
+            .filter(|x| x.is_directory())
+        {
             self.walk_tree(entry, callback)?;
         }
         Ok(())
     }
 
-    fn move_dentry(&mut self, id: DirectoryEntryId, new_parent: DirectoryEntryId) -> DcacheResult<()> {
+    fn move_dentry(
+        &mut self,
+        id: DirectoryEntryId,
+        new_parent: DirectoryEntryId,
+    ) -> DcacheResult<()> {
         let parent_id;
         {
             let entry = self.d_entries.get(&id).ok_or(NoSuchEntry)?;
             parent_id = entry.parent_id;
         }
-        let parent_dir = self.d_entries.get_mut(&parent_id).ok_or(EntryNotConnected)?;
+        let parent_dir = self
+            .d_entries
+            .get_mut(&parent_id)
+            .ok_or(EntryNotConnected)?;
 
         parent_dir.remove_entry(id)?;
         let entry = self.d_entries.remove(&id).ok_or(NoSuchEntry)?;
@@ -194,7 +218,9 @@ impl Dcache {
             if let None = self.d_entries.get(&current_id) {
                 return current_id;
             }
-            current_id = current_id.next_id().expect("No space left inside the dcache lool");
+            current_id = current_id
+                .next_id()
+                .expect("No space left inside the dcache lool");
         }
     }
     fn _pathname_resolution(
@@ -239,8 +265,10 @@ impl Dcache {
                 .entries()
                 .iter()
                 .find(|x| {
-                    let filename =
-                        &self.get_entry(x).expect("Invalid entry id in a directory entry that is a directory").filename;
+                    let filename = &self
+                        .get_entry(x)
+                        .expect("Invalid entry id in a directory entry that is a directory")
+                        .filename;
                     filename == component
                 })
                 .ok_or(NoSuchEntry)?;
@@ -263,7 +291,11 @@ impl Dcache {
         }
     }
 
-    pub fn pathname_resolution(&self, root: DirectoryEntryId, pathname: Path) -> DcacheResult<DirectoryEntryId> {
+    pub fn pathname_resolution(
+        &self,
+        root: DirectoryEntryId,
+        pathname: Path,
+    ) -> DcacheResult<DirectoryEntryId> {
         self._pathname_resolution(root, pathname, 0)
     }
 }
