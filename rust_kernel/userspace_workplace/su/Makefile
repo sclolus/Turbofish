@@ -3,7 +3,16 @@ CC = gcc
 
 SRC_C += main \
 	strsplit \
-	get_file_contents
+	get_file_contents \
+	md5 \
+	hash_fuzzer \
+	hash_tester \
+	left_rotate_32 \
+	print_hash \
+	print_memory \
+	passwd \
+	shadow \
+	utils
 
 HEADERS += include/su.h
 
@@ -11,7 +20,8 @@ VPATH += src
 
 IFLAGS = -I include
 
-CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)  -fsanitize=address -g3 # -DTESTS -lcriterion
+TEST=  -DTESTS
+CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)  -fsanitize=address -g3 -lcrypt  # -lcriterion
 
 .PHONY = all clean fclean re exec
 
@@ -43,5 +53,5 @@ test:
 	bash test.sh
 
 unit-tests: $(OBJ_C)
-	$(CC) -o unit-tests $(CFLAGS) -DTESTS -lcriterion $^
+	$(CC) -o unit-tests $(CFLAGS) $^ #-lcriterion
 	./unit-tests

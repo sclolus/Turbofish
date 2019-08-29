@@ -42,80 +42,80 @@ char			**strsplit(char *const s, char del)
 	return fields;
 }
 
-#ifdef TESTS
-# include <criterion/criterion.h>
+/* #ifdef TESTS */
+/* # include <criterion/criterion.h> */
 
-	static uint32_t	count_str_array_size(char **const str) {
-		uint32_t i = 0;
-		while (str[i])
-			i++;
-		return i;
-	}
+/* 	static uint32_t	count_str_array_size(char **const str) { */
+/* 		uint32_t i = 0; */
+/* 		while (str[i]) */
+/* 			i++; */
+/* 		return i; */
+/* 	} */
 
-	Test(_strsplit, basic) {
-		char	*input = "a:b";
-		char	del = ':';
-		char	*expected[] = {
-			"a",
-			"b",
-			NULL,
-		};
+/* 	Test(_strsplit, basic) { */
+/* 		char	*input = "a:b"; */
+/* 		char	del = ':'; */
+/* 		char	*expected[] = { */
+/* 			"a", */
+/* 			"b", */
+/* 			NULL, */
+/* 		}; */
 
-		char	**res = strsplit(input, del);
+/* 		char	**res = strsplit(input, del); */
 
-		const uint32_t size = count_str_array_size(res);
-		const uint32_t expected_size = count_str_array_size(expected);
-		cr_assert_eq(size, expected_size);
+/* 		const uint32_t size = count_str_array_size(res); */
+/* 		const uint32_t expected_size = count_str_array_size(expected); */
+/* 		cr_assert_eq(size, expected_size); */
 
-		for (uint32_t i = 0; i < size; i++) {
-			cr_assert(!strcmp(res[i], expected[i]));
-		}
+/* 		for (uint32_t i = 0; i < size; i++) { */
+/* 			cr_assert(!strcmp(res[i], expected[i])); */
+/* 		} */
 
-	}
+/* 	} */
 
-	Test(_strsplit, basic_with_hole) {
-		char	*input = "a:b:c:d::e";
-		char	del = ':';
-		char	*expected[] = {
-			"a",
-			"b",
-			"c",
-			"d",
-			"",
-			"e",
-			NULL,
-		};
+/* 	Test(_strsplit, basic_with_hole) { */
+/* 		char	*input = "a:b:c:d::e"; */
+/* 		char	del = ':'; */
+/* 		char	*expected[] = { */
+/* 			"a", */
+/* 			"b", */
+/* 			"c", */
+/* 			"d", */
+/* 			"", */
+/* 			"e", */
+/* 			NULL, */
+/* 		}; */
 
-		char	**res = strsplit(input, del);
+/* 		char	**res = strsplit(input, del); */
 
-		const uint32_t size = count_str_array_size(res);
-		const uint32_t expected_size = count_str_array_size(expected);
-		cr_assert_eq(size, expected_size);
+/* 		const uint32_t size = count_str_array_size(res); */
+/* 		const uint32_t expected_size = count_str_array_size(expected); */
+/* 		cr_assert_eq(size, expected_size); */
 
-		for (uint32_t i = 0; i < size; i++) {
-			cr_assert(!strcmp(res[i], expected[i]));
-		}
+/* 		for (uint32_t i = 0; i < size; i++) { */
+/* 			cr_assert(!strcmp(res[i], expected[i])); */
+/* 		} */
 
-	}
+/* 	} */
 
-	Test(_strsplit, single) {
-		char	*input = "a";
-		char	del = ':';
-		char	*expected[] = {
-			"a",
-			NULL,
-		};
+/* 	Test(_strsplit, single) { */
+/* 		char	*input = "a"; */
+/* 		char	del = ':'; */
+/* 		char	*expected[] = { */
+/* 			"a", */
+/* 			NULL, */
+/* 		}; */
 
-		char	**res = strsplit(input, del);
+/* 		char	**res = strsplit(input, del); */
 
-		const uint32_t size = count_str_array_size(res);
-		const uint32_t expected_size = count_str_array_size(expected);
-		cr_assert_eq(size, expected_size);
+/* 		const uint32_t size = count_str_array_size(res); */
+/* 		const uint32_t expected_size = count_str_array_size(expected); */
+/* 		cr_assert_eq(size, expected_size); */
 
-		for (uint32_t i = 0; i < size; i++) {
-			cr_assert(!strcmp(res[i], expected[i]));
-		}
+/* 		for (uint32_t i = 0; i < size; i++) { */
+/* 			cr_assert(!strcmp(res[i], expected[i])); */
+/* 		} */
 
-	}
+/* 	} */
 
-#endif /* TESTS */
+/* #endif /\* TESTS *\/ */
