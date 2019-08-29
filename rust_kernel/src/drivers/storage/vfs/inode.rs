@@ -335,8 +335,8 @@ pub struct FileOperations {
 
 #[cfg(test)]
 mod test {
+    use super::VfsHandlerParams;
     use super::*;
-    use crate::VfsHandlerParams;
 
     macro_rules! make_test {
         ($body: expr, $name: ident) => {

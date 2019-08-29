@@ -882,9 +882,9 @@ mod vfs {
                 let mut vfs = Vfs::new().unwrap();
                 let mut current = default_current();
                 let path: &str = $path;
-                let path: Path = path.try_into().unwrap();
+                let path: Path = std::convert::TryInto::try_into(path).unwrap();
 
-                if path != "/".try_into().unwrap() {
+                if path != std::convert::TryInto::try_into("/").unwrap() {
                     vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
                 }
                 assert!(vfs.file_exists(&current, path).unwrap())
@@ -895,9 +895,9 @@ mod vfs {
                 let mut vfs = Vfs::new().unwrap();
                 let mut current = default_current();
                 let path: &str = $path;
-                let path: Path = path.try_into().unwrap();
+                let path: Path = std::convert::TryInto::try_into(path).unwrap();
 
-                if path != "/".try_into().unwrap() {
+                if path != std::convert::TryInto::try_into("/").unwrap() {
                     vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
                 }
                 assert!(vfs.file_exists(&current, path).unwrap())
@@ -936,7 +936,7 @@ mod vfs {
                 let mut vfs = Vfs::new().unwrap();
                 let mut current = default_current();
                 let path: &str = $path;
-                let path: Path = path.try_into().unwrap();
+                let path: Path = std::convert::TryInto::try_into(path).unwrap();
 
                 vfs.recursive_creat(&mut current
                                     , path.clone()
