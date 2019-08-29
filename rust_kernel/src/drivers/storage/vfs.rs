@@ -243,7 +243,7 @@ impl VirtualFileSystem {
     ) -> VfsResult<impl Iterator<Item = &DirectoryEntry>> {
         let dir = self.dcache.get_entry(&dir)?.get_directory()?;
 
-        let mut entries = dir.entries().iter();
+        let mut entries = dir.entries();
         Ok(unfold((), move |_| {
             if let Some(entry_id) = entries.next() {
                 let entry = self

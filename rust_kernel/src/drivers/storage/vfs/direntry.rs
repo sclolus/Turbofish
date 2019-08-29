@@ -37,8 +37,8 @@ impl EntryDirectory {
         self.entries.len() == 0
     }
 
-    pub fn entries(&self) -> &Vec<DirectoryEntryId> {
-        &self.entries
+    pub fn entries(&self) -> impl Iterator<Item = &DirectoryEntryId> {
+        self.entries.iter()
     }
 
     pub fn is_mounted(&self) -> bool {

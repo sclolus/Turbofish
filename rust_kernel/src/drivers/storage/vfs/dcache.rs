@@ -149,13 +149,12 @@ impl Dcache {
                 .get(entry_id)
                 .expect("Invalid entry_id in directory in dcache")
         };
-        for entry in directory.entries().iter().map(mapping_closure) {
+        for entry in directory.entries().map(mapping_closure) {
             callback(entry)?;
         }
 
         for entry in directory
             .entries()
-            .iter()
             .map(mapping_closure)
             .filter(|x| x.is_directory())
         {
@@ -261,7 +260,6 @@ impl Dcache {
             }
             let next_entry_id = current_dir
                 .entries()
-                .iter()
                 .find(|x| {
                     let filename = &self
                         .get_entry(x)
