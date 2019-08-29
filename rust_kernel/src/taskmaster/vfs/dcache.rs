@@ -1,5 +1,6 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
+use super::tools::{DcacheError, DcacheResult};
 use alloc::collections::BTreeMap;
 use core::convert::TryInto;
 use libc_binding::Errno;
@@ -287,27 +288,3 @@ impl Display for Dcache {
         Ok(())
     }
 }
-
-#[derive(Debug, Copy, Clone)]
-pub enum DcacheError {
-    FileAlreadyExists,
-    NoSuchEntry,
-    NotADirectory,
-    NotASymlink,
-    InvalidEntryIdInDirectory,
-    RootDoesNotExists,
-    NotEmpty,
-    EntryNotConnected,
-    NotEnoughArguments,
-    DirectoryNotMounted,
-    DirectoryIsMounted,
-    Errno(Errno),
-}
-
-impl From<Errno> for DcacheError {
-    fn from(errno: Errno) -> Self {
-        DcacheError::Errno(errno)
-    }
-}
-
-pub type DcacheResult<T> = Result<T, DcacheError>;

@@ -15,6 +15,7 @@ mod tests;
 mod thread;
 mod thread_group;
 pub mod vfs;
+pub use vfs::VFS;
 
 /// Describe what to do after an IPC request and result return
 #[derive(Debug)]
@@ -109,7 +110,7 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         .unwrap();
 
     // ipc::start();
-    vfs::init();
+    lazy_static::initialize(&VFS);
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }

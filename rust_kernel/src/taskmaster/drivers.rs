@@ -3,6 +3,7 @@
 use super::SysResult;
 
 use super::fd_interface::Mode;
+use super::vfs::InodeId;
 use super::IpcResult;
 
 pub mod ipc;
@@ -14,6 +15,7 @@ pub mod tty;
 pub use tty::TtyDevice;
 
 use alloc::sync::Arc;
+use fallible_collections::FallibleArc;
 use libc_binding::{termios, Errno, Pid};
 use sync::dead_mutex::DeadMutex;
 
@@ -43,12 +45,39 @@ pub trait FileOperation: core::fmt::Debug + Send {
     }
 }
 
+#[derive(Debug)]
+pub struct DefaultFileOperation;
+
+impl FileOperation for DefaultFileOperation {
+    fn register(&mut self, _access_mode: Mode) {}
+    fn unregister(&mut self, _access_mode: Mode) {}
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        Err(Errno::EINVAL)
+    }
+    fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        Err(Errno::EINVAL)
+    }
+}
+
 /// This Trait represent a File Driver in the VFS
 pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
     /// Get a reference to the inode
-    fn set_inode_id(&mut self, inode_id: usize);
+    fn set_inode_id(&mut self, inode_id: InodeId);
+}
+
+#[derive(Debug)]
+pub struct DefaultDriver;
+
+impl Driver for DefaultDriver {
+    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        let res = Arc::try_new(DeadMutex::new(DefaultFileOperation))?;
+        Ok(IpcResult::Done(res))
+    }
+    fn set_inode_id(&mut self, _inode_id: InodeId) {
+        // unimplemented!()
+    }
 }
 
 /// Get an universal file operation identifiant

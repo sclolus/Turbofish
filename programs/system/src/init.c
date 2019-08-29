@@ -11,7 +11,7 @@ int main(int argc, char *argv[], char *envp[])
 		// printf("%s: Fork failed\n", __func__);
 		exit(1);
 	} else if (pid == 0) {
-		int fd = open("tty1", 0);
+		int fd = open("/dev/tty1", 0);
 		dup(fd);
 		dup(fd);
 		if (argc != 2) {
@@ -33,7 +33,7 @@ int main(int argc, char *argv[], char *envp[])
 		// printf("%s: Fork failed\n", __func__);
 		exit(1);
 	} else if (pid == 0) {
-		int fd = open("tty2", 0);
+		int fd = open("/dev/tty2", 0);
 		dup(fd);
 		dup(fd);
 		if (argc != 2) {

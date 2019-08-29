@@ -3,6 +3,7 @@ use super::IpcResult;
 /// The User File Descriptor are sorted into a Binary Tree
 /// Key is the user number and value the structure FileDescriptor
 use super::SysResult;
+use super::VFS;
 
 use libc_binding::Errno;
 
@@ -47,7 +48,27 @@ impl FileDescriptorInterface {
         &mut self,
         filename: &str, /* access_mode: Mode ? */
     ) -> SysResult<IpcResult<Fd>> {
-        let file_operator = unimplemented!(); //DUMMY_VFS.lock().open(filename /* access_mode */)?;
+        // TODO: REMOVE THIS SHIT
+        let mut current = super::vfs::Current {
+            cwd: super::vfs::DirectoryEntryId::new(2),
+            uid: 0,
+            euid: 0,
+            gid: 0,
+            egid: 0,
+            open_fds: alloc::collections::BTreeMap::new(),
+        };
+        // TODO: REMOVE THIS SHIT
+        let mode =
+            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        use core::convert::TryFrom;
+        // TODO: REMOVE THIS SHIT
+        let path = super::vfs::Path::try_from(filename)?;
+        // TODO: REMOVE THIS SHIT
+        let flags = libc_binding::OpenFlags::O_RDWR;
+
+        let file_operator =
+            VFS.lock()
+                .open(&mut current, path, flags, mode /* access_mode */)?;
         match file_operator {
             IpcResult::Done(file_operator) => {
                 let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;

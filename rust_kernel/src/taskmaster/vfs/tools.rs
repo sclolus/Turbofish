@@ -1,4 +1,3 @@
-use super::DcacheError;
 use libc_binding::Errno;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -43,6 +42,26 @@ impl From<DcacheError> for VfsError {
     }
 }
 
+impl From<DcacheError> for Errno {
+    fn from(dcache_error: DcacheError) -> Errno {
+        match dcache_error {
+            DcacheError::Errno(e) => e,
+            // TODO: check that
+            _ => Errno::EINVAL,
+        }
+    }
+}
+
+impl From<VfsError> for Errno {
+    fn from(vfs_error: VfsError) -> Errno {
+        match vfs_error {
+            VfsError::Errno(e) => e,
+            // TODO: check that
+            _ => Errno::EINVAL,
+        }
+    }
+}
+
 impl From<Errno> for VfsError {
     fn from(value: Errno) -> Self {
         VfsError::Errno(value)
@@ -54,3 +73,27 @@ impl From<VfsError> for core::option::NoneError {
         core::option::NoneError
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum DcacheError {
+    FileAlreadyExists,
+    NoSuchEntry,
+    NotADirectory,
+    NotASymlink,
+    InvalidEntryIdInDirectory,
+    RootDoesNotExists,
+    NotEmpty,
+    EntryNotConnected,
+    NotEnoughArguments,
+    DirectoryNotMounted,
+    DirectoryIsMounted,
+    Errno(Errno),
+}
+
+impl From<Errno> for DcacheError {
+    fn from(errno: Errno) -> Self {
+        DcacheError::Errno(errno)
+    }
+}
+
+pub type DcacheResult<T> = Result<T, DcacheError>;
