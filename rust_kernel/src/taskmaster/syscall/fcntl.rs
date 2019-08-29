@@ -1,5 +1,5 @@
-use super::ipc::Fd;
 use super::scheduler::SCHEDULER;
+use super::Fd;
 use super::SysResult;
 use core::mem::transmute;
 use libc_binding::FcntlCmd;

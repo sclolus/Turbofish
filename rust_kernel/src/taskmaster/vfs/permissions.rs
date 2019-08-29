@@ -76,12 +76,6 @@ bitflags! {
 }
 
 impl FilePermissions {
-    pub unsafe fn from_u32(mode: u32) -> Self {
-        use core::mem::transmute;
-
-        transmute(mode)
-    }
-
     pub fn is_character_device(&self) -> bool {
         self.contains(Self::S_IFCHR)
     }

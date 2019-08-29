@@ -1,17 +1,29 @@
 //! This file contains the task manager
 
 mod cpu_isr;
-mod ipc;
+// mod ipc;
 mod process;
 #[macro_use]
 mod scheduler;
-mod dummy_vfs;
+pub mod drivers;
+pub use drivers::{Driver, FileOperation};
+mod fd_interface;
 mod safe_ffi;
 mod signal_interface;
 mod syscall;
 mod tests;
 mod thread;
 mod thread_group;
+pub mod vfs;
+
+/// Describe what to do after an IPC request and result return
+#[derive(Debug)]
+pub enum IpcResult<T> {
+    /// Can continue thread execution normally
+    Done(T),
+    /// the user should wait for his IPC request
+    Wait(T, usize),
+}
 
 pub use process::{KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess};
 pub use safe_ffi::CStringArray;
@@ -96,7 +108,8 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
         })
         .unwrap();
 
-    ipc::start();
+    // ipc::start();
+    vfs::init();
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }

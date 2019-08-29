@@ -21,8 +21,6 @@ pub use tools::{NbrSectors, Sector};
 
 pub mod ext2;
 
-pub mod vfs;
-
 use crate::multiboot::MultibootInfo;
 use ide_ata_controller::{Hierarchy, Rank};
 
@@ -46,7 +44,6 @@ pub enum DiskDriver {
 
 pub fn init(multiboot_info: &MultibootInfo) {
     // Intialize SATA controller
-    vfs::init();
     // loop {}
     match SataController::init() {
         Some(sata_controller) => {

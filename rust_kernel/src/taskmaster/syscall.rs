@@ -1,7 +1,6 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
-use super::ipc;
-use super::ipc::Fd;
+use super::fd_interface::Fd;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -11,6 +10,7 @@ use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
 use super::thread_group;
+use super::IpcResult;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};

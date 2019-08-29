@@ -2,10 +2,10 @@
 
 use super::SysResult;
 
-use super::ipc::IpcResult;
 use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
+use super::IpcResult;
 
 /// Read something from a file descriptor
 pub fn sys_read(fd: i32, mut buf: *mut u8, mut count: usize) -> SysResult<u32> {

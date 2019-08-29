@@ -2,20 +2,16 @@
 
 use super::SysResult;
 
+use super::fd_interface::Mode;
 use super::IpcResult;
-use super::Mode;
+
+pub mod ipc;
+pub use ipc::Fifo;
+pub use ipc::Pipe;
+pub use ipc::Socket;
 
 pub mod tty;
 pub use tty::TtyDevice;
-
-pub mod pipe;
-pub use pipe::Pipe;
-
-pub mod fifo;
-pub use fifo::Fifo;
-
-pub mod socket;
-pub use socket::Socket;
 
 use alloc::sync::Arc;
 use libc_binding::{termios, Errno, Pid};
