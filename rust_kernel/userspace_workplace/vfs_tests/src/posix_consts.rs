@@ -9,7 +9,6 @@ use const_assert;
 /// the implementation shall consider this an error."
 pub const NAME_MAX: usize = 256;
 
-
 /// The maximum size (in bytes) of any path.
 pub const PATH_MAX: usize = 4096;
 

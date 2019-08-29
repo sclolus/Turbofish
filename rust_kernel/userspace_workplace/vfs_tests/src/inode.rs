@@ -14,7 +14,10 @@ pub struct InodeId {
 
 impl InodeId {
     pub fn new(inode_number: InodeNumber, filesystem_id: FileSystemId) -> Self {
-        Self { inode_number, filesystem_id }
+        Self {
+            inode_number,
+            filesystem_id,
+        }
     }
 }
 
@@ -257,7 +260,11 @@ impl Inode {
         self.access_mode.is_socket()
     }
 
-    pub fn dispatch_handler(&self, params: VfsHandlerParams, kind: VfsHandlerKind) -> VfsResult<i32> {
+    pub fn dispatch_handler(
+        &self,
+        params: VfsHandlerParams,
+        kind: VfsHandlerKind,
+    ) -> VfsResult<i32> {
         let ops = self.inode_operations;
         match kind {
             // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
@@ -290,7 +297,12 @@ pub struct File {
 
 impl File {
     pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
-        Self { id, dentry_id, offset: 0, flags: OpenFlags::default() }
+        Self {
+            id,
+            dentry_id,
+            offset: 0,
+            flags: OpenFlags::default(),
+        }
     }
 }
 #[repr(u32)]

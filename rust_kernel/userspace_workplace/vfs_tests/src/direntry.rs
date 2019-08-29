@@ -56,7 +56,10 @@ impl EntryDirectory {
 
 impl Default for EntryDirectory {
     fn default() -> Self {
-        Self { entries: Vec::new(), mounted: None }
+        Self {
+            entries: Vec::new(),
+            mounted: None,
+        }
     }
 }
 

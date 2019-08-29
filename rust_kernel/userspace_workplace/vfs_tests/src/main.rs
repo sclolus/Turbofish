@@ -290,13 +290,19 @@ impl VirtualFileSystem {
         Ok(new)
     }
 
-    fn iter_directory_entries(&self, dir: DirectoryEntryId) -> VfsResult<impl Iterator<Item = &DirectoryEntry>> {
+    fn iter_directory_entries(
+        &self,
+        dir: DirectoryEntryId,
+    ) -> VfsResult<impl Iterator<Item = &DirectoryEntry>> {
         let dir = self.dcache.get_entry(&dir)?.get_directory()?;
 
         let mut entries = dir.entries().iter();
         Ok(unfold((), move |_| {
             if let Some(entry_id) = entries.next() {
-                let entry = self.dcache.get_entry(&entry_id).expect("Some entries from this directory are corrupted");
+                let entry = self
+                    .dcache
+                    .get_entry(&entry_id)
+                    .expect("Some entries from this directory are corrupted");
                 Some(entry)
             } else {
                 None
@@ -304,7 +310,11 @@ impl VirtualFileSystem {
         }))
     }
 
-    fn recursive_build_subtree(&mut self, current_dir_id: DirectoryEntryId, fs_id: FileSystemId) -> VfsResult<()> {
+    fn recursive_build_subtree(
+        &mut self,
+        current_dir_id: DirectoryEntryId,
+        fs_id: FileSystemId,
+    ) -> VfsResult<()> {
         let direntry = self.dcache.get_entry(&current_dir_id)?;
 
         // Inode unexpectedly does not exists...
@@ -313,8 +323,10 @@ impl VirtualFileSystem {
         if !inode.is_directory() {
             return Ok(());
         }
-        let entries =
-            inode.inode_operations.lookup_entries.expect("Directory does not have lookup_entries() method")(&inode);
+        let entries = inode
+            .inode_operations
+            .lookup_entries
+            .expect("Directory does not have lookup_entries() method")(&inode);
 
         for mut entry in entries {
             let fs = self.mounted_filesystems.get(&fs_id).unwrap(); // remove this unwrap
@@ -413,21 +425,31 @@ impl VirtualFileSystem {
     ) -> VfsResult<Fd> {
         let entry_id;
         match self.dcache.pathname_resolution(current.cwd, path.clone()) {
-            Ok(id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => return Err(Errno(Errno::Eexist)),
+            Ok(id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
+                return Err(Errno(Errno::Eexist))
+            }
             Ok(id) => entry_id = id,
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
                 let mut new_inode = Inode::default();
                 let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
 
-                new_inode.set_id(new_id).set_access_mode(mode).set_uid(current.uid).set_gid(current.gid); // posix does not really like this.
+                new_inode
+                    .set_id(new_id)
+                    .set_access_mode(mode)
+                    .set_uid(current.uid)
+                    .set_gid(current.gid); // posix does not really like this.
 
                 new_inode.link_number += 1;
                 assert!(self.inodes.insert(new_id, new_inode).is_none());
                 let mut new_direntry = DirectoryEntry::default();
-                let parent_id = self.dcache.pathname_resolution(current.cwd, path.parent())?;
+                let parent_id = self
+                    .dcache
+                    .pathname_resolution(current.cwd, path.parent())?;
 
-                new_direntry.set_filename(*path.filename().unwrap()).set_inode_id(new_id);
+                new_direntry
+                    .set_filename(*path.filename().unwrap())
+                    .set_inode_id(new_id);
 
                 if flags.contains(OpenFlags::O_DIRECTORY) {
                     new_direntry.set_directory();
@@ -454,10 +476,19 @@ impl VirtualFileSystem {
         flags: OpenFlags,
     ) -> VfsResult<Fd> {
         let inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
-        let offset = if flags.contains(OpenFlags::O_APPEND) { inode.size } else { 0 };
+        let offset = if flags.contains(OpenFlags::O_APPEND) {
+            inode.size
+        } else {
+            0
+        };
 
         inode.open();
-        let ofd = File { id: inode_id, dentry_id, offset, flags };
+        let ofd = File {
+            id: inode_id,
+            dentry_id,
+            offset,
+            flags,
+        };
 
         let ofd_id = self.add_entry(ofd).unwrap(); // remove this unwrap
 
@@ -465,7 +496,12 @@ impl VirtualFileSystem {
         Ok(current.add_fd(fildes).unwrap()) // remove this_unwrap
     }
 
-    pub fn creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
+    pub fn creat(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        mode: FilePermissions,
+    ) -> VfsResult<Fd> {
         let mut flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
 
         if mode.contains(FilePermissions::S_IFDIR) {
@@ -476,19 +512,30 @@ impl VirtualFileSystem {
         Ok(self.open(current, path, flags, mode)?)
     }
 
-    pub fn recursive_creat(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<Fd> {
+    pub fn recursive_creat(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        mode: FilePermissions,
+    ) -> VfsResult<Fd> {
         let mut ancestors = path.ancestors();
 
         let child = ancestors.next_back().ok_or(Errno(Einval))?;
         let mut ancestors = ancestors; //uncomment this
         for ancestor in ancestors {
-            self.creat(current, ancestor, FilePermissions::S_IFDIR).unwrap(); // forget fd?
+            self.creat(current, ancestor, FilePermissions::S_IFDIR)
+                .unwrap(); // forget fd?
         }
 
         Ok(self.creat(current, child, mode)?)
     }
 
-    pub fn chmod(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
+    pub fn chmod(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        mode: FilePermissions,
+    ) -> VfsResult<()> {
         let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
 
         let entry = self.dcache.get_entry(&entry_id)?;
@@ -499,7 +546,13 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn chown(&mut self, current: &mut Current, path: Path, owner: UserId, group: GroupId) -> VfsResult<()> {
+    pub fn chown(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        owner: UserId,
+        group: GroupId,
+    ) -> VfsResult<()> {
         let entry_id = self.dcache.pathname_resolution(current.cwd, path)?;
 
         let entry = self.dcache.get_entry(&entry_id)?;
@@ -511,7 +564,12 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn mkdir(&mut self, current: &mut Current, path: Path, mode: FilePermissions) -> VfsResult<()> {
+    pub fn mkdir(
+        &mut self,
+        current: &mut Current,
+        path: Path,
+        mode: FilePermissions,
+    ) -> VfsResult<()> {
         let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
 
         self.open(current, path, flags, mode)?;
@@ -542,11 +600,17 @@ impl VirtualFileSystem {
             return Err(Errno(Eisdir));
         }
 
-        if self.dcache.pathname_resolution(current.cwd, newpath.clone()).is_ok() {
+        if self
+            .dcache
+            .pathname_resolution(current.cwd, newpath.clone())
+            .is_ok()
+        {
             return Err(Errno(Eexist));
         }
 
-        let parent_new = self.dcache.pathname_resolution(current.cwd, newpath.parent())?;
+        let parent_new = self
+            .dcache
+            .pathname_resolution(current.cwd, newpath.parent())?;
 
         let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(NoSuchInode)?;
 
@@ -561,7 +625,8 @@ impl VirtualFileSystem {
     pub fn rename(&mut self, current: &mut Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
         let oldentry_id = self.dcache.pathname_resolution(current.cwd, oldpath)?;
 
-        self.dcache.rename_dentry(current.cwd, oldentry_id, newpath)?;
+        self.dcache
+            .rename_dentry(current.cwd, oldentry_id, newpath)?;
         Ok(())
     }
 
@@ -573,7 +638,13 @@ impl VirtualFileSystem {
         Ok(0)
     }
 
-    pub fn lseek(&mut self, current: &mut Current, fd: Fd, offset: Offset, seek: SeekType) -> VfsResult<Offset> {
+    pub fn lseek(
+        &mut self,
+        current: &mut Current,
+        fd: Fd,
+        offset: Offset,
+        seek: SeekType,
+    ) -> VfsResult<Offset> {
         Ok(0)
     }
 
@@ -593,8 +664,14 @@ fn main() {
     let mut vfs = Vfs::new().unwrap();
 
     let mut args = env::args().skip(1);
-    let mut current =
-        Current { cwd: DirectoryEntryId::new(2), uid: 0, euid: 0, gid: 0, egid: 0, open_fds: BTreeMap::new() };
+    let mut current = Current {
+        cwd: DirectoryEntryId::new(2),
+        uid: 0,
+        euid: 0,
+        gid: 0,
+        egid: 0,
+        open_fds: BTreeMap::new(),
+    };
 
     fn construct_tree(vfs: &mut Vfs, current: &mut Current, root: &StdPath, current_path: Path) {
         let mut iter = read_dir(root).unwrap().filter_map(|e| e.ok());
@@ -609,7 +686,9 @@ fn main() {
             // new.set_filename();
             // new.set_id(get_available_directory_entry_id());
             let filetype = entry.file_type().unwrap();
-            let mode = unsafe { FilePermissions::from_u32(entry.metadata().unwrap().permissions().mode()) };
+            let mode = unsafe {
+                FilePermissions::from_u32(entry.metadata().unwrap().permissions().mode())
+            };
 
             let mut flags = OpenFlags::O_CREAT;
 
@@ -631,7 +710,12 @@ fn main() {
 
     let path = args.next().unwrap();
 
-    construct_tree(&mut vfs, &mut current, &StdPath::new(&path), "/".try_into().unwrap());
+    construct_tree(
+        &mut vfs,
+        &mut current,
+        &StdPath::new(&path),
+        "/".try_into().unwrap(),
+    );
 
     let mut line = String::new();
     let mut stdin = stdin();
@@ -817,7 +901,14 @@ fn main() {
 mod vfs {
 
     fn default_current() -> Current {
-        Current { cwd: DirectoryEntryId::new(2), uid: 0, euid: 0, gid: 0, egid: 0, open_fds: BTreeMap::new() }
+        Current {
+            cwd: DirectoryEntryId::new(2),
+            uid: 0,
+            euid: 0,
+            gid: 0,
+            egid: 0,
+            open_fds: BTreeMap::new(),
+        }
     }
 
     use super::*;
