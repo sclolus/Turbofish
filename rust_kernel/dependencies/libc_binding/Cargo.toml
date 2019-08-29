@@ -9,3 +9,4 @@ build = "build.rs"
 
 [dependencies]
 const_assert = { path = "../const_assert" }
+bitflags = "1.0.4"
