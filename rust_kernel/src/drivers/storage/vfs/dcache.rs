@@ -3,30 +3,7 @@ use super::path::Path;
 use alloc::collections::BTreeMap;
 use core::convert::TryInto;
 use libc_binding::Errno;
-
-#[derive(Debug, Copy, Clone)]
-pub enum DcacheError {
-    FileAlreadyExists,
-    NoSuchEntry,
-    NotADirectory,
-    NotASymlink,
-    InvalidEntryIdInDirectory,
-    RootDoesNotExists,
-    NotEmpty,
-    EntryNotConnected,
-    NotEnoughArguments,
-    DirectoryNotMounted,
-    DirectoryIsMounted,
-    Errno(Errno),
-}
-
-impl From<Errno> for DcacheError {
-    fn from(errno: Errno) -> Self {
-        DcacheError::Errno(errno)
-    }
-}
-
-pub type DcacheResult<T> = Result<T, DcacheError>;
+use DcacheError::*;
 
 pub struct Dcache {
     pub root_id: DirectoryEntryId,
@@ -34,7 +11,6 @@ pub struct Dcache {
     pub path_cache: BTreeMap<Path, DirectoryEntryId>,
 }
 
-use DcacheError::*;
 impl Dcache {
     pub fn new() -> Self {
         let root_entry = DirectoryEntry::root_entry();
@@ -311,3 +287,27 @@ impl Display for Dcache {
         Ok(())
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum DcacheError {
+    FileAlreadyExists,
+    NoSuchEntry,
+    NotADirectory,
+    NotASymlink,
+    InvalidEntryIdInDirectory,
+    RootDoesNotExists,
+    NotEmpty,
+    EntryNotConnected,
+    NotEnoughArguments,
+    DirectoryNotMounted,
+    DirectoryIsMounted,
+    Errno(Errno),
+}
+
+impl From<Errno> for DcacheError {
+    fn from(errno: Errno) -> Self {
+        DcacheError::Errno(errno)
+    }
+}
+
+pub type DcacheResult<T> = Result<T, DcacheError>;

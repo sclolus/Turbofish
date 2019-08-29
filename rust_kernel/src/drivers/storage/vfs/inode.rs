@@ -8,6 +8,131 @@ pub type InodeNumber = usize;
 use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 use libc_binding::OpenFlags;
 
+#[derive(Default)]
+pub struct Inode {
+    /// This inode's id.
+    pub id: InodeId,
+
+    /// This inode's hard link number
+    pub link_number: usize,
+    opened_by: usize,
+    pub access_mode: FilePermissions,
+    // pub file_type: Filetype, ??????????
+    pub uid: UserId,
+    pub gid: GroupId,
+
+    pub atime: time_t,
+    pub mtime: time_t,
+    pub ctime: time_t,
+
+    pub size: usize,
+    // pub status: InodeStatus,
+    // pub ref_count: AtomicU32,;
+    pub inode_operations: InodeOperations,
+}
+
+impl Inode {
+    // Builder Pattern
+    pub fn set_id(&mut self, id: InodeId) -> &mut Self {
+        self.id = id;
+        self
+    }
+
+    pub fn set_access_mode(&mut self, mode: FilePermissions) -> &mut Self {
+        self.access_mode = mode;
+        self
+    }
+
+    pub fn set_uid(&mut self, uid: UserId) -> &mut Self {
+        self.uid = uid;
+        self
+    }
+
+    pub fn set_gid(&mut self, gid: GroupId) -> &mut Self {
+        self.gid = gid;
+        self
+    }
+
+    pub fn root_inode() -> Self {
+        let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
+
+        Self {
+            id: InodeId::new(2, FileSystemId::new(0)),
+            link_number: 1,
+            opened_by: 0,
+            access_mode,
+            uid: 0,
+            gid: 0,
+            atime: 0,
+            ctime: 0,
+            mtime: 0,
+            size: 4096,
+            inode_operations: Default::default(),
+        }
+    }
+
+    pub fn set_inode_operations(&mut self, inode_operations: InodeOperations) -> &mut Self {
+        self.inode_operations = inode_operations;
+        self
+    }
+    // Builder Pattern end
+
+    pub fn is_opened(&self) -> bool {
+        self.opened_by == 0
+    }
+
+    // Explain this
+    pub fn open(&mut self) {
+        self.opened_by += 1;
+    }
+
+    pub fn is_character_device(&self) -> bool {
+        self.access_mode.is_character_device()
+    }
+
+    pub fn is_fifo(&self) -> bool {
+        self.access_mode.is_fifo()
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.access_mode.is_regular()
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.access_mode.is_directory()
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.access_mode.is_symlink()
+    }
+
+    pub fn is_socket(&self) -> bool {
+        self.access_mode.is_socket()
+    }
+
+    pub fn dispatch_handler(
+        &self,
+        params: VfsHandlerParams,
+        kind: VfsHandlerKind,
+    ) -> VfsResult<i32> {
+        use VfsHandlerKind::*;
+        let ops = self.inode_operations;
+        match kind {
+            // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
+            // LookupInode => ops.lookup_inode.ok_or(VfsError::UndefinedHandler)?(params),
+            // LookupEntries => ops.lookup_entries.ok_or(VfsError::UndefinedHandler)?(params),
+            // Creat => ops.creat.ok_or(VfsError::UndefinedHandler)?(params),
+            // Rename => ops.rename.ok_or(VfsError::UndefinedHandler)?(params),
+            // Chmod => ops.chmod.ok_or(VfsError::UndefinedHandler)?(params),
+            // Chown => ops.chown.ok_or(VfsError::UndefinedHandler)?(params),
+            // Lchown => ops.lchown.ok_or(VfsError::UndefinedHandler)?(params),
+            // Truncate => ops.truncate.ok_or(VfsError::UndefinedHandler)?(params),
+            TestOpen => ops.test_open.ok_or(VfsError::UndefinedHandler)?(params),
+            _ => unimplemented!(),
+        }
+    }
+}
+
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
@@ -159,131 +284,6 @@ impl InodeOperations {
 //     Socket,
 //     SymbolicLink,
 // }
-
-#[derive(Default)]
-pub struct Inode {
-    /// This inode's id.
-    pub id: InodeId,
-
-    /// This inode's hard link number
-    pub link_number: usize,
-    opened_by: usize,
-    pub access_mode: FilePermissions,
-    // pub file_type: Filetype, ??????????
-    pub uid: UserId,
-    pub gid: GroupId,
-
-    pub atime: time_t,
-    pub mtime: time_t,
-    pub ctime: time_t,
-
-    pub size: usize,
-    // pub status: InodeStatus,
-    // pub ref_count: AtomicU32,;
-    pub inode_operations: InodeOperations,
-}
-
-impl Inode {
-    // Builder Pattern
-    pub fn set_id(&mut self, id: InodeId) -> &mut Self {
-        self.id = id;
-        self
-    }
-
-    pub fn set_access_mode(&mut self, mode: FilePermissions) -> &mut Self {
-        self.access_mode = mode;
-        self
-    }
-
-    pub fn set_uid(&mut self, uid: UserId) -> &mut Self {
-        self.uid = uid;
-        self
-    }
-
-    pub fn set_gid(&mut self, gid: GroupId) -> &mut Self {
-        self.gid = gid;
-        self
-    }
-
-    pub fn root_inode() -> Self {
-        let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
-
-        Self {
-            id: InodeId::new(2, FileSystemId::new(0)),
-            link_number: 1,
-            opened_by: 0,
-            access_mode,
-            uid: 0,
-            gid: 0,
-            atime: 0,
-            ctime: 0,
-            mtime: 0,
-            size: 4096,
-            inode_operations: Default::default(),
-        }
-    }
-
-    pub fn set_inode_operations(&mut self, inode_operations: InodeOperations) -> &mut Self {
-        self.inode_operations = inode_operations;
-        self
-    }
-    // Builder Pattern end
-
-    pub fn is_opened(&self) -> bool {
-        self.opened_by == 0
-    }
-
-    // Explain this
-    pub fn open(&mut self) {
-        self.opened_by += 1;
-    }
-
-    pub fn is_character_device(&self) -> bool {
-        self.access_mode.is_character_device()
-    }
-
-    pub fn is_fifo(&self) -> bool {
-        self.access_mode.is_fifo()
-    }
-
-    pub fn is_regular(&self) -> bool {
-        self.access_mode.is_regular()
-    }
-
-    pub fn is_directory(&self) -> bool {
-        self.access_mode.is_directory()
-    }
-
-    pub fn is_symlink(&self) -> bool {
-        self.access_mode.is_symlink()
-    }
-
-    pub fn is_socket(&self) -> bool {
-        self.access_mode.is_socket()
-    }
-
-    pub fn dispatch_handler(
-        &self,
-        params: VfsHandlerParams,
-        kind: VfsHandlerKind,
-    ) -> VfsResult<i32> {
-        use VfsHandlerKind::*;
-        let ops = self.inode_operations;
-        match kind {
-            // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
-            // LookupInode => ops.lookup_inode.ok_or(VfsError::UndefinedHandler)?(params),
-            // LookupEntries => ops.lookup_entries.ok_or(VfsError::UndefinedHandler)?(params),
-            // Creat => ops.creat.ok_or(VfsError::UndefinedHandler)?(params),
-            // Rename => ops.rename.ok_or(VfsError::UndefinedHandler)?(params),
-            // Chmod => ops.chmod.ok_or(VfsError::UndefinedHandler)?(params),
-            // Chown => ops.chown.ok_or(VfsError::UndefinedHandler)?(params),
-            // Lchown => ops.lchown.ok_or(VfsError::UndefinedHandler)?(params),
-            // Truncate => ops.truncate.ok_or(VfsError::UndefinedHandler)?(params),
-            TestOpen => ops.test_open.ok_or(VfsError::UndefinedHandler)?(params),
-            _ => unimplemented!(),
-        }
-    }
-}
 
 //make some tests
 /// The structure defining an `Open File Description` for a file.

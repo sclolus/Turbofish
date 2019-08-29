@@ -9,6 +9,147 @@ use super::posix_consts::{NAME_MAX, PATH_MAX};
 
 type Result<T> = StdResult<T, Errno>;
 
+#[derive(Debug, Clone)]
+pub struct Path {
+    components: Vec<Filename>,
+    total_length: usize,
+    is_absolute: bool,
+}
+
+impl Path {
+    fn null_path() -> Self {
+        Self {
+            components: Vec::new(),
+            total_length: 0,
+            is_absolute: false,
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::null_path()
+    }
+
+    fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
+        if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
+            return Err(Errno::ENAMETOOLONG);
+        }
+        self.is_absolute = value;
+        self.update_len();
+        Ok(self)
+    }
+
+    pub fn is_absolute(&self) -> bool {
+        self.is_absolute
+    }
+
+    pub fn depth(&self) -> usize {
+        self.components.len()
+    }
+
+    pub fn len(&self) -> usize {
+        self.total_length
+    }
+
+    pub fn filename(&self) -> Option<&Filename> {
+        self.components.iter().last()
+    }
+
+    pub fn parent(&self) -> Path {
+        let mut components = self.components();
+        components.next_back();
+
+        Self::try_from(components).unwrap() // well for now this should not be happening
+    }
+
+    pub fn ancestors(&self) -> Ancestors {
+        Ancestors::from_path(self)
+    }
+
+    pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
+        // this is an Option return type actually
+        let total_length;
+        if self.depth() != 0 {
+            total_length = self.total_length + component.len() + 1;
+        } else {
+            total_length = self.total_length + component.len();
+        }
+
+        if total_length > PATH_MAX - 1 {
+            return Err(Errno::ENAMETOOLONG);
+        }
+        self.total_length = total_length;
+        self.components.push(component);
+        Ok(self)
+    }
+
+    fn len_from_components(&self) -> usize {
+        let mut len = 0;
+
+        if self.is_absolute() {
+            len += 1;
+        }
+        if self.depth() != 0 {
+            len += self.components.iter().map(|x| x.len()).sum::<usize>() + self.depth() - 1;
+        }
+
+        len
+    }
+
+    fn update_len(&mut self) -> usize {
+        self.total_length = self.len_from_components();
+        self.total_length
+    }
+
+    pub fn pop(&mut self) -> Option<Filename> {
+        let ret = self.components.pop()?;
+        if self.depth() != 0 {
+            self.total_length -= 1;
+        }
+        self.total_length -= ret.len();
+        Some(ret)
+    }
+
+    pub fn components(&self) -> Components {
+        Components::from_path(self)
+    }
+
+    pub fn chain(&mut self, other: Path) -> Result<&mut Self> {
+        if self == &Path::null_path() {
+            *self = other;
+            Ok(self)
+        } else {
+            self.chain_components(other.components())?;
+            Ok(self)
+        }
+    }
+
+    pub fn chain_components<'a, T>(&mut self, comps: T) -> Result<&mut Self>
+    where
+        T: Iterator<Item = &'a Filename>,
+    {
+        for comp in comps {
+            self.push(*comp)?;
+        }
+        Ok(self)
+    }
+
+    pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
+        let stack = self.clone(); // well need to copy data temporary.
+        let (comps_begin, comps_end) = stack.components().divide_at(offset);
+
+        // comps_begin.next_back();
+        // comps_end.next();
+
+        println!("Begin: {:?}", comps_begin);
+        println!("End: {:?}", comps_end);
+        let mut new = Self::try_from(comps_begin)?;
+
+        new.chain(other)?.chain_components(comps_end)?;
+        *self = new;
+        Ok(self)
+    }
+}
+
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -235,147 +376,6 @@ impl<'a> DoubleEndedIterator for Ancestors<'a> {
             self.left_ancestors = res.unwrap();
             path
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Path {
-    components: Vec<Filename>,
-    total_length: usize,
-    is_absolute: bool,
-}
-
-impl Path {
-    fn null_path() -> Self {
-        Self {
-            components: Vec::new(),
-            total_length: 0,
-            is_absolute: false,
-        }
-    }
-
-    pub fn new() -> Self {
-        Self::null_path()
-    }
-
-    fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
-        if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
-            return Err(Errno::ENAMETOOLONG);
-        }
-        self.is_absolute = value;
-        self.update_len();
-        Ok(self)
-    }
-
-    pub fn is_absolute(&self) -> bool {
-        self.is_absolute
-    }
-
-    pub fn depth(&self) -> usize {
-        self.components.len()
-    }
-
-    pub fn len(&self) -> usize {
-        self.total_length
-    }
-
-    pub fn filename(&self) -> Option<&Filename> {
-        self.components.iter().last()
-    }
-
-    pub fn parent(&self) -> Path {
-        let mut components = self.components();
-        components.next_back();
-
-        Self::try_from(components).unwrap() // well for now this should not be happening
-    }
-
-    pub fn ancestors(&self) -> Ancestors {
-        Ancestors::from_path(self)
-    }
-
-    pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
-        // this is an Option return type actually
-        let total_length;
-        if self.depth() != 0 {
-            total_length = self.total_length + component.len() + 1;
-        } else {
-            total_length = self.total_length + component.len();
-        }
-
-        if total_length > PATH_MAX - 1 {
-            return Err(Errno::ENAMETOOLONG);
-        }
-        self.total_length = total_length;
-        self.components.push(component);
-        Ok(self)
-    }
-
-    fn len_from_components(&self) -> usize {
-        let mut len = 0;
-
-        if self.is_absolute() {
-            len += 1;
-        }
-        if self.depth() != 0 {
-            len += self.components.iter().map(|x| x.len()).sum::<usize>() + self.depth() - 1;
-        }
-
-        len
-    }
-
-    fn update_len(&mut self) -> usize {
-        self.total_length = self.len_from_components();
-        self.total_length
-    }
-
-    pub fn pop(&mut self) -> Option<Filename> {
-        let ret = self.components.pop()?;
-        if self.depth() != 0 {
-            self.total_length -= 1;
-        }
-        self.total_length -= ret.len();
-        Some(ret)
-    }
-
-    pub fn components(&self) -> Components {
-        Components::from_path(self)
-    }
-
-    pub fn chain(&mut self, other: Path) -> Result<&mut Self> {
-        if self == &Path::null_path() {
-            *self = other;
-            Ok(self)
-        } else {
-            self.chain_components(other.components())?;
-            Ok(self)
-        }
-    }
-
-    pub fn chain_components<'a, T>(&mut self, comps: T) -> Result<&mut Self>
-    where
-        T: Iterator<Item = &'a Filename>,
-    {
-        for comp in comps {
-            self.push(*comp)?;
-        }
-        Ok(self)
-    }
-
-    pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
-        let stack = self.clone(); // well need to copy data temporary.
-        let (comps_begin, comps_end) = stack.components().divide_at(offset);
-
-        // comps_begin.next_back();
-        // comps_end.next();
-
-        println!("Begin: {:?}", comps_begin);
-        println!("End: {:?}", comps_end);
-        let mut new = Self::try_from(comps_begin)?;
-
-        new.chain(other)?.chain_components(comps_end)?;
-        *self = new;
-        Ok(self)
     }
 }
 
