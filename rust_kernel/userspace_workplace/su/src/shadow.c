@@ -15,7 +15,6 @@ void	print_shadow_entry(struct shadow_entry *entry)
 	       entry->_reserved);
 }
 
-// TODO: this leaks too.
 int32_t	parse_shadow_entry(char *entry, struct shadow_entry *sentry)
 {
 	assert(entry);
@@ -44,24 +43,31 @@ int32_t	parse_shadow_entry(char *entry, struct shadow_entry *sentry)
 	else if (sentry->last_password_change == 0) {
 		sentry->change_passwd_next_login = true;
 	}
+	free(fields[2]);
+
 
 	sentry->min_password_age = atoi(fields[3]);
 
 	if (strlen(fields[3]) == 0 || sentry->min_password_age == 0) {
 		sentry->no_min_age = true;
 	}
+	free(fields[3]);
+
 
 	sentry->max_password_age = atoi(fields[4]);
 
 	if (strlen(fields[4]) == 0) {
 		sentry->no_max_age = true;
 	}
+	free(fields[4]);
+
 
 	sentry->warning_period = atoi(fields[5]);
 
 	if (strlen(fields[5]) == 0 || sentry->warning_period == 0) {
 		sentry->no_warning_period = true;
 	}
+	free(fields[5]);
 
 
 	sentry->inactivity_period = atoi(fields[6]);
@@ -69,12 +75,16 @@ int32_t	parse_shadow_entry(char *entry, struct shadow_entry *sentry)
 	if (strlen(fields[6]) == 0) {
 		sentry->no_inactivity_period = true;
 	}
+	free(fields[6]);
 
 	sentry->account_expiration_date = atoi(fields[7]);
 	if (strlen(fields[7]) == 0) {
 		sentry->no_account_expiration = true;
 	}
+	free(fields[7]);
 
+	sentry->_reserved = fields[8];
+	free(fields);
 	return 0;
 }
 
@@ -92,6 +102,8 @@ struct shadow_entry *parse_shadow_file(uint32_t *n_entries) {
 	}
 
 	char	**entries = strsplit(contents, '\n');
+
+	free(contents);
 	uint32_t nbr_entries = 0;
 
 	if (!entries) {

@@ -25,14 +25,16 @@ char	    *getpass(const char *prompt)
 	write(STDOUT_FILENO, "\n", 1);
 
 	if (-1 == ret) {
+		free(pass);
 		pass = NULL;
 	}
 
-	if (pass_size != 0) {
+	if (pass && pass_size != 0) {
 		pass[pass_size - 1] = '\0';
 	}
 
 	if (-1 == tcsetattr(STDIN_FILENO, TCSANOW, &old)) {
+		free(pass);
 		return NULL;
 	}
 	return pass;

@@ -37,10 +37,13 @@ int32_t	parse_passwd_entry(char *entry, struct passwd_entry *pentry)
 	pentry->login_name = fields[0];
 	pentry->hashed_passwd = fields[1];
 	pentry->uid = atoi(fields[2]);
+	free(fields[2]);
 	pentry->gid = atoi(fields[3]);
+	free(fields[3]);
 	pentry->comment_field = fields[4];
 	pentry->user_home_directory = fields[5];
 	pentry->user_interpreter = fields[6];
+	free(fields);
 	return 0;
 }
 
@@ -57,6 +60,8 @@ struct passwd_entry *parse_passwd_file(uint32_t *n_entries) {
 	}
 
 	char	**entries = strsplit(contents, '\n');
+
+	free(contents);
 	uint32_t nbr_entries = 0;
 
 	if (!entries) {
