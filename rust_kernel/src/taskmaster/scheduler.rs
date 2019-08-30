@@ -590,7 +590,7 @@ impl Scheduler {
 
     pub fn send_message(&mut self, message: MessageTo) {
         use super::syscall::WaitOption;
-        // dbg!(message);
+        log::info!("{:?}", message);
         match message {
             MessageTo::Reader { uid_file_op } => {
                 self.iter_thread_mut()
@@ -698,6 +698,13 @@ impl Scheduler {
             _ => panic!("message not covered"),
         }
     }
+}
+
+#[no_mangle]
+#[allow(dead_code)]
+pub unsafe fn get_current_pgid() -> Pid {
+    SCHEDULER.force_unlock();
+    SCHEDULER.lock().current_thread_group().pgid
 }
 
 #[no_mangle]

@@ -17,7 +17,11 @@ pub use cursor::{Cursor, Pos};
 pub mod monitor;
 
 mod tty;
-pub use tty::{BufferedTty, LineDiscipline, ReadResult, Scroll, Tty, WriteMode};
+pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
+
+mod line_discipline;
+use line_discipline::LineDiscipline;
+pub use line_discipline::ReadResult;
 
 mod log;
 
