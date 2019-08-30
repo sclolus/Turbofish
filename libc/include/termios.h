@@ -289,7 +289,7 @@ struct termios {
 //
 //    The <termios.h> header shall define the following symbolic constants for use as flags in the c_lflag field. The c_lflag field of the argument structure is used to control various terminal functions.
 //
-#define    ECHO (1 << 0)
+#define ECHO (1 << 0)
 //        Enable echo.
 //    ECHOE
 //        Echo erase character as error-correcting backspace.
@@ -297,15 +297,15 @@ struct termios {
 //        Echo KILL.
 //    ECHONL
 //        Echo NL.
-#define   ICANON (1 << 1)
+#define ICANON (1 << 1)
 //        Canonical input (erase and kill processing).
 //    IEXTEN
 //        Enable extended input character processing.
-#define    ISIG (1 << 2)
+#define ISIG (1 << 2)
 //        Enable signals.
 //    NOFLSH
 //        Disable flush after interrupt or quit.
-//    TOSTOP
+#define TOSTOP (1 << 3)
 //        Send SIGTTOU for background output.
 //
 //    Attribute Selection

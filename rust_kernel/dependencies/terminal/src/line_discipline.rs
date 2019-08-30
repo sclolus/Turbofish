@@ -5,9 +5,13 @@ use core::cmp::min;
 use core::convert::TryFrom;
 use core::fmt::Write;
 use keyboard::keysymb::KeySymb;
-use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG};
+use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG, TOSTOP};
 use libc_binding::{VEOF, VERASE, VINTR, VKILL, VQUIT, VSUSP};
 use messaging::{MessageTo, ProcessGroupMessage};
+
+extern "C" {
+    fn get_current_pgid() -> Pid;
+}
 // use libc_binding::{VEOL, VMIN, VSTART, VSTOP, VTIME};
 
 #[derive(Debug, Clone)]
@@ -35,7 +39,7 @@ impl LineDiscipline {
                 c_iflag: 0,
                 c_oflag: 0,
                 c_cflag: 0,
-                c_lflag: (ECHO | ICANON | ISIG),
+                c_lflag: (ECHO | ICANON | ISIG | TOSTOP),
                 c_cc: [
                     /*VEOF  */ KeySymb::Control_d as u32,
                     /*VEOL  */ KeySymb::Return as u32,
@@ -196,6 +200,23 @@ impl LineDiscipline {
         //     print!("{}", *c as char);
         // }
         // print!("\n");
+        // Any attempts by a process in a background process group to
+        // read from its controlling terminal cause its process group
+        // to be sent a SIGTTIN signal unless one of the following
+        // special cases applies: if the reading process is ignoring
+        // the SIGTTIN signal or the reading thread is blocking the
+        // SIGTTIN signal, or if the process group of the reading
+        // process is orphaned, the read() shall return -1, with errno
+        // set to [EIO] and no signal shall be sent. The default
+        // action of the SIGTTIN signal shall be to stop the process
+        // to which it is sent. See <signal.h>.
+        let current_pgid = unsafe { get_current_pgid() };
+        if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
+            messaging::send_message(MessageTo::ProcessGroup {
+                pgid: self.foreground_process_group,
+                content: ProcessGroupMessage::Signal(Signum::SIGTTIN),
+            });
+        }
         if self.termios.c_lflag & ICANON != 0 {
             // dbg!("canonical");
             // if VEOF was pressed, read all
@@ -217,7 +238,27 @@ impl LineDiscipline {
 
     /// write on the tty
     pub fn write(&mut self, s: &[u8]) -> usize {
+        //Attempts by a process in a background process group to write
+        // to its controlling terminal shall cause the process group
+        // to be sent a SIGTTOU signal unless one of the following
+        // special cases applies: if TOSTOP is not set, or if TOSTOP
+        // is set and the process is ignoring the SIGTTOU signal or
+        // the writing thread is blocking the SIGTTOU signal, the
+        // process is allowed to write to the terminal and the SIGTTOU
+        // signal is not sent. If TOSTOP is set, the process group of
+        // the writing process is orphaned, the writing process is not
+        // ignoring the SIGTTOU signal, and the writing thread is not
+        // blocking the SIGTTOU signal, the write() shall return -1,
+        // with errno set to [EIO] and no signal shall be sent.
         let s = core::str::from_utf8(s).expect("bad utf8");
+        let current_pgid = unsafe { get_current_pgid() };
+        if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
+            messaging::send_message(MessageTo::ProcessGroup {
+                pgid: self.foreground_process_group,
+                content: ProcessGroupMessage::Signal(Signum::SIGTTOU),
+            });
+        }
+
         self.tty.write_str(s).expect("write failed");
         s.len()
     }
