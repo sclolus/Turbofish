@@ -16,7 +16,7 @@ pub use tty::TtyDevice;
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, Errno, Pid};
+use libc_binding::{off_t, termios, Errno, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -27,6 +27,9 @@ pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, access_mode: Mode);
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
+    fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
+        Err(Errno::EINVAL)
+    }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;

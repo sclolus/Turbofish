@@ -359,13 +359,6 @@ impl File {
         }
     }
 }
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum SeekType {
-    SeekSet,
-    SeekCur,
-    SeekEnd,
-}
 
 pub type Offset = usize; //TODO:  change this
 
@@ -373,7 +366,7 @@ pub type Offset = usize; //TODO:  change this
 // #[allow(unused)] // TODO: remove this
 // pub struct FileOperations {
 //     pub read: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
-//     pub lseek: Option<fn(&mut File, Offset, SeekType) -> Offset>,
+//     pub lseek: Option<fn(&mut File, Offset, Whence) -> Offset>,
 //     // pub flush: Option<fn()>,
 //     pub write: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
 //     pub release: Option<fn(&mut File) -> VfsResult<i32>>,

@@ -17,15 +17,15 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, MMAP, MPROTECT, MUNMAP,
-    NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
-    SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
+    MUNMAP, NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS,
+    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
     STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{gid_t, termios, uid_t};
+use libc_binding::{gid_t, off_t, termios, uid_t};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -148,6 +148,9 @@ use geteuid::sys_geteuid;
 mod getegid;
 use getegid::sys_getegid;
 
+mod lseek;
+use lseek::sys_lseek;
+
 mod fcntl;
 use fcntl::sys_fcntl;
 /*
@@ -214,6 +217,12 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ebx as *const c_char,
             ecx as *const *const c_char,
             edx as *const *const c_char,
+        ),
+        LSEEK => sys_lseek(
+            ebx as *mut off_t,
+            ecx as Fd,
+            edx as off_t + ((esi as off_t) << 32),
+            edi as u32,
         ),
         GETPID => sys_getpid(),
         SETUID => sys_setuid(ebx as uid_t),

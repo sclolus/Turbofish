@@ -23,8 +23,8 @@ use dcache::Dcache;
 
 mod inode;
 pub use inode::InodeId;
-use inode::{File, Inode, InodeData, InodeNumber, Offset, SeekType};
-use libc_binding::OpenFlags;
+use inode::{File, Inode, InodeData, InodeNumber, Offset};
+use libc_binding::{OpenFlags, Whence};
 
 pub mod user;
 pub use user::{Current, GroupId, UserId};
@@ -496,7 +496,7 @@ impl VirtualFileSystem {
         _current: &mut Current,
         _fd: Fd,
         _offset: Offset,
-        _seek: SeekType,
+        _seek: Whence,
     ) -> VfsResult<Offset> {
         unimplemented!()
     }

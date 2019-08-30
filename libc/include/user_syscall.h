@@ -14,6 +14,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define WAITPID       7
 #define UNLINK       10
 #define EXECVE       11
+#define LSEEK        19
 #define GETPID       20
 #define SETUID       23
 #define GETUID       24

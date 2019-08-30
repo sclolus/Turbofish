@@ -1,8 +1,8 @@
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, MMAP, MPROTECT, MUNMAP,
-    NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
-    SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
+    MUNMAP, NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS,
+    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
     STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
@@ -27,7 +27,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
         ebx,
         ecx,
         edx,
-        // esi,
+        esi,
         // edi,
         // ebp,
         ..
@@ -55,6 +55,12 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             EXECVE => eprintln!(
                 "execve({:#?}, {:#?}, {:#?})",
                 ebx as *const c_char, ecx as *const *const c_char, edx as *const *const c_char,
+            ),
+            LSEEK => eprintln!(
+                "lseek({:#?}, {:#?}, {:#?})",
+                ebx as i32,
+                ecx as u64 + ((edx as u64) << 32),
+                esi as i32
             ),
             GETPID => eprintln!("getpid()"),
             SETUID => eprintln!("setuid({:#?})", ebx as uid_t),
@@ -139,6 +145,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         WAITPID => "waitpid",
         UNLINK => "unlink",
         EXECVE => "execve",
+        LSEEK => "lseek",
         GETPID => "getpid",
         SETUID => "setuid",
         GETUID => "getuid",
