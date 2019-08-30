@@ -26,6 +26,8 @@ SRC_C += DeepThought \
 		pipe/pipe_lorem_ipsum \
 		math/roundf \
 		ctype/longlong \
+		lseek/sda \
+		lseek/lseek_return \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math
 
