@@ -15,6 +15,6 @@ extern int	g_optopt;
 extern int	g_opterr;
 extern int	g_optreset;
 
-int	ft_getopt(int argc, char *const argv[], const char *optstring);
+int	getopt(int argc, char *const argv[], const char *optstring);
 
 #endif /* _GETOPT_H_ */

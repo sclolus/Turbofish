@@ -79,14 +79,14 @@ struct shadow_entry *find_corresponding_shadow_entry(struct shadow_entry *sentri
 						     uint32_t n_entries,
 						     struct passwd_entry *entry);
 
-# define err(format, ...) do {					\
-		     dprintf(2, BIN_NAME ": " format "\n" __VA_OPT__(,) __VA_ARGS__);	\
-	     exit(EXIT_FAILURE);		\
+# define err(format, ...) do {						\
+		dprintf(2, BIN_NAME ": " format "\n" __VA_OPT__(,) __VA_ARGS__); \
+		     exit(EXIT_FAILURE);				\
 	     } while (0);
 
-# define warn(format, ...) do {					\
-		     dprintf(2, BIN_NAME ": Warning: " format "\n" __VA_OPT__(,) __VA_ARGS__);	\
-	     } while (0);
+# define warn(format, ...) do {						\
+		dprintf(2, BIN_NAME ": Warning: " format "\n" __VA_OPT__(,) __VA_ARGS__); \
+	} while (0);
 
 
 

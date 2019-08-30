@@ -132,8 +132,6 @@ struct shadow_entry *parse_shadow_file(uint32_t *n_entries) {
 		if (-1 == ret) {
 			err("Failed to parse entry %u in %s:\n%s\n", i, PASSWORD_FILE, entries[i]);
 		}
-		print_shadow_entry(&sentries[i]);
-
 	}
 	free_array(entries);
 	close(fd);

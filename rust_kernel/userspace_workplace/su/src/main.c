@@ -29,7 +29,7 @@ struct	cmd_args    parse_cmd_line(int argc, char **argv) {
 			err("%s", USAGE);
 		}
 	}
-	if (optind == argc) {
+	if (g_optind == argc) {
 		args.login = "root";
 		args.is_root = true;
 	} else if (optind < argc) {
