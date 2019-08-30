@@ -10,7 +10,7 @@
 # include <errno.h>
 # include <stdbool.h>
 
-# include "getopt.h"
+# include "getopt.h" // put this into the libc
 
 # define BIN_NAME "su"
 # define PASSWORD_FILE "/etc/passwd"
@@ -127,5 +127,7 @@ uint32_t    left_rotate_32(uint32_t word, uint32_t delta);
 void	    print_memory(const void *addr, size_t size);
 uint32_t    array_size(char **array);
 void	    free_array(char **array);
+
+char	    *getpass(const char *prompt); // put this into libc, and discuss with the team about its obsolescence.
 
 #endif /* __SU_H__ */

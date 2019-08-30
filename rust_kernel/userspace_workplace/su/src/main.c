@@ -46,7 +46,7 @@ int main(int argc, char **argv, char **env)
 
 	uint32_t n_entries = 0;
 	struct passwd_entry *pentries = parse_passwd_file(&n_entries);
-	char	*login = argv[1];
+	char	*login = args.login;
 	struct passwd_entry *entry = NULL;
 
 	uint32_t n_shadow_entries = 0;
@@ -72,15 +72,11 @@ int main(int argc, char **argv, char **env)
 	};
 	hash_fuzzer(&info);
 	# else
-	char		*input_password = NULL;
-	size_t		input_len = 0;
-	ssize_t ret = getline(&input_password, &input_len, stdin);
+	char		*input_password = getpass("Password: ");
 
-	if (-1 == ret) {
-		err("Input io error");
+	if (!input_password) {
+		err("Failed to retrieve password");
 	}
-
-	input_password[ret - 1] = '\0';
 
 	const char  *salt = "12346789";
 	char	    *hash = md5_hash(input_password, salt, strlen(input_password));
