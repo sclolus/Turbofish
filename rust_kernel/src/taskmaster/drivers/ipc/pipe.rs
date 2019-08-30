@@ -86,19 +86,15 @@ impl FileOperation for Pipe {
             }
         }
 
-        // memcpy(buf, self.buf, MIN(buf.len(), self.current_index)
         let min = cmp::min(buf.len(), self.current_index);
-        unsafe {
-            buf.as_mut_ptr()
-                .copy_from(self.buf.as_ptr(), self.current_index);
-        }
+
+        // memcpy(buf, self.buf, MIN(buf.len(), self.current_index)
+        buf[..min].copy_from_slice(&self.buf[..min]);
+
         // memcpy(self.buf, self.buf + MIN(buf.len(), self.current_index), self.current_index - MIN(buf.len(), self.current_index))
-        unsafe {
-            self.buf
-                .as_mut_ptr()
-                .copy_from(self.buf.as_mut_ptr().add(min), self.current_index - min);
-        }
+        self.buf.copy_within(min..self.current_index, 0);
         self.current_index -= min;
+
         unsafe {
             messaging::send_message(MessageTo::Writer {
                 uid_file_op: self.file_op_uid,
@@ -113,13 +109,10 @@ impl FileOperation for Pipe {
         }
 
         let min = cmp::min(buf.len(), BUF_SIZE - self.current_index);
-        unsafe {
-            self.buf
-                .as_mut_ptr()
-                .add(self.current_index)
-                .copy_from(buf.as_ptr(), min);
-        }
+
+        self.buf[self.current_index..self.current_index + min].copy_from_slice(&buf[..min]);
         self.current_index += min;
+
         if min == buf.len() {
             unsafe {
                 messaging::send_message(MessageTo::Reader {
@@ -135,7 +128,5 @@ impl FileOperation for Pipe {
 
 /// Some boilerplate to check if all is okay
 impl Drop for Pipe {
-    fn drop(&mut self) {
-        // println!("Pipe droped !");
-    }
+    fn drop(&mut self) {}
 }

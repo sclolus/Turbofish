@@ -2,6 +2,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
+
+#define TEST_STRING "banane"
 
 int main(void)
 {
@@ -21,7 +24,7 @@ int main(void)
 			exit(1);
 		}
 		dup2(fd[1], 1);
-		write(1, "banane", 6);
+		write(1, TEST_STRING, 6);
 		sleep(1);
 		exit(0);
 	} else {
@@ -36,21 +39,33 @@ int main(void)
 		printf("n value: %i\n", n);
 		buf[n] = '\0';
 		printf("string received: %s\n", buf);
-		if ((n = read(fd[0], buf, 32)) < 0) {
-			perror("read");
+		if (strcmp(TEST_STRING, buf) != 0) {
+			printf("Differences was detected ! %s Vs %s\n", TEST_STRING, buf);
 			exit(1);
 		}
-		buf[n] = '\0';
-		printf("string received: %s\n", buf);
-		printf("n value: %i\n", n);
-		if ((n = read(fd[0], buf, 32)) < 0) {
-			perror("read");
-			exit(1);
-		}
-		buf[n] = '\0';
-		printf("string received: %s\n", buf);
-		printf("n value: %i\n", n);
 
+		if ((n = read(fd[0], buf, 32)) < 0) {
+			perror("read");
+			exit(1);
+		}
+		if (n != 0) {
+			printf("n must be set to 0\n");
+			exit(1);
+		}
+		buf[n] = '\0';
+		printf("string received: %s\n", buf);
+		printf("n value: %i\n", n);
+		if ((n = read(fd[0], buf, 32)) < 0) {
+			perror("read");
+			exit(1);
+		}
+		if (n != 0) {
+			printf("n must be set to 0\n");
+			exit(1);
+		}
+		buf[n] = '\0';
+		printf("string received: %s\n", buf);
+		printf("n value: %i\n", n);
 	}
 	return 0;
 }
