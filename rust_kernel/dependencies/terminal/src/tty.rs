@@ -439,62 +439,36 @@ impl Write for BufferedTty {
     /// to assure to call write_str on tty with complete escaped sequence.
     fn write_str(&mut self, mut s: &str) -> core::fmt::Result {
         debug_assert_eq!(self.escaped_buf.capacity(), ESCAPED_BUF_CAPACITY);
-        loop {
-            if self.escaped_buf.len() == 0 {
-                match s.find(CSI) {
-                    Some(i) => match s[i..].find(|c: char| c.is_ascii_alphabetic()) {
-                        Some(mut j) => {
-                            j += i;
-                            self.tty.write_str(&s[..=j])?;
-                            if j + 1 < s.len() {
-                                s = &s[j + 1..];
-                                continue;
-                            }
-                            break Ok(());
-                        }
-                        None => {
-                            if s.len() - i < self.escaped_buf.capacity() {
-                                self.escaped_buf.write_str(&s[i..]).unwrap();
-                                break self.tty.write_str(&s[..i]);
-                            } else {
-                                // if we can't stock escaped sequence, write it on tty
-                                break self.tty.write_str(s);
-                            }
-                        }
-                    },
-                    None => break self.tty.write_str(s),
+
+        let is_ascii_alphabetic = |c: char| c.is_ascii_alphabetic();
+
+        if self.escaped_buf.len() != 0 {
+            match s.find(is_ascii_alphabetic) {
+                Some(index) => {
+                    let (end_escaped, end_s) = s.split_at(index + 1);
+
+                    self.escaped_buf
+                        .write_str(end_escaped)
+                        // If escaped_buf is full, the whole escaped sequence was bullshit.
+                        // so trash it.
+                        .or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
+                    self.tty.write_str(&self.escaped_buf)?;
+                    self.escaped_buf.truncate(0);
+                    s = end_s;
                 }
-            } else {
-                match s.find(|c: char| c.is_ascii_alphabetic()) {
-                    Some(i) => {
-                        if i + self.escaped_buf.len() < self.escaped_buf.capacity() {
-                            self.escaped_buf.write_str(&s[..=i]).unwrap();
-                            self.tty.write_str(&self.escaped_buf)?;
-                        } else {
-                            // if we can't stock escaped sequence, write it on tty, and truncate escape_buf
-                            self.tty.write_str(&self.escaped_buf)?;
-                            self.tty.write_str(&s[..=i])?;
-                        }
-                        self.escaped_buf.truncate(0);
-                        if i + 1 < s.len() {
-                            s = &s[i + 1..];
-                            continue;
-                        }
-                        break Ok(());
-                    }
-                    None => {
-                        if s.len() + self.escaped_buf.len() < self.escaped_buf.capacity() {
-                            self.escaped_buf.write_str(s).unwrap();
-                        } else {
-                            // if we can't stock escaped sequence, write it on tty, and truncate escape_buf
-                            self.tty.write_str(&self.escaped_buf)?;
-                            self.tty.write_str(s)?;
-                            self.escaped_buf.truncate(0);
-                        }
-                        break Ok(());
-                    }
+                None => {
+                    self.escaped_buf.write_str(s).or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
+                    return Ok(());
                 }
             }
         }
+
+        if let Some(begin_esc) = s.rfind(CSI) {
+            if let None = s[begin_esc..].find(is_ascii_alphabetic) {
+                self.escaped_buf.write_str(&s[begin_esc..]).or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
+                s = &s[..begin_esc];
+            }
+        }
+        self.tty.write_str(s)
     }
 }
