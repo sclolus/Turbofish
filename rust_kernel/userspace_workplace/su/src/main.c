@@ -144,7 +144,15 @@ int main(int argc, char **argv, char **env)
 		av = (char*[]){used_shell, NULL};
 	}
 
-	if (!args.preserve_env) {
+	if (args.login_shell) {
+		// TODO: clear the whole env except TERM.
+		if (-1 == chdir(entry->user_home_directory)) {
+			warn("Failed to change to target's home directory: %s", strerror(errno));
+		}
+		av[0] = "-";
+	}
+
+	if (!args.preserve_env || args.login_shell) {
 		if (-1 == setenv("HOME", entry->user_home_directory, true)) {
 			err("Failed to setenv(HOME): %s", strerror(errno));
 		}
