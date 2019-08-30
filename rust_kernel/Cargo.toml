@@ -77,6 +77,5 @@ members = [
 "dependencies/fallible_collections",
 "dependencies/messaging",
 "dependencies/libc_binding",
-"userspace_workplace/vfs_tests"
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

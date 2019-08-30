@@ -386,7 +386,7 @@ pub type Offset = usize; //TODO:  change this
 
 #[cfg(test)]
 mod test {
-    use super::VfsHandlerParams;
+    // use super::VfsHandlerParams;
     use super::*;
 
     macro_rules! make_test {
@@ -405,26 +405,25 @@ mod test {
         };
     }
 
-    fn test_open(_params: VfsHandlerParams) -> VfsResult<i32> {
-        Ok(0)
-    }
+    // fn test_open(_params: VfsHandlerParams) -> VfsResult<i32> {
+    //     Ok(0)
+    // }
 
-    make_test! {
-        {
-            let mut inode = Inode::default();
-            let mut file = File::new(InodeId::new(0, FileSystemId::new(0)), DirectoryEntryId::new(0));
+    // make_test! {
+    //     {
+    //         let mut inode = Inode::default();
+    //         let mut file = File::new(InodeId::new(0, FileSystemId::new(0)), DirectoryEntryId::new(0));
 
-            let mut inode_operations = InodeOperations::default()
-                .set_test_open(test_open);
+    //         let mut inode_operations = InodeOperations::default()
+    //             .set_test_open(test_open);
 
+    //         inode.set_inode_operations(inode_operations);
+    //         let params = VfsHandlerParams::new()
+    //             .set_inode(&inode)
+    //             .set_file(&file);
 
-            inode.set_inode_operations(inode_operations);
-            let params = VfsHandlerParams::new()
-                .set_inode(&inode)
-                .set_file(&file);
-
-            let res = inode.dispatch_handler(params, VfsHandlerKind::TestOpen).unwrap();
-            assert_eq!(res, 0);
-        }, inode_open
-    }
+    //         let res = inode.dispatch_handler(params, VfsHandlerKind::TestOpen).unwrap();
+    //         assert_eq!(res, 0);
+    //     }, inode_open
+    // }
 }
