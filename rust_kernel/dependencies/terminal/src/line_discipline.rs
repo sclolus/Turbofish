@@ -9,9 +9,9 @@ use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG, TOSTOP};
 use libc_binding::{VEOF, VERASE, VINTR, VKILL, VQUIT, VSUSP};
 use messaging::{MessageTo, ProcessGroupMessage};
 
-extern "C" {
-    fn get_current_pgid() -> Pid;
-}
+// extern "C" {
+//     fn get_current_pgid() -> Pid;
+// }
 // use libc_binding::{VEOL, VMIN, VSTART, VSTOP, VTIME};
 
 #[derive(Debug, Clone)]
@@ -210,13 +210,13 @@ impl LineDiscipline {
         // set to [EIO] and no signal shall be sent. The default
         // action of the SIGTTIN signal shall be to stop the process
         // to which it is sent. See <signal.h>.
-        let current_pgid = unsafe { get_current_pgid() };
-        if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
-            messaging::send_message(MessageTo::ProcessGroup {
-                pgid: self.foreground_process_group,
-                content: ProcessGroupMessage::Signal(Signum::SIGTTIN),
-            });
-        }
+        // let current_pgid = unsafe { get_current_pgid() };
+        // if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
+        //     messaging::send_message(MessageTo::ProcessGroup {
+        //         pgid: self.foreground_process_group,
+        //         content: ProcessGroupMessage::Signal(Signum::SIGTTIN),
+        //     });
+        // }
         if self.termios.c_lflag & ICANON != 0 {
             // dbg!("canonical");
             // if VEOF was pressed, read all
@@ -251,13 +251,13 @@ impl LineDiscipline {
         // blocking the SIGTTOU signal, the write() shall return -1,
         // with errno set to [EIO] and no signal shall be sent.
         let s = core::str::from_utf8(s).expect("bad utf8");
-        let current_pgid = unsafe { get_current_pgid() };
-        if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
-            messaging::send_message(MessageTo::ProcessGroup {
-                pgid: self.foreground_process_group,
-                content: ProcessGroupMessage::Signal(Signum::SIGTTOU),
-            });
-        }
+        // let current_pgid = unsafe { get_current_pgid() };
+        // if self.foreground_process_group != current_pgid && (self.termios.c_lflag & TOSTOP != 0) {
+        //     messaging::send_message(MessageTo::ProcessGroup {
+        //         pgid: self.foreground_process_group,
+        //         content: ProcessGroupMessage::Signal(Signum::SIGTTOU),
+        //     });
+        // }
 
         self.tty.write_str(s).expect("write failed");
         s.len()
