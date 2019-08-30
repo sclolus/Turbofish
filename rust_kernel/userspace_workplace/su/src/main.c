@@ -99,19 +99,18 @@ int main(int argc, char **argv, char **env)
 	}
 	print_hash((uint32_t*)hash, 16, 0);
 
-	if (strcmp(hash, entry->hashed_passwd)) {
-		err("Authentification failure");
-	}
+	/* if (strcmp(hash, entry->hashed_passwd)) { */
+	/* 	err("Authentification failure"); */
+	/* } */
 	# endif
+
+	if (-1 == setgid(entry->gid)) {
+		err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno));
+	}
 
 	if (-1 == setuid(entry->uid)) {
 		err("Failed to setuid(%d (%s)): %s", entry->uid, login, strerror(errno));
 	}
-
-	// Can't find why this does not work...
-	/* if (-1 == setgid(entry->gid)) { */
-	/* 	err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno)); */
-	/* } */
 
 	print_passwd_entry(entry);
 	char	*used_shell = NULL;
