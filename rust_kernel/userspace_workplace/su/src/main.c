@@ -1,11 +1,48 @@
 #include "su.h"
 
 /* # ifndef TESTS */
+struct	cmd_args    parse_cmd_line(int argc, char **argv) {
+	int		opt;
+	struct cmd_args	args;
+
+	memset(&args, 0, sizeof(struct cmd_args));
+	while ((opt = getopt(argc, argv, OPTIONS_GETOPT)) != -1) {
+		switch (opt) {
+		case 'c':
+			args.specified_command = true;
+			args.command = g_optarg;
+			break;
+		case 's':
+			args.specified_shell = true;
+			args.shell = g_optarg;
+			break;
+		case 'l':
+			args.login_shell = true;
+			break;
+		case 'm':
+			args.preserve_env = true;
+			break;
+		case 'p':
+			args.preserve_env = true;
+			break;
+		default: // which is the '?' value
+			err("%s", USAGE);
+		}
+	}
+	if (optind == argc) {
+		args.login = "root";
+		args.is_root = true;
+	} else if (optind < argc) {
+		args.login = argv[g_optind];
+	} else {
+		err("Too many arguments provided");
+	}
+	return args;
+}
+
 int main(int argc, char **argv, char **env)
 {
-	if (argc != 2) {
-		err("%s", USAGE);
-	}
+	struct cmd_args args = parse_cmd_line(argc, argv);
 
 	uint32_t n_entries = 0;
 	struct passwd_entry *pentries = parse_passwd_file(&n_entries);
@@ -75,14 +112,57 @@ int main(int argc, char **argv, char **env)
 		err("Failed to setuid(%d (%s)): %s", entry->uid, login, strerror(errno));
 	}
 
-	if (-1 == setgid(entry->gid)) {
-		err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno));
-	}
+	// Can't find why this does not work...
+	/* if (-1 == setgid(entry->gid)) { */
+	/* 	err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno)); */
+	/* } */
 
 	print_passwd_entry(entry);
+	char	*used_shell = NULL;
+	char	*env_shell = NULL;
 
-	char **av = (char*[]){entry->user_interpreter, NULL};
-	execve(entry->user_interpreter, av, env);
+	if (args.specified_shell) {
+		used_shell = args.shell;
+	} else if (args.preserve_env && (env_shell = getenv("SHELL"))) {
+		/* this is not supported:
+		   If the target user has a restricted shell (i.e. not  listed  in  /etc/shells),
+		   the  --shell option and the SHELL environment variables are ignored unless the
+		   calling user is root.
+		*/
+		used_shell = env_shell;
+	} else if (entry->user_interpreter && strcmp("", entry->user_interpreter)) {
+		used_shell = entry->user_interpreter;
+	} else {
+		used_shell = "/bin/sh";
+	}
+
+	char **av;
+
+	if (args.specified_command) {
+		av = (char*[]){used_shell, "-c", args.command, NULL};
+	} else {
+		av = (char*[]){used_shell, NULL};
+	}
+
+	if (!args.preserve_env) {
+		if (-1 == setenv("HOME", entry->user_home_directory, true)) {
+			err("Failed to setenv(HOME): %s", strerror(errno));
+		}
+
+		if (-1 == setenv("SHELL", used_shell, true)) {
+			err("Failed to setenv(SHELL): %s", strerror(errno));
+		}
+
+		if (!args.is_root && -1 == setenv("USER", entry->login_name, true)) {
+			err("Failed to setenv(USER): %s", strerror(errno));
+		}
+
+		if (!args.is_root && -1 == setenv("LOGNAME", entry->login_name, true)) {
+			err("Failed to setenv(LOGNAME): %s", strerror(errno));
+		}
+	}
+
+	execve(used_shell, av, env);
 	err("Failed to execute command: %s", strerror(errno));
 }
 /* # endif */

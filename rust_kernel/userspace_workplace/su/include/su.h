@@ -10,15 +10,33 @@
 # include <errno.h>
 # include <stdbool.h>
 
+# include "getopt.h"
+
 # define BIN_NAME "su"
 # define PASSWORD_FILE "/etc/passwd"
 # define SHADOW_FILE "/etc/shadow"
-# define USAGE BIN_NAME ": <login_name>"
+# define USAGE BIN_NAME " ["OPTIONS"] [--] [user]"
+# define OPTIONS "clmps"
+# define OPTIONS_GETOPT "c:lmps:"
 # define ENTRY_NB_FIELDS 7
 # define SHADOW_ENTRY_NB_FIELDS 9
 
 # define INLINE __attribute__((always_inline)) inline
 # define NORETURN __attribute__((noreturn)) void
+
+struct	cmd_args {
+	uint32_t    specified_command : 1,
+		    login_shell : 1,
+		    preserve_env: 1,
+		specified_shell: 1,
+		is_root : 1;
+	char	*command;
+	char	*shell;
+	char	*login;
+};
+
+struct	cmd_args    parse_cmd_line(int argc, char **argv);
+
 
 struct passwd_entry {
 	char	*login_name;

@@ -12,7 +12,8 @@ SRC_C += main \
 	print_memory \
 	passwd \
 	shadow \
-	utils
+	utils \
+	getopt
 
 HEADERS += include/su.h
 
