@@ -77,9 +77,13 @@ int main(int argc, char **argv, char **env)
 	if (!input_password) {
 		err("Failed to retrieve password");
 	}
+	size_t		pass_len = strlen(input_password);
 
 	const char  *salt = "12346789";
-	char	    *hash = md5_hash(input_password, salt, strlen(input_password));
+	char	    *hash = md5_hash(input_password, salt, pass_len);
+
+	memset(input_password, 0, pass_len);
+	free(input_password);
 	char	    *entry_passwd = NULL;
 
 	if (hashed_passwd_is_in_shadow(entry)) {
@@ -102,6 +106,7 @@ int main(int argc, char **argv, char **env)
 	/* if (strcmp(hash, entry->hashed_passwd)) { */
 	/* 	err("Authentification failure"); */
 	/* } */
+	free(hash);
 	# endif
 
 	if (-1 == setgid(entry->gid)) {
