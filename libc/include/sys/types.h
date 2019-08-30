@@ -27,7 +27,7 @@ typedef unsigned int gid_t;
 //    Used for some file attributes.
 #define nlink_t int
 //    Used for link counts.
-#define off_t unsigned int
+typedef long long off_t ;
 //    Used for file sizes.
 #define pid_t int
 //    Used for process IDs and process group IDs.

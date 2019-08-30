@@ -20,7 +20,7 @@ typedef short int		t_s_int;
 typedef long int		t_l_int;
 typedef long long int		t_ll_int;
 
-typedef unsigned int		uintmax_t;
+typedef unsigned long long uintmax_t;
 typedef signed int		intmax_t;
 typedef signed int		wchar_t;
 typedef signed int		bool;
