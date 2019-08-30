@@ -1,28 +1,28 @@
 #ifndef __LIMITS_H__
 # define __LIMITS_H__
 
-/* 
+/*
  * ``Numerical Limits''. [Option End]
- * 
+ *
  * The <limits.h> header shall define macros and symbolic constants for various limits. Different categories of limits are described below, representing various limits on resources that the implementation imposes on applications. All macros and symbolic constants defined in this header shall be suitable for use in #if preprocessing directives.
- * 
+ *
  * Implementations may choose any appropriate value for each limit, provided it is not more restrictive than the Minimum Acceptable Values listed below. Symbolic constant names beginning with _POSIX may be found in <unistd.h>.
- * 
+ *
  * Applications should not assume any particular value for a limit. To achieve maximum portability, an application should not require more resource than the Minimum Acceptable Value quantity. However, an application wishing to avail itself of the full amount of a resource available on an implementation may make use of the value given in <limits.h> on that particular implementation, by using the macros and symbolic constants listed below. It should be noted, however, that many of the listed limits are not invariant, and at runtime, the value of the limit may differ from those given in this header, for the following reasons:
- * 
+ *
  *     The limit is pathname-dependent.
- * 
+ *
  *     The limit differs between the compile and runtime machines.
- * 
+ *
  * For these reasons, an application may use the fpathconf(), pathconf(), and sysconf() functions to determine the actual value of a limit at runtime.
- * 
+ *
  * The items in the list ending in _MIN give the most negative values that the mathematical types are guaranteed to be capable of representing. Numbers of a more negative value may be supported on some implementations, as indicated by the <limits.h> header on the implementation, but applications requiring such numbers are not guaranteed to be portable to all implementations. For positive constants ending in _MIN, this indicates the minimum acceptable value.
  * Runtime Invariant Values (Possibly Indeterminate)
- * 
+ *
  * A definition of one of the symbolic constants in the following list shall be omitted from <limits.h> on specific implementations where the corresponding value is equal to or greater than the stated minimum, but is unspecified.
- * 
+ *
  * This indetermination might depend on the amount of available memory space on a specific instance of a specific implementation. The actual value supported by a specific instance shall be provided by the sysconf() function.
- * 
+ *
  * {AIO_LISTIO_MAX}
  *     Maximum number of I/O operations in a single list I/O call supported by the implementation.
  *     Minimum Acceptable Value: {_POSIX_AIO_LISTIO_MAX}
@@ -104,7 +104,10 @@
  *     Minimum Acceptable Value: {_POSIX_STREAM_MAX}
  * {SYMLOOP_MAX}
  *     Maximum number of symbolic links that can be reliably traversed in the resolution of a pathname in the absence of a loop.
- *     Minimum Acceptable Value: {_POSIX_SYMLOOP_MAX}
+ *     Minimum Acceptable Value: {_POSIX_SYMLOOP_MAX} */
+# define SYMLOOP_MAX 32
+
+/*
  * {TIMER_MAX}
  *     Maximum number of timers per process supported by the implementation.
  *     Minimum Acceptable Value: {_POSIX_TIMER_MAX}
@@ -130,16 +133,16 @@
  * {TZNAME_MAX}
  *     Maximum number of bytes supported for the name of a timezone (not of the TZ variable).
  *     Minimum Acceptable Value: {_POSIX_TZNAME_MAX}
- * 
+ *
  * Note:
  *     The length given by {TZNAME_MAX} does not include the quoting characters mentioned in Other Environment Variables.
- * 
+ *
  * Pathname Variable Values
- * 
+ *
  * The values in the following list may be constants within an implementation or may vary from one pathname to another. For example, file systems or directories may have different characteristics.
- * 
+ *
  * A definition of one of the symbolic constants in the following list shall be omitted from the <limits.h> header on specific implementations where the corresponding value is equal to or greater than the stated minimum, but where the value can vary depending on the file to which it is applied. The actual value supported for a specific pathname shall be provided by the pathconf() function.
- * 
+ *
  * {FILESIZEBITS}
  *     Minimum number of bits needed to represent, as a signed integer value, the maximum size of a regular file allowed in the specified directory.
  *     Minimum Acceptable Value: 32
@@ -158,7 +161,7 @@
  *     [XSI] [Option Start] Minimum Acceptable Value: {_XOPEN_NAME_MAX} [Option End]
 */
 #define NAME_MAX 4096
-     /* 
+     /*
 	  * Maximum number of bytes in a filename (not including the terminating null of a filename string).
       * Minimum Acceptable Value: {_POSIX_NAME_MAX}
       * [XSI] [Option Start] Minimum Acceptable Value: {_XOPEN_NAME_MAX} [Option End]
@@ -195,11 +198,11 @@
  * {SYMLINK_MAX}
  *     Maximum number of bytes in a symbolic link.
  *     Minimum Acceptable Value: {_POSIX_SYMLINK_MAX}
- * 
+ *
  * Runtime Increasable Values
- * 	
+ *
  * The magnitude limitations in the following list shall be fixed by specific implementations. An application should assume that the value of the symbolic constant defined by <limits.h> in a specific implementation is the minimum that pertains whenever the application is run under that implementation. A specific instance of a specific implementation may increase the value relative to that supplied by <limits.h> for that implementation. The actual value supported by a specific instance shall be provided by the sysconf() function.
- * 
+ *
  * {BC_BASE_MAX}
  *     Maximum obase values allowed by the bc utility.
  *     Minimum Acceptable Value: {_POSIX2_BC_BASE_MAX}
@@ -230,21 +233,21 @@
  * {RE_DUP_MAX}
  *     Maximum number of repeated occurrences of a BRE or ERE interval expression; see BREs Matching Multiple Characters and EREs Matching Multiple Characters.
  *     Minimum Acceptable Value: {_POSIX_RE_DUP_MAX}
- * 
+ *
  * Maximum Values
- * 
+ *
  * The <limits.h> header shall define the following symbolic constants with the values shown. These are the most restrictive values for certain features on an implementation. A conforming implementation shall provide values no larger than these values. A conforming application must not require a smaller value for correct operation.
- * 
+ *
  * {_POSIX_CLOCKRES_MIN}
  *     The resolution of the CLOCK_REALTIME clock, in nanoseconds.
  *     Value: 20 000 000
- * 
+ *
  *     [MON] [Option Start] If the Monotonic Clock option is supported, the resolution of the CLOCK_MONOTONIC clock, in nanoseconds, is represented by {_POSIX_CLOCKRES_MIN}. [Option End]
- * 
+ *
  * Minimum Values
- * 
+ *
  * The <limits.h> header shall define the following symbolic constants with the values shown. These are the most restrictive values for certain features on an implementation conforming to this volume of POSIX.1-2017. Related symbolic constants are defined elsewhere in this volume of POSIX.1-2017 which reflect the actual implementation and which need not be as restrictive. For each of these limits, a conforming implementation shall provide a value at least this large or shall have no limit. A strictly conforming application must not require a larger value for correct operation.
- * 
+ *
  * {_POSIX_AIO_LISTIO_MAX}
  *     The number of I/O operations that can be specified in a list I/O call.
  *     Value: 2
@@ -363,10 +366,10 @@
  * {_POSIX_TZNAME_MAX}
  *     Maximum number of bytes supported for the name of a timezone (not of the TZ variable).
  *     Value: 6
- * 
+ *
  *     Note:
  *         The length given by {_POSIX_TZNAME_MAX} does not include the quoting characters mentioned in Other Environment Variables.
- * 
+ *
  * {_POSIX2_BC_BASE_MAX}
  *     Maximum obase values allowed by the bc utility.
  *     Value: 99
@@ -406,17 +409,17 @@
  *     [XSI] [Option Start]
  *     Minimum number the implementation will accept as the maximum number of bytes in a pathname.
  *     Value: 1024 [Option End]
- * 
+ *
  * Numerical Limits
- * 
+ *
  * The <limits.h> header shall define the following macros and, except for {CHAR_BIT}, {LONG_BIT}, {MB_LEN_MAX}, and {WORD_BIT}, they shall be replaced by expressions that have the same type as would an expression that is an object of the corresponding type converted according to the integer promotions.
- * 
+ *
  */
 
  /* If the value of an object of type char is treated as a signed integer when used in an expression, the value of {CHAR_MIN} is the same as that of {SCHAR_MIN} and the value of {CHAR_MAX} is the same as that of {SCHAR_MAX}. Otherwise, the value of {CHAR_MIN} is 0 and the value of {CHAR_MAX} is the same as that of {UCHAR_MAX}. */
-  
+
 #define CHAR_BIT 8
-	/* 
+	/*
 	* Number of bits in a type char.
 	* [CX] [Option Start] Value: 8 [Option End]
 	*/
@@ -425,68 +428,68 @@
 
 
 #define	CHAR_MAX	((long)(UCHAR_MAX >> 1))
-    /* 
+    /*
 	 * Maximum value for an object of type char.
      * Value: {UCHAR_MAX} or {SCHAR_MAX}
 	 */
 #define	CHAR_MIN	((long)(~CHAR_MAX))
-    /* 
+    /*
 	 * Minimum value for an object of type char.
      * Value: {SCHAR_MIN} or 0
 	 */
 #define INT_MAX ((int)(UINT_MAX >> 1))
-    /* 
+    /*
 	 * Maximum value for an object of type int.
      * [CX] [Option Start] Minimum Acceptable Value: 2 147 483 647 [Option End]
 	 */
 #define	INT_MIN	((long)(~INT_MAX))
-    /* 
+    /*
 	 * Minimum value for an object of type int.
      * [CX] [Option Start] Maximum Acceptable Value: -2 147 483 647 [Option End]
 	 */
 #define	LLONG_MAX	((long long)(ULLONG_MAX >> 1))
-    /* 
+    /*
 	 * Maximum value for an object of type long long.
      * Minimum Acceptable Value: +9223372036854775807
 	 */
 #define	LLONG_MIN	((long long)(~LLONG_MAX))
-    /* 
+    /*
 	 * Minimum value for an object of type long long.
      * Maximum Acceptable Value: -9223372036854775807
 	 */
-/* 
+/*
  * {LONG_BIT}
  *     [CX] [Option Start]
  *     Number of bits in an object of type long.
  *     Minimum Acceptable Value: 32 [Option End]
  */
 #define	LONG_MAX	((long)(ULONG_MAX >> 1))
-    /* 
+    /*
 	 * Maximum value for an object of type long.
      * Minimum Acceptable Value: +2 147 483 647
 	 */
 #define	LONG_MIN	((long)(~LONG_MAX))
-    /* 
+    /*
 	 * Minimum value for an object of type long.
      * Maximum Acceptable Value: -2 147 483 647
 	 */
 #define	UCHAR_MAX	((unsigned char)(~0L))
-    /* 
+    /*
 	 * Maximum value for an object of type unsigned char.
      * [CX] [Option Start] Value: 255 [Option End]
 	 */
 #define	UINT_MAX	((unsigned int)(~0L))
-    /* 
+    /*
 	 * Maximum value for an object of type unsigned.
      * [CX] [Option Start] Minimum Acceptable Value: 4 294 967 295 [Option End]
 	 */
 #define	ULLONG_MAX	((unsigned long long)(~0L))
-    /* 
+    /*
 	 * Maximum value for an object of type unsigned long long.
      * Minimum Acceptable Value: 18446744073709551615
 	 */
 #define	ULONG_MAX	((unsigned long)(~0L))
-    /* 
+    /*
 	 * Maximum value for an object of type unsigned long.
      * Minimum Acceptable Value: 4 294 967 295
 	 */
@@ -517,11 +520,11 @@
  *     [CX] [Option Start]
  *     Number of bits in an object of type int.
  *     Minimum Acceptable Value: 32 [Option End]
- * 
+ *
  * Other Invariant Values
- * 
+ *
  * The <limits.h> header shall define the following symbolic constants:
- * 
+ *
  * {NL_ARGMAX}
  *     Maximum value of n in conversion specifications using the "%n$" sequence in calls to the printf() and scanf() families of functions.
  *     Minimum Acceptable Value: 9
@@ -541,7 +544,7 @@
  * {NZERO}
  *     [XSI] [Option Start]
  *     Default process priority.
- *     Minimum Acceptable Value: 20 [Option End] 
+ *     Minimum Acceptable Value: 20 [Option End]
  */
 
 #endif

@@ -1,9 +1,13 @@
-//! This file contains all the stuff about File Descriptors and generals IPC
-
+use super::drivers::FileOperation;
+use super::IpcResult;
+/// The User File Descriptor are sorted into a Binary Tree
+/// Key is the user number and value the structure FileDescriptor
 use super::SysResult;
+use super::VFS;
 
 use libc_binding::Errno;
 
+use super::drivers::ipc::{Fifo, Pipe, Socket};
 use alloc::sync::Arc;
 
 use fallible_collections::btree::BTreeMap;
@@ -16,63 +20,9 @@ use sync::{DeadMutex, DeadMutexGuard};
 
 pub type Fd = u32;
 
-pub mod drivers;
-pub use drivers::{Driver, FileOperation};
-
-use drivers::{Fifo, Pipe, Socket, TtyDevice};
-
-/// Dependance du Vfs
-use super::dummy_vfs::DUMMY_VFS;
-
-/// The User File Descriptor are sorted into a Binary Tree
-/// Key is the user number and value the structure FileDescriptor
 #[derive(Debug, TryClone)]
 pub struct FileDescriptorInterface {
     user_fd_list: BTreeMap<Fd, FileDescriptor>,
-}
-
-/// Describe what to do after an IPC request and result return
-#[derive(Debug)]
-pub enum IpcResult<T> {
-    /// Can continue thread execution normally
-    Done(T),
-    /// the user should wait for his IPC request
-    Wait(T, usize),
-}
-
-/// The Access Mode of the File Descriptor
-#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-pub enum Mode {
-    ReadOnly,
-    WriteOnly,
-    ReadWrite,
-}
-
-/// This structure design a User File Descriptor
-/// We can normally clone the Arc
-#[derive(Debug, TryClone)]
-struct FileDescriptor {
-    access_mode: Mode,
-    kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
-}
-
-/// Standard implementation of an user File Descriptor
-impl FileDescriptor {
-    /// When a new FileDescriptor is invoqued, Increment reference
-    fn new(access_mode: Mode, kernel_fd: Arc<DeadMutex<dyn FileOperation>>) -> Self {
-        kernel_fd.lock().register(access_mode);
-        Self {
-            access_mode,
-            kernel_fd,
-        }
-    }
-}
-
-/// Drop boilerplate for an FileDescriptor structure. Decremente reference
-impl Drop for FileDescriptor {
-    fn drop(&mut self) {
-        self.kernel_fd.lock().unregister(self.access_mode);
-    }
 }
 
 /// Main implementation
@@ -98,7 +48,27 @@ impl FileDescriptorInterface {
         &mut self,
         filename: &str, /* access_mode: Mode ? */
     ) -> SysResult<IpcResult<Fd>> {
-        let file_operator = DUMMY_VFS.lock().open(filename /* access_mode */)?;
+        // TODO: REMOVE THIS SHIT
+        let mut current = super::vfs::Current {
+            cwd: super::vfs::DirectoryEntryId::new(2),
+            uid: 0,
+            euid: 0,
+            gid: 0,
+            egid: 0,
+            open_fds: alloc::collections::BTreeMap::new(),
+        };
+        // TODO: REMOVE THIS SHIT
+        let mode =
+            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        use core::convert::TryFrom;
+        // TODO: REMOVE THIS SHIT
+        let path = super::vfs::Path::try_from(filename)?;
+        // TODO: REMOVE THIS SHIT
+        let flags = libc_binding::OpenFlags::O_RDWR;
+
+        let file_operator =
+            VFS.lock()
+                .open(&mut current, path, flags, mode /* access_mode */)?;
         match file_operator {
             IpcResult::Done(file_operator) => {
                 let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
@@ -246,16 +216,37 @@ impl Drop for FileDescriptorInterface {
     }
 }
 
-use alloc::format;
+/// This structure design a User File Descriptor
+/// We can normally clone the Arc
+#[derive(Debug, TryClone)]
+struct FileDescriptor {
+    access_mode: Mode,
+    kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
+}
 
-pub fn start() {
-    for i in 1..=4 {
-        // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-        let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
-        // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-        DUMMY_VFS
-            .lock()
-            .new_driver(format!("tty{}", i), driver)
-            .unwrap();
+/// Standard implementation of an user File Descriptor
+impl FileDescriptor {
+    /// When a new FileDescriptor is invoqued, Increment reference
+    fn new(access_mode: Mode, kernel_fd: Arc<DeadMutex<dyn FileOperation>>) -> Self {
+        kernel_fd.lock().register(access_mode);
+        Self {
+            access_mode,
+            kernel_fd,
+        }
     }
+}
+
+/// Drop boilerplate for an FileDescriptor structure. Decremente reference
+impl Drop for FileDescriptor {
+    fn drop(&mut self) {
+        self.kernel_fd.lock().unregister(self.access_mode);
+    }
+}
+
+/// The Access Mode of the File Descriptor
+#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
+pub enum Mode {
+    ReadOnly,
+    WriteOnly,
+    ReadWrite,
 }

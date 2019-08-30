@@ -37,6 +37,11 @@ fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
 libc_binding = { path = "dependencies/libc_binding" }
 
+[dependencies.itertools]
+version = "0.8.0"
+default-features = false
+
+
 [dependencies.lazy_static]
 version = "1.3.0"
 features = ["spin_no_std"]
@@ -71,6 +76,6 @@ members = [
 "dependencies/try_clone_derive",
 "dependencies/fallible_collections",
 "dependencies/messaging",
-"dependencies/libc_binding"
+"dependencies/libc_binding",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

@@ -44,6 +44,7 @@ pub enum DiskDriver {
 
 pub fn init(multiboot_info: &MultibootInfo) {
     // Intialize SATA controller
+    // loop {}
     match SataController::init() {
         Some(sata_controller) => {
             log::info!("Sata Controller detected: {:#X?}", sata_controller);

@@ -1,4 +1,4 @@
-use super::ipc::FileDescriptorInterface;
+use super::fd_interface::FileDescriptorInterface;
 use super::scheduler::{Pid, Tid};
 use super::syscall::clone::CloneFlags;
 use super::thread::Thread;

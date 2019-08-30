@@ -70,9 +70,6 @@ struct stat64 {
 	//[Option End]
 };
 
-#define st_atime st_atim.tv_sec      /* Backward compatibility */
-#define st_mtime st_mtim.tv_sec
-#define st_ctime st_ctim.tv_sec
 //The st_ino and st_dev fields taken together uniquely identify the file within the system.
 
 //The <sys/stat.h> header shall define the [XSI] [Option Start] blkcnt_t, blksize_t, [Option End] dev_t, ino_t, mode_t, nlink_t, uid_t, gid_t, off_t, and time_t types as described in <sys/types.h>.
@@ -82,10 +79,13 @@ struct stat64 {
 //Which structure members have meaningful values depends on the type of file. For further information, see the descriptions of fstat(), lstat(), and stat() in the System Interfaces volume of POSIX.1-2017.
 
 //For compatibility with earlier versions of this standard, the st_atime macro shall be defined with the value st_atim.tv_sec. Similarly, st_ctime and st_mtime shall be defined as macros with the values st_ctim.tv_sec and st_mtim.tv_sec, respectively.
+#define st_atime st_atim.tv_sec
+#define st_mtime st_mtim.tv_sec
+#define st_ctime st_ctim.tv_sec
 
 //The <sys/stat.h> header shall define the following symbolic constants for the file types encoded in type mode_t. The values shall be suitable for use in #if preprocessing directives:
 
-#define S_IFMT  00170000
+#define S_IFMT   0170000
 #define S_IFSOCK 0140000
 #define S_IFLNK	 0120000
 #define S_IFREG  0100000
@@ -93,6 +93,7 @@ struct stat64 {
 #define S_IFDIR  0040000
 #define S_IFCHR  0020000
 #define S_IFIFO  0010000
+
 #define S_ISUID  0004000
 #define S_ISGID  0002000
 #define S_ISVTX  0001000
@@ -125,6 +126,7 @@ struct stat64 {
 //    Directory.
 //S_IFLNK
 //    Symbolic link.
+
 //S_IFSOCK
 //    Socket.
   // [Option End]
@@ -136,6 +138,7 @@ struct stat64 {
 
 //The following macros shall be provided to test whether a file is of the specified type. The value m supplied to the macros is the value of st_mode from a stat structure. The macro shall evaluate to a non-zero value if the test is true; 0 if the test is false.
 
+//TODO: define that
 #define S_ISLNK(m)	(((m) & S_IFMT) == S_IFLNK)
 #define S_ISREG(m)	(((m) & S_IFMT) == S_IFREG)
 #define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)

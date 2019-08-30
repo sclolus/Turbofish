@@ -2,11 +2,11 @@
 
 use super::SysResult;
 
-use super::ipc::IpcResult;
 use super::safe_ffi::{c_char, CString};
 use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
+use super::IpcResult;
 
 use core::convert::TryInto;
 
