@@ -1,4 +1,10 @@
-TARGET = su
+ifeq ($(make_pass),yes)
+	TARGET = hasher
+	CFLAGS += -D MAKE_PASS
+else
+	TARGET = su
+endif
+
 CC = gcc
 
 SRC_C += main \
@@ -32,13 +38,12 @@ TEST_DIR = tests
 OBJ_DIR = objs
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
 
-all: $(TARGET)
+all: $(TARGET) $(TARGET_HASHER)
 
 $(TARGET): $(OBJ_C)
 	$(CC) -o $@ $(CFLAGS) $^
 	sudo chown root:root $(TARGET)
 	sudo chmod u+s $(TARGET)
-
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<

@@ -153,3 +153,51 @@ struct shadow_entry *find_corresponding_shadow_entry(struct shadow_entry *sentri
 	}
 	return NULL;
 }
+
+int32_t		    parse_hashed_password(char *field,
+					  char **hashed_passwd,
+					  char **salt)
+{
+	if (!hashed_passwd || *hashed_passwd
+	    || !salt || *salt) {
+		return -1;
+	}
+
+	assert(field);
+	char *start = strchr(field, '$');
+
+	if (!start) {
+		warn("(parse_hashed_password) No salt found for provided password");
+		return -1;
+	}
+
+	char *end = strchr(start + 1, '$');
+
+	if (!end) {
+		warn("(parse_hashed_password) Bad format for salt (no end found) in provided password");
+		return -1;
+	}
+
+	uint32_t salt_len = (uint32_t)(end - (start + 1));
+
+	char	*new_salt = malloc(salt_len + 1);
+
+	if (!new_salt) {
+		warn("Failed to allocate salt string");
+		return -1;
+	}
+
+	memcpy(new_salt, start + 1, salt_len);
+	new_salt[salt_len] = '\0';
+	*salt = new_salt;
+
+	char *start_pass = end + 1;
+
+	uint32_t pass_len = strlen(start_pass);
+
+	char *pass = malloc(pass_len + 1);
+	memcpy(pass, start_pass, pass_len);
+	pass[pass_len] = '\0';
+	*hashed_passwd = pass;
+	return 0;
+}

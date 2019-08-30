@@ -21,6 +21,8 @@
 # define ENTRY_NB_FIELDS 7
 # define SHADOW_ENTRY_NB_FIELDS 9
 
+# define SALT_SIZE 16
+
 # define INLINE __attribute__((always_inline)) inline
 # define NORETURN __attribute__((noreturn)) void
 
@@ -90,9 +92,13 @@ struct shadow_entry *find_corresponding_shadow_entry(struct shadow_entry *sentri
 
 
 
+int32_t		    parse_hashed_password(char *field,
+					  char **hashed_passwd,
+					  char **salt);
+
 char			**strsplit(char *const s, char c);
 char			*get_file_contents(int fd);
-uint32_t		*md5_hash(char *clear, char *salt, uint64_t len);
+char			*md5_hash(char *clear, char *salt);
 
 /*
 ** Hash Tests
@@ -124,7 +130,7 @@ NORETURN	hash_fuzzer(t_hash_info *hash_info);
 */
 
 /* # ifdef TESTS */
-void	print_hash(uint32_t *digest, uint64_t size, int32_t swap_endian);
+void	print_hash(const char *const digest);
 
 /* # endif */
 

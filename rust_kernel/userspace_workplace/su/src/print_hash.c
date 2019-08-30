@@ -1,18 +1,15 @@
 #include "su.h"
 
 /* #ifdef TESTS */
-void	print_hash(uint32_t *digest, uint64_t size, int32_t swap_endian)
+void	print_hash(const char *const digest)
 {
 	uint32_t	i;
-	uint32_t	tmp;
+	size_t		len = strlen(digest);
 
 	i = 0;
-	while (i < size / 4)
+	while (i < len)
 	{
-		tmp = digest[i];
-		/* if (swap_endian) */
-		/* 	tmp = swap_int32(tmp); */
-		printf("%8.8x", tmp);
+		printf("%2.2hhx", digest[i]);
 		i++;
 	}
 }

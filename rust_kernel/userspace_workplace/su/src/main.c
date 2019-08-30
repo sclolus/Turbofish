@@ -40,6 +40,7 @@ struct	cmd_args    parse_cmd_line(int argc, char **argv) {
 	return args;
 }
 
+#ifndef MAKE_PASS
 int main(int argc, char **argv, char **env)
 {
 	struct cmd_args args = parse_cmd_line(argc, argv);
@@ -63,15 +64,6 @@ int main(int argc, char **argv, char **env)
 		err("user %s does not exist", login);
 	}
 
-	# ifdef TESTS
-	t_hash_info info = (t_hash_info) {
-		.system_hash = &crypt,
-		.hash = &md5_hash,
-		.digest_size = 16,
-		.salt = "12347980",
-	};
-	hash_fuzzer(&info);
-	# else
 	char		*input_password = getpass("Password: ");
 
 	if (!input_password) {
@@ -79,12 +71,9 @@ int main(int argc, char **argv, char **env)
 	}
 	size_t		pass_len = strlen(input_password);
 
-	const char  *salt = "12346789";
-	char	    *hash = md5_hash(input_password, salt, pass_len);
-
-	memset(input_password, 0, pass_len);
-	free(input_password);
+	char	    *salt = NULL;
 	char	    *entry_passwd = NULL;
+
 
 	if (hashed_passwd_is_in_shadow(entry)) {
 		struct shadow_entry *sentry =
@@ -93,21 +82,48 @@ int main(int argc, char **argv, char **env)
 		if (!sentry) {
 			err("Unable to find hash in shadow file for user: %s", login);
 		}
-		entry_passwd = sentry->hashed_passwd;
-	} else {
-		entry_passwd = entry->hashed_passwd;
+		if (-1 == parse_hashed_password(sentry->hashed_passwd,
+						&entry_passwd,
+						&salt)) {
+			err("Failed to parse hashed password in shadow file");
+		}
+		print_shadow_entry(sentry);
+
+	} else if (-1 == parse_hashed_password(entry->hashed_passwd,
+						&entry_passwd,
+						&salt)) {
+		err("Failed to parse hashed password in shadow file");
 	}
+
+	// Bzero for security reasons.
+	memset(sentries, 0, sizeof(struct shadow_entry) * n_shadow_entries);
+	free(sentries);
+
+	printf("salt: %s, hashed_pass: %s\n", salt, entry_passwd);
+	char	    *hash = md5_hash(input_password, salt);
+
+	// Bzero for security reasons.
+	memset(input_password, 0, pass_len);
+	free(input_password);
 
 	if (!hash) {
 		err("Failed to hash password");
 	}
-	print_hash((uint32_t*)hash, 16, 0);
 
-	/* if (strcmp(hash, entry->hashed_passwd)) { */
+
+	print_hash(hash);
+
+	/* if (strcmp(hash, entry_passwd)) { */
 	/* 	err("Authentification failure"); */
 	/* } */
+
+	// Bzero for security reasons.
+	memset(entry_passwd, 0, strlen(entry_passwd));
+	free(entry_passwd);
+	memset(salt, 0, strlen(salt));
+	free(salt);
+	memset(hash, 0, strlen(hash));
 	free(hash);
-	# endif
 
 	if (-1 == setgid(entry->gid)) {
 		err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno));
@@ -146,6 +162,18 @@ int main(int argc, char **argv, char **env)
 
 	if (args.login_shell) {
 		// TODO: clear the whole env except TERM.
+		/* char *term = getenv("TERM"); */
+
+		/* if (term) { */
+		/* 	term = strdup(term); */
+		/* } */
+
+		/* clear_environ(); */
+
+		/* if (-1 == setenv("TERM", term, true)) { */
+		/* 	err("Failed to setenv(TERM): %s", strerror(errno)); */
+		/* } */
+
 		if (-1 == chdir(entry->user_home_directory)) {
 			warn("Failed to change to target's home directory: %s", strerror(errno));
 		}
@@ -170,7 +198,64 @@ int main(int argc, char **argv, char **env)
 		}
 	}
 
+	// Bzero for security reasons.
+	memset(pentries, 0, sizeof(struct passwd_entry) * n_entries);
+	free(pentries);
 	execve(used_shell, av, env);
 	err("Failed to execute command: %s", strerror(errno));
 }
+#endif
+
+#ifdef MAKE_PASS
+
+# warning This helper is not meant to be used directly on turbofish to make password. \
+	It is not protected against dirty pages sniffing.
+
+int main(int argc, char **argv) {
+	static char salt[SALT_SIZE + 1];
+	int	    fd = open("/dev/urandom", O_RDONLY);
+
+	if (-1 == fd) {
+		err("Failed to open /dev/urandom: %s", strerror(errno));
+	}
+
+	ssize_t ret = read(fd, salt, SALT_SIZE);
+
+	if (-1 == ret) {
+		err("Failed to read random salt: %s", strerror(errno));
+	}
+
+	if (ret != SALT_SIZE) {
+		err("Salt was partially read: %ld != %u", ret, SALT_SIZE);
+	}
+
+	char	*password = getpass("Enter password to hash: ");
+
+	if (!password) {
+		err("Failed to retrieve password from user");
+	}
+
+	char	*hash = md5_hash(password, salt);
+
+	if (!hash) {
+		err("Failed to hash password");
+	}
+	uint32_t hash_len = strlen(hash);
+	uint32_t salt_len = strlen(salt);
+
+	printf("Hashed password: ");
+	print_hash(hash);
+	printf(" Salt: ");
+	print_hash(salt);
+	printf("\nFormatted hash: $");
+	print_hash(salt);
+	printf("$");
+	print_hash(hash);
+	printf("\n");
+
+	free(hash);
+	free(password);
+	return EXIT_SUCCESS;
+}
+#endif
 /* # endif */

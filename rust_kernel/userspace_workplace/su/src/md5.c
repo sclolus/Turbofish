@@ -150,11 +150,11 @@ static void	init_md5(uint32_t *states)
 	states[D] = 0x10325476;
 }
 
-uint32_t	 *md5_hash(char *clear, char *salt, uint64_t len)
+char	 *md5_hash(char *clear, char *salt)
 {
-	static uint8_t	last_block[128];
+	static uint8_t		last_block[128];
 	uint32_t		states[4];
-	uint32_t		*digest;
+	char			*digest;
 
 	if (clear == NULL || salt == NULL)
 		return (NULL);
@@ -179,6 +179,6 @@ uint32_t	 *md5_hash(char *clear, char *salt, uint64_t len)
 	if (!(digest = malloc(16 + 1)))
 		return (NULL);
 	memcpy(digest, states, 16);
-	((uint8_t*)digest)[16] = 0;
+	digest[16] = '\0';
 	return (digest);
 }
