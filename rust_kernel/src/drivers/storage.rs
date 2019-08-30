@@ -5,7 +5,7 @@ use super::pci::{
     SerialAtaProgIf, PCI,
 };
 
-const SECTOR_SIZE: usize = 512;
+pub const SECTOR_SIZE: usize = 512;
 
 pub mod ide_ata_controller;
 pub use ide_ata_controller::IdeAtaController;
@@ -36,10 +36,22 @@ pub enum DiskError {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum DiskDriver {
+pub enum DiskDriverType {
     Sata,
     Ide,
     Bios,
+}
+
+/// A trait for block devices which can read a write by blocks of
+/// Sector
+pub trait BlockIo {
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()>;
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> DiskResult<()>;
 }
 
 pub fn init(multiboot_info: &MultibootInfo) {
@@ -70,6 +82,4 @@ pub fn init(multiboot_info: &MultibootInfo) {
         bios_int13h::init((multiboot_info.boot_device >> 24) as u8)
             .expect("bios_int_13 init failed");
     }
-
-    ext2::init(DiskDriver::Bios).expect("init ext2 failed");
 }

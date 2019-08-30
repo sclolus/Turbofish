@@ -1,6 +1,7 @@
 //! this module provide dummy low level bios IO operations.
 //! See https://en.wikipedia.org/wiki/INT_13H
 
+use super::BlockIo;
 use super::SECTOR_SIZE;
 use super::{DiskError, DiskResult};
 use super::{NbrSectors, Sector};
@@ -196,14 +197,11 @@ impl BiosInt13h {
             version,
         })
     }
+}
 
+impl BlockIo for BiosInt13h {
     /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(
-        &self,
-        start_sector: Sector,
-        nbr_sectors: NbrSectors,
-        buf: *mut u8,
-    ) -> DiskResult<()> {
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
@@ -248,7 +246,7 @@ impl BiosInt13h {
     }
 
     /// Write nbr_sectors after start_sector location from the buf
-    pub fn write(
+    fn write(
         &self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,

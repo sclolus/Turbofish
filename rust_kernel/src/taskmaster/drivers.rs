@@ -14,6 +14,10 @@ pub use ipc::Socket;
 pub mod tty;
 pub use tty::TtyDevice;
 
+pub mod disk;
+pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper};
+// pub use disk::DiskDriver;
+
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{off_t, termios, Errno, Pid, Whence};
@@ -23,9 +27,9 @@ use sync::dead_mutex::DeadMutex;
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
-    fn register(&mut self, access_mode: Mode);
+    fn register(&mut self, _access_mode: Mode) {}
     /// Invoqued quen a FD is droped
-    fn unregister(&mut self, access_mode: Mode);
+    fn unregister(&mut self, _access_mode: Mode) {}
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
         Err(Errno::EINVAL)

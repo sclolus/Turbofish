@@ -1,0 +1,213 @@
+// use alloc::boxed::Box;
+use super::Driver;
+use super::FileOperation;
+use super::InodeId;
+use super::IpcResult;
+use super::SysResult;
+use crate::drivers::storage::{BlockIo, DiskResult, NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
+use alloc::sync::Arc;
+use core::cmp::min;
+use core::fmt::{self, Debug};
+use ext2::IoResult;
+use libc_binding::off_t;
+use libc_binding::Errno;
+
+#[derive(Debug)]
+pub struct DiskDriver {
+    disk: Arc<DeadMutex<dyn FileOperation>>,
+}
+
+impl DiskDriver {
+    pub fn new(disk: Arc<DeadMutex<dyn FileOperation>>) -> Self {
+        Self { disk }
+    }
+}
+
+impl Driver for DiskDriver {
+    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        Ok(IpcResult::Done(self.disk.clone()))
+    }
+    /// Get a reference to the inode
+    fn set_inode_id(&mut self, _inode_id: InodeId) {}
+}
+
+pub struct BiosInt13hInstance;
+
+impl BlockIo for BiosInt13hInstance {
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+        unsafe {
+            BIOS_INT13H
+                .as_ref()
+                .unwrap()
+                .read(start_sector, nbr_sectors, buf)
+        }
+    }
+
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> DiskResult<()> {
+        unsafe {
+            BIOS_INT13H
+                .as_ref()
+                .unwrap()
+                .write(start_sector, nbr_sectors, buf)
+        }
+    }
+}
+
+/// transform a disk which read sector by sector into a disk which
+/// implement file operation
+pub struct DiskFileOperation<D: BlockIo> {
+    disk: D,
+    offset: u64,
+    start_of_partition: u64,
+    partition_size: u64,
+    buf: [u8; SECTOR_SIZE],
+}
+
+impl<D: BlockIo> Debug for DiskFileOperation<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{:?}, {:?}",
+            self.start_of_partition, self.partition_size
+        )
+    }
+}
+
+impl<D: BlockIo> DiskFileOperation<D> {
+    pub fn new(disk: D, start_of_partition: u64, partition_size: u64) -> Self {
+        Self {
+            disk: disk,
+            offset: 0,
+            start_of_partition,
+            partition_size,
+            buf: [0; SECTOR_SIZE],
+        }
+    }
+}
+
+impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
+    fn write(&mut self, mut buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        let len = buf.len();
+        loop {
+            let size_read = min(
+                (SECTOR_SIZE as u64 - self.offset % SECTOR_SIZE as u64) as usize,
+                buf.len(),
+            );
+
+            let sector = Sector::from(self.offset + self.start_of_partition);
+            self.disk
+                .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                .map_err(|_| Errno::EIO)?;
+            let target_read = (self.offset % SECTOR_SIZE as u64) as usize;
+            self.buf[target_read..target_read + size_read].copy_from_slice(&buf[0..size_read]);
+            if size_read == buf.len() {
+                break;
+            }
+            self.disk
+                .write(sector, NbrSectors(1), self.buf.as_ptr())
+                .map_err(|_| Errno::EIO)?;
+            buf = &buf[size_read..];
+            self.offset += size_read as u64;
+        }
+        Ok(IpcResult::Done(len as u32))
+    }
+
+    fn read(&mut self, mut buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        let len = buf.len();
+        loop {
+            let size_read = min(
+                (SECTOR_SIZE as u64 - self.offset % SECTOR_SIZE as u64) as usize,
+                buf.len(),
+            );
+
+            let sector = Sector::from(self.offset + self.start_of_partition);
+            self.disk
+                .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                .map_err(|_| Errno::EIO)?;
+            let target_read = (self.offset % SECTOR_SIZE as u64) as usize;
+            buf[0..size_read].copy_from_slice(&self.buf[target_read..target_read + size_read]);
+            if size_read == buf.len() {
+                break;
+            }
+            buf = &mut buf[size_read..];
+            self.offset += size_read as u64;
+        }
+        Ok(IpcResult::Done(len as u32))
+    }
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        //TODO: check off_t min
+        match whence {
+            Whence::SeekCur => {
+                self.offset = if offset < 0 {
+                    self.offset
+                        .checked_sub((-offset) as u64)
+                        .ok_or(Errno::EOVERFLOW)?
+                } else {
+                    self.offset
+                        .checked_add(offset as u64)
+                        .ok_or(Errno::EOVERFLOW)?
+                };
+            }
+            Whence::SeekSet => {
+                if offset < 0 {
+                    return Err(Errno::EOVERFLOW);
+                }
+                self.offset = offset as u64;
+            }
+            Whence::SeekEnd => {
+                if offset > 0 {
+                    return Err(Errno::EOVERFLOW);
+                }
+                self.offset = self
+                    .partition_size
+                    .checked_sub((-offset) as u64)
+                    .ok_or(Errno::EOVERFLOW)?;
+            }
+        }
+        Ok(self.offset as off_t)
+    }
+}
+
+use ext2::DiskIo;
+
+#[derive(Debug)]
+/// wrap a file operation into a disk wrapper useful for mount
+pub struct DiskWrapper(pub Arc<DeadMutex<dyn FileOperation>>);
+
+use core::convert::TryInto;
+use libc_binding::Whence;
+use sync::DeadMutex;
+
+impl DiskIo for DiskWrapper {
+    /// flush
+    fn flush(&mut self) -> IoResult<()> {
+        Ok(())
+    }
+    /// write at offset
+    fn write_buffer(&mut self, offset: u64, buf: &[u8]) -> IoResult<u64> {
+        self.0.lock().lseek(
+            offset.try_into().map_err(|_| Errno::EOVERFLOW)?,
+            Whence::SeekSet,
+        )?;
+        match self.0.lock().write(buf)? {
+            IpcResult::Done(r) => Ok(r.try_into().unwrap()),
+            _ => Err(Errno::EINVAL),
+        }
+    }
+    /// read at offset
+    fn read_buffer(&mut self, offset: u64, buf: &mut [u8]) -> IoResult<u64> {
+        self.0.lock().lseek(
+            offset.try_into().map_err(|_| Errno::EOVERFLOW)?,
+            Whence::SeekSet,
+        )?;
+        match self.0.lock().read(buf)? {
+            IpcResult::Done(r) => Ok(r.try_into().unwrap()),
+            _ => Err(Errno::EINVAL),
+        }
+    }
+}
