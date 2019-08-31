@@ -113,12 +113,15 @@ impl FileOperation for Pipe {
         self.buf[self.current_index..self.current_index + min].copy_from_slice(&buf[..min]);
         self.current_index += min;
 
-        if min == buf.len() {
+        // If the writer has writed something into the pipe...
+        if min > 0 {
             unsafe {
                 messaging::send_message(MessageTo::Reader {
                     uid_file_op: self.file_op_uid,
                 });
             }
+        }
+        if min == buf.len() {
             Ok(IpcResult::Done(min as _))
         } else {
             Ok(IpcResult::Wait(min as _, self.file_op_uid))

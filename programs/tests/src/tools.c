@@ -7,7 +7,7 @@ static u8 g_rand_sequence[SEQ_SIZE];
 
 // Usage of Linear feedback shift register.
 // https://wiki.osdev.org/Random_Number_Generator
-int	srand(u16 seed)
+int	srand16(u16 seed)
 {
 	if (seed == 0)
 		return -1;
@@ -30,7 +30,7 @@ int	srand(u16 seed)
 	return 0;
 }
 
-u16	rand(u16 cap)
+u16	rand16(u16 cap)
 {
 	static u32 ptr = 0;
 

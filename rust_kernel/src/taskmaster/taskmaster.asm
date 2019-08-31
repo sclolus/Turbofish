@@ -4,10 +4,6 @@ extern syscall_interrupt_handler
 
 segment .data
 
-; This region is used for storing the Rust kernel FPU/MMX/SSE/AVX context
-align 16
-fxsave_region times 512 db 0
-
 segment .text
 
 ;; Preemptive schedule beacon
@@ -41,7 +37,7 @@ segment .text
 ;;        |    ...  |
 ;; 0x004C +---------+
 ;;        |(padding)|
-;; 0x0050 +---------+
+;; 0x0050 +---------+ IMPORTANT: MUST BE ALIGNED ON 16 BYTES
 ;;        |  * FPU  |
 ;;        |  * MMX  | 512 bytes for FPU/MMX/SSE/AVX Support (80x86 only)
 ;;        |  * SSE  | ... (must be used only when switching from ring3)
@@ -72,8 +68,6 @@ _isr_syscall:
 	jne %%.skip_storing_fx_region
 	; Store FPU/MMX/SSE/AVX of the current process (only from a ring3 context)
 	fxsave [esp]
-	; Restore the Rust kernel FPU/MMX/SSE/AVX context
-	fxrstor [fxsave_region]
 %%.skip_storing_fx_region:
 
 	; Push 0x0 for backtrace endpoint
@@ -99,9 +93,6 @@ _isr_syscall:
 	and eax, 0b11
 	cmp eax, 0b11
 	jne %%.skip_restoring_fx_region
-
-	; Store the Rust kernel FPU/MMX/SSE/AVX context
-	fxsave [fxsave_region]
 	; Restore FPU/MMX/SSE/AVX of the current process (only to a ring3 context)
 	fxrstor [esp]
 	%%.skip_restoring_fx_region:
@@ -143,6 +134,7 @@ _start_process:
 	mov esp, [ebp + 8]
 
 	LOAD_CONTEXT
+
 	add esp, 8 ; skip err code & cpu isr fields
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret

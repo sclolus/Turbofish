@@ -9,13 +9,11 @@ result dd 0
 section .text
 
 ; float roundf(float)
+; The 8087 must be activated
 GLOBAL roundf
 roundf:
     push ebp
     mov ebp, esp
-
-    ; initialise 8087
-    finit
 
     ; load float
     fld dword [ebp + 8]
