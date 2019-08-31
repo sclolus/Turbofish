@@ -42,6 +42,9 @@ pub use permissions::FilePermissions;
 pub mod init;
 pub use init::{init, VFS};
 
+mod filesystem;
+use filesystem::{FileSystem, FileSystemId};
+
 pub struct VirtualFileSystem {
     mounted_filesystems: BTreeMap<FileSystemId, Box<dyn FileSystem>>,
 
@@ -510,96 +513,6 @@ impl VirtualFileSystem {
     }
 }
 
-pub struct SuperblockOperations {
-    #[allow(unused)]
-    lookup: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    create: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    unlink: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    link: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    symlink: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    statfs: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    mkdir: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    rmdir: Option<fn(&mut Superblock)>,
-}
-
-pub struct Superblock {
-    // filesystem_type: FileSystemType,
-    #[allow(unused)]
-    operations: SuperblockOperations,
-}
-
-pub struct StandardFileSystem {}
-
-impl StandardFileSystem {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl FileSystem for StandardFileSystem {
-    fn name(&self) -> &str {
-        "StandardFileSystem"
-    }
-
-    fn get_superblock(&self) -> Superblock {
-        let operations = SuperblockOperations {
-            lookup: None,
-            create: None,
-            unlink: None,
-            link: None,
-            symlink: None,
-            statfs: None,
-            mkdir: None,
-            rmdir: None,
-        };
-
-        Superblock { operations }
-    }
-
-    fn root_dentry(&self) -> DirectoryEntry {
-        unimplemented!()
-    }
-
-    fn root_inode(&self) -> Inode {
-        unimplemented!()
-    }
-
-    fn load_inode(&self, _inode_number: InodeNumber) -> VfsResult<Inode> {
-        unimplemented!()
-    }
-}
-
-pub trait FileSystem: Send {
-    fn name(&self) -> &str;
-    fn get_superblock(&self) -> Superblock;
-    fn root_dentry(&self) -> DirectoryEntry;
-    fn root_inode(&self) -> Inode;
-    fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode>;
-}
-
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq)]
-pub struct FileSystemId(usize);
-
-impl FileSystemId {
-    fn new(id: usize) -> Self {
-        Self(id)
-    }
-}
-
-impl core::ops::Add<usize> for FileSystemId {
-    type Output = Self;
-    fn add(self, rhs: usize) -> Self::Output {
-        Self(self.0 + rhs)
-    }
-}
-
 pub type VfsHandler<T> = fn(VfsHandlerParams) -> VfsResult<T>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -615,7 +528,6 @@ pub enum VfsHandlerKind {
     Truncate,
     TestOpen,
 }
-
 // #[derive(Debug, Clone, Default)]
 #[derive(Default)]
 pub struct VfsHandlerParams<'a> {
@@ -683,77 +595,6 @@ impl Mapper<OFDId, File> for VirtualFileSystem {
         &mut self.open_file_descriptions
     }
 }
-
-// use super::SysResult;
-
-// use libc_binding::Errno;
-
-// use hashmap_core::fnv::FnvHashMap as HashMap;
-
-// use alloc::string::String;
-
-// use crate::Spinlock;
-// use lazy_static::lazy_static;
-
-// /// IPC dependances list
-// use super::ipc::Driver;
-// use super::ipc::FileOperation;
-// use super::ipc::IpcResult;
-
-// use alloc::sync::Arc;
-// use sync::DeadMutex;
-
-// // bah la c'est une globale sout LazyStatic parce que c'est tout con ainsi :p
-// // si l'ownership est a scheduler, ca va etre super super chaud a gerer a cause des niveaux d'encapsulation
-// lazy_static! {
-//     pub static ref DUMMY_VFS: Spinlock<DummyVfs> = Spinlock::new(DummyVfs::new());
-// }
-
-// /// Rien n'oblige ici que le vfs soit une HashMap <Filename, Arc<DeadMutex<dyn Driver>>> xD
-// /// J'ai fait au plus simple pour mon exemple
-// pub struct DummyVfs {
-//     root: HashMap<String, Arc<DeadMutex<dyn Driver>>>,
-// }
-
-// impl DummyVfs {
-//     /// Un new() tres tres dummy
-//     fn new() -> Self {
-//         Self {
-//             root: HashMap::new(),
-//         }
-//     }
-
-//     /*
-//      * All the vfs methods
-//      * ...
-//      * ..
-//      */
-//     /// L'essentiel pour cette fonction. c'est qu'elle active le trait Drop() du driver
-//     /// Ca me permet de marquer les FileOperation associes au driver comme 'Broken' par exemple
-//     /// contrainte: Supprimer un fichier doit appelr Drop du driver
-//     #[allow(dead_code)]
-//     pub fn remove_file(&mut self, filename: &str) -> SysResult<()> {
-//         self.root.remove(&String::from(filename));
-//         Ok(())
-//     }
-
-//     /// La fonction open() du vfs sera appelee par la fonction open() de l'ipc
-//     /// Elle doit logiquement renvoyer un FileOperation ou une erreur
-//     /// C'est le driver attache a l'inode qui se gere de retourner le bon FileOperation
-//     /// Open du driver doit etre appele
-//     /// constrainte: Prototype, filename en param et Arc<DeadMutex<dyn FileOperation>> en retour
-//     /// Ce sont les 'Driver' qui auront l'ownership des 'FileOperation'
-//     pub fn open(
-//         &mut self,
-//         filename: &str, /* access_mode: Mode ? */
-//     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-//         match self.root.get_mut(&String::from(filename)) {
-//             Some(elem) => elem.lock().open(),
-//             None => Err(Errno::ENOENT),
-//         }
-//     }
-
-// }
 
 // use core::convert::{TryFrom, TryInto};
 // use core::fs::{read_dir, DirEntry, FileType};
