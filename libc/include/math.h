@@ -288,6 +288,7 @@ long double truncl(long double);
 double      y0(double);
 double      y1(double);
 double      yn(int, double);
+
 //[Option End]
 
 //The following external variable shall be defined:

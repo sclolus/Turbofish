@@ -2,40 +2,53 @@
 
 extern syscall_interrupt_handler
 
+segment .data
+
+; This region is used for storing the Rust kernel FPU/MMX/SSE/AVX context
+align 16
+fxsave_region times 512 db 0
+
 segment .text
 
 ;; Preemptive schedule beacon
 ;; Scheduler MUST be not preemptible !
 ;;
-;; +---------+               ^ (to high memory)
-;; | SS      | TSS ONLY      |
-;; +---------+                    * Illustration of the kernel stack just before IRET
-;; | ESP     | TSS ONLY
-;; +---------+
-;; | EFLAGS  |
-;; +---------+
-;; | CS      |
-;; +---------+
-;; | EIP     | <---- ESP on the first instruction -----------> IRET
-;; +---------+
-;; | ErrCode | In case if CPU EXCEPTION, the TSS STACK segment contains this value
-;; +---------+
-;; | CpuIsr  | In case if CPU EXCEPTION, set here the exception vector number
-;; ----------+
-;; | DS      |
-;; +---------+
-;; | ES      |
-;; +---------+
-;; | FS      |
-;; +---------+
-;; | GS      |
-;; +---------+
-;; | REGS    |
-;; |    ...  |
-;; |    ...  |
-;; +---------+
-;; | 0x0     |
-;; +---------+ ---> pointer to CpuState Structure (kernel_esp)
+;; 0x0000 +---------+               ^ (to high memory)
+;;        | SS      | TSS ONLY      |
+;; 0x0004 +---------+                    * Illustration of the kernel stack just before IRET
+;;        | ESP     | TSS ONLY
+;; 0x0008 +---------+
+;;        | EFLAGS  |
+;; 0x000C +---------+
+;;        | CS      |
+;; 0x0010 +---------+
+;;        | EIP     | <---- ESP on the first instruction -----------> IRET
+;; 0x0014 +---------+
+;;        | ErrCode | In case if CPU EXCEPTION, the TSS STACK segment contains this value
+;; 0x0018 +---------+
+;;        | CpuIsr  | In case if CPU EXCEPTION, set here the exception vector number
+;; 0x001C ----------+
+;;        | DS      |
+;; 0x0020 +---------+
+;;        | ES      |
+;; 0x0024 +---------+
+;;        | FS      |
+;; 0x0028 +---------+
+;;        | GS      |
+;; 0x002C +---------+
+;;        | REGS    |
+;;        |    ...  |
+;;        |    ...  |
+;; 0x004C +---------+
+;;        |(padding)|
+;; 0x0050 +---------+
+;;        |  * FPU  |
+;;        |  * MMX  | 512 bytes for FPU/MMX/SSE/AVX Support (80x86 only)
+;;        |  * SSE  | ... (must be used only when switching from ring3)
+;;        |  regs 	|
+;; 0x0250 +---------+
+;;        | 0x0     |
+;; 0x0254 +---------+ ---> pointer to CpuState Structure (kernel_esp)
 
 global _isr_syscall
 _isr_syscall:
@@ -47,6 +60,21 @@ _isr_syscall:
 	push fs
 	push gs
 	pushad
+
+	; Dec stack to store FxRegion
+	sub esp, 0x4
+	sub esp, 0x200
+
+	; Get CS stored value to check if we went from RING3
+	mov eax, dword [esp + 0x240]
+	and eax, 0b11
+	cmp eax, 0b11
+	jne %%.skip_storing_fx_region
+	; Store FPU/MMX/SSE/AVX of the current process (only from a ring3 context)
+	fxsave [esp]
+	; Restore the Rust kernel FPU/MMX/SSE/AVX context
+	fxrstor [fxsave_region]
+%%.skip_storing_fx_region:
 
 	; Push 0x0 for backtrace endpoint
 	push dword 0
@@ -66,12 +94,29 @@ _isr_syscall:
 %macro LOAD_CONTEXT 0
 	add esp, 4                  ; skip stack reserved field
 
+	; Get CS stored value to check if we went from RING3
+	mov eax, dword [esp + 0x240]
+	and eax, 0b11
+	cmp eax, 0b11
+	jne %%.skip_restoring_fx_region
+
+	; Store the Rust kernel FPU/MMX/SSE/AVX context
+	fxsave [fxsave_region]
+	; Restore FPU/MMX/SSE/AVX of the current process (only to a ring3 context)
+	fxrstor [esp]
+	%%.skip_restoring_fx_region:
+
+	; Inc stack
+	add esp, 0x200
+	add esp, 0x4
+
 	; Recover all purpose registers
 	popad
 	pop gs
 	pop fs
 	pop es
 	pop ds
+
 %endmacro
 
 	sub esp, 8 ; skip err code & cpu isr fields
@@ -85,6 +130,7 @@ _isr_syscall:
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
+; This function if launched for the first process
 global _start_process
 _start_process:
 	push ebp

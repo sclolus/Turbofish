@@ -9,6 +9,9 @@ CC = i686-turbofish-gcc
 AR = i686-turbofish-ar
 RANLIB = i686-turbofish-ranlib
 
+# non-turbofish specific program. Use carefully
+NASM = nasm
+
 IFLAGS = -Iinclude
 HEADERS = include/i386.h
 
@@ -133,6 +136,10 @@ VPATH += src/setjmp
 SRC_ASM += setjmp
 HEADERS += include/setjmp.h
 
+VPATH += src/math
+SRC_NASM += round
+HEADERS += include/math.h
+
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
@@ -151,6 +158,9 @@ OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
 
+# non-turbofish specific
+OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NASM)))))
+
 SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
 OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
 
@@ -158,7 +168,7 @@ OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir
 
 all: $(TARGET) $(OBJ_C_RUNTIME)
 
-$(TARGET): $(OBJ_ASM) $(OBJ_C)
+$(TARGET): $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 	$(AR) rc $@ $^
 	$(RANLIB) $@
 
@@ -167,6 +177,9 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 
 $(OBJ_DIR)/%.o: %.s Makefile $(HEADERS)
 	$(AS) -o $@ $<
+
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
+	$(NASM) -f elf -o $@ $<
 
 # Compile all the C runtime object files
 obj/crt/%.o: src/crt/%.s
