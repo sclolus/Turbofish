@@ -6,11 +6,10 @@ pub mod pio_polling;
 mod udma;
 pub use udma::{Channel, DmaStatus, Udma};
 
-use super::SECTOR_SIZE;
 use super::{
-    IdeControllerProgIf, MassStorageControllerSubClass, PciCommand, PciDeviceClass, PciType0, PCI,
+    BlockIo, DiskResult, IdeControllerProgIf, MassStorageControllerSubClass, NbrSectors,
+    PciCommand, PciDeviceClass, PciType0, Sector, PCI, SECTOR_SIZE,
 };
-use super::{NbrSectors, Sector};
 
 use alloc::vec::Vec;
 use io::{Io, Pio};
@@ -20,6 +19,21 @@ use bitflags::bitflags;
 
 use crate::drivers::PIT0;
 use core::time::Duration;
+
+pub static mut IDE_ATA_CONTROLLER: Option<IdeAtaController> = None;
+
+/// Initialize the IDE ATA CONTROLLER
+pub unsafe fn init() -> AtaResult<()> {
+    IDE_ATA_CONTROLLER = IdeAtaController::new();
+
+    // println!("{:#X?}", IDE_ATA_CONTROLLER);
+    if let Some(d) = IDE_ATA_CONTROLLER.as_mut() {
+        if let Ok(drive) = d.select_drive(Rank::Primary(Hierarchy::Master)) {
+            log::info!("Selecting drive: {:#X?}", drive);
+        }
+    }
+    Ok(())
+}
 
 /// Global structure
 #[derive(Debug, Clone)]
@@ -55,14 +69,14 @@ pub trait DmaIo {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-        udma: &mut Udma,
+        // udma: &mut Udma,
     ) -> AtaResult<()>;
     fn write(
         &self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-        udma: &mut Udma,
+        // udma: &mut Udma,
     ) -> AtaResult<()>;
 }
 
@@ -193,87 +207,6 @@ impl IdeAtaController {
             .select_drive();
         Ok(())
     }
-
-    /// Read nbr_sectors after start_sector location and write it into the buf
-    pub fn read(
-        &mut self,
-        start_sector: Sector,
-        nbr_sectors: NbrSectors,
-        buf: *mut u8,
-    ) -> AtaResult<()> {
-        let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
-            Rank::Primary(h) => (
-                match h {
-                    Hierarchy::Master => self.primary_master.as_ref(),
-                    Hierarchy::Slave => self.primary_slave.as_ref(),
-                },
-                self.udma_primary.as_mut(),
-            ),
-            Rank::Secondary(h) => (
-                match h {
-                    Hierarchy::Master => self.secondary_master.as_ref(),
-                    Hierarchy::Slave => self.secondary_slave.as_ref(),
-                },
-                self.udma_secondary.as_mut(),
-            ),
-        };
-        let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(u), true) => {
-                d.enable_interrupt();
-                DmaIo::read(d, start_sector, nbr_sectors, buf, u)
-            }
-            (OperatingMode::PioTransfert, _, _) => {
-                d.disable_interrupt();
-                PioIo::read(d, start_sector, nbr_sectors, buf)
-            }
-            other => panic!(
-                "this device should not be in that configuration, {:?}",
-                other
-            ),
-        }
-    }
-
-    /// Write nbr_sectors after start_sector location from the buf
-    pub fn write(
-        &mut self,
-        start_sector: Sector,
-        nbr_sectors: NbrSectors,
-        buf: *const u8,
-    ) -> AtaResult<()> {
-        let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
-            Rank::Primary(h) => (
-                match h {
-                    Hierarchy::Master => self.primary_master.as_ref(),
-                    Hierarchy::Slave => self.primary_slave.as_ref(),
-                },
-                self.udma_primary.as_mut(),
-            ),
-            Rank::Secondary(h) => (
-                match h {
-                    Hierarchy::Master => self.secondary_master.as_ref(),
-                    Hierarchy::Slave => self.secondary_slave.as_ref(),
-                },
-                self.udma_secondary.as_mut(),
-            ),
-        };
-        let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(u), true) => {
-                d.enable_interrupt();
-                DmaIo::write(d, start_sector, nbr_sectors, buf, u)
-            }
-            (OperatingMode::PioTransfert, _, _) => {
-                d.disable_interrupt();
-                PioIo::write(d, start_sector, nbr_sectors, buf)
-            }
-            other => panic!(
-                "this device should not be in that configuration, {:?}",
-                other
-            ),
-        }
-    }
-
     /// Get the drive pointed by Rank, or else return None
     fn get_selected_drive(&self) -> Option<&Drive> {
         match self.selected_drive? {
@@ -282,6 +215,87 @@ impl IdeAtaController {
             Rank::Secondary(Hierarchy::Master) => self.secondary_master.as_ref(),
             Rank::Secondary(Hierarchy::Slave) => self.secondary_slave.as_ref(),
         }
+    }
+}
+
+impl BlockIo for IdeAtaController {
+    /// Read nbr_sectors after start_sector location and write it into the buf
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+        let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
+            Rank::Primary(h) => (
+                match h {
+                    Hierarchy::Master => self.primary_master.as_ref(),
+                    Hierarchy::Slave => self.primary_slave.as_ref(),
+                },
+                self.udma_primary.as_ref(),
+            ),
+            Rank::Secondary(h) => (
+                match h {
+                    Hierarchy::Master => self.secondary_master.as_ref(),
+                    Hierarchy::Slave => self.secondary_slave.as_ref(),
+                },
+                self.udma_secondary.as_ref(),
+            ),
+        };
+        let d = drive.ok_or(AtaError::DeviceNotFound)?;
+        match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+                d.enable_interrupt();
+                unimplemented!()
+                // DmaIo::read(d, start_sector, nbr_sectors, buf, u)?;
+            }
+            (OperatingMode::PioTransfert, _, _) => {
+                d.disable_interrupt();
+                PioIo::read(d, start_sector, nbr_sectors, buf)?;
+            }
+            other => panic!(
+                "this device should not be in that configuration, {:?}",
+                other
+            ),
+        }
+        Ok(())
+    }
+
+    /// Write nbr_sectors after start_sector location from the buf
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> DiskResult<()> {
+        let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
+            Rank::Primary(h) => (
+                match h {
+                    Hierarchy::Master => self.primary_master.as_ref(),
+                    Hierarchy::Slave => self.primary_slave.as_ref(),
+                },
+                self.udma_primary.as_ref(),
+            ),
+            Rank::Secondary(h) => (
+                match h {
+                    Hierarchy::Master => self.secondary_master.as_ref(),
+                    Hierarchy::Slave => self.secondary_slave.as_ref(),
+                },
+                self.udma_secondary.as_ref(),
+            ),
+        };
+        let d = drive.ok_or(AtaError::DeviceNotFound)?;
+        match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+                d.enable_interrupt();
+                // DmaIo::write(d, start_sector, nbr_sectors, buf, u)?;
+                unimplemented!()
+            }
+            (OperatingMode::PioTransfert, _, _) => {
+                d.disable_interrupt();
+                PioIo::write(d, start_sector, nbr_sectors, buf)?;
+            }
+            other => panic!(
+                "this device should not be in that configuration, {:?}",
+                other
+            ),
+        }
+        Ok(())
     }
 }
 

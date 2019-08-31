@@ -4,7 +4,9 @@ use super::FileOperation;
 use super::InodeId;
 use super::IpcResult;
 use super::SysResult;
-use crate::drivers::storage::{BlockIo, DiskResult, NbrSectors, Sector, BIOS_INT13H, SECTOR_SIZE};
+use crate::drivers::storage::{
+    BlockIo, DiskResult, NbrSectors, Sector, BIOS_INT13H, IDE_ATA_CONTROLLER, SECTOR_SIZE,
+};
 use alloc::sync::Arc;
 use core::cmp::min;
 use core::fmt::{self, Debug};
@@ -51,6 +53,33 @@ impl BlockIo for BiosInt13hInstance {
     ) -> DiskResult<()> {
         unsafe {
             BIOS_INT13H
+                .as_ref()
+                .unwrap()
+                .write(start_sector, nbr_sectors, buf)
+        }
+    }
+}
+
+pub struct IdeAtaInstance;
+
+impl BlockIo for IdeAtaInstance {
+    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+        unsafe {
+            IDE_ATA_CONTROLLER
+                .as_ref()
+                .unwrap()
+                .read(start_sector, nbr_sectors, buf)
+        }
+    }
+
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> DiskResult<()> {
+        unsafe {
+            IDE_ATA_CONTROLLER
                 .as_ref()
                 .unwrap()
                 .write(start_sector, nbr_sectors, buf)

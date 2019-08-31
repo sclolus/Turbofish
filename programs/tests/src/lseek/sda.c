@@ -11,12 +11,12 @@ int main() {
 	}
 
 	// we look for the magic of the mbr at byte 510
-	int ret = lseek(fildes, 510, SEEK_SET);
+	int ret = lseek(fildes, 1080, SEEK_SET);
 	if (ret == -1) {
 		perror("lseek");
 		exit(1);
 	}
-	if (ret != 510) {
+	if (ret != 1080) {
 		dprintf(2, "lseek should return the offset from the begin of the file");
 		exit(1);
 	}
@@ -28,8 +28,9 @@ int main() {
 		exit(1);
 	}
 
-	if (magic != 0xAA55) {
-		dprintf(2, "bad magic on the mbr");
+	printf("magic %d\n", magic);
+	if (magic != 0xef53) {
+		dprintf(2, "bad magic on the ext2");
 		exit(1);
 	}
 }

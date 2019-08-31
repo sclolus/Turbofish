@@ -15,7 +15,7 @@ pub mod tty;
 pub use tty::TtyDevice;
 
 pub mod disk;
-pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper};
+pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
 // pub use disk::DiskDriver;
 
 use alloc::sync::Arc;

@@ -8,6 +8,7 @@ use super::pci::{
 pub const SECTOR_SIZE: usize = 512;
 
 pub mod ide_ata_controller;
+use ide_ata_controller::AtaError;
 pub use ide_ata_controller::IdeAtaController;
 
 pub mod sata_controller;
@@ -22,7 +23,7 @@ pub use tools::{NbrSectors, Sector};
 pub mod ext2;
 
 use crate::multiboot::MultibootInfo;
-use ide_ata_controller::{Hierarchy, Rank};
+pub use ide_ata_controller::IDE_ATA_CONTROLLER;
 
 pub type DiskResult<T> = core::result::Result<T, DiskError>;
 
@@ -33,6 +34,18 @@ pub enum DiskError {
     NotSupported,
     NothingToDo,
     IOError,
+}
+
+impl From<AtaError> for DiskError {
+    fn from(ata_error: AtaError) -> DiskError {
+        match ata_error {
+            AtaError::DeviceNotFound => DiskError::NotSupported,
+            AtaError::NotSupported => DiskError::NotSupported,
+            AtaError::OutOfBound => DiskError::OutOfBound,
+            AtaError::NothingToDo => DiskError::NothingToDo,
+            AtaError::IoError => DiskError::IOError,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -66,15 +79,8 @@ pub fn init(multiboot_info: &MultibootInfo) {
     }
 
     // Initialize IDE controller
-    let mut disk = IdeAtaController::new();
-
-    if let Some(d) = disk.as_mut() {
-        match d.select_drive(Rank::Primary(Hierarchy::Master)) {
-            Ok(drive) => {
-                log::info!("Ide Controller detected: Selecting drive -> {:#X?}", drive);
-            }
-            Err(_) => {}
-        }
+    unsafe {
+        ide_ata_controller::init().expect("ide_ata_controller init failed");
     }
 
     // Initialize BIOS controller

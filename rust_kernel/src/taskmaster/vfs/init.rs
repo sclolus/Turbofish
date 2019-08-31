@@ -1,5 +1,5 @@
 use crate::taskmaster::drivers::{
-    BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, TtyDevice,
+    BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance, TtyDevice,
 };
 use alloc::format;
 use alloc::sync::Arc;
@@ -8,64 +8,87 @@ use fallible_collections::FallibleArc;
 use sync::DeadMutex;
 
 use super::*;
-use crate::drivers::storage::{BlockIo, DiskDriverType, NbrSectors, Sector, BIOS_INT13H};
+use crate::drivers::storage::{BlockIo, DiskDriverType, NbrSectors, Sector};
 use alloc::boxed::Box;
-use alloc::vec;
-use alloc::vec::Vec;
 use ext2::Ext2Filesystem;
 use mbr::Mbr;
 
 pub static mut EXT2: Option<Ext2Filesystem> = None;
 
-fn init_sda(_vfs: &mut Vfs, driver: DiskDriverType) {
+fn read_mbr(disk: &dyn BlockIo) -> Mbr {
+    let size_read = NbrSectors(1);
+    let mut v1 = [0; 512];
+
+    disk.read(Sector(0x0), size_read, v1.as_mut_ptr())
+        .expect("bios read failed");
+
+    let mut a = [0; 512];
+    for (i, elem) in a.iter_mut().enumerate() {
+        *elem = v1[i];
+    }
+    unsafe { Mbr::new(&a) }
+}
+
+fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
-    let size_read = NbrSectors(1);
-    let mut v1: Vec<u8> = vec![0; size_read.into()];
-
-    match driver {
+    let disk_driver = match driver {
         DiskDriverType::Bios => {
-            unsafe {
-                BIOS_INT13H
-                    .as_mut()
-                    .unwrap()
-                    .read(Sector(0x0), size_read, v1.as_mut_ptr())
-                    .expect("bios read failed");
-            }
-
-            let mut a = [0; 512];
-            for (i, elem) in a.iter_mut().enumerate() {
-                *elem = v1[i];
-            }
-            let mbr = unsafe { Mbr::new(&a) };
+            let disk = BiosInt13hInstance;
+            let mbr = read_mbr(&disk);
             let disk = DiskFileOperation::new(
-                BiosInt13hInstance,
+                disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
             );
-
-            let mut disk_driver = DiskDriver::new(Arc::new(DeadMutex::new(disk)));
-
-            let file_operation = disk_driver
-                .open()
-                .expect("disk driver open failed")
-                .expect("disk driver open failed");
-            let ext2_disk = DiskWrapper(file_operation);
-            unsafe {
-                EXT2 = Some(
-                    //TODO: remove the box
-                    Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed"),
-                );
-            }
+            DiskDriver::new(Arc::new(DeadMutex::new(disk)))
         }
         DiskDriverType::Ide => {
-            // TODO: handle Ide
-            unimplemented!();
+            let disk = IdeAtaInstance;
+            let mbr = read_mbr(&disk);
+            let disk = DiskFileOperation::new(
+                disk,
+                mbr.parts[0].start as u64 * 512,
+                mbr.parts[0].size as u64 * 512,
+            );
+            DiskDriver::new(Arc::new(DeadMutex::new(disk)))
         }
         _ => unimplemented!(),
+    };
+
+    let mut current = Current {
+        cwd: DirectoryEntryId::new(2),
+        uid: 0,
+        euid: 0,
+        gid: 0,
+        egid: 0,
+        open_fds: BTreeMap::new(),
+    };
+    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path tty creation failed");
+    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    vfs.new_driver(
+        &mut current,
+        path.clone(),
+        mode,
+        Arc::new(DeadMutex::new(disk_driver)),
+    )
+    .expect("failed to add new driver tty to vfs");
+
+    let flags = libc_binding::OpenFlags::O_RDWR;
+
+    let file_operation = vfs
+        .open(&mut current, path, flags, mode)
+        .expect("open sda1 failed")
+        .expect("disk driver open failed");
+
+    let ext2_disk = DiskWrapper(file_operation);
+    unsafe {
+        EXT2 = Some(
+            //TODO: remove the box
+            Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed"),
+        );
     }
-    //TODO: mount on /dev/sda
-    // log::info!("/dev/sda initialized");
+    log::info!("/dev/sda initialized");
 }
 
 fn init_tty(vfs: &mut Vfs) {
@@ -106,6 +129,6 @@ lazy_static! {
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     init_tty(&mut vfs);
-    init_sda(&mut vfs, DiskDriverType::Bios);
+    init_sda(&mut vfs, DiskDriverType::Ide);
     vfs
 }
