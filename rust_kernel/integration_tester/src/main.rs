@@ -136,9 +136,8 @@ fn main() {
                 format!("{}-output", feature)
             );
             let mut child = {
-                let mut qemu_command = Command::new("sudo");
+                let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
-                    .args(&["qemu-system-x86_64"])
                     .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
