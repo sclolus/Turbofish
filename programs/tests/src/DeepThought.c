@@ -27,6 +27,8 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/sigprocmask/sigprocmask"},
 	{.path = "/bin/isatty/isatty"},
 	{.path = "/bin/pipe/pipe_fucker"},
+	{.path = "/bin/pipe/pipe_fister"},
+	{.path = "/bin/pipe/pipe_lorem_ipsum"},
 	{.path = "/bin/math/roundf"},
 };
 

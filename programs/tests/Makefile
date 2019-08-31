@@ -22,6 +22,8 @@ SRC_C += DeepThought \
 		isatty/isatty \
 		atexit/atexit \
 		pipe/pipe_fucker \
+		pipe/pipe_fister \
+		pipe/pipe_lorem_ipsum \
 		math/roundf \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math
