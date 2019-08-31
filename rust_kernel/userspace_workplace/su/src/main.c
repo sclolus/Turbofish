@@ -108,7 +108,7 @@ int main(int argc, char **argv, char **env)
 	}
 
 	// decoded from base64.
-	char	*decoded_entry_passwd = decode_base64(entry_passwd, strlen(entry_passwd));
+	char	*decoded_entry_passwd = (char*)decode_base64((uint8_t*)entry_passwd, strlen(entry_passwd));
 
 	// Bzero for security reasons.
 	memset(entry_passwd, 0, strlen(entry_passwd));
@@ -217,56 +217,50 @@ int main(int argc, char **argv, char **env)
 	It is not protected against dirty pages sniffing.
 
 int main(int argc, char **argv) {
-	if (argc != 3) {
-		err("Invalid command line: ./hasher <key> <salt>");
+	if (argc != 2) {
+		err("Invalid command line: ./hasher <key>");
 	}
 
 	char	*key = argv[1];
-	char	*salt = argv[2];
-	/* char	*salt; */
 
-	/* static char salt[SALT_SIZE + 1]; */
+	static char random_salt[SALT_SIZE + 1];
 	int	    fd = open("/dev/urandom", O_RDONLY);
 
 	if (-1 == fd) {
 		err("Failed to open /dev/urandom: %s", strerror(errno));
 	}
 
-	/* ssize_t ret = read(fd, salt, SALT_SIZE); */
+	ssize_t ret = read(fd, random_salt, SALT_SIZE);
 
-	/* if (-1 == ret) { */
-	/* 	err("Failed to read random salt: %s", strerror(errno)); */
-	/* } */
+	if (-1 == ret) {
+		err("Failed to read random salt: %s", strerror(errno));
+	}
 
-	/* if (ret != SALT_SIZE) { */
-	/* 	err("Salt was partially read: %ld != %u", ret, SALT_SIZE); */
-	/* } */
+	size_t	random_salt_len = (size_t)ret;
 
-	/* char	*password = getpass("Enter password to hash: "); */
+	char	*salt = (char *)encode_base64((uint8_t *)random_salt, random_salt_len);
 
-	/* if (!password) { */
-	/* 	err("Failed to retrieve password from user"); */
-	/* } */
+	if (!salt) {
+		err("Failed to convert random salt to base64");
+	}
 
-	/* char	*hash = md5_hash(password, salt); */
 	char	*hash = md5_hash(key, salt);
 
 	if (!hash) {
 		err("Failed to hash password");
 	}
-	char *base64_hash = encode_base64(hash, 16);
-	assert(!strcmp(hash, decode_base64(base64_hash, strlen(base64_hash))));
+	char *base64_hash = (char *)encode_base64((uint8_t *)hash, 16);
+	assert(!strcmp(hash, (char *)decode_base64((uint8_t*)base64_hash, strlen(base64_hash))));
 
 	if (!base64_hash) {
 		err("Failed to convert hash into base64");
 	}
 
-	printf("Hashed password: %s Salt: %s\n", hash, salt);
-	printf("base64: %s\n", base64_hash);
+	printf("Hashed password: %s Salt: %s\n", base64_hash, salt);
 	printf("Formatted hash: $%s$%s\n", salt, base64_hash);
 
 	free(hash);
-	/* free(password); */
+	free(salt);
 	return EXIT_SUCCESS;
 }
 #endif

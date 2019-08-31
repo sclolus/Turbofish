@@ -13,6 +13,16 @@ static uint32_t    count_fields(char *const s, char del) {
 	return count;
 }
 
+char			*strchrnul(const char *s, int c)
+{
+	char *ret = strchr(s, c);
+
+	if (!ret) {
+		return (char *)&s[strlen(s)];
+	}
+	return ret;
+}
+
 char			**strsplit(char *const s, char del)
 {
 	uint32_t    count = count_fields(s, del);

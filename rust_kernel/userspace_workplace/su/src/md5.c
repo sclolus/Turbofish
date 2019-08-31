@@ -172,7 +172,7 @@ char	 *md5_hash(char *clear, char *salt)
 	new[new_len] = 0;
 	clear = new;
 
-	md5_padding(last_block, clear, new_len);
+	md5_padding(last_block, (uint8_t*)clear, new_len);
 	init_md5(states);
 	md5_main_loop(states, (uint8_t*)clear, last_block, new_len);
 	free(clear);
