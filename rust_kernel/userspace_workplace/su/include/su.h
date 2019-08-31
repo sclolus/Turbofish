@@ -100,6 +100,13 @@ char			**strsplit(char *const s, char c);
 char			*get_file_contents(int fd);
 char			*md5_hash(char *clear, char *salt);
 
+// The password fields in the shadow file are md5 hashes converted in base64.
+/* # define BASE64_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+ */
+# define BASE64_CHARS "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+uint8_t			*encode_base64(uint8_t *clear, uint32_t len);
+uint8_t			*decode_base64(uint8_t *cipher, uint32_t len);
+
 /*
 ** Hash Tests
 */

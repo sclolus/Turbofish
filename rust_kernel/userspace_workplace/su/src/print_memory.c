@@ -1,4 +1,4 @@
-#ifdef TESTS
+#ifdef MAKE_PASS
 #include <stddef.h>
 #include <unistd.h>
 

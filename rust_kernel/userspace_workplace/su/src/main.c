@@ -6,7 +6,7 @@ struct	cmd_args    parse_cmd_line(int argc, char **argv) {
 	struct cmd_args	args;
 
 	memset(&args, 0, sizeof(struct cmd_args));
-	while ((opt = getopt(argc, argv, OPTIONS_GETOPT)) != -1) {
+	while ((opt = _getopt(argc, argv, OPTIONS_GETOPT)) != -1) {
 		switch (opt) {
 		case 'c':
 			args.specified_command = true;
@@ -87,11 +87,9 @@ int main(int argc, char **argv, char **env)
 						&salt)) {
 			err("Failed to parse hashed password in shadow file");
 		}
-		print_shadow_entry(sentry);
-
 	} else if (-1 == parse_hashed_password(entry->hashed_passwd,
-						&entry_passwd,
-						&salt)) {
+					       &entry_passwd,
+					       &salt)) {
 		err("Failed to parse hashed password in shadow file");
 	}
 
@@ -99,7 +97,6 @@ int main(int argc, char **argv, char **env)
 	memset(sentries, 0, sizeof(struct shadow_entry) * n_shadow_entries);
 	free(sentries);
 
-	printf("salt: %s, hashed_pass: %s\n", salt, entry_passwd);
 	char	    *hash = md5_hash(input_password, salt);
 
 	// Bzero for security reasons.
@@ -110,19 +107,28 @@ int main(int argc, char **argv, char **env)
 		err("Failed to hash password");
 	}
 
-
-	print_hash(hash);
-
-	/* if (strcmp(hash, entry_passwd)) { */
-	/* 	err("Authentification failure"); */
-	/* } */
+	// decoded from base64.
+	char	*decoded_entry_passwd = decode_base64(entry_passwd, strlen(entry_passwd));
 
 	// Bzero for security reasons.
 	memset(entry_passwd, 0, strlen(entry_passwd));
 	free(entry_passwd);
+
+	if (!decoded_entry_passwd) {
+		err("Failed to encode hash into base64");
+	}
+
+	if (memcmp(hash, decoded_entry_passwd, 16)) {
+		err("Authentification failure");
+	}
+
+	memset(decoded_entry_passwd, 0, 16);
+	free(decoded_entry_passwd);
+
+	// Bzero for security reasons.
 	memset(salt, 0, strlen(salt));
 	free(salt);
-	memset(hash, 0, strlen(hash));
+	memset(hash, 0, 16);
 	free(hash);
 
 	if (-1 == setgid(entry->gid)) {
@@ -133,7 +139,6 @@ int main(int argc, char **argv, char **env)
 		err("Failed to setuid(%d (%s)): %s", entry->uid, login, strerror(errno));
 	}
 
-	print_passwd_entry(entry);
 	char	*used_shell = NULL;
 	char	*env_shell = NULL;
 
@@ -212,49 +217,56 @@ int main(int argc, char **argv, char **env)
 	It is not protected against dirty pages sniffing.
 
 int main(int argc, char **argv) {
-	static char salt[SALT_SIZE + 1];
+	if (argc != 3) {
+		err("Invalid command line: ./hasher <key> <salt>");
+	}
+
+	char	*key = argv[1];
+	char	*salt = argv[2];
+	/* char	*salt; */
+
+	/* static char salt[SALT_SIZE + 1]; */
 	int	    fd = open("/dev/urandom", O_RDONLY);
 
 	if (-1 == fd) {
 		err("Failed to open /dev/urandom: %s", strerror(errno));
 	}
 
-	ssize_t ret = read(fd, salt, SALT_SIZE);
+	/* ssize_t ret = read(fd, salt, SALT_SIZE); */
 
-	if (-1 == ret) {
-		err("Failed to read random salt: %s", strerror(errno));
-	}
+	/* if (-1 == ret) { */
+	/* 	err("Failed to read random salt: %s", strerror(errno)); */
+	/* } */
 
-	if (ret != SALT_SIZE) {
-		err("Salt was partially read: %ld != %u", ret, SALT_SIZE);
-	}
+	/* if (ret != SALT_SIZE) { */
+	/* 	err("Salt was partially read: %ld != %u", ret, SALT_SIZE); */
+	/* } */
 
-	char	*password = getpass("Enter password to hash: ");
+	/* char	*password = getpass("Enter password to hash: "); */
 
-	if (!password) {
-		err("Failed to retrieve password from user");
-	}
+	/* if (!password) { */
+	/* 	err("Failed to retrieve password from user"); */
+	/* } */
 
-	char	*hash = md5_hash(password, salt);
+	/* char	*hash = md5_hash(password, salt); */
+	char	*hash = md5_hash(key, salt);
 
 	if (!hash) {
 		err("Failed to hash password");
 	}
-	uint32_t hash_len = strlen(hash);
-	uint32_t salt_len = strlen(salt);
+	char *base64_hash = encode_base64(hash, 16);
+	assert(!strcmp(hash, decode_base64(base64_hash, strlen(base64_hash))));
 
-	printf("Hashed password: ");
-	print_hash(hash);
-	printf(" Salt: ");
-	print_hash(salt);
-	printf("\nFormatted hash: $");
-	print_hash(salt);
-	printf("$");
-	print_hash(hash);
-	printf("\n");
+	if (!base64_hash) {
+		err("Failed to convert hash into base64");
+	}
+
+	printf("Hashed password: %s Salt: %s\n", hash, salt);
+	printf("base64: %s\n", base64_hash);
+	printf("Formatted hash: $%s$%s\n", salt, base64_hash);
 
 	free(hash);
-	free(password);
+	/* free(password); */
 	return EXIT_SUCCESS;
 }
 #endif

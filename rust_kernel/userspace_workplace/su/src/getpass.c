@@ -8,6 +8,7 @@ char	    *getpass(const char *prompt)
 	struct termios	new;
 	char		*pass = NULL;
 
+	#ifndef MAKE_PASS
 	if (-1 == tcgetattr(STDIN_FILENO, &old)) {
 		return NULL;
 	}
@@ -17,7 +18,7 @@ char	    *getpass(const char *prompt)
 	if (-1 == tcsetattr(STDIN_FILENO, TCSANOW, &new)) {
 		return NULL;
 	}
-
+	#endif
 	size_t    pass_size = 0;
 
 	write(STDOUT_FILENO, prompt, strlen(prompt));
@@ -29,13 +30,16 @@ char	    *getpass(const char *prompt)
 		pass = NULL;
 	}
 
-	if (pass && pass_size != 0) {
-		pass[pass_size - 1] = '\0';
+	char	*newline;
+	if (pass && (newline = strchr(pass, '\n'))) {
+	*newline = '\0';
 	}
 
+#ifndef MAKE_PASS
 	if (-1 == tcsetattr(STDIN_FILENO, TCSANOW, &old)) {
 		free(pass);
 		return NULL;
 	}
+#endif
 	return pass;
 }

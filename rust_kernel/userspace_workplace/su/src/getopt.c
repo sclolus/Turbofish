@@ -66,7 +66,8 @@ static int		getopt_argument(const int argc, char *const argv[]
 	return ((int)*opt_char);
 }
 
-int				getopt(int argc, char *const argv[], const char *optstring)
+// Temporary fix for conflicting definitions
+int				_getopt(int argc, char *const argv[], const char *optstring)
 {
 	static uint64_t		index = 1;
 	char			*opt_char;

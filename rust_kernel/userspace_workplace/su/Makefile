@@ -5,12 +5,21 @@ else
 	TARGET = su
 endif
 
+ifeq ($(debug),yes)
+	CFLAGS += -g3 -fsanitize=address
+else
+	CFLAGS += -static
+endif
+
+
 CC = gcc
 
 SRC_C += main \
 	strsplit \
 	get_file_contents \
 	md5 \
+	encode_base64.c \
+	decode_base64.c \
 	hash_fuzzer \
 	hash_tester \
 	left_rotate_32 \
@@ -29,7 +38,7 @@ VPATH += src
 IFLAGS = -I include
 
 TEST=  -DTESTS
-CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)  -fsanitize=address -g3 -lcrypt  # -lcriterion
+CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer $(IFLAGS) -lcrypt  # -lcriterion
 
 .PHONY = all clean fclean re exec
 

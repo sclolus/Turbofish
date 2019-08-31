@@ -1,16 +1,14 @@
 #include "su.h"
 
-/* #ifdef TESTS */
-void	print_hash(const char *const digest)
+void	print_hash(const char *const hash)
 {
 	uint32_t	i;
-	size_t		len = strlen(digest);
+	uint8_t		*digest = (uint8_t*)hash;
 
 	i = 0;
-	while (i < len)
+	while (i < 16)
 	{
-		printf("%2.2hhx", digest[i]);
+		printf("%02x", digest[i]);
 		i++;
 	}
 }
-/* #endif */
