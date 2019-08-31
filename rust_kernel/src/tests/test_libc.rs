@@ -23,7 +23,7 @@ pub extern "C" fn kmain(
     unsafe {
         UART_16550.init();
     }
-    eprintln!("THIS IS A BASIC TEST");
+    eprintln!("Launching of native_libc_test:");
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
 
     unsafe {
@@ -106,5 +106,6 @@ pub extern "C" fn kmain(
         .unwrap()]
     };
 
+    eprintln!("Launching Taskmaster:");
     crate::taskmaster::start(user_process_list)
 }

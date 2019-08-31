@@ -43,12 +43,34 @@ impl ProcessArguments {
     }
 }
 
+const FX_REGION_LEN: usize = 512;
+
+/// FPU/MMX/SSE/AVX Support
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct FxRegion {
+    keys: [u8; FX_REGION_LEN],
+}
+
+/// Default boilerplate for FxRegion
+impl Default for FxRegion {
+    fn default() -> Self {
+        Self {
+            keys: [0; FX_REGION_LEN],
+        }
+    }
+}
+
 /// Represent all the cpu states of a process according to the TSS context
 #[derive(Copy, Clone, Default)]
 #[repr(C)]
 pub struct CpuState {
     /// reserved for back trace
     pub stack_reserved: u32,
+    /// FPU/MMX/SSE/AVX Support
+    pub fx_region: FxRegion,
+    /// Padding of 4 bytes to ensure that fx_region is 16 bytes aligned
+    pub fx_padding: u32,
     /// current registers
     pub registers: BaseRegisters,
     /// current data GS
@@ -167,7 +189,7 @@ impl UserProcess {
 
     const RING3_RAW_PROCESS_MAX_SIZE: NbrPages = NbrPages::_64K;
     const RING3_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
-    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_64K;
+    const RING3_PROCESS_KERNEL_STACK_SIZE: NbrPages = NbrPages::_128K;
 
     pub fn sys_clone(
         &self,
@@ -353,6 +375,8 @@ impl Process for UserProcess {
         // Create the process identity
         let cpu_state: CpuState = CpuState {
             stack_reserved: 0,
+            fx_region: Default::default(),
+            fx_padding: 0,
             registers: BaseRegisters {
                 esp,
                 eax,
@@ -464,6 +488,8 @@ impl Process for KernelProcess {
         // Create the process identity
         let cpu_state: CpuState = CpuState {
             stack_reserved: 0,
+            fx_region: Default::default(),
+            fx_padding: 0,
             registers: BaseRegisters {
                 esp: kernel_esp,
                 ..Default::default()

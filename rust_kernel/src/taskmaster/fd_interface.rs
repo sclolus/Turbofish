@@ -37,9 +37,14 @@ impl FileDescriptorInterface {
         }
     }
 
+    /// Clear all the owned content into the File Descriptor Interface
+    pub fn delete(&mut self) {
+        self.user_fd_list.clear();
+    }
+
     pub fn get_file_operation(&self, fd: Fd) -> SysResult<DeadMutexGuard<dyn FileOperation>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
-        Ok(elem.kernel_fd.lock())
+        Ok(elem.file_operation.lock())
     }
 
     // TODO: fix dummy access_mode && manage flags
@@ -93,7 +98,7 @@ impl FileDescriptorInterface {
     pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
-        elem.kernel_fd.lock().read(buf)
+        elem.file_operation.lock().read(buf)
     }
 
     /// Write something into the File Descriptor: Can block
@@ -102,7 +107,7 @@ impl FileDescriptorInterface {
     pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
-        elem.kernel_fd.lock().write(buf)
+        elem.file_operation.lock().write(buf)
     }
 
     /// Made two File Descriptors connected with a Pipe
@@ -157,11 +162,11 @@ impl FileDescriptorInterface {
     fn insert_user_fd(
         &mut self,
         mode: Mode,
-        kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
+        file_operation: Arc<DeadMutex<dyn FileOperation>>,
     ) -> SysResult<Fd> {
         let user_fd = self.get_lower_fd_value(0).ok_or::<Errno>(Errno::EMFILE)?;
         self.user_fd_list
-            .try_insert(user_fd, FileDescriptor::new(mode, kernel_fd))?;
+            .try_insert(user_fd, FileDescriptor::new(mode, file_operation))?;
         Ok(user_fd)
     }
 
@@ -218,20 +223,33 @@ impl Drop for FileDescriptorInterface {
 
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
-#[derive(Debug, TryClone)]
+#[derive(Debug)]
 struct FileDescriptor {
     access_mode: Mode,
-    kernel_fd: Arc<DeadMutex<dyn FileOperation>>,
+    file_operation: Arc<DeadMutex<dyn FileOperation>>,
+}
+
+use alloc::collections::CollectionAllocErr;
+
+/// TryClone Boilerplate. The ref counter of the FileOperation must be incremented when Cloning
+impl TryClone for FileDescriptor {
+    fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
+        self.file_operation.lock().register(self.access_mode);
+        Ok(Self {
+            access_mode: self.access_mode.clone(),
+            file_operation: self.file_operation.clone(),
+        })
+    }
 }
 
 /// Standard implementation of an user File Descriptor
 impl FileDescriptor {
     /// When a new FileDescriptor is invoqued, Increment reference
-    fn new(access_mode: Mode, kernel_fd: Arc<DeadMutex<dyn FileOperation>>) -> Self {
-        kernel_fd.lock().register(access_mode);
+    fn new(access_mode: Mode, file_operation: Arc<DeadMutex<dyn FileOperation>>) -> Self {
+        file_operation.lock().register(access_mode);
         Self {
             access_mode,
-            kernel_fd,
+            file_operation,
         }
     }
 }
@@ -239,7 +257,7 @@ impl FileDescriptor {
 /// Drop boilerplate for an FileDescriptor structure. Decremente reference
 impl Drop for FileDescriptor {
     fn drop(&mut self) {
-        self.kernel_fd.lock().unregister(self.access_mode);
+        self.file_operation.lock().unregister(self.access_mode);
     }
 }
 

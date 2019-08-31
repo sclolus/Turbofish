@@ -4,7 +4,7 @@ SHELL := env PATH=$(PATH) /bin/bash
 BUILD_DIR = build
 VPATH += src
 
-# AS = i686-turbofish-ld
+AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
 SRC_C += DeepThought \
@@ -20,22 +20,27 @@ SRC_C += DeepThought \
 		mprotect/mprotect \
 		mmap/mmap \
 		isatty/isatty \
-		atexit/atexit
+		atexit/atexit \
+		pipe/pipe_fucker \
+		pipe/pipe_fister \
+		pipe/pipe_lorem_ipsum \
+		math/roundf \
 
-CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
+VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math
+
+OBJ_DIR = obj
+OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))
+
+IFLAGS = -I include
+
+CFLAGS = -Wall -Wextra -fno-omit-frame-pointer
 ifeq ($(GNU),yes)
 CFLAGS += -m32 -D GNU
 CC = gcc
+LIB = -lm
 else
-# LDFLAGS = -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib32/crt1.o /usr/lib32/crti.o /usr/lib32/crtn.o -lc
-CFLAGS +=
 endif
 
-#ASFLAGS = -f elf
-
-ifeq ($(LDMAP),yes)
-    LDFLAGS += -M
-endif
 
 TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
 INSTALL_DIR = ../../rust_kernel/src/userland/
@@ -44,14 +49,23 @@ INSTALL_DIR = ../../rust_kernel/src/userland/
 
 all: $(TARGET_C)
 
-build/%: %.c Makefile /toolchain_turbofish/sysroot/usr/lib/libc.a
-	$(CC) $(CFLAGS) -o $@ $<
+build/%: $(OBJ_DIR)/%.o Makefile /toolchain_turbofish/sysroot/usr/lib/libc.a obj/tools.o
+	$(CC) $(CFLAGS) -o $@ $< obj/tools.o $(LIB)
+
+$(OBJ_DIR)/%.o: %.c Makefile include/tools.h
+	@mkdir -p ./$(dir $@)
+	$(CC) $(CFLAGS) $(IFLAGS) -c -o $@ $<
+
+$(OBJ_C):
+
+obj/tools.o:
 
 install:
 	cp -rv build/* $(INSTALL_DIR)
 
 clean:
 	rm -fv $(TARGET_C)
+	rm -rvf $(OBJ_DIR)/*
 
 fclean: clean
 

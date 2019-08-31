@@ -95,6 +95,11 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
         .get_thread_group_mut(process_to_free_pid)
         .expect("WTF: No Dead Process");
 
+    // Call the drop chain of file_descriptor_interface before being a zombie !
+    dead_process
+        .unwrap_running_mut()
+        .file_descriptor_interface
+        .delete();
     dead_process.set_zombie(status.into());
 
     // Send a death testament message to the parent

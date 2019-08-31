@@ -66,11 +66,6 @@ _dummy_asm_process_len_a:    dd $-_dummy_asm_process_code_a
 global _dummy_asm_process_code_b
 global _dummy_asm_process_len_b
 
-%macro STO 1
-	mov ax, %1
-	stosb
-%endmacro
-
 _dummy_asm_process_code_b:
 	push ebp
 	mov ebp, esp

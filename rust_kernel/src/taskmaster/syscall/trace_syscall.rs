@@ -144,6 +144,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         GETUID => "getuid",
         PAUSE => "pause",
         KILL => "kill",
+        PIPE => "pipe",
         GETGID => "getgid",
         GETEUID => "geteuid",
         FCNTL => "fcntl",

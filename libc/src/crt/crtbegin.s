@@ -6,6 +6,9 @@
 	push [ebp + 12] # argv
 	push [ebp + 8]  # argc
 
+# Initialize the 8087 FPU
+	finit
+
 	call basic_constructor
 	add esp, 12
 
