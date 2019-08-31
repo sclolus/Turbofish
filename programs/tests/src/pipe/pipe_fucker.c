@@ -6,6 +6,11 @@
 
 #define TEST_STRING "banane"
 
+#include "pipe.h"
+
+/*
+ * Simple Pipe reader/writer test + close writer
+ */
 int main(void)
 {
 	int fd[2];
@@ -28,11 +33,11 @@ int main(void)
 		sleep(1);
 		exit(0);
 	} else {
-		char buf[100];
+		char buf[PIPE_BUF_LEN];
 
 		int n;
 		close(fd[1]);
-		if ((n = read(fd[0], buf, 32)) < 0) {
+		if ((n = read(fd[0], buf, PIPE_BUF_LEN)) < 0) {
 			perror("read");
 			exit(1);
 		}
@@ -44,7 +49,7 @@ int main(void)
 			exit(1);
 		}
 
-		if ((n = read(fd[0], buf, 32)) < 0) {
+		if ((n = read(fd[0], buf, PIPE_BUF_LEN)) < 0) {
 			perror("read");
 			exit(1);
 		}
@@ -55,7 +60,7 @@ int main(void)
 		buf[n] = '\0';
 		printf("string received: %s\n", buf);
 		printf("n value: %i\n", n);
-		if ((n = read(fd[0], buf, 32)) < 0) {
+		if ((n = read(fd[0], buf, PIPE_BUF_LEN)) < 0) {
 			perror("read");
 			exit(1);
 		}

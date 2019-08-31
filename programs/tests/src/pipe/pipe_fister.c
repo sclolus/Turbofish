@@ -5,6 +5,11 @@
 #include <string.h>
 #include <wait.h>
 
+#include "pipe.h"
+
+/*
+ * SIGPIPE test (when all readers are gone): Before & After
+ */
 int main(void)
 {
 	int fd[2];
@@ -65,7 +70,7 @@ int main(void)
 		}
 		dup2(fd2[1], 1);
 		dprintf(2, "Attempt to Write\n");
-		if (write(1, "Una bananas Que itcha, Una bananas Que itcha", 44) >= 0) {
+		if (write(1, s, PIPE_BUF_LEN * 2) >= 0) {
 			dprintf(2, "SIGPIPE must be received !\n");
 			exit(1);
 		}

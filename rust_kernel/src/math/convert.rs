@@ -1,7 +1,5 @@
 //! This module provides convertion functions
 
-// use core::intrinsics::truncf32;
-
 /// Convert trait implementation
 pub trait Convert {
     /// trunc a decimal number

@@ -19,7 +19,9 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 {
 	pid_t pid = fork();
 	if (pid < 0) {
-		open_tty_device(tty_device);
+		/* #[allow(unused)] */
+		int _fd = open_tty_device(tty_device);
+		(void)_fd;
 		perror("fork failed");
 		exit(1);
 	} else if (pid == 0) {
@@ -28,8 +30,14 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 			dprintf(2, "bad argument number %i: should be 2\n", argc);
 			exit(1);
 		}
-		setpgid(0, 0);
-		tcsetpgrp(fd, getpgid(0));
+		if (setpgid(0, 0) < 0) {
+			perror("setpgid failed");
+			exit(1);
+		}
+		if (tcsetpgrp(fd, getpgid(0)) < 0) {
+			perror("tcsetpgrp failed");
+			exit(1);
+		}
 		printf("argc: %i -> self: %s to_execve: %s to_tty: %s\n", argc, argv[0], argv[1], tty_device);
 		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
@@ -59,7 +67,9 @@ int main(int argc, char *argv[], char *envp[])
 	while (1) {
 		pid_t ret = wait(&status);
 		if (ret < 0) {
-			open_tty_device("/dev/tty1");
+			/* #[allow(unused)] */
+			int _fd = open_tty_device("/dev/tty1");
+			(void)_fd;
 			perror("init wait failed");
 			exit(1);
 		}

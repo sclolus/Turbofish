@@ -12,16 +12,53 @@ use libc_binding::Errno;
 
 use core::cmp;
 
-const BUF_SIZE: usize = 16;
-
 use messaging::MessageTo;
+
+struct Buf([u8; Self::BUF_SIZE]);
+
+/// Deref boilerplate for Buf
+impl core::ops::Deref for Buf {
+    type Target = [u8; Self::BUF_SIZE];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// DerefMut boilerplate for Buf
+impl core::ops::DerefMut for Buf {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Default boilerplate for Buf
+impl Default for Buf {
+    fn default() -> Self {
+        Self {
+            0: [0; Self::BUF_SIZE],
+        }
+    }
+}
+
+/// Debug boilerplate for Buf
+impl core::fmt::Debug for Buf {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "Hidden Buf content")
+    }
+}
+
+/// Buf implementation
+impl Buf {
+    const BUF_SIZE: usize = 128;
+}
 
 /// This structure represents a FileOperation of type Pipe
 #[derive(Debug, Default)]
 pub struct Pipe {
+    buf: Buf,
     input_ref: usize,
     output_ref: usize,
-    buf: [u8; BUF_SIZE],
     current_index: usize,
     file_op_uid: usize,
 }
@@ -29,13 +66,9 @@ pub struct Pipe {
 /// Main implementation for Pipe
 impl Pipe {
     pub fn new() -> Self {
-        Self {
-            input_ref: Default::default(),
-            output_ref: Default::default(),
-            buf: [0; BUF_SIZE],
-            current_index: Default::default(),
-            file_op_uid: get_file_op_uid(),
-        }
+        let mut pipe = Pipe::default();
+        pipe.file_op_uid = get_file_op_uid();
+        pipe
     }
 }
 
@@ -108,7 +141,7 @@ impl FileOperation for Pipe {
             return Err(Errno::EPIPE);
         }
 
-        let min = cmp::min(buf.len(), BUF_SIZE - self.current_index);
+        let min = cmp::min(buf.len(), Buf::BUF_SIZE - self.current_index);
 
         self.buf[self.current_index..self.current_index + min].copy_from_slice(&buf[..min]);
         self.current_index += min;
