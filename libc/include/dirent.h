@@ -1,20 +1,8 @@
 #ifndef __DIRENT_H__
 # define __DIRENT_H__
 
-//The internal format of directories is unspecified.
-
-//The <dirent.h> header shall define the following type:
-
-
-typedef struct _DIR {
-	int bonjour_dir;
-} DIR;
-
-//    A type representing a directory stream. The DIR type may be an incomplete type.
-
-//It shall also define the structure dirent which shall include the following members:
-
 #include <sys/types.h>
+//It shall also define the structure dirent which shall include the following members:
 
 struct dirent {
 //[XSI][Option Start]
@@ -22,6 +10,18 @@ struct dirent {
 //[Option End]
 	char   d_name[];//    Filename string of entry. 
 };
+
+//The internal format of directories is unspecified.
+
+//The <dirent.h> header shall define the following type:
+
+typedef struct _DIR {
+	size_t			current_offset;
+	size_t			length;
+	struct dirent	*array;
+} DIR;
+
+//    A type representing a directory stream. The DIR type may be an incomplete type.
 
 //[XSI] [Option Start] The <dirent.h> header shall define the ino_t type as described in <sys/types.h>. [Option End]
 

@@ -18,9 +18,10 @@ use crate::system::BaseRegisters;
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
     GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
-    MUNMAP, NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID,
+    SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND,
+    SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID,
+    WRITE,
 };
 
 use core::ffi::c_void;
@@ -153,6 +154,9 @@ use lseek::sys_lseek;
 
 mod fcntl;
 use fcntl::sys_fcntl;
+
+mod opendir;
+use opendir::sys_opendir;
 /*
  * These below declarations are IPC related
  */
@@ -274,6 +278,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
         ISATTY => sys_isatty(ebx as u32),
+        OPENDIR => sys_opendir(ebx as *const c_char),
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),

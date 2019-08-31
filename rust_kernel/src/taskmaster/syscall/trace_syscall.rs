@@ -1,9 +1,10 @@
 use libc_binding::{
     CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
     GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
-    MUNMAP, NANOSLEEP, OPEN, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID, SETGROUPS,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID,
+    SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND,
+    SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID,
+    WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -128,6 +129,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETEGID => eprintln!("setegid({:#?})", ebx as gid_t),
             SETEUID => eprintln!("seteuid({:#?})", ebx as uid_t),
             ISATTY => eprintln!("isatty({:#?})", ebx as u32),
+            OPENDIR => eprintln!("opendir({:#?})", ebx as *const u8),
             _ => eprintln!("unknown syscall()",),
         }
     })
@@ -186,6 +188,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         SETEGID => "setegid",
         SETEUID => "seteuid",
         ISATTY => "isatty",
+        OPENDIR => "opendir",
         _ => "unknown syscall",
     };
     unpreemptible_context!({
