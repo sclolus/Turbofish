@@ -3,7 +3,6 @@
 use super::SysResult;
 
 use super::fd_interface::Mode;
-use super::vfs::InodeId;
 use super::IpcResult;
 
 pub mod ipc;
@@ -73,8 +72,6 @@ impl FileOperation for DefaultFileOperation {
 pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
-    /// Get a reference to the inode
-    fn set_inode_id(&mut self, inode_id: InodeId);
 }
 
 #[derive(Debug)]
@@ -84,9 +81,6 @@ impl Driver for DefaultDriver {
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let res = Arc::try_new(DeadMutex::new(DefaultFileOperation))?;
         Ok(IpcResult::Done(res))
-    }
-    fn set_inode_id(&mut self, _inode_id: InodeId) {
-        // unimplemented!()
     }
 }
 

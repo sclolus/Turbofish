@@ -1,7 +1,6 @@
 // use alloc::boxed::Box;
 use super::Driver;
 use super::FileOperation;
-use super::InodeId;
 use super::IpcResult;
 use super::SysResult;
 use crate::drivers::storage::{
@@ -29,8 +28,6 @@ impl Driver for DiskDriver {
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         Ok(IpcResult::Done(self.disk.clone()))
     }
-    /// Get a reference to the inode
-    fn set_inode_id(&mut self, _inode_id: InodeId) {}
 }
 
 pub struct BiosInt13hInstance;
@@ -169,35 +166,42 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
         Ok(IpcResult::Done(len as u32))
     }
     fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
-        //TODO: check off_t min
-        match whence {
+        if offset == core::i64::MIN {
+            // volontary trash i64 min value to avoid -offset ==
+            // offset
+            return Err(Errno::EINVAL);
+        }
+        let new_offset = match whence {
             Whence::SeekCur => {
-                self.offset = if offset < 0 {
+                if offset < 0 {
                     self.offset
                         .checked_sub((-offset) as u64)
-                        .ok_or(Errno::EOVERFLOW)?
+                        .ok_or(Errno::EINVAL)?
                 } else {
                     self.offset
                         .checked_add(offset as u64)
-                        .ok_or(Errno::EOVERFLOW)?
-                };
+                        .ok_or(Errno::EINVAL)?
+                }
             }
             Whence::SeekSet => {
                 if offset < 0 {
-                    return Err(Errno::EOVERFLOW);
+                    return Err(Errno::EINVAL);
                 }
-                self.offset = offset as u64;
+                offset as u64
             }
             Whence::SeekEnd => {
                 if offset > 0 {
-                    return Err(Errno::EOVERFLOW);
+                    return Err(Errno::EINVAL);
                 }
-                self.offset = self
-                    .partition_size
+                self.partition_size
                     .checked_sub((-offset) as u64)
-                    .ok_or(Errno::EOVERFLOW)?;
+                    .ok_or(Errno::EINVAL)?
             }
+        };
+        if new_offset > self.partition_size {
+            return Err(Errno::EINVAL);
         }
+        self.offset = new_offset;
         Ok(self.offset as off_t)
     }
 }
@@ -220,22 +224,22 @@ impl DiskIo for DiskWrapper {
     /// write at offset
     fn write_buffer(&mut self, offset: u64, buf: &[u8]) -> IoResult<u64> {
         self.0.lock().lseek(
-            offset.try_into().map_err(|_| Errno::EOVERFLOW)?,
+            offset.try_into().map_err(|_| Errno::EINVAL)?,
             Whence::SeekSet,
         )?;
         match self.0.lock().write(buf)? {
-            IpcResult::Done(r) => Ok(r.try_into().unwrap()),
+            IpcResult::Done(r) => Ok(r as u64),
             _ => Err(Errno::EINVAL),
         }
     }
     /// read at offset
     fn read_buffer(&mut self, offset: u64, buf: &mut [u8]) -> IoResult<u64> {
         self.0.lock().lseek(
-            offset.try_into().map_err(|_| Errno::EOVERFLOW)?,
+            offset.try_into().map_err(|_| Errno::EINVAL)?,
             Whence::SeekSet,
         )?;
         match self.0.lock().read(buf)? {
-            IpcResult::Done(r) => Ok(r.try_into().unwrap()),
+            IpcResult::Done(r) => Ok(r as u64),
             _ => Err(Errno::EINVAL),
         }
     }

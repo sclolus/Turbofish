@@ -97,7 +97,6 @@ impl VirtualFileSystem {
             Err(_e) => {
                 //TODO: Option(FileSystemId)
                 let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
-                driver.lock().set_inode_id(new_id);
 
                 let mut inode_data: InodeData = Default::default();
                 inode_data

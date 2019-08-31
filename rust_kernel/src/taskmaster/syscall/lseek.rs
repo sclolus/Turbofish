@@ -2,7 +2,7 @@ use super::scheduler::SCHEDULER;
 use super::Fd;
 use super::SysResult;
 use core::convert::TryFrom;
-use libc_binding::{off_t, Whence};
+use libc_binding::{off_t, Errno, Whence};
 
 /// The lseek() function shall set the file offset for the open file
 /// description associated with the file descriptor fildes, as
@@ -46,12 +46,23 @@ use libc_binding::{off_t, Whence};
 pub fn sys_lseek(ret: *mut off_t, fildes: Fd, offset: off_t, whence: u32) -> SysResult<u32> {
     // lseek in turbofish takes its return value as a pointer as it is a 64 bit value
     unpreemptible_context!({
-        unsafe {
-            *ret = match lseek(fildes, offset, whence) {
-                Ok(return_value) => return_value as off_t,
-                Err(errno) => (-(errno as off_t)) as off_t,
+        let ret = {
+            let scheduler = SCHEDULER.lock();
+            let v = scheduler
+                .current_thread()
+                .unwrap_process()
+                .get_virtual_allocator();
+
+            if ret.is_null() {
+                return Err(Errno::EINVAL);
+            } else {
+                v.make_checked_ref_mut(ret)?
             }
-        }
+        };
+        *ret = match lseek(fildes, offset, whence) {
+            Ok(return_value) => return_value as off_t,
+            Err(errno) => (-(errno as off_t)) as off_t,
+        };
         Ok(0)
     })
 }

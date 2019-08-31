@@ -64,7 +64,7 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
         egid: 0,
         open_fds: BTreeMap::new(),
     };
-    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path tty creation failed");
+    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
     let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
     vfs.new_driver(
         &mut current,
@@ -72,7 +72,7 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
         mode,
         Arc::new(DeadMutex::new(disk_driver)),
     )
-    .expect("failed to add new driver tty to vfs");
+    .expect("failed to add new driver sda1 to vfs");
 
     let flags = libc_binding::OpenFlags::O_RDWR;
 
