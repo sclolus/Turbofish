@@ -42,14 +42,10 @@
 ///     The fildes argument is associated with a pipe, FIFO, or
 ///     socket.
 
-#include <custom.h>
-#warning NOT COMPLETLY IMPLEMENTED
-
 off_t lseek(int fildes, off_t offset, int whence)
 {
-	DUMMY
 	off_t ret;
-	// 4 argument since off_t is a 8 bytes type
+	// 5 argument since off_t is a 8 bytes type
 	_user_syscall(LSEEK, 5, &ret, fildes, offset, whence);
 	set_errno_and_return(ret);
 }
