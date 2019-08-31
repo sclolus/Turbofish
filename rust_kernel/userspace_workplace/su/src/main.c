@@ -93,6 +93,8 @@ int main(int argc, char **argv, char **env)
 		err("Failed to parse hashed password in shadow file");
 	}
 
+	size_t entry_passwd_len = strlen(entry_passwd);
+
 	// Bzero for security reasons.
 	memset(sentries, 0, sizeof(struct shadow_entry) * n_shadow_entries);
 	free(sentries);
@@ -108,10 +110,10 @@ int main(int argc, char **argv, char **env)
 	}
 
 	// decoded from base64.
-	char	*decoded_entry_passwd = (char*)decode_base64((uint8_t*)entry_passwd, strlen(entry_passwd));
+	char	*decoded_entry_passwd = (char*)decode_base64((uint8_t*)entry_passwd, entry_passwd_len);
 
 	// Bzero for security reasons.
-	memset(entry_passwd, 0, strlen(entry_passwd));
+	memset(entry_passwd, 0, entry_passwd_len);
 	free(entry_passwd);
 
 	if (!decoded_entry_passwd) {
@@ -132,11 +134,11 @@ int main(int argc, char **argv, char **env)
 	free(hash);
 
 	if (-1 == setgid(entry->gid)) {
-		err("Failed to setgid(%d (%s)): %s", entry->gid, login, strerror(errno));
+		err_errno("Failed to setgid(%d (%s))", entry->gid, login);
 	}
 
 	if (-1 == setuid(entry->uid)) {
-		err("Failed to setuid(%d (%s)): %s", entry->uid, login, strerror(errno));
+		err_errno("Failed to setuid(%d (%s))", entry->uid, login);
 	}
 
 	char	*used_shell = NULL;
@@ -180,26 +182,26 @@ int main(int argc, char **argv, char **env)
 		/* } */
 
 		if (-1 == chdir(entry->user_home_directory)) {
-			warn("Failed to change to target's home directory: %s", strerror(errno));
+			warn_errno("Failed to change to target's home directory");
 		}
 		av[0] = "-";
 	}
 
 	if (!args.preserve_env || args.login_shell) {
 		if (-1 == setenv("HOME", entry->user_home_directory, true)) {
-			err("Failed to setenv(HOME): %s", strerror(errno));
+			err_errno("Failed to setenv(HOME)");
 		}
 
 		if (-1 == setenv("SHELL", used_shell, true)) {
-			err("Failed to setenv(SHELL): %s", strerror(errno));
+			err_errno("Failed to setenv(SHELL)");
 		}
 
 		if (!args.is_root && -1 == setenv("USER", entry->login_name, true)) {
-			err("Failed to setenv(USER): %s", strerror(errno));
+			err_errno("Failed to setenv(USER)");
 		}
 
 		if (!args.is_root && -1 == setenv("LOGNAME", entry->login_name, true)) {
-			err("Failed to setenv(LOGNAME): %s", strerror(errno));
+			err_errno("Failed to setenv(LOGNAME)");
 		}
 	}
 
@@ -207,7 +209,7 @@ int main(int argc, char **argv, char **env)
 	memset(pentries, 0, sizeof(struct passwd_entry) * n_entries);
 	free(pentries);
 	execve(used_shell, av, env);
-	err("Failed to execute command: %s", strerror(errno));
+	err_errno("Failed to execute command");
 }
 #endif
 
@@ -227,13 +229,13 @@ int main(int argc, char **argv) {
 	int	    fd = open("/dev/urandom", O_RDONLY);
 
 	if (-1 == fd) {
-		err("Failed to open /dev/urandom: %s", strerror(errno));
+		err_errno("Failed to open /dev/urandom");
 	}
 
 	ssize_t ret = read(fd, random_salt, SALT_SIZE);
 
 	if (-1 == ret) {
-		err("Failed to read random salt: %s", strerror(errno));
+		err_errno("Failed to read random salt");
 	}
 
 	size_t	random_salt_len = (size_t)ret;

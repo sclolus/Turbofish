@@ -51,7 +51,7 @@ struct passwd_entry *parse_passwd_file(uint32_t *n_entries) {
 	int fd = open(PASSWORD_FILE, O_RDONLY);
 
 	if (-1 == fd) {
-		err("Failed to open: %s: %s", PASSWORD_FILE, strerror(errno));
+		err_errno("Failed to open: %s", PASSWORD_FILE);
 	}
 	char *contents = get_file_contents(fd);
 

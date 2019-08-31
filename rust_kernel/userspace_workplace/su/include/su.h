@@ -86,8 +86,18 @@ struct shadow_entry *find_corresponding_shadow_entry(struct shadow_entry *sentri
 		     exit(EXIT_FAILURE);				\
 	     } while (0);
 
+# define err_errno(format, ...) do {						\
+		dprintf(2, BIN_NAME ": " format ": %s\n" __VA_OPT__(,) __VA_ARGS__, strerror(errno)); \
+		exit(EXIT_FAILURE);					\
+	} while (0);
+
+
 # define warn(format, ...) do {						\
 		dprintf(2, BIN_NAME ": Warning: " format "\n" __VA_OPT__(,) __VA_ARGS__); \
+	} while (0);
+
+# define warn_errno(format, ...) do {						\
+		dprintf(2, BIN_NAME ": Warning: " format ": %s\n" __VA_OPT__(,) __VA_ARGS__, strerror(errno)); \
 	} while (0);
 
 

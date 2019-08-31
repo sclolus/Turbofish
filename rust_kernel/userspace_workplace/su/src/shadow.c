@@ -93,7 +93,7 @@ struct shadow_entry *parse_shadow_file(uint32_t *n_entries) {
 	int fd = open(SHADOW_FILE, O_RDONLY);
 
 	if (-1 == fd) {
-		err("Failed to open: %s: %s", SHADOW_FILE, strerror(errno));
+		err_errno("Failed to open: %s", SHADOW_FILE);
 	}
 	char *contents = get_file_contents(fd);
 
