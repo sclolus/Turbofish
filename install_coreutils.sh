@@ -27,11 +27,11 @@ make -C src hostname
 make -C src pwd
 # make -C src chmod
 # make -C src cp
-make -C src date
+# make -C src date
 # make -C src dd
 # make -C src df
 # make -C src ln
-# make -C src ls
+make -C src ls
 # make -C src mkdir
 # make -C src mv
 # make -C src ps
@@ -45,4 +45,4 @@ cp -v src/sleep $TARGET_DIR
 cp -v src/hostname $TARGET_DIR
 cp -v src/pwd $TARGET_DIR
 cp -v src/yes $TARGET_DIR
-cp -v src/date $TARGET_DIR
+# cp -v src/date $TARGET_DIR
