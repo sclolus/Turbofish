@@ -19,8 +19,8 @@ struct passwd {
 
 // The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-struct passwd *getpwuid(uid_t);
-struct passwd *getpwnam(const char *);
+struct passwd *getpwuid(uid_t uid);
+struct passwd *getpwnam(const char *name);
 
 void           endpwent(void);
 struct passwd *getpwent(void);

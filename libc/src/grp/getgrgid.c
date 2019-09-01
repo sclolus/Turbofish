@@ -2,7 +2,7 @@
 #include <grp.h>
 #include <tools.h>
 
-struct group *getgrnam(const char *name)
+struct group *getgrgid(gid_t gid)
 {
 	return NULL;
 }

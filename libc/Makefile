@@ -145,9 +145,13 @@ SRC_C += strsplit array parse_2d_file
 VPATH += src/tools
 HEADERS += include/tools.h
 
-SRC_C += getpwuid
+SRC_C += getpwnam getpwuid
 VPATH += src/pwd
 HEADERS += include/pwd.h
+
+SRC_C += getgrnam getgrgid
+VPATH += src/grp
+HEADERS += include/grp.h
 
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)

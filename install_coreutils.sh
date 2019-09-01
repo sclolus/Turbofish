@@ -45,4 +45,5 @@ cp -v src/sleep $TARGET_DIR
 cp -v src/hostname $TARGET_DIR
 cp -v src/pwd $TARGET_DIR
 cp -v src/yes $TARGET_DIR
+cp -v src/ls $TARGET_DIR
 # cp -v src/date $TARGET_DIR
