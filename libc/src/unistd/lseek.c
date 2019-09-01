@@ -46,6 +46,11 @@ off_t lseek(int fildes, off_t offset, int whence)
 {
 	off_t ret;
 	// 5 argument since off_t is a 8 bytes type
-	_user_syscall(LSEEK, 5, &ret, fildes, offset, whence);
-	set_errno_and_return(ret);
+	int result = _user_syscall(LSEEK, 5, &ret, fildes, offset, whence);
+	if (result >= 0) {
+		set_errno_and_return(ret);
+	} else {
+		errno = -result;
+		return (off_t)-1;
+	}
 }
