@@ -75,6 +75,7 @@ impl VirtualFileSystem {
         self.inodes.insert(inode.get_id(), inode);
     }
 
+    /// construct the files in directory `direntry_id` in ram form the filesystem
     fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> VfsResult<()> {
         // unimplemented!()
         let current_entry = self.dcache.get_entry(&direntry_id)?;
@@ -217,6 +218,8 @@ impl VirtualFileSystem {
         }
     }
 
+    /// resolve the path `pathname` from root `root`, return the
+    /// directory_entry_id associate with the file
     pub fn pathname_resolution(
         &mut self,
         root: DirectoryEntryId,
@@ -344,6 +347,8 @@ impl VirtualFileSystem {
     //     }
     //     Ok(())
     // }
+    /// Mount the filesystem `filesystem` with filesystem id `fs_id`
+    /// on mount dir `mount_dir_id`
     pub fn mount_filesystem(
         &mut self,
         filesystem: Box<dyn FileSystem>,
@@ -380,6 +385,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    /// mount the source `source` on the target `target`
     pub fn mount(&mut self, current: &mut Current, source: Path, target: Path) -> VfsResult<()> {
         use crate::taskmaster::drivers::DiskWrapper;
         use ext2::Ext2Filesystem;
@@ -395,6 +401,8 @@ impl VirtualFileSystem {
         let ext2_disk = DiskWrapper(file_operation);
         let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
         let fs_id: FileSystemId = self.gen();
+
+        // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(current.cwd, target)?;
         self.mount_filesystem(Box::new(filesystem), fs_id, mount_dir_id)

@@ -8,7 +8,9 @@ use sync::DeadMutex;
 pub trait FileSystem: Send {
     // fn name(&self) -> &str;
     // fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode>;
+    /// return all the directory entry and inode present in the inode_nbr
     fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, Inode)>>;
+    /// return the (possibly virtual) directory entry and inode of the root
     fn root(&self) -> VfsResult<(DirectoryEntry, Inode)>;
     // fn lookup: Option<fn(&mut Superblock)>,
     // fn create: Option<fn(&mut Superblock)>,
@@ -41,6 +43,7 @@ pub struct Ext2fs {
     fs_id: FileSystemId,
 }
 
+/// the ext2 wrapper which implement filesystem
 impl Ext2fs {
     pub fn new(ext2: Ext2Filesystem, fs_id: FileSystemId) -> Self {
         Self {

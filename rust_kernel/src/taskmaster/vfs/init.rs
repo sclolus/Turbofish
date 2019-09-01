@@ -16,6 +16,7 @@ use mbr::Mbr;
 
 pub static mut EXT2: Option<Ext2Filesystem> = None;
 
+/// read the mbr form a disk
 fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
     let mut v1 = [0; 512];
@@ -30,6 +31,8 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     unsafe { Mbr::new(&a) }
 }
 
+/// mount /dev/sda1 on the vfs, WARNING: must be call after ext2 is
+/// mounted on root
 fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
     let mut current = Current {
         cwd: DirectoryEntryId::new(2),
@@ -45,6 +48,7 @@ fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
         .expect("failed to add new driver sda1 to vfs");
 }
 
+/// bootstrap the ext2 and construct /dev/sda
 fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
@@ -94,6 +98,8 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("/dev/sda initialized");
 }
 
+/// create device /dev/tty on the vfs, WARNING: must be call after
+/// ext2 is mounted on root
 fn init_tty(vfs: &mut Vfs) {
     let mut current = Current {
         cwd: DirectoryEntryId::new(2),
@@ -120,6 +126,7 @@ lazy_static! {
     pub static ref VFS: DeadMutex<Vfs> = DeadMutex::new(init());
 }
 
+/// init the vfs
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     // we start by bootstraping ext2
