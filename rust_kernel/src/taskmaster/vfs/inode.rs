@@ -1,4 +1,3 @@
-use super::direntry::DirectoryEntryId;
 use super::permissions::FilePermissions;
 use super::posix_consts::time_t;
 use super::user::{GroupId, UserId};
@@ -8,9 +7,9 @@ use super::Driver;
 // use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 use super::FileSystemId;
 use alloc::sync::Arc;
-use libc_binding::OpenFlags;
 use sync::DeadMutex;
 
+#[derive(Debug)]
 pub struct Inode {
     inode_data: InodeData,
     pub inode_operations: Arc<DeadMutex<dyn Driver>>,
@@ -57,14 +56,13 @@ impl Default for Inode {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct InodeData {
     /// This inode's id.
     pub id: InodeId,
 
     /// This inode's hard link number
     pub link_number: usize,
-    opened_by: usize,
     pub access_mode: FilePermissions,
     // pub file_type: Filetype, ??????????
     pub uid: UserId,
@@ -101,6 +99,8 @@ impl InodeData {
         self
     }
 
+    // Builder Pattern end
+
     pub fn get_id(&self) -> InodeId {
         self.id
     }
@@ -117,9 +117,8 @@ impl InodeData {
         let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
 
         Self {
-            id: InodeId::new(2, FileSystemId::new(0)),
+            id: InodeId::new(2, None),
             link_number: 1,
-            opened_by: 0,
             access_mode,
             uid: 0,
             gid: 0,
@@ -128,17 +127,6 @@ impl InodeData {
             mtime: 0,
             size: 4096,
         }
-    }
-
-    // Builder Pattern end
-
-    pub fn is_opened(&self) -> bool {
-        self.opened_by == 0
-    }
-
-    // Explain this
-    pub fn open(&mut self) {
-        self.opened_by += 1;
     }
 
     pub fn is_character_device(&self) -> bool {
@@ -191,11 +179,12 @@ impl InodeData {
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
-    pub filesystem_id: FileSystemId,
+    //TODO: VFS Option<FileSystemId>
+    pub filesystem_id: Option<FileSystemId>,
 }
 
 impl InodeId {
-    pub fn new(inode_number: InodeNumber, filesystem_id: FileSystemId) -> Self {
+    pub fn new(inode_number: InodeNumber, filesystem_id: Option<FileSystemId>) -> Self {
         Self {
             inode_number,
             filesystem_id,
@@ -341,30 +330,30 @@ impl InodeId {
 // }
 
 //make some tests
-/// The structure defining an `Open File Description` for a file.
-pub struct File {
-    /// The id of the inode.
-    pub id: InodeId,
+// /// The structure defining an `Open File Description` for a file.
+// pub struct File {
+//     /// The id of the inode.
+//     pub id: InodeId,
 
-    /// The id of the directory entry associated with the Open File Description.
-    pub dentry_id: DirectoryEntryId,
+//     /// The id of the directory entry associated with the Open File Description.
+//     pub dentry_id: DirectoryEntryId,
 
-    pub offset: usize,
-    pub flags: OpenFlags,
-}
+//     pub offset: usize,
+//     pub flags: OpenFlags,
+// }
 
-impl File {
-    pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
-        Self {
-            id,
-            dentry_id,
-            offset: 0,
-            flags: OpenFlags::default(),
-        }
-    }
-}
+// impl File {
+//     pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
+//         Self {
+//             id,
+//             dentry_id,
+//             offset: 0,
+//             flags: OpenFlags::default(),
+//         }
+//     }
+// }
 
-pub type Offset = usize; //TODO:  change this
+// pub type Offset = usize; //TODO:  change this
 
 // /// Filesystem specific operations on 'OpenFileDescriptions' `File`s
 // #[allow(unused)] // TODO: remove this

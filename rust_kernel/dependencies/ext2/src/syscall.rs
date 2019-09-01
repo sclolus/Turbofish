@@ -243,4 +243,9 @@ impl Ext2Filesystem {
             })
             .collect())
     }
+
+    /// return the root inode of the ext2
+    pub fn root_inode(&mut self) -> IoResult<Inode> {
+        Ok(self.get_inode(2).expect("no inode 2, wtf").0)
+    }
 }

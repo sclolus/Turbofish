@@ -34,17 +34,17 @@ pub struct DirectoryEntryHeader {
     pub size: u16,
     /// Name Length least-significant 8 bits
     /*6 	6 	1*/
-    name_length: u8,
+    pub name_length: u8,
     /// Type indicator (only if the feature bit for "directory entries have file type byte" is set, else this is the most-significant 8 bits of the Name Length)
     /*7 	7 	1*/
-    type_indicator: DirectoryEntryType,
+    pub type_indicator: DirectoryEntryType,
 }
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(packed)]
 pub struct DirectoryEntry {
     pub header: DirectoryEntryHeader,
-    filename: Filename,
+    pub filename: Filename,
 }
 
 impl fmt::Debug for DirectoryEntry {

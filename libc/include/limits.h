@@ -160,7 +160,7 @@
  *     Minimum Acceptable Value: {_POSIX_NAME_MAX}
  *     [XSI] [Option Start] Minimum Acceptable Value: {_XOPEN_NAME_MAX} [Option End]
 */
-#define NAME_MAX 4096
+#define NAME_MAX 256
      /*
 	  * Maximum number of bytes in a filename (not including the terminating null of a filename string).
       * Minimum Acceptable Value: {_POSIX_NAME_MAX}

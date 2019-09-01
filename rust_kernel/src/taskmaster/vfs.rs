@@ -10,14 +10,15 @@ use itertools::unfold;
 
 mod tools;
 use tools::{DcacheError, DcacheResult, VfsError, VfsResult};
+use tools::{KeyGenerator, Mapper};
 use VfsError::*;
 
 mod path;
 mod posix_consts;
-pub use path::Path;
+pub use path::{Filename, Path};
 
 mod direntry;
-pub use direntry::{DirectoryEntry, DirectoryEntryId};
+pub use direntry::{DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId};
 
 mod dcache;
 
@@ -25,14 +26,11 @@ use dcache::Dcache;
 
 mod inode;
 pub use inode::InodeId;
-use inode::{File, Inode, InodeData, Offset};
-use libc_binding::{OpenFlags, Whence};
+use inode::{Inode, InodeData};
+use libc_binding::OpenFlags;
 
 pub mod user;
 pub use user::{Current, GroupId, UserId};
-
-mod fildes;
-use fildes::{Fd, KeyGenerator, Mapper, OFDId};
 
 use libc_binding::Errno;
 use Errno::*;
@@ -51,7 +49,6 @@ pub struct VirtualFileSystem {
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
     dcache: Dcache,
-    open_file_descriptions: BTreeMap<OFDId, File>,
 }
 
 #[allow(unused)]
@@ -63,7 +60,6 @@ impl VirtualFileSystem {
             mounted_filesystems: BTreeMap::new(),
             inodes: BTreeMap::new(),
             dcache: Dcache::new(),
-            open_file_descriptions: BTreeMap::new(),
         };
 
         let root_inode = Inode::root_inode();
@@ -73,20 +69,25 @@ impl VirtualFileSystem {
         Ok(new)
     }
     fn add_inode(&mut self, inode: Inode) {
-        self.inodes.insert(inode.get_id(), inode).unwrap(); // fix this unwrap.
+        if self.inodes.contains_key(&inode.get_id()) {
+            panic!("inode already there"); // fix this panic
+        }
+        self.inodes.insert(inode.get_id(), inode);
     }
 
     fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> VfsResult<()> {
         // unimplemented!()
-        return Ok(());
         let current_entry = self.dcache.get_entry(&direntry_id)?;
+        // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
         let fs = self
             .mounted_filesystems
-            .get(&inode_id.filesystem_id)
+            .get(&inode_id.filesystem_id.expect("no filesystem in there"))
             .unwrap(); // remove this unwrap
 
         for (direntry, inode) in fs.lookup_directory(inode_id.inode_number as u32)? {
+            // dbg!(direntry);
+            // dbg!(inode.get_id());
             self.dcache.add_entry(Some(direntry_id), direntry)?;
             self.add_inode(inode);
         }
@@ -129,6 +130,7 @@ impl VirtualFileSystem {
         pathname: Path,
         recursion_level: usize,
     ) -> VfsResult<DirectoryEntryId> {
+        // dbg!(&pathname);
         use core::convert::TryInto;
         use posix_consts::SYMLOOP_MAX;
         if recursion_level > SYMLOOP_MAX {
@@ -361,7 +363,7 @@ impl VirtualFileSystem {
         // So much to undo if any of this fails...
         // let fs_id = self.add_entry(filesystem).unwrap(); // this
 
-        root_inode.id.filesystem_id = fs_id;
+        root_inode.id.filesystem_id = Some(fs_id);
 
         root_dentry.inode_id = root_inode.id;
 
@@ -415,21 +417,22 @@ impl VirtualFileSystem {
 
         corresponding_inode.link_number -= 1;
 
-        if corresponding_inode.link_number == 0 && !corresponding_inode.is_opened() {
-            self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
-        }
+        //TODO: VFS check that
+        // if corresponding_inode.link_number == 0 && !corresponding_inode.is_opened() {
+        //     self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+        // }
         Ok(())
     }
 
     fn get_available_id(&self, filesystem_id: FileSystemId) -> InodeId {
-        let mut current_id = InodeId::new(2, filesystem_id); // check this
+        let mut current_id = InodeId::new(2, None); // check this
         loop {
             if let None = self.inodes.get(&current_id) {
                 return current_id;
             }
 
             // this is unchecked
-            current_id = InodeId::new(current_id.inode_number + 1, filesystem_id);
+            current_id = InodeId::new(current_id.inode_number + 1, Some(filesystem_id));
         }
     }
 
@@ -654,88 +657,70 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn read(&mut self, _current: &mut Current, _fd: Fd, _buf: &mut [u8]) -> VfsResult<usize> {
-        unimplemented!()
-    }
-
-    pub fn write(&mut self, _current: &mut Current, _fd: Fd, _buf: &mut [u8]) -> VfsResult<usize> {
-        unimplemented!()
-    }
-
-    pub fn lseek(
-        &mut self,
-        _current: &mut Current,
-        _fd: Fd,
-        _offset: Offset,
-        _seek: Whence,
-    ) -> VfsResult<Offset> {
-        unimplemented!()
-    }
-
     pub fn file_exists(&mut self, current: &Current, path: Path) -> VfsResult<bool> {
         self.pathname_resolution(current.cwd, path).unwrap();
         Ok(true)
     }
 }
 
-pub type VfsHandler<T> = fn(VfsHandlerParams) -> VfsResult<T>;
+// pub type VfsHandler<T> = fn(VfsHandlerParams) -> VfsResult<T>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum VfsHandlerKind {
-    Open,
-    LookupInode,
-    LookupEntries,
-    Creat,
-    Rename,
-    Chmod,
-    Chown,
-    Lchown,
-    Truncate,
-    TestOpen,
-}
-// #[derive(Debug, Clone, Default)]
-#[derive(Default)]
-pub struct VfsHandlerParams<'a> {
-    inode: Option<&'a Inode>,
-    file: Option<&'a File>,
-    path: Option<&'a Path>,
-}
+// #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+// pub enum VfsHandlerKind {
+//     Open,
+//     LookupInode,
+//     LookupEntries,
+//     Creat,
+//     Rename,
+//     Chmod,
+//     Chown,
+//     Lchown,
+//     Truncate,
+//     TestOpen,
+// }
+// // #[derive(Debug, Clone, Default)]
+// #[derive(Default)]
+// pub struct VfsHandlerParams<'a> {
+//     inode: Option<&'a Inode>,
+//     file: Option<&'a File>,
+//     path: Option<&'a Path>,
+// }
 
-impl<'a> VfsHandlerParams<'a> {
-    pub fn new() -> Self {
-        Self::default()
-    }
+// impl<'a> VfsHandlerParams<'a> {
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
 
-    pub fn set_inode(mut self, inode: &'a Inode) -> Self {
-        self.inode = Some(inode);
-        self
-    }
+//     pub fn set_inode(mut self, inode: &'a Inode) -> Self {
+//         self.inode = Some(inode);
+//         self
+//     }
 
-    pub fn set_file(mut self, file: &'a File) -> Self {
-        self.file = Some(file);
-        self
-    }
+//     pub fn set_file(mut self, file: &'a File) -> Self {
+//         self.file = Some(file);
+//         self
+//     }
 
-    pub fn set_path(mut self, path: &'a Path) -> Self {
-        self.path = Some(path);
-        self
-    }
+//     pub fn set_path(mut self, path: &'a Path) -> Self {
+//         self.path = Some(path);
+//         self
+//     }
 
-    pub fn unset_inode(mut self) -> Self {
-        self.inode = None;
-        self
-    }
+//     pub fn unset_inode(mut self) -> Self {
+//         self.inode = None;
+//         self
+//     }
 
-    pub fn unset_file(mut self) -> Self {
-        self.file = None;
-        self
-    }
+//     pub fn unset_file(mut self) -> Self {
+//         self.file = None;
+//         self
+//     }
 
-    pub fn unset_path(mut self) -> Self {
-        self.path = None;
-        self
-    }
-}
+//     pub fn unset_path(mut self) -> Self {
+//         self.path = None;
+//         self
+//     }
+// }
 
 impl KeyGenerator<FileSystemId> for VirtualFileSystem {
     fn gen_filter(&self, id: FileSystemId) -> bool {
@@ -746,18 +731,6 @@ impl KeyGenerator<FileSystemId> for VirtualFileSystem {
 impl Mapper<FileSystemId, Box<dyn FileSystem>> for VirtualFileSystem {
     fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Box<dyn FileSystem>> {
         &mut self.mounted_filesystems
-    }
-}
-
-impl KeyGenerator<OFDId> for VirtualFileSystem {
-    fn gen_filter(&self, fd: Fd) -> bool {
-        !self.open_file_descriptions.contains_key(&fd)
-    }
-}
-
-impl Mapper<OFDId, File> for VirtualFileSystem {
-    fn get_map(&mut self) -> &mut BTreeMap<OFDId, File> {
-        &mut self.open_file_descriptions
     }
 }
 

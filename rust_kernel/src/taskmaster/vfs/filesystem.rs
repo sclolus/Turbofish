@@ -1,7 +1,8 @@
 use super::{DirectoryEntry, Inode, VfsResult};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use ext2::Ext2Filesystem;
+use core::convert::TryFrom;
+use ext2::{DirectoryEntryType, Ext2Filesystem};
 use sync::DeadMutex;
 
 pub trait FileSystem: Send {
@@ -49,28 +50,77 @@ impl Ext2fs {
     }
 }
 
+use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId};
+use crate::taskmaster::drivers::Ext2DriverFile;
+use core::default::Default;
+
 impl FileSystem for Ext2fs {
     fn root(&self) -> VfsResult<(DirectoryEntry, Inode)> {
-        unimplemented!()
+        let root_inode = self.ext2.lock().root_inode();
+
+        let inode_id = InodeId::new(2, Some(self.fs_id));
+
+        let direntry = {
+            let mut builder = DirectoryEntryBuilder::new();
+            builder
+                .set_filename(Filename::try_from("ext2Root").unwrap())
+                .set_inode_id(inode_id)
+                .set_directory();
+            builder.build()
+        };
+
+        let mut inode_data = InodeData::default();
+        inode_data.set_id(inode_id);
+        // TODO get more fields from the ext2 inode
+
+        let inode = Inode::new(
+            Arc::new(DeadMutex::new(Ext2DriverFile::new(self.ext2.clone(), 2))),
+            inode_data,
+        );
+        Ok((direntry, inode))
     }
     // fn name(&self) -> &str {
     //     "Ext2fs"
     // }
 
-    // fn root_dentry(&self) -> DirectoryEntry {
-    //     unimplemented!()
-    // }
-
-    // fn root_inode(&self) -> Inode {
-    //     unimplemented!()
-    // }
-
-    // fn load_inode(&self, _inode_number: InodeNumber) -> VfsResult<Inode> {
-    //     unimplemented!()
-    // }
-
     fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, Inode)>> {
-        let _res = self.ext2.lock().lookup_directory(inode_nbr)?;
-        unimplemented!()
+        let res = self.ext2.lock().lookup_directory(inode_nbr)?;
+        Ok(res
+            .into_iter()
+            .filter_map(|(direntry, inode)| {
+                if unsafe { direntry.get_filename() == ".." || direntry.get_filename() == "." } {
+                    None
+                } else {
+                    let inode_id = InodeId::new(direntry.get_inode() as usize, Some(self.fs_id));
+
+                    let direntry = {
+                        let mut builder = DirectoryEntryBuilder::new();
+                        builder
+                            .set_filename(Filename(
+                                direntry.filename.0,
+                                direntry.header.name_length as usize,
+                            ))
+                            .set_inode_id(inode_id);
+                        if direntry.header.type_indicator == DirectoryEntryType::Directory {
+                            builder.set_directory();
+                        } else if direntry.header.type_indicator == DirectoryEntryType::RegularFile
+                        {
+                            builder.set_regular();
+                        }
+                        builder.build()
+                    };
+
+                    let mut inode_data = InodeData::default();
+                    inode_data.set_id(inode_id);
+                    // TODO get more fields from the ext2 inode
+
+                    let inode = Inode::new(
+                        Arc::new(DeadMutex::new(Ext2DriverFile::new(self.ext2.clone(), 2))),
+                        inode_data,
+                    );
+                    Some((direntry, inode))
+                }
+            })
+            .collect())
     }
 }

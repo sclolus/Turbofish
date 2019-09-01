@@ -37,15 +37,12 @@ fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
         euid: 0,
         gid: 0,
         egid: 0,
-        open_fds: BTreeMap::new(),
     };
 
     let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
     let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
     vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
         .expect("failed to add new driver sda1 to vfs");
-
-    let flags = libc_binding::OpenFlags::O_RDWR;
 }
 
 fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
@@ -98,22 +95,13 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
 }
 
 fn init_tty(vfs: &mut Vfs) {
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-
-    let flags = OpenFlags::O_CREAT | OpenFlags::O_DIRECTORY;
-    let path = Path::try_from("/dev").expect("path creation failed");
-
     let mut current = Current {
         cwd: DirectoryEntryId::new(2),
         uid: 0,
         euid: 0,
         gid: 0,
         egid: 0,
-        open_fds: BTreeMap::new(),
     };
-    // println!("{}", path);
-    vfs.open(&mut current, path, flags, mode)
-        .expect("/dev creation failed");
     for i in 1..=4 {
         // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
         let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();

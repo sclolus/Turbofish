@@ -178,6 +178,7 @@ impl Filename {
         self.1
     }
 
+    //TODO: unsafe
     pub fn as_str(&self) -> &str {
         unsafe {
             let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, self.1);
