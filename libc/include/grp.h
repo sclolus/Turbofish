@@ -4,6 +4,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#define ENTRY_NB_FIELDS 4
+
 struct group {
 	char   *gr_name;   // The name of the group.
 	char   *gr_passwd; // group password

@@ -11,9 +11,13 @@ int f_get_passwd(char **fields, void *_pentry);
 void print_passwd(struct passwd *pentry);
 void free_passwd(struct passwd *pentry);
 
+struct s_uid {
+	uid_t uid;
+};
+
 static int f_comp(struct passwd *ref, void *other)
 {
-	uid_t uid = (uid_t)other;
+	uid_t uid = ((struct s_uid *)other)->uid;
 	if (uid == ref->pw_uid) {
 		return 0;
 	} else {
@@ -26,7 +30,10 @@ static int f_comp(struct passwd *ref, void *other)
  */
 struct passwd *getpwuid(uid_t uid)
 {
-	return getpw_common((void *)uid, &f_comp);
+	struct s_uid s_uid;
+
+	s_uid.uid = uid;
+	return getpw_common((void *)&s_uid, &f_comp);
 }
 
 struct passwd *getpw_common(void *cmp, int f_comp(struct passwd *ref, void *cmp))
