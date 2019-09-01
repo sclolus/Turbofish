@@ -94,7 +94,8 @@ impl FileSystem for Ext2fs {
                 if unsafe { direntry.get_filename() == ".." || direntry.get_filename() == "." } {
                     None
                 } else {
-                    let inode_id = InodeId::new(direntry.get_inode() as usize, Some(self.fs_id));
+                    let inode_nbr = direntry.get_inode();
+                    let inode_id = InodeId::new(inode_nbr as usize, Some(self.fs_id));
 
                     let direntry = {
                         let mut builder = DirectoryEntryBuilder::new();
@@ -118,7 +119,10 @@ impl FileSystem for Ext2fs {
                     // TODO get more fields from the ext2 inode
 
                     let inode = Inode::new(
-                        Arc::new(DeadMutex::new(Ext2DriverFile::new(self.ext2.clone(), 2))),
+                        Arc::new(DeadMutex::new(Ext2DriverFile::new(
+                            self.ext2.clone(),
+                            inode_nbr,
+                        ))),
                         inode_data,
                     );
                     Some((direntry, inode))

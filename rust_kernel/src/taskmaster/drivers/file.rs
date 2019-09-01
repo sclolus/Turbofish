@@ -28,15 +28,15 @@ impl Driver for Ext2DriverFile {
 /// a file operation of an ext2 file
 #[derive(Debug)]
 pub struct Ext2FileOperation {
-    ext2_driver_file: Arc<DeadMutex<Ext2Filesystem>>,
+    ext2: Arc<DeadMutex<Ext2Filesystem>>,
     inode_nbr: u32,
-    offset: u32,
+    offset: u64,
 }
 
 impl Ext2FileOperation {
-    fn new(ext2_driver_file: Arc<DeadMutex<Ext2Filesystem>>, inode_nbr: u32) -> Self {
+    fn new(ext2: Arc<DeadMutex<Ext2Filesystem>>, inode_nbr: u32) -> Self {
         Self {
-            ext2_driver_file,
+            ext2,
             inode_nbr,
             offset: 0,
         }
@@ -44,8 +44,14 @@ impl Ext2FileOperation {
 }
 
 impl FileOperation for Ext2FileOperation {
-    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        unimplemented!();
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        let res = self
+            .ext2
+            .lock()
+            .new_read(self.inode_nbr, &mut self.offset, buf)? as u32;
+        dbg!(unsafe { core::str::from_utf8_unchecked(buf) });
+        dbg!(self.offset);
+        Ok(IpcResult::Done(res))
     }
     fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
         unimplemented!();
