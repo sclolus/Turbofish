@@ -342,30 +342,12 @@ impl VirtualFileSystem {
     //     }
     //     Ok(())
     // }
-
     pub fn mount_filesystem(
         &mut self,
-        current: &mut Current,
-        source: Path,
-        target: Path,
+        filesystem: Box<dyn FileSystem>,
+        fs_id: FileSystemId,
+        mount_dir_id: DirectoryEntryId,
     ) -> VfsResult<()> {
-        use crate::taskmaster::drivers::DiskWrapper;
-        use ext2::Ext2Filesystem;
-        use filesystem::Ext2fs;
-
-        let flags = libc_binding::OpenFlags::O_RDWR;
-        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-        let file_operation = self
-            .open(current, source, flags, mode)
-            .expect("open sda1 failed")
-            .expect("disk driver open failed");
-
-        let ext2_disk = DiskWrapper(file_operation);
-        let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
-        let fs_id: FileSystemId = self.gen();
-        let filesystem = Ext2fs::new(ext2, fs_id);
-
-        let mount_dir_id = self.pathname_resolution(current.cwd, target)?;
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         if !mount_dir.is_directory() {
             return Err(NotADirectory);
@@ -391,9 +373,29 @@ impl VirtualFileSystem {
         self.inodes.insert(root_inode_id, root_inode);
 
         // self.recursive_build_subtree(root_dentry_id, fs_id)?;
-        self.mounted_filesystems.insert(fs_id, Box::new(filesystem));
+        self.mounted_filesystems.insert(fs_id, filesystem);
 
         Ok(())
+    }
+
+    pub fn mount(&mut self, current: &mut Current, source: Path, target: Path) -> VfsResult<()> {
+        use crate::taskmaster::drivers::DiskWrapper;
+        use ext2::Ext2Filesystem;
+        use filesystem::Ext2fs;
+
+        let flags = libc_binding::OpenFlags::O_RDWR;
+        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        let file_operation = self
+            .open(current, source, flags, mode)
+            .expect("open sda1 failed")
+            .expect("disk driver open failed");
+
+        let ext2_disk = DiskWrapper(file_operation);
+        let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
+        let fs_id: FileSystemId = self.gen();
+        let filesystem = Ext2fs::new(ext2, fs_id);
+        let mount_dir_id = self.pathname_resolution(current.cwd, target)?;
+        self.mount_filesystem(Box::new(filesystem), fs_id, mount_dir_id)
     }
 
     // pub fn opendir(&mut self, path: Path) -> VfsResult<Vec<dirent>> {}

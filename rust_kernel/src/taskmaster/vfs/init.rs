@@ -1,5 +1,6 @@
+use super::filesystem::Ext2fs;
 use crate::taskmaster::drivers::{
-    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, TtyDevice,
+    BiosInt13hInstance, DiskDriver, DiskWrapper, Driver, IdeAtaInstance, TtyDevice,
 };
 use alloc::format;
 use alloc::sync::Arc;
@@ -29,7 +30,25 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     unsafe { Mbr::new(&a) }
 }
 
-fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
+fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
+    let mut current = Current {
+        cwd: DirectoryEntryId::new(2),
+        uid: 0,
+        euid: 0,
+        gid: 0,
+        egid: 0,
+        open_fds: BTreeMap::new(),
+    };
+
+    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
+    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
+        .expect("failed to add new driver sda1 to vfs");
+
+    let flags = libc_binding::OpenFlags::O_RDWR;
+}
+
+fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
     let disk_driver: Arc<DeadMutex<dyn Driver>> = match driver {
@@ -54,23 +73,9 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
         _ => unimplemented!(),
     };
 
-    let mut current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-        open_fds: BTreeMap::new(),
-    };
-    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
-        .expect("failed to add new driver sda1 to vfs");
-
-    let flags = libc_binding::OpenFlags::O_RDWR;
-
-    let file_operation = vfs
-        .open(&mut current, path, flags, mode)
+    let file_operation = disk_driver
+        .lock()
+        .open()
         .expect("open sda1 failed")
         .expect("disk driver open failed");
 
@@ -78,9 +83,17 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
     unsafe {
         EXT2 = Some(
             //TODO: remove the box
-            Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed"),
+            Ext2Filesystem::new(Box::new(ext2_disk.clone())).expect("ext2 filesystem new failed"),
         );
     }
+    let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
+    let fs_id: FileSystemId = vfs.gen();
+    let ext2fs = Ext2fs::new(ext2, fs_id);
+    vfs.mount_filesystem(Box::new(ext2fs), fs_id, DirectoryEntryId::new(2))
+        .expect("mount filesystem failed");
+
+    // mount /dev/sda on the vfs
+    init_sda(vfs, disk_driver);
     log::info!("/dev/sda initialized");
 }
 
@@ -121,7 +134,9 @@ lazy_static! {
 
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
+    // we start by bootstraping ext2
+    init_ext2(&mut vfs, DiskDriverType::Bios);
+    // then init tty on /dev/tty
     init_tty(&mut vfs);
-    init_sda(&mut vfs, DiskDriverType::Bios);
     vfs
 }
