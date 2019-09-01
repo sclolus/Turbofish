@@ -57,7 +57,7 @@ pub enum DiskDriverType {
 
 /// A trait for block devices which can read a write by blocks of
 /// Sector
-pub trait BlockIo {
+pub trait BlockIo: Send {
     fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()>;
     fn write(
         &self,

@@ -30,5 +30,6 @@ int main() {
 	off_t u = -1;
 	if (!(u - 1 == -2)) {
 		printf("off_t must be signed\n");
+		exit(1);
 	}
 }

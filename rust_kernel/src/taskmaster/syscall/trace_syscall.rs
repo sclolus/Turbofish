@@ -18,7 +18,7 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, termios, uid_t, Pid};
+use libc_binding::{gid_t, off_t, termios, uid_t, Pid};
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -28,7 +28,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
         ecx,
         edx,
         esi,
-        // edi,
+        edi,
         // ebp,
         ..
     } = unsafe { (*cpu_state).registers };
@@ -57,10 +57,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *const c_char, ecx as *const *const c_char, edx as *const *const c_char,
             ),
             LSEEK => eprintln!(
-                "lseek({:#?}, {:#?}, {:#?})",
-                ebx as i32,
-                ecx as u64 + ((edx as u64) << 32),
-                esi as i32
+                "lseek(ptr: {:#?}, fd: {:#?}, offset: {:#?}, whence_value: {:#?})",
+                ebx as *mut off_t,
+                ecx as Fd,
+                edx as off_t + ((esi as off_t) << 32),
+                edi as u32,
             ),
             GETPID => eprintln!("getpid()"),
             SETUID => eprintln!("setuid({:#?})", ebx as uid_t),
