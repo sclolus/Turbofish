@@ -37,7 +37,8 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
-	stdio _doprnt putchar puts getc fopen
+	stdio _doprnt putchar puts getc fopen \
+	getline getdelim
 VPATH += src/stdio/printf src/stdio/
 HEADERS += include/stdio.h internal_printf.h
 
@@ -66,18 +67,19 @@ SRC_C += exit exit_qemu atexit getenv abort abs qsort _Exit
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups _exit lseek
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek
+
 SRC_C += dup dup2 pipe
 
 VPATH += src/unistd
 HEADERS += include/unistd.h
 
 SRC_C += mmap munmap mprotect
-VPATH += src/sys/mman 
+VPATH += src/sys/mman
 HEADERS += include/sys/mman.h
 
 SRC_C += stat lstat fstat mkfifo umask
-VPATH += src/sys/stat 
+VPATH += src/sys/stat
 HEADERS += include/sys/stat.h
 
 SRC_C += gettimeofday settimeofday

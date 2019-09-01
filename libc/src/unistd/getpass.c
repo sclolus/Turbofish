@@ -1,7 +1,10 @@
-#include "su.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 #include <termios.h>
+#include <stdlib.h>
 
- // put this into libc, and discuss with the team about its obsolescence.
+// Discuss with the team about its obsolescence.
 char	    *getpass(const char *const prompt)
 {
 	struct termios	old;
@@ -30,7 +33,7 @@ char	    *getpass(const char *const prompt)
 
 	char	*newline;
 	if (pass && (newline = strchr(pass, '\n'))) {
-	*newline = '\0';
+		*newline = '\0';
 	}
 
 	if (-1 == tcsetattr(STDIN_FILENO, TCSANOW, &old)) {
@@ -39,3 +42,5 @@ char	    *getpass(const char *const prompt)
 	}
 	return pass;
 }
+
+# warning missing tests

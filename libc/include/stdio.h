@@ -8,7 +8,11 @@
 
 //The <stdio.h> header shall define the following data types through typedef:
 
-typedef struct { int fd; } FILE;
+typedef struct {
+	int		fd;
+	unsigned char	eof : 1,
+			error: 1;
+}		FILE;
 //    A structure containing information about a file.
 typedef size_t fpos_t;
 //    A non-array type containing all information needed to specify uniquely every position within a file.
@@ -138,11 +142,9 @@ int      getchar(void);
 int      getc_unlocked(FILE *);
 int      getchar_unlocked(void);
 //TODO: This prototypes conflict with corutils
-/*
- * ssize_t  getdelim(char **restrict, size_t *restrict, int,
- *              FILE *restrict);
- */
-/* ssize_t  getline(char **restrict, size_t *restrict, FILE *restrict); */
+ssize_t  getdelim(char **restrict, size_t *restrict, int,
+             FILE *restrict);
+ssize_t  getline(char **restrict, size_t *restrict, FILE *restrict);
 //[Option End]
 //[OB][Option Start]
 char    *gets(char *);

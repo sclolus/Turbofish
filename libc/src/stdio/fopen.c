@@ -3,7 +3,7 @@
 
 #warning DUMMY IMPLEMENTATION
 
-FILE *fopen(const char *pathname, const char *mode)
+FILE *fopen(const char *restrict pathname, const char *restrict mode)
 {
 	DUMMY
 	(void)pathname;

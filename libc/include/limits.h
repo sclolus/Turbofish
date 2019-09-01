@@ -512,7 +512,15 @@
  * {SSIZE_MAX}
  *     [CX] [Option Start]
  *     Maximum value for an object of type ssize_t.
- *     Minimum Acceptable Value: {_POSIX_SSIZE_MAX} [Option End]
+ *     Minimum Acceptable Value: {_POSIX_SSIZE_MAX} [Option End] */
+
+// According to POSIX, SSIZE_MAX shall be defined in limits.h
+// However, SIZE_MAX is defined in stdint.h.
+// TODO: Fix this. (Even though it works.)
+# define SSIZE_MAX ((ssize_t)((size_t)(~0UL) >> 1UL))
+/* # define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL)) */
+
+/*
  * {USHRT_MAX}
  *     Maximum value for an object of type unsigned short.
  *     Minimum Acceptable Value: 65 535

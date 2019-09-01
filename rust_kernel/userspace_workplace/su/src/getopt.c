@@ -1,6 +1,6 @@
 #include "getopt.h"
 
-char				*g_optarg;
+char					*g_optarg;
 int					g_optind = 1;
 int					g_optopt;
 int					g_opterr = 1;
