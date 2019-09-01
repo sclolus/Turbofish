@@ -5,6 +5,8 @@
 
 #include <sys/types.h>
 
+#define ENTRY_NB_FIELDS 7
+
 struct passwd {
 	char *pw_name;    // User's login name.
 	char *pw_passwd;  // user password
