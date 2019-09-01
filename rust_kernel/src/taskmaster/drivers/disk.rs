@@ -14,22 +14,35 @@ use libc_binding::off_t;
 use libc_binding::Errno;
 
 #[derive(Debug)]
-pub struct DiskDriver {
-    disk: Arc<DeadMutex<dyn FileOperation>>,
+pub struct DiskDriver<D: BlockIo + Clone + Debug + 'static> {
+    disk: D,
+    start_of_partition: u64,
+    partition_size: u64,
 }
 
-impl DiskDriver {
-    pub fn new(disk: Arc<DeadMutex<dyn FileOperation>>) -> Self {
-        Self { disk }
+impl<D: BlockIo + Clone + Debug> DiskDriver<D> {
+    pub fn new(disk: D, start_of_partition: u64, partition_size: u64) -> Self {
+        Self {
+            disk,
+            start_of_partition,
+            partition_size,
+        }
     }
 }
 
-impl Driver for DiskDriver {
+impl<D: BlockIo + Clone + Debug> Driver for DiskDriver<D> {
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        Ok(IpcResult::Done(self.disk.clone()))
+        Ok(IpcResult::Done(Arc::new(DeadMutex::new(
+            DiskFileOperation::new(
+                self.disk.clone(),
+                self.start_of_partition,
+                self.partition_size,
+            ),
+        ))))
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct BiosInt13hInstance;
 
 impl BlockIo for BiosInt13hInstance {
@@ -57,6 +70,7 @@ impl BlockIo for BiosInt13hInstance {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct IdeAtaInstance;
 
 impl BlockIo for IdeAtaInstance {

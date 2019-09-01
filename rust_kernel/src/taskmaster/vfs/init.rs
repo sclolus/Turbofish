@@ -32,26 +32,24 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
 fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
-    let disk_driver = match driver {
+    let disk_driver: Arc<DeadMutex<dyn Driver>> = match driver {
         DiskDriverType::Bios => {
             let disk = BiosInt13hInstance;
             let mbr = read_mbr(&disk);
-            let disk = DiskFileOperation::new(
+            Arc::new(DeadMutex::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
-            );
-            DiskDriver::new(Arc::new(DeadMutex::new(disk)))
+            )))
         }
         DiskDriverType::Ide => {
             let disk = IdeAtaInstance;
             let mbr = read_mbr(&disk);
-            let disk = DiskFileOperation::new(
+            Arc::new(DeadMutex::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
-            );
-            DiskDriver::new(Arc::new(DeadMutex::new(disk)))
+            )))
         }
         _ => unimplemented!(),
     };
@@ -66,13 +64,8 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
     };
     let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
     let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-    vfs.new_driver(
-        &mut current,
-        path.clone(),
-        mode,
-        Arc::new(DeadMutex::new(disk_driver)),
-    )
-    .expect("failed to add new driver sda1 to vfs");
+    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
+        .expect("failed to add new driver sda1 to vfs");
 
     let flags = libc_binding::OpenFlags::O_RDWR;
 
@@ -129,6 +122,6 @@ lazy_static! {
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     init_tty(&mut vfs);
-    init_sda(&mut vfs, DiskDriverType::Ide);
+    init_sda(&mut vfs, DiskDriverType::Bios);
     vfs
 }

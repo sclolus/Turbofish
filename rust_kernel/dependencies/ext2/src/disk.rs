@@ -8,7 +8,7 @@ use alloc::boxed::Box;
 // const START_OF_PARTITION: u64 = 0;
 
 /// trait to read / write on a disk
-pub trait DiskIo: Debug {
+pub trait DiskIo: Debug + Send {
     /// flush
     fn flush(&mut self) -> IoResult<()>;
     /// write at offset
