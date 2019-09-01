@@ -1,5 +1,6 @@
-#include <sys/stat.h>
-#include <errno.h>
+/*
+ * stat, fstat, lstat - get file status
+ */
 
 // The stat() function shall obtain information about the named file
 // and write it to the area pointed to by the buf argument. The path
@@ -81,23 +82,54 @@
 // respectively, depending on whether or not the AT_SYMLINK_NOFOLLOW
 // bit is set in flag.
 
-#warning NOT IMPLEMENTED
+#include <sys/stat.h>
+
+#include <user_syscall.h>
+#include <errno.h>
+
 #include <custom.h>
 
-int stat(const char *restrict path, struct stat *restrict buf)
+/*
+ * Retrieve information about the file pointed to by pathname
+ */
+int stat(const char *restrict pathname, struct stat *restrict stat)
 {
-	DUMMY
-	(void)path;
-	(void)buf;
-	errno = ENOSYS;
-	return -1;
+	DUMMY_KERNEL
+	int ret = _user_syscall(STAT, 2, pathname, stat);
+
+	/*
+	 * On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.
+	 */
+	set_errno_and_return(ret);
 }
 
-int stat64(const char *restrict path, struct stat *restrict buf)
+/*
+ * lstat() is identical to stat(), except that if pathname is a symbolic link,
+ * then it returns information about the link itself, not the file that it refers to.
+ */
+int lstat(const char *restrict pathname, struct stat *restrict stat)
 {
-	DUMMY
-	(void)path;
-	(void)buf;
-	errno = ENOSYS;
-	return -1;
+	DUMMY_KERNEL
+	int ret = _user_syscall(LSTAT, 2, pathname, stat);
+
+	/*
+	 * On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.
+	 */
+	set_errno_and_return(ret);
+}
+
+
+/*
+ * fstat() is identical to stat(), except that the file about which information
+ * is to be retrieved is specified by the file descriptor fd.
+ */
+int fstat(int fd, struct stat *stat)
+{
+	DUMMY_KERNEL
+	int ret = _user_syscall(FSTAT, 2, fd, stat);
+
+	/*
+	 * On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.
+	 */
+	set_errno_and_return(ret);
 }

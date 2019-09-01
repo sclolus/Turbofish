@@ -14,11 +14,13 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define WAITPID       7
 #define UNLINK       10
 #define EXECVE       11
+#define STAT         18
 #define LSEEK        19
 #define GETPID       20
 #define SETUID       23
 #define GETUID       24
 #define PAUSE        29
+#define FSTAT        28
 #define KILL         37
 #define DUP          41
 #define PIPE         42
@@ -36,6 +38,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SIGSUSPEND   72
 #define GETGROUPS    80
 #define SETGROUPS    81
+#define LSTAT        84
 #define REBOOT       88
 #define MMAP         90
 #define MUNMAP       91
