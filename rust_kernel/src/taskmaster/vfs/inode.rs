@@ -101,6 +101,10 @@ impl InodeData {
         self
     }
 
+    pub fn get_id(&self) -> InodeId {
+        self.id
+    }
+
     // pub fn set_inode_operations(
     //     &mut self,
     //     inode_operations: Arc<DeadMutex<dyn Driver>>,

@@ -1,11 +1,22 @@
-use super::{DirectoryEntry, Inode, InodeNumber, VfsResult};
+use super::{DirectoryEntry, Inode, VfsResult};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use ext2::Ext2Filesystem;
+use sync::DeadMutex;
 
 pub trait FileSystem: Send {
-    fn name(&self) -> &str;
-    fn get_superblock(&self) -> Superblock;
-    fn root_dentry(&self) -> DirectoryEntry;
-    fn root_inode(&self) -> Inode;
-    fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode>;
+    // fn name(&self) -> &str;
+    // fn load_inode(&self, inode_number: InodeNumber) -> VfsResult<Inode>;
+    fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, Inode)>>;
+    fn root(&self) -> VfsResult<(DirectoryEntry, Inode)>;
+    // fn lookup: Option<fn(&mut Superblock)>,
+    // fn create: Option<fn(&mut Superblock)>,
+    // fn unlink: Option<fn(&mut Superblock)>,
+    // fn link: Option<fn(&mut Superblock)>,
+    // fn symlink: Option<fn(&mut Superblock)>,
+    // fn statfs: Option<fn(&mut Superblock)>,
+    // fn mkdir: Option<fn(&mut Superblock)>,
+    // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq)]
@@ -24,68 +35,42 @@ impl core::ops::Add<usize> for FileSystemId {
     }
 }
 
-pub struct SuperblockOperations {
-    #[allow(unused)]
-    lookup: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    create: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    unlink: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    link: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    symlink: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    statfs: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    mkdir: Option<fn(&mut Superblock)>,
-    #[allow(unused)]
-    rmdir: Option<fn(&mut Superblock)>,
+pub struct Ext2fs {
+    ext2: Arc<DeadMutex<Ext2Filesystem>>,
+    fs_id: FileSystemId,
 }
 
-pub struct Superblock {
-    // filesystem_type: FileSystemType,
-    #[allow(unused)]
-    operations: SuperblockOperations,
-}
-
-pub struct StandardFileSystem {}
-
-impl StandardFileSystem {
-    pub fn new() -> Self {
-        Self {}
+impl Ext2fs {
+    pub fn new(ext2: Ext2Filesystem, fs_id: FileSystemId) -> Self {
+        Self {
+            ext2: Arc::new(DeadMutex::new(ext2)),
+            fs_id,
+        }
     }
 }
 
-impl FileSystem for StandardFileSystem {
-    fn name(&self) -> &str {
-        "StandardFileSystem"
-    }
-
-    fn get_superblock(&self) -> Superblock {
-        let operations = SuperblockOperations {
-            lookup: None,
-            create: None,
-            unlink: None,
-            link: None,
-            symlink: None,
-            statfs: None,
-            mkdir: None,
-            rmdir: None,
-        };
-
-        Superblock { operations }
-    }
-
-    fn root_dentry(&self) -> DirectoryEntry {
+impl FileSystem for Ext2fs {
+    fn root(&self) -> VfsResult<(DirectoryEntry, Inode)> {
         unimplemented!()
     }
+    // fn name(&self) -> &str {
+    //     "Ext2fs"
+    // }
 
-    fn root_inode(&self) -> Inode {
-        unimplemented!()
-    }
+    // fn root_dentry(&self) -> DirectoryEntry {
+    //     unimplemented!()
+    // }
 
-    fn load_inode(&self, _inode_number: InodeNumber) -> VfsResult<Inode> {
+    // fn root_inode(&self) -> Inode {
+    //     unimplemented!()
+    // }
+
+    // fn load_inode(&self, _inode_number: InodeNumber) -> VfsResult<Inode> {
+    //     unimplemented!()
+    // }
+
+    fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, Inode)>> {
+        let _res = self.ext2.lock().lookup_directory(inode_nbr)?;
         unimplemented!()
     }
 }

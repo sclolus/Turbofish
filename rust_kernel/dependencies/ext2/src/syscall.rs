@@ -4,6 +4,8 @@ use crate::tools::IoResult;
 use crate::{Ext2Filesystem, File};
 use core::cmp::min;
 pub mod data;
+use super::{DirectoryEntry, Inode};
+use alloc::vec::Vec;
 pub use data::OpenFlags;
 pub use data::*;
 use libc_binding::Errno;
@@ -226,5 +228,19 @@ impl Ext2Filesystem {
             }
         }
         Ok(file.curr_offset - file_curr_offset_start)
+    }
+
+    /// return all the (directory, inode) conainted in inode_nbr
+    pub fn lookup_directory(&mut self, inode_nbr: u32) -> IoResult<Vec<(DirectoryEntry, Inode)>> {
+        //TODO: fallible
+        let entries: Vec<DirectoryEntry> =
+            self.iter_entries(inode_nbr)?.map(|(dir, _)| dir).collect();
+        Ok(entries
+            .into_iter()
+            .filter_map(|dir| match self.get_inode(dir.get_inode()) {
+                Ok((inode, _)) => Some((dir, inode)),
+                Err(_e) => None,
+            })
+            .collect())
     }
 }

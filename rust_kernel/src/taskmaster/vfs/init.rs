@@ -1,5 +1,5 @@
 use crate::taskmaster::drivers::{
-    BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance, TtyDevice,
+    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, TtyDevice,
 };
 use alloc::format;
 use alloc::sync::Arc;

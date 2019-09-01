@@ -2,8 +2,6 @@ use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
 use super::tools::{DcacheError, DcacheResult};
 use alloc::collections::BTreeMap;
-use core::convert::TryInto;
-use libc_binding::Errno;
 use DcacheError::*;
 
 pub struct Dcache {
@@ -140,7 +138,7 @@ impl Dcache {
         Ok(())
     }
 
-    fn move_dentry(
+    pub fn move_dentry(
         &mut self,
         id: DirectoryEntryId,
         new_parent: DirectoryEntryId,
@@ -161,32 +159,6 @@ impl Dcache {
         Ok(())
     }
 
-    pub fn rename_dentry(
-        &mut self,
-        cwd: DirectoryEntryId,
-        id: DirectoryEntryId,
-        new_pathname: Path,
-    ) -> DcacheResult<()> {
-        let new_filename = new_pathname.filename().unwrap(); // ?
-
-        if new_filename == &"." || new_filename == &".." {
-            return Err(Errno(Errno::EINVAL));
-        }
-
-        if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
-            self.remove_entry(id)?;
-        };
-
-        let new_parent_id = self.pathname_resolution(cwd, new_pathname.parent())?;
-
-        self.move_dentry(id, new_parent_id)?;
-
-        let entry = self.d_entries.get_mut(&id).ok_or(NoSuchEntry)?;
-
-        entry.set_filename(*new_filename);
-        Ok(())
-    }
-
     fn get_available_id(&self) -> DirectoryEntryId {
         let mut current_id = self.root_id; // check this
         loop {
@@ -198,79 +170,8 @@ impl Dcache {
                 .expect("No space left inside the dcache lool");
         }
     }
-    fn _pathname_resolution(
-        &self,
-        mut root: DirectoryEntryId,
-        pathname: Path,
-        recursion_level: usize,
-    ) -> DcacheResult<DirectoryEntryId> {
-        use super::posix_consts::SYMLOOP_MAX;
-        if recursion_level > SYMLOOP_MAX {
-            return Err(Errno(Errno::ELOOP));
-        }
-
-        if pathname.is_absolute() {
-            root = self.root_id;
-        }
-
-        if !self.contains_entry(&root) {
-            return Err(RootDoesNotExists);
-        }
-
-        let mut current_dir_id = root;
-        let mut components = pathname.components();
-        let mut was_symlink = false;
-        let mut current_entry = self.get_entry(&current_dir_id)?;
-        for component in components.by_ref() {
-            if current_entry.is_mounted()? {
-                current_dir_id = current_entry.get_mountpoint_entry()?;
-                current_entry = self.get_entry(&current_dir_id)?;
-            }
-            let current_dir = current_entry.get_directory()?;
-
-            if component == &"." {
-                continue;
-            } else if component == &".." {
-                current_dir_id = current_entry.parent_id;
-                current_entry = self.get_entry(&current_dir_id)?;
-                continue;
-            }
-            let next_entry_id = current_dir
-                .entries()
-                .find(|x| {
-                    let filename = &self
-                        .get_entry(x)
-                        .expect("Invalid entry id in a directory entry that is a directory")
-                        .filename;
-                    filename == component
-                })
-                .ok_or(NoSuchEntry)?;
-
-            current_entry = self.get_entry(next_entry_id)?;
-            if current_entry.is_symlink() {
-                was_symlink = true;
-                break;
-            }
-            current_dir_id = *next_entry_id;
-        }
-        if was_symlink {
-            let mut new_path = current_entry.get_symbolic_content()?.clone();
-            new_path.chain(components.try_into()?)?;
-
-            self._pathname_resolution(current_dir_id, new_path, recursion_level + 1)
-        } else {
-            Ok(self.get_entry(&current_dir_id).unwrap().id)
-        }
-    }
-
-    pub fn pathname_resolution(
-        &self,
-        root: DirectoryEntryId,
-        pathname: Path,
-    ) -> DcacheResult<DirectoryEntryId> {
-        self._pathname_resolution(root, pathname, 0)
-    }
 }
+
 use core::fmt::{Display, Error, Formatter};
 
 impl Display for Dcache {
