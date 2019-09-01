@@ -9,7 +9,7 @@ use crate::multiboot::MultibootInfo;
 use crate::tests::helpers::exit_qemu;
 
 use crate::drivers::storage::BiosInt13h;
-use crate::drivers::storage::{NbrSectors, Sector};
+use crate::drivers::storage::{BlockIo, NbrSectors, Sector};
 
 const NB_TESTS: usize = 48;
 const DISK_SECTOR_CAPACITY: u16 = 0x8000;

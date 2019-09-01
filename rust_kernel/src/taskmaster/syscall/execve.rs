@@ -14,7 +14,7 @@ use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
 use libc_binding::Errno;
 
-use crate::drivers::storage::ext2::EXT2;
+use crate::taskmaster::vfs::init::EXT2;
 
 /// Return a file content using raw ext2 methods
 fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {

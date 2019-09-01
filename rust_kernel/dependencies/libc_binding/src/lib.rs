@@ -596,3 +596,23 @@ bitflags! {
         const O_TTY_INIT = O_TTY_INIT;
     }
 }
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Whence {
+    SeekSet = SEEK_SET,
+    SeekCur = SEEK_CUR,
+    SeekEnd = SEEK_END,
+}
+
+impl TryFrom<u32> for Whence {
+    type Error = Errno;
+    fn try_from(n: u32) -> Result<Self, Self::Error> {
+        Ok(match n {
+            SEEK_SET => Whence::SeekSet,
+            SEEK_CUR => Whence::SeekCur,
+            SEEK_END => Whence::SeekEnd,
+            _ => Err(Errno::EINVAL)?,
+        })
+    }
+}

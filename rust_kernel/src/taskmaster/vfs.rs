@@ -2,7 +2,9 @@ use super::drivers::{DefaultDriver, Driver, FileOperation};
 use super::{IpcResult, SysResult};
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 use lazy_static::lazy_static;
+use sync::DeadMutex;
 
 use itertools::unfold;
 
@@ -23,8 +25,8 @@ use dcache::Dcache;
 
 mod inode;
 pub use inode::InodeId;
-use inode::{File, Inode, InodeData, InodeNumber, Offset, SeekType};
-use libc_binding::OpenFlags;
+use inode::{File, Inode, InodeData, InodeNumber, Offset};
+use libc_binding::{OpenFlags, Whence};
 
 pub mod user;
 pub use user::{Current, GroupId, UserId};
@@ -37,6 +39,8 @@ use Errno::*;
 
 mod permissions;
 pub use permissions::FilePermissions;
+pub mod init;
+pub use init::{init, VFS};
 
 pub struct VirtualFileSystem {
     mounted_filesystems: BTreeMap<FileSystemId, Box<dyn FileSystem>>,
@@ -93,7 +97,6 @@ impl VirtualFileSystem {
             Err(_e) => {
                 //TODO: Option(FileSystemId)
                 let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
-                driver.lock().set_inode_id(new_id);
 
                 let mut inode_data: InodeData = Default::default();
                 inode_data
@@ -496,7 +499,7 @@ impl VirtualFileSystem {
         _current: &mut Current,
         _fd: Fd,
         _offset: Offset,
-        _seek: SeekType,
+        _seek: Whence,
     ) -> VfsResult<Offset> {
         unimplemented!()
     }
@@ -751,51 +754,6 @@ impl Mapper<OFDId, File> for VirtualFileSystem {
 //     }
 
 // }
-
-use sync::DeadMutex;
-
-lazy_static! {
-    pub static ref VFS: DeadMutex<Vfs> = DeadMutex::new(init());
-}
-
-use super::drivers::TtyDevice;
-use alloc::format;
-use alloc::sync::Arc;
-use core::convert::TryFrom;
-use fallible_collections::FallibleArc;
-
-pub fn init() -> Vfs {
-    let mut vfs = Vfs::new().expect("vfs initialisation failed");
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-
-    let flags = OpenFlags::O_CREAT | OpenFlags::O_DIRECTORY;
-    let path = Path::try_from("/dev").expect("path creation failed");
-
-    let mut current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-        open_fds: BTreeMap::new(),
-    };
-    // println!("{}", path);
-    vfs.open(&mut current, path, flags, mode)
-        .expect("/dev creation failed");
-    for i in 1..=4 {
-        // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-        let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
-        // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
-        let path =
-            Path::try_from(format!("/dev/tty{}", i).as_ref()).expect("path tty creation failed");
-        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-
-        vfs.new_driver(&mut current, path, mode, driver)
-            .expect("failed to add new driver tty to vfs");
-    }
-    log::info!("vfs initialized");
-    vfs
-}
 
 // use core::convert::{TryFrom, TryInto};
 // use core::fs::{read_dir, DirEntry, FileType};

@@ -44,11 +44,11 @@ typedef size_t fpos_t;
 
 //The <stdio.h> header shall define the following macros which shall expand to integer constant expressions with distinct values:
 
-#define SEEK_CUR 42
+#define SEEK_CUR 1
 //   Seek relative to current position.
-#define SEEK_END 42
+#define SEEK_END 2
 //   Seek relative to end-of-file.
-#define SEEK_SET 42
+#define SEEK_SET 3
 //    Seek relative to start-of-file.
 
 //The <stdio.h> header shall define the following macros which shall expand to integer constant expressions denoting implementation limits:

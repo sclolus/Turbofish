@@ -2,7 +2,6 @@
 
 use super::SysResult;
 
-use super::InodeId;
 use super::IpcResult;
 use super::Mode;
 
@@ -111,8 +110,6 @@ impl Drop for TtyFileOperation {
 /// Stucture of TtyDevice
 #[derive(Debug)]
 pub struct TtyDevice {
-    /// Refer ta an 'father' inode
-    inode_id: Option<InodeId>,
     /// A Tty got just one FileOperation structure which share with all
     operation: Arc<DeadMutex<TtyFileOperation>>,
 }
@@ -121,7 +118,6 @@ pub struct TtyDevice {
 impl TtyDevice {
     pub fn try_new(controlling_terminal: usize) -> SysResult<Self> {
         let r = Ok(Self {
-            inode_id: None,
             operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(controlling_terminal)))?,
         });
         log::info!("TTY {} created !", controlling_terminal);
@@ -142,9 +138,6 @@ impl Driver for TtyDevice {
         }
         log::info!("TTY {} opened !", controlling_terminal);
         Ok(IpcResult::Done(self.operation.clone()))
-    }
-    fn set_inode_id(&mut self, inode_id: InodeId) {
-        self.inode_id = Some(inode_id);
     }
 }
 

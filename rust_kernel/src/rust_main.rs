@@ -1,6 +1,5 @@
 use crate::drivers::pit_8253::OperatingMode;
-// use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
-use crate::drivers::{pic_8259, Acpi, ACPI, PIC_8259, PIT0};
+use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
@@ -76,9 +75,9 @@ pub extern "C" fn kmain(
     );
 
     // TODO: Find why it crashs in Sclolus Qemu version
-    // log::info!("Scanning PCI buses ...");
-    // PCI.lock().scan_pci_buses();
-    // log::info!("PCI buses has been scanned");
+    log::info!("Scanning PCI buses ...");
+    PCI.lock().scan_pci_buses();
+    log::info!("PCI buses has been scanned");
 
     // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 

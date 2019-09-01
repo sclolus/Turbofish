@@ -98,7 +98,7 @@ typedef unsigned int		uintptr_t;
 #define intmax_t long int
 //     The following type designates a signed integer type capable of representing any value of any signed integer type: intmax_t
 // 
-#define uintmax_t unsigned long int
+#define uintmax_t unsigned long long
 //     The following type designates an unsigned integer type capable of representing any value of any unsigned integer type: uintmax_t
 // 
 //     These types are required.

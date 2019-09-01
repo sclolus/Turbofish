@@ -11,7 +11,7 @@ use crate::tests::helpers::exit_qemu;
 use crate::drivers::storage::{
     ide_ata_controller,
     ide_ata_controller::{Hierarchy, IdeAtaController, Rank},
-    NbrSectors, Sector,
+    BlockIo, NbrSectors, Sector,
 };
 
 const NB_TESTS: usize = 32;

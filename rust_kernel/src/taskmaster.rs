@@ -26,6 +26,15 @@ pub enum IpcResult<T> {
     Wait(T, usize),
 }
 
+impl<T> IpcResult<T> {
+    pub fn expect(self, s: &'static str) -> T {
+        match self {
+            IpcResult::Done(t) => t,
+            IpcResult::Wait(_, _) => panic!(s),
+        }
+    }
+}
+
 pub use process::{KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess};
 pub use safe_ffi::CStringArray;
 

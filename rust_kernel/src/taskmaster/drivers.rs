@@ -3,7 +3,6 @@
 use super::SysResult;
 
 use super::fd_interface::Mode;
-use super::vfs::InodeId;
 use super::IpcResult;
 
 pub mod ipc;
@@ -14,19 +13,26 @@ pub use ipc::Socket;
 pub mod tty;
 pub use tty::TtyDevice;
 
+pub mod disk;
+pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
+// pub use disk::DiskDriver;
+
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, Errno, Pid};
+use libc_binding::{off_t, termios, Errno, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
-    fn register(&mut self, access_mode: Mode);
+    fn register(&mut self, _access_mode: Mode) {}
     /// Invoqued quen a FD is droped
-    fn unregister(&mut self, access_mode: Mode);
+    fn unregister(&mut self, _access_mode: Mode) {}
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
+    fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
+        Err(Errno::EINVAL)
+    }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
@@ -66,8 +72,6 @@ impl FileOperation for DefaultFileOperation {
 pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
-    /// Get a reference to the inode
-    fn set_inode_id(&mut self, inode_id: InodeId);
 }
 
 #[derive(Debug)]
@@ -77,9 +81,6 @@ impl Driver for DefaultDriver {
     fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let res = Arc::try_new(DeadMutex::new(DefaultFileOperation))?;
         Ok(IpcResult::Done(res))
-    }
-    fn set_inode_id(&mut self, _inode_id: InodeId) {
-        // unimplemented!()
     }
 }
 
