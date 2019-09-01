@@ -28,7 +28,8 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero strdup \
-	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror
+	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
+	strcoll
 VPATH += src/string
 HEADERS += include/string.h
 
