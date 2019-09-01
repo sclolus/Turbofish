@@ -141,6 +141,14 @@ VPATH += src/math
 SRC_NASM += round
 HEADERS += include/math.h
 
+SRC_C += strsplit array parse_2d_file
+VPATH += src/tools
+HEADERS += include/tools.h
+
+SRC_C += getpwuid
+VPATH += src/pwd
+HEADERS += include/pwd.h
+
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
