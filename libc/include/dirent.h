@@ -4,11 +4,11 @@
 #include <sys/types.h>
 //It shall also define the structure dirent which shall include the following members:
 
+#define NAME_MAX 255
+
 struct dirent {
-//[XSI][Option Start]
-	ino_t  d_ino   ;//    File serial number. 
-//[Option End]
-	char   d_name[];//    Filename string of entry. 
+	ino_t  d_ino;                // File serial number. (typedef of unsigned int) 
+	char   d_name[NAME_MAX + 1]; // Filename string of entry. (NAME_MAX + '\0')
 };
 
 //The internal format of directories is unspecified.
