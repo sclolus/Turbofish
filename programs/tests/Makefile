@@ -53,10 +53,11 @@ INSTALL_DIR = ../../rust_kernel/src/userland/
 all: $(TARGET_C)
 
 build/%: $(OBJ_DIR)/%.o Makefile /toolchain_turbofish/sysroot/usr/lib/libc.a obj/tools.o
+	@mkdir -pv ./$(dir $@)
 	$(CC) $(CFLAGS) -o $@ $< obj/tools.o $(LIB)
 
 $(OBJ_DIR)/%.o: %.c Makefile include/tools.h
-	@mkdir -p ./$(dir $@)
+	@mkdir -pv ./$(dir $@)
 	$(CC) $(CFLAGS) $(IFLAGS) -c -o $@ $<
 
 $(OBJ_C):
@@ -68,7 +69,7 @@ install:
 
 clean:
 	rm -fv $(TARGET_C)
-	rm -rvf $(OBJ_DIR)/*
+	find $(OBJ_DIR)/ -name "*.o" -delete
 
 fclean: clean
 

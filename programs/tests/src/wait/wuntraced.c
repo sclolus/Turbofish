@@ -12,6 +12,8 @@ int main(void)
 		raise(SIGSTOP);
 		printf("end child of life\n");
 		while(1) {
+			sleep(1);
+			printf("I am alive !\n");
 			/* sleep(0.01); */
 		}
 	} else {
@@ -40,6 +42,7 @@ int main(void)
 
 		sleep(1);
 		kill(pid, SIGKILL);
+		printf("I send a SigKill\n");
 		if (ret == -1) {
 			perror("kill failed");
 			exit(1);
