@@ -90,12 +90,13 @@
 #include <custom.h>
 
 /*
- * Retrieve information about the file pointed to by pathname
+ * fstat() is identical to stat(), except that the file about which information
+ * is to be retrieved is specified by the file descriptor fd.
  */
-int stat(const char *restrict pathname, struct stat *restrict stat)
+int fstat(int fd, struct stat *stat)
 {
 	DUMMY_KERNEL
-	int ret = _user_syscall(STAT, 2, pathname, stat);
+	int ret = _user_syscall(FSTAT, 2, fd, stat);
 
 	/*
 	 * On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.

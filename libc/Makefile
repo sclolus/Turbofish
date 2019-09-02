@@ -76,7 +76,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman 
 HEADERS += include/sys/mman.h
 
-SRC_C += stat stat64 mkfifo umask
+SRC_C += stat lstat fstat stat64 mkfifo umask
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
