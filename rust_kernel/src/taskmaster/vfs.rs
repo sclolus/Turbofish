@@ -378,8 +378,7 @@ impl VirtualFileSystem {
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         mount_dir.set_mounted(root_dentry_id)?;
 
-        let root_inode_id = root_inode.id;
-        self.inodes.insert(root_inode_id, root_inode);
+        self.add_inode(root_inode);
 
         // self.recursive_build_subtree(root_dentry_id, fs_id)?;
         self.mounted_filesystems.insert(fs_id, filesystem);
