@@ -1,4 +1,5 @@
 #![feature(try_reserve)]
+#![allow(non_upper_case_globals)]
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
 use bitflags::bitflags;
 use core::convert::TryFrom;
@@ -325,19 +326,10 @@ pub enum SegmentType {
 
 bitflags! {
     pub struct ProgramHeaderFlags: u32 {
-        #[allow(non_upper_case_globals)]
         const Executable = 0x1;
-
-        #[allow(non_upper_case_globals)]
         const Writable = 0x2;
-
-        #[allow(non_upper_case_globals)]
         const Readable = 0x4;
-
-        #[allow(non_upper_case_globals)]
         const MaskOs = 0x0ff00000;
-
-        #[allow(non_upper_case_globals)]
         const MaskProc = 0xf0000000;
     }
 }
