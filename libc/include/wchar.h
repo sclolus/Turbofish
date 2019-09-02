@@ -72,8 +72,8 @@ int           iswupper(wint_t);
 int           iswxdigit(wint_t);
 //[Option End]
 size_t        mbrlen(const char *restrict, size_t, mbstate_t *restrict);
-size_t        mbrtowc(wchar_t *restrict, const char *restrict, size_t,
-                  mbstate_t *restrict);
+/* size_t        mbrtowc(wchar_t *restrict, const char *restrict, size_t, */
+/*                   mbstate_t *restrict); */
 int           mbsinit(const mbstate_t *);
 //[CX][Option Start]
 size_t        mbsnrtowcs(wchar_t *restrict, const char **restrict,

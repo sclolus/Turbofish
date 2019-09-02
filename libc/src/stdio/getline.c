@@ -1,6 +1,7 @@
 #include <stdio.h>
 
-ssize_t  getline(char **restrict line, size_t *restrict n, FILE *restrict stream)
+/* ssize_t  getline(char **line, size_t *n, FILE *stream) */
+int  getline(char **line, size_t *n, FILE *stream)
 {
 	return getdelim(line, n, '\n', stream);
 }

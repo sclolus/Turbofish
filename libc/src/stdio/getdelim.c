@@ -7,8 +7,11 @@
 #define __GROW 16
 #define __GETDELIM_MIN_LINE 4
 
-ssize_t  getdelim(char **restrict line, size_t *restrict n, int delim,
-		  FILE *restrict stream)
+/* ssize_t  getdelim(char **line, size_t *n, int delim, */
+/* 		  FILE *stream) */
+int  getdelim(char **line, size_t *n, int delim,
+		  FILE *stream)
+
 {
 	unsigned char	del = (unsigned char)delim;
 	size_t		count = 0;
@@ -65,7 +68,8 @@ ssize_t  getdelim(char **restrict line, size_t *restrict n, int delim,
 	else if (feof(stream) && count == 0) {
 		return -1;
 	}
-	return count;
+	/* return count; */
+	return (int)count;
 }
 
 #undef __GROW

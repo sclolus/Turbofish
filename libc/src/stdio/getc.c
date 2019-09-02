@@ -64,3 +64,9 @@ int getc(FILE *stream)
 {
 	return fgetc(stream);
 }
+
+
+# warning DUMMY IMPLEMENTATION
+int getc_unlocked(FILE *stream) {
+	return getc(stream);
+}
