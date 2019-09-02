@@ -60,7 +60,6 @@ impl FileDescriptorInterface {
             euid: 0,
             gid: 0,
             egid: 0,
-            open_fds: alloc::collections::BTreeMap::new(),
         };
         // TODO: REMOVE THIS SHIT
         let mode =

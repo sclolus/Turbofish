@@ -5,7 +5,7 @@ use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
-use libc_binding::Errno;
+use libc_binding::{Errno, NAME_MAX};
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
@@ -34,17 +34,17 @@ pub struct DirectoryEntryHeader {
     pub size: u16,
     /// Name Length least-significant 8 bits
     /*6 	6 	1*/
-    name_length: u8,
+    pub name_length: u8,
     /// Type indicator (only if the feature bit for "directory entries have file type byte" is set, else this is the most-significant 8 bits of the Name Length)
     /*7 	7 	1*/
-    type_indicator: DirectoryEntryType,
+    pub type_indicator: DirectoryEntryType,
 }
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(packed)]
 pub struct DirectoryEntry {
     pub header: DirectoryEntryHeader,
-    filename: Filename,
+    pub filename: Filename,
 }
 
 impl fmt::Debug for DirectoryEntry {
@@ -123,13 +123,13 @@ impl DirectoryEntry {
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-pub struct Filename(pub [u8; 256]);
+pub struct Filename(pub [u8; NAME_MAX as usize + 1]);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self, Errno> {
-        let mut n = [0; 256];
-        if s.len() >= 256 {
+        let mut n = [0; NAME_MAX as usize + 1];
+        if s.len() >= NAME_MAX as usize {
             return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
@@ -142,7 +142,7 @@ impl TryFrom<&str> for Filename {
 
 impl Default for Filename {
     fn default() -> Self {
-        Self([0; 256])
+        Self([0; NAME_MAX as usize + 1])
     }
 }
 
@@ -156,7 +156,7 @@ impl PartialEq for Filename {
 impl fmt::Debug for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, 255);
+            let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, NAME_MAX as usize);
             let s = core::str::from_utf8_unchecked(slice);
             write!(f, "{:?}", s)
         }

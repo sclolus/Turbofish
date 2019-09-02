@@ -2,9 +2,8 @@
 # define __DIRENT_H__
 
 #include <sys/types.h>
+#include <limits.h>
 //It shall also define the structure dirent which shall include the following members:
-
-#define NAME_MAX 255
 
 struct dirent {
 	ino_t  d_ino;                // File serial number. (typedef of unsigned int) 

@@ -2,7 +2,7 @@
 //! see [osdev](https://wiki.osdev.org/Ext2)
 
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 
 mod disk;
 use crate::disk::Disk;
@@ -20,7 +20,7 @@ mod header;
 use header::{BlockGroupDescriptor, SuperBlock};
 
 mod body;
-use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
+pub use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
 
 #[cfg(not(feature = "std-print"))]
 #[allow(unused_imports)]

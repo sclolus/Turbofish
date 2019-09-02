@@ -222,7 +222,7 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
 
 use ext2::DiskIo;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// wrap a file operation into a disk wrapper useful for mount
 pub struct DiskWrapper(pub Arc<DeadMutex<dyn FileOperation>>);
 

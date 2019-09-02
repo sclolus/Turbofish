@@ -14,6 +14,8 @@ all: $(IMG_DISK)
 	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf /mnt
 	sudo mkdir -p /mnt/bin
 	sudo cp -vrf $(KERNEL_DIRECTORY)/src/userland/* /mnt/bin
+	sudo mkdir -pv /mnt/dev
+	sudo touch /mnt/dev/banane
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 

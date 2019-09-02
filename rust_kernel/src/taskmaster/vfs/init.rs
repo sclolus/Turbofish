@@ -1,5 +1,6 @@
+use super::filesystem::Ext2fs;
 use crate::taskmaster::drivers::{
-    BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance, TtyDevice,
+    BiosInt13hInstance, DiskDriver, DiskWrapper, Driver, IdeAtaInstance, TtyDevice,
 };
 use alloc::format;
 use alloc::sync::Arc;
@@ -15,6 +16,7 @@ use mbr::Mbr;
 
 pub static mut EXT2: Option<Ext2Filesystem> = None;
 
+/// read the mbr form a disk
 fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
     let mut v1 = [0; 512];
@@ -29,7 +31,25 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     unsafe { Mbr::new(&a) }
 }
 
-fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
+/// mount /dev/sda1 on the vfs, WARNING: must be call after ext2 is
+/// mounted on root
+fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
+    let mut current = Current {
+        cwd: DirectoryEntryId::new(2),
+        uid: 0,
+        euid: 0,
+        gid: 0,
+        egid: 0,
+    };
+
+    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
+    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
+        .expect("failed to add new driver sda1 to vfs");
+}
+
+/// bootstrap the ext2 and construct /dev/sda
+fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
     let disk_driver: Arc<DeadMutex<dyn Driver>> = match driver {
@@ -54,23 +74,9 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
         _ => unimplemented!(),
     };
 
-    let mut current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-        open_fds: BTreeMap::new(),
-    };
-    let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
-        .expect("failed to add new driver sda1 to vfs");
-
-    let flags = libc_binding::OpenFlags::O_RDWR;
-
-    let file_operation = vfs
-        .open(&mut current, path, flags, mode)
+    let file_operation = disk_driver
+        .lock()
+        .open()
         .expect("open sda1 failed")
         .expect("disk driver open failed");
 
@@ -78,29 +84,30 @@ fn init_sda(vfs: &mut Vfs, driver: DiskDriverType) {
     unsafe {
         EXT2 = Some(
             //TODO: remove the box
-            Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed"),
+            Ext2Filesystem::new(Box::new(ext2_disk.clone())).expect("ext2 filesystem new failed"),
         );
     }
+    let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
+    let fs_id: FileSystemId = vfs.gen();
+    let ext2fs = Ext2fs::new(ext2, fs_id);
+    vfs.mount_filesystem(Box::new(ext2fs), fs_id, DirectoryEntryId::new(2))
+        .expect("mount filesystem failed");
+
+    // mount /dev/sda on the vfs
+    init_sda(vfs, disk_driver);
     log::info!("/dev/sda initialized");
 }
 
+/// create device /dev/tty on the vfs, WARNING: must be call after
+/// ext2 is mounted on root
 fn init_tty(vfs: &mut Vfs) {
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-
-    let flags = OpenFlags::O_CREAT | OpenFlags::O_DIRECTORY;
-    let path = Path::try_from("/dev").expect("path creation failed");
-
     let mut current = Current {
         cwd: DirectoryEntryId::new(2),
         uid: 0,
         euid: 0,
         gid: 0,
         egid: 0,
-        open_fds: BTreeMap::new(),
     };
-    // println!("{}", path);
-    vfs.open(&mut current, path, flags, mode)
-        .expect("/dev creation failed");
     for i in 1..=4 {
         // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
         let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
@@ -119,9 +126,12 @@ lazy_static! {
     pub static ref VFS: DeadMutex<Vfs> = DeadMutex::new(init());
 }
 
+/// init the vfs
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
+    // we start by bootstraping ext2
+    init_ext2(&mut vfs, DiskDriverType::Bios);
+    // then init tty on /dev/tty
     init_tty(&mut vfs);
-    init_sda(&mut vfs, DiskDriverType::Bios);
     vfs
 }

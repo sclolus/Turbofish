@@ -153,16 +153,16 @@ impl Path {
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct Filename(pub [u8; NAME_MAX as usize], pub usize);
+pub struct Filename(pub [u8; NAME_MAX as usize + 1], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self> {
-        let mut n = [0; NAME_MAX];
+        let mut n = [0; NAME_MAX as usize + 1];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
             return Err(Errno::EINVAL);
         }
-        if s.len() > NAME_MAX || s.len() == 0 {
+        if s.len() > NAME_MAX as usize || s.len() == 0 {
             return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
@@ -178,6 +178,7 @@ impl Filename {
         self.1
     }
 
+    //TODO: unsafe
     pub fn as_str(&self) -> &str {
         unsafe {
             let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, self.1);
@@ -188,7 +189,7 @@ impl Filename {
 
 impl Default for Filename {
     fn default() -> Self {
-        Self([0; NAME_MAX], 0)
+        Self([0; NAME_MAX as usize + 1], 0)
     }
 }
 

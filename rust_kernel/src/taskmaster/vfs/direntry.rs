@@ -13,6 +13,71 @@ pub struct DirectoryEntry {
     pub inode_id: InodeId,
 }
 
+pub struct DirectoryEntryBuilder {
+    filename: Option<Filename>,
+    inner: Option<DirectoryEntryInner>,
+    id: Option<DirectoryEntryId>,
+    parent_id: Option<DirectoryEntryId>,
+    inode_id: Option<InodeId>,
+}
+
+impl DirectoryEntryBuilder {
+    pub fn new() -> Self {
+        Self {
+            filename: None,
+            inner: None,
+            id: None,
+            parent_id: None,
+            inode_id: None,
+        }
+    }
+
+    pub fn set_filename(&mut self, filename: Filename) -> &mut Self {
+        self.filename = Some(filename);
+        self
+    }
+
+    pub fn set_id(&mut self, id: DirectoryEntryId) -> &mut Self {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn set_parent_id(&mut self, parent_id: DirectoryEntryId) -> &mut Self {
+        self.parent_id = Some(parent_id);
+        self
+    }
+
+    pub fn set_inode_id(&mut self, inode_id: InodeId) -> &mut Self {
+        self.inode_id = Some(inode_id);
+        self
+    }
+
+    pub fn set_directory(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::Directory(EntryDirectory::default()));
+        self
+    }
+
+    pub fn set_regular(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::Regular);
+        self
+    }
+
+    pub fn set_symlink(&mut self, path: Path) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::Symlink(path));
+        self
+    }
+
+    pub fn build(self) -> DirectoryEntry {
+        DirectoryEntry {
+            filename: self.filename.expect("no filename given"),
+            inner: self.inner.expect("no inner given"),
+            id: self.id.unwrap_or(DirectoryEntryId::new(0)),
+            parent_id: self.parent_id.unwrap_or(DirectoryEntryId::new(0)),
+            inode_id: self.inode_id.expect("no inode_id given"),
+        }
+    }
+}
+
 impl DirectoryEntry {
     // ---------- BUILDER PATTERN ------------
     pub fn set_filename(&mut self, filename: Filename) -> &mut Self {
@@ -50,12 +115,16 @@ impl DirectoryEntry {
         self
     }
 
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
+        self.inner.set_mounted(on)
+    }
+
     pub fn root_entry() -> Self {
         let mut root_entry = DirectoryEntry::default();
         root_entry
             .set_filename(Filename::try_from("root").unwrap())
             .set_id(DirectoryEntryId::new(2))
-            .set_inode_id(InodeId::new(2, FileSystemId(0))) // change this
+            .set_inode_id(InodeId::new(2, None)) // change this
             .set_directory();
 
         root_entry
@@ -98,10 +167,6 @@ impl DirectoryEntry {
         self.inner.get_mountpoint_entry()
     }
 
-    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
-        self.inner.set_mounted(on)
-    }
-
     pub fn add_entry(&mut self, entry: DirectoryEntryId) -> DcacheResult<()> {
         let directory = self.inner.get_directory_mut()?;
 
@@ -128,7 +193,7 @@ impl Default for DirectoryEntry {
             inner: DirectoryEntryInner::Regular,
             id: DirectoryEntryId::new(0),
             parent_id: DirectoryEntryId::new(0),
-            inode_id: InodeId::new(0, FileSystemId::new(0)),
+            inode_id: InodeId::new(0, None),
         }
     }
 }

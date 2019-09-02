@@ -13,6 +13,9 @@ pub use ipc::Socket;
 pub mod tty;
 pub use tty::TtyDevice;
 
+pub mod file;
+pub use file::{Ext2DriverFile, Ext2FileOperation};
+
 pub mod disk;
 pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
 // pub use disk::DiskDriver;
