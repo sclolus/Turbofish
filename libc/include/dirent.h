@@ -1,27 +1,27 @@
 #ifndef __DIRENT_H__
 # define __DIRENT_H__
 
+#include <sys/types.h>
+//It shall also define the structure dirent which shall include the following members:
+
+#define NAME_MAX 255
+
+struct dirent {
+	ino_t  d_ino;                // File serial number. (typedef of unsigned int) 
+	char   d_name[NAME_MAX + 1]; // Filename string of entry. (NAME_MAX + '\0')
+};
+
 //The internal format of directories is unspecified.
 
 //The <dirent.h> header shall define the following type:
 
-
 typedef struct _DIR {
-	int bonjour_dir;
+	size_t			current_offset;
+	size_t			length;
+	struct dirent	*array;
 } DIR;
 
 //    A type representing a directory stream. The DIR type may be an incomplete type.
-
-//It shall also define the structure dirent which shall include the following members:
-
-#include <sys/types.h>
-
-struct dirent {
-//[XSI][Option Start]
-	ino_t  d_ino   ;//    File serial number. 
-//[Option End]
-	char   d_name[];//    Filename string of entry. 
-};
 
 //[XSI] [Option Start] The <dirent.h> header shall define the ino_t type as described in <sys/types.h>. [Option End]
 

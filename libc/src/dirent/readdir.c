@@ -13,13 +13,21 @@
 // member names a symbolic link, the value of the d_ino member shall
 // be set to the file serial number of the symbolic link itself.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 struct dirent *readdir(DIR *dirp)
 {
-	DUMMY
-	(void)dirp;
-	errno = ENOSYS;
-	return NULL;
+	/*
+	 * On success, readdir() returns a pointer to a dirent structure. (This structure may be statically allocated;
+	 * do not attempt to free(3) it.)
+	 *
+	 * If the end of the directory stream is reached, NULL is returned and errno is not changed.
+	 * If an error occurs, NULL is returned and errno is set appropriately. To distinguish end of stream and from
+	 * an error, set errno to zero before calling readdir() and then check the value of errno if NULL is returned.
+	 */
+	if (dirp->current_offset < dirp->length) {
+		struct dirent *dirent = &(dirp->array[dirp->current_offset]);
+		dirp->current_offset += 1;
+		return dirent;
+	} else {
+		return NULL;
+	}
 }

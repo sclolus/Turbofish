@@ -32,7 +32,8 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/math/roundf"},
 	{.path = "/bin/ctype/longlong"},
 	{.path = "/bin/lseek/sda"},
-	{.path = "/bin/lseek/lseek_return"}
+	{.path = "/bin/lseek/lseek_return"},
+	{.path = "/bin/dirent/dummy_root"},
 };
 
 void _exit_qemu(int val)

@@ -28,7 +28,8 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero strdup \
-	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror
+	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
+	strcoll
 VPATH += src/string
 HEADERS += include/string.h
 
@@ -75,7 +76,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman 
 HEADERS += include/sys/mman.h
 
-SRC_C += mkfifo stat umask fstat lstat
+SRC_C += stat lstat fstat stat64 mkfifo umask
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
@@ -139,6 +140,18 @@ HEADERS += include/setjmp.h
 VPATH += src/math
 SRC_NASM += round
 HEADERS += include/math.h
+
+SRC_C += strsplit array parse_2d_file
+VPATH += src/tools
+HEADERS += include/tools.h
+
+SRC_C += getpwnam getpwuid
+VPATH += src/pwd
+HEADERS += include/pwd.h
+
+SRC_C += getgrnam getgrgid
+VPATH += src/grp
+HEADERS += include/grp.h
 
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 # CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)

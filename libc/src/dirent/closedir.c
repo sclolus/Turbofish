@@ -1,5 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 
 // The closedir() function shall close the directory stream referred
 // to by the argument dirp. Upon return, the value of dirp may no
@@ -7,13 +9,11 @@
 // descriptor is used to implement type DIR, that file descriptor
 // shall be closed.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 int closedir(DIR *dirp)
 {
-	DUMMY
-	(void)dirp;
-	errno = ENOSYS;
-	return -1;
+	if (munmap(dirp->array, dirp->length * sizeof(struct dirent)) < 0) {
+		return -1;
+	}
+	free(dirp);
+	return 0;
 }
