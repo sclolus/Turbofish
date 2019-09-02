@@ -13,6 +13,9 @@ all:
 	make install -C shell
 	cp shell/build/shell $(TARGET_DIR)
 
+	make -C su
+	make install -C su
+
 
 # make -C ./rust/fork_bomb
 # cp ./rust/fork_bomb/fork_bomb $(TARGET_DIR)

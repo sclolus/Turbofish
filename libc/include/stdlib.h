@@ -155,6 +155,7 @@ int           unlockpt(int);
 //[Option End]
 //[CX][Option Start]
 int           unsetenv(const char *);
+int	      clearenv(void);
 //[Option End]
 size_t        wcstombs(char *restrict, const wchar_t *restrict, size_t);
 int           wctomb(char *, wchar_t);

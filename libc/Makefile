@@ -1,24 +1,41 @@
 PATH  := $(PATH):/toolchain_turbofish/cross/bin/
 SHELL := env PATH=$(PATH) /bin/bash
 
-TARGET = libc.a
 SYSROOT = /toolchain_turbofish/sysroot
 
-AS = i686-turbofish-as
-CC = i686-turbofish-gcc
-AR = i686-turbofish-ar
-RANLIB = i686-turbofish-ranlib
+TARGET_UNIT_TESTS= unit-tests
+TARGET_LIBC= libc.a
+ifeq ($(unit-tests),yes)
+	LD_LIBRARY_PATH := /usr/local/lib:$(LD_LIBRARY_PATH)
+	TARGET = $(TARGET_UNIT_TESTS)
+	AS = as
+	CC = gcc
+	AR = ar
+	RANLIB = ranlib
+	CFLAGS += -D UNIT_TESTS -g3 -fsanitize=address
+	ASFLAGS = --32
+	IFLAGS =
+else
+	TARGET = $(TARGET_LIBC)
+	AS = i686-turbofish-as
+	CC = i686-turbofish-gcc
+	AR = i686-turbofish-ar
+	RANLIB = i686-turbofish-ranlib
+	IFLAGS = -Iinclude
+endif
+
 
 # non-turbofish specific program. Use carefully
 NASM = nasm
 
-IFLAGS = -Iinclude
 HEADERS = include/i386.h
 
 VPATH += src
 SRC_C += libc_ctor
 SRC_ASM += user_syscall
 HEADERS += include/user_syscall.h
+
+TESTED_SRC_C= setenv getenv unsetenv clearenv
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
@@ -63,7 +80,8 @@ SRC_C += ctor mem_syscall \
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit exit_qemu atexit getenv abort abs qsort _Exit
+SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
+
 VPATH += src/stdlib
 HEADERS += include/stdlib.h
 
@@ -172,6 +190,7 @@ CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+TESTED_OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(TESTED_SRC_C)))))
 
 # non-turbofish specific
 OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NASM)))))
@@ -183,33 +202,37 @@ OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir
 
 all: $(TARGET) $(OBJ_C_RUNTIME)
 
-$(TARGET): $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
+$(TARGET_LIBC): $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 	$(AR) rc $@ $^
 	$(RANLIB) $@
+
+$(TARGET_UNIT_TESTS): $(TESTED_OBJ_C)
+	$(CC) $(CFLAGS) -o $@ $^ -lcriterion
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(OBJ_DIR)/%.o: %.s Makefile $(HEADERS)
-	$(AS) -o $@ $<
+	$(AS) $(ASFLAGS) -o $@ $<
 
 $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 	$(NASM) -f elf -o $@ $<
 
 # Compile all the C runtime object files
 obj/crt/%.o: src/crt/%.s
-	$(AS) -o $@ $<
+	$(AS) $(ASFLAGS) -o $@ $<
 
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;
 
 fclean: clean
-	rm -fv $(TARGET)
+	rm -fv $(TARGET_LIBC)
+	rm -fv $(TARGET_UNIT_TESTS)
 
 re: fclean all
 
 exec: all
-	./$(TARGET)
+	./$(TARGET_LIBC)
 
 install:
 	cp libc.a $(SYSROOT)/usr/lib/.
