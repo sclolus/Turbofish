@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::convert::TryInto;
 use libc_binding::{dirent, DIR};
 
-use crate::memory::tools::{AllocFlags, NbrPages};
+use crate::memory::tools::AllocFlags;
 
 /// Return directory content in userspace memory
 pub fn sys_opendir(filename: *const c_char, dir: *mut DIR) -> SysResult<u32> {
@@ -37,7 +37,7 @@ pub fn sys_opendir(filename: *const c_char, dir: *mut DIR) -> SysResult<u32> {
         // TODO: Request dirent vector from VFS
         let dirent_vector = get_dirent_vec();
 
-        let size: NbrPages = (dirent_vector.len() * core::mem::size_of::<dirent>()).into();
+        let size = dirent_vector.len() * core::mem::size_of::<dirent>();
 
         println!("size allocated: {:?}", size);
 
