@@ -16,12 +16,12 @@ use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
-    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID,
-    SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND,
-    SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID,
-    WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETEGID, GETEUID, GETGID,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, LSTAT, MMAP,
+    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID,
+    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
+    UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -157,6 +157,15 @@ use fcntl::sys_fcntl;
 
 mod opendir;
 use opendir::sys_opendir;
+
+mod stat;
+use stat::sys_stat;
+
+mod lstat;
+use lstat::sys_lstat;
+
+mod fstat;
+use fstat::sys_fstat;
 /*
  * These below declarations are IPC related
  */
@@ -217,6 +226,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         CLOSE => sys_close(ebx as i32),
         WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),
         UNLINK => sys_unlink(ebx as *const u8),
+        STAT => sys_stat(ebx as *const c_char, ecx as *mut libc_binding::stat),
         EXECVE => sys_execve(
             ebx as *const c_char,
             ecx as *const *const c_char,
@@ -232,6 +242,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETUID => sys_setuid(ebx as uid_t),
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
+        FSTAT => sys_fstat(ebx as Fd, ecx as *mut libc_binding::stat),
         KILL => sys_kill(ebx as i32, ecx as u32),
         PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
         DUP => sys_dup(ebx as u32),
@@ -253,6 +264,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
         GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
+        LSTAT => sys_lstat(ebx as *const c_char, ecx as *mut libc_binding::stat),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),

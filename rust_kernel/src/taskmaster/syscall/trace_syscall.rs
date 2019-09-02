@@ -1,10 +1,10 @@
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, MMAP, MPROTECT,
-    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID, SETGID,
-    SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND,
-    SOCKETCALL, STACK_OVERFLOW, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID,
-    WRITE,
+    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETEGID, GETEUID, GETGID,
+    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, LSTAT, MMAP,
+    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID,
+    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
+    UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -19,7 +19,7 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, off_t, termios, uid_t, Pid, DIR};
+use libc_binding::{gid_t, off_t, stat, termios, uid_t, Pid, DIR};
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -57,6 +57,10 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 "execve({:#?}, {:#?}, {:#?})",
                 ebx as *const c_char, ecx as *const *const c_char, edx as *const *const c_char,
             ),
+            STAT => eprintln!(
+                "stat(filename: {:?}, buf: {:#X?})",
+                ebx as *const c_char, ecx as *mut stat
+            ),
             LSEEK => eprintln!(
                 "lseek(ptr: {:#?}, fd: {:#?}, offset: {:#?}, whence_value: {:#?})",
                 ebx as *mut off_t,
@@ -68,6 +72,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETUID => eprintln!("setuid({:#?})", ebx as uid_t),
             GETUID => eprintln!("getuid()"),
             PAUSE => eprintln!("pause()"),
+            FSTAT => eprintln!("fstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
             KILL => eprintln!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
             PIPE => eprintln!("pipe({:#?})", ebx as *const i32),
             DUP => eprintln!("dup({:#?})", ebx as u32),
@@ -91,6 +96,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SIGSUSPEND => eprintln!("sigsuspend({:#?})", ebx as *const sigset_t),
             GETGROUPS => eprintln!("getgroups({:#?}, {:#?})", ebx as i32, ecx as *mut gid_t),
             SETGROUPS => eprintln!("setgroups({:#?}, {:#?})", ebx as i32, ecx as *const gid_t),
+            LSTAT => eprintln!("lstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
             REBOOT => eprintln!("reboot()"),
             MMAP => unsafe { eprintln!("mmap({:#?})", *(ebx as *const MmapArgStruct)) },
             MUNMAP => eprintln!("munmap({:#?}, {:#?})", Virt(ebx as usize), ecx as usize),
@@ -148,11 +154,13 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         WAITPID => "waitpid",
         UNLINK => "unlink",
         EXECVE => "execve",
+        STAT => "stat",
         LSEEK => "lseek",
         GETPID => "getpid",
         SETUID => "setuid",
         GETUID => "getuid",
         PAUSE => "pause",
+        FSTAT => "fstat",
         KILL => "kill",
         PIPE => "pipe",
         GETGID => "getgid",
@@ -167,6 +175,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         SIGSUSPEND => "sigsuspend",
         GETGROUPS => "getgroups",
         SETGROUPS => "setgroups",
+        LSTAT => "lstat",
         REBOOT => "reboot",
         MMAP => "mmap",
         MUNMAP => "munmap",
