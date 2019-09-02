@@ -29,6 +29,7 @@ SRC_C += DeepThought \
 		lseek/sda \
 		lseek/lseek_return \
 		dirent/dummy_root \
+		read/read_pulp_fiction \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math
 

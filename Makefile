@@ -1,6 +1,6 @@
 KERNEL = rust
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 32768
+IMAGE_SIZE = 62768
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 
@@ -15,7 +15,7 @@ all: $(IMG_DISK)
 	sudo mkdir -p /mnt/bin
 	sudo cp -vrf $(KERNEL_DIRECTORY)/src/userland/* /mnt/bin
 	sudo mkdir -pv /mnt/dev
-	sudo touch /mnt/dev/banane
+	sudo cp pulp_fiction.txt /mnt/
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 

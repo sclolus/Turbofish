@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::result::Result as StdResult;
-use libc_binding::Errno;
+use libc_binding::{c_char, Errno};
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
 
@@ -153,12 +153,12 @@ impl Path {
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct Filename(pub [u8; NAME_MAX as usize + 1], pub usize);
+pub struct Filename(pub [c_char; NAME_MAX as usize + 1], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
     fn try_from(s: &str) -> Result<Self> {
-        let mut n = [0; NAME_MAX as usize + 1];
+        let mut n = [0 as c_char; NAME_MAX as usize + 1];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
             return Err(Errno::EINVAL);
         }
@@ -166,7 +166,7 @@ impl TryFrom<&str> for Filename {
             return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
-                *n = c;
+                *n = c as c_char;
             }
             Ok(Self(n, s.len()))
         }
@@ -181,7 +181,8 @@ impl Filename {
     //TODO: unsafe
     pub fn as_str(&self) -> &str {
         unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, self.1);
+            let slice: &[u8] =
+                core::slice::from_raw_parts(&self.0 as *const c_char as *const u8, self.1);
             core::str::from_utf8_unchecked(slice)
         }
     }

@@ -5,7 +5,7 @@ use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
-use libc_binding::{Errno, NAME_MAX};
+use libc_binding::{c_char, Errno, NAME_MAX};
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
@@ -90,7 +90,7 @@ impl DirectoryEntry {
     /// Get the file name
     pub unsafe fn get_filename(&self) -> &str {
         let slice: &[u8] = core::slice::from_raw_parts(
-            &self.filename.0 as *const u8,
+            &self.filename.0 as *const c_char as *const u8,
             self.header.name_length as usize,
         );
         core::str::from_utf8_unchecked(slice)
@@ -123,7 +123,7 @@ impl DirectoryEntry {
 /// Newtype of filename
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-pub struct Filename(pub [u8; NAME_MAX as usize + 1]);
+pub struct Filename(pub [c_char; NAME_MAX as usize + 1]);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
@@ -133,7 +133,7 @@ impl TryFrom<&str> for Filename {
             return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
-                *n = c;
+                *n = c as c_char;
             }
             Ok(Self(n))
         }
@@ -156,7 +156,10 @@ impl PartialEq for Filename {
 impl fmt::Debug for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {
-            let slice: &[u8] = core::slice::from_raw_parts(&self.0 as *const u8, NAME_MAX as usize);
+            let slice: &[u8] = core::slice::from_raw_parts(
+                &self.0 as *const c_char as *const u8,
+                NAME_MAX as usize,
+            );
             let s = core::str::from_utf8_unchecked(slice);
             write!(f, "{:?}", s)
         }

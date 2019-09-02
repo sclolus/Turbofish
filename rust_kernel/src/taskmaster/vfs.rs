@@ -3,6 +3,7 @@ use super::{IpcResult, SysResult};
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
@@ -32,6 +33,7 @@ use libc_binding::OpenFlags;
 pub mod user;
 pub use user::{Current, GroupId, UserId};
 
+use libc_binding::dirent;
 use libc_binding::Errno;
 use Errno::*;
 
@@ -376,8 +378,7 @@ impl VirtualFileSystem {
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         mount_dir.set_mounted(root_dentry_id)?;
 
-        let root_inode_id = root_inode.id;
-        self.inodes.insert(root_inode_id, root_inode);
+        self.add_inode(root_inode);
 
         // self.recursive_build_subtree(root_dentry_id, fs_id)?;
         self.mounted_filesystems.insert(fs_id, filesystem);
@@ -408,7 +409,28 @@ impl VirtualFileSystem {
         self.mount_filesystem(Box::new(filesystem), fs_id, mount_dir_id)
     }
 
-    // pub fn opendir(&mut self, path: Path) -> VfsResult<Vec<dirent>> {}
+    pub fn opendir(&mut self, current: &mut Current, path: Path) -> VfsResult<Vec<dirent>> {
+        let entry_id = self.pathname_resolution(current.cwd, path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+
+        if entry.get_directory()?.entries().count() == 0 {
+            self.lookup_directory(entry_id)?;
+        }
+        let dir = self.dcache.get_entry(&entry_id)?.get_directory()?;
+        Ok(dir
+            .entries()
+            .map(|e| {
+                let child = self
+                    .dcache
+                    .get_entry(&e)
+                    .expect("entry not found vfs is bullshit");
+                dirent {
+                    d_name: child.filename.0,
+                    d_ino: child.inode_id.inode_number as u32,
+                }
+            })
+            .collect())
+    }
 
     pub fn unlink(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
         use VfsError::*;

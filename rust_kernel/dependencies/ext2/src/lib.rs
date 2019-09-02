@@ -9,8 +9,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-use libc_binding::Errno;
-pub use syscall::OpenFlags;
+use libc_binding::{Errno, FileType, OpenFlags};
 
 mod tools;
 pub use tools::{align_next, align_prev, div_rounded_up, err_if_zero, Block, IoResult};
@@ -20,7 +19,7 @@ mod header;
 use header::{BlockGroupDescriptor, SuperBlock};
 
 mod body;
-pub use body::{DirectoryEntry, DirectoryEntryType, Inode, TypeAndPerm};
+pub use body::{DirectoryEntry, DirectoryEntryType, Inode};
 
 #[cfg(not(feature = "std-print"))]
 #[allow(unused_imports)]
@@ -356,7 +355,7 @@ impl Ext2Filesystem {
     fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<InodeNbr> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::DIRECTORY);
+        let inode = Inode::new(FileType::from_bits_truncate(0o644) | FileType::DIRECTORY);
         self.disk.write_struct(inode_addr, &inode)?;
         let mut new_entry =
             DirectoryEntry::new(filename, DirectoryEntryType::Directory, inode_nbr)?;
@@ -373,7 +372,7 @@ impl Ext2Filesystem {
     ) -> IoResult<InodeNbr> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let inode = Inode::new(TypeAndPerm::from_bits_truncate(0o644) | TypeAndPerm::REGULAR_FILE);
+        let inode = Inode::new(FileType::from_bits_truncate(0o644) | FileType::REGULAR_FILE);
         self.disk.write_struct(inode_addr, &inode)?;
 
         let mut new_entry =
@@ -451,7 +450,7 @@ impl Ext2Filesystem {
     /// iter of the entries of inodes if inode is a directory
     pub fn iter_entries<'a>(&'a mut self, inode: InodeNbr) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
-        if !inode.type_and_perm.contains(TypeAndPerm::DIRECTORY) {
+        if !inode.type_and_perm.contains(FileType::DIRECTORY) {
             return Err(Errno::ENOTDIR);
         }
         Ok(EntryIter {

@@ -1,15 +1,15 @@
 #ifndef _SYS_TYPES_H
 # define _SYS_TYPES_H
 
-#define blkcnt_t int
+typedef int blkcnt_t;
 //    Used for file block counts.
-#define blksize_t int
+typedef int blksize_t;
 //    Used for block sizes.
 #define clock_t int
 //    Used for system times in clock ticks or CLOCKS_PER_SEC; see <time.h>.
 #define clockid_t int
 //    Used for clock ID type in the clock and timer functions.
-#define dev_t int
+typedef int dev_t;
 //    Used for device IDs.
 #define fsblkcnt_t unsigned int
 //    Used for file system block counts.
@@ -19,13 +19,13 @@ typedef unsigned int gid_t;
 //    Used for group IDs.
 #define id_t int
 //    Used as a general identifier; can be used to contain at least a pid_t, uid_t, or gid_t.
-#define ino_t unsigned int
+typedef unsigned int ino_t;
 //    Used for file serial numbers.
 #define key_t int
 //    [XSI] [Option Start] Used for XSI interprocess communication. [Option End]
-#define mode_t int
+typedef int mode_t;
 //    Used for some file attributes.
-#define nlink_t int
+typedef int nlink_t;
 //    Used for link counts.
 typedef long long off_t ;
 //    Used for file sizes.

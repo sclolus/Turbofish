@@ -22,7 +22,7 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{off_t, termios, Errno, Pid, Whence};
+use libc_binding::{off_t, stat, termios, Errno, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -39,6 +39,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
+
+    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
+        Err(Errno::EINVAL)
+    }
 
     fn tcgetattr(&self, _termios_p: &mut termios) -> SysResult<u32> {
         return Err(Errno::ENOTTY);

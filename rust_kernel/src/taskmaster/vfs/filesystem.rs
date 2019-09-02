@@ -59,7 +59,7 @@ use core::default::Default;
 
 impl FileSystem for Ext2fs {
     fn root(&self) -> VfsResult<(DirectoryEntry, Inode)> {
-        let root_inode = self.ext2.lock().root_inode();
+        let _root_inode = self.ext2.lock().root_inode();
 
         let inode_id = InodeId::new(2, Some(self.fs_id));
 
@@ -74,7 +74,7 @@ impl FileSystem for Ext2fs {
 
         let mut inode_data = InodeData::default();
         inode_data.set_id(inode_id);
-        // TODO get more fields from the ext2 inode
+        // TODO get more fields from the ext2 inode (root_inode)
 
         let inode = Inode::new(
             Arc::new(DeadMutex::new(Ext2DriverFile::new(self.ext2.clone(), 2))),
@@ -90,11 +90,12 @@ impl FileSystem for Ext2fs {
         let res = self.ext2.lock().lookup_directory(inode_nbr)?;
         Ok(res
             .into_iter()
-            .filter_map(|(direntry, inode)| {
+            .filter_map(|(direntry, _inode)| {
                 if unsafe { direntry.get_filename() == ".." || direntry.get_filename() == "." } {
                     None
                 } else {
-                    let inode_id = InodeId::new(direntry.get_inode() as usize, Some(self.fs_id));
+                    let inode_nbr = direntry.get_inode();
+                    let inode_id = InodeId::new(inode_nbr as usize, Some(self.fs_id));
 
                     let direntry = {
                         let mut builder = DirectoryEntryBuilder::new();
@@ -118,7 +119,10 @@ impl FileSystem for Ext2fs {
                     // TODO get more fields from the ext2 inode
 
                     let inode = Inode::new(
-                        Arc::new(DeadMutex::new(Ext2DriverFile::new(self.ext2.clone(), 2))),
+                        Arc::new(DeadMutex::new(Ext2DriverFile::new(
+                            self.ext2.clone(),
+                            inode_nbr,
+                        ))),
                         inode_data,
                     );
                     Some((direntry, inode))

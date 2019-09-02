@@ -1,14 +1,11 @@
 //! this module contains methods of the Ext2 which constitute the posix interface
 #![allow(unused_variables)]
+use super::{DirectoryEntry, Inode};
 use crate::tools::IoResult;
 use crate::{Ext2Filesystem, File};
-use core::cmp::min;
-pub mod data;
-use super::{DirectoryEntry, Inode};
 use alloc::vec::Vec;
-pub use data::OpenFlags;
-pub use data::*;
-use libc_binding::Errno;
+use core::cmp::min;
+use libc_binding::{gid_t, mode_t, uid_t, Errno, OpenFlags};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -47,12 +44,6 @@ impl Ext2Filesystem {
             OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC,
             mode,
         )
-    }
-
-    /// The stat() function shall obtain information about the named
-    /// file and write it to the area pointed to by the buf argument.
-    pub fn stat(&mut self, path: &str, buf: &mut Stat) -> IoResult<()> {
-        unimplemented!();
     }
 
     /// The rename() function shall change the name of a file
@@ -145,6 +136,7 @@ impl Ext2Filesystem {
         Ok(())
     }
 
+    //TODO: trash this read
     /// for read syscall
     pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> IoResult<u64> {
         let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
@@ -247,5 +239,62 @@ impl Ext2Filesystem {
     /// return the root inode of the ext2
     pub fn root_inode(&mut self) -> IoResult<Inode> {
         Ok(self.get_inode(2).expect("no inode 2, wtf").0)
+    }
+
+    pub fn read_inode(&mut self, inode_number: u32) -> IoResult<Inode> {
+        Ok(self.get_inode(inode_number)?.0)
+    }
+
+    /// for read syscall
+    pub fn new_read(
+        &mut self,
+        inode_nbr: u32,
+        file_offset: &mut u64,
+        buf: &mut [u8],
+    ) -> IoResult<u64> {
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        let file_curr_offset_start = *file_offset;
+        if *file_offset > inode.get_size() {
+            return Err(Errno::EBADF);
+        }
+        if *file_offset == inode.get_size() {
+            return Ok(0);
+        }
+
+        let data_address = self
+            .inode_data((&mut inode, inode_addr), *file_offset)
+            .unwrap();
+        let offset = min(
+            inode.get_size() - *file_offset,
+            min(
+                self.block_size as u64 - *file_offset % self.block_size as u64,
+                buf.len() as u64,
+            ),
+        );
+        let data_read = self
+            .disk
+            .read_buffer(data_address, &mut buf[0..offset as usize])?;
+        *file_offset += data_read as u64;
+        if data_read < offset {
+            return Ok(*file_offset - file_curr_offset_start);
+        }
+
+        for chunk in buf[offset as usize..].chunks_mut(self.block_size as usize) {
+            let data_address = self
+                .inode_data((&mut inode, inode_addr), *file_offset)
+                .unwrap();
+            let offset = min((inode.get_size() - *file_offset) as usize, chunk.len());
+            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset])?;
+            *file_offset += data_read as u64;
+            if data_read < chunk.len() as u64 {
+                return Ok(*file_offset - file_curr_offset_start);
+            }
+        }
+        Ok(*file_offset - file_curr_offset_start)
+    }
+
+    /// return the block size of ext2
+    pub fn get_block_size(&self) -> u32 {
+        self.block_size
     }
 }

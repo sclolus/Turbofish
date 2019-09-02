@@ -616,3 +616,36 @@ impl TryFrom<u32> for Whence {
         })
     }
 }
+
+bitflags! {
+    #[derive(Default)]
+    pub struct FileType: u16 {
+        const S_IFMT = S_IFMT as u16;
+        const UNIX_SOCKET = S_IFSOCK as u16;
+        const SYMBOLIC_LINK = S_IFLNK as u16;
+        const REGULAR_FILE = S_IFREG as u16;
+        const BLOCK_DEVICE = S_IFBLK as u16;
+        const DIRECTORY = S_IFDIR as u16;
+        const CHARACTER_DEVICE = S_IFCHR as u16;
+        const FIFO = S_IFIFO as u16;
+
+        const SET_USER_ID = S_ISUID as u16;
+        const SET_GROUP_ID = S_ISGID as u16;
+        const STICKY_BIT = S_ISVTX as u16;
+
+        const S_IRWXU = S_IRWXU as u16;
+        const USER_READ_PERMISSION = S_IRUSR as u16;
+        const USER_WRITE_PERMISSION = S_IWUSR as u16;
+        const USER_EXECUTE_PERMISSION = S_IXUSR as u16;
+
+        const S_IRWXG = S_IRWXG as u16;
+        const GROUP_READ_PERMISSION = S_IRGRP as u16;
+        const GROUP_WRITE_PERMISSION = S_IWGRP as u16;
+        const GROUP_EXECUTE_PERMISSION = S_IXGRP as u16;
+
+        const S_IRWXO = S_IRWXO as u16;
+        const OTHER_READ_PERMISSION = S_IROTH as u16;
+        const OTHER_WRITE_PERMISSION = S_IWOTH as u16;
+        const OTHER_EXECUTE_PERMISSION = S_IXOTH as u16;
+    }
+}
