@@ -1,14 +1,11 @@
 //! this module contains methods of the Ext2 which constitute the posix interface
 #![allow(unused_variables)]
+use super::{DirectoryEntry, Inode};
 use crate::tools::IoResult;
 use crate::{Ext2Filesystem, File};
-use core::cmp::min;
-pub mod data;
-use super::{DirectoryEntry, Inode};
 use alloc::vec::Vec;
-pub use data::OpenFlags;
-pub use data::*;
-use libc_binding::{gid_t, mode_t, uid_t, Errno};
+use core::cmp::min;
+use libc_binding::{gid_t, mode_t, uid_t, Errno, OpenFlags};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the

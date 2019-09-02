@@ -10,9 +10,8 @@ use super::thread::ProcessState;
 use alloc::format;
 use alloc::vec::Vec;
 use core::convert::TryInto;
-use ext2::syscall::OpenFlags;
 use fallible_collections::try_vec;
-use libc_binding::Errno;
+use libc_binding::{Errno, OpenFlags};
 
 use crate::taskmaster::vfs::init::EXT2;
 
