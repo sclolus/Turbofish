@@ -19,7 +19,7 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, off_t, termios, uid_t, Pid};
+use libc_binding::{gid_t, off_t, termios, uid_t, Pid, DIR};
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -129,7 +129,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETEGID => eprintln!("setegid({:#?})", ebx as gid_t),
             SETEUID => eprintln!("seteuid({:#?})", ebx as uid_t),
             ISATTY => eprintln!("isatty({:#?})", ebx as u32),
-            OPENDIR => eprintln!("opendir({:#?})", ebx as *const u8),
+            OPENDIR => eprintln!("opendir({:#?}, {:#?})", ebx as *const u8, ecx as *mut DIR),
             _ => eprintln!("unknown syscall()",),
         }
     })

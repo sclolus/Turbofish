@@ -26,7 +26,7 @@ use libc_binding::{
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{gid_t, off_t, termios, uid_t};
+use libc_binding::{gid_t, off_t, termios, uid_t, DIR};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
         ISATTY => sys_isatty(ebx as u32),
-        OPENDIR => sys_opendir(ebx as *const c_char),
+        OPENDIR => sys_opendir(ebx as *const c_char, ecx as *mut DIR),
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),
