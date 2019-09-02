@@ -5,68 +5,7 @@
 
 use bitflags::bitflags;
 
-/// dev number
-pub type dev_t = u32;
-/// inode number
-pub type ino_t = u32;
-/// right mode
-pub type mode_t = u32;
-/// nb link for inode
-pub type nlink_t = u32;
-/// user id
-pub type uid_t = u32;
-/// group id
-pub type gid_t = u32;
-/// offset on a file
-pub type off_t = u64;
-/// time
-pub type time_t = u32;
-
-#[derive(Debug, Copy, Clone)]
-#[repr(C)]
-/// for the stat syscall
-pub struct Stat {
-    /// Device ID of device containing file.
-    st_dev: dev_t,
-    /// File serial number.
-    st_ino: ino_t,
-    /// Mode of file (see below).
-    st_mode: mode_t,
-    /// Number of hard links to the file.
-    st_nlink: nlink_t,
-    /// User ID of file.
-    st_uid: uid_t,
-    /// Group ID of file.
-    st_gid: gid_t,
-    // [XSI][Option Start]
-    // dev_t     st_rdev    Device ID (if file is character or block special).
-    // [Option End]
-    /// For regular files, the file size in bytes.
-    /// For symbolic links, the length in bytes of the
-    /// pathname contained in the symbolic link.
-    st_size: off_t,
-    // [SHM][Option Start]
-    //                      For a shared memory object, the length in bytes.
-    // [Option End]
-    // [TYM][Option Start]
-    //                      For a typed memory object, the length in bytes.
-    // For other file types, the use of this field is
-    // unspecified.
-    // [Option End]
-    /// Time of last access.
-    st_atime: time_t,
-    /// Time of last data modification.
-    st_mtime: time_t,
-    /// Time of last status change.
-    st_ctime: time_t,
-    // [XSI][Option Start]
-    // blksize_t st_blksize A file system-specific preferred I/O block size for
-    //                      this object. In some file system types, this may
-    //                      vary from file to file.
-    // blkcnt_t  st_blocks  Number of blocks allocated for this object.
-    // [Option End]
-}
-
+//TODO: trash that
 bitflags! {
     /// Flags for open syscall
     pub struct OpenFlags : u32 {

@@ -8,7 +8,7 @@ use super::{DirectoryEntry, Inode};
 use alloc::vec::Vec;
 pub use data::OpenFlags;
 pub use data::*;
-use libc_binding::Errno;
+use libc_binding::{gid_t, mode_t, uid_t, Errno};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -47,12 +47,6 @@ impl Ext2Filesystem {
             OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC,
             mode,
         )
-    }
-
-    /// The stat() function shall obtain information about the named
-    /// file and write it to the area pointed to by the buf argument.
-    pub fn stat(&mut self, path: &str, buf: &mut Stat) -> IoResult<()> {
-        unimplemented!();
     }
 
     /// The rename() function shall change the name of a file
@@ -250,6 +244,10 @@ impl Ext2Filesystem {
         Ok(self.get_inode(2).expect("no inode 2, wtf").0)
     }
 
+    pub fn read_inode(&mut self, inode_number: u32) -> IoResult<Inode> {
+        Ok(self.get_inode(inode_number)?.0)
+    }
+
     /// for read syscall
     pub fn new_read(
         &mut self,
@@ -296,5 +294,10 @@ impl Ext2Filesystem {
             }
         }
         Ok(*file_offset - file_curr_offset_start)
+    }
+
+    /// return the block size of ext2
+    pub fn get_block_size(&self) -> u32 {
+        self.block_size
     }
 }

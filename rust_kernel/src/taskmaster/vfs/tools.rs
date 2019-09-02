@@ -122,11 +122,13 @@ where
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum MapperError {
     EntryAlreadyExists,
     NoSuchEntry,
 }
 
+#[allow(dead_code)]
 pub type MapperResult<T> = Result<T, MapperError>;
 
 pub trait Mapper<K, V>: KeyGenerator<K>
