@@ -422,7 +422,7 @@ impl AsMut<Tty> for BufferedTty {
 }
 
 impl BufferedTty {
-    const ESCAPED_BUF_CAPACITY: usize = 256;
+    const ESCAPED_BUF_CAPACITY: usize = 32;
 
     /// Create a new buffered TTY
     pub fn new(tty: Tty) -> Self {
@@ -433,6 +433,11 @@ impl BufferedTty {
         }
     }
 
+    /// This method buffers an unfinished escape sequence and print appropriately.
+    /// It appends `part`, a fragment of the current unfinished sequence inside escape_buf.
+    /// If `complete` is true, after appending, the sequence is considered finished and flushed into the tty.
+    /// Upon error appending the `part`, the current escaped_buf and the part are flushed into the tty.
+    /// The buffer is then truncated to zero.
     #[inline(always)]
     fn sequence_buffering(&mut self, part: &str, complete: bool) -> core::fmt::Result {
         let mut err = self.escaped_buf.try_push_str(part).is_err();
