@@ -4,6 +4,7 @@ use super::Block;
 use crate::tools::IoResult;
 use bitflags::bitflags;
 use core::mem::size_of;
+use libc_binding::FileType;
 
 // Like blocks, each inode has a numerical address. It is extremely important to note that unlike block addresses, inode addresses start at 1.
 
@@ -23,7 +24,7 @@ use core::mem::size_of;
 pub struct Inode {
     /// Type and Permissions (see below)
     /*0 	1       2*/
-    pub type_and_perm: TypeAndPerm,
+    pub type_and_perm: FileType,
     /// User ID
     /*2 	3       2*/
     pub user_id: u16,
@@ -87,7 +88,7 @@ pub struct Inode {
 }
 
 impl Inode {
-    pub fn new(type_and_perm: TypeAndPerm) -> Self {
+    pub fn new(type_and_perm: FileType) -> Self {
         Self {
             //TODO: put the true time
             creation_time: 42,
@@ -98,11 +99,11 @@ impl Inode {
     }
 
     pub fn is_a_directory(&self) -> bool {
-        self.type_and_perm.contains(TypeAndPerm::DIRECTORY)
+        self.type_and_perm.contains(FileType::DIRECTORY)
     }
 
     pub fn is_a_regular_file(&self) -> bool {
-        self.type_and_perm.contains(TypeAndPerm::REGULAR_FILE)
+        self.type_and_perm.contains(FileType::REGULAR_FILE)
     }
 
     pub fn get_size(&self) -> u64 {
@@ -168,33 +169,6 @@ impl Inode {
     }
     pub fn unlink(&mut self) -> IoResult<()> {
         unimplemented!()
-    }
-}
-
-// The type indicator occupies the top hex digit (bits 15 to 12) of this 16-bit field
-// Permissions occupy the bottom 12 bits of this 16-bit field
-bitflags! {
-    #[derive(Default)]
-    pub struct TypeAndPerm: u16 {
-        const FIFO = 0x1000;
-        const CHARACTER_DEVICE = 0x2000;
-        const DIRECTORY = 0x4000;
-        const BLOCK_DEVICE = 0x6000;
-        const REGULAR_FILE = 0x8000;
-        const SYMBOLIC_LINK = 0xA000;
-        const UNIX_SOCKET = 0xC000;
-        const OTHER_EXECUTE_PERMISSION = 0o0001;
-        const OTHER_WRITE_PERMISSION = 0o0002;
-        const OTHER_READ_PERMISSION = 0o0004;
-        const GROUP_EXECUTE_PERMISSION = 0o0010;
-        const GROUP_WRITE_PERMISSION = 0o0020;
-        const GROUP_READ_PERMISSION = 0o0040;
-        const USER_EXECUTE_PERMISSION = 0o0100;
-        const USER_WRITE_PERMISSION = 0o0200;
-        const USER_READ_PERMISSION = 0o0400;
-        const STICKY_BIT = 0o1000;
-        const SET_GROUP_ID = 0o2000;
-        const SET_USER_ID = 0o4000;
     }
 }
 
