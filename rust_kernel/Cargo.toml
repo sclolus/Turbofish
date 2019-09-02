@@ -46,6 +46,14 @@ default-features = false
 version = "1.3.0"
 features = ["spin_no_std"]
 
+[dependencies.arrayvec]
+version = "0.4.11"
+default-features = false
+# std = []
+# array-sizes-33-128 = [true]
+# array-sizes-129-255 = [true]
+
+[dev-dependencies]
 [features]
 exit-on-panic = ["terminal/exit-on-panic"]
 serial-eprintln = ["terminal/serial-eprintln"]

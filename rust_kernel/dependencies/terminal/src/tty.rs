@@ -2,9 +2,9 @@ use super::ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 use super::{Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
-use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use arrayvec::ArrayString;
 use core::fmt::Write;
 
 /// Description of a TTY buffer
@@ -404,7 +404,7 @@ pub struct BufferedTty {
     /// TTY contained
     pub tty: Tty,
     /// contains unfinished escaped sequence, capacity max = 256
-    escaped_buf: String,
+    escaped_buf: ArrayString<[u8; Self::ESCAPED_BUF_CAPACITY]>,
     /// global ipc uid associated to the tty
     pub uid_file_op: Option<usize>,
 }
@@ -421,16 +421,37 @@ impl AsMut<Tty> for BufferedTty {
     }
 }
 
-const ESCAPED_BUF_CAPACITY: usize = 256;
-
 impl BufferedTty {
+    const ESCAPED_BUF_CAPACITY: usize = 256;
+
     /// Create a new buffered TTY
     pub fn new(tty: Tty) -> Self {
         Self {
             tty,
-            escaped_buf: String::with_capacity(ESCAPED_BUF_CAPACITY),
+            escaped_buf: ArrayString::new(),
             uid_file_op: None,
         }
+    }
+
+    #[inline(always)]
+    fn sequence_buffering(&mut self, part: &str, complete: bool) -> core::fmt::Result {
+        let mut err = self.escaped_buf.try_push_str(part).is_err();
+
+        let ret: core::fmt::Result = if err {
+            self.tty
+                .write_str(&self.escaped_buf)
+                .and_then(|_| self.tty.write_str(part))
+        } else if complete {
+            self.tty.write_str(&self.escaped_buf)
+        } else {
+            Ok(())
+        };
+
+        err |= ret.is_err();
+        if err || complete {
+            self.escaped_buf.truncate(0);
+        }
+        ret
     }
 }
 
@@ -438,26 +459,17 @@ impl Write for BufferedTty {
     /// Fill its escaped buf when s has an unfinished escaped sequence
     /// to assure to call write_str on tty with complete escaped sequence.
     fn write_str(&mut self, mut s: &str) -> core::fmt::Result {
-        debug_assert_eq!(self.escaped_buf.capacity(), ESCAPED_BUF_CAPACITY);
-
         let is_ascii_alphabetic = |c: char| c.is_ascii_alphabetic();
 
         if self.escaped_buf.len() != 0 {
             match s.find(is_ascii_alphabetic) {
                 Some(index) => {
                     let (end_escaped, end_s) = s.split_at(index + 1);
-
-                    self.escaped_buf
-                        .write_str(end_escaped)
-                        // If escaped_buf is full, the whole escaped sequence was bullshit.
-                        // so trash it.
-                        .or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
-                    self.tty.write_str(&self.escaped_buf)?;
-                    self.escaped_buf.truncate(0);
+                    self.sequence_buffering(end_escaped, true)?;
                     s = end_s;
                 }
                 None => {
-                    self.escaped_buf.write_str(s).or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
+                    self.sequence_buffering(s, false)?;
                     return Ok(());
                 }
             }
@@ -465,7 +477,7 @@ impl Write for BufferedTty {
 
         if let Some(begin_esc) = s.rfind(CSI) {
             if let None = s[begin_esc..].find(is_ascii_alphabetic) {
-                self.escaped_buf.write_str(&s[begin_esc..]).or_else(|_| Ok(self.escaped_buf.truncate(0)))?;
+                self.sequence_buffering(&s[begin_esc..], false)?;
                 s = &s[..begin_esc];
             }
         }

@@ -14,11 +14,14 @@
 #![feature(type_alias_enum_variants)]
 #![feature(const_vec_new)]
 #![feature(try_trait)]
+#![feature(result_map_or_else)]
 // #![deny(missing_docs)]
 
 extern crate itertools;
 
 extern crate alloc;
+
+extern crate arrayvec;
 
 // Our Crates
 extern crate io;

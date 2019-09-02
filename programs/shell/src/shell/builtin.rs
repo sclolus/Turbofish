@@ -34,6 +34,11 @@ pub fn more_fish(_args: &[&str]) -> u8 {
     0
 }
 
+pub fn broken_fish(_args: &[&str]) -> u8 {
+    fish::broken_fish();
+    0
+}
+
 /// display a very lazy hello world
 pub fn hello_world(_args: &[&str]) -> u8 {
     really_lazy_hello_world();
