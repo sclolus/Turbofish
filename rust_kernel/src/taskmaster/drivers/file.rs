@@ -52,8 +52,6 @@ impl FileOperation for Ext2FileOperation {
             .ext2
             .lock()
             .new_read(self.inode_nbr, &mut self.offset, buf)? as u32;
-        dbg!(unsafe { core::str::from_utf8_unchecked(buf) });
-        dbg!(self.offset);
         Ok(IpcResult::Done(res))
     }
 
