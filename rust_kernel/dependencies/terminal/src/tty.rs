@@ -2,9 +2,9 @@ use super::ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 use super::{Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
-use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use arrayvec::ArrayString;
 use core::fmt::Write;
 
 /// Description of a TTY buffer
@@ -404,7 +404,7 @@ pub struct BufferedTty {
     /// TTY contained
     pub tty: Tty,
     /// contains unfinished escaped sequence, capacity max = 256
-    escaped_buf: String,
+    escaped_buf: ArrayString<[u8; Self::ESCAPED_BUF_CAPACITY]>,
     /// global ipc uid associated to the tty
     pub uid_file_op: Option<usize>,
 }
@@ -421,16 +421,42 @@ impl AsMut<Tty> for BufferedTty {
     }
 }
 
-const ESCAPED_BUF_CAPACITY: usize = 256;
-
 impl BufferedTty {
+    const ESCAPED_BUF_CAPACITY: usize = 32;
+
     /// Create a new buffered TTY
     pub fn new(tty: Tty) -> Self {
         Self {
             tty,
-            escaped_buf: String::with_capacity(ESCAPED_BUF_CAPACITY),
+            escaped_buf: ArrayString::new(),
             uid_file_op: None,
         }
+    }
+
+    /// This method buffers an unfinished escape sequence and print appropriately.
+    /// It appends `part`, a fragment of the current unfinished sequence inside escape_buf.
+    /// If `complete` is true, after appending, the sequence is considered finished and flushed into the tty.
+    /// Upon error appending the `part`, the current escaped_buf and the part are flushed into the tty.
+    /// The buffer is then truncated to zero.
+    #[inline(always)]
+    fn sequence_buffering(&mut self, part: &str, complete: bool) -> core::fmt::Result {
+        let mut err = self.escaped_buf.try_push_str(part).is_err();
+
+        let ret: core::fmt::Result = if err {
+            self.tty
+                .write_str(&self.escaped_buf)
+                .and_then(|_| self.tty.write_str(part))
+        } else if complete {
+            self.tty.write_str(&self.escaped_buf)
+        } else {
+            Ok(())
+        };
+
+        err |= ret.is_err();
+        if err || complete {
+            self.escaped_buf.truncate(0);
+        }
+        ret
     }
 }
 
@@ -438,63 +464,28 @@ impl Write for BufferedTty {
     /// Fill its escaped buf when s has an unfinished escaped sequence
     /// to assure to call write_str on tty with complete escaped sequence.
     fn write_str(&mut self, mut s: &str) -> core::fmt::Result {
-        debug_assert_eq!(self.escaped_buf.capacity(), ESCAPED_BUF_CAPACITY);
-        loop {
-            if self.escaped_buf.len() == 0 {
-                match s.find(CSI) {
-                    Some(i) => match s[i..].find(|c: char| c.is_ascii_alphabetic()) {
-                        Some(mut j) => {
-                            j += i;
-                            self.tty.write_str(&s[..=j])?;
-                            if j + 1 < s.len() {
-                                s = &s[j + 1..];
-                                continue;
-                            }
-                            break Ok(());
-                        }
-                        None => {
-                            if s.len() - i < self.escaped_buf.capacity() {
-                                self.escaped_buf.write_str(&s[i..]).unwrap();
-                                break self.tty.write_str(&s[..i]);
-                            } else {
-                                // if we can't stock escaped sequence, write it on tty
-                                break self.tty.write_str(s);
-                            }
-                        }
-                    },
-                    None => break self.tty.write_str(s),
+        let is_ascii_alphabetic = |c: char| c.is_ascii_alphabetic();
+
+        if self.escaped_buf.len() != 0 {
+            match s.find(is_ascii_alphabetic) {
+                Some(index) => {
+                    let (end_escaped, end_s) = s.split_at(index + 1);
+                    self.sequence_buffering(end_escaped, true)?;
+                    s = end_s;
                 }
-            } else {
-                match s.find(|c: char| c.is_ascii_alphabetic()) {
-                    Some(i) => {
-                        if i + self.escaped_buf.len() < self.escaped_buf.capacity() {
-                            self.escaped_buf.write_str(&s[..=i]).unwrap();
-                            self.tty.write_str(&self.escaped_buf)?;
-                        } else {
-                            // if we can't stock escaped sequence, write it on tty, and truncate escape_buf
-                            self.tty.write_str(&self.escaped_buf)?;
-                            self.tty.write_str(&s[..=i])?;
-                        }
-                        self.escaped_buf.truncate(0);
-                        if i + 1 < s.len() {
-                            s = &s[i + 1..];
-                            continue;
-                        }
-                        break Ok(());
-                    }
-                    None => {
-                        if s.len() + self.escaped_buf.len() < self.escaped_buf.capacity() {
-                            self.escaped_buf.write_str(s).unwrap();
-                        } else {
-                            // if we can't stock escaped sequence, write it on tty, and truncate escape_buf
-                            self.tty.write_str(&self.escaped_buf)?;
-                            self.tty.write_str(s)?;
-                            self.escaped_buf.truncate(0);
-                        }
-                        break Ok(());
-                    }
+                None => {
+                    self.sequence_buffering(s, false)?;
+                    return Ok(());
                 }
             }
         }
+
+        if let Some(begin_esc) = s.rfind(CSI) {
+            if let None = s[begin_esc..].find(is_ascii_alphabetic) {
+                self.sequence_buffering(&s[begin_esc..], false)?;
+                s = &s[..begin_esc];
+            }
+        }
+        self.tty.write_str(s)
     }
 }

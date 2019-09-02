@@ -4,7 +4,7 @@ mod ansi_escape_code;
 use ansi_escape_code::CursorMove;
 
 mod builtin;
-use builtin::{echo, exec, fish, hello_world, ls, more_fish, reboot_computer, shutdown_computer};
+use builtin::{echo, exec, fish, hello_world, ls, more_fish, broken_fish, reboot_computer, shutdown_computer};
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -35,12 +35,13 @@ pub fn shell() -> ! {
 }
 
 /// List of some builtins
-const BUILTINS: [(&str, fn(&[&str]) -> u8); 8] = [
+const BUILTINS: [(&str, fn(&[&str]) -> u8); 9] = [
     ("ls", ls),
     ("echo", echo),
     ("hello_world", hello_world),
     ("fish", fish),
     ("more_fish", more_fish),
+    ("broken_fish", broken_fish),
     ("reboot", reboot_computer),
     ("shutdown", shutdown_computer),
     ("exec", exec),
