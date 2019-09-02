@@ -425,7 +425,7 @@ impl VirtualFileSystem {
                     .get_entry(&e)
                     .expect("entry not found vfs is bullshit");
                 dirent {
-                    d_name: unimplemented!(), // child.filename.0,
+                    d_name: child.filename.0,
                     d_ino: child.inode_id.inode_number as u32,
                 }
             })
