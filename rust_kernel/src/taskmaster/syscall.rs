@@ -10,6 +10,7 @@ use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
 use super::thread_group;
+use super::vfs;
 use super::IpcResult;
 use super::{IntoRawResult, SysResult};
 use crate::ffi::c_char;
