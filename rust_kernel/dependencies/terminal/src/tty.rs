@@ -366,7 +366,15 @@ impl Write for Tty {
                 Str(s) => {
                     for c in s.chars() {
                         match self.write_mode {
-                            WriteMode::Dynamic => self.buf.write_char(c, self.text_color),
+                            WriteMode::Dynamic => {
+                                // Ignore bullshit characters. Transmute into spaces
+                                // TTY may use 0x0 value to delimitate the screen
+                                if c == '\0' {
+                                    self.buf.write_char(' ', self.text_color);
+                                } else {
+                                    self.buf.write_char(c, self.text_color);
+                                }
+                            }
                             WriteMode::Fixed => {
                                 self.buf.fixed_buf[self.cursor.pos.line * self.cursor.nb_columns
                                     + self.cursor.pos.column] = Some((c as u8, self.text_color))
