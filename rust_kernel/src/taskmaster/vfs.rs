@@ -28,7 +28,7 @@ use dcache::Dcache;
 mod inode;
 pub use inode::InodeId;
 use inode::{Inode, InodeData};
-use libc_binding::OpenFlags;
+use libc_binding::{c_char, OpenFlags};
 
 pub mod user;
 pub use user::{Current, GroupId, UserId};
@@ -424,10 +424,13 @@ impl VirtualFileSystem {
                     .dcache
                     .get_entry(&e)
                     .expect("entry not found vfs is bullshit");
-                dirent {
+                let mut d = dirent {
                     d_name: child.filename.0,
                     d_ino: child.inode_id.inode_number as u32,
-                }
+                };
+                // assure the \0 at end of filename
+                d.d_name[child.filename.len()] = '\0' as c_char;
+                d
             })
             .collect())
     }

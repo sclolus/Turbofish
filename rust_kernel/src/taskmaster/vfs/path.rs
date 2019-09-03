@@ -174,6 +174,11 @@ impl TryFrom<&str> for Filename {
 }
 
 impl Filename {
+    pub fn new(mut name: [c_char; NAME_MAX as usize + 1], len: usize) -> Self {
+        // add the \0 at end of filename
+        name[len] = '\0' as c_char;
+        Self(name, len)
+    }
     pub fn len(&self) -> usize {
         self.1
     }
