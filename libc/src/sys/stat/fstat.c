@@ -95,7 +95,6 @@
  */
 int fstat(int fd, struct stat *stat)
 {
-	DUMMY_KERNEL
 	int ret = _user_syscall(FSTAT, 2, fd, stat);
 
 	/*

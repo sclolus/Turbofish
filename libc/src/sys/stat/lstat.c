@@ -53,7 +53,6 @@
  */
 int lstat(const char *restrict pathname, struct stat *restrict stat)
 {
-	DUMMY_KERNEL
 	int ret = _user_syscall(LSTAT, 2, pathname, stat);
 
 	/*
