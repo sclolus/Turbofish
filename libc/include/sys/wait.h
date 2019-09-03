@@ -111,14 +111,14 @@ typedef enum idtype {
 
 pid_t   wait(int *status);
 
-// DUMMY PROTOTYPE
 int     waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
 
 pid_t   waitpid(pid_t pid, int *status, int options);
 
-
 struct rusage;
 
 pid_t wait3(int *wstatus, int options, struct rusage *rusage);
+
+pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage);
 
 #endif

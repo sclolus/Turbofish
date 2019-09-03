@@ -60,3 +60,11 @@ int lstat(const char *restrict pathname, struct stat *restrict stat)
 	 */
 	set_errno_and_return(ret);
 }
+
+/*
+ * Since our off_t structure is encoded in 64 bits, the lstat64() function is the same as lstat()
+ */
+int lstat64(const char *restrict pathname, struct stat64 *restrict stat)
+{
+	return lstat(pathname, (struct stat *restrict)stat);
+}

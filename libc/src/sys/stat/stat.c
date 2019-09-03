@@ -101,3 +101,11 @@ int stat(const char *restrict pathname, struct stat *restrict stat)
 	 */
 	set_errno_and_return(ret);
 }
+
+/*
+ * Since our off_t structure is encoded in 64 bits, the stat64() function is the same as stat()
+ */
+int stat64(const char *restrict pathname, struct stat64 *restrict _stat)
+{
+	return stat(pathname, (struct stat *restrict)_stat);
+}
