@@ -370,7 +370,7 @@ impl Write for Tty {
                                 // Ignore bullshit characters. Transmute into spaces
                                 // TTY may use 0x0 value to delimitate the screen
                                 if c == '\0' {
-                                    self.buf.write_char(' ', self.text_color);
+                                    continue;
                                 } else {
                                     self.buf.write_char(c, self.text_color);
                                 }
@@ -389,6 +389,12 @@ impl Write for Tty {
                                     .unwrap();
                                 self.cursor.forward().map(|line| self.map_line(line));
                             } else {
+                                // clear the old pos of cursor since
+                                // cariage return call will forget the
+                                // position of current cursor
+                                if self.cursor.visible {
+                                    self.clear_cursor();
+                                }
                                 self.cursor.cariage_return().map(|line| self.map_line(line));
                             }
                         }
@@ -396,7 +402,10 @@ impl Write for Tty {
                 }
             }
         }
-        if self.foreground && self.cursor.pos.column != 0 {
+        if self.foreground {
+            if self.cursor.visible {
+                self.draw_cursor();
+            }
             SCREEN_MONAD
                 .lock()
                 .refresh_text_line(self.cursor.pos.line)

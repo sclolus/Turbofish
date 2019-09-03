@@ -87,7 +87,7 @@ impl LineDiscipline {
                 if key as u32 == self.termios.c_cc[VERASE as usize] {
                     if self.read_buffer.pop().is_some() {
                         self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-                        self.tty.write_char('\0').unwrap();
+                        self.tty.write_char(' ').unwrap();
                         self.tty.as_mut().move_cursor(CursorMove::Backward(1));
                     }
                     return Ok(());;
@@ -107,7 +107,7 @@ impl LineDiscipline {
                     for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
                         self.tty
                             .as_mut()
-                            .write_char('\0')
+                            .write_char(' ')
                             .expect("failed to write \0");
                     }
                     self.tty
@@ -176,8 +176,6 @@ impl LineDiscipline {
             }
             if self.termios.c_lflag & ECHO != 0 {
                 self.write(b);
-                self.tty.as_mut().move_cursor(CursorMove::Forward(0));
-                // self.tty.as_mut().draw_cursor();
             }
         }
         Ok(())
