@@ -1007,7 +1007,6 @@ mod vfs {
             euid: 0,
             gid: 0,
             egid: 0,
-            open_fds: BTreeMap::new(),
         }
     }
 
