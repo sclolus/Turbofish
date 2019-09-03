@@ -94,7 +94,6 @@
  */
 int stat(const char *restrict pathname, struct stat *restrict stat)
 {
-	DUMMY_KERNEL
 	int ret = _user_syscall(STAT, 2, pathname, stat);
 
 	/*

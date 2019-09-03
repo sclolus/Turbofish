@@ -41,7 +41,8 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
 
     fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
-        Err(Errno::EINVAL)
+        log::error!("UNIMPLEMENTED: fstat called on a non ext2 file");
+        return Ok(0);
     }
 
     fn tcgetattr(&self, _termios_p: &mut termios) -> SysResult<u32> {
