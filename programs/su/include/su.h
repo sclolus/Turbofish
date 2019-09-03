@@ -10,8 +10,6 @@
 # include <errno.h>
 # include <stdbool.h>
 
-# include "getopt.h" // put this into the libc
-
 # define BIN_NAME "su"
 # define PASSWORD_FILE "/etc/passwd"
 # define SHADOW_FILE "/etc/shadow"

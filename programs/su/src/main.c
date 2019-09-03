@@ -6,15 +6,15 @@ struct	cmd_args    parse_cmd_line(int argc, char **argv) {
 	struct cmd_args	args;
 
 	memset(&args, 0, sizeof(struct cmd_args));
-	while ((opt = _getopt(argc, argv, OPTIONS_GETOPT)) != -1) {
+	while ((opt = getopt(argc, argv, OPTIONS_GETOPT)) != -1) {
 		switch (opt) {
 		case 'c':
 			args.specified_command = true;
-			args.command = g_optarg;
+			args.command = optarg;
 			break;
 		case 's':
 			args.specified_shell = true;
-			args.shell = g_optarg;
+			args.shell = optarg;
 			break;
 		case 'l':
 			args.login_shell = true;
@@ -29,19 +29,21 @@ struct	cmd_args    parse_cmd_line(int argc, char **argv) {
 			err("%s", USAGE);
 		}
 	}
-	if (g_optind == argc) {
+	if (optind == argc) {
 		args.login = "root";
 		args.is_root = true;
 	} else if (optind < argc) {
-		args.login = argv[g_optind];
+		args.login = argv[optind];
 	} else {
 		err("Too many arguments provided");
 	}
 	return args;
 }
 
+extern char **environ;
+
 #if !defined(MAKE_PASS) && !defined(UNIT_TESTS)
-int main(int argc, char **argv, char **env)
+int main(int argc, char **argv)
 {
 	struct cmd_args args = parse_cmd_line(argc, argv);
 
@@ -159,27 +161,36 @@ int main(int argc, char **argv, char **env)
 		used_shell = "/bin/sh";
 	}
 
-	char **av;
+	char **av = malloc(sizeof(char*) * 4);
+
+	if (!av) {
+		err_errno("Failed to allocate memory for arguments");
+	}
 
 	if (args.specified_command) {
-		av = (char*[]){used_shell, "-c", args.command, NULL};
+		// Actually compound literals have the lifetime of the enclosing block o_O
+		/* av = (char*[]){used_shell, "-c", args.command, NULL}; */
+		av[0] = used_shell;
+		av[1] = "-c";
+		av[2] = args.command;
+		av[3] = NULL;
 	} else {
-		av = (char*[]){used_shell, NULL};
+		av[0] = used_shell;
+		av[1] = NULL;
 	}
 
 	if (args.login_shell) {
-		// TODO: clear the whole env except TERM.
-		/* char *term = getenv("TERM"); */
+		char *term = getenv("TERM");
 
-		/* if (term) { */
-		/* 	term = strdup(term); */
-		/* } */
+		if (term) {
+			term = strdup(term);
+		}
 
-		/* clear_environ(); */
+		clearenv();
 
-		/* if (-1 == setenv("TERM", term, true)) { */
-		/* 	err("Failed to setenv(TERM): %s", strerror(errno)); */
-		/* } */
+		if (-1 == setenv("TERM", term, true)) {
+			err("Failed to setenv(TERM): %s", strerror(errno));
+		}
 
 		if (-1 == chdir(entry->user_home_directory)) {
 			warn_errno("Failed to change to target's home directory");
@@ -208,7 +219,8 @@ int main(int argc, char **argv, char **env)
 	// Bzero for security reasons.
 	memset(pentries, 0, sizeof(struct passwd_entry) * n_entries);
 	free(pentries);
-	execve(used_shell, av, env);
+
+	execve(used_shell, av, environ);
 	err_errno("Failed to execute command");
 }
 #endif

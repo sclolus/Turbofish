@@ -47,6 +47,7 @@ int fputc(int c, FILE *stream)
 {
 	unsigned char char_to_write = (unsigned char)c;
 	if (write(stream->fd, &char_to_write, 1) < 0) {
+		stream->error = true;
 		return EOF;
 	} else {
 		return (int)char_to_write;
@@ -69,6 +70,7 @@ int puts(const char *s)
 int fputs(const char *s, FILE *stream)
 {
 	if (write(stream->fd, s, strlen(s)) < 0) {
+		stream->error = true;
 		return EOF;
 	} else {
 		return 0;

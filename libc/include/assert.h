@@ -1,6 +1,6 @@
 #ifndef __ASSERT_H__
 # define __ASSERT_H__
 
-#define assert(ignore)((void) 0)
+# define assert(assertion)(assertion ?: abort())
 
 #endif

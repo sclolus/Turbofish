@@ -1,5 +1,10 @@
-TARGET_DIR = ../rust_kernel/src/userland/
+USERLAND = ../rust_kernel/src/userland/
+TARGET_DIR = $(USERLAND)/bin
 all:
+	mkdir -pv $(USERLAND)
+	mkdir -pv $(USERLAND)/etc
+	mkdir -pv $(TARGET_DIR)
+
 	make -C ./c/
 	make install -C c
 
@@ -41,6 +46,7 @@ all:
 fclean:
 	make fclean -C c
 	make fclean -C system
-	make fclean -C shell
+	# make fclean -C shell uncomment this
+	make fclean -C su
 
 re: fclean all

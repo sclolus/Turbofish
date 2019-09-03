@@ -53,9 +53,9 @@ SRC_C += main \
 	print_memory \
 	passwd \
 	shadow \
-	utils \
-	getopt \
-	getpass
+	utils
+	# getopt \
+	# getpass
 
 HEADERS += include/su.h
 
@@ -86,7 +86,8 @@ $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 install:
-	cp -rv $(TARGET) $(INSTALL_DIR)
+	cp -rv $(TARGET) $(INSTALL_DIR)/bin
+	cp -v $(TEST_DIR)/etc/* $(INSTALL_DIR)/etc
 
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;

@@ -173,10 +173,10 @@ build_libasm_i386:
 build_libft:
 	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
 
-test:
+test: .
 	cargo test --all --target i686-unknown-linux-gnu --features std-print --exclude ext2
 
-test-all:
+test-all: .
 	cargo test --all --target i686-unknown-linux-gnu --features std-print --exclude ext2 --no-fail-fast
 
 $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)

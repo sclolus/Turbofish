@@ -9,7 +9,7 @@
 
 extern char **environ;
 
-static size_t array_size(void **array) { // remove this
+size_t __array_size(void **array) { // remove this
 	size_t i = 0;
 
 	while (array[i]) {
@@ -17,6 +17,8 @@ static size_t array_size(void **array) { // remove this
 	}
 	return i;
 }
+
+#define array_size __array_size
 
 char	**search_env(const char *envname)
 {
@@ -126,6 +128,8 @@ int setenv(const char *envname, const char *envval, int overwrite)
 	}
 	return 0;
 }
+
+#undef array_size
 
 #ifdef UNIT_TESTS
 # include <criterion/criterion.h>

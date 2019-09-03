@@ -4,6 +4,7 @@ IMAGE_SIZE = 62768
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
 
+
 all: $(IMG_DISK)
 	make -C libc
 	make install -C libc
@@ -13,7 +14,7 @@ all: $(IMG_DISK)
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf /mnt
 	sudo mkdir -p /mnt/bin
-	sudo cp -vrf $(KERNEL_DIRECTORY)/src/userland/* /mnt/bin
+	sudo cp -vrf $(KERNEL_DIRECTORY)/src/userland/* /mnt/
 	sudo mkdir -pv /mnt/dev
 	sudo cp pulp_fiction.txt /mnt/
 	sudo umount /mnt

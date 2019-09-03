@@ -22,6 +22,7 @@ else
 	AR = i686-turbofish-ar
 	RANLIB = i686-turbofish-ranlib
 	IFLAGS = -Iinclude
+	ASFLAGS = --32
 endif
 
 

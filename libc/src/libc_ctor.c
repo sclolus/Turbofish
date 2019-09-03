@@ -2,22 +2,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
+
+#define __PRIVATE_USE_ENV_H__
+# include "./stdlib/env.h"
+#undef __PRIVATE_USE_ENV_H__
+
 char **environ;
 
 int errno;
 
-// Eventually remove this?.
-static size_t array_size(void **array) {
-	size_t i = 0;
-
-	while (array[i]) {
-		i++;
-	}
-	return i;
-}
+#define array_size __array_size
 
 void basic_constructor(int argc, char **argv, char **envp) {
+	if (!envp) {
+		handle_null_environ();
+		envp = environ;
+	}
+
 	size_t	env_size = array_size((void **)envp);
+
 	char	**heap_env = malloc(sizeof(char*) * (env_size + 1));
 
 	if (!heap_env) {
@@ -49,3 +53,6 @@ void basic_constructor(int argc, char **argv, char **envp) {
 void basic_destructor(void) {
 	/* puts("*** libc destructor called ***"); */
 }
+
+
+#undef array_size

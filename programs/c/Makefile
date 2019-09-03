@@ -60,7 +60,7 @@ ifeq ($(LDMAP),yes)
 endif
 
 TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
-INSTALL_DIR = ../../rust_kernel/src/userland/
+INSTALL_DIR = ../../rust_kernel/src/userland/bin
 
 .PHONY = all clean fclean re
 

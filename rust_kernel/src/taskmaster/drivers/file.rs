@@ -52,7 +52,6 @@ impl FileOperation for Ext2FileOperation {
             .ext2
             .lock()
             .new_read(self.inode_nbr, &mut self.offset, buf)? as u32;
-
         Ok(IpcResult::Done(res))
     }
 

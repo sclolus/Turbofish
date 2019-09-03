@@ -67,4 +67,4 @@ exec: all
 	./$(TARGET)
 
 install:
-	cp build/$(TARGET) ../../rust_kernel/src/userland/
+	cp build/$(TARGET) ../../rust_kernel/src/userland/bin

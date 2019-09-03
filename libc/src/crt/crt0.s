@@ -19,6 +19,8 @@ _start:
 	# Run the global constructors.
 	call _init
 
+	mov eax, [environ]
+	mov [esp + 8], eax
 	call main
 	add esp, 12
 

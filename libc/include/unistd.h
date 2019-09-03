@@ -26,7 +26,7 @@ extern "C" {
 
 int          dup(int);
 int          dup2(int, int);
-int          execve(const char *, char *const [], char *const []);
+int          execve(const char *, char *const *, char *const *);
 pid_t        fork(void);
 int          pipe(int fd[2]);
 
