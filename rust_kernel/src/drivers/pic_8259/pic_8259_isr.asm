@@ -5,6 +5,7 @@
 
 extern generic_interrupt_handler
 extern keyboard_interrupt_handler
+extern rtc_handler
 
 extern primary_hard_disk_interrupt_handler
 extern secondary_hard_disk_interrupt_handler
@@ -179,7 +180,7 @@ CREATE_ISR MASTER, lpt2, "LPT2", generic_interrupt_handler
 CREATE_ISR MASTER, floppy_disk, "floppy_disk", generic_interrupt_handler
 CREATE_ISR MASTER, lpt1, "lpt1", generic_interrupt_handler ; unreliable, often a spurious interrupt
 
-CREATE_ISR SLAVE, cmos, "CMOS real-time clock", generic_interrupt_handler
+CREATE_ISR SLAVE, cmos, "CMOS real-time clock", rtc_handler
 CREATE_ISR SLAVE, acpi, "ACPI", generic_interrupt_handler
 CREATE_ISR SLAVE, ps2_mouse, "PS/2 mouse", generic_interrupt_handler
 CREATE_ISR SLAVE, fpu_coproc, "FPU / Coproc / inter-processor", generic_interrupt_handler

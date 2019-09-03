@@ -1,9 +1,12 @@
 //! This files contains the code related to the 8259 Programmable interrupt controller.
-//! See [PIC](https://wiki.osdev.org/PIC)
+//! See [PIC](https://wiki.osdev.org/PIC).
+//! See https://pdos.csail.mit.edu/6.828/2012/readings/hardware/8259A.pdf (Intel specification).
+
 mod pic_8259_isr;
 use crate::Spinlock;
 use bit_field::BitField;
 use io::{Io, Pio};
+use itertools::unfold;
 use lazy_static::lazy_static;
 use pic_8259_isr::*;
 
@@ -20,6 +23,8 @@ pub struct Pic {
 
     /// The PIC's data port.
     data: Pio<u8>,
+
+    configuration: Option<ICWs>,
 }
 
 impl Pic {
@@ -40,6 +45,7 @@ impl Pic {
         Pic {
             command: Pio::new(port),
             data: Pio::new(port + 1),
+            configuration: None,
         }
     }
 
@@ -60,6 +66,313 @@ impl Pic {
     /// Setting it will disable all the slave's interrupts.
     pub unsafe fn set_interrupt_mask(&mut self, mask: u8) {
         self.data.write(mask)
+    }
+
+    pub fn configure(&mut self, config: ICWs) {
+        assert!(config.is_complete());
+        println!("ICW1: {:x}", config.icw1.unwrap().byte);
+        println!("ICW2: {:x}", config.icw2.unwrap().byte);
+        println!("ICW3: {:x}", config.icw3.unwrap().byte);
+        println!("ICW4: {:x}", config.icw4.unwrap().byte);
+
+        self.command.write(config.icw1.unwrap().byte);
+        self.data.write(config.icw2.unwrap().byte);
+        self.data.write(config.icw3.unwrap().byte);
+        self.data.write(config.icw4.unwrap().byte);
+        self.configuration = Some(config);
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ICW1 {
+    byte: u8,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum TriggeringMode {
+    Level,
+    Edge,
+}
+
+impl ICW1 {
+    pub fn new() -> Self {
+        // Bit 4 must be set.
+        Self { byte: 0b10000 }
+    }
+
+    /// If set, this flag indicates that the initialization procedure will require
+    /// a fourth Initialization Control Word.
+    pub fn set_icw4_needed(mut self, value: bool) -> Self {
+        self.byte.set_bit(0, value);
+        self
+    }
+
+    pub fn get_icw4_needed(mut self) -> bool {
+        self.byte.get_bit(0)
+    }
+
+    /// If `value` is true, then single mode is activated.
+    /// Otherwise, cascading mode is activated.
+    pub fn set_single_mode(mut self, value: bool) -> Self {
+        self.byte.set_bit(1, value);
+        self
+    }
+
+    /// Sets the call address interval to 4 if `value` is true.
+    /// Sets it to 8 otherwise.
+    pub fn set_call_address_interval(mut self, value: bool) -> Self {
+        self.byte.set_bit(2, value);
+        self
+    }
+
+    /// Sets the triggering mode of the PIC to `mode`.
+    pub fn set_triggering_mode(mut self, mode: TriggeringMode) -> Self {
+        self.byte.set_bit(3, mode == TriggeringMode::Level);
+        self
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PICKind {
+    Master,
+    Slave,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ICW2 {
+    byte: u8,
+}
+
+impl ICW2 {
+    pub fn new() -> Self {
+        Self { byte: 0 }
+    }
+
+    pub fn set_interrupt_vector(mut self, mut vector: u8) -> Self {
+        // The 3 lowest bits are not used in 8086/8088-mode.
+
+        // vector >>= 3;
+        // self.byte.set_bits(3..=7, vector);
+        self.byte = vector;
+        self
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ICW3 {
+    kind: PICKind,
+    byte: u8,
+    cascaded_lines: u8,
+}
+
+impl ICW3 {
+    pub fn new(kind: PICKind) -> Self {
+        Self {
+            kind,
+            byte: 0,
+            cascaded_lines: 0,
+        }
+    }
+
+    pub fn set_cascaded_line(mut self, line: usize, value: bool) -> Self {
+        if self.kind == PICKind::Slave {
+            panic!("Tried to set some irq line as cascade for a slave PIC");
+        } else if line > 7 {
+            panic!("Invalid irq line number provided");
+        }
+
+        self.cascaded_lines += 1;
+        self.byte.set_bit(line, value);
+        self
+    }
+
+    pub fn set_slave_identity(mut self, id: u8) -> Self {
+        if self.kind == PICKind::Master {
+            panic!("Tried to set slave identity for a Master PIC");
+        } else if id > 7 {
+            panic!("Invalid slave id: {}", id);
+        }
+
+        self.byte = id;
+        self
+    }
+
+    pub fn cascaded_lines(&self) -> usize {
+        if self.kind == PICKind::Slave {
+            panic!("Only a PIC master can have cascaded lines"); // check this
+        }
+        self.cascaded_lines as usize
+    }
+
+    pub fn pic_kind(&self) -> PICKind {
+        self.kind
+    }
+
+    // set slave id
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ICW4 {
+    byte: u8,
+}
+
+pub enum BufferingMode {
+    NotBuffered,
+    SlaveBuffered,
+    MasterBuffered,
+}
+
+impl ICW4 {
+    pub fn new() -> Self {
+        Self {
+            // We only support the 8086/8088-mode
+            byte: 0b1,
+        }
+    }
+
+    pub fn set_automatic_eio(mut self, value: bool) -> Self {
+        self.byte.set_bit(1, value);
+        self
+    }
+
+    pub fn set_buffering_mode(mut self, mode: BufferingMode) -> Self {
+        use BufferingMode::*;
+
+        let value = match mode {
+            NotBuffered => 0b00,
+            SlaveBuffered => 0b10,
+            MasterBuffered => 0b11,
+        };
+
+        self.byte.set_bits(2..=3, value);
+        self
+    }
+
+    pub fn set_special_fully_nested_mode(mut self, value: bool) -> Self {
+        self.byte.set_bit(4, value);
+        self
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct ICWs {
+    icw1: Option<ICW1>,
+    icw2: Option<ICW2>,
+    icw3: Option<ICW3>,
+    icw4: Option<ICW4>,
+}
+
+impl ICWs {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push_icw1(mut self, icw: ICW1) -> Self {
+        self.icw1 = Some(icw);
+        self
+    }
+
+    pub fn push_icw2(mut self, icw: ICW2) -> Self {
+        self.icw2 = Some(icw);
+        self
+    }
+
+    pub fn push_icw3(mut self, icw: ICW3) -> Self {
+        self.icw3 = Some(icw);
+        self
+    }
+
+    pub fn push_icw4(mut self, icw: ICW4) -> Self {
+        if !self.icw4_needed() {
+            panic!("Icw4_needed flag was not set in icw1");
+        }
+        self.icw4 = Some(icw);
+        self
+    }
+
+    fn icw4_needed(&self) -> bool {
+        self.icw1.expect("Icw1 was not provided").get_icw4_needed()
+    }
+
+    pub fn pic_kind(&self) -> PICKind {
+        self.icw3.expect("Icw3 was not provided").pic_kind()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.icw1.is_some()
+            && self.icw2.is_some()
+            && self.icw3.is_some()
+            && (!self.icw4_needed() || self.icw4.is_some())
+    }
+
+    pub fn cascaded_lines(&self) -> usize {
+        assert_eq!(self.pic_kind(), PICKind::Master);
+        self.icw3.unwrap().cascaded_lines()
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct PicConfiguration {
+    configurations: [Option<ICWs>; 8],
+    nbr_pics: usize,
+    master_index: Option<usize>,
+}
+
+impl PicConfiguration {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_pic_configuration(&mut self, config: ICWs) -> &mut Self {
+        if self.nbr_pics == 8 {
+            panic!("A master pic can only be cascaded with a maximum of 8 slaves");
+        }
+
+        if !config.is_complete() {
+            panic!("Pic Configuration must be complete");
+        }
+
+        if config.pic_kind() == PICKind::Master {
+            assert!(
+                self.master_index.is_none(),
+                "There can only be one master PIC"
+            );
+            self.master_index = Some(self.nbr_pics);
+        }
+
+        self.configurations[self.nbr_pics] = Some(config);
+        self.nbr_pics += 1;
+        self
+    }
+
+    pub fn has_master(&self) -> bool {
+        self.master_index.is_some()
+    }
+
+    pub fn get_master(&self) -> &ICWs {
+        assert!(self.has_master(), "No PIC master were found.");
+        self.configurations[self.master_index.unwrap()]
+            .as_ref()
+            .unwrap()
+    }
+
+    pub fn nbr_pics(&self) -> usize {
+        self.nbr_pics
+    }
+
+    pub fn is_complete(&self) -> bool {
+        return self.nbr_pics != 0
+            && self.has_master()
+            && self.get_master().cascaded_lines() == self.nbr_pics.checked_sub(1).unwrap_or(0);
+    }
+
+    pub fn slaves<'a>(&'a self) -> impl Iterator<Item = ICWs> + 'a {
+        let mut slaves = self
+            .configurations
+            .iter()
+            .filter_map(|&c| c)
+            .filter(|&c| c.pic_kind() == PICKind::Slave);
+        unfold((), move |_| slaves.next())
     }
 }
 
@@ -206,6 +519,56 @@ impl Pic8259 {
         self.bios_imr != None
     }
 
+    pub fn default_pit_configuration() -> PicConfiguration {
+        use PICKind::*;
+
+        let master_icw1 = ICW1::new().set_icw4_needed(true);
+        let master_icw2 = ICW2::new().set_interrupt_vector(KERNEL_PIC_MASTER_IDT_VECTOR);
+        let master_icw3 = ICW3::new(Master).set_cascaded_line(2, true);
+        let master_icw4 = ICW4::new();
+
+        let master_icws = ICWs::new()
+            .push_icw1(master_icw1)
+            .push_icw2(master_icw2)
+            .push_icw3(master_icw3)
+            .push_icw4(master_icw4);
+
+        let slave_icw1 = ICW1::new().set_icw4_needed(true);
+        let slave_icw2 = ICW2::new().set_interrupt_vector(KERNEL_PIC_SLAVE_IDT_VECTOR);
+        let slave_icw3 = ICW3::new(Slave).set_slave_identity(2);
+        let slave_icw4 = ICW4::new();
+
+        let slave_icws = ICWs::new()
+            .push_icw1(slave_icw1)
+            .push_icw2(slave_icw2)
+            .push_icw3(slave_icw3)
+            .push_icw4(slave_icw4);
+
+        let mut configuration = PicConfiguration::new();
+
+        configuration
+            .add_pic_configuration(master_icws)
+            .add_pic_configuration(slave_icws);
+
+        configuration
+    }
+
+    pub fn initialize(&mut self, pic_configuration: PicConfiguration) {
+        assert!(pic_configuration.is_complete());
+        assert!(
+            pic_configuration.nbr_pics() == 2,
+            "Currently only one master and one slave are supported"
+        );
+
+        let master_conf = pic_configuration.get_master();
+        let mut slaves_confs = pic_configuration.slaves();
+
+        self.master.configure(*master_conf);
+        for slave_conf in slaves_confs {
+            self.slave.configure(slave_conf);
+        }
+    }
+
     /// Initialize the PICs with `offset_1` as the vector offset for self.master
     /// and `offset_2` as the vector offset for self.slave.
     /// Which means that the vectors for self.master are now: offset_1..=offset_1+7
@@ -222,8 +585,8 @@ impl Pic8259 {
         self.slave.data.write(0b10); // This tells the self.slave its cascade identity
 
         // thoses 2 calls set the 8086/88 (MCS-80/85) mode for self.master and self.slave.
-        self.master.data.write(1);
-        self.slave.data.write(1);
+        self.master.data.write(0b1);
+        self.slave.data.write(0b1);
     }
 
     /// This function will set the bit `irq`.

@@ -7,9 +7,12 @@ mod pci;
 pub use pci::PCI;
 
 pub mod pic_8259;
-pub use pic_8259::PIC_8259;
+pub use pic_8259::{Pic8259, PIC_8259};
 
 pub mod pit_8253;
 pub use pit_8253::PIT0;
 
 pub mod storage;
+
+pub mod nmi;
+pub use nmi::Nmi;
