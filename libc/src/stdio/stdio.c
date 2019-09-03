@@ -66,7 +66,7 @@ int puts(const char *s)
  */
 int fputs(const char *s, FILE *stream)
 {
-	if (write(stream->fd, s, strlen(s)) < 0 || write(stream->fd, "\n", 1) < 0) {
+	if (write(stream->fd, s, strlen(s)) < 0) {
 		return EOF;
 	} else {
 		return 0;
@@ -98,12 +98,10 @@ int fclose(FILE *stream)
 
 int putc_unlocked(int c, FILE *stream)
 {
-	DEBUG
 	return putc(c, stream);
 }
 
 int putchar_unlocked(int c)
 {
-	DEBUG
-	return putc(c, stdout);
+	return putchar(c);
 }
