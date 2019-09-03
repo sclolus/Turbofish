@@ -100,7 +100,7 @@ impl FileSystem for Ext2fs {
                     let direntry = {
                         let mut builder = DirectoryEntryBuilder::new();
                         builder
-                            .set_filename(Filename(
+                            .set_filename(Filename::new(
                                 direntry.filename.0,
                                 direntry.header.name_length as usize,
                             ))
