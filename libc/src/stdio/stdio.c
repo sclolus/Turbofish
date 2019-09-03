@@ -3,13 +3,13 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-FILE _stderr = { .fd = 2, .eof = false, .error = false };
+FILE _stderr = { .fd = STDERR_FILENO, .eof = false, .error = false };
 FILE *stderr = &_stderr;
 
-FILE _stdout = { .fd = 1, .eof = false, .error = false  };
+FILE _stdout = { .fd = STDOUT_FILENO, .eof = false, .error = false  };
 FILE *stdout = &_stdout;
 
-FILE _stdin = { .fd = 0, .eof = false, .error = false  };
+FILE _stdin = { .fd = STDIN_FILENO, .eof = false, .error = false  };
 FILE *stdin = &_stdin;
 
 /*

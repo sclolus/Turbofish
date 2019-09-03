@@ -46,7 +46,7 @@ all:
 fclean:
 	make fclean -C c
 	make fclean -C system
-	# make fclean -C shell uncomment this
+	make fclean -C shell
 	make fclean -C su
 
 re: fclean all

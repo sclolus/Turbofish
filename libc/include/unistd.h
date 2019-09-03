@@ -150,6 +150,18 @@ int pause(void);
 int reboot(void);
 /* int shutdown(void); */
 
+/* File number of stderr; 2. */
+#define	STDERR_FILENO 2
+
+/* File number of stdout; 1. */
+#define STDIN_FILENO 1
+
+/* File number of stdin; 0. */
+#define STDOUT_FILENO 0
+
+
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -54,8 +54,6 @@ SRC_C += main \
 	passwd \
 	shadow \
 	utils
-	# getopt \
-	# getpass
 
 HEADERS += include/su.h
 

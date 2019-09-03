@@ -1,8 +1,6 @@
 #include "main_headers.h"
 #include <string.h>
-
-#define STDOUT_FILENO 1
-#define SIZE_MAX 4294967295
+#include <unistd.h>
 
 //pthread_mutex_t g_mut = PTHREAD_MUTEX_INITIALIZER;
 

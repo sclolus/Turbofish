@@ -463,7 +463,7 @@
  *     Number of bits in an object of type long.
  *     Minimum Acceptable Value: 32 [Option End]
  */
-#define	LONG_MAX	((long)(ULONG_MAX >> 1))
+#define	LONG_MAX	0x7FFFFFFF /* ((long)(ULONG_MAX >> 1)) */
     /*
 	 * Maximum value for an object of type long.
      * Minimum Acceptable Value: +2 147 483 647
@@ -478,7 +478,7 @@
 	 * Maximum value for an object of type unsigned char.
      * [CX] [Option Start] Value: 255 [Option End]
 	 */
-#define	UINT_MAX	((unsigned int)(~0L))
+#define	UINT_MAX	/* ~0U */ 0xFFFFFFFF
     /*
 	 * Maximum value for an object of type unsigned.
      * [CX] [Option Start] Minimum Acceptable Value: 4 294 967 295 [Option End]
@@ -488,7 +488,7 @@
 	 * Maximum value for an object of type unsigned long long.
      * Minimum Acceptable Value: 18446744073709551615
 	 */
-#define	ULONG_MAX	((unsigned long)(~0L))
+#define	ULONG_MAX	~0UL
     /*
 	 * Maximum value for an object of type unsigned long.
      * Minimum Acceptable Value: 4 294 967 295
@@ -497,6 +497,10 @@
  * {MB_LEN_MAX}
  *     Maximum number of bytes in a character, for any supported locale.
  *     Minimum Acceptable Value: 1
+ */
+#define  MB_LEN_MAX 8
+
+/*
  * {SCHAR_MAX}
  *     Maximum value for an object of type signed char.
  *     [CX] [Option Start] Value: +127 [Option End]

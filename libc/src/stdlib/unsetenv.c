@@ -7,6 +7,8 @@
 # include "env.h"
 #undef __PRIVATE_USE_ENV_H__
 
+# define array_size __array_size
+
 extern char **environ;
 
 int unsetenv(const char *name)
@@ -49,5 +51,5 @@ Test(unsetenv, basic) {
 	cr_assert_eq(getenv(key), NULL);
 }
 
-
+#undef array_size
 #endif /* UNIT_TESTS */

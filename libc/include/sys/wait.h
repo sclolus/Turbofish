@@ -1,7 +1,6 @@
 #ifndef __WAIT_H__
 # define __WAIT_H__
 
-#include <i386.h>
 
 #include <sys/types.h>
 /*
@@ -36,7 +35,7 @@
 #define WUNTRACED     0x2 /* tell about stopped, untraced children */
 #define WCONTINUED    0x4 /* tell me about continued */
 
-/* 
+/*
  * returns the exit status of the child.  This consists of the least
  * significant 8 bits of the status argument that the child specified
  * in a call to exit(3) or _exit(2) or as the argument for a return
@@ -50,7 +49,7 @@
 #define WIFSIGNALED(status) \
 	((((status) & SIGNALED_STATUS_BITS) > 0))
 
-/* 
+/*
  * returns the number of the signal that caused the child process to
  * terminate. This macro should be employed only if WIFSIGNALED returned
  * true.

@@ -1,5 +1,5 @@
 #include <string.h>
-#include <i386.h>
+#include <stdint.h>
 
 /*
 ** XXX This function is not secure ! Only size multiplied by 4 works !

@@ -29,7 +29,7 @@ endif
 # non-turbofish specific program. Use carefully
 NASM = nasm
 
-HEADERS = include/i386.h
+HEADERS =
 
 VPATH += src
 SRC_C += libc_ctor

@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
-#include <i386.h>
+#include <stdbool.h>
 
 static int maxExponent = 511;	/* Largest possible base 10 exponent.  Any
 								 * exponent larger than this will already
@@ -134,7 +134,7 @@ char **endPtr;		/* If non-NULL, store terminating character's
 	 * If the mantissa has more than 18 digits, ignore the extras, since
 	 * they can't affect the value anyway.
 	 */
-	
+
 	pExp  = p;
 	p -= mantSize;
 	if (decPt < 0) {
@@ -216,7 +216,7 @@ char **endPtr;		/* If non-NULL, store terminating character's
 	 * many powers of 2 of 10. Then combine the exponent with the
 	 * fraction.
 	 */
-	
+
 	if (exp < 0) {
 		expSign = true;
 		exp = -exp;

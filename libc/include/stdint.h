@@ -59,6 +59,16 @@ typedef unsigned short	uint16_t;
 typedef unsigned int	uint32_t;
 
 
+typedef signed char s8;
+typedef unsigned char u8;
+typedef signed short s16;
+typedef unsigned short u16;
+typedef signed int s32;
+typedef unsigned int u32;
+
+/* #define U32_MAX 4294967295 */
+
+
 #if __WORDSIZE == 64
 typedef signed long int	    int64_t;
 typedef unsigned long int   uint64_t;
@@ -245,7 +255,7 @@ typedef unsigned int		uintptr_t;
 # else
 #  define SIZE_MAX              (size_t)(~0U)
 # endif
-# define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL))
+/* # define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL)) */
 
 //
 //     {SIZE_MAX}
