@@ -24,8 +24,6 @@
 
 char *getcwd(char *buf, size_t size)
 {
-	DUMMY
-
 	int ret = _user_syscall(GETCWD, 2, buf, size);
 	if (ret < 0) {
 		errno = -ret;

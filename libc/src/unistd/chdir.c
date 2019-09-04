@@ -12,8 +12,6 @@
 
 int chdir(const char *path)
 {
-	DUMMY
-
 	int ret = _user_syscall(CHDIR, 1, path);
 	set_errno_and_return(ret);
 }
