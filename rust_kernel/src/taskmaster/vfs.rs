@@ -179,6 +179,12 @@ impl VirtualFileSystem {
         let mut components = pathname.components();
         let mut was_symlink = false;
         let mut current_entry = self.dcache.get_entry(&current_dir_id)?;
+
+        // quick fix, this handle / mount point
+        if current_entry.is_mounted()? {
+            current_dir_id = current_entry.get_mountpoint_entry()?;
+            current_entry = self.dcache.get_entry(&current_dir_id)?;
+        }
         for component in components.by_ref() {
             if current_entry.is_mounted()? {
                 current_dir_id = current_entry.get_mountpoint_entry()?;
