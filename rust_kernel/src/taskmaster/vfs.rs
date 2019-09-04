@@ -34,9 +34,6 @@ pub use inode::InodeId;
 use inode::{Inode, InodeData};
 use libc_binding::OpenFlags;
 
-pub mod user;
-pub use user::{Current, GroupId, UserId};
-
 use libc_binding::c_char;
 use libc_binding::dirent;
 use libc_binding::Errno;
@@ -1036,16 +1033,6 @@ impl Mapper<FileSystemId, Box<dyn FileSystem>> for VirtualFileSystem {
 
 #[cfg(test)]
 mod vfs {
-
-    fn default_current() -> Current {
-        Current {
-            cwd: DirectoryEntryId::new(2),
-            uid: 0,
-            euid: 0,
-            gid: 0,
-            egid: 0,
-        }
-    }
 
     use super::*;
     // rename this
