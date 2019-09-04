@@ -1,7 +1,20 @@
+use super::scheduler::SCHEDULER;
 use super::SysResult;
 
 use libc_binding::c_char;
 
-pub fn sys_access(_path: *const c_char, _amode: i32) -> SysResult<u32> {
-    unimplemented!()
+pub fn sys_access(path: *const c_char, _amode: i32) -> SysResult<u32> {
+    unpreemptible_context!({
+        let mut scheduler = SCHEDULER.lock();
+
+        let _safe_path = {
+            let v = scheduler
+                .current_thread_mut()
+                .unwrap_process_mut()
+                .get_virtual_allocator();
+
+            v.make_checked_str(path)?
+        };
+        unimplemented!()
+    })
 }

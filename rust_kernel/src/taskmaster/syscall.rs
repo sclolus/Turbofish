@@ -258,7 +258,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ebx as *const libc_binding::c_char,
             ecx as *const libc_binding::c_char,
         ),
-        UNLINK => sys_unlink(ebx as *const u8),
+        UNLINK => sys_unlink(ebx as *const libc_binding::c_char),
         STAT => sys_stat(
             ebx as *const libc_binding::c_char,
             ecx as *mut libc_binding::stat,
