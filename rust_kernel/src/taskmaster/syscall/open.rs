@@ -2,13 +2,11 @@
 
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
 use super::IpcResult;
-
-use core::convert::TryInto;
+use libc_binding::c_char;
 
 /// Open a new file descriptor
 // TODO: Manage with the third argument
@@ -22,16 +20,7 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
-            // Check if pointer exists in user virtual address space
-            // TODO: It will be usefull if a function returns a &str instead a CString
-            let c_string: CString = (&v, filename).try_into()?;
-
-            unsafe {
-                core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                    filename as *const u8,
-                    c_string.len(),
-                ))
-            }
+            v.make_checked_str(filename)?
         };
 
         let tg = scheduler.current_thread_group_mut();

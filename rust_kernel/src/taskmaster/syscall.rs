@@ -248,7 +248,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
         // TODO: type parameter are not set and manage the third argument
-        OPEN => sys_open(ebx as *const c_char, ecx as u32 /* edx as u32 */),
+        OPEN => sys_open(
+            ebx as *const libc_binding::c_char,
+            ecx as u32, /* edx as u32 */
+        ),
         CLOSE => sys_close(ebx as i32),
         WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),
         LINK => sys_link(
@@ -256,13 +259,16 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ecx as *const libc_binding::c_char,
         ),
         UNLINK => sys_unlink(ebx as *const u8),
-        STAT => sys_stat(ebx as *const c_char, ecx as *mut libc_binding::stat),
+        STAT => sys_stat(
+            ebx as *const libc_binding::c_char,
+            ecx as *mut libc_binding::stat,
+        ),
         EXECVE => sys_execve(
             ebx as *const c_char,
             ecx as *const *const c_char,
             edx as *const *const c_char,
         ),
-        CHDIR => sys_chdir(ebx as *const c_char),
+        CHDIR => sys_chdir(ebx as *const libc_binding::c_char),
         CHMOD => sys_chmod(ebx as *const libc_binding::c_char, ecx as mode_t),
         LSEEK => sys_lseek(
             ebx as *mut off_t,
@@ -303,7 +309,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
         GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
-        LSTAT => sys_lstat(ebx as *const c_char, ecx as *mut libc_binding::stat),
+        LSTAT => sys_lstat(
+            ebx as *const libc_binding::c_char,
+            ecx as *mut libc_binding::stat,
+        ),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),
@@ -335,7 +344,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
         ISATTY => sys_isatty(ebx as u32),
-        OPENDIR => sys_opendir(ebx as *const c_char, ecx as *mut DIR),
+        OPENDIR => sys_opendir(ebx as *const libc_binding::c_char, ecx as *mut DIR),
         IS_STR_VALID => sys_is_str_valid(ebx as *const libc_binding::c_char),
 
         // set thread area: WTF

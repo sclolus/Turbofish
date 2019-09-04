@@ -1,10 +1,9 @@
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::SCHEDULER;
 
 use core::convert::TryFrom;
-use core::convert::TryInto;
+use libc_binding::c_char;
 use libc_binding::{dirent, DIR};
 
 use crate::memory::tools::AllocFlags;
@@ -21,15 +20,8 @@ pub fn sys_opendir(filename: *const c_char, dir: *mut DIR) -> SysResult<u32> {
                 .unwrap_process()
                 .get_virtual_allocator();
 
-            let c_string: CString = (&v, filename).try_into()?;
-
             (
-                unsafe {
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                        filename as *const u8,
-                        c_string.len(),
-                    ))
-                },
+                v.make_checked_str(filename)?,
                 v.make_checked_ref_mut::<DIR>(dir)?,
             )
         };

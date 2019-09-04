@@ -1,11 +1,10 @@
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::SCHEDULER;
 use super::vfs::{Path, VFS};
+use libc_binding::c_char;
 
 use core::convert::TryFrom;
-use core::convert::TryInto;
 
 /// The chdir() function shall cause the directory named by the
 /// pathname pointed to by the path argument to become the current
@@ -22,14 +21,7 @@ pub fn sys_chdir(buf: *const c_char) -> SysResult<u32> {
                 .unwrap_process()
                 .get_virtual_allocator();
 
-            let c_string: CString = (&v, buf).try_into()?;
-
-            unsafe {
-                core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                    buf as *const u8,
-                    c_string.len(),
-                ))
-            }
+            v.make_checked_str(buf)?
         };
 
         let tg = scheduler.current_thread_group_mut();

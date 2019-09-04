@@ -100,7 +100,7 @@ impl AddressSpace {
         Ok(unsafe { core::slice::from_raw_parts(ptr, elem_number) })
     }
 
-    pub fn make_checked_str(&self, ptr: *const c_char) -> Result<&str> {
+    pub fn make_checked_str<'unbound>(&self, ptr: *const c_char) -> Result<&'unbound str> {
         let mut string_len = 0;
 
         let mut curr_ptr = ptr;
