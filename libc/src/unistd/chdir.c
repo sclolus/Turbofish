@@ -7,9 +7,6 @@
 // working directory; that is, the starting point for path searches
 // for pathnames not beginning with '/'.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 int chdir(const char *path)
 {
 	int ret = _user_syscall(CHDIR, 1, path);

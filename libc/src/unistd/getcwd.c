@@ -19,9 +19,6 @@
 // pointed to by the buf argument. If buf is a null pointer, the
 // behavior of getcwd() is unspecified.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 char *getcwd(char *buf, size_t size)
 {
 	int ret = _user_syscall(GETCWD, 2, buf, size);
