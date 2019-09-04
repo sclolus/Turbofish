@@ -42,6 +42,9 @@ SRC_C += Clone \
 		pipe_com1 \
 		westoped \
 		getenv \
+		fish \
+		more_fish \
+		broken_fish \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

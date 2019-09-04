@@ -93,7 +93,7 @@
  * fstat() is identical to stat(), except that the file about which information
  * is to be retrieved is specified by the file descriptor fd.
  */
-int fstat(int fd, struct stat *stat)
+int fstat(int fd, struct stat *restrict stat)
 {
 	int ret = _user_syscall(FSTAT, 2, fd, stat);
 
@@ -101,4 +101,12 @@ int fstat(int fd, struct stat *stat)
 	 * On success, zero is returned.  On error, -1 is returned, and errno is set appropriately.
 	 */
 	set_errno_and_return(ret);
+}
+
+/*
+ * Since our off_t structure is encoded in 64 bits, the fstat64() function is the same as fstat()
+ */
+int fstat64(int fd, struct stat64 *restrict stat)
+{
+	return fstat(fd, (struct stat *restrict )stat);
 }

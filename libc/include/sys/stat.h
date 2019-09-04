@@ -18,9 +18,9 @@
 // unspecified.
 
 struct stat {
-	dev_t   st_dev;            // Device ID of device containing file. 
-	ino_t   st_ino;            // File serial number. 
-	mode_t  st_mode;          // Mode of file (see below). 
+	dev_t st_dev;            // Device ID of device containing file.
+	ino_t st_ino;            // File serial number.
+	mode_t st_mode;          // Mode of file (see below).
 	nlink_t st_nlink;        // Number of hard links to the file. 
 	uid_t st_uid;            // User ID of file. 
 	gid_t st_gid;            // Group ID of file. 
@@ -133,7 +133,11 @@ struct stat64 {
 
 int stat(const char *restrict pathname, struct stat *restrict);
 int lstat(const char *restrict pathname, struct stat *restrict);
-int fstat(int fd, struct stat *);
+int fstat(int fd, struct stat *restrict);
+
+int stat64(const char *restrict pathname, struct stat64 *restrict);
+int lstat64(const char *restrict pathname, struct stat64 *restrict);
+int fstat64(int fd, struct stat64 *restrict);
 
 int chmod(const char *, mode_t);
 int fchmod(int, mode_t);

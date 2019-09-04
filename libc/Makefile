@@ -76,7 +76,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman 
 HEADERS += include/sys/mman.h
 
-SRC_C += stat lstat fstat stat64 mkfifo umask
+SRC_C += stat lstat fstat mkfifo umask
 VPATH += src/sys/stat 
 HEADERS += include/sys/stat.h
 
@@ -101,7 +101,7 @@ SRC_C += signal sigaction kill raise killpg \
 VPATH += src/signal
 HEADERS += include/signal.h
 
-SRC_C += wait
+SRC_C += wait wait3 wait4
 VPATH += src/wait
 HEADERS += include/wait.h
 
