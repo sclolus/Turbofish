@@ -1,10 +1,10 @@
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, LSTAT, MMAP,
-    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID,
-    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
-    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
-    UNLINK, WAITPID, WRITE,
+    CHDIR, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETCWD, GETEGID,
+    GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK,
+    LSTAT, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID,
+    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR,
+    TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use super::mmap::MmapArgStruct;
@@ -65,6 +65,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ecx as *const *const c_char,
                 edx as *const *const c_char,
             ),
+            CHDIR => log::info!("chdir({:#?})", ebx as *const c_char),
             STAT => log::info!(
                 "stat(filename: {:?}, buf: {:#X?})",
                 ebx as *const c_char,
@@ -138,6 +139,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *const TimeSpec,
                 ecx as *mut TimeSpec
             ),
+            GETCWD => log::info!("getcwd({:#?}, {:#?})", ebx as *const c_char, ecx as usize),
             SIGRETURN => log::info!("sigreturn({:#?})", cpu_state),
             SHUTDOWN => log::info!("shutdown()"),
             TEST => log::info!("test()"),
@@ -174,6 +176,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         WAITPID => "waitpid",
         UNLINK => "unlink",
         EXECVE => "execve",
+        CHDIR => "chdir",
         STAT => "stat",
         LSEEK => "lseek",
         GETPID => "getpid",
@@ -205,6 +208,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         SIGPROCMASK => "sigprocmask",
         GETPGID => "getpgid",
         NANOSLEEP => "nanosleep",
+        GETCWD => "getcwd",
         SIGRETURN => "sigreturn",
         SHUTDOWN => "shutdown",
         TEST => "test",

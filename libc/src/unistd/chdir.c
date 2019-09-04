@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <errno.h>
+#include <user_syscall.h>
 
 // The chdir() function shall cause the directory named by the
 // pathname pointed to by the path argument to become the current
@@ -12,9 +13,7 @@
 int chdir(const char *path)
 {
 	DUMMY
-	(void)path;
-	errno = ENOSYS;
-	return -1;
+
+	int ret = _user_syscall(CHDIR, 1, path);
+	set_errno_and_return(ret);
 }
-
-

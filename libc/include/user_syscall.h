@@ -14,6 +14,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define WAITPID       7
 #define UNLINK       10
 #define EXECVE       11
+#define CHDIR        12
 #define STAT         18
 #define LSEEK        19
 #define GETPID       20
@@ -48,6 +49,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SIGPROCMASK 126
 #define GETPGID     132
 #define NANOSLEEP   162
+#define GETCWD      183
 #define SIGRETURN   200
 #define SHUTDOWN    293
 

@@ -17,12 +17,12 @@ use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETEGID, GETEUID, GETGID,
-    GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK, LSTAT, MMAP,
-    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID, SETEUID,
-    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
-    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
-    UNLINK, WAITPID, WRITE,
+    CHDIR, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETCWD, GETEGID,
+    GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK,
+    LSTAT, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID,
+    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR,
+    TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -167,6 +167,12 @@ use lstat::sys_lstat;
 
 mod fstat;
 use fstat::sys_fstat;
+
+mod chdir;
+use chdir::sys_chdir;
+
+mod getcwd;
+use getcwd::sys_getcwd;
 /*
  * These below declarations are IPC related
  */
@@ -233,6 +239,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ecx as *const *const c_char,
             edx as *const *const c_char,
         ),
+        CHDIR => sys_chdir(ebx as *const c_char),
         LSEEK => sys_lseek(
             ebx as *mut off_t,
             ecx as Fd,
@@ -279,6 +286,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
+        GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),
         SIGRETURN => sys_sigreturn(cpu_state),
         SHUTDOWN => sys_shutdown(),
         TEST => sys_test(),
