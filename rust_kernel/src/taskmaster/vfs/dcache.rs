@@ -95,14 +95,17 @@ impl Dcache {
     pub fn dentry_path(&self, id: DirectoryEntryId) -> DcacheResult<Path> {
         let mut current_id = id;
         let mut rev_path = Path::new();
+        let mut entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
         loop {
-            let entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
-
-            rev_path.push(entry.filename)?;
             if entry.id == entry.parent_id {
                 break;
             }
+            rev_path.push(entry.filename)?;
             current_id = entry.parent_id;
+            entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
+            if entry.is_mounted()? {
+                rev_path.pop();
+            }
         }
         let mut path = Path::new();
 

@@ -286,7 +286,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
-        GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),
+        GETCWD => sys_getcwd(ebx as *mut libc_binding::c_char, ecx as usize),
         SIGRETURN => sys_sigreturn(cpu_state),
         SHUTDOWN => sys_shutdown(),
         TEST => sys_test(),

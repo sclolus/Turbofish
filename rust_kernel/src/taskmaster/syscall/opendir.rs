@@ -34,15 +34,12 @@ pub fn sys_opendir(filename: *const c_char, dir: *mut DIR) -> SysResult<u32> {
             )
         };
 
-        let mut current = super::vfs::Current {
-            cwd: super::vfs::DirectoryEntryId::new(2),
-            uid: 0,
-            euid: 0,
-            gid: 0,
-            egid: 0,
-        };
+        let tg = scheduler.current_thread_group();
+        let creds = &tg.credentials;
+        let cwd = &tg.cwd;
+
         let path = super::vfs::Path::try_from(safe_filename)?;
-        let dirent_vector = super::vfs::VFS.lock().opendir(&mut current, path)?;
+        let dirent_vector = super::vfs::VFS.lock().opendir(cwd, creds, path)?;
 
         let size = dirent_vector.len() * core::mem::size_of::<dirent>();
 

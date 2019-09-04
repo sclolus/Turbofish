@@ -24,6 +24,7 @@ pub use rc::*;
 pub mod arc;
 pub use arc::*;
 pub mod btree;
+pub mod try_clone;
 
 use alloc::collections::CollectionAllocErr;
 

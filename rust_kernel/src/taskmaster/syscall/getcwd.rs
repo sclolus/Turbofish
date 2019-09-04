@@ -1,13 +1,7 @@
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::SCHEDULER;
-
-use core::convert::TryFrom;
-use core::convert::TryInto;
-use libc_binding::{dirent, DIR};
-
-use crate::memory::tools::AllocFlags;
+use libc_binding::{c_char, Errno};
 
 /// The getcwd() function shall place an absolute pathname of the
 /// current working directory in the array pointed to by buf, and
@@ -27,6 +21,9 @@ use crate::memory::tools::AllocFlags;
 /// behavior of getcwd() is unspecified.
 pub fn sys_getcwd(buf: *mut c_char, size: usize) -> SysResult<u32> {
     unpreemptible_context!({
+        if size == 0 {
+            return Err(Errno::EINVAL);
+        }
         let scheduler = SCHEDULER.lock();
 
         // Check if given pointers are not bullshit
@@ -39,7 +36,20 @@ pub fn sys_getcwd(buf: *mut c_char, size: usize) -> SysResult<u32> {
             v.make_checked_mut_slice(buf, size)?
         };
 
-        //TODO: fill buf with cwd
+        let cwd = &scheduler.current_thread_group().cwd;
+        let mut i = 0;
+        for b in cwd.iter_bytes() {
+            // keep a place for the \0
+            if i >= size - 1 {
+                return Err(Errno::ERANGE);
+            }
+            safe_buf[i] = *b;
+            i += 1;
+        }
+        if i == 0 {
+            panic!("cwd is empty");
+        }
+        safe_buf[i] = '\0' as c_char;
         Ok(0)
     })
 }
