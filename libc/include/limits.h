@@ -74,9 +74,13 @@
  * {PAGESIZE}
  *     Size in bytes of a page.
  *     Minimum Acceptable Value: 1
- * {PAGE_SIZE}
- *     [XSI] [Option Start]
- *     Equivalent to {PAGESIZE}. If either {PAGESIZE} or {PAGE_SIZE} is defined, the other is defined with the same value. [Option End]
+ */
+
+#define PAGE_SIZE 4096
+#define PAGESIZE PAGE_SIZE
+/// [XSI] [Option Start]
+/// Equivalent to {PAGESIZE}. If either {PAGESIZE} or {PAGE_SIZE} is defined, the other is defined with the same value. [Option End]
+ /*
  * {PTHREAD_DESTRUCTOR_ITERATIONS}
  *     Maximum number of attempts made to destroy a thread's thread-specific data values on thread exit.
  *     Minimum Acceptable Value: {_POSIX_THREAD_DESTRUCTOR_ITERATIONS}

@@ -148,6 +148,7 @@ int usleep(useconds_t usec);
 int pause(void);
 
 int reboot(void);
+int getpagesize(void);
 /* int shutdown(void); */
 
 /* File number of stderr; 2. */
