@@ -18,7 +18,7 @@ use VfsError::*;
 
 mod path;
 mod posix_consts;
-use posix_consts::SYMLOOP_MAX;
+use posix_consts::{NAME_MAX, SYMLOOP_MAX};
 
 pub use path::{Filename, Path};
 
@@ -32,14 +32,14 @@ use dcache::Dcache;
 mod inode;
 pub use inode::InodeId;
 use inode::{Inode, InodeData};
-use libc_binding::{c_char, OpenFlags};
+use libc_binding::OpenFlags;
 
 pub mod user;
 pub use user::{Current, GroupId, UserId};
 
+use libc_binding::c_char;
 use libc_binding::dirent;
 use libc_binding::Errno;
-use Errno::*;
 
 mod permissions;
 pub use permissions::FilePermissions;
@@ -437,7 +437,7 @@ impl VirtualFileSystem {
     pub fn opendir(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         path: Path,
     ) -> VfsResult<Vec<dirent>> {
         let entry_id = self.pathname_resolution(cwd, path)?;
@@ -446,7 +446,8 @@ impl VirtualFileSystem {
         if entry.get_directory()?.entries().count() == 0 {
             self.lookup_directory(entry_id)?;
         }
-        let dir = self.dcache.get_entry(&entry_id)?.get_directory()?;
+        let direntry = self.dcache.get_entry(&entry_id)?;
+        let dir = direntry.get_directory()?;
         Ok(dir
             .entries()
             .map(|e| {
@@ -454,14 +455,32 @@ impl VirtualFileSystem {
                     .dcache
                     .get_entry(&e)
                     .expect("entry not found vfs is bullshit");
-                let mut d = dirent {
-                    d_name: child.filename.0,
-                    d_ino: child.inode_id.inode_number as u32,
-                };
-                // assure the \0 at end of filename
-                d.d_name[child.filename.len()] = '\0' as c_char;
-                d
+                child.dirent()
             })
+            // recreate on the fly the . and .. file as it is not stocked
+            // in the vfs
+            .chain(Some(dirent {
+                d_name: {
+                    let mut name = [0; NAME_MAX + 1];
+                    name[0] = '.' as c_char;
+                    name
+                },
+                d_ino: direntry.inode_id.inode_number as u32,
+            }))
+            .chain(Some(dirent {
+                d_name: {
+                    let mut name = [0; NAME_MAX + 1];
+                    name[0] = '.' as c_char;
+                    name[1] = '.' as c_char;
+                    name
+                },
+                d_ino: self
+                    .dcache
+                    .get_entry(&direntry.parent_id)
+                    .unwrap()
+                    .inode_id
+                    .inode_number as u32,
+            }))
             .collect())
     }
 
