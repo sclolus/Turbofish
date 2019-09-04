@@ -36,6 +36,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/dirent/dummy_root"},
 	{.path = "/bin/read/read_pulp_fiction"},
 	{.path = "/bin/execl/execl"},
+	{.path = "/bin/is_str_bullshit/is_str_bullshit"},
 };
 
 void _exit_qemu(int val)

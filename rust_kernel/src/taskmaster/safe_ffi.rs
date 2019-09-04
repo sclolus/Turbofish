@@ -11,48 +11,19 @@ use alloc::vec::Vec;
 
 use core::convert::TryInto;
 
-/// Get the len of a C style *const c_char. Operate in a limited area
-fn safe_strlen(ptr: *const c_char, limit: usize) -> Option<usize> {
-    let mut i = 0;
-    while i != limit && unsafe { (*ptr.add(i)).0 } != 0 {
-        i += 1;
-    }
-    if i == limit {
-        None
-    } else {
-        Some(i)
-    }
-}
-
 /// Secure create a CString from a C char*
 impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const c_char)> for CString {
     type Error = Errno;
     fn try_from(
         arg: (&DeadMutexGuard<'_, AddressSpace>, *const c_char),
     ) -> Result<Self, Self::Error> {
-        let mut string_len = 0;
+        let s = arg
+            .0
+            .make_checked_str(arg.1 as *const libc_binding::c_char)?;
+        let v: Vec<c_char> = unsafe { core::mem::transmute(try_vec![0 as u8; s.len() + 1]?) };
 
-        let mut curr_ptr = arg.1;
-        loop {
-            // Check if the pointer exists in address space
-            arg.0.check_user_ptr::<c_char>(curr_ptr)?;
-            // Set the remaining length, relative to page size
-            let limit = PAGE_SIZE - (curr_ptr as usize) % PAGE_SIZE;
-            let res = safe_strlen(curr_ptr, limit);
-            if let Some(len) = res {
-                // In case of success, set the final string_len and break
-                string_len += len;
-                break;
-            } else {
-                // In case of failure, advance string_len & curr_ptr
-                string_len += limit;
-                curr_ptr = (curr_ptr as usize + limit) as _;
-            }
-        }
-
-        let v: Vec<c_char> = unsafe { core::mem::transmute(try_vec![0 as u8; string_len + 1]?) };
         unsafe {
-            (v.as_ptr() as *mut u8).copy_from(arg.1 as _, string_len);
+            (v.as_ptr() as *mut u8).copy_from(s.as_ptr() as _, s.len());
         }
         Ok(Self(v))
     }

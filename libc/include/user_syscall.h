@@ -60,16 +60,17 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SIGRETURN   200
 #define SHUTDOWN    293
 
-#define TEST           0x80000000
-#define STACK_OVERFLOW 0x80000001
-#define EXIT_QEMU      0x80000002
-#define TCGETATTR      0x80000003
-#define TCSETATTR      0x80000004
-#define TCGETPGRP      0x80000005
-#define TCSETPGRP      0x80000006
-#define SETEGID        0x80000007
-#define SETEUID        0x80000008
-#define ISATTY         0x80000009
-#define OPENDIR        0x80000010
+#define TEST            0x80000000
+#define STACK_OVERFLOW  0x80000001
+#define EXIT_QEMU       0x80000002
+#define TCGETATTR       0x80000003
+#define TCSETATTR       0x80000004
+#define TCGETPGRP       0x80000005
+#define TCSETPGRP       0x80000006
+#define SETEGID         0x80000007
+#define SETEUID         0x80000008
+#define ISATTY          0x80000009
+#define OPENDIR         0x80000010
+#define IS_STR_VALID    0x80000011
 
 #endif

@@ -42,7 +42,7 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero strdup \
-	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
+	strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
 	strcoll
 VPATH += src/string
 HEADERS += string.h
@@ -176,6 +176,11 @@ HEADERS += grp.h
 SRC_C += strcasecmp
 VPATH += src/strings
 HEADERS += strings.h
+
+SRC_C += is_ptr_valid
+VPATH += src/custom
+
+CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash

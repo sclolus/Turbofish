@@ -13,6 +13,7 @@ pub mod alloc_flags;
 pub use alloc_flags::*;
 
 pub const PAGE_SIZE: usize = 4096;
+pub const PAGE_SIZE_MASK: usize = 0xFFF;
 
 #[allow(missing_docs)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
