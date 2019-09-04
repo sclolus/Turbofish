@@ -593,7 +593,9 @@ pub enum Irq {
     /// The Keyboard Controller IRQ.
     KeyboardController = 1,
 
-    //IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
+    /// IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
+    SlaveCascadeIRQ = 2,
+
     /// The Serial Port 2 IRQ (shared with the Serial Port 4, if it is present).
     SerialPortController2 = 3,
 
@@ -783,6 +785,8 @@ impl Pic8259 {
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave is modified.
     pub unsafe fn disable_irq(&mut self, irq: Irq) {
+        log::info!("Pic8259: Disable irq {:?}", irq);
+
         let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {
@@ -802,6 +806,8 @@ impl Pic8259 {
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
     pub unsafe fn enable_irq(&mut self, irq: Irq) {
+        log::info!("Pic8259: Enable irq {:?}", irq);
+
         let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {

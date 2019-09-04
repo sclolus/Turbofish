@@ -1,8 +1,8 @@
 use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
+use crate::drivers::{pic_8259, Acpi, Pic8259, ACPI, PCI, PIC_8259, PIT0};
 
-use crate::interrupts;
 use crate::drivers::Rtc;
+use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
@@ -26,18 +26,53 @@ pub extern "C" fn kmain(
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
 
+    /*
+     * Enable CPU_ISR and memory system
+     */
     unsafe {
+        interrupts::init();
         let device_map = get_device_map_slice(device_map_ptr);
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
             .expect("init memory system failed");
     }
+
+    /*
+     * Initialize output
+     */
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
+    init_terminal();
+
+    let size = SCREEN_MONAD.lock().query_window_size();
+    printfixed!(
+        Pos {
+            line: 1,
+            column: size.column - 17
+        },
+        "{}",
+        "Turbo Fish v0.3".green()
+    );
+
+    /*
+     * Initialize Pic8259 and base drivers
+     */
     unsafe {
-        interrupts::init();
         interrupts::disable();
-        PIC_8259.lock().init();
+        let conf = Pic8259::default_pic_configuration();
+        PIC_8259.lock().initialize(conf);
+
+        PIC_8259
+            .lock()
+            .enable_irq(pic_8259::Irq::SerialPortController2);
+        PIC_8259
+            .lock()
+            .enable_irq(pic_8259::Irq::SerialPortController1);
+        PIC_8259.lock().enable_irq(pic_8259::Irq::ACPI);
 
         init_keyboard_driver();
+        PIC_8259
+            .lock()
+            .enable_irq(pic_8259::Irq::KeyboardController);
+        log::info!("Keyboard has been initialized");
 
         watch_dog();
         interrupts::enable();
@@ -56,27 +91,6 @@ pub extern "C" fn kmain(
         Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
     };
 
-    unsafe {
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::KeyboardController); // enable only the keyboard.
-    }
-    log::info!(
-        "Keyboard has been initialized: IRQ mask: {:X?}",
-        PIC_8259.lock().get_masks()
-    );
-
-    let size = SCREEN_MONAD.lock().query_window_size();
-    printfixed!(
-        Pos {
-            line: 1,
-            column: size.column - 17
-        },
-        "{}",
-        "Turbo Fish v0.3".green()
-    );
-
-    // TODO: Find why it crashs in Sclolus Qemu version
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");

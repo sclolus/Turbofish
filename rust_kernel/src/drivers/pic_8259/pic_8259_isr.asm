@@ -153,7 +153,7 @@ _isr_%2:
 	pushad
 	push isr_%2_str
 	call %4
-	add esp, 4 ;pop interrupt string
+	add esp, 4 ; pop interrupt string
 	%1
 	popad
 	pop ebp
@@ -166,9 +166,18 @@ _isr_%2:
 %endmacro
 
 %macro SLAVE 0
-	MASTER
 	mov al, 0x20
 	out 0xa0, al
+	out 0x20, al
+%endmacro
+
+; Remove that dummy spurious behavior if we would use lpt1
+%macro SPURIOUS_IRQ7 0
+%endmacro
+
+; Remove that dummy spurious behavior if we would use secondary_hard_disk
+%macro SPURIOUS_IRQ15 0
+	MASTER
 %endmacro
 
 ; TIPS: use nasm -E file to view source file on stdout after macro expansion
@@ -178,11 +187,11 @@ CREATE_ISR MASTER, com2, "COM2", generic_interrupt_handler
 CREATE_ISR MASTER, com1, "COM1", generic_interrupt_handler
 CREATE_ISR MASTER, lpt2, "LPT2", generic_interrupt_handler
 CREATE_ISR MASTER, floppy_disk, "floppy_disk", generic_interrupt_handler
-CREATE_ISR MASTER, lpt1, "lpt1", generic_interrupt_handler ; unreliable, often a spurious interrupt
+CREATE_ISR SPURIOUS_IRQ7, lpt1, "lpt1", generic_interrupt_handler
 
 CREATE_ISR SLAVE, cmos, "CMOS real-time clock", rtc_handler
 CREATE_ISR SLAVE, acpi, "ACPI", generic_interrupt_handler
 CREATE_ISR SLAVE, ps2_mouse, "PS/2 mouse", generic_interrupt_handler
 CREATE_ISR SLAVE, fpu_coproc, "FPU / Coproc / inter-processor", generic_interrupt_handler
 CREATE_ISR SLAVE, primary_hard_disk, "Primary ATA hard disk", primary_hard_disk_interrupt_handler
-CREATE_ISR SLAVE, secondary_hard_disk, "Secondary ATA hard disk", secondary_hard_disk_interrupt_handler
+CREATE_ISR SPURIOUS_IRQ15, secondary_hard_disk, "Secondary ATA hard disk", secondary_hard_disk_interrupt_handler

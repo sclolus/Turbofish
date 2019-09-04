@@ -249,24 +249,24 @@ impl Rtc {
             .set_gate_type(GateType::InterruptGate32)
             .set_handler(_isr_cmos as *const u8 as u32);
         unsafe {
-            // without_interrupts!({
-            // Sets handler into the InterruptTable.
-            interrupt_table[32 + 8] = gate_entry;
+            without_interrupts!({
+                // Sets handler into the InterruptTable.
+                interrupt_table[32 + 8] = gate_entry;
 
-            PIC_8259.lock().enable_irq(pic_8259::Irq::RealTimeClock); // enables the RTC irq.
+                PIC_8259.lock().enable_irq(pic_8259::Irq::RealTimeClock); // enables the RTC irq.
 
-            let previous_value = self.read_register(RtcRegister::StatusB, false);
-            self.set_register_index(RtcRegister::StatusB, false);
-            // The bit 6 of Status register B enables the periodic interrupts of the RTC.
-            self.data.write(previous_value | 0x40);
+                let previous_value = self.read_register(RtcRegister::StatusB, false);
+                self.set_register_index(RtcRegister::StatusB, false);
+                // The bit 6 of Status register B enables the periodic interrupts of the RTC.
+                self.data.write(previous_value | 0x40);
 
-            let previous_value = self.read_register(RtcRegister::StatusA, false);
-            self.set_register_index(RtcRegister::StatusA, false);
+                let previous_value = self.read_register(RtcRegister::StatusA, false);
+                self.set_register_index(RtcRegister::StatusA, false);
 
-            // The 4 low bits of the Status Register A are the `divider setting`, that is, the rate selector, if you will.
-            self.data.write((previous_value & 0xF0) | rate);
-            Nmi::enable();
-            // });
+                // The 4 low bits of the Status Register A are the `divider setting`, that is, the rate selector, if you will.
+                self.data.write((previous_value & 0xF0) | rate);
+                Nmi::enable();
+            });
         }
     }
 

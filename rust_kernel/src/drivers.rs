@@ -12,10 +12,10 @@ pub use pic_8259::{Pic8259, PIC_8259};
 pub mod pit_8253;
 pub use pit_8253::PIT0;
 
+pub mod rtc;
+pub use rtc::Rtc;
+
 pub mod storage;
 
 pub mod nmi;
 pub use nmi::Nmi;
-
-pub mod rtc;
-pub use rtc::Rtc;
