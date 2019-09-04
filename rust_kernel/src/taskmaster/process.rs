@@ -5,7 +5,6 @@ use tss::TSS;
 
 use super::safe_ffi::{c_char, CStringArray};
 use super::syscall::clone::CloneFlags;
-use super::vfs::init::EXT2;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
 
@@ -18,7 +17,7 @@ use fallible_collections::FallibleArc;
 
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::{try_vec, FallibleBox};
-use libc_binding::{Errno, OpenFlags};
+use libc_binding::Errno;
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -539,23 +538,33 @@ pub unsafe fn get_ring(context_ptr: u32) -> PrivilegeLevel {
     (((*cpu_state).cs & 0b11) as u8).into()
 }
 
+use super::IpcResult;
+use super::{thread_group::Credentials, vfs::Path};
+use core::convert::TryFrom;
+
 /// Return a file content using raw ext2 methods
-pub fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
-    let ext2 = unsafe {
-        EXT2.as_mut()
-            .ok_or("ext2 not init")
-            .map_err(|_| Errno::ENODEV)?
+pub fn get_file_content(cwd: &Path, creds: &Credentials, pathname: &str) -> SysResult<Vec<u8>> {
+    // TODO: REMOVE THIS SHIT
+    let path = super::vfs::Path::try_from(pathname)?;
+    let mode =
+        super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    let flags = libc_binding::OpenFlags::O_RDONLY;
+    let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
+        IpcResult::Done(file_operator) => file_operator,
+        IpcResult::Wait(file_operator, _) => file_operator,
     };
+    let mut file = file_operator.lock();
 
-    let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
+    let mut stat = unsafe { core::mem::uninitialized() };
+    file.fstat(&mut stat)?;
 
-    let inode = ext2.get_inode(file.inode_nbr)?;
+    let file_size = stat.st_size;
 
-    let mut v: Vec<u8> = try_vec![0; inode.0.low_size as usize]?;
+    let mut v: Vec<u8> = try_vec![0; stat.st_size as usize]?;
 
-    let len = ext2.read(&mut file, v.as_mut())?;
+    let len = file.read(&mut v)?.expect("execve: file is bullshit");
 
-    if len != inode.0.low_size as u64 {
+    if len != file_size as u32 {
         Err(Errno::EIO)
     } else {
         Ok(v)

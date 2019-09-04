@@ -14,8 +14,6 @@ use alloc::boxed::Box;
 use ext2::Ext2Filesystem;
 use mbr::Mbr;
 
-pub static mut EXT2: Option<Ext2Filesystem> = None;
-
 /// read the mbr form a disk
 fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
@@ -79,12 +77,6 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
         .expect("disk driver open failed");
 
     let ext2_disk = DiskWrapper(file_operation);
-    unsafe {
-        EXT2 = Some(
-            //TODO: remove the box
-            Ext2Filesystem::new(Box::new(ext2_disk.clone())).expect("ext2 filesystem new failed"),
-        );
-    }
     let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
     let fs_id: FileSystemId = vfs.gen();
     let ext2fs = Ext2fs::new(ext2, fs_id);

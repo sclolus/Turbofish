@@ -51,7 +51,7 @@ impl FileOperation for Ext2FileOperation {
         let res = self
             .ext2
             .lock()
-            .new_read(self.inode_nbr, &mut self.offset, buf)? as u32;
+            .read(self.inode_nbr, &mut self.offset, buf)? as u32;
         Ok(IpcResult::Done(res))
     }
 
