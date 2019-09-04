@@ -52,7 +52,7 @@ impl Pic {
     /// Get the interrupt mask of the slave PIC
     /// # Warning:
     /// There must be no current command issued
-    pub unsafe fn get_interrupt_mask(&self) -> u8 {
+    pub fn get_interrupt_masks(&self) -> u8 {
         self.data.read()
     }
 
@@ -64,8 +64,44 @@ impl Pic {
     /// # Warning:
     /// The IRQ line 2 of the master is the line used to receive the slave's interrupts.
     /// Setting it will disable all the slave's interrupts.
-    pub unsafe fn set_interrupt_mask(&mut self, mask: u8) {
-        self.data.write(mask)
+    pub unsafe fn set_interrupt_masks(&mut self, masks: u8) {
+        let ocw1 = OCW1::new().set_interrupt_masks(masks);
+
+        self.send_ocw1(ocw1);
+    }
+
+    unsafe fn send_ocw1(&mut self, operation_control_word: OCW1) {
+        self.data.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_ocw2(&mut self, operation_control_word: OCW2) {
+        self.command.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_ocw3(&mut self, operation_control_word: OCW3) {
+        self.command.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_icw1(&mut self, initialization_control_word: ICW1) {
+        self.command.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw2(&mut self, initialization_control_word: ICW2) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw3(&mut self, initialization_control_word: ICW3) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw4(&mut self, initialization_control_word: ICW4) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_non_specific_eoi(&mut self) {
+        let ocw2 = OCW2::new().set_ir_level(0).set_non_specific_eoi();
+
+        self.send_ocw2(ocw2);
     }
 
     pub fn configure(&mut self, config: ICWs) {
@@ -75,11 +111,31 @@ impl Pic {
         println!("ICW3: {:x}", config.icw3.unwrap().byte);
         println!("ICW4: {:x}", config.icw4.unwrap().byte);
 
-        self.command.write(config.icw1.unwrap().byte);
-        self.data.write(config.icw2.unwrap().byte);
-        self.data.write(config.icw3.unwrap().byte);
-        self.data.write(config.icw4.unwrap().byte);
+        let icw1 = config.icw1.unwrap();
+        let icw2 = config.icw2.unwrap();
+        let icw3 = config.icw3.unwrap();
+        let icw4 = config.icw4.unwrap();
+
+        unsafe {
+            self.send_icw1(icw1);
+            self.send_icw2(icw2);
+            self.send_icw3(icw3);
+            self.send_icw4(icw4);
+        }
         self.configuration = Some(config);
+    }
+
+    pub fn get_register(&mut self, register: PICRegister) -> u8 {
+        if register == PICRegister::InterruptMasks {
+            return self.get_interrupt_masks();
+        }
+
+        let ocw3 = OCW3::new().set_read_register(register);
+
+        unsafe {
+            self.send_ocw3(ocw3);
+        }
+        self.command.read()
     }
 }
 
@@ -376,6 +432,148 @@ impl PicConfiguration {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+struct OCW1 {
+    byte: u8,
+}
+
+impl OCW1 {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the mask of some interrupt line to `value`.
+    /// When an interrupt line's mask is set, the interrupt line is disabled.
+    pub fn set_interrupt_mask(mut self, line: u8, value: bool) -> Self {
+        assert!(line < 8, "There are only 8 lines to set in a OCW1");
+
+        self.byte.set_bit(line as usize, value);
+        self
+    }
+
+    /// Sets the masks of all the lines of the given 8259 chip (PIC).
+    pub fn set_interrupt_masks(mut self, masks: u8) -> Self {
+        self.byte = masks;
+        self
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+struct OCW2 {
+    byte: u8,
+    ir_level_set: bool,
+    command_set: bool,
+}
+
+impl OCW2 {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_ir_level(mut self, level: u8) -> Self {
+        assert!(level < 8, "There are only 8 levels to be acted upon");
+
+        self.byte.set_bits(0..3, level);
+        self.ir_level_set = true;
+        self
+    }
+
+    fn set_command(mut self, value: u8) -> Self {
+        assert!(value < 8, "The OCW2 commands are 3 bits values");
+
+        self.byte.set_bits(5..=7, value);
+
+        // could check for command already set.
+        self.command_set = true;
+        self
+    }
+
+    pub fn set_non_specific_eoi(mut self) -> Self {
+        self.set_command(0b001)
+    }
+
+    pub fn set_specific_eoi(mut self) -> Self {
+        self.set_command(0b011)
+    }
+
+    pub fn set_rotate_on_non_specific_eoi(mut self) -> Self {
+        self.set_command(0b101)
+    }
+
+    pub fn set_rotate_in_automatic_eoi_mode(mut self, value: bool) -> Self {
+        if value {
+            self.set_command(0b100)
+        } else {
+            self.set_command(0b000)
+        }
+    }
+
+    pub fn set_rotate_on_specific_eoi(mut self) -> Self {
+        self.set_command(0b111)
+    }
+
+    pub fn set_priority_command(mut self) -> Self {
+        self.set_command(0b110)
+    }
+
+    pub fn set_no_op(mut self) -> Self {
+        self.set_command(0b010)
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.ir_level_set && self.command_set
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct OCW3 {
+    byte: u8,
+}
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PICRegister {
+    InRequest,
+    InService,
+    InterruptMasks,
+}
+
+impl OCW3 {
+    pub fn new() -> Self {
+        let mut new = Self { byte: 0 };
+
+        // Bit 3 must be set
+        new.byte.set_bit(3, true);
+        new
+    }
+
+    /// Sets the register to read at next read on the data port.
+    pub fn set_read_register(mut self, register: PICRegister) -> Self {
+        let bits = match register {
+            PICRegister::InRequest => 0b10,
+            PICRegister::InService => 0b11,
+            PICRegister::InterruptMasks => panic!("Can't get IMR by means of a OCW3."),
+        };
+
+        self.byte.set_bits(0..=1, bits);
+        self
+    }
+
+    pub fn set_poll_commmand(mut self) -> Self {
+        self.byte.set_bit(2, true);
+        self
+    }
+
+    /// If value is true, the OCW3 sets the special mask.
+    /// else, the OCW3 clears the special mask.
+    pub fn set_special_mask(mut self, value: bool) -> Self {
+        if value {
+            self.byte.set_bits(5..=6, 0b11);
+        } else {
+            self.byte.set_bits(5..=6, 0b10);
+        }
+        self
+    }
+}
+
 pub struct Pic8259 {
     master: Pic,
     slave: Pic,
@@ -485,7 +683,9 @@ impl Pic8259 {
         let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
 
         self.bios_imr = Some(self.get_masks());
-        self.set_idt_vectors(KERNEL_PIC_MASTER_IDT_VECTOR, KERNEL_PIC_SLAVE_IDT_VECTOR);
+
+        let default_conf = Self::default_pit_configuration();
+        self.initialize(default_conf);
 
         use crate::interrupts::idt::GateType::InterruptGate32;
         use crate::interrupts::idt::*;
@@ -597,14 +797,14 @@ impl Pic8259 {
         let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {
-            let mask = *self.master.get_interrupt_mask().set_bit(nirq, true);
+            let mask = *self.master.get_interrupt_masks().set_bit(nirq, true);
 
-            self.master.set_interrupt_mask(mask);
+            self.master.set_interrupt_masks(mask);
         } else {
             nirq -= 8;
-            let mask = *self.slave.get_interrupt_mask().set_bit(nirq, true);
+            let mask = *self.slave.get_interrupt_masks().set_bit(nirq, true);
 
-            self.slave.set_interrupt_mask(mask);
+            self.slave.set_interrupt_masks(mask);
         }
     }
 
@@ -616,51 +816,41 @@ impl Pic8259 {
         let mut nirq = irq as usize;
         assert!(nirq < 16);
         if nirq < 8 {
-            let mask = *self.master.get_interrupt_mask().set_bit(nirq, false);
+            let mask = *self.master.get_interrupt_masks().set_bit(nirq, false);
 
-            self.master.set_interrupt_mask(mask);
+            self.master.set_interrupt_masks(mask);
         } else {
             nirq -= 8;
-            let mask = *self.slave.get_interrupt_mask().set_bit(nirq, false);
+            let mask = *self.slave.get_interrupt_masks().set_bit(nirq, false);
 
-            self.slave.set_interrupt_mask(mask);
+            self.slave.set_interrupt_masks(mask);
 
             // Also clear irq 2 to enable slave sending to master
-            let mask = *self.master.get_interrupt_mask().set_bit(2, false);
+            let mask = *self.master.get_interrupt_masks().set_bit(2, false);
 
-            self.master.set_interrupt_mask(mask);
+            self.master.set_interrupt_masks(mask);
         }
     }
 
     /// Disable both Slave and Master PICs
     /// This is done by sending 0xff to their respective data ports
     pub unsafe fn disable_all_irqs(&mut self) {
-        self.master.set_interrupt_mask(0xff);
-        self.slave.set_interrupt_mask(0xff);
+        self.master.set_interrupt_masks(0xff);
+        self.slave.set_interrupt_masks(0xff);
     }
 
     /// Enable all interrupts of the PICs by clearing their Interrupt Mask
     pub unsafe fn enable_all_irqs(&mut self) {
-        self.master.set_interrupt_mask(0x0);
-        self.slave.set_interrupt_mask(0x0);
+        self.master.set_interrupt_masks(0x0);
+        self.slave.set_interrupt_masks(0x0);
     }
 
     /// Restores the IMRs of the self.master and self.slave PICs to the combined `mask` parameter
     /// The bits 0 to 7 (inclusive) are the self.master's IMR.
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
     pub unsafe fn set_masks(&mut self, mask: u16) {
-        self.master.set_interrupt_mask(mask.get_bits(0..8) as u8);
-        self.slave.set_interrupt_mask(mask.get_bits(8..16) as u8);
-    }
-
-    /// Gets the combined IMRs of the self.master and self.slave PICs
-    /// The bits 0 to 7 (inclusive) are the self.master's IMR.
-    /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
-    pub fn get_masks(&mut self) -> u16 {
-        unsafe {
-            (self.master.get_interrupt_mask() as u16)
-                | ((self.slave.get_interrupt_mask() as u16) << 8)
-        }
+        self.master.set_interrupt_masks(mask.get_bits(0..8) as u8);
+        self.slave.set_interrupt_masks(mask.get_bits(8..16) as u8);
     }
 
     /// Send end of interrupt from specific IRQ to the PIC.
@@ -670,9 +860,14 @@ impl Pic8259 {
         let nirq = irq as u16;
         assert!(nirq < 16);
         if nirq >= 8 {
-            self.slave.command.write(Pic::EOI);
+            // Should we send specific EOIs ?
+            unsafe {
+                self.slave.send_non_specific_eoi();
+            }
         }
-        self.master.command.write(Pic::EOI);
+        unsafe {
+            self.master.send_non_specific_eoi();
+        }
     }
 
     /// Reset the PICs to the defaults IMR and irq vector offsets
@@ -689,20 +884,24 @@ impl Pic8259 {
         })
     }
 
-    unsafe fn pic_get_irq_reg(&mut self, ocw3: u8) -> u16 {
-        self.master.command.write(ocw3);
-        self.slave.command.write(ocw3);
-
-        (self.slave.command.read() as u16) << 8 | self.master.command.read() as u16
+    fn get_pics_register(&mut self, register: PICRegister) -> u16 {
+        (self.slave.get_register(register) as u16) << 8 | self.master.get_register(register) as u16
     }
 
     /// Returns the combined value the PICs irq request register
     pub fn get_irr(&mut self) -> u16 {
-        unsafe { self.pic_get_irq_reg(Pic::PIC_READ_IRR) }
+        self.get_pics_register(PICRegister::InRequest)
     }
 
     /// Returns the combined value the PICs in-service register
     pub fn get_isr(&mut self) -> u16 {
-        unsafe { self.pic_get_irq_reg(Pic::PIC_READ_ISR) }
+        self.get_pics_register(PICRegister::InService)
+    }
+
+    /// Gets the combined IMRs of the self.master and self.slave PICs
+    /// The bits 0 to 7 (inclusive) are the self.master's IMR.
+    /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
+    pub fn get_masks(&mut self) -> u16 {
+        self.get_pics_register(PICRegister::InterruptMasks)
     }
 }

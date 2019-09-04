@@ -36,10 +36,8 @@ pub extern "C" fn kmain(
     unsafe {
         interrupts::init();
         interrupts::disable();
-        let conf = Pic8259::default_pit_configuration();
-        PIC_8259.lock().initialize(conf);
+        PIC_8259.lock().init();
 
-        // PIC_8259.lock().disable_all_irqs();
         PIC_8259
             .lock()
             .enable_irq(pic_8259::Irq::SerialPortController2);
