@@ -53,7 +53,8 @@ SRC_C += beacon op_main modifiers extract_args \
 	stdio _doprnt putchar puts getc fopen \
 	getline getdelim
 VPATH += src/stdio/printf src/stdio/
-HEADERS += include/stdio.h internal_printf.h
+HEADERS += include/stdio.h
+PRIVATE_HEADERS += internal_printf.h
 
 SRC_C += ctor mem_syscall \
 	size_fn \
@@ -74,7 +75,8 @@ SRC_C += ctor mem_syscall \
 	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
 	alloc_btree_get_neighbours
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
-HEADERS += include/stdlib.h main_headers.h alloc_btree_internal_header.h
+HEADERS += include/stdlib.h
+PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
 SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
 
@@ -182,27 +184,32 @@ OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NA
 SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
 OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
 
+SYSROOT_HEADERS = $(addprefix $(TOOLCHAIN_SYSROOT)/usr/, $(HEADERS))
+
 .PHONY = all clean fclean re exec
 
-all: $(TARGET) $(OBJ_C_RUNTIME)
+all: $(TARGET) $(OBJ_C_RUNTIME) $(SYSROOT_HEADERS)
+
+$(TOOLCHAIN_SYSROOT)/usr/include/%: include/%
+	@mkdir -pv $(dir $@)
+	@cp -v $< $@
 
 $(TARGET_LIBC): $(OBJ_C_RUNTIME) $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 	$(AR) rc $@ $^
 	$(RANLIB) $@
 	cp -v libc.a $(TOOLCHAIN_SYSROOT)/usr/lib/.
-	cp -rv include/* $(TOOLCHAIN_SYSROOT)/usr/include/
 	cp -v $(OBJ_C_RUNTIME) $(TOOLCHAIN_SYSROOT)/usr/lib/.
 
 $(TARGET_UNIT_TESTS): $(TESTED_OBJ_C)
 	$(CC) $(CFLAGS) -o $@ $^ -lcriterion
 
-$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS) include include/sys
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS) include include/sys
+$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS) include include/sys
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
 	$(NASM) -f elf -o $@ $<
 
 # Compile all the C runtime object files
