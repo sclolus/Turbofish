@@ -47,14 +47,14 @@ pub unsafe fn init_kernel_virtual_allocator() {
         Virt(0).into(),
         Phys(0).into(),
         NbrPages::_1MB,
-        Entry::READ_WRITE | Entry::PRESENT,
+        Entry::READ_WRITE | Entry::PRESENT | Entry::GLOBAL,
     )
     .expect("Could not identity map the first megabyte of memory");
     pd.map_range_page_init(
         virt_start,
         Page::new(0),
         virt_end - virt_start,
-        Entry::READ_WRITE | Entry::PRESENT,
+        Entry::READ_WRITE | Entry::PRESENT | Entry::GLOBAL,
     )
     .expect("Init: Could not map the kernel");
 

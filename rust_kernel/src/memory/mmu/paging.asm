@@ -11,7 +11,17 @@ global _read_cr3
 global _invlpg
 global _invlpg_range
 
+global _enable_page_global
+
 %define PAGE_SIZE 4096
+
+;; set the Page Global Enabled bit in cr4
+;; prevents the TLB from updating the address in its cache if CR3 is reset
+_enable_page_global:
+	mov eax, cr4
+	or eax, 1 << 7
+	mov cr4, eax
+	ret
 
 ;; It loads the argument as the page directory pointer in cr3,
 ;; then actives paging.
