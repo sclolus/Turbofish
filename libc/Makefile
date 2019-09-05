@@ -109,7 +109,7 @@ SRC_C += sched
 VPATH += src/sched
 HEADERS += sched.h
 
-SRC_C += nanosleep localtime time gmtime
+SRC_C += nanosleep localtime time gmtime ctime asctime
 VPATH += src/time
 HEADERS += time.h
 

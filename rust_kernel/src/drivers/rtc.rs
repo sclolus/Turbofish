@@ -9,7 +9,6 @@ use core::{fmt, fmt::Display};
 use interrupts::{GateType, IdtGateEntry, InterruptTable};
 use io::{Io, Pio};
 
-#[macro_use]
 use crate::interrupts;
 
 extern "C" {
@@ -47,6 +46,7 @@ enum RtcRegister {
     Hours = 0x4,
 
     /// Contains the current day of the week of the RTC date. Ranges from 1 to 7, Sunday is defined as 1.
+    #[allow(unused)]
     Weekday = 0x6,
 
     /// Contains the current day of the month of the RTC date. Ranges from 1 to 31.
@@ -61,6 +61,7 @@ enum RtcRegister {
     /// Contains the current century of the RTC date. Ranges from 19 to 20 (Well we don't really know that.)
     /// The century register is not present on all RTC chips. In order to check it's existence (and possibly location),
     /// it is needed to check the Fixed ACPI Description Table.
+    #[allow(unused)]
     Century = 0x32,
 
     StatusA = 0xA,
@@ -177,7 +178,7 @@ extern "C" fn rtc_handler(_interrupt_name: *const u8) {
 
             assert!(
                 old < seconds_since_epoch,
-                "We want back in time, Congratulation!"
+                "We want back in time, Congratulations!"
             );
 
             CURRENT_UNIX_TIME.store(seconds_since_epoch, Ordering::SeqCst);
@@ -220,6 +221,7 @@ impl Rtc {
     }
 
     /// This function is unsafe, seriously, don't mess with it or you could fuck up your RTC permanently.
+    #[allow(unused)]
     unsafe fn set_register(&mut self, value: u8, selected_register: RtcRegister) {
         without_interrupts!({
             Nmi::disable();
@@ -240,7 +242,7 @@ impl Rtc {
 
         let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
 
-        let mut gate_entry = *IdtGateEntry::new()
+        let gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)
             .set_privilege_level(0)
             .set_selector(1 << 3)

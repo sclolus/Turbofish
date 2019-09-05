@@ -46,7 +46,8 @@ SRC_C += Clone \
 		more_fish \
 		broken_fish \
 		gettimeofday \
-
+		gettimeofday \
+		time
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

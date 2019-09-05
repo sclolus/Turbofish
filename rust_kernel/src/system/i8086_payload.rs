@@ -27,7 +27,7 @@ pub unsafe fn i8086_payload(
     payload: *const extern "C" fn(),
     size_fn: usize,
 ) -> i32 {
-    use crate::drivers::{pic_8259, PIC_8259};
+    use crate::drivers::{pic_8259, Pic8259, PIC_8259};
 
     without_interrupts!({
         let ret;
@@ -40,10 +40,11 @@ pub unsafe fn i8086_payload(
 
                 ret = _i8086_payload(reg, payload, size_fn);
 
-                pic_8259.set_idt_vectors(
+                let conf = Pic8259::basic_pic_configuration(
                     pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR,
                     pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR,
                 );
+                pic_8259.initialize(conf);
                 pic_8259.set_masks(imrs);
             }
         }

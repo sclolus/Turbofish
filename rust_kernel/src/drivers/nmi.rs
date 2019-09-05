@@ -1,7 +1,5 @@
 /// This file contains the primitives to enable and disable the NMI (Non-Maskable Interrupt)
-use crate::Spinlock;
 use io::{Io, Pio};
-use lazy_static::lazy_static;
 
 pub struct Nmi {
     command: Pio<u8>,

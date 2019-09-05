@@ -29,16 +29,7 @@ pub struct Pic {
 
 impl Pic {
     /// The End of Interrupt command, used to reply to the PICs at the end of an interrupt handler
-    const EOI: u8 = 0x20;
-
-    /// The Initialization command, used to start the initialization of the PICs
-    const INIT: u8 = 0x11;
-
-    /// The Read Interrupt Request Register command, used to obtain the Interrupt Request Register from the PICs
-    const PIC_READ_IRR: u8 = 0x0a;
-
-    /// The In-Service Register command, used to obtain the In-Service Register from the PICs.
-    const PIC_READ_ISR: u8 = 0x0b;
+    const _EOI: u8 = 0x20;
 
     /// Creates a new PIC instance with port `port`
     pub const fn new(port: u16) -> Self {
@@ -163,7 +154,7 @@ impl ICW1 {
         self
     }
 
-    pub fn get_icw4_needed(mut self) -> bool {
+    pub fn get_icw4_needed(self) -> bool {
         self.byte.get_bit(0)
     }
 
@@ -204,7 +195,7 @@ impl ICW2 {
         Self { byte: 0 }
     }
 
-    pub fn set_interrupt_vector(mut self, mut vector: u8) -> Self {
+    pub fn set_interrupt_vector(mut self, vector: u8) -> Self {
         // The 3 lowest bits are not used in 8086/8088-mode.
 
         // vector >>= 3;
@@ -444,6 +435,7 @@ impl OCW1 {
 
     /// Sets the mask of some interrupt line to `value`.
     /// When an interrupt line's mask is set, the interrupt line is disabled.
+    #[allow(unused)]
     pub fn set_interrupt_mask(mut self, line: u8, value: bool) -> Self {
         assert!(line < 8, "There are only 8 lines to set in a OCW1");
 
@@ -488,19 +480,22 @@ impl OCW2 {
         self
     }
 
-    pub fn set_non_specific_eoi(mut self) -> Self {
+    pub fn set_non_specific_eoi(self) -> Self {
         self.set_command(0b001)
     }
 
-    pub fn set_specific_eoi(mut self) -> Self {
+    #[allow(unused)]
+    pub fn set_specific_eoi(self) -> Self {
         self.set_command(0b011)
     }
 
-    pub fn set_rotate_on_non_specific_eoi(mut self) -> Self {
+    #[allow(unused)]
+    pub fn set_rotate_on_non_specific_eoi(self) -> Self {
         self.set_command(0b101)
     }
 
-    pub fn set_rotate_in_automatic_eoi_mode(mut self, value: bool) -> Self {
+    #[allow(unused)]
+    pub fn set_rotate_in_automatic_eoi_mode(self, value: bool) -> Self {
         if value {
             self.set_command(0b100)
         } else {
@@ -508,18 +503,22 @@ impl OCW2 {
         }
     }
 
+    #[allow(unused)]
     pub fn set_rotate_on_specific_eoi(mut self) -> Self {
         self.set_command(0b111)
     }
 
+    #[allow(unused)]
     pub fn set_priority_command(mut self) -> Self {
         self.set_command(0b110)
     }
 
+    #[allow(unused)]
     pub fn set_no_op(mut self) -> Self {
         self.set_command(0b010)
     }
 
+    #[allow(unused)]
     pub fn is_complete(&self) -> bool {
         self.ir_level_set && self.command_set
     }
@@ -557,6 +556,7 @@ impl OCW3 {
         self
     }
 
+    #[allow(unused)]
     pub fn set_poll_commmand(mut self) -> Self {
         self.byte.set_bit(2, true);
         self
@@ -564,6 +564,7 @@ impl OCW3 {
 
     /// If value is true, the OCW3 sets the special mask.
     /// else, the OCW3 clears the special mask.
+    #[allow(unused)]
     pub fn set_special_mask(mut self, value: bool) -> Self {
         if value {
             self.byte.set_bits(5..=6, 0b11);
@@ -769,32 +770,12 @@ impl Pic8259 {
         );
 
         let master_conf = pic_configuration.get_master();
-        let mut slaves_confs = pic_configuration.slaves();
+        let slaves_confs = pic_configuration.slaves();
 
         self.master.configure(*master_conf);
         for slave_conf in slaves_confs {
             self.slave.configure(slave_conf);
         }
-    }
-
-    /// Initialize the PICs with `offset_1` as the vector offset for self.master
-    /// and `offset_2` as the vector offset for self.slave.
-    /// Which means that the vectors for self.master are now: offset_1..=offset_1+7
-    /// and for self.slave: offset_2..=offset_2+7.
-    pub unsafe fn set_idt_vectors(&mut self, offset_1: u8, offset_2: u8) {
-        self.master.command.write(Pic::INIT);
-        self.slave.command.write(Pic::INIT);
-
-        // Assign the vectors offsets
-        self.master.data.write(offset_1);
-        self.slave.data.write(offset_2);
-
-        self.master.data.write(0b100); // This tells the self.master that there is a self.slave at its IRQ2
-        self.slave.data.write(0b10); // This tells the self.slave its cascade identity
-
-        // thoses 2 calls set the 8086/88 (MCS-80/85) mode for self.master and self.slave.
-        self.master.data.write(0b1);
-        self.slave.data.write(0b1);
     }
 
     /// This function will set the bit `irq`.

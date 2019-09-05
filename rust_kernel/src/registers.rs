@@ -208,7 +208,7 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
-    use crate::drivers::{pic_8259, PIC_8259};
+    use crate::drivers::{pic_8259, Pic8259, PIC_8259};
 
     without_interrupts!({
         let ret;
@@ -221,10 +221,11 @@ pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
 
                 ret = _int8086(reg, bios_int);
 
-                pic_8259.set_idt_vectors(
+                let conf = Pic8259::basic_pic_configuration(
                     pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR,
                     pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR,
                 );
+                pic_8259.initialize(conf);
                 pic_8259.set_masks(imrs);
             }
         }
