@@ -134,25 +134,25 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
     fn write(&mut self, mut buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let len = buf.len();
         loop {
-            let size_read = min(
+            let size_write = min(
                 (SECTOR_SIZE as u64 - self.offset % SECTOR_SIZE as u64) as usize,
                 buf.len(),
             );
+            if size_write == 0 {
+                break;
+            }
 
             let sector = Sector::from(self.offset + self.start_of_partition);
             self.disk
                 .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
                 .map_err(|_| Errno::EIO)?;
             let target_read = (self.offset % SECTOR_SIZE as u64) as usize;
-            self.buf[target_read..target_read + size_read].copy_from_slice(&buf[0..size_read]);
-            if size_read == buf.len() {
-                break;
-            }
+            self.buf[target_read..target_read + size_write].copy_from_slice(&buf[0..size_write]);
             self.disk
                 .write(sector, NbrSectors(1), self.buf.as_ptr())
                 .map_err(|_| Errno::EIO)?;
-            buf = &buf[size_read..];
-            self.offset += size_read as u64;
+            buf = &buf[size_write..];
+            self.offset += size_write as u64;
         }
         Ok(IpcResult::Done(len as u32))
     }
