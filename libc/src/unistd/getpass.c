@@ -23,7 +23,7 @@ char	    *getpass(const char *const prompt)
 	size_t    pass_size = 0;
 
 	write(STDOUT_FILENO, prompt, strlen(prompt));
-	ssize_t	    ret = getline(&pass, &pass_size, stdin);
+	ssize_t	    ret = ft_getline(&pass, &pass_size, stdin);
 	write(STDOUT_FILENO, "\n", 1);
 
 	if (-1 == ret) {

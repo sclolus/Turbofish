@@ -20,7 +20,6 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
-#include <i386.h>
 #include <inttypes.h>
 #include <langinfo.h>
 #include <libintl.h>

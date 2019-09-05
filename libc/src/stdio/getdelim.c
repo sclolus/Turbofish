@@ -7,8 +7,11 @@
 #define __GROW 16
 #define __GETDELIM_MIN_LINE 4
 
-/* ssize_t  getdelim(char **line, size_t *n, int delim, */
-/* 		  FILE *stream) */
+/*
+ * getdelime- delimited string input
+ * ssize_t  getdelim(char **line, size_t *n, int delim, FILE *stream)
+ * The buffer should be freed by the user program even if getline()/getdelim() failed
+ */
 int  getdelim(char **line, size_t *n, int delim,
 		  FILE *stream)
 
@@ -24,8 +27,7 @@ int  getdelim(char **line, size_t *n, int delim,
 	}
 
 	if (!*line) {
-		char	*new_line = malloc(__GETDELIM_MIN_LINE);
-
+		char *new_line = malloc(__GETDELIM_MIN_LINE);
 		if (!new_line) {
 			errno = ENOMEM;
 			return -1;
@@ -45,7 +47,6 @@ int  getdelim(char **line, size_t *n, int delim,
 			size_t	new_size = count + __GROW;
 			char	*new_line;
 			new_line = realloc(*line, new_size + 1);
-
 			if (!new_line) {
 				errno = ENOMEM;
 				return -1;
@@ -62,7 +63,6 @@ int  getdelim(char **line, size_t *n, int delim,
 	(*line)[count] = '\0';
 
 	if (ferror(stream)) {
-		free(*line);
 		return -1;
 	}
 	else if (feof(stream) && count == 0) {

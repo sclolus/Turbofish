@@ -143,7 +143,7 @@ int      getchar_unlocked(void);
 /* ssize_t  getline(char **, size_t *, FILE *); */
 int	 getdelim(char **, size_t *, int,
              FILE *);
-int	 getline(char **, size_t *, FILE *);
+int	 ft_getline(char **, size_t *, FILE *);
 
 //[Option End]
 //[OB][Option Start]

@@ -1,5 +1,5 @@
-PATH  := $(PATH):/toolchain_turbofish/cross/bin/
-SHELL := env PATH=$(PATH) /bin/bash
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
 
 ifeq ($(make_pass),yes)
 	TARGET = hasher
@@ -16,7 +16,7 @@ ifneq ($(unit-tests), yes)
 endif
 endif
 
-TARGET_SU=su
+TARGET_SU=bin/su
 TARGET_UNIT_TESTS=unit-tests
 
 ifeq ($(unit-tests),yes)
@@ -37,8 +37,6 @@ else
 	RANLIB = i686-turbofish-ranlib
 	IFLAGS = -Iinclude
 endif
-
-
 
 SRC_C += main \
 	strsplit \
@@ -66,26 +64,22 @@ CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer $(IFLAGS)
 
 .PHONY = all clean fclean re exec
 
-TEST_DIR = tests
-
 OBJ_DIR = objs
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
-INSTALL_DIR = ../../rust_kernel/src/userland/
 
 all: $(TARGET) Makefile
 
-$(TARGET): $(OBJ_C)
+$(TARGET): $(OBJ_C) $(LIBC_AR)
 	$(CC) -o $@ $(CFLAGS) $^
+	cp -v --parents $@ $(SYSTEM_ROOT)
+	cp -v --parents etc/* $(SYSTEM_ROOT)
+
 	# sudo chown root:root $(TARGET)
 	# sudo chmod u+s $(TARGET)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	@mkdir -pv $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
-
-install:
-	cp -rv $(TARGET) $(INSTALL_DIR)/bin
-	cp -v $(TEST_DIR)/etc/* $(INSTALL_DIR)/etc
 
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;

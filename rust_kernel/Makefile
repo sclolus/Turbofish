@@ -1,3 +1,5 @@
+include ../boilerplates.mk
+
 arch := ivybridge-cpu
 kernel := build/kernel.elf
 name := turbo_fish
@@ -185,11 +187,6 @@ $(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
-exec:
-	qemu-system-x86_64 $(QEMU_ARGS)
-
-exec_serial_port:
-	qemu-system-x86_64 -device isa-debug-exit,iobase=0xf4,iosize=0x04 --serial stdio $(QEMU_ARGS)
-
+# This feature need to disable hard drive drivers in kernel
 exec_gdb:
 	qemu-system-x86_64 -S -gdb tcp::$(GDB_TCP_PORT) $(QEMU_ARGS)

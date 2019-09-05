@@ -54,5 +54,4 @@ void basic_destructor(void) {
 	/* puts("*** libc destructor called ***"); */
 }
 
-
 #undef array_size

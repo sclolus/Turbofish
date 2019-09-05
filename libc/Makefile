@@ -1,7 +1,5 @@
-PATH  := $(PATH):/toolchain_turbofish/cross/bin/
-SHELL := env PATH=$(PATH) /bin/bash
-
-SYSROOT = /toolchain_turbofish/sysroot
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
 
 TARGET_UNIT_TESTS= unit-tests
 TARGET_LIBC= libc.a
@@ -25,18 +23,15 @@ else
 	ASFLAGS = --32
 endif
 
-
 # non-turbofish specific program. Use carefully
 NASM = nasm
-
-HEADERS =
 
 VPATH += src
 SRC_C += libc_ctor
 SRC_ASM += user_syscall
 HEADERS += include/user_syscall.h
 
-TESTED_SRC_C= setenv getenv unsetenv clearenv
+TESTED_SRC_C = setenv getenv unsetenv clearenv
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
@@ -174,19 +169,7 @@ SRC_C += getgrnam getgrgid
 VPATH += src/grp
 HEADERS += include/grp.h
 
-# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -fno-builtin -fno-stack-protector -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
-# CFLAGS += -Wall -Wextra -masm=intel $(IFLAGS) -nostdlib -nodefaultlibs -fno-exceptions #-nostdinc #$(IFLAGS)
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
-
-#ifeq ($(DEBUG),yes)
-#	CFLAGS += -m32 -std=gnu99 -Wextra -Wall -g -O0
-#	ASFLAGS += -g
-#else ifeq ($(OPTIM),yes)
-#	# -fno-omit-frame-pointer keep good call trace for panic()
-#	CFLAGS += -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
-#else
-#	CFLAGS += -v -std=gnu99 -Wextra -Wall
-#endif
 
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
@@ -203,20 +186,23 @@ OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir
 
 all: $(TARGET) $(OBJ_C_RUNTIME)
 
-$(TARGET_LIBC): $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
+$(TARGET_LIBC): $(OBJ_C_RUNTIME) $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 	$(AR) rc $@ $^
 	$(RANLIB) $@
+	cp -v libc.a $(TOOLCHAIN_SYSROOT)/usr/lib/.
+	cp -rv include/* $(TOOLCHAIN_SYSROOT)/usr/include/
+	cp -v $(OBJ_C_RUNTIME) $(TOOLCHAIN_SYSROOT)/usr/lib/.
 
 $(TARGET_UNIT_TESTS): $(TESTED_OBJ_C)
 	$(CC) $(CFLAGS) -o $@ $^ -lcriterion
 
-$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
+$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS) include include/sys
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS)
+$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS) include include/sys
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS)
+$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS) include include/sys
 	$(NASM) -f elf -o $@ $<
 
 # Compile all the C runtime object files
@@ -234,8 +220,3 @@ re: fclean all
 
 exec: all
 	./$(TARGET_LIBC)
-
-install:
-	cp libc.a $(SYSROOT)/usr/lib/.
-	cp -r include/* $(SYSROOT)/usr/include/
-	cp $(OBJ_C_RUNTIME) $(SYSROOT)/usr/lib/.

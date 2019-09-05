@@ -1,7 +1,7 @@
-PATH  := $(PATH):/toolchain_turbofish/cross/bin/
-SHELL := env PATH=$(PATH) /bin/bash
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
 
-BUILD_DIR = build
+BUILD_DIR = bin
 VPATH += src
 
 AS = i686-turbofish-ld
@@ -46,17 +46,16 @@ LIB = -lm
 else
 endif
 
-
 TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
-INSTALL_DIR = ../../rust_kernel/src/userland/bin
 
 .PHONY = all clean fclean re
 
 all: $(TARGET_C)
 
-build/%: $(OBJ_DIR)/%.o Makefile /toolchain_turbofish/sysroot/usr/lib/libc.a obj/tools.o
+$(BUILD_DIR)/%: $(OBJ_DIR)/%.o Makefile $(LIBC_AR) obj/tools.o
 	@mkdir -pv ./$(dir $@)
 	$(CC) $(CFLAGS) -o $@ $< obj/tools.o $(LIB)
+	cp -rv --parents $@ $(SYSTEM_ROOT)
 
 $(OBJ_DIR)/%.o: %.c Makefile include/tools.h
 	@mkdir -pv ./$(dir $@)
@@ -65,9 +64,6 @@ $(OBJ_DIR)/%.o: %.c Makefile include/tools.h
 $(OBJ_C):
 
 obj/tools.o:
-
-install:
-	cp -rv build/* $(INSTALL_DIR)
 
 clean:
 	rm -fv $(TARGET_C)

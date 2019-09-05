@@ -35,7 +35,9 @@ impl<T> IpcResult<T> {
     }
 }
 
-pub use process::{KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess};
+pub use process::{
+    get_file_content, KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess,
+};
 pub use safe_ffi::CStringArray;
 
 use scheduler::SCHEDULER;
@@ -43,8 +45,6 @@ use scheduler::SCHEDULER;
 #[allow(unused)]
 use tests::*;
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 use libc_binding::Errno;
 use messaging::MessageTo;
 
@@ -80,13 +80,12 @@ pub fn handle_key_press(key_pressed: KeySymb) {
     // in the keyboard interrupt handler, after reading the keysymb,
     // we send a message to the tty which will be handled in the next
     // schedule
-
     messaging::push_message(MessageTo::Tty { key_pressed })
 }
 
 // Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
-pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
+pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     // Reassign all cpu exceptions for taskmaster
     unsafe {
         cpu_isr::reassign_cpu_exceptions();
@@ -94,18 +93,34 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
 
     // Initialize Syscall system
     syscall::init();
-    for (_i, p) in user_process_list.into_iter().enumerate() {
-        // println!("user pocess no: {} : {:?}", i, p);
-        // all starting process inherit init for now, so their parent is 1
-        SCHEDULER.lock().add_user_process(1, p).unwrap();
-    }
 
+    // Initialize VFS
+    lazy_static::initialize(&VFS);
+
+    // Register the first process
+    let file = get_file_content(filename).expect("Cannot syncing");
+    SCHEDULER
+        .lock()
+        .add_user_process(
+            1,
+            unsafe {
+                UserProcess::new(
+                    ProcessOrigin::Elf(&file),
+                    Some(ProcessArguments::new(argv.into(), envp.into())),
+                )
+            }
+            .expect("Unexpected error when parsing ELF file"),
+        )
+        .expect("Scheduler is bullshit");
+
+    // Register the keyboard callback
     unsafe {
         KEYBOARD_DRIVER
             .as_mut()
             .unwrap()
             .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
     }
+
     // Set the scheduler idle process
     SCHEDULER
         .lock()
@@ -114,12 +129,9 @@ pub fn start(user_process_list: Vec<Box<UserProcess>>) -> ! {
                 ProcessOrigin::Raw(_idle_process_code as *const u8, _idle_process_len),
                 None,
             )
-            .unwrap()
+            .expect("Unexpected error while creating idle process")
         })
-        .unwrap();
-
-    // ipc::start();
-    lazy_static::initialize(&VFS);
+        .expect("Scheduler is bullshit");
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }

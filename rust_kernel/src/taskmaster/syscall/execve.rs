@@ -2,41 +2,16 @@
 
 use super::SysResult;
 
-use super::process::{CpuState, Process, ProcessArguments, ProcessOrigin, UserProcess};
+use super::process::{
+    get_file_content, CpuState, Process, ProcessArguments, ProcessOrigin, UserProcess,
+};
 use super::safe_ffi::{c_char, CString, CStringArray};
 use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
 
 use alloc::format;
-use alloc::vec::Vec;
 use core::convert::TryInto;
-use fallible_collections::try_vec;
-use libc_binding::{Errno, OpenFlags};
 
-use crate::taskmaster::vfs::init::EXT2;
-
-/// Return a file content using raw ext2 methods
-fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
-    let ext2 = unsafe {
-        EXT2.as_mut()
-            .ok_or("ext2 not init")
-            .map_err(|_| Errno::ENODEV)?
-    };
-
-    let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
-
-    let inode = ext2.get_inode(file.inode_nbr)?;
-
-    let mut v: Vec<u8> = try_vec![0; inode.0.low_size as usize]?;
-
-    let len = ext2.read(&mut file, v.as_mut())?;
-
-    if len != inode.0.low_size as u64 {
-        Err(Errno::EIO)
-    } else {
-        Ok(v)
-    }
-}
 /// File descriptors open in the calling process image shall remain
 /// open in the new process image, except for those whose close-on-
 /// exec flag FD_CLOEXEC is set. For those file descriptors that

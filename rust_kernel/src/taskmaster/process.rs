@@ -5,6 +5,7 @@ use tss::TSS;
 
 use super::safe_ffi::{c_char, CStringArray};
 use super::syscall::clone::CloneFlags;
+use super::vfs::init::EXT2;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
 
@@ -16,8 +17,8 @@ use core::slice;
 use fallible_collections::FallibleArc;
 
 use elf_loader::{SegmentType, SymbolTable};
-
 use fallible_collections::{try_vec, FallibleBox};
+use libc_binding::{Errno, OpenFlags};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -536,4 +537,27 @@ impl Process for KernelProcess {
 pub unsafe fn get_ring(context_ptr: u32) -> PrivilegeLevel {
     let cpu_state = context_ptr as *const CpuState;
     (((*cpu_state).cs & 0b11) as u8).into()
+}
+
+/// Return a file content using raw ext2 methods
+pub fn get_file_content(pathname: &str) -> SysResult<Vec<u8>> {
+    let ext2 = unsafe {
+        EXT2.as_mut()
+            .ok_or("ext2 not init")
+            .map_err(|_| Errno::ENODEV)?
+    };
+
+    let mut file = ext2.open(&pathname, OpenFlags::O_RDONLY, 0)?;
+
+    let inode = ext2.get_inode(file.inode_nbr)?;
+
+    let mut v: Vec<u8> = try_vec![0; inode.0.low_size as usize]?;
+
+    let len = ext2.read(&mut file, v.as_mut())?;
+
+    if len != inode.0.low_size as u64 {
+        Err(Errno::EIO)
+    } else {
+        Ok(v)
+    }
 }
