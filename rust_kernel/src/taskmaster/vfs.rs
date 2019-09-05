@@ -36,8 +36,8 @@ use libc_binding::OpenFlags;
 
 use libc_binding::c_char;
 use libc_binding::dirent;
-use libc_binding::Errno;
 use libc_binding::FileType;
+use libc_binding::{gid_t, uid_t, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -77,16 +77,21 @@ impl VirtualFileSystem {
         self.inodes.insert(inode.get_id(), inode);
     }
 
+    fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Box<dyn FileSystem>> {
+        self.mounted_filesystems.get(&inode_id.filesystem_id?)
+    }
+
+    fn get_filesystem_mut(&mut self, inode_id: InodeId) -> Option<&mut Box<dyn FileSystem>> {
+        self.mounted_filesystems.get_mut(&inode_id.filesystem_id?)
+    }
+
     /// construct the files in directory `direntry_id` in ram form the filesystem
     fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> VfsResult<()> {
         // unimplemented!()
         let current_entry = self.dcache.get_entry(&direntry_id)?;
         // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
-        let fs = self
-            .mounted_filesystems
-            .get(&inode_id.filesystem_id.expect("no filesystem in there"))
-            .unwrap(); // remove this unwrap
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
 
         for (direntry, inode) in fs.lookup_directory(inode_id.inode_number as u32)? {
             // dbg!(direntry);
@@ -97,35 +102,35 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    // pub fn rename_dentry(
-    //     &mut self,
-    //     cwd: DirectoryEntryId,
-    //     id: DirectoryEntryId,
-    //     new_pathname: Path,
-    // ) -> VfsResult<()> {
-    //     let new_filename = new_pathname.filename().unwrap(); // ?
+    pub fn rename_dentry(
+        &mut self,
+        cwd: &Path,
+        id: DirectoryEntryId,
+        new_pathname: Path,
+    ) -> VfsResult<()> {
+        let new_filename = new_pathname.filename().unwrap(); // ?
 
-    //     if new_filename == &"." || new_filename == &".." {
-    //         return Err(VfsError::Errno(Errno::EINVAL));
-    //     }
+        if new_filename == &"." || new_filename == &".." {
+            return Err(VfsError::Errno(Errno::EINVAL));
+        }
 
-    //     if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
-    //         self.dcache.remove_entry(id)?;
-    //     };
+        if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
+            self.dcache.remove_entry(id)?;
+        };
 
-    //     let new_parent_id = self.pathname_resolution(cwd, new_pathname.parent())?;
+        let new_parent_id = self.pathname_resolution(cwd, new_pathname.parent())?;
 
-    //     self.dcache.move_dentry(id, new_parent_id)?;
+        self.dcache.move_dentry(id, new_parent_id)?;
 
-    //     let entry = self
-    //         .dcache
-    //         .d_entries
-    //         .get_mut(&id)
-    //         .ok_or(DcacheError::NoSuchEntry)?;
+        let entry = self
+            .dcache
+            .d_entries
+            .get_mut(&id)
+            .ok_or(DcacheError::NoSuchEntry)?;
 
-    //     entry.set_filename(*new_filename);
-    //     Ok(())
-    // }
+        entry.set_filename(*new_filename);
+        Ok(())
+    }
 
     /// Construct a path from a DirectoryEntryId by follow up its
     /// parent
@@ -486,27 +491,35 @@ impl VirtualFileSystem {
             .collect())
     }
 
-    // pub fn unlink(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
-    //     use VfsError::*;
-    //     let entry_id = self.pathname_resolution(current.cwd, path)?;
-    //     let inode_id;
+    pub fn unlink(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> VfsResult<()> {
+        use VfsError::*;
+        let entry_id = self.pathname_resolution(cwd, path.clone())?;
+        let inode_id;
+        let parent_id;
 
-    //     {
-    //         let entry = self.dcache.get_entry_mut(&entry_id)?;
-    //         inode_id = entry.inode_id;
-    //     }
+        {
+            let entry = self.dcache.get_entry_mut(&entry_id)?;
+            inode_id = entry.inode_id;
+            parent_id = entry.parent_id;
+        }
 
-    //     let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
-    //     self.dcache.remove_entry(entry_id)?;
+        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
+        self.dcache.remove_entry(entry_id)?;
 
-    //     corresponding_inode.link_number -= 1;
+        corresponding_inode.link_number -= 1;
 
-    //     //TODO: VFS check that
-    //     // if corresponding_inode.link_number == 0 && !corresponding_inode.is_opened() {
-    //     //     self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
-    //     // }
-    //     Ok(())
-    // }
+        //TODO: VFS check that
+        if corresponding_inode.link_number == 0 {
+            self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+        }
+        //TODO: check that
+        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        fs.unlink(parent_inode_id.inode_number as u32, unsafe {
+            path.filename().expect("no filename").as_str()
+        })?;
+        Ok(())
+    }
 
     fn get_available_id(&self, filesystem_id: FileSystemId) -> InodeId {
         let mut current_id = InodeId::new(2, None); // check this
@@ -544,31 +557,21 @@ impl VirtualFileSystem {
             Ok(id) => entry_id = id,
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
-                let mut new_inode = Inode::default();
-                let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
-
-                new_inode
-                    .set_id(new_id)
-                    .set_access_mode(mode)
-                    .set_uid(creds.uid)
-                    .set_gid(creds.gid); // posix does not really like this.
-
-                new_inode.link_number += 1;
-                assert!(self.inodes.insert(new_id, new_inode).is_none());
-                let mut new_direntry = DirectoryEntry::default();
                 let parent_id = self.pathname_resolution(cwd, path.parent())?;
+                let parent_entry = self.dcache.get_entry(&parent_id)?;
 
-                new_direntry
-                    .set_filename(*path.filename().unwrap())
-                    .set_inode_id(new_id);
+                let inode_id = parent_entry.inode_id;
+                let inode_number = inode_id.inode_number as u32;
+                let fs = self.get_filesystem_mut(inode_id).expect("no filesystem");
 
-                if flags.contains(OpenFlags::O_DIRECTORY) {
-                    new_direntry.set_directory();
-                } else {
-                    new_direntry.set_regular();
-                }
-
+                let (new_direntry, new_inode) = fs.create(
+                    unsafe { path.filename().expect("no filename").as_str() },
+                    inode_number,
+                    flags,
+                    mode,
+                )?;
                 entry_id = self.dcache.add_entry(Some(parent_id), new_direntry)?;
+                self.add_inode(new_inode);
             }
         }
 

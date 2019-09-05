@@ -1,11 +1,12 @@
 //! this module contains methods of the Ext2 which constitute the posix interface
 #![allow(unused_variables)]
+use super::DirectoryEntryType;
 use super::{DirectoryEntry, Inode};
 use crate::tools::IoResult;
-use crate::{Ext2Filesystem, File};
+use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
-use libc_binding::{gid_t, mode_t, uid_t, Errno, OpenFlags};
+use libc_binding::{gid_t, mode_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -19,31 +20,23 @@ impl Ext2Filesystem {
 
     /// The chown() function shall change the user and group ownership
     /// of a file.
-    pub fn chown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<()> {
+    pub fn chown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {
         unimplemented!();
     }
 
-    /// The lchown() function shall be equivalent to chown(), except
-    /// in the case where the named file is a symbolic link. In this
-    /// case, lchown() shall change the ownership of the symbolic link
-    pub fn lchown(&mut self, path: &str, owner: uid_t, group: gid_t) -> IoResult<()> {
-        unimplemented!();
-    }
+    // /// The lchown() function shall be equivalent to chown(), except
+    // /// in the case where the named file is a symbolic link. In this
+    // /// case, lchown() shall change the ownership of the symbolic link
+    // pub fn lchown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {
+    //     unimplemented!();
+    // }
 
     /// The chmod() function shall change S_ISUID, S_ISGID, [XSI]
     /// [Option Start] S_ISVTX, [Option End] and the file permission
     /// bits of the file
-    pub fn chmod(&mut self, path: &str, mode: mode_t) -> IoResult<()> {
+    pub fn chmod(&mut self, inode_nbr: u32, mode: FileType) -> IoResult<()> {
+        // let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         unimplemented!();
-    }
-
-    /// Should behave as 'return open(path, O_WRONLY|O_CREAT|O_TRUNC, mode);'
-    pub fn creat(&mut self, path: &str, mode: mode_t) -> IoResult<File> {
-        self.open(
-            path,
-            OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC,
-            mode,
-        )
     }
 
     /// The rename() function shall change the name of a file
@@ -61,80 +54,105 @@ impl Ext2Filesystem {
         self.truncate_inode((&mut inode, inode_addr), length)
     }
 
-    /// The open() function shall establish the connection between a
-    /// file and a file descriptor.
-    pub fn open(&mut self, path: &str, flags: OpenFlags, mode: mode_t) -> IoResult<File> {
-        let mut inode_nbr = 2;
-        let mut iter_path = path.split('/').filter(|x| x != &"").peekable();
-        while let Some(p) = iter_path.next() {
-            let entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::ENOENT);
-            // dbg!(entry?.0.get_filename());
-            if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::O_CREAT) {
-                inode_nbr = self.create_file(p, inode_nbr, flags)?;
-            } else {
-                inode_nbr = entry?.0.get_inode();
-            }
+    pub fn create(
+        &mut self,
+        filename: &str,
+        parent_inode_nbr: u32,
+        flags: OpenFlags,
+        mut mode: FileType,
+    ) -> IoResult<(DirectoryEntry, Inode)> {
+        let direntry_type;
+        if flags.contains(OpenFlags::O_DIRECTORY) {
+            mode |= FileType::DIRECTORY;
+            direntry_type = DirectoryEntryType::Directory;
+        } else {
+            mode |= FileType::REGULAR_FILE;
+            direntry_type = DirectoryEntryType::RegularFile;
         }
-        Ok(File {
-            inode_nbr,
-            curr_offset: 0,
-        })
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
+        inode_nbr;
+        let (_, inode_addr) = self.get_inode(inode_nbr)?;
+        let inode = Inode::new(mode);
+        self.disk.write_struct(inode_addr, &inode)?;
+
+        let mut new_entry = DirectoryEntry::new(filename, direntry_type, inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
+        Ok((new_entry, inode))
     }
 
     /// The unlink() function shall remove a link to a file.
-    pub fn unlink(&mut self, path: &str) -> IoResult<()> {
-        let (parent_inode_nbr, entry) = self.find_path(path)?;
+    pub fn unlink(&mut self, parent_inode_nbr: u32, filename: &str) -> IoResult<()> {
+        let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
         self.unlink_inode(entry.0.get_inode())?;
         self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
     }
 
+    // /// The open() function shall establish the connection between a
+    // /// file and a file descriptor.
+    // pub fn open(&mut self, path: &str, flags: OpenFlags, mode: mode_t) -> IoResult<File> {
+    //     let mut inode_nbr = 2;
+    //     let mut iter_path = path.split('/').filter(|x| x != &"").peekable();
+    //     while let Some(p) = iter_path.next() {
+    //         let entry = self
+    //             .iter_entries(inode_nbr)?
+    //             .find(|(x, _)| unsafe { x.get_filename() } == p)
+    //             .ok_or(Errno::ENOENT);
+    //         // dbg!(entry?.0.get_filename());
+    //         if entry.is_err() && iter_path.peek().is_none() && flags.contains(OpenFlags::O_CREAT) {
+    //             inode_nbr = self.create_file(p, inode_nbr, flags)?;
+    //         } else {
+    //             inode_nbr = entry?.0.get_inode();
+    //         }
+    //     }
+    //     Ok(File {
+    //         inode_nbr,
+    //         curr_offset: 0,
+    //     })
+    // }
     /// The mkdir() function shall create a new directory with name
     /// path.
-    pub fn mkdir(&mut self, path: &str, _mode: mode_t) -> IoResult<()> {
-        let mut inode_nbr = 2;
-        let mut iter_path = path.split('/').peekable();
-        while let Some(p) = iter_path.next() {
-            let entry = self
-                .iter_entries(inode_nbr)?
-                .find(|(x, _)| unsafe { x.get_filename() } == p)
-                .ok_or(Errno::ENOENT);
-            // dbg!(entry?.0.get_filename());
-            if entry.is_err() && iter_path.peek().is_none() {
-                inode_nbr = self.create_dir(p, inode_nbr)?;
-            } else {
-                inode_nbr = entry?.0.get_inode();
-            }
-        }
-        Ok(())
-    }
+    // pub fn mkdir(&mut self, path: &str, _mode: mode_t) -> IoResult<()> {
+    //     let mut inode_nbr = 2;
+    //     let mut iter_path = path.split('/').peekable();
+    //     while let Some(p) = iter_path.next() {
+    //         let entry = self
+    //             .iter_entries(inode_nbr)?
+    //             .find(|(x, _)| unsafe { x.get_filename() } == p)
+    //             .ok_or(Errno::ENOENT);
+    //         // dbg!(entry?.0.get_filename());
+    //         if entry.is_err() && iter_path.peek().is_none() {
+    //             inode_nbr = self.create_dir(p, inode_nbr)?;
+    //         } else {
+    //             inode_nbr = entry?.0.get_inode();
+    //         }
+    //     }
+    //     Ok(())
+    // }
 
-    /// The rmdir() function shall remove a directory only if it is an
-    /// empty directory.
-    pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
-        let (parent_inode_nbr, entry) = self.find_path(path)?;
-        let inode_nbr = entry.0.get_inode();
-        let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
+    // /// The rmdir() function shall remove a directory only if it is an
+    // /// empty directory.
+    // pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
+    //     let (parent_inode_nbr, entry) = self.find_path(path)?;
+    //     let inode_nbr = entry.0.get_inode();
+    //     let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
 
-        if !inode.is_a_directory() {
-            return Err(Errno::ENOTDIR);
-        }
-        if self
-            .iter_entries(inode_nbr)?
-            .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
-            || inode.nbr_hard_links > 2
-        {
-            return Err(Errno::ENOTEMPTY);
-        }
-        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        self.free_inode((&mut inode, inode_addr), inode_nbr)
-            .unwrap();
-        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
-        Ok(())
-    }
+    //     if !inode.is_a_directory() {
+    //         return Err(Errno::ENOTDIR);
+    //     }
+    //     if self
+    //         .iter_entries(inode_nbr)?
+    //         .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
+    //         || inode.nbr_hard_links > 2
+    //     {
+    //         return Err(Errno::ENOTEMPTY);
+    //     }
+    //     let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+    //     self.free_inode((&mut inode, inode_addr), inode_nbr)
+    //         .unwrap();
+    //     self.delete_entry(parent_inode_nbr, entry.1).unwrap();
+    //     Ok(())
+    // }
 
     /// for write syscall
     pub fn write(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &[u8]) -> IoResult<u64> {
