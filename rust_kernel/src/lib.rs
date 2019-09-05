@@ -15,6 +15,7 @@
 #![feature(const_vec_new)]
 #![feature(try_trait)]
 #![feature(result_map_or_else)]
+#![feature(const_fn)]
 // #![deny(missing_docs)]
 
 extern crate itertools;
@@ -59,7 +60,6 @@ pub mod registers;
 #[cfg(not(feature = "test"))]
 pub mod rust_main;
 pub mod tests;
-pub mod timer;
 
 pub mod watch_dog;
 pub use watch_dog::*;

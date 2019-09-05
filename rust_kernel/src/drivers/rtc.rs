@@ -4,6 +4,7 @@ use crate::drivers::{pic_8259, Nmi, PIC_8259};
 use bit_field::BitField;
 use core::cmp::max;
 use core::convert::{TryFrom, TryInto};
+use core::sync::atomic::{AtomicU32, Ordering};
 use core::{fmt, fmt::Display};
 use interrupts::{GateType, IdtGateEntry, InterruptTable};
 use io::{Io, Pio};
@@ -15,7 +16,7 @@ extern "C" {
     fn _isr_cmos();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[allow(dead_code)]
 enum Month {
     January = 1,
@@ -93,7 +94,7 @@ impl TryFrom<u8> for Month {
 }
 
 /// date with all field in binary
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Date {
     sec: u8,
     minutes: u8,
@@ -121,13 +122,67 @@ pub struct Rtc {
     data: Pio<u8>,
 }
 
+/// Gets the day's day number for this year.
+/// I tried to make this a const fn, but currently conditionals are not allowed in const fns.
+fn get_day_number(month: Month, day: usize) -> usize {
+    const NUMBER_OF_DAYS: [usize; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+    // assert!(day <= 31); // Can't do that in const fn, don't mess up!
+    let month_index = month as usize - 1;
+
+    let mut days = day;
+    for index in 0..month_index {
+        days += NUMBER_OF_DAYS[index]
+    }
+    days
+}
+
+pub static mut CURRENT_UNIX_TIME: AtomicU32 = AtomicU32::new(0);
+
 #[no_mangle]
+/// The interrupt handler of the RTC, updates the CURRENT_UNIX_TIME atomic variable
+/// with the updated value from the RTC.
 extern "C" fn rtc_handler(_interrupt_name: *const u8) {
     let mut rtc = Rtc::new();
 
     let status = rtc.read_register(RtcRegister::StatusC, false);
-    let date = rtc.read_date();
-    eprintln!("In rtc handler: {:x}: {}", status, date);
+
+    // The end-of-update interrupt is marked in the StatusC register by the 4 higher-bits being set to 0xd0.
+    if status.get_bits(4..8) == 0xd {
+        let date = rtc.read_date();
+        // Heuristical way to determine the current century.
+        // As we would need to check the ACPI tables to assert the existence of the Century register.
+
+        let tm_sec = date.sec as u32;
+        let tm_min = date.minutes as u32;
+        let tm_hour = date.hours as u32;
+        let tm_yday = get_day_number(date.month, date.day_of_month as usize) as u32;
+        let tm_year = date.year - 1900 as u32;
+
+        // The 19 January 2038, at 3am:14:08 UTC, the 2038 Bug will occurs.
+        // That is that value will overflow back to Unix epoch.
+        // Too bad.
+        // This is the posix formula for approximated Unix time.
+        let seconds_since_epoch = tm_sec
+            + tm_min * 60
+            + tm_hour * 3600
+            + tm_yday * 86400
+            + (tm_year - 70) * 31536000
+            + ((tm_year - 69) / 4) * 86400
+            - ((tm_year - 1) / 100) * 86400
+            + ((tm_year + 299) / 400) * 86400;
+
+        unsafe {
+            let old = CURRENT_UNIX_TIME.load(Ordering::SeqCst);
+
+            assert!(
+                old < seconds_since_epoch,
+                "We want back in time, Congratulation!"
+            );
+
+            CURRENT_UNIX_TIME.store(seconds_since_epoch, Ordering::SeqCst);
+        }
+    }
 }
 
 impl Rtc {

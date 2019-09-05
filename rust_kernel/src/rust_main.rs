@@ -3,6 +3,7 @@ use crate::drivers::{pic_8259, Acpi, Pic8259, ACPI, PCI, PIC_8259, PIT0};
 
 #[macro_use]
 use crate::interrupts;
+use crate::drivers::Rtc;
 use crate::keyboard::init_keyboard_driver;
 use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
@@ -12,7 +13,6 @@ use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
 use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
-use crate::timer::Rtc;
 use crate::watch_dog;
 
 #[no_mangle]
@@ -38,32 +38,24 @@ pub extern "C" fn kmain(
         interrupts::disable();
         PIC_8259.lock().init();
 
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::SerialPortController2);
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::SerialPortController1);
-        PIC_8259.lock().enable_irq(pic_8259::Irq::ACPI);
-
         init_keyboard_driver();
 
         watch_dog();
         interrupts::enable();
     }
-    // init_terminal();
+    init_terminal();
 
-    // PIT0.lock().configure(OperatingMode::RateGenerator);
-    // PIT0.lock().start_at_frequency(1000.).unwrap();
-    // log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
+    PIT0.lock().configure(OperatingMode::RateGenerator);
+    PIT0.lock().start_at_frequency(1000.).unwrap();
+    log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
-    // match Acpi::init() {
-    //     Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
-    //         Ok(()) => log::info!("ACPI driver initialized"),
-    //         Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
-    //     },
-    //     Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
-    // };
+    match Acpi::init() {
+        Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
+            Ok(()) => log::info!("ACPI driver initialized"),
+            Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+        },
+        Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
+    };
 
     unsafe {
         PIC_8259
@@ -87,7 +79,7 @@ pub extern "C" fn kmain(
 
     // TODO: Find why it crashs in Sclolus Qemu version
     log::info!("Scanning PCI buses ...");
-    // PCI.lock().scan_pci_buses();
+    PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
 
     // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
@@ -96,18 +88,7 @@ pub extern "C" fn kmain(
     log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
     log::info!("{}", date);
-    rtc.enable_periodic_interrupts(10);
-    unsafe {
-        // PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer); // enable only the keyboard.
-
-        loop {
-            // without_interrupts!({
-            println!("Lol");
-            // });
-
-            asm!("hlt"::::"volatile" "intel");
-        }
-    }
+    rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz.
 
     watch_dog();
 

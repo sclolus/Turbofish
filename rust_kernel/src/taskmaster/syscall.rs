@@ -18,22 +18,26 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
-    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
-    ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
-    OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
+    GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MMAP, MPROTECT,
+    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
+    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
+    UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{gid_t, mode_t, off_t, termios, uid_t, DIR};
+use libc_binding::{gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
 
 mod nanosleep;
 use nanosleep::{sys_nanosleep, TimeSpec};
+
+mod gettimeofday;
+use gettimeofday::sys_gettimeofday;
 
 mod waitpid;
 use waitpid::sys_waitpid;
@@ -333,6 +337,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             edx as gid_t,
         ),
         GETCWD => sys_getcwd(ebx as *mut libc_binding::c_char, ecx as usize),
+        GETTIMEOFDAY => sys_gettimeofday(ebx as *mut timeval, ecx as *mut timezone),
         SIGRETURN => sys_sigreturn(cpu_state),
         SHUTDOWN => sys_shutdown(),
         TEST => sys_test(),

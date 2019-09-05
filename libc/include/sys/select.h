@@ -4,15 +4,10 @@
 //Inclusion of the <sys/select.h> header may make visible all symbols from the headers <signal.h> and <time.h>.
 
 #include <signal.h>
-#include <time.h>
+#include <time.h> // TODO: check thix
+#include <sys/time.h>
 #include <sys/types.h>
 
-//The <sys/select.h> header shall define the timeval structure, which shall include at least the following members:
-//
-struct timeval {
-	time_t         tv_sec ; // Seconds.
-	suseconds_t    tv_usec; // Microseconds.
-};
 //
 //The <sys/select.h> header shall define the time_t and suseconds_t types as described in <sys/types.h>.
 //

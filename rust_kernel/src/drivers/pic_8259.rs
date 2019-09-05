@@ -106,10 +106,10 @@ impl Pic {
 
     pub fn configure(&mut self, config: ICWs) {
         assert!(config.is_complete());
-        println!("ICW1: {:x}", config.icw1.unwrap().byte);
-        println!("ICW2: {:x}", config.icw2.unwrap().byte);
-        println!("ICW3: {:x}", config.icw3.unwrap().byte);
-        println!("ICW4: {:x}", config.icw4.unwrap().byte);
+        // println!("ICW1: {:x}", config.icw1.unwrap().byte);
+        // println!("ICW2: {:x}", config.icw2.unwrap().byte);
+        // println!("ICW3: {:x}", config.icw3.unwrap().byte);
+        // println!("ICW4: {:x}", config.icw4.unwrap().byte);
 
         let icw1 = config.icw1.unwrap();
         let icw2 = config.icw2.unwrap();
@@ -684,7 +684,7 @@ impl Pic8259 {
 
         self.bios_imr = Some(self.get_masks());
 
-        let default_conf = Self::default_pit_configuration();
+        let default_conf = Self::default_pic_configuration();
         self.initialize(default_conf);
 
         use crate::interrupts::idt::GateType::InterruptGate32;
@@ -719,11 +719,11 @@ impl Pic8259 {
         self.bios_imr != None
     }
 
-    pub fn default_pit_configuration() -> PicConfiguration {
+    pub fn basic_pic_configuration(master_vector: u8, slave_vector: u8) -> PicConfiguration {
         use PICKind::*;
 
         let master_icw1 = ICW1::new().set_icw4_needed(true);
-        let master_icw2 = ICW2::new().set_interrupt_vector(KERNEL_PIC_MASTER_IDT_VECTOR);
+        let master_icw2 = ICW2::new().set_interrupt_vector(master_vector);
         let master_icw3 = ICW3::new(Master).set_cascaded_line(2, true);
         let master_icw4 = ICW4::new();
 
@@ -734,7 +734,7 @@ impl Pic8259 {
             .push_icw4(master_icw4);
 
         let slave_icw1 = ICW1::new().set_icw4_needed(true);
-        let slave_icw2 = ICW2::new().set_interrupt_vector(KERNEL_PIC_SLAVE_IDT_VECTOR);
+        let slave_icw2 = ICW2::new().set_interrupt_vector(slave_vector);
         let slave_icw3 = ICW3::new(Slave).set_slave_identity(2);
         let slave_icw4 = ICW4::new();
 
@@ -751,6 +751,14 @@ impl Pic8259 {
             .add_pic_configuration(slave_icws);
 
         configuration
+    }
+
+    pub fn bios_pic_configuration() -> PicConfiguration {
+        Self::basic_pic_configuration(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR)
+    }
+
+    pub fn default_pic_configuration() -> PicConfiguration {
+        Self::basic_pic_configuration(KERNEL_PIC_MASTER_IDT_VECTOR, KERNEL_PIC_SLAVE_IDT_VECTOR)
     }
 
     pub fn initialize(&mut self, pic_configuration: PicConfiguration) {
@@ -877,7 +885,9 @@ impl Pic8259 {
         without_interrupts!({
             let imrs = self.get_masks();
 
-            self.set_idt_vectors(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR);
+            let bios_pic_configuration = Self::bios_pic_configuration();
+
+            self.initialize(bios_pic_configuration);
             self.set_masks(self.bios_imr.expect("The PIC default imr was never saved"));
 
             imrs
