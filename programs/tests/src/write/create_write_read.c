@@ -23,7 +23,7 @@ char *random_vec(size_t size) {
 	return vec;
 }
 
-int	read_write_of_size(size_t size) {
+void	read_write_of_size(size_t size) {
 	//create a disk of size of the file + a little space for metadata
 	char filename[100];
 
@@ -89,7 +89,7 @@ int main() {
 	srand16(0x42);
 
 	for (size_t i = 0; i < NB_TESTS; i++) {
-		printf("test nbr %d\n", i);
+		printf("test nbr %lu\n", i);
 		size_t size = ((size_t)rand16(USHRT_MAX)) % FILE_SIZE_MAX;
         read_write_of_size(size);
     }
