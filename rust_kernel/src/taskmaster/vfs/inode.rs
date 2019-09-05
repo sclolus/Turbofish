@@ -1,6 +1,5 @@
-use super::permissions::FilePermissions;
 use super::posix_consts::time_t;
-use libc_binding::{gid_t, nlink_t, uid_t};
+use libc_binding::{gid_t, nlink_t, uid_t, FileType};
 pub type InodeNumber = usize;
 use super::DefaultDriver;
 use super::Driver;
@@ -63,7 +62,7 @@ pub struct InodeData {
 
     /// This inode's hard link number
     pub link_number: nlink_t,
-    pub access_mode: FilePermissions,
+    pub access_mode: FileType,
     // pub file_type: Filetype, ??????????
     pub uid: uid_t,
     pub gid: gid_t,
@@ -84,7 +83,7 @@ impl InodeData {
         self
     }
 
-    pub fn set_access_mode(&mut self, mode: FilePermissions) -> &mut Self {
+    pub fn set_access_mode(&mut self, mode: FileType) -> &mut Self {
         self.access_mode = mode;
         self
     }
@@ -114,7 +113,7 @@ impl InodeData {
     // }
 
     pub fn root_inode() -> Self {
-        let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
+        let access_mode = FileType::S_IRWXU | FileType::DIRECTORY;
 
         Self {
             id: InodeId::new(2, None),
@@ -207,7 +206,7 @@ impl InodeId {
 //     // pub stat: Option<fn(&mut Inode, &mut DirectoryEntry, &mut UserStat) -> VfsResult<i32>>,
 //     // pub mkdir: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
 //     // pub rmdir: Option<fn(&mut Inode, &mut DirectoryEntry) -> VfsResult<i32>>,
-//     pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FilePermissions) -> VfsResult<i32>>,
+//     pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FileType) -> VfsResult<i32>>,
 //     pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>,
 //     pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
 //     pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, Offset) -> VfsResult<i32>>,
@@ -365,7 +364,7 @@ impl InodeId {
 //     pub release: Option<fn(&mut File) -> VfsResult<i32>>,
 //     pub ftruncate: Option<fn(&mut File, Offset) -> VfsResult<i32>>,
 //     // pub fstat: Option<fn(&mut File, &mut UserStat) -> VfsResult<i32>>,
-//     pub fchmod: Option<fn(&mut File, FilePermissions) -> VfsResult<i32>>,
+//     pub fchmod: Option<fn(&mut File, FileType) -> VfsResult<i32>>,
 //     pub fchown: Option<fn(&mut File, uid_t, gid_t) -> VfsResult<i32>>,
 //     // pub open: Option<fn(&mut Inode, &mut File, i32, mode_t) -> VfsResult<i32>>,
 // }

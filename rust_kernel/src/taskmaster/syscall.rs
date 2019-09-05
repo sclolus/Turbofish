@@ -250,7 +250,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         // TODO: type parameter are not set and manage the third argument
         OPEN => sys_open(
             ebx as *const libc_binding::c_char,
-            ecx as u32, /* edx as u32 */
+            ecx as u32,
+            edx as mode_t,
         ),
         CLOSE => sys_close(ebx as i32),
         WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),

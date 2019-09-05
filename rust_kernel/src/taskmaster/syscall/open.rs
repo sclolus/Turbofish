@@ -1,16 +1,13 @@
 //! sys_open()
-
-use super::SysResult;
-
 use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
 use super::IpcResult;
-use libc_binding::c_char;
+use super::SysResult;
+use libc_binding::{c_char, mode_t, Errno, FileType, OpenFlags};
 
 /// Open a new file descriptor
-// TODO: Manage with the third argument
-pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u32> {
+pub fn sys_open(filename: *const c_char, flags: u32, mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -32,7 +29,9 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
             .unwrap_running_mut()
             .file_descriptor_interface;
 
-        match fd_interface.open(cwd, creds, file)? {
+        let flags = OpenFlags::from_bits(flags).ok_or(Errno::EINVAL)?;
+        let mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
+        match fd_interface.open(cwd, creds, file, flags, mode)? {
             IpcResult::Wait(fd, file_op_uid) => {
                 scheduler
                     .current_thread_mut()

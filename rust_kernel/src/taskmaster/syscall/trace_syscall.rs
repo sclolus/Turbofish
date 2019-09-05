@@ -10,7 +10,7 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, off_t, stat, termios, uid_t, Pid, DIR};
+use libc_binding::{gid_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
     FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
@@ -49,7 +49,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as usize
             ),
             // TODO: type parameter are not set and manage the third argument
-            OPEN => log::info!("open({:#?}, {:#?})", ebx as *const u8, ecx as u32),
+            OPEN => log::info!(
+                "open({:#?}, {:#?})",
+                ebx as *const u8,
+                OpenFlags::from_bits(ecx as u32)
+            ),
             CLOSE => log::info!("close({:#?})", ebx as i32),
             WAITPID => log::info!(
                 "waitpid({:#?}, {:#?}, {:#?})",
@@ -201,6 +205,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         FORK => "fork",
         READ => "read",
         WRITE => "write",
+        OPEN => "open",
         CLOSE => "close",
         WAITPID => "waitpid",
         LINK => "link",

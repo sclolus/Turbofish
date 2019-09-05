@@ -33,7 +33,7 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
 /// mounted on root
 fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
     let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    let mode = FileType::from_bits(0o777).expect("file permission creation failed");
     vfs.new_driver(
         &Path::root(),
         &Credentials::ROOT,
@@ -97,7 +97,7 @@ fn init_tty(vfs: &mut Vfs) {
         // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
         let path =
             Path::try_from(format!("/dev/tty{}", i).as_ref()).expect("path tty creation failed");
-        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        let mode = FileType::from_bits(0o777).expect("file permission creation failed");
 
         vfs.new_driver(&Path::root(), &Credentials::ROOT, path, mode, driver)
             .expect("failed to add new driver tty to vfs");

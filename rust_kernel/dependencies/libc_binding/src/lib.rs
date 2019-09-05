@@ -649,3 +649,29 @@ bitflags! {
         const OTHER_EXECUTE_PERMISSION = S_IXOTH as u16;
     }
 }
+
+impl FileType {
+    pub fn is_character_device(&self) -> bool {
+        self.contains(Self::CHARACTER_DEVICE)
+    }
+
+    pub fn is_fifo(&self) -> bool {
+        self.contains(Self::FIFO)
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.contains(Self::REGULAR_FILE)
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.contains(Self::DIRECTORY)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.contains(Self::SYMBOLIC_LINK)
+    }
+
+    pub fn is_socket(&self) -> bool {
+        self.contains(Self::UNIX_SOCKET)
+    }
+}

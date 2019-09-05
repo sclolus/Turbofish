@@ -23,7 +23,7 @@ pub fn sys_lstat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
             )
         };
         let mode =
-            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+            libc_binding::FileType::from_bits(0o777).expect("file permission creation failed");
         use core::convert::TryFrom;
         // TODO: REMOVE THIS SHIT
         let path = super::vfs::Path::try_from(safe_filename)?;

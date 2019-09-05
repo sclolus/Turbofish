@@ -37,9 +37,8 @@ use libc_binding::OpenFlags;
 use libc_binding::c_char;
 use libc_binding::dirent;
 use libc_binding::Errno;
+use libc_binding::FileType;
 
-mod permissions;
-pub use permissions::FilePermissions;
 pub mod init;
 pub use init::{init, VFS};
 
@@ -265,7 +264,7 @@ impl VirtualFileSystem {
         cwd: &Path,
         creds: &Credentials,
         path: Path,
-        mode: FilePermissions,
+        mode: FileType,
         driver: Arc<DeadMutex<dyn Driver>>,
     ) -> VfsResult<()> {
         // la fonction driver.set_inode_id() doit etre appele lors de la creation. C'est pour joindre l'inode au cas ou
@@ -421,7 +420,7 @@ impl VirtualFileSystem {
         use filesystem::Ext2fs;
 
         let flags = libc_binding::OpenFlags::O_RDWR;
-        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        let mode = FileType::from_bits(0o777).expect("file permission creation failed");
         let file_operation = self
             .open(cwd, creds, source, flags, mode)
             .expect("open sda1 failed")
@@ -535,7 +534,7 @@ impl VirtualFileSystem {
         creds: &Credentials,
         path: Path,
         flags: OpenFlags,
-        mode: FilePermissions,
+        mode: FileType,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let entry_id;
         match self.pathname_resolution(cwd, path.clone()) {
@@ -596,11 +595,11 @@ impl VirtualFileSystem {
     //     &mut self,
     //     current: &mut Current,
     //     path: Path,
-    //     mode: FilePermissions,
+    //     mode: FileType,
     // ) -> VfsResult<Fd> {
     //     let mut flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
 
-    //     if mode.contains(FilePermissions::S_IFDIR) {
+    //     if mode.contains(FileType::S_IFDIR) {
     //         flags |= OpenFlags::O_DIRECTORY
     //     }
 
@@ -612,117 +611,136 @@ impl VirtualFileSystem {
     //     &mut self,
     //     current: &mut Current,
     //     path: Path,
-    //     mode: FilePermissions,
+    //     mode: FileType,
     // ) -> VfsResult<Fd> {
     //     let mut ancestors = path.ancestors();
 
     //     let child = ancestors.next_back().ok_or(Errno(Errno::EINVAL))?;
     //     let ancestors = ancestors; //uncomment this
     //     for ancestor in ancestors {
-    //         self.creat(current, ancestor, FilePermissions::S_IFDIR)
+    //         self.creat(current, ancestor, FileType::S_IFDIR)
     //             .unwrap(); // forget fd?
     //     }
 
     //     Ok(self.creat(current, child, mode)?)
     // }
 
-    // pub fn chmod(
-    //     &mut self,
-    //     current: &mut Current,
-    //     path: Path,
-    //     mode: FilePermissions,
-    // ) -> VfsResult<()> {
-    //     let entry_id = self.pathname_resolution(current.cwd, path)?;
+    pub fn chmod(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: Path,
+        mode: FileType,
+    ) -> VfsResult<()> {
+        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
 
-    //     let entry = self.dcache.get_entry(&entry_id)?;
+        let inode_id = entry.inode_id;
+        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
 
-    //     let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
+        inode.set_access_mode(mode);
 
-    //     inode.set_access_mode(mode);
-    //     Ok(())
-    // }
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        fs.chmod(inode_id.inode_number as u32, mode)?;
 
-    // pub fn chown(
-    //     &mut self,
-    //     current: &mut Current,
-    //     path: Path,
-    //     owner: UserId,
-    //     group: GroupId,
-    // ) -> VfsResult<()> {
-    //     let entry_id = self.pathname_resolution(current.cwd, path)?;
+        Ok(())
+    }
 
-    //     let entry = self.dcache.get_entry(&entry_id)?;
+    pub fn chown(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: Path,
+        owner: uid_t,
+        group: gid_t,
+    ) -> VfsResult<()> {
+        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
 
-    //     let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
+        let inode_id = entry.inode_id;
+        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
 
-    //     inode.set_uid(owner);
-    //     inode.set_gid(group);
-    //     Ok(())
-    // }
+        inode.set_uid(owner);
+        inode.set_gid(group);
 
-    // pub fn mkdir(
-    //     &mut self,
-    //     current: &mut Current,
-    //     path: Path,
-    //     mode: FilePermissions,
-    // ) -> VfsResult<()> {
-    //     let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        fs.chown(inode_id.inode_number as u32, owner, group)?;
+        Ok(())
+    }
 
-    //     self.open(current, path, flags, mode)?;
-    //     Ok(())
-    // }
+    pub fn mkdir(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: Path,
+        mode: FileType,
+    ) -> VfsResult<()> {
+        let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
 
-    // pub fn rmdir(&mut self, current: &mut Current, path: Path) -> VfsResult<()> {
-    //     let filename = path.filename().ok_or(Errno(EINVAL))?;
-    //     if filename == &"." || filename == &".." {
-    //         return Err(Errno(EINVAL));
-    //     }
+        self.open(cwd, creds, path, flags, mode)?;
+        Ok(())
+    }
 
-    //     let entry_id = self.pathname_resolution(current.cwd, path.clone())?;
-    //     let entry = self.dcache.get_entry(&entry_id)?;
+    pub fn rmdir(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> VfsResult<()> {
+        let filename = path.filename().ok_or(Errno(Errno::EINVAL))?;
+        if filename == &"." || filename == &".." {
+            return Err(Errno(Errno::EINVAL));
+        }
 
-    //     if !entry.is_directory() {
-    //         return Err(NotADirectory);
-    //     }
-    //     self.unlink(current, path)
-    // }
+        let entry_id = self.pathname_resolution(cwd, path.clone())?;
+        let entry = self.dcache.get_entry(&entry_id)?;
 
-    // pub fn link(&mut self, current: &mut Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
-    //     let oldentry_id = self.pathname_resolution(current.cwd, oldpath)?;
-    //     let oldentry = self.dcache.get_entry(&oldentry_id)?;
+        if !entry.is_directory() {
+            return Err(NotADirectory);
+        }
+        self.unlink(cwd, creds, path)
+    }
 
-    //     if oldentry.is_directory() {
-    //         //link on directories not currently supported.
-    //         return Err(Errno(EISDIR));
-    //     }
+    pub fn link(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        oldpath: Path,
+        newpath: Path,
+    ) -> VfsResult<()> {
+        let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
+        let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
-    //     if self
-    //         .pathname_resolution(current.cwd, newpath.clone())
-    //         .is_ok()
-    //     {
-    //         return Err(Errno(EEXIST));
-    //     }
+        if oldentry.is_directory() {
+            //TODO: link on directories not currently supported.
+            return Err(Errno(Errno::EISDIR));
+        }
 
-    //     let parent_new = self.pathname_resolution(current.cwd, newpath.parent())?;
+        if self.pathname_resolution(cwd, newpath.clone()).is_ok() {
+            return Err(Errno(Errno::EEXIST));
+        }
 
-    //     let oldentry = self.dcache.get_entry(&oldentry_id)?;
+        let parent_new = self.pathname_resolution(cwd, newpath.parent())?;
 
-    //     let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(NoSuchInode)?;
+        let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
-    //     let mut newentry = oldentry.clone();
+        let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(NoSuchInode)?;
 
-    //     newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
-    //     self.dcache.add_entry(Some(parent_new), newentry)?;
-    //     inode.link_number += 1;
-    //     Ok(())
-    // }
+        let mut newentry = oldentry.clone();
 
-    // pub fn rename(&mut self, current: &mut Current, oldpath: Path, newpath: Path) -> VfsResult<()> {
-    //     let oldentry_id = self.pathname_resolution(current.cwd, oldpath)?;
+        newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
+        self.dcache.add_entry(Some(parent_new), newentry)?;
+        inode.link_number += 1;
+        Ok(())
+    }
 
-    //     self.rename_dentry(current.cwd, oldentry_id, newpath)?;
-    //     Ok(())
-    // }
+    pub fn rename(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        oldpath: Path,
+        newpath: Path,
+    ) -> VfsResult<()> {
+        let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
+
+        self.rename_dentry(cwd, oldentry_id, newpath)?;
+        Ok(())
+    }
 
     // pub fn file_exists(&mut self, current: &Current, path: Path) -> VfsResult<bool> {
     //     self.pathname_resolution(current.cwd, path).unwrap();
@@ -827,7 +845,7 @@ impl Mapper<FileSystemId, Box<dyn FileSystem>> for VirtualFileSystem {
 //             // new.set_filename();
 //             // new.set_id(get_available_directory_entry_id());
 //             let filetype = entry.file_type().unwrap();
-//             let mode = unsafe { FilePermissions::from_u32(entry.metadata().unwrap().permissions().mode()) };
+//             let mode = unsafe { FileType::from_u32(entry.metadata().unwrap().permissions().mode()) };
 
 //             let mut flags = OpenFlags::O_CREAT;
 
@@ -1070,7 +1088,7 @@ mod vfs {
     //             let path: Path = std::convert::TryInto::try_into(path).unwrap();
 
     //             if path != std::convert::TryInto::try_into("/").unwrap() {
-    //                 vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+    //                 vfs.recursive_creat(&mut current, path.clone(), FileType::S_IRWXU).unwrap();
     //             }
     //             assert!(vfs.file_exists(&current, path).unwrap())
     //         }, $name}
@@ -1083,7 +1101,7 @@ mod vfs {
     //             let path: Path = std::convert::TryInto::try_into(path).unwrap();
 
     //             if path != std::convert::TryInto::try_into("/").unwrap() {
-    //                 vfs.recursive_creat(&mut current, path.clone(), FilePermissions::S_IRWXU).unwrap();
+    //                 vfs.recursive_creat(&mut current, path.clone(), FileType::S_IRWXU).unwrap();
     //             }
     //             assert!(vfs.file_exists(&current, path).unwrap())
     //         }, $name}
@@ -1125,7 +1143,7 @@ mod vfs {
 
     //             vfs.recursive_creat(&mut current
     //                                 , path.clone()
-    //                                 , FilePermissions::S_IRWXU).unwrap();
+    //                                 , FileType::S_IRWXU).unwrap();
     //             assert!(vfs.file_exists(&current, path).unwrap())
     //         }, $name}
     //     };
@@ -1138,7 +1156,7 @@ mod vfs {
 
     //             vfs.recursive_creat(&mut current
     //                                 , path.clone()
-    //                                 , FilePermissions::S_IRWXU).unwrap();
+    //                                 , FileType::S_IRWXU).unwrap();
     //             for ancestors in path.ancestors() {
     //                 assert!(vfs.file_exists(&current, ancestor).unwrap())
     //             }

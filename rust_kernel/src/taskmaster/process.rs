@@ -541,13 +541,13 @@ pub unsafe fn get_ring(context_ptr: u32) -> PrivilegeLevel {
 use super::IpcResult;
 use super::{thread_group::Credentials, vfs::Path};
 use core::convert::TryFrom;
+use libc_binding::FileType;
 
 /// Return a file content using raw ext2 methods
 pub fn get_file_content(cwd: &Path, creds: &Credentials, pathname: &str) -> SysResult<Vec<u8>> {
     // TODO: REMOVE THIS SHIT
     let path = super::vfs::Path::try_from(pathname)?;
-    let mode =
-        super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    let mode = FileType::from_bits(0o777).expect("file permission creation failed");
     let flags = libc_binding::OpenFlags::O_RDONLY;
     let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
         IpcResult::Done(file_operator) => file_operator,
