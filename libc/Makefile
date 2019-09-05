@@ -29,7 +29,7 @@ NASM = nasm
 VPATH += src
 SRC_C += libc_ctor
 SRC_ASM += user_syscall
-HEADERS += include/user_syscall.h
+PRIVATE_HEADERS += include/user_syscall.h
 
 TESTED_SRC_C = setenv getenv unsetenv clearenv
 
@@ -44,7 +44,7 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
 	strcoll
 VPATH += src/string
-HEADERS += include/string.h
+HEADERS += string.h
 
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
@@ -53,7 +53,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	stdio _doprnt putchar puts getc fopen \
 	getline getdelim
 VPATH += src/stdio/printf src/stdio/
-HEADERS += include/stdio.h
+HEADERS += stdio.h
 PRIVATE_HEADERS += internal_printf.h
 
 SRC_C += ctor mem_syscall \
@@ -75,41 +75,41 @@ SRC_C += ctor mem_syscall \
 	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
 	alloc_btree_get_neighbours
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
-HEADERS += include/stdlib.h
+HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
 SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
 
 VPATH += src/stdlib
-HEADERS += include/stdlib.h
+HEADERS += stdlib.h
 
 SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek
 
 SRC_C += dup dup2 pipe
 
 VPATH += src/unistd
-HEADERS += include/unistd.h
+HEADERS += unistd.h
 
 SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman
-HEADERS += include/sys/mman.h
+HEADERS += sys/mman.h
 
 SRC_C += stat lstat fstat mkfifo umask
 VPATH += src/sys/stat
-HEADERS += include/sys/stat.h
+HEADERS += sys/stat.h
 
 SRC_C += gettimeofday settimeofday
 VPATH += src/sys/time
-HEADERS += include/sys/time.h
+HEADERS += sys/time.h
 
 SRC_ASM += clone
 SRC_C += sched
 VPATH += src/sched
-HEADERS += include/sched.h
+HEADERS += sched.h
 
 SRC_C += nanosleep localtime time gmtime
 VPATH += src/time
-HEADERS += include/time.h
+HEADERS += time.h
 
 SRC_C += signal sigaction kill raise killpg \
 		sigemptyset sigfillset sigaddset sigdelset \
@@ -117,59 +117,67 @@ SRC_C += signal sigaction kill raise killpg \
         sigprocmask sigsuspend sigismember
 
 VPATH += src/signal
-HEADERS += include/signal.h
+HEADERS += signal.h
 
 SRC_C += wait wait3 wait4
 VPATH += src/wait
-HEADERS += include/wait.h
+HEADERS += wait.h sys/wait.h
 
 SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
 VPATH += src/socket
-HEADERS += include/sys/socket.h include/sys/un.h
+HEADERS += sys/socket.h sys/un.h
 
 SRC_C += gettext locale
 VPATH += src/locale
-HEADERS += include/locale.h
+HEADERS += locale.h
 
 SRC_C += tcgetattr tcsetattr
 VPATH += src/termios
-HEADERS += include/termios.h
+HEADERS += termios.h
 
 SRC_C += opendir readdir closedir
 VPATH += src/dirent
-HEADERS += include/dirent.h
+HEADERS += dirent.h
 
 SRC_C += fcntl open
 VPATH += src/fcntl
-HEADERS += include/fcntl.h
+HEADERS += fcntl.h
 
 SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower tolower
 VPATH += src/ctype
-HEADERS += include/ctype.h
+HEADERS += ctype.h
 
 VPATH += src/math
 SRC_ASM += pow.c
-HEADERS += include/math.h
+HEADERS += math.h
 
 VPATH += src/setjmp
 SRC_ASM += setjmp
-HEADERS += include/setjmp.h
+HEADERS += setjmp.h
 
 VPATH += src/math
 SRC_NASM += round
-HEADERS += include/math.h
+HEADERS += math.h
 
 SRC_C += strsplit array parse_2d_file
 VPATH += src/tools
-HEADERS += include/tools.h
+HEADERS += tools.h
 
 SRC_C += getpwnam getpwuid
 VPATH += src/pwd
-HEADERS += include/pwd.h
+HEADERS += pwd.h
 
 SRC_C += getgrnam getgrgid
 VPATH += src/grp
-HEADERS += include/grp.h
+HEADERS += grp.h
+
+SRC_C += strcasecmp
+VPATH += src/strings
+HEADERS += strings.h
+
+HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
+# bullshit headers needed by coreutils and dash
+HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h 
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 
@@ -184,6 +192,7 @@ OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NA
 SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
 OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
 
+HEADERS := $(addprefix include/, $(HEADERS))
 SYSROOT_HEADERS = $(addprefix $(TOOLCHAIN_SYSROOT)/usr/, $(HEADERS))
 
 .PHONY = all clean fclean re exec
