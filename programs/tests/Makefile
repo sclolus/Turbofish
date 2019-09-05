@@ -32,6 +32,7 @@ SRC_C += DeepThought \
 		read/read_pulp_fiction \
 		execl/execl \
 		is_str_bullshit/is_str_bullshit \
+		write/create_write_read \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl
 

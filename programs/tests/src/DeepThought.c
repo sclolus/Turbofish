@@ -14,6 +14,7 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/write/create_write_read"},
 	{.path = "/bin/signal/SignalSimple"},
 	{.path = "/bin/signal/SignalSimpleDuo"},
 	{.path = "/bin/ProcessGroup"},

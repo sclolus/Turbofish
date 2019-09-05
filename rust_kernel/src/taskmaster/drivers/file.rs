@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use ext2::Ext2Filesystem;
 use libc_binding::{
     blkcnt_t, blksize_t, dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec,
-    uid_t, Whence,
+    uid_t, Errno, Whence,
 };
 use sync::DeadMutex;
 
@@ -94,7 +94,36 @@ impl FileOperation for Ext2FileOperation {
         Ok(IpcResult::Done(res))
     }
 
-    fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
-        unimplemented!();
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        if offset == core::i64::MIN {
+            // volontary trash i64 min value to avoid -offset ==
+            // offset
+            return Err(Errno::EINVAL);
+        }
+        let new_offset = match whence {
+            Whence::SeekCur => {
+                if offset < 0 {
+                    self.offset
+                        .checked_sub((-offset) as u64)
+                        .ok_or(Errno::EINVAL)?
+                } else {
+                    self.offset
+                        .checked_add(offset as u64)
+                        .ok_or(Errno::EINVAL)?
+                }
+            }
+            Whence::SeekSet => {
+                if offset < 0 {
+                    return Err(Errno::EINVAL);
+                }
+                offset as u64
+            }
+            Whence::SeekEnd => unimplemented!(),
+        };
+        // if new_offset > self.partition_size {
+        //     return Err(Errno::EINVAL);
+        // }
+        self.offset = new_offset;
+        Ok(self.offset as off_t)
     }
 }

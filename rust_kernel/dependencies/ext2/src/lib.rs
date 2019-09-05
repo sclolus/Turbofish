@@ -164,16 +164,18 @@ impl Ext2Filesystem {
     }
 
     /// truncate inode to the size `new_size` deleting all data blocks above
+    /// if new_size > size, update the inode data
     pub fn truncate_inode(
         &mut self,
         (inode, inode_addr): (&mut Inode, InodeAddr),
         new_size: u64,
     ) -> IoResult<()> {
         let size = inode.get_size();
-        assert!(new_size <= size);
-        if size == 0 {
-            return Ok(());
-        }
+        // TODO: Check that but it seems false
+        // assert!(new_size <= size);
+        // if size == 0 {
+        //     return Ok(());
+        // }
         let new_size_block = self.to_block_addr(new_size);
         let curr_size = self.to_block_addr(size - 1);
 

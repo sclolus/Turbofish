@@ -179,6 +179,7 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
         }
         Ok(IpcResult::Done(len as u32))
     }
+
     fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
         if offset == core::i64::MIN {
             // volontary trash i64 min value to avoid -offset ==
