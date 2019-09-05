@@ -208,13 +208,10 @@ impl Filename {
         self.0[0..self.1].iter()
     }
 
-    //TODO: unsafe
-    pub fn as_str(&self) -> &str {
-        unsafe {
-            let slice: &[u8] =
-                core::slice::from_raw_parts(&self.0 as *const c_char as *const u8, self.1);
-            core::str::from_utf8_unchecked(slice)
-        }
+    pub unsafe fn as_str(&self) -> &str {
+        let slice: &[u8] =
+            core::slice::from_raw_parts(&self.0 as *const c_char as *const u8, self.1);
+        core::str::from_utf8_unchecked(slice)
     }
 }
 
@@ -226,13 +223,13 @@ impl Default for Filename {
 
 impl PartialEq for Filename {
     fn eq(&self, other: &Self) -> bool {
-        self.as_str() == other.as_str()
+        unsafe { self.as_str() == other.as_str() }
     }
 }
 
 impl PartialEq<&str> for Filename {
     fn eq(&self, &other: &&str) -> bool {
-        self.as_str() == other
+        unsafe { self.as_str() == other }
     }
 }
 
@@ -253,13 +250,13 @@ impl Eq for Filename {}
 /// Debug boilerplate of filename
 impl fmt::Debug for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Ok(write!(f, "{:?}", self.as_str())?)
+        Ok(write!(f, "{:?}", unsafe { self.as_str() })?)
     }
 }
 
 impl fmt::Display for Filename {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Ok(write!(f, "{}", self.as_str())?)
+        Ok(write!(f, "{}", unsafe { self.as_str() })?)
     }
 }
 
