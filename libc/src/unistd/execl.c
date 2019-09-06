@@ -6,6 +6,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+// Necessary boilerplate since linux does not defined ARG_MAX in limits.h...
+#ifndef ARG_MAX
+# define ARG_MAX 4096 * 8
+#endif
+
 extern char **environ;
 
 int          execl(const char *path, const char *arg0, ...)
@@ -55,6 +60,7 @@ int          execl(const char *path, const char *arg0, ...)
 			free(argv);
 			return -1;
 		}
+		argv = new_argv;
 		argv[i] = current_arg;
 		argv[i + 1] = NULL;
 	}
@@ -65,3 +71,41 @@ int          execl(const char *path, const char *arg0, ...)
 	free(argv); // Need to free argv on error.
 	return ret;
 }
+
+#ifdef UNIT_TESTS
+# include <criterion/criterion.h>
+
+Test(execl, too_big_arg_fails_with_e2big) {
+	char	*very_big_argument = malloc(ARG_MAX + 1);
+
+	cr_assert(very_big_argument);
+	very_big_argument[ARG_MAX] = '\0';
+	memset(very_big_argument, 'a', ARG_MAX);
+
+	int ret = execl("/bin/ls", "ls", very_big_argument, (char *)0x0);
+
+	cr_assert_eq(ret, -1);
+	cr_assert_eq(errno, E2BIG);
+	free(very_big_argument);
+}
+
+Test(excl, too_big_args_fails_with_e2big) {
+	const size_t base_arg_size = ARG_MAX / 2 + 1;
+
+	char	*arg1 = malloc(base_arg_size + 1);
+	char	*arg2 = malloc(base_arg_size + 1);
+
+	cr_assert(arg1 && arg2);
+	arg1[base_arg_size] = '\0';
+	arg2[base_arg_size] = '\0';
+	memset(arg1, 'a', base_arg_size);
+	memset(arg2, 'b', base_arg_size);
+
+	int ret = execl("/bin/ls", "ls", arg1, arg2, (char *)0x0);
+	cr_assert_eq(ret, -1);
+	cr_assert_eq(errno, E2BIG);
+	free(arg1);
+	free(arg2);
+}
+
+#endif /* UNIT_TESTS */
