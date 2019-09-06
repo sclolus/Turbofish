@@ -26,7 +26,10 @@ TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
 
 .PHONY = all clean fclean re
 
-all: $(TARGET_C)
+all: $(BUILD_DIR) $(TARGET_C)
+
+$(BUILD_DIR):
+	mkdir -pv $(BUILD_DIR)
 
 $(BUILD_DIR)/%: %.c $(LIBC_AR) Makefile
 	$(CC) $(CFLAGS) -o $@ $<

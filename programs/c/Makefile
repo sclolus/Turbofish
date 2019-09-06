@@ -45,6 +45,7 @@ SRC_C += Clone \
 		fish \
 		more_fish \
 		broken_fish \
+		execl \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
