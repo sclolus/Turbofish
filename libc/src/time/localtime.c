@@ -118,14 +118,14 @@ struct tm *localtime(const time_t *timer)
 	time_t hours = (t / 3600) % 24;
 	years =  (t - leap_days_in_seconds) / (SECSPERYEAR);
 	time_t yday  = ((t - (years) * SECSPERYEAR /* - leap_days_in_seconds- */) / SECSPERDAY) % 365;
-	/* 1567665545 */
+
 	time_t month = get_month_from_yday(yday);
 	time_t day_of_month = get_day_of_month_from_yday(yday);
 
 	/* use zeller's congruence to get the day of the week */;
 	/* time_t day_of_week = */
 
-	printf("years: %u\nyday: %u\nday_of_month: %d\nmonth: %d\n", years, yday, (int)day_of_month, (int)month);
+	/* printf("years: %u\nyday: %u\nday_of_month: %d\nmonth: %d\n", years, yday, (int)day_of_month, (int)month); */
 
 	TM.tm_sec   = (int)secs; // Seconds [0,60].
 	TM.tm_min   = (int)mins; // Minutes [0,59].

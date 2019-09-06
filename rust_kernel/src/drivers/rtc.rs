@@ -133,7 +133,7 @@ fn get_day_number(month: Month, day: usize) -> usize {
 
     let mut days = day;
     for index in 0..month_index {
-        days += NUMBER_OF_DAYS[index]
+        days += NUMBER_OF_DAYS[index];
     }
     days
 }
@@ -171,7 +171,7 @@ extern "C" fn rtc_handler(_interrupt_name: *const u8) {
             + (tm_year - 70) * 31536000
             // + ((tm_year - 69) / 4) * 86400
             // - ((tm_year - 1) / 100) * 86400
-            // + ((tm_year + 299) / 400) * 86400
+            // + ((tm_year + 299) / 400) * 86400 // How the fuck, does RTC count leapdays.
             ;
 
         unsafe {
