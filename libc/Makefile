@@ -31,7 +31,6 @@ SRC_C += libc_ctor
 SRC_ASM += user_syscall
 PRIVATE_HEADERS += include/user_syscall.h
 
-# TESTED_SRC_C = setenv getenv unsetenv clearenv
 TESTED_SRC_C = getenv setenv unsetenv clearenv
 
 
