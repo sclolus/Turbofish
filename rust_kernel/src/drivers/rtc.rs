@@ -169,9 +169,10 @@ extern "C" fn rtc_handler(_interrupt_name: *const u8) {
             + tm_hour * 3600
             + tm_yday * 86400
             + (tm_year - 70) * 31536000
-            + ((tm_year - 69) / 4) * 86400
-            - ((tm_year - 1) / 100) * 86400
-            + ((tm_year + 299) / 400) * 86400;
+            // + ((tm_year - 69) / 4) * 86400
+            // - ((tm_year - 1) / 100) * 86400
+            // + ((tm_year + 299) / 400) * 86400
+            ;
 
         unsafe {
             let old = CURRENT_UNIX_TIME.load(Ordering::SeqCst);
@@ -255,16 +256,22 @@ impl Rtc {
 
                 PIC_8259.lock().enable_irq(pic_8259::Irq::RealTimeClock); // enables the RTC irq.
 
-                let previous_value = self.read_register(RtcRegister::StatusB, false);
-                self.set_register_index(RtcRegister::StatusB, false);
+                let previous_value = self.read_register(RtcRegister::StatusB, true);
+                self.set_register_index(RtcRegister::StatusB, true);
                 // The bit 6 of Status register B enables the periodic interrupts of the RTC.
                 self.data.write(previous_value | 0x40);
 
-                let previous_value = self.read_register(RtcRegister::StatusA, false);
-                self.set_register_index(RtcRegister::StatusA, false);
+                let previous_value = self.read_register(RtcRegister::StatusA, true);
+                self.set_register_index(RtcRegister::StatusA, true);
 
                 // The 4 low bits of the Status Register A are the `divider setting`, that is, the rate selector, if you will.
                 self.data.write((previous_value & 0xF0) | rate);
+
+                // We need to reenable the NMI here.
+                // The NMI was disabled by the calls to `read_register` method.
+                // The thing is that if we don't explicitly set the high bit (0x80)
+                // on each Port I/O writes, the NMI would be incorrectly reenabled.
+                // The symmetry, in this case, really is not obtainable.
                 Nmi::enable();
             });
         }
