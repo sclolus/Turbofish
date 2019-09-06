@@ -8,7 +8,7 @@ int      getchar(void)
 	return getc(stdin);
 }
 
-int      getchar_unlocked(void);
+int      getchar_unlocked(void)
 {
 	return getchar();
 }
