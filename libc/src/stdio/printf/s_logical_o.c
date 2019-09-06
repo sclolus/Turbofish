@@ -43,8 +43,7 @@ int			s_logical_o(t_args *args, t_status *op)
 	uintmax_t	i;
 	int		params[2];
 
-	n = va_arg(op->ap, uintmax_t);
-	cast_u(&n, args->l);
+	cast_u(&n, args->l, op);
 	params[0] = (!n && args->p == 0) ? 0 : 1;
 	i = n;
 	while ((i = i >> 3))

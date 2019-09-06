@@ -1,33 +1,46 @@
 #include "internal_printf.h"
 
-void	cast_u(uintmax_t *n, t_length mask)
+#include <assert.h>
+#include <sys/types.h>
+
+void	cast_u(uintmax_t *n, t_length mask, t_status *op)
 {
 	if (mask == VOID)
-		*n = (t_u_int)(*n);
+		*n = (uintmax_t)va_arg(op->ap, unsigned);
 	else if (mask == H)
-		*n = (t_su_int)(*n);
+		*n = (uintmax_t)((t_su_int)va_arg(op->ap, unsigned));
 	else if (mask == HH)
-		*n = (t_u_char)(*n);
+		*n = (uintmax_t)((t_u_char)va_arg(op->ap, unsigned));
 	else if (mask == L)
-		*n = (t_lu_int)(*n);
+		*n = (uintmax_t)((t_lu_int)va_arg(op->ap, long unsigned));
 	else if (mask == LL)
-		*n = (t_llu_int)(*n);
+		*n = (uintmax_t)((t_llu_int)va_arg(op->ap, long long unsigned));
 	else if (mask == Z)
-		*n = (size_t)(*n);
+		*n = (uintmax_t)va_arg(op->ap, size_t);
+	else if (mask == J)
+		*n = va_arg(op->ap, uintmax_t);
+	else
+		// This never should happen
+		assert(false);
 }
 
-void	cast_i(intmax_t *n, t_length mask)
+void	cast_i(intmax_t *n, t_length mask, t_status *op)
 {
 	if (mask == VOID)
-		*n = (int)(*n);
+		*n = (intmax_t)va_arg(op->ap, signed);
 	else if (mask == H)
-		*n = (t_s_int)(*n);
+		*n = (intmax_t)((t_s_int)va_arg(op->ap, signed));
 	else if (mask == HH)
-		*n = (char)(*n);
+		*n = (intmax_t)((char)va_arg(op->ap, signed));
 	else if (mask == L)
-		*n = (t_l_int)(*n);
+		*n = (intmax_t)((t_l_int)va_arg(op->ap, long signed));
 	else if (mask == LL)
-		*n = (t_ll_int)(*n);
+		*n = (intmax_t)((t_ll_int)va_arg(op->ap, long long signed));
 	else if (mask == Z)
-		*n = (size_t)(*n);
+		*n = (intmax_t)va_arg(op->ap, ssize_t);
+	else if (mask == J)
+		*n = va_arg(op->ap, intmax_t);
+	else
+		// This never should happen
+		assert(false);
 }

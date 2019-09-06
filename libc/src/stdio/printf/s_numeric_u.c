@@ -45,8 +45,7 @@ int			s_numeric_u(t_args *args, t_status *op)
 	uintmax_t	n;
 	uintmax_t	i;
 
-	n = va_arg(op->ap, uintmax_t);
-	cast_u(&n, args->l);
+	cast_u(&n, args->l, op);
 	size[0] = (args->p == 0 && !n) ? 0 : 1;
 	i = n;
 	while ((i = i / 10))

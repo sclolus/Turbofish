@@ -1,15 +1,20 @@
 #include "internal_printf.h"
 
-static void		f_x(char *s, uintmax_t n, int size)
+static void		f_x(char *s, void *n, int size)
 {
 	while (size) {
-		s[--size] = HEXTABLE_MIN((n & 0b1111));
-		n >>= 4;
+		#if __WORDSIZE == 64
+		s[--size] = HEXTABLE_MIN(((long long unsigned)n & 0b1111));
+		n = (void *)((long long unsigned)n >> 4);
+		#else
+		s[--size] = HEXTABLE_MIN(((unsigned)n & 0b1111));
+		n = (void *)((unsigned)n >> 4);
+		#endif
 	}
 }
 
 static void		buffer_p(
-			uintmax_t n,
+			void *n,
 			t_args *args,
 			t_status *op,
 			int *params)
@@ -43,18 +48,22 @@ static void		buffer_p(
 
 int			s_pointer(t_args *args, t_status *op)
 {
-	void		*n;
-	uintmax_t	i;
-	int		params[2];
+	void *n;
+	void *i;
+	int params[2];
 
 	n = va_arg(op->ap, void *);
 	args->b |= HASH;
 	params[0] = (args->p == 0 && n == 0) ? 0 : 1;
-	i = (uintmax_t)n;
-	while ((i = i >> 4))
+	i = n;
+#if __WORDSIZE == 64
+	while ((i = (void *)((long long unsigned)i >> 4)))
+#else
+	while ((i = (void *)((unsigned)i >> 4)))
+#endif
 		params[0]++;
 	params[0] = (args->p > params[0]) ? args->p : params[0];
 	params[1] = ((int)args->w > (params[0] + 2)) ? args->w : params[0] + 2;
-	buffer_p((uintmax_t)n, args, op, params);
+	buffer_p(n, args, op, params);
 	return (0);
 }

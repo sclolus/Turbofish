@@ -53,8 +53,7 @@ int			s_numeric_i(t_args *args, t_status *op)
 	int		size[2];
 	int		x;
 
-	n = va_arg(op->ap, intmax_t);
-	cast_i(&n, args->l);
+	cast_i(&n, args->l, op);
 	size[0] = (args->p == 0 && n == 0) ? 0 : 1;
 	i = n;
 	while ((i = i / 10))
