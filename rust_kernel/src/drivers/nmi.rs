@@ -7,6 +7,7 @@ pub struct Nmi {
 
 impl Nmi {
     const CONTROL_PORT: u16 = 0x70;
+    const NMI_DISABLE_BIT: u8 = 0x80;
     pub const fn new() -> Self {
         Self {
             command: Pio::new(Self::CONTROL_PORT),
@@ -17,7 +18,7 @@ impl Nmi {
         let mut controller = Self::new();
 
         // Read the current status of the control register and mask the NMI disabled bit.
-        let current_status = controller.command.read() & 0x7f;
+        let current_status = controller.command.read() & !Self::NMI_DISABLE_BIT;
 
         // Write the updated status into the control register, enabling the NMI.
         controller.command.write(current_status);
@@ -27,7 +28,7 @@ impl Nmi {
         let mut controller = Self::new();
 
         // Read the current status of the control register and enable the NMI disabled bit.
-        let current_status = controller.command.read() | 0x80;
+        let current_status = controller.command.read() | Self::NMI_DISABLE_BIT;
 
         // Write the updated status into the control register,  disabling the NMI.
         controller.command.write(current_status);
