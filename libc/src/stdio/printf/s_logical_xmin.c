@@ -51,8 +51,7 @@ int			s_logical_xmin(t_args *args, t_status *op)
 	int		params[2];
 	int		x;
 
-	n = va_arg(op->ap, uintmax_t);
-	cast_u(&n, args->l);
+	cast_u(&n, args->l, op);
 	params[0] = (args->p == 0 && n == 0) ? 0 : 1;
 	i = n;
 	while ((i = i >> 4))

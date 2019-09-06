@@ -37,9 +37,8 @@ int			s_logical_b(t_args *args, t_status *op)
 	uintmax_t	n;
 	int		params[2];
 
-	n = va_arg(op->ap, uintmax_t);
+	cast_u(&n, args->l, op);
 	args->b &= (n == 0) ? 0b11111001 : 0xFF;
-	cast_u(&n, args->l);
 	params[0] = 1;
 	while ((params[0] < 64) && n >> params[0])
 		params[0] += 1;

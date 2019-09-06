@@ -104,10 +104,10 @@ typedef enum			e_length
 	VOID = 0x00,
 	H = 0x01,
 	L = 0x02,
-	LEVEL1 = 0x03,
+	LEVEL1 = 0x03, // abstract
 	Z = 0x04,
 	J = 0x08,
-	MAJOR = 0x80,
+	MAJOR = 0x80, // abstract
 	HH = 0x81,
 	LL = 0x82
 }				t_length;
@@ -152,8 +152,8 @@ int	get_size_for_string(wchar_t c);
 void	*ft_memset(void *b, int c, size_t len);
 void	*ft_memcpy(void *dest, const void *src, size_t n);
 size_t	strlen(const char *s);
-void	cast_u(uintmax_t *n, t_length mask);
-void	cast_i(intmax_t *n, t_length mask);
+void	cast_u(uintmax_t *n, t_length mask, t_status *op);
+void	cast_i(intmax_t *n, t_length mask, t_status *op);
 
 void	string_to_buffer(const char *s, int len, t_status *op);
 void	char_to_buffer(char c, int len, t_status *op);
