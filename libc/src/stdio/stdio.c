@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
+#include <custom.h>
 
-FILE _stderr = { .fd =2 };
+FILE _stderr = { .fd = STDERR_FILENO, .eof = false, .error = false };
 FILE *stderr = &_stderr;
 
-FILE _stdout = { .fd =1 };
+FILE _stdout = { .fd = STDOUT_FILENO, .eof = false, .error = false  };
 FILE *stdout = &_stdout;
 
-FILE _stdin = { .fd = 0 };
+FILE _stdin = { .fd = STDIN_FILENO, .eof = false, .error = false  };
 FILE *stdin = &_stdin;
 
 /*
@@ -20,6 +22,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 	size_t i;
 	for (i = 0; i < nmemb; i++) {
 		if (write(stream->fd, ptr, size) < 0) {
+			stream->error = true;
 			break;
 		}
 		ptr += size;
@@ -45,6 +48,7 @@ int fputc(int c, FILE *stream)
 {
 	unsigned char char_to_write = (unsigned char)c;
 	if (write(stream->fd, &char_to_write, 1) < 0) {
+		stream->error = true;
 		return EOF;
 	} else {
 		return (int)char_to_write;
@@ -67,32 +71,27 @@ int puts(const char *s)
 int fputs(const char *s, FILE *stream)
 {
 	if (write(stream->fd, s, strlen(s)) < 0) {
+		stream->error = true;
 		return EOF;
 	} else {
 		return 0;
 	}
 }
 
-#define DEBUG printf("%s called", __func__);
-
 int ferror(FILE *stream)
 {
-	(void)stream;
-	DEBUG
-	return 0;
+	return (int)stream->error;
 }
+
+int feof(FILE *stream)
+{
+	return (int)stream->eof;
+}
+
 
 int fflush(FILE *stream)
 {
 	(void)stream;
-	DEBUG
-	return 0;
-}
-
-int fclose(FILE *stream)
-{
-	(void)stream;
-	DEBUG
 	return 0;
 }
 

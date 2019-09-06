@@ -26,6 +26,7 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 		exit(1);
 	} else if (pid == 0) {
 		int fd = open_tty_device(tty_device);
+
 		if (argc != 2) {
 			dprintf(2, "bad argument number %i: should be 2\n", argc);
 			exit(1);
@@ -49,13 +50,13 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 	return pid;
 }
 
-int main(int argc, char *argv[], char *envp[])
+int main(int argc, char **argv, char **envp)
 {
-	/* #[allow(unused)] */
 	pid_t _p1 = init_forker("/dev/tty1", argc, argv, envp);
 	pid_t _p2 = init_forker("/dev/tty2", argc, argv, envp);
 	pid_t _p3 = init_forker("/dev/tty3", argc, argv, envp);
 	pid_t _p4 = init_forker("/dev/tty4", argc, argv, envp);
+
 
 	(void)_p1;
 	(void)_p2;
@@ -67,8 +68,8 @@ int main(int argc, char *argv[], char *envp[])
 	while (1) {
 		pid_t ret = wait(&status);
 		if (ret < 0) {
-			/* #[allow(unused)] */
 			int _fd = open_tty_device("/dev/tty1");
+
 			(void)_fd;
 			perror("init wait failed");
 			exit(1);

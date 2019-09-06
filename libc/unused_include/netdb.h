@@ -5,55 +5,55 @@
 
 //The <netdb.h> header shall define the hostent structure, which shall include at least the following members:
 #include <sys/socket.h>
-#include <i386.h>
+#include <stdint.h>
 
 struct hostent {
-	char   *h_name       ;//Official name of the host. 
-	char  **h_aliases    ;//A pointer to an array of pointers to 
-	//alternative host names, terminated by a 
-	//null pointer. 
-	int     h_addrtype   ;//Address type. 
-	int     h_length     ;//The length, in bytes, of the address. 
-	char  **h_addr_list  ;//A pointer to an array of pointers to network 
-	//addresses (in network byte order) for the host, 
-	//terminated by a null pointer. 
+	char   *h_name       ;//Official name of the host.
+	char  **h_aliases    ;//A pointer to an array of pointers to
+	//alternative host names, terminated by a
+	//null pointer.
+	int     h_addrtype   ;//Address type.
+	int     h_length     ;//The length, in bytes, of the address.
+	char  **h_addr_list  ;//A pointer to an array of pointers to network
+	//addresses (in network byte order) for the host,
+	//terminated by a null pointer.
 };
 
 //The <netdb.h> header shall define the netent structure, which shall include at least the following members:
 
 struct netent {
-	char     *n_name      ;//Official, fully-qualified (including the 
-	//domain) name of the host. 
-	char    **n_aliases   ;//A pointer to an array of pointers to 
-	//alternative network names, terminated by a 
-	//null pointer. 
-	int       n_addrtype  ;//The address type of the network. 
-	uint32_t  n_net       ;//The network number, in host byte order. 
+	char     *n_name      ;//Official, fully-qualified (including the
+	//domain) name of the host.
+	char    **n_aliases   ;//A pointer to an array of pointers to
+	//alternative network names, terminated by a
+	//null pointer.
+	int       n_addrtype  ;//The address type of the network.
+	uint32_t  n_net       ;//The network number, in host byte order.
 };
 
 
 //The <netdb.h> header shall define the protoent structure, which shall include at least the following members:
 
 struct protoent {
-	char   *p_name     ;//Official name of the protocol. 
-	char  **p_aliases  ;//A pointer to an array of pointers to 
-	//alternative protocol names, terminated by 
-	//a null pointer. 
-	int     p_proto    ;//The protocol number. 
+	char   *p_name     ;//Official name of the protocol.
+	char  **p_aliases  ;//A pointer to an array of pointers to
+	//alternative protocol names, terminated by
+	//a null pointer.
+	int     p_proto    ;//The protocol number.
 };
 
 //The <netdb.h> header shall define the servent structure, which shall include at least the following members:
 
 struct servent {
-	char   *s_name     ;//Official name of the service. 
-	char  **s_aliases  ;//A pointer to an array of pointers to 
-	//alternative service names, terminated by 
-	//a null pointer. 
-	int     s_port     ;//A value which, when converted to uint16_t, 
-	//yields the port number in network byte order 
-	//at which the service resides. 
-	char   *s_proto    ;//The name of the protocol to use when 
-	//contacting the service. 
+	char   *s_name     ;//Official name of the service.
+	char  **s_aliases  ;//A pointer to an array of pointers to
+	//alternative service names, terminated by
+	//a null pointer.
+	int     s_port     ;//A value which, when converted to uint16_t,
+	//yields the port number in network byte order
+	//at which the service resides.
+	char   *s_proto    ;//The name of the protocol to use when
+	//contacting the service.
 };
 //The <netdb.h> header shall define the IPPORT_RESERVED symbolic constant with the value of the highest reserved Internet port number.
 //Address Information Structure
@@ -61,14 +61,14 @@ struct servent {
 //The <netdb.h> header shall define the addrinfo structure, which shall include at least the following members:
 
 struct addrinfo {
-	int               ai_flags      ;//Input flags. 
-	int               ai_family     ;//Address family of socket. 
-	int               ai_socktype   ;//Socket type. 
-	int               ai_protocol   ;//Protocol of socket. 
-	socklen_t         ai_addrlen    ;//Length of socket address. 
-	struct sockaddr  *ai_addr       ;//Socket address of socket. 
-	char             *ai_canonname  ;//Canonical name of service location. 
-	struct addrinfo  *ai_next       ;//Pointer to next in list. 
+	int               ai_flags      ;//Input flags.
+	int               ai_family     ;//Address family of socket.
+	int               ai_socktype   ;//Socket type.
+	int               ai_protocol   ;//Protocol of socket.
+	socklen_t         ai_addrlen    ;//Length of socket address.
+	struct sockaddr  *ai_addr       ;//Socket address of socket.
+	char             *ai_canonname  ;//Canonical name of service location.
+	struct addrinfo  *ai_next       ;//Pointer to next in list.
 };
 
 //The <netdb.h> header shall define the following symbolic constants that evaluate to bitwise-distinct integer constants for use in the flags field of the addrinfo structure:

@@ -2,12 +2,13 @@
 # define BTREE_H
 
 #include <stddef.h>
+#include <stdint.h>
+
 /*
 ** This PACK provide a suitable interface to manipulate binary tree.
 ** Including black and white color self balanced.
 */
 
-#include <i386.h>
 
 struct s_node;
 

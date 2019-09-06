@@ -1,4 +1,5 @@
 #include <user_syscall.h>
+#include <stdio.h>
 #include <errno.h>
 
 /*

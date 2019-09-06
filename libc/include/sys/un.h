@@ -1,9 +1,9 @@
 #ifndef __UN_H__
 # define __UN_H__
 
-#include <i386.h>
 
-#define UNIX_PATHNAME_MAXSIZE 108
+# define UNIX_PATHNAME_MAXSIZE 108
+# include <stdint.h>
 
 /*
  * Unix socket sockaddr interface (AF_UNIX)

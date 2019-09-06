@@ -1,7 +1,7 @@
 #!/bin/bash
 export TARGET="i686-turbofish"
 export PATH="/toolchain_turbofish/cross/bin:$PATH"
-export TARGET_DIR="../../../rust_kernel/src/userland"
+export TARGET_DIR="../../../system/bin/"
 
 mkdir -pv build_dash
 cd build_dash

@@ -1,84 +1,19 @@
---- config.h	2019-08-31 16:40:02.849409344 +0200
-+++ ../build/config.h	2019-08-31 16:38:20.431525988 +0200
-@@ -117,10 +117,10 @@
- /* #undef HAVE_CHSIZE */
- 
- /* Define to 1 if you have the `clock_gettime' function. */
--/* #undef HAVE_CLOCK_GETTIME */
-+#define HAVE_CLOCK_GETTIME 1
- 
- /* Define to 1 if you have the `clock_settime' function. */
--/* #undef HAVE_CLOCK_SETTIME */
-+#define HAVE_CLOCK_SETTIME 1
- 
- /* Define if backslash-a works in C strings. */
- #define HAVE_C_BACKSLASH_A 1
-@@ -138,7 +138,7 @@
- 
- /* Define to 1 if you have the declaration of `dirfd', and to 0 if you don't.
-    */
--#define HAVE_DECL_DIRFD 0
-+#define HAVE_DECL_DIRFD 1
- 
- /* Define to 1 if you have the declaration of `euidaccess', and to 0 if you
-    don't. */
-@@ -395,7 +395,7 @@
- /* #undef HAVE_GETDELIM */
- 
- /* Define to 1 if your system has a working `getgroups' function. */
--#define HAVE_GETGROUPS 1
-+/* #undef HAVE_GETGROUPS */
- 
- /* Define to 1 if you have the `gethostbyaddr' function. */
- /* #undef HAVE_GETHOSTBYADDR */
-@@ -437,7 +437,7 @@
- /* #undef HAVE_GETTEXT */
- 
- /* Define to 1 if you have the `gettimeofday' function. */
--#define HAVE_GETTIMEOFDAY 1
-+/* #define HAVE_GETTIMEOFDAY 1 */
- 
- /* Define to 1 if you have the `getusershell' function. */
- /* #undef HAVE_GETUSERSHELL */
-@@ -546,7 +546,7 @@
- /* #undef HAVE_MBRLEN */
- 
- /* Define to 1 if mbrtowc and mbstate_t are properly declared. */
--#define HAVE_MBRTOWC 1
-+/* #define HAVE_MBRTOWC 1 */
- 
- /* Define to 1 if you have the `mbsinit' function. */
- /* #undef HAVE_MBSINIT */
-@@ -679,6 +679,7 @@
- /* #undef HAVE_SQRT */
- 
- /* Define to 1 if you have the `statvfs' function. */
-+#define HAVE_STATVFS 1
- /* #undef HAVE_STATVFS */
- 
- /* Define if stat has the bug that it succeeds when given the zero-length file
-@@ -956,7 +957,7 @@
- /* #undef HAVE_SYS_STATFS_H */
- 
- /* Define to 1 if you have the <sys/statvfs.h> header file. */
--#define HAVE_SYS_STATVFS_H 1
-+#undef HAVE_SYS_STATVFS_H
- 
- /* Define to 1 if you have the <sys/stat.h> header file. */
- #define HAVE_SYS_STAT_H 1
-@@ -1030,9 +1031,11 @@
+--- coreutils-origin/build/config.h	2019-09-03 17:17:50.472049343 +0200
++++ coreutils-5.0_ours/build/config.h	2019-09-03 17:19:40.223869878 +0200
+@@ -1030,10 +1030,10 @@
  #define HAVE_UNSIGNED_LONG_LONG 1
  
  /* Define to 1 if you have the `utime' function. */
+-/* #undef HAVE_UTIME */
 +#define HAVE_UTIME 1
- /* #undef HAVE_UTIME */
  
  /* Define if utimes accepts a null argument */
+-/* #undef HAVE_UTIMES_NULL */
 +#define HAVE_UTIMES_NULL 1
- /* #undef HAVE_UTIMES_NULL */
  
  /* Define to 1 if you have the <utime.h> header file. */
-@@ -1205,7 +1208,7 @@
+ /* #undef HAVE_UTIME_H */
+@@ -1205,7 +1205,7 @@
  #define RETSIGTYPE void
  
  /* the value to which errno is set when rmdir fails on a nonempty directory */
@@ -87,11 +22,12 @@
  
  /* Define to 1 if the `setvbuf' function takes the buffering type as its
     second argument and the buffer pointer as the third, as on System V before
-@@ -1252,6 +1255,7 @@
- /* #undef STAT_STATFS4 */
+@@ -1284,7 +1284,7 @@
+ /* #undef UMAX4_3 */
  
- /* Define if there is a function named statvfs. (SVR4) */
-+#define STAT_STATVFS 1
- /* #undef STAT_STATVFS */
+ /* the maximum number of simultaneously open files per process */
+-#define UTILS_OPEN_MAX 
++#define UTILS_OPEN_MAX
  
- /* Define to 1 if you have the ANSI C header files. */
+ /* Version number of package */
+ #define VERSION "5.0"

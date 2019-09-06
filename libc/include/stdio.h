@@ -8,10 +8,17 @@
 
 //The <stdio.h> header shall define the following data types through typedef:
 
-typedef struct { int fd; } FILE;
-//    A structure containing information about a file.
+// A non-array type containing all information needed to specify uniquely every position within a file.
 typedef size_t fpos_t;
-//    A non-array type containing all information needed to specify uniquely every position within a file.
+
+// A structure containing information about a file.
+typedef struct {
+	int             fd;
+	fpos_t          offset;
+	unsigned char   eof : 1,
+                        error: 1;
+} FILE;
+
 //off_t
 //    As described in <sys/types.h>.
 #include <sys/types.h>
@@ -81,10 +88,6 @@ extern FILE* stderr;
 extern FILE* stdout;
 extern FILE* stdin;
 
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
-
 #define stderr stderr
 //    Standard error output stream.
 #define stdin stdin
@@ -138,11 +141,13 @@ int      getchar(void);
 int      getc_unlocked(FILE *);
 int      getchar_unlocked(void);
 //TODO: This prototypes conflict with corutils
-/*
- * ssize_t  getdelim(char **restrict, size_t *restrict, int,
- *              FILE *restrict);
- */
-/* ssize_t  getline(char **restrict, size_t *restrict, FILE *restrict); */
+/* ssize_t  getdelim(char **, size_t *, int, */
+/*              FILE *); */
+/* ssize_t  getline(char **, size_t *, FILE *); */
+int	 getdelim(char **, size_t *, int,
+             FILE *);
+int	 ft_getline(char **, size_t *, FILE *);
+
 //[Option End]
 //[OB][Option Start]
 char    *gets(char *);

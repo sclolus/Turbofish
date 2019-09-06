@@ -82,7 +82,7 @@ impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const *const c_
                     let limit = PAGE_SIZE - (curr_ptr as usize) % PAGE_SIZE;
 
                     let mut i = 0;
-                    while i != limit && *(curr_ptr.add(i / pointer_size)) != 0x0 as _ {
+                    while i != limit && *(curr_ptr.add(i / pointer_size)) != core::ptr::null() {
                         let string: CString =
                             (arg.0, (*(curr_ptr.add(i / pointer_size)) as _)).try_into()?;
                         c_pointer.try_push(string.as_ptr())?;

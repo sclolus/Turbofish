@@ -17,7 +17,7 @@
 #define	W_OK	2
 //   Test for write permission.
 #define	X_OK	1
-//    Test for execute (search) permission. 
+//    Test for execute (search) permission.
 // The <unistd.h> header shall define the intptr_t type as described in <stdint.h>.
 // #include <sys/stdint.h>
 #ifdef __cplusplus
@@ -26,7 +26,7 @@ extern "C" {
 
 int          dup(int);
 int          dup2(int, int);
-int          execve(const char *, char *const [], char *const []);
+int          execve(const char *, char *const *, char *const *);
 pid_t        fork(void);
 int          pipe(int fd[2]);
 
@@ -75,6 +75,7 @@ long         gethostid(void);
 int          gethostname(char *, int);
 char        *getlogin(void);
 int          getlogin_r(char *, size_t);
+char	     *getpass(const char *const); // feature test macro for this ?
 int          getopt(int, char * const [], const char *);
 pid_t        getpgid(pid_t);
 pid_t        getpgrp(void);
@@ -139,7 +140,7 @@ ssize_t      write(int, const void *, size_t);
 //	The <unistd.h> header shall declare the following external variables:
 
 extern char  *optarg;
-extern int    opterr, optind, optopt;
+extern int    opterr, optind, optopt, optreset;
 
 /* NOT POSIX */
 typedef int useconds_t;
@@ -148,6 +149,18 @@ int pause(void);
 
 int reboot(void);
 /* int shutdown(void); */
+
+/* File number of stderr; 2. */
+#define	STDERR_FILENO 2
+
+/* File number of stdout; 1. */
+#define STDIN_FILENO 1
+
+/* File number of stdin; 0. */
+#define STDOUT_FILENO 0
+
+
+
 
 #ifdef __cplusplus
 }

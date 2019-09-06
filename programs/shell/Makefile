@@ -1,5 +1,5 @@
-PATH  := $(PATH):/toolchain_turbofish/cross/bin/
-SHELL := env PATH=$(PATH) /bin/bash
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
 
 TARGET = shell
 
@@ -9,7 +9,7 @@ CC = i686-turbofish-gcc
 
 SRC_C = termios
 
-BUILD_DIR = build
+BUILD_DIR = bin
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
 
@@ -37,10 +37,11 @@ CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 	cargo install --version $(CARGO_XBUILD_VERSION) cargo-xbuild --force
 	echo "Updated" > .xbuild-toolchain
 
-all: .rust-toolchain .xbuild-toolchain build_rust build_libc $(TARGET)
+all: .rust-toolchain .xbuild-toolchain build_rust $(TARGET)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
 	$(CC) -o $(BUILD_DIR)/$@ $^ -z muldefs
+	cp -v --parents $(BUILD_DIR)/$@ $(SYSTEM_ROOT)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
@@ -57,14 +58,8 @@ re: fclean all
 build_rust:
 	cargo xbuild $(optim_level) --target $(custom_target) --verbose
 
-build_libc:
-	make -C libc all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-
 test:
 	cargo test --target i686-unknown-linux-gnu
 
 exec: all
 	./$(TARGET)
-
-install:
-	cp build/$(TARGET) ../../rust_kernel/src/userland/

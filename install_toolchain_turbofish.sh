@@ -1,16 +1,16 @@
 #!/bin/bash
 export TARGET="i686-turbofish"
 export ROOT_TOOLCHAIN="/toolchain_turbofish"
-export SYSROOT="$ROOT_TOOLCHAIN/sysroot"
+export TOOLCHAIN_SYSROOT="$ROOT_TOOLCHAIN/sysroot"
 export CROSS="$ROOT_TOOLCHAIN/cross"
+export LIBC_DIR="libc"
 
 sudo mkdir -pv $ROOT_TOOLCHAIN
 sudo chown $USER:$USER $ROOT_TOOLCHAIN
-ln -s --force --no-dereference --verbose $ROOT_TOOLCHAIN toolchain_turbofish
-mkdir -pv $SYSROOT $CROSS
-mkdir -pv $SYSROOT/usr
-mkdir -pv $SYSROOT/usr/{lib,include}
-cp -rv programs/libc/include/* $SYSROOT/usr/include
+mkdir -pv $TOOLCHAIN_SYSROOT $CROSS
+mkdir -pv $TOOLCHAIN_SYSROOT/usr
+mkdir -pv $TOOLCHAIN_SYSROOT/usr/{lib,include}
+cp -rv $LIBC_DIR/include/* $TOOLCHAIN_SYSROOT/usr/include
 
 mkdir -pv build_toolchain
 cp patch-binutils patch-gcc build_toolchain
@@ -28,7 +28,7 @@ cd -
 # Create a build directory in binutils
 mkdir -p build
 cd build
-../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$SYSROOT
+../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$TOOLCHAIN_SYSROOT
 make -j8
 make install
 cd ../..
@@ -42,7 +42,7 @@ patch -p0 < patch-gcc
 cd 'gcc-9.1.0'
 mkdir -p build
 cd build
-../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$SYSROOT --enable-languages=c,c++
+../configure --target=$TARGET --prefix=$CROSS --with-sysroot=$TOOLCHAIN_SYSROOT --enable-languages=c,c++
 make -j8 all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
 

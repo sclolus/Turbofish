@@ -14,7 +14,7 @@ size_t QUOTE_LEN = sizeof(PULP_FICTION_QUOTE);
 
 int main() {
 	char buf[QUOTE_LEN];
-	int fd = open("/pulp_fiction.txt", O_RDONLY);
+	int fd = open("/home/pulp_fiction.txt", O_RDONLY);
 	if (fd == -1) {
 		perror("open");
 		exit(1);

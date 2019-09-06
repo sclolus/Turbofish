@@ -1,8 +1,13 @@
 use std::process::Command;
 
 fn main() {
-    let out = Command::new("make").output().unwrap();
+    println!(r#"cargo:rerun-if-changed={}"#, "../../../libc/include");
+    println!(r#"cargo:rerun-if-changed={}"#, "../../../libc/include/sys");
+    let out = Command::new("./bindgen.sh").output().unwrap();
+
     if !out.status.success() {
-        panic!("{:?}", out);
+        panic!("{:?}", unsafe {
+            core::str::from_utf8_unchecked(&out.stdout)
+        });
     }
 }

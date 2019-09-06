@@ -1,7 +1,7 @@
 #ifndef __USER_SYSCALL_H__
 # define __USER_SYSCALL_H__
 
-#include <i386.h>
+# include <stdint.h>
 
 int _user_syscall(u32 syscall_number, u32 args_len, ...);
 

@@ -92,20 +92,6 @@ pub extern "C" fn kmain(
 
     crate::drivers::storage::init(&multiboot_info);
 
-    use crate::taskmaster::{Process, ProcessArguments, ProcessOrigin, UserProcess};
-    // Load some processes into the scheduler
-
-    let user_process_list = unsafe {
-        vec![UserProcess::new(
-            ProcessOrigin::Elf(&include_bytes!("../userland/init")[..]),
-            Some(ProcessArguments::new(
-                (&["/bin/init", "/bin/DeepThought"] as &[&str]).into(),
-                (&[] as &[&str]).into(),
-            )),
-        )
-        .unwrap()]
-    };
-
     eprintln!("Launching Taskmaster:");
-    crate::taskmaster::start(user_process_list)
+    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/DeepThought"], &[]);
 }
