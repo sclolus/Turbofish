@@ -29,8 +29,9 @@ void	read_write_of_size(size_t size) {
 	char filename[100];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./simple_file_%d_%d", pid, NUMBER++);
+	sprintf(filename, "./simple_file_%d_%lu", pid, NUMBER++);
 
+	printf("creating file: %s\n", filename);
 	int fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1) {
 		perror("open");

@@ -16,6 +16,8 @@ void test_access(mode_t mode, int amode) {
 	pid_t pid = getpid();
 	sprintf(filename, "./file_%d_%lu", pid, NUMBER++);
 
+	printf("creating file: %s\n", filename);
+
 	int fd = open(filename, O_CREAT | O_TRUNC, mode);
 	if (fd == -1) {
 		perror("open");

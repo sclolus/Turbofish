@@ -6,14 +6,17 @@
 #include <string.h>
 #include "tools.h"
 
-int main() {
+size_t NUMBER = 0;
+
+static void create_and_unlink() {
 	char filename[100];
 
 	srand16(0x42);
 
 	pid_t pid = getpid();
-	sprintf(filename, "./file_%d_%d", pid, (int)rand16(USHRT_MAX));
+	sprintf(filename, "./file_%d_%lu", pid, NUMBER++);
 
+	printf("creating file: %s\n", filename);
 	int fd = open(filename, O_RDWR | O_CREAT, 0644);
 	if (fd == -1) {
 		perror("open");
@@ -28,5 +31,15 @@ int main() {
 	if (ret == -1) {
 		perror("unlink");
 		exit(1);
+	}
+	ret = access(filename, F_OK);
+	if (!(ret == -1)) {
+		exit(1);
+	}
+}
+
+int main() {
+	for (int i = 0; i < 40; i++) {
+		create_and_unlink();
 	}
 }
