@@ -30,8 +30,9 @@ SRC_C += DeepThought \
 		lseek/lseek_return \
 		dirent/dummy_root \
 		read/read_pulp_fiction \
+		execl/execl \
 
-VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math
+VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))

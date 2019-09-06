@@ -35,6 +35,12 @@
  * {ARG_MAX}
  *     Maximum length of argument to the exec functions including environment data.
  *     Minimum Acceptable Value: {_POSIX_ARG_MAX}
+ */
+
+// Seems like a reasonable value
+# define ARG_MAX 4096 * 8
+
+/*
  * {ATEXIT_MAX}
  *     Maximum number of functions that may be registered with atexit().
  *     Minimum Acceptable Value: 32
