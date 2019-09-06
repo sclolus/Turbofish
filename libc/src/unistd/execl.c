@@ -20,13 +20,12 @@ int          execl(const char *path, const char *arg0, ...)
 
 	argv = malloc(sizeof(char *) * 2);
 	if (!argv) {
-		errno = ENOMEM; // Explicitly set ENOMEN, shall we do this ?
 		return -1;
 	}
 	argv[0] = (char *)arg0;
 	argv[1] = NULL;
 	va_start(ap, arg0);
-	// Collect argv from variadic list.
+
 	size_t	env_bytes = 0;
 	for (uint32_t i = 0; environ[i]; i++) {
 		env_bytes += strlen(environ[i]);
@@ -42,6 +41,7 @@ int          execl(const char *path, const char *arg0, ...)
 	}
 
 	char	*current_arg = NULL;
+	// Collect argv from variadic list.
 	for (uint32_t i = 1; (current_arg = va_arg(ap, char *)); i++) {
 		total_bytes += strlen(current_arg);
 
@@ -56,7 +56,6 @@ int          execl(const char *path, const char *arg0, ...)
 
 		if (!new_argv) {
 			va_end(ap);
-			errno = ENOMEM; // Explicitly set ENOMEN, shall we do this ?
 			free(argv);
 			return -1;
 		}
