@@ -21,13 +21,21 @@ char *getenv(const char *name)
 	if (!entry) {
 		return NULL;
 	}
-	return *entry;
+
+	char	*key = strchr(*entry, '=');
+
+	if (!key) {
+		return NULL;
+	} else {
+		return key + 1;
+	}
 }
 
 #ifdef UNIT_TESTS
 # include <criterion/criterion.h>
 
 Test(getenv, basic_key_exists) {
+	environ = NULL;
 	const char *key = "PATH";
 	const char *value = "something lol";
 
@@ -42,8 +50,20 @@ Test(getenv, basic_key_exists) {
 	cr_assert_str_eq(value, returned_value);
 }
 
+Test(getenv, with_multiple_variables) {
+	environ = NULL;
+	const char *key = "PATH";
+	const char *value = "/bin/:/usr/bin:/usr/local/bin";
+
+	cr_assert_eq(setenv("PATH", "/bin:/usr/bin:/usr/local/bin", true), 0);
+	cr_assert_eq(setenv("SOMETHING", "ELSE", true), 0);
+	cr_assert_eq(setenv(key, value, true), 0);
+	cr_assert_eq(setenv("TERM", "asd;lfkjdl;fj", true), 0);
+	cr_assert_str_eq(getenv(key), value);
+}
 
 Test(getenv, basic_key_does_not_exists) {
+	environ = NULL;
 	const char *key = "PATH";
 	cr_assert_eq(unsetenv(key), 0);
 

@@ -31,7 +31,9 @@ SRC_C += libc_ctor
 SRC_ASM += user_syscall
 PRIVATE_HEADERS += include/user_syscall.h
 
-TESTED_SRC_C = setenv getenv unsetenv clearenv
+# TESTED_SRC_C = setenv getenv unsetenv clearenv
+TESTED_SRC_C = getenv setenv unsetenv clearenv
+
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strlen strcpy strncpy strcat strncat strlcat \
@@ -177,7 +179,7 @@ HEADERS += strings.h
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
-HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h 
+HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 

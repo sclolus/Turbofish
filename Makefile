@@ -13,7 +13,6 @@ all: system_root $(IMG_DISK)
 # compile and install libc
 	make -C libc
 
-# may be recompiled when libc change
 	make -C programs
 	cp pulp_fiction.txt $(SYSTEM_ROOT)/home
 

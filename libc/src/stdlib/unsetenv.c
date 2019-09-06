@@ -28,14 +28,18 @@ int unsetenv(const char *name)
 	if (!entry)
 		return 0;
 
-	size_t entry_pos = (size_t)(environ - entry);
+	free(*entry);
+
+	size_t entry_pos = (size_t)(entry - environ);
 
 	size_t environ_size = array_size((void *)environ);
 
 	memmove(environ + entry_pos, environ + entry_pos + 1, environ_size - entry_pos - 1);
-	environ[environ_size] = NULL;
+	environ[environ_size - 1] = NULL;
 	return 0;
 }
+
+#undef array_size
 
 #ifdef UNIT_TESTS
 # include <criterion/criterion.h>
@@ -51,5 +55,29 @@ Test(unsetenv, basic) {
 	cr_assert_eq(getenv(key), NULL);
 }
 
-#undef array_size
+
+
+Test(unsetenv, with_multiple_variables) {
+	environ = NULL;
+	const char *key = "PRESIDENT";
+	const char *value = "DONALD_TRUMP(WTF)";
+	cr_assert_eq(setenv("PATH", "/bin:/usr/bin:/usr/local/bin", true), 0);
+	cr_assert_eq(setenv("SOMETHING", "ELSE", true), 0);
+	cr_assert_eq(setenv(key, value, true), 0);
+	cr_assert_eq(setenv("TERM", "asd;lfkjdl;fj", true), 0);
+	cr_assert_str_eq(getenv(key), value);
+
+	unsetenv(key);
+	cr_assert_eq(getenv(key), NULL);
+	cr_assert_str_eq(getenv("SOMETHING"), "ELSE");
+	cr_assert_str_eq(getenv("TERM"), "asd;lfkjdl;fj");
+}
+
+
+Test(unsetenv, empty_env) {
+	environ = NULL;
+
+	cr_assert_eq(unsetenv("PATH"), 0);
+	cr_assert_eq(getenv("PATH"), NULL);
+}
 #endif /* UNIT_TESTS */
