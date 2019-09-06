@@ -33,6 +33,8 @@ SRC_C += DeepThought \
 		execl/execl \
 		is_str_bullshit/is_str_bullshit \
 		write/create_write_read \
+		access/access \
+		unlink/unlink \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl
 

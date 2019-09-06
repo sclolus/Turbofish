@@ -95,6 +95,7 @@ impl Ext2fs {
 
         let mut inode_data = InodeData::default();
         inode_data.set_id(inode_id);
+        inode_data.link_number = inode.nbr_hard_links as i32;
         // TODO get more fields from the ext2 inode
 
         let inode = Inode::new(

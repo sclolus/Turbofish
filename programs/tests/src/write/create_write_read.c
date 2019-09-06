@@ -8,6 +8,7 @@
 
 size_t NB_TESTS = 10;
 size_t FILE_SIZE_MAX = 10000;
+size_t NUMBER = 0;
 
 
 // return a vector of random char of size size
@@ -28,7 +29,7 @@ void	read_write_of_size(size_t size) {
 	char filename[100];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./simple_file_%d_%d", pid, (int)rand16(USHRT_MAX));
+	sprintf(filename, "./simple_file_%d_%d", pid, NUMBER++);
 
 	int fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1) {
@@ -82,6 +83,11 @@ void	read_write_of_size(size_t size) {
 			dprintf(2, "data is not the same as index i: %d, readen: %x, writen: %x\n", i, buf[i], v[i]);
 			exit(1);
 		}
+	}
+	ret = unlink(filename);
+	if (ret == -1) {
+		perror("unlink");
+		exit(1);
 	}
 }
 

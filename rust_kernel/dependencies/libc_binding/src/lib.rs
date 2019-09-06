@@ -674,4 +674,30 @@ impl FileType {
     pub fn is_socket(&self) -> bool {
         self.contains(Self::UNIX_SOCKET)
     }
+
+    /// retrurn the owner rights on the file, in a bitflags Amode
+    pub fn owner_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXU).bits() as u32 >> 6)
+            .expect("bits should be valid")
+    }
+
+    /// retrurn the group rights on the file, in a bitflags Amode
+    pub fn group_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXG).bits() as u32 >> 3)
+            .expect("bits should be valid")
+    }
+
+    /// retrurn the other rights on the file, in a bitflags Amode
+    pub fn other_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXO).bits() as u32).expect("bits should be valid")
+    }
+}
+
+bitflags! {
+    pub struct Amode: u32 {
+        const F_OK = F_OK;
+        const R_OK = R_OK;
+        const W_OK = W_OK;
+        const X_OK = X_OK;
+    }
 }

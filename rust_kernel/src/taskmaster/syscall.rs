@@ -160,7 +160,7 @@ mod opendir;
 use opendir::sys_opendir;
 
 mod stat;
-use stat::sys_stat;
+use stat::{statfn, sys_stat};
 
 mod lstat;
 use lstat::sys_lstat;
@@ -282,7 +282,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         FSTAT => sys_fstat(ebx as Fd, ecx as *mut libc_binding::stat),
-        ACCESS => sys_access(ebx as *const libc_binding::c_char, ecx as i32),
+        ACCESS => sys_access(ebx as *const libc_binding::c_char, ecx as u32),
         KILL => sys_kill(ebx as i32, ecx as u32),
         RENAME => sys_rename(
             ebx as *const libc_binding::c_char,

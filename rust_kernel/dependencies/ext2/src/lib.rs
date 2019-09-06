@@ -164,7 +164,6 @@ impl Ext2Filesystem {
     }
 
     /// truncate inode to the size `new_size` deleting all data blocks above
-    /// if new_size > size, update the inode data
     pub fn truncate_inode(
         &mut self,
         (inode, inode_addr): (&mut Inode, InodeAddr),
@@ -172,11 +171,13 @@ impl Ext2Filesystem {
     ) -> IoResult<()> {
         let size = inode.get_size();
         // TODO: Check that but it seems false
-        // assert!(new_size <= size);
-        // if size == 0 {
-        //     return Ok(());
-        // }
+        assert!(new_size <= size);
+        if size == 0 {
+            return Ok(());
+        }
         let new_size_block = self.to_block_addr(new_size);
+        // let curr_size = self.to_block_addr(align_next(size, self.block_size as u64));
+        // size - 1 to get the previous block addr
         let curr_size = self.to_block_addr(size - 1);
 
         for block_off in (new_size_block.0..=curr_size.0).rev() {
@@ -388,10 +389,18 @@ impl Ext2Filesystem {
         entry.set_size((align_next(entry_offset + 1, self.block_size) - entry_offset) as u16);
         entry.write_on_disk(entry_addr, &mut self.disk)?;
         /* Update inode size */
-        self.truncate_inode(
-            (inode, inode_addr),
-            entry_offset as u64 + entry.get_size() as u64,
-        )
+
+        let new_size = entry_offset as u64 + entry.get_size() as u64;
+        if new_size < inode.get_size() {
+            self.truncate_inode((inode, inode_addr), new_size)?;
+        } else {
+            inode.update_size(
+                entry_offset as u64 + entry.get_size() as u64,
+                self.block_size,
+            );
+            self.disk.write_struct(inode_addr, inode)?;
+        }
+        Ok(())
     }
 
     /// create a directory entry and an inode on the Directory inode: `inode_nbr`
@@ -559,11 +568,11 @@ impl Ext2Filesystem {
         })
     }
 
-    /// alloc a pointer (used by the function inode_data_alloc)
+    /// free a pointer (used by the function inode_data_alloc)
     fn free_pointer(&mut self, pointer_addr: u64) -> IoResult<()> {
         let pointer = self.disk.read_struct(pointer_addr)?;
         if pointer == Block(0) {
-            Err(Errno::EBADF)
+            panic!("free pointer null");
         } else {
             self.disk.write_struct(pointer_addr, &Block(0))?;
             self.free_block(pointer)

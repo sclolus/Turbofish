@@ -1,6 +1,7 @@
 use super::SysResult;
 
 use super::scheduler::SCHEDULER;
+use super::vfs::{Path, VFS};
 
 use core::convert::TryFrom;
 use libc_binding::c_char;
@@ -30,8 +31,8 @@ pub fn sys_opendir(filename: *const c_char, dir: *mut DIR) -> SysResult<u32> {
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
 
-        let path = super::vfs::Path::try_from(safe_filename)?;
-        let dirent_vector = super::vfs::VFS.lock().opendir(cwd, creds, path)?;
+        let path = Path::try_from(safe_filename)?;
+        let dirent_vector = VFS.lock().opendir(cwd, creds, path)?;
 
         let size = dirent_vector.len() * core::mem::size_of::<dirent>();
 
