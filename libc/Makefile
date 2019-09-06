@@ -50,7 +50,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
-	stdio _doprnt putchar puts getc fopen \
+	stdio _doprnt putchar puts getc fopen fclose \
 	getline getdelim
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
@@ -236,3 +236,8 @@ re: fclean all
 
 exec: all
 	./$(TARGET_LIBC)
+
+install:
+	cp -v libc.a $(TOOLCHAIN_SYSROOT)/usr/lib/.
+	cp -v $(OBJ_C_RUNTIME) $(TOOLCHAIN_SYSROOT)/usr/lib/.
+	cp -rv include/* $(TOOLCHAIN_SYSROOT)/usr/include/

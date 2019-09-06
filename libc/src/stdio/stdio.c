@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <custom.h>
 
 FILE _stderr = { .fd = STDERR_FILENO, .eof = false, .error = false };
 FILE *stderr = &_stderr;
@@ -77,8 +78,6 @@ int fputs(const char *s, FILE *stream)
 	}
 }
 
-#define DEBUG printf("%s called", __func__);
-
 int ferror(FILE *stream)
 {
 	return (int)stream->error;
@@ -93,14 +92,6 @@ int feof(FILE *stream)
 int fflush(FILE *stream)
 {
 	(void)stream;
-	DEBUG
-	return 0;
-}
-
-int fclose(FILE *stream)
-{
-	(void)stream;
-	DEBUG
 	return 0;
 }
 
