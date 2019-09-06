@@ -52,7 +52,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
-	getline getdelim
+	getline getdelim getchar
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
 PRIVATE_HEADERS += internal_printf.h
