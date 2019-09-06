@@ -1,16 +1,15 @@
 #ifndef __UN_H__
 # define __UN_H__
 
-
-# define UNIX_PATHNAME_MAXSIZE 108
 # include <stdint.h>
+# include <limits.h>
 
 /*
  * Unix socket sockaddr interface (AF_UNIX)
  */
 struct sockaddr_un {
 	u16 sun_family;
-	u8 sun_path[UNIX_PATHNAME_MAXSIZE];
+	u8 sun_path[PATH_MAX];
 };
 
 #endif
