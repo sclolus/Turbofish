@@ -237,11 +237,17 @@ impl Ext2Filesystem {
     /// delete the entry at entry_off of the parent_inode nbr
     pub fn delete_entry(&mut self, parent_inode_nbr: u32, entry_off: u32) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(parent_inode_nbr)?;
-        let mut curr_offset = entry_off;
+        let curr_offset = entry_off;
         let entry = self
             .find_entry((&mut inode, inode_addr), curr_offset as u64)
             .unwrap();
 
+        let (mut previous, previous_offset) = self
+            .iter_entries(parent_inode_nbr)
+            .unwrap()
+            .take_while(|(_, off)| *off < entry_off)
+            .last()
+            .unwrap();
         /* if it is the last entry */
         if self
             .find_entry(
@@ -250,40 +256,17 @@ impl Ext2Filesystem {
             )
             .is_none()
         {
-            let (mut previous, previous_offset) = self
-                .iter_entries(parent_inode_nbr)
-                .unwrap()
-                .take_while(|(_, off)| *off < entry_off)
-                .last()
-                .unwrap();
             self.set_as_last_entry((&mut inode, inode_addr), (&mut previous, previous_offset))
-        } else {
-            while let Some(entry) = self.find_entry((&mut inode, inode_addr), curr_offset as u64) {
-                if entry.get_inode() != 0 {
-                    let next_entry_off = curr_offset as u64 + entry.get_size() as u64;
-                    if let Some(mut next_entry) =
-                        self.find_entry((&mut inode, inode_addr), next_entry_off as u64)
-                    {
-                        let entry_addr = self
-                            .inode_data((&mut inode, inode_addr), curr_offset as u64)
-                            .unwrap();
-
-                        if let Some(_next_next_entry) = self.find_entry(
-                            (&mut inode, inode_addr),
-                            next_entry_off + next_entry.get_size() as u64,
-                        ) {
-                            next_entry.set_size(entry.get_size());
-                            next_entry.write_on_disk(entry_addr, &mut self.disk)?;
-                        } else {
-                            return self.set_as_last_entry(
-                                (&mut inode, inode_addr),
-                                (&mut next_entry, curr_offset),
-                            );
-                        };
-                    }
-                }
-                curr_offset += entry.get_size() as u32;
-            }
+        }
+        /* Else, we set previous next to current next.
+        this creates a Hole which will be filled in push_entry */
+        else {
+            let next_entry_off = curr_offset as u64 + entry.get_size() as u64;
+            let previous_entry_addr = self
+                .inode_data((&mut inode, inode_addr), previous_offset as u64)
+                .unwrap();
+            previous.set_size((next_entry_off - previous_offset as u64) as u16);
+            previous.write_on_disk(previous_entry_addr, &mut self.disk)?;
             Ok(())
         }
     }
