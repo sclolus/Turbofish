@@ -40,6 +40,7 @@ pub extern "C" fn kmain(
      * Initialize output
      */
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
+    init_terminal();
 
     let size = SCREEN_MONAD.lock().query_window_size();
     printfixed!(
@@ -67,7 +68,6 @@ pub extern "C" fn kmain(
         watch_dog();
         interrupts::enable();
     }
-    init_terminal();
 
     PIT0.lock().configure(OperatingMode::RateGenerator);
     PIT0.lock().start_at_frequency(1000.).unwrap();
@@ -88,10 +88,9 @@ pub extern "C" fn kmain(
     // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
-    log::info!("RTC system seems to be working perfectly");
     let date = rtc.read_date();
-    log::info!("{}", date);
     rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz.
+    log::info!("RTC system seems to be working perfectly: {}", date);
 
     watch_dog();
 
