@@ -4,6 +4,8 @@ use super::syscall::clone::CloneFlags;
 use super::thread::Thread;
 use super::SysResult;
 
+use super::vfs::Path;
+
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
@@ -74,8 +76,10 @@ impl ThreadGroupState {
 pub struct ThreadGroup {
     /// the identity(uid, gid, groups...)
     pub credentials: Credentials,
+    /// the current working directory of the process
+    pub cwd: Path,
     /// all the thread in the thread group
-    thread_group_state: ThreadGroupState,
+    pub thread_group_state: ThreadGroupState,
     /// the process group id
     pub pgid: Pid,
     /// Parent
@@ -100,7 +104,7 @@ pub struct Credentials {
 
 impl Credentials {
     /// the Credential of the ROOT user
-    const ROOT: Self = Self {
+    pub const ROOT: Self = Self {
         uid: 0,
         gid: 0,
         euid: 0,
@@ -118,6 +122,7 @@ impl ThreadGroup {
         Ok(ThreadGroup {
             parent: father_pid,
             credentials: Credentials::ROOT,
+            cwd: Path::root(),
             thread_group_state: ThreadGroupState::Running(RunningThreadGroup {
                 all_thread: all_thread,
                 child: Vec::new(),
@@ -167,6 +172,7 @@ impl ThreadGroup {
         Ok(Self {
             parent: father_pid,
             credentials: self.credentials.try_clone()?,
+            cwd: self.cwd.try_clone()?,
             thread_group_state: ThreadGroupState::Running(RunningThreadGroup {
                 all_thread: all_thread,
                 child: Vec::new(),

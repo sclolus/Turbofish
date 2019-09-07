@@ -14,8 +14,6 @@ use alloc::boxed::Box;
 use ext2::Ext2Filesystem;
 use mbr::Mbr;
 
-pub static mut EXT2: Option<Ext2Filesystem> = None;
-
 /// read the mbr form a disk
 fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
@@ -34,18 +32,16 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
 /// mount /dev/sda1 on the vfs, WARNING: must be call after ext2 is
 /// mounted on root
 fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
-    let mut current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-    };
-
     let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
     let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
-    vfs.new_driver(&mut current, path.clone(), mode, disk_driver)
-        .expect("failed to add new driver sda1 to vfs");
+    vfs.new_driver(
+        &Path::root(),
+        &Credentials::ROOT,
+        path.clone(),
+        mode,
+        disk_driver,
+    )
+    .expect("failed to add new driver sda1 to vfs");
 }
 
 /// bootstrap the ext2 and construct /dev/sda
@@ -81,12 +77,6 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
         .expect("disk driver open failed");
 
     let ext2_disk = DiskWrapper(file_operation);
-    unsafe {
-        EXT2 = Some(
-            //TODO: remove the box
-            Ext2Filesystem::new(Box::new(ext2_disk.clone())).expect("ext2 filesystem new failed"),
-        );
-    }
     let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
     let fs_id: FileSystemId = vfs.gen();
     let ext2fs = Ext2fs::new(ext2, fs_id);
@@ -101,13 +91,6 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
 /// create device /dev/tty on the vfs, WARNING: must be call after
 /// ext2 is mounted on root
 fn init_tty(vfs: &mut Vfs) {
-    let mut current = Current {
-        cwd: DirectoryEntryId::new(2),
-        uid: 0,
-        euid: 0,
-        gid: 0,
-        egid: 0,
-    };
     for i in 1..=4 {
         // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
         let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
@@ -116,7 +99,7 @@ fn init_tty(vfs: &mut Vfs) {
             Path::try_from(format!("/dev/tty{}", i).as_ref()).expect("path tty creation failed");
         let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
 
-        vfs.new_driver(&mut current, path, mode, driver)
+        vfs.new_driver(&Path::root(), &Credentials::ROOT, path, mode, driver)
             .expect("failed to add new driver tty to vfs");
     }
     log::info!("vfs initialized");

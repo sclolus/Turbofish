@@ -136,90 +136,46 @@ impl Ext2Filesystem {
         Ok(())
     }
 
-    //TODO: trash this read
-    /// for read syscall
-    pub fn read(&mut self, file: &mut File, buf: &mut [u8]) -> IoResult<u64> {
-        let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
-        let file_curr_offset_start = file.curr_offset;
-        if file.curr_offset > inode.get_size() {
-            return Err(Errno::EBADF);
-        }
-        if file.curr_offset == inode.get_size() {
-            return Ok(0);
-        }
-
-        let data_address = self
-            .inode_data((&mut inode, inode_addr), file.curr_offset)
-            .unwrap();
-        let offset = min(
-            inode.get_size() - file.curr_offset,
-            min(
-                self.block_size as u64 - file.curr_offset % self.block_size as u64,
-                buf.len() as u64,
-            ),
-        );
-        let data_read = self
-            .disk
-            .read_buffer(data_address, &mut buf[0..offset as usize])?;
-        file.curr_offset += data_read as u64;
-        if data_read < offset {
-            return Ok(file.curr_offset - file_curr_offset_start);
-        }
-
-        for chunk in buf[offset as usize..].chunks_mut(self.block_size as usize) {
-            let data_address = self
-                .inode_data((&mut inode, inode_addr), file.curr_offset)
-                .unwrap();
-            let offset = min((inode.get_size() - file.curr_offset) as usize, chunk.len());
-            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset])?;
-            file.curr_offset += data_read as u64;
-            if data_read < chunk.len() as u64 {
-                return Ok(file.curr_offset - file_curr_offset_start);
-            }
-        }
-        Ok(file.curr_offset - file_curr_offset_start)
-    }
-
     /// for write syscall
-    pub fn write(&mut self, file: &mut File, buf: &[u8]) -> IoResult<u64> {
-        let (mut inode, inode_addr) = self.get_inode(file.inode_nbr)?;
-        let file_curr_offset_start = file.curr_offset;
-        if file.curr_offset > inode.get_size() {
-            return Err(Errno::EBADF);
+    pub fn write(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &[u8]) -> IoResult<u64> {
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        let file_curr_offset_start = *file_offset;
+        if *file_offset > inode.get_size() {
+            panic!("file_offset > inode.get_size()");
         }
         if buf.len() == 0 {
             return Ok(0);
         }
-        let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
+        let data_address = self.inode_data_alloc((&mut inode, inode_addr), *file_offset)?;
         let offset = min(
-            self.block_size as u64 - file.curr_offset % self.block_size as u64,
+            self.block_size as u64 - *file_offset % self.block_size as u64,
             buf.len() as u64,
         );
         let data_write = self
             .disk
             .write_buffer(data_address, &buf[0..offset as usize])?;
-        file.curr_offset += data_write as u64;
-        if inode.get_size() < file.curr_offset {
-            inode.update_size(file.curr_offset, self.block_size);
+        *file_offset += data_write as u64;
+        if inode.get_size() < *file_offset {
+            inode.update_size(*file_offset, self.block_size);
             self.disk.write_struct(inode_addr, &inode)?;
         }
         if data_write < offset {
-            return Ok(file.curr_offset - file_curr_offset_start);
+            return Ok(*file_offset - file_curr_offset_start);
         }
 
         for chunk in buf[offset as usize..].chunks(self.block_size as usize) {
-            let data_address = self.inode_data_alloc((&mut inode, inode_addr), file.curr_offset)?;
+            let data_address = self.inode_data_alloc((&mut inode, inode_addr), *file_offset)?;
             let data_write = self.disk.write_buffer(data_address, &chunk)?;
-            file.curr_offset += data_write as u64;
-            if inode.get_size() < file.curr_offset {
-                inode.update_size(file.curr_offset, self.block_size);
+            *file_offset += data_write as u64;
+            if inode.get_size() < *file_offset {
+                inode.update_size(*file_offset, self.block_size);
                 self.disk.write_struct(inode_addr, &inode)?;
             }
             if data_write < chunk.len() as u64 {
-                return Ok(file.curr_offset - file_curr_offset_start);
+                return Ok(*file_offset - file_curr_offset_start);
             }
         }
-        Ok(file.curr_offset - file_curr_offset_start)
+        Ok(*file_offset - file_curr_offset_start)
     }
 
     /// return all the (directory, inode) conainted in inode_nbr
@@ -246,16 +202,11 @@ impl Ext2Filesystem {
     }
 
     /// for read syscall
-    pub fn new_read(
-        &mut self,
-        inode_nbr: u32,
-        file_offset: &mut u64,
-        buf: &mut [u8],
-    ) -> IoResult<u64> {
+    pub fn read(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &mut [u8]) -> IoResult<u64> {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         let file_curr_offset_start = *file_offset;
         if *file_offset > inode.get_size() {
-            return Err(Errno::EBADF);
+            panic!("file_offset > inode.get_size()");
         }
         if *file_offset == inode.get_size() {
             return Ok(0);

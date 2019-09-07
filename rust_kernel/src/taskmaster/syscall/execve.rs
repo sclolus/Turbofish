@@ -121,7 +121,11 @@ pub fn sys_execve(
         if !(pathname.starts_with("/")) {
             unimplemented!();
         }
-        let content = get_file_content(&pathname)?;
+
+        let tg = scheduler.current_thread_group();
+        let creds = &tg.credentials;
+        let cwd = &tg.cwd;
+        let content = get_file_content(cwd, creds, &pathname)?;
 
         let mut new_process = unsafe {
             UserProcess::new(

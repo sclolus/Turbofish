@@ -4,12 +4,13 @@ use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::result::Result as StdResult;
 use libc_binding::{c_char, Errno};
+use try_clone_derive::TryClone;
 
 use super::posix_consts::{NAME_MAX, PATH_MAX};
 
 type Result<T> = StdResult<T, Errno>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub struct Path {
     components: Vec<Filename>,
     total_length: usize,
@@ -17,6 +18,27 @@ pub struct Path {
 }
 
 impl Path {
+    pub fn root() -> Self {
+        // This should not failed
+        Self::try_from("/").expect("path / creation failed")
+    }
+
+    /// iterator over the char of the path
+    /// WARNING: return a trailing backslach
+    pub fn iter_bytes(&self) -> impl Iterator<Item = &c_char> {
+        if self.is_absolute() {
+            Some(&('/' as c_char))
+        } else {
+            None
+        }
+        .into_iter()
+        .chain(
+            self.components
+                .iter()
+                .flat_map(|filename| filename.iter_bytes().chain(Some('/' as c_char).iter())),
+        )
+    }
+
     fn null_path() -> Self {
         Self {
             components: Vec::new(),
@@ -29,7 +51,7 @@ impl Path {
         Self::null_path()
     }
 
-    fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
+    pub fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
         if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
         }
@@ -151,7 +173,7 @@ impl Path {
 }
 
 /// Newtype of filename
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, TryClone)]
 #[repr(C)]
 pub struct Filename(pub [c_char; NAME_MAX as usize + 1], pub usize);
 
@@ -181,6 +203,9 @@ impl Filename {
     }
     pub fn len(&self) -> usize {
         self.1
+    }
+    pub fn iter_bytes(&self) -> impl Iterator<Item = &c_char> {
+        self.0[0..self.1].iter()
     }
 
     //TODO: unsafe
@@ -480,6 +505,19 @@ impl fmt::Display for Path {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_iter_bytes() {
+        let p = "/a/b/c/";
+        let path = Path::try_from(p).unwrap();
+        let path_collected: Vec<c_char> = path.iter_bytes().map(|c| *c).collect();
+        let p_collected: Vec<c_char> = p.bytes().map(|c| c as c_char).collect();
+        assert_eq!(path_collected, p_collected);
+        // panic!("{:?}", path_collected);
+        // for (a, b) in .zip(p.bytes()) {
+        //     assert_eq!(*a as u8, b);
+        // }
+    }
 
     macro_rules! make_test {
         (pass, $test_name: ident, $body: tt) => {

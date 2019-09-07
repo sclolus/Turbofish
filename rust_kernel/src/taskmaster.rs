@@ -17,6 +17,10 @@ mod thread_group;
 pub mod vfs;
 pub use vfs::VFS;
 
+use core::convert::TryFrom;
+use thread_group::Credentials;
+use vfs::Path;
+
 /// Describe what to do after an IPC request and result return
 #[derive(Debug)]
 pub enum IpcResult<T> {
@@ -98,7 +102,8 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     lazy_static::initialize(&VFS);
 
     // Register the first process
-    let file = get_file_content(filename).expect("Cannot syncing");
+    let file = get_file_content(&Path::try_from("/").unwrap(), &Credentials::ROOT, filename)
+        .expect("Cannot syncing");
     SCHEDULER
         .lock()
         .add_user_process(

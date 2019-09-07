@@ -34,11 +34,16 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
             }
         };
 
-        let fd_interface = &mut scheduler
-            .current_thread_group_running_mut()
+        let tg = scheduler.current_thread_group_mut();
+
+        let creds = &tg.credentials;
+        let cwd = &tg.cwd;
+        let fd_interface = &mut tg
+            .thread_group_state
+            .unwrap_running_mut()
             .file_descriptor_interface;
 
-        match fd_interface.open(file /* flags, mode etc... */)? {
+        match fd_interface.open(cwd, creds, file)? {
             IpcResult::Wait(fd, file_op_uid) => {
                 scheduler
                     .current_thread_mut()

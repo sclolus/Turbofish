@@ -2,6 +2,7 @@ use super::inode::InodeId;
 use super::path::{Filename, Path};
 use super::{DcacheError, DcacheResult};
 use alloc::vec::Vec;
+use libc_binding::{c_char, dirent};
 use DcacheError::*;
 
 #[derive(Debug, Clone)]
@@ -79,6 +80,16 @@ impl DirectoryEntryBuilder {
 }
 
 impl DirectoryEntry {
+    pub fn dirent(&self) -> dirent {
+        let mut d = dirent {
+            d_name: self.filename.0,
+            d_ino: self.inode_id.inode_number as u32,
+        };
+        // assure the \0 at end of filename
+        d.d_name[self.filename.len()] = '\0' as c_char;
+        d
+    }
+
     // ---------- BUILDER PATTERN ------------
     pub fn set_filename(&mut self, filename: Filename) -> &mut Self {
         self.filename = filename;

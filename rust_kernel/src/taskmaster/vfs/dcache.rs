@@ -62,7 +62,7 @@ impl Dcache {
         Ok(id)
     }
 
-    pub fn remove_entry(&mut self, id: DirectoryEntryId) -> DcacheResult<DirectoryEntry> {
+    pub fn _remove_entry(&mut self, id: DirectoryEntryId) -> DcacheResult<DirectoryEntry> {
         let parent_id;
         {
             let entry = match self.d_entries.get(&id) {
@@ -95,14 +95,17 @@ impl Dcache {
     pub fn dentry_path(&self, id: DirectoryEntryId) -> DcacheResult<Path> {
         let mut current_id = id;
         let mut rev_path = Path::new();
+        let mut entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
         loop {
-            let entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
-
-            rev_path.push(entry.filename)?;
             if entry.id == entry.parent_id {
                 break;
             }
+            rev_path.push(entry.filename)?;
             current_id = entry.parent_id;
+            entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
+            if entry.is_mounted()? {
+                rev_path.pop();
+            }
         }
         let mut path = Path::new();
 
@@ -138,7 +141,7 @@ impl Dcache {
         Ok(())
     }
 
-    pub fn move_dentry(
+    pub fn _move_dentry(
         &mut self,
         id: DirectoryEntryId,
         new_parent: DirectoryEntryId,

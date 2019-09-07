@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <errno.h>
+#include <user_syscall.h>
 
 // The getcwd() function shall place an absolute pathname of the
 // current working directory in the array pointed to by buf, and
@@ -18,14 +19,12 @@
 // pointed to by the buf argument. If buf is a null pointer, the
 // behavior of getcwd() is unspecified.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 char *getcwd(char *buf, size_t size)
 {
-	DUMMY
-	(void)buf;
-	(void)size;
-	errno = ENOSYS;
-	return NULL;
+	int ret = _user_syscall(GETCWD, 2, buf, size);
+	if (ret < 0) {
+		errno = -ret;
+		return NULL;
+	}
+	return buf;
 }

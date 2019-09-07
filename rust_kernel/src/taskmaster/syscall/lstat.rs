@@ -38,21 +38,11 @@ pub fn sys_lstat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
         // TODO: REMOVE THIS SHIT
         let flags = libc_binding::OpenFlags::O_RDWR;
 
-        let mut current = super::vfs::Current {
-            cwd: super::vfs::DirectoryEntryId::new(2),
-            uid: 0,
-            euid: 0,
-            gid: 0,
-            egid: 0,
-        };
-
+        let tg = scheduler.current_thread_group();
+        let creds = &tg.credentials;
+        let cwd = &tg.cwd;
         //TODO: open folow symlink
-        let file_operator = match super::vfs::VFS.lock().open(
-            &mut current,
-            path,
-            flags,
-            mode, /* access_mode */
-        )? {
+        let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
             IpcResult::Done(file_operator) => file_operator,
             IpcResult::Wait(file_operator, _) => file_operator,
         };

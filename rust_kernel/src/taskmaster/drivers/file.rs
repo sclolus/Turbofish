@@ -51,7 +51,7 @@ impl FileOperation for Ext2FileOperation {
         let res = self
             .ext2
             .lock()
-            .new_read(self.inode_nbr, &mut self.offset, buf)? as u32;
+            .read(self.inode_nbr, &mut self.offset, buf)? as u32;
         Ok(IpcResult::Done(res))
     }
 
@@ -86,8 +86,12 @@ impl FileOperation for Ext2FileOperation {
         Ok(0)
     }
 
-    fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        unimplemented!();
+    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        let res = self
+            .ext2
+            .lock()
+            .write(self.inode_nbr, &mut self.offset, buf)? as u32;
+        Ok(IpcResult::Done(res))
     }
 
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
