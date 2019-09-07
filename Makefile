@@ -113,3 +113,9 @@ exec_sata:
 	-drive file=$(IMG_DISK),if=none,id=toto,format=raw \
 	-device ich9-ahci,id=ahci \
 	-device ide-drive,drive=toto,bus=ahci.0 \
+
+# Quick fix for regenerate Bindgen
+bindgen:
+	make -C libc re
+	make -C libc install
+	cd rust_kernel/dependencies/libc_binding && rm src/libc.rs && make && cargo build
