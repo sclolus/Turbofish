@@ -62,7 +62,7 @@ impl Dcache {
         Ok(id)
     }
 
-    pub fn remove_entry(&mut self, id: DirectoryEntryId) -> DcacheResult<DirectoryEntry> {
+    pub fn _remove_entry(&mut self, id: DirectoryEntryId) -> DcacheResult<DirectoryEntry> {
         let parent_id;
         {
             let entry = match self.d_entries.get(&id) {
@@ -141,7 +141,7 @@ impl Dcache {
         Ok(())
     }
 
-    pub fn move_dentry(
+    pub fn _move_dentry(
         &mut self,
         id: DirectoryEntryId,
         new_parent: DirectoryEntryId,
