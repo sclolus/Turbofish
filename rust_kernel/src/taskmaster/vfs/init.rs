@@ -5,7 +5,7 @@ use crate::taskmaster::drivers::{
 use alloc::format;
 use alloc::sync::Arc;
 use core::convert::TryFrom;
-use fallible_collections::FallibleArc;
+use fallible_collections::boxed::FallibleBox;
 use sync::DeadMutex;
 
 use super::*;
@@ -31,9 +31,9 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
 
 /// mount /dev/sda1 on the vfs, WARNING: must be call after ext2 is
 /// mounted on root
-fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
+fn init_sda(vfs: &mut Vfs, disk_driver: Box<dyn Driver>) {
     let path = Path::try_from(format!("/dev/sda1").as_ref()).expect("path sda1 creation failed");
-    let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+    let mode = FileType::from_bits(0o777).expect("file permission creation failed");
     vfs.new_driver(
         &Path::root(),
         &Credentials::ROOT,
@@ -48,30 +48,29 @@ fn init_sda(vfs: &mut Vfs, disk_driver: Arc<DeadMutex<dyn Driver>>) {
 fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     log::info!("Active disk driver: {:?}", driver);
 
-    let disk_driver: Arc<DeadMutex<dyn Driver>> = match driver {
+    let mut disk_driver: Box<dyn Driver> = match driver {
         DiskDriverType::Bios => {
             let disk = BiosInt13hInstance;
             let mbr = read_mbr(&disk);
-            Arc::new(DeadMutex::new(DiskDriver::new(
+            Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
-            )))
+            ))
         }
         DiskDriverType::Ide => {
             let disk = IdeAtaInstance;
             let mbr = read_mbr(&disk);
-            Arc::new(DeadMutex::new(DiskDriver::new(
+            Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
-            )))
+            ))
         }
         _ => unimplemented!(),
     };
 
     let file_operation = disk_driver
-        .lock()
         .open()
         .expect("open sda1 failed")
         .expect("disk driver open failed");
@@ -80,8 +79,12 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
     let fs_id: FileSystemId = vfs.gen();
     let ext2fs = Ext2fs::new(ext2, fs_id);
-    vfs.mount_filesystem(Box::new(ext2fs), fs_id, DirectoryEntryId::new(2))
-        .expect("mount filesystem failed");
+    vfs.mount_filesystem(
+        Arc::new(DeadMutex::new(ext2fs)),
+        fs_id,
+        DirectoryEntryId::new(2),
+    )
+    .expect("mount filesystem failed");
 
     // mount /dev/sda on the vfs
     init_sda(vfs, disk_driver);
@@ -93,11 +96,11 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
 fn init_tty(vfs: &mut Vfs) {
     for i in 1..=4 {
         // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-        let driver = Arc::try_new(DeadMutex::new(TtyDevice::try_new(i).unwrap())).unwrap();
+        let driver = Box::try_new(TtyDevice::try_new(i).unwrap()).unwrap();
         // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
         let path =
             Path::try_from(format!("/dev/tty{}", i).as_ref()).expect("path tty creation failed");
-        let mode = FilePermissions::from_bits(0o777).expect("file permission creation failed");
+        let mode = FileType::from_bits(0o777).expect("file permission creation failed");
 
         vfs.new_driver(&Path::root(), &Credentials::ROOT, path, mode, driver)
             .expect("failed to add new driver tty to vfs");

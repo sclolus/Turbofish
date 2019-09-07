@@ -1,11 +1,28 @@
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
-use super::scheduler::SCHEDULER;
+use super::scheduler::{Scheduler, SCHEDULER};
+use super::vfs::{Path, VFS};
 use super::IpcResult;
-
-use core::convert::TryInto;
+use core::convert::TryFrom;
+use libc_binding::c_char;
 use libc_binding::stat;
+
+pub fn statfn(scheduler: &Scheduler, path: Path, buf: &mut stat) -> SysResult<u32> {
+    let mode = libc_binding::FileType::from_bits(0o777).expect("file permission creation failed");
+    // TODO: REMOVE THIS SHIT
+    // TODO: REMOVE THIS SHIT
+    let flags = libc_binding::OpenFlags::O_RDWR;
+
+    let tg = scheduler.current_thread_group();
+    let creds = &tg.credentials;
+    let cwd = &tg.cwd;
+    let file_operator = match VFS.lock().open(cwd, creds, path, flags, mode)? {
+        IpcResult::Done(file_operator) => file_operator,
+        IpcResult::Wait(file_operator, _) => file_operator,
+    };
+    let mut m = file_operator.lock();
+    m.fstat(buf)
+}
 
 pub fn sys_stat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
     unpreemptible_context!({
@@ -18,34 +35,12 @@ pub fn sys_stat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
                 .unwrap_process()
                 .get_virtual_allocator();
 
-            let c_string: CString = (&v, filename).try_into()?;
-
             (
-                unsafe {
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                        filename as *const u8,
-                        c_string.len(),
-                    ))
-                },
+                v.make_checked_str(filename)?,
                 v.make_checked_ref_mut::<stat>(buf)?,
             )
         };
-        let mode =
-            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
-        use core::convert::TryFrom;
-        // TODO: REMOVE THIS SHIT
-        let path = super::vfs::Path::try_from(safe_filename)?;
-        // TODO: REMOVE THIS SHIT
-        let flags = libc_binding::OpenFlags::O_RDWR;
-
-        let tg = scheduler.current_thread_group();
-        let creds = &tg.credentials;
-        let cwd = &tg.cwd;
-        let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
-            IpcResult::Done(file_operator) => file_operator,
-            IpcResult::Wait(file_operator, _) => file_operator,
-        };
-        let mut m = file_operator.lock();
-        m.fstat(safe_buf)
+        let path = Path::try_from(safe_filename)?;
+        statfn(&scheduler, path, safe_buf)
     })
 }

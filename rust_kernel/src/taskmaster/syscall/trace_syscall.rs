@@ -1,12 +1,3 @@
-use libc_binding::{
-    CHDIR, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK, FSTAT, GETCWD, GETEGID,
-    GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID, ISATTY, KILL, LSEEK,
-    LSTAT, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, SETEGID,
-    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR,
-    TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
-};
-
 use super::mmap::MmapArgStruct;
 use super::nanosleep::TimeSpec;
 use super::process::CpuState;
@@ -19,7 +10,15 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, off_t, stat, termios, uid_t, Pid, DIR};
+use libc_binding::{gid_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR};
+use libc_binding::{
+    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
+    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
+    ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR,
+    PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
+    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
+    STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UNLINK, WAITPID, WRITE,
+};
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -50,7 +49,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as usize
             ),
             // TODO: type parameter are not set and manage the third argument
-            OPEN => log::info!("open({:#?}, {:#?})", ebx as *const u8, ecx as u32),
+            OPEN => log::info!(
+                "open({:#?}, {:#?})",
+                ebx as *const u8,
+                OpenFlags::from_bits(ecx as u32)
+            ),
             CLOSE => log::info!("close({:#?})", ebx as i32),
             WAITPID => log::info!(
                 "waitpid({:#?}, {:#?}, {:#?})",
@@ -59,6 +62,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as i32
             ),
             UNLINK => log::info!("unlink({:#?})", ebx as *const u8),
+            LINK => log::info!(
+                "link({:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as *const libc_binding::c_char,
+            ),
             EXECVE => log::info!(
                 "execve({:#?}, {:#?}, {:#?})",
                 ebx as *const c_char,
@@ -66,6 +74,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as *const *const c_char,
             ),
             CHDIR => log::info!("chdir({:#?})", ebx as *const c_char),
+            CHMOD => log::info!("chmod({:#?})", ebx as *const libc_binding::c_char),
             STAT => log::info!(
                 "stat(filename: {:?}, buf: {:#X?})",
                 ebx as *const c_char,
@@ -83,7 +92,24 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             GETUID => log::info!("getuid()"),
             PAUSE => log::info!("pause()"),
             FSTAT => log::info!("fstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
+            ACCESS => log::info!(
+                "access({:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as i32
+            ),
             KILL => log::info!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
+            RENAME => log::info!(
+                "rename(
+{:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as *const libc_binding::c_char,
+            ),
+            MKDIR => log::info!(
+                "mkdir({:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as i32
+            ),
+            RMDIR => log::info!("rmdir({:#?})", ebx as *const libc_binding::c_char),
             PIPE => log::info!("pipe({:#?})", ebx as *const i32),
             DUP => log::info!("dup({:#?})", ebx as u32),
             SETGID => log::info!("setgid({:#?})", ebx as gid_t),
@@ -139,6 +165,13 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *const TimeSpec,
                 ecx as *mut TimeSpec
             ),
+            CHOWN => log::info!(
+                "chown(
+{:#?}, {:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as uid_t,
+                edx as gid_t,
+            ),
             GETCWD => log::info!("getcwd({:#?}, {:#?})", ebx as *const c_char, ecx as usize),
             SIGRETURN => log::info!("sigreturn({:#?})", cpu_state),
             SHUTDOWN => log::info!("shutdown()"),
@@ -172,11 +205,14 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         FORK => "fork",
         READ => "read",
         WRITE => "write",
+        OPEN => "open",
         CLOSE => "close",
         WAITPID => "waitpid",
+        LINK => "link",
         UNLINK => "unlink",
         EXECVE => "execve",
         CHDIR => "chdir",
+        CHMOD => "chmod",
         STAT => "stat",
         LSEEK => "lseek",
         GETPID => "getpid",
@@ -184,7 +220,11 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         GETUID => "getuid",
         PAUSE => "pause",
         FSTAT => "fstat",
+        ACCESS => "access",
         KILL => "kill",
+        RENAME => "rename",
+        MKDIR => "mkdir",
+        RMDIR => "rmdir",
         PIPE => "pipe",
         GETGID => "getgid",
         GETEUID => "geteuid",
@@ -207,6 +247,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         MPROTECT => "mprotect",
         SIGPROCMASK => "sigprocmask",
         GETPGID => "getpgid",
+        CHOWN => "chown",
         NANOSLEEP => "nanosleep",
         GETCWD => "getcwd",
         SIGRETURN => "sigreturn",

@@ -649,3 +649,55 @@ bitflags! {
         const OTHER_EXECUTE_PERMISSION = S_IXOTH as u16;
     }
 }
+
+impl FileType {
+    pub fn is_character_device(&self) -> bool {
+        self.contains(Self::CHARACTER_DEVICE)
+    }
+
+    pub fn is_fifo(&self) -> bool {
+        self.contains(Self::FIFO)
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.contains(Self::REGULAR_FILE)
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.contains(Self::DIRECTORY)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.contains(Self::SYMBOLIC_LINK)
+    }
+
+    pub fn is_socket(&self) -> bool {
+        self.contains(Self::UNIX_SOCKET)
+    }
+
+    /// retrurn the owner rights on the file, in a bitflags Amode
+    pub fn owner_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXU).bits() as u32 >> 6)
+            .expect("bits should be valid")
+    }
+
+    /// retrurn the group rights on the file, in a bitflags Amode
+    pub fn group_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXG).bits() as u32 >> 3)
+            .expect("bits should be valid")
+    }
+
+    /// retrurn the other rights on the file, in a bitflags Amode
+    pub fn other_access(&self) -> Amode {
+        Amode::from_bits((*self & FileType::S_IRWXO).bits() as u32).expect("bits should be valid")
+    }
+}
+
+bitflags! {
+    pub struct Amode: u32 {
+        const F_OK = F_OK;
+        const R_OK = R_OK;
+        const W_OK = W_OK;
+        const X_OK = X_OK;
+    }
+}

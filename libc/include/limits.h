@@ -74,9 +74,13 @@
  * {PAGESIZE}
  *     Size in bytes of a page.
  *     Minimum Acceptable Value: 1
- * {PAGE_SIZE}
- *     [XSI] [Option Start]
- *     Equivalent to {PAGESIZE}. If either {PAGESIZE} or {PAGE_SIZE} is defined, the other is defined with the same value. [Option End]
+ */
+
+#define PAGE_SIZE 4096
+#define PAGESIZE PAGE_SIZE
+/// [XSI] [Option Start]
+/// Equivalent to {PAGESIZE}. If either {PAGESIZE} or {PAGE_SIZE} is defined, the other is defined with the same value. [Option End]
+ /*
  * {PTHREAD_DESTRUCTOR_ITERATIONS}
  *     Maximum number of attempts made to destroy a thread's thread-specific data values on thread exit.
  *     Minimum Acceptable Value: {_POSIX_THREAD_DESTRUCTOR_ITERATIONS}
@@ -528,12 +532,15 @@
 // However, SIZE_MAX is defined in stdint.h.
 // TODO: Fix this. (Even though it works.)
 # define SSIZE_MAX ((ssize_t)((size_t)(~0UL) >> 1UL))
+
+# define USHRT_MAX 0xFFFF
+/*
+* Maximum value for an object of type unsigned short.
+* Minimum Acceptable Value: 65 535
+*/
 /* # define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL)) */
 
 /*
- * {USHRT_MAX}
- *     Maximum value for an object of type unsigned short.
- *     Minimum Acceptable Value: 65 535
  * {WORD_BIT}
  *     [CX] [Option Start]
  *     Number of bits in an object of type int.

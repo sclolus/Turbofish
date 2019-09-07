@@ -1,10 +1,9 @@
 use super::SysResult;
 
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::SCHEDULER;
 use super::IpcResult;
+use libc_binding::c_char;
 
-use core::convert::TryInto;
 use libc_binding::stat;
 
 pub fn sys_lstat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
@@ -18,20 +17,13 @@ pub fn sys_lstat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
                 .unwrap_process()
                 .get_virtual_allocator();
 
-            let c_string: CString = (&v, filename).try_into()?;
-
             (
-                unsafe {
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                        filename as *const u8,
-                        c_string.len(),
-                    ))
-                },
+                v.make_checked_str(filename)?,
                 v.make_checked_ref_mut::<stat>(buf)?,
             )
         };
         let mode =
-            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
+            libc_binding::FileType::from_bits(0o777).expect("file permission creation failed");
         use core::convert::TryFrom;
         // TODO: REMOVE THIS SHIT
         let path = super::vfs::Path::try_from(safe_filename)?;

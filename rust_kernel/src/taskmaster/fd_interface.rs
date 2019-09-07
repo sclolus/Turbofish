@@ -7,7 +7,9 @@ use super::IpcResult;
 use super::SysResult;
 use super::VFS;
 
-use libc_binding::Errno;
+use core::convert::TryFrom;
+
+use libc_binding::{Errno, FileType, OpenFlags};
 
 use super::drivers::ipc::{Fifo, Pipe, Socket};
 use alloc::sync::Arc;
@@ -55,20 +57,13 @@ impl FileDescriptorInterface {
         &mut self,
         cwd: &Path,
         creds: &Credentials,
-        filename: &str, /* access_mode: Mode ? */
+        filename: &str,
+        flags: OpenFlags,
+        mode: FileType,
     ) -> SysResult<IpcResult<Fd>> {
-        // TODO: REMOVE THIS SHIT
-        let mode =
-            super::vfs::FilePermissions::from_bits(0o777).expect("file permission creation failed");
-        use core::convert::TryFrom;
-        // TODO: REMOVE THIS SHIT
         let path = super::vfs::Path::try_from(filename)?;
-        // TODO: REMOVE THIS SHIT
-        let flags = libc_binding::OpenFlags::O_RDWR;
 
-        let file_operator = VFS
-            .lock()
-            .open(cwd, creds, path, flags, mode /* access_mode */)?;
+        let file_operator = VFS.lock().open(cwd, creds, path, flags, mode)?;
         match file_operator {
             IpcResult::Done(file_operator) => {
                 let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;

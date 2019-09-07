@@ -1,18 +1,13 @@
 //! sys_open()
-
-use super::SysResult;
-
-use super::safe_ffi::{c_char, CString};
 use super::scheduler::auto_preempt;
 use super::scheduler::SCHEDULER;
 use super::thread::WaitingState;
 use super::IpcResult;
-
-use core::convert::TryInto;
+use super::SysResult;
+use libc_binding::{c_char, mode_t, Errno, FileType, OpenFlags};
 
 /// Open a new file descriptor
-// TODO: Manage with the third argument
-pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u32> {
+pub fn sys_open(filename: *const c_char, flags: u32, mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -22,16 +17,7 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
-            // Check if pointer exists in user virtual address space
-            // TODO: It will be usefull if a function returns a &str instead a CString
-            let c_string: CString = (&v, filename).try_into()?;
-
-            unsafe {
-                core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                    filename as *const u8,
-                    c_string.len(),
-                ))
-            }
+            v.make_checked_str(filename)?
         };
 
         let tg = scheduler.current_thread_group_mut();
@@ -43,7 +29,9 @@ pub fn sys_open(filename: *const c_char, _flags: u32 /* mode */) -> SysResult<u3
             .unwrap_running_mut()
             .file_descriptor_interface;
 
-        match fd_interface.open(cwd, creds, file)? {
+        let flags = OpenFlags::from_bits(flags).ok_or(Errno::EINVAL)?;
+        let mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
+        match fd_interface.open(cwd, creds, file, flags, mode)? {
             IpcResult::Wait(fd, file_op_uid) => {
                 scheduler
                     .current_thread_mut()

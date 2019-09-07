@@ -1,7 +1,7 @@
 export TURBOFISH_ROOT := $(shell pwd)
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
-RAM_AMOUNT = 128
+RAM_AMOUNT = 256
 IMG_DISK = image_disk.img
 IMAGE_SIZE = 65536
 LOOP_DEVICE = $(shell sudo losetup -f)

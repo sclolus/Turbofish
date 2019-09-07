@@ -1,5 +1,5 @@
---- coreutils-origin/build/config.h	2019-09-03 17:17:50.472049343 +0200
-+++ coreutils-5.0_ours/build/config.h	2019-09-03 17:19:40.223869878 +0200
+--- coreutils-5.0/build/config.h	2019-09-07 22:25:37.956759947 +0200
++++ coreutils_modified/build/config.h	2019-09-07 22:16:02.740682509 +0200
 @@ -1030,10 +1030,10 @@
  #define HAVE_UNSIGNED_LONG_LONG 1
  
@@ -22,12 +22,3 @@
  
  /* Define to 1 if the `setvbuf' function takes the buffering type as its
     second argument and the buffer pointer as the third, as on System V before
-@@ -1284,7 +1284,7 @@
- /* #undef UMAX4_3 */
- 
- /* the maximum number of simultaneously open files per process */
--#define UTILS_OPEN_MAX 
-+#define UTILS_OPEN_MAX
- 
- /* Version number of package */
- #define VERSION "5.0"

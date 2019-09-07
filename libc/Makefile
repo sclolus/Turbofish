@@ -42,7 +42,7 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero strdup \
-	strcasecmp strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
+	strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
 	strcoll
 VPATH += src/string
 HEADERS += string.h
@@ -52,7 +52,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
-	getline getdelim getchar getchar_unlocked fgets fgetc
+	getline getdelim getchar getchar_unlocked fgets fgetc rename \
 
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
@@ -85,7 +85,7 @@ SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _
 VPATH += src/stdlib
 HEADERS += stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown link rmdir getpagesize
 
 SRC_C += dup dup2 pipe
 
@@ -96,7 +96,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman
 HEADERS += sys/mman.h
 
-SRC_C += stat lstat fstat mkfifo umask
+SRC_C += stat lstat fstat mkfifo umask chmod mkdir
 VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
@@ -176,6 +176,9 @@ HEADERS += grp.h
 SRC_C += strcasecmp
 VPATH += src/strings
 HEADERS += strings.h
+
+SRC_C += is_ptr_valid
+VPATH += src/custom
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash

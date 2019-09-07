@@ -8,7 +8,7 @@ use std::time::Duration;
 use toml::Value;
 use wait_timeout::ChildExt;
 
-const TIMEOUT: Duration = Duration::from_secs(60);
+const TIMEOUT: Duration = Duration::from_secs(120);
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -138,7 +138,7 @@ fn main() {
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
-                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "128M"])
+                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "256"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
                     .args(if matches.opt_present("g") {

@@ -1,18 +1,23 @@
-use super::permissions::FilePermissions;
-use super::posix_consts::time_t;
-use libc_binding::{gid_t, nlink_t, uid_t};
-pub type InodeNumber = usize;
+pub type InodeNumber = u32;
+use super::DeadFileSystem;
 use super::DefaultDriver;
 use super::Driver;
+use super::FileSystem;
+use crate::taskmaster::SysResult;
 // use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 use super::FileSystemId;
+use alloc::boxed::Box;
 use alloc::sync::Arc;
+use libc_binding::{
+    dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, FileType,
+};
 use sync::DeadMutex;
 
 #[derive(Debug)]
 pub struct Inode {
     inode_data: InodeData,
-    pub inode_operations: Arc<DeadMutex<dyn Driver>>,
+    pub driver: Box<dyn Driver>,
+    pub filesystem: Arc<DeadMutex<dyn FileSystem>>,
 }
 
 use core::ops::{Deref, DerefMut};
@@ -31,18 +36,39 @@ impl DerefMut for Inode {
 }
 
 impl Inode {
-    pub fn new(inode_operations: Arc<DeadMutex<dyn Driver>>, inode_data: InodeData) -> Self {
+    pub fn new(
+        filesystem: Arc<DeadMutex<dyn FileSystem>>,
+        driver: Box<dyn Driver>,
+        inode_data: InodeData,
+    ) -> Self {
         Self {
             inode_data,
-            inode_operations,
+            filesystem,
+            driver,
         }
     }
     pub fn root_inode() -> Self {
         Self {
             inode_data: InodeData::root_inode(),
             // TODO: FallibleArc
-            inode_operations: Arc::new(DeadMutex::new(DefaultDriver)),
+            driver: Box::new(DefaultDriver),
+            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
         }
+    }
+    pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
+        self.inode_data.stat(stat)
+    }
+    pub fn write(&mut self, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
+        Ok(self
+            .filesystem
+            .lock()
+            .write(self.id.inode_number, offset, buf)? as u32)
+    }
+    pub fn read(&mut self, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
+        Ok(self
+            .filesystem
+            .lock()
+            .read(self.id.inode_number, offset, buf)? as u32)
     }
 }
 
@@ -51,7 +77,8 @@ impl Default for Inode {
         Self {
             inode_data: Default::default(),
             // TODO: FallibleArc
-            inode_operations: Arc::new(DeadMutex::new(DefaultDriver)),
+            driver: Box::new(DefaultDriver),
+            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
         }
     }
 }
@@ -63,7 +90,7 @@ pub struct InodeData {
 
     /// This inode's hard link number
     pub link_number: nlink_t,
-    pub access_mode: FilePermissions,
+    pub access_mode: FileType,
     // pub file_type: Filetype, ??????????
     pub uid: uid_t,
     pub gid: gid_t,
@@ -72,19 +99,47 @@ pub struct InodeData {
     pub mtime: time_t,
     pub ctime: time_t,
 
-    pub size: usize,
+    pub size: u64,
     // pub status: InodeStatus,
     // pub ref_count: AtomicU32,;
 }
 
 impl InodeData {
+    pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
+        *stat = stat {
+            st_dev: 42 as dev_t,                   // Device ID of device containing file.
+            st_ino: self.id.inode_number as ino_t, // File serial number.
+            st_mode: self.access_mode.bits() as mode_t, // Mode of file (see below).
+            st_nlink: self.link_number,            // Number of hard links to the file.
+            st_uid: self.uid,                      // User ID of file.
+            st_gid: self.gid,                      // Group ID of file.
+            st_rdev: 0 as dev_t, //TODO // Device ID (if file is character or block special).
+            st_size: self.size as off_t, // For regular files, the file size in bytes.
+            st_atim: timespec {
+                // Last data access timestamp.
+                tv_sec: self.atime as time_t,
+                tv_nsec: 0,
+            },
+            st_mtim: timespec {
+                tv_sec: self.mtime as time_t,
+                tv_nsec: 0,
+            }, // Last data modification timestamp.
+            st_ctim: timespec {
+                tv_sec: self.ctime as time_t,
+                tv_nsec: 0,
+            }, // Last file status change timestamp.
+            st_blksize: 42, //self.ext2.lock().get_block_size() as blksize_t, // A file system-specific preferred I/O block size
+            st_blocks: 42, //self.nbr_disk_sectors as blkcnt_t, // Number of blocks allocated for this object.
+        };
+        Ok(0)
+    }
     // Builder Pattern
     pub fn set_id(&mut self, id: InodeId) -> &mut Self {
         self.id = id;
         self
     }
 
-    pub fn set_access_mode(&mut self, mode: FilePermissions) -> &mut Self {
+    pub fn set_access_mode(&mut self, mode: FileType) -> &mut Self {
         self.access_mode = mode;
         self
     }
@@ -114,7 +169,7 @@ impl InodeData {
     // }
 
     pub fn root_inode() -> Self {
-        let access_mode = FilePermissions::S_IRWXU | FilePermissions::S_IFDIR;
+        let access_mode = FileType::S_IRWXU | FileType::DIRECTORY;
 
         Self {
             id: InodeId::new(2, None),
@@ -207,7 +262,7 @@ impl InodeId {
 //     // pub stat: Option<fn(&mut Inode, &mut DirectoryEntry, &mut UserStat) -> VfsResult<i32>>,
 //     // pub mkdir: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
 //     // pub rmdir: Option<fn(&mut Inode, &mut DirectoryEntry) -> VfsResult<i32>>,
-//     pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FilePermissions) -> VfsResult<i32>>,
+//     pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FileType) -> VfsResult<i32>>,
 //     pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>,
 //     pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
 //     pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, Offset) -> VfsResult<i32>>,
@@ -365,7 +420,7 @@ impl InodeId {
 //     pub release: Option<fn(&mut File) -> VfsResult<i32>>,
 //     pub ftruncate: Option<fn(&mut File, Offset) -> VfsResult<i32>>,
 //     // pub fstat: Option<fn(&mut File, &mut UserStat) -> VfsResult<i32>>,
-//     pub fchmod: Option<fn(&mut File, FilePermissions) -> VfsResult<i32>>,
+//     pub fchmod: Option<fn(&mut File, FileType) -> VfsResult<i32>>,
 //     pub fchown: Option<fn(&mut File, uid_t, gid_t) -> VfsResult<i32>>,
 //     // pub open: Option<fn(&mut Inode, &mut File, i32, mode_t) -> VfsResult<i32>>,
 // }
