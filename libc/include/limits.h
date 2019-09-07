@@ -532,12 +532,15 @@
 // However, SIZE_MAX is defined in stdint.h.
 // TODO: Fix this. (Even though it works.)
 # define SSIZE_MAX ((ssize_t)((size_t)(~0UL) >> 1UL))
+
+# define USHRT_MAX 0xFFFF
+/*
+* Maximum value for an object of type unsigned short.
+* Minimum Acceptable Value: 65 535
+*/
 /* # define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL)) */
 
 /*
- * {USHRT_MAX}
- *     Maximum value for an object of type unsigned short.
- *     Minimum Acceptable Value: 65 535
  * {WORD_BIT}
  *     [CX] [Option Start]
  *     Number of bits in an object of type int.

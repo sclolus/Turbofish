@@ -309,7 +309,7 @@ impl VirtualFileSystem {
             Ok(_id) => return Err(Errno(Errno::EEXIST)),
             Err(_e) => {
                 //TODO: Option(FileSystemId)
-                let new_id = self.get_available_id(FileSystemId::new(0)); // THIS IS FALSE
+                let new_id = self.get_available_id(None);
 
                 let mut inode_data: InodeData = Default::default();
                 inode_data
@@ -553,15 +553,15 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    fn get_available_id(&self, filesystem_id: FileSystemId) -> InodeId {
-        let mut current_id = InodeId::new(2, None); // check this
+    fn get_available_id(&self, filesystem_id: Option<FileSystemId>) -> InodeId {
+        let mut current_id = InodeId::new(2, filesystem_id); // check this
         loop {
             if let None = self.inodes.get(&current_id) {
                 return current_id;
             }
 
             // this is unchecked
-            current_id = InodeId::new(current_id.inode_number + 1, Some(filesystem_id));
+            current_id = InodeId::new(current_id.inode_number + 1, filesystem_id);
         }
     }
 
