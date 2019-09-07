@@ -15,7 +15,7 @@ use ext2::Ext2Filesystem;
 use mbr::Mbr;
 
 /// read the mbr form a disk
-fn read_mbr(disk: &dyn BlockIo) -> Mbr {
+fn read_mbr(disk: &mut dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
     let mut v1 = [0; 512];
 
@@ -50,8 +50,8 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
 
     let mut disk_driver: Box<dyn Driver> = match driver {
         DiskDriverType::Bios => {
-            let disk = BiosInt13hInstance;
-            let mbr = read_mbr(&disk);
+            let mut disk = BiosInt13hInstance;
+            let mbr = read_mbr(&mut disk);
             Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
@@ -59,8 +59,8 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
             ))
         }
         DiskDriverType::Ide => {
-            let disk = IdeAtaInstance;
-            let mbr = read_mbr(&disk);
+            let mut disk = IdeAtaInstance;
+            let mbr = read_mbr(&mut disk);
             Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,

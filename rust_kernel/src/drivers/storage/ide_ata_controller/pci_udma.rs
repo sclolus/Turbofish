@@ -1,6 +1,5 @@
 //! This module contains udma read/write methods on IDE drive. See https://wiki.osdev.org/ATA/ATAPI_using_DMA
 
-/*
 // TODO: IRQ handling seems broken (i dont know if is a Qemu bug or a mistake made by us)
 
 use super::udma;
@@ -25,46 +24,46 @@ use core::time::Duration;
 // Set the Start/Stop bit on the Bus Master Command Register.
 // When an interrupt arrives (after the transfer is complete), respond by resetting the Start/Stop bit.
 // Read the controller and drive status to determine if the transfer completed successfully.
-// impl DmaIo for Drive {
-//     /// drive specific READ method
-//     fn read(
-//         &self,
-//         start_sector: Sector,
-//         nbr_sectors: NbrSectors,
-//         _buf: *mut u8,
-//         udma: &mut Udma,
-//     ) -> AtaResult<()> {
-//         println!("dma read");
+impl DmaIo for Drive {
+    /// drive specific READ method
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        _buf: *mut u8,
+        udma: &mut Udma,
+    ) -> AtaResult<()> {
+        println!("dma read");
 
-//         udma.reset_command();
-//         udma.set_read();
-//         udma.clear_error();
-//         udma.clear_interrupt();
+        udma.reset_command();
+        udma.set_read();
+        udma.clear_error();
+        udma.clear_interrupt();
 
-//         // udma.start_transfer();
-//         self.fill_dma(start_sector, nbr_sectors, udma)?;
-//         // udma.stop_transfer();
+        // udma.start_transfer();
+        self.fill_dma(start_sector, nbr_sectors, udma)?;
+        // udma.stop_transfer();
 
-//         eprintln!(
-//             "current status of DMA controller '{:X?}'",
-//             udma.get_status()
-//         );
+        eprintln!(
+            "current status of DMA controller '{:X?}'",
+            udma.get_status()
+        );
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     /// drive specific WRITE method
-//     fn write(
-//         &self,
-//         _start_sector: Sector,
-//         _nbr_sectors: NbrSectors,
-//         _buf: *const u8,
-//         _udma: &mut Udma,
-//     ) -> AtaResult<()> {
-//         unimplemented!();
-//         Ok(())
-//     }
-// }
+    /// drive specific WRITE method
+    fn write(
+        &self,
+        _start_sector: Sector,
+        _nbr_sectors: NbrSectors,
+        _buf: *const u8,
+        _udma: &mut Udma,
+    ) -> AtaResult<()> {
+        unimplemented!();
+//        Ok(())
+    }
+}
 
 impl Drive {
     fn fill_dma(
@@ -146,10 +145,9 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 static TRIGGER: AtomicBool = AtomicBool::new(false);
 
-use crate::terminal::ansi_escape_code::color::Colored;
 #[no_mangle]
 fn primary_hard_disk_interrupt_handler() -> u32 {
-    eprintln!("{}", "primary IRQ".red());
+    eprintln!("{}", "primary IRQ");
     TRIGGER.store(true, Ordering::Relaxed);
 
     // It seems to be wrong: Logically, we dont need to do things inside IRQ handling since we have Atomic recall
@@ -166,18 +164,6 @@ fn primary_hard_disk_interrupt_handler() -> u32 {
     // stop DMA transfert
     Pio::<u8>::new(0xc040 + Udma::DMA_COMMAND).write(s & !udma::DmaCommand::ONOFF.bits());
     Pio::<u8>::new(0xC040 + Udma::DMA_COMMAND).write(0);
-    0
-}
-
-#[no_mangle]
-fn secondary_hard_disk_interrupt_handler() -> u32 {
-    eprintln!("{:?}", "secondary IRQ".green());
-    0
-}
-*/
-
-#[no_mangle]
-fn primary_hard_disk_interrupt_handler() -> u32 {
     0
 }
 

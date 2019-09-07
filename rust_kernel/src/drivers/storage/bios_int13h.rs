@@ -201,7 +201,12 @@ impl BiosInt13h {
 
 impl BlockIo for BiosInt13h {
     /// Read nbr_sectors after start_sector location and write it into the buf
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<()> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
@@ -247,7 +252,7 @@ impl BlockIo for BiosInt13h {
 
     /// Write nbr_sectors after start_sector location from the buf
     fn write(
-        &self,
+        &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,

@@ -60,6 +60,7 @@ struct Drive {
     sector_capacity: NbrSectors,
     udma_support: u16,
     rank: Rank,
+    //udma: Option<Udma>,
 }
 
 /// Since data are copied into DMA for read, DmaIo copy DMA buff into buf address passed
@@ -69,14 +70,14 @@ pub trait DmaIo {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-        // udma: &mut Udma,
+        udma: &mut Udma,
     ) -> AtaResult<()>;
     fn write(
         &self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-        // udma: &mut Udma,
+        udma: &mut Udma,
     ) -> AtaResult<()>;
 }
 
@@ -239,29 +240,33 @@ impl IdeAtaController {
 
 impl BlockIo for IdeAtaController {
     /// Read nbr_sectors after start_sector location and write it into the buf
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<()> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
                     Hierarchy::Master => self.primary_master.as_ref(),
                     Hierarchy::Slave => self.primary_slave.as_ref(),
                 },
-                self.udma_primary.as_ref(),
+                self.udma_primary.as_mut(),
             ),
             Rank::Secondary(h) => (
                 match h {
                     Hierarchy::Master => self.secondary_master.as_ref(),
                     Hierarchy::Slave => self.secondary_slave.as_ref(),
                 },
-                self.udma_secondary.as_ref(),
+                self.udma_secondary.as_mut(),
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
         match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+            (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                unimplemented!()
-                // DmaIo::read(d, start_sector, nbr_sectors, buf, u)?;
+                DmaIo::read(d, start_sector, nbr_sectors, buf, udma)?;
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
@@ -277,7 +282,7 @@ impl BlockIo for IdeAtaController {
 
     /// Write nbr_sectors after start_sector location from the buf
     fn write(
-        &self,
+        &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
@@ -288,22 +293,21 @@ impl BlockIo for IdeAtaController {
                     Hierarchy::Master => self.primary_master.as_ref(),
                     Hierarchy::Slave => self.primary_slave.as_ref(),
                 },
-                self.udma_primary.as_ref(),
+                self.udma_primary.as_mut(),
             ),
             Rank::Secondary(h) => (
                 match h {
                     Hierarchy::Master => self.secondary_master.as_ref(),
                     Hierarchy::Slave => self.secondary_slave.as_ref(),
                 },
-                self.udma_secondary.as_ref(),
+                self.udma_secondary.as_mut(),
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
         match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+            (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                // DmaIo::write(d, start_sector, nbr_sectors, buf, u)?;
-                unimplemented!()
+                DmaIo::write(d, start_sector, nbr_sectors, buf, udma)?;
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
