@@ -141,7 +141,7 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         let file_curr_offset_start = *file_offset;
         if *file_offset > inode.get_size() {
-            return Err(Errno::EBADF);
+            panic!("file_offset > inode.get_size()");
         }
         if buf.len() == 0 {
             return Ok(0);
@@ -206,7 +206,7 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         let file_curr_offset_start = *file_offset;
         if *file_offset > inode.get_size() {
-            return Err(Errno::EBADF);
+            panic!("file_offset > inode.get_size()");
         }
         if *file_offset == inode.get_size() {
             return Ok(0);
