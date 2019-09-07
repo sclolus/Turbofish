@@ -6,7 +6,7 @@ use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
-use libc_binding::{gid_t, mode_t, uid_t, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -70,7 +70,6 @@ impl Ext2Filesystem {
             direntry_type = DirectoryEntryType::RegularFile;
         }
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
-        inode_nbr;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let inode = Inode::new(mode);
         self.disk.write_struct(inode_addr, &inode)?;

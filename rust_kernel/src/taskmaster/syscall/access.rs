@@ -1,6 +1,6 @@
 use super::scheduler::SCHEDULER;
 use super::statfn;
-use super::vfs::{Path, VFS};
+use super::vfs::Path;
 use super::SysResult;
 use core::convert::TryFrom;
 

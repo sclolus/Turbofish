@@ -288,7 +288,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ebx as *const libc_binding::c_char,
             ecx as *const libc_binding::c_char,
         ),
-        MKDIR => sys_mkdir(ebx as *const libc_binding::c_char, ecx as i32),
+        MKDIR => sys_mkdir(ebx as *const libc_binding::c_char, ecx as mode_t),
         RMDIR => sys_rmdir(ebx as *const libc_binding::c_char),
         PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
         DUP => sys_dup(ebx as u32),

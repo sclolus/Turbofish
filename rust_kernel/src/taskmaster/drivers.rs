@@ -3,6 +3,7 @@
 use super::SysResult;
 
 use super::fd_interface::Mode;
+use super::vfs::{InodeId, VFS};
 use super::IpcResult;
 
 pub mod ipc;

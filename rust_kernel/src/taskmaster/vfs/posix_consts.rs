@@ -5,7 +5,6 @@ use libc_binding::{
 pub const NAME_MAX: usize = LIBC_NAME_MAX as usize;
 pub const PATH_MAX: usize = LIBC_PATH_MAX as usize;
 pub const SYMLOOP_MAX: usize = LIBC_SYMLOOP_MAX as usize;
-pub use libc_binding::time_t;
 
 // /// The maximum size (in bytes) of any component of a pathname.
 // /// By POSIX-2018 as:

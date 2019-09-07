@@ -1,4 +1,4 @@
-use super::drivers::{DefaultDriver, Driver, FileOperation};
+use super::drivers::{DefaultDriver, Driver, Ext2DriverFile, FileOperation};
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
 use alloc::boxed::Box;
@@ -43,10 +43,10 @@ pub mod init;
 pub use init::{init, VFS};
 
 mod filesystem;
-use filesystem::{FileSystem, FileSystemId};
+use filesystem::{DeadFileSystem, FileSystem, FileSystemId};
 
 pub struct VirtualFileSystem {
-    mounted_filesystems: BTreeMap<FileSystemId, Box<dyn FileSystem>>,
+    mounted_filesystems: BTreeMap<FileSystemId, Arc<DeadMutex<dyn FileSystem>>>,
 
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
@@ -77,12 +77,34 @@ impl VirtualFileSystem {
         self.inodes.insert(inode.get_id(), inode);
     }
 
-    fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Box<dyn FileSystem>> {
+    fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
         self.mounted_filesystems.get(&inode_id.filesystem_id?)
     }
 
-    fn get_filesystem_mut(&mut self, inode_id: InodeId) -> Option<&mut Box<dyn FileSystem>> {
+    fn get_filesystem_mut(
+        &mut self,
+        inode_id: InodeId,
+    ) -> Option<&mut Arc<DeadMutex<dyn FileSystem>>> {
         self.mounted_filesystems.get_mut(&inode_id.filesystem_id?)
+    }
+
+    fn add_entry_from_filesystem(
+        &mut self,
+        fs: Arc<DeadMutex<dyn FileSystem>>,
+        parent: Option<DirectoryEntryId>,
+        (direntry, inode_data): (DirectoryEntry, InodeData),
+    ) -> VfsResult<DirectoryEntryId> {
+        // dbg!(direntry);
+        // dbg!(inode.get_id());
+        let direntry = self.dcache.add_entry(parent, direntry)?;
+        let inode = Inode::new(
+            fs,
+            Box::new(Ext2DriverFile::new(inode_data.id)),
+            // TODO: handle othre drivers
+            inode_data,
+        );
+        self.add_inode(inode);
+        Ok(direntry)
     }
 
     /// construct the files in directory `direntry_id` in ram form the filesystem
@@ -91,13 +113,19 @@ impl VirtualFileSystem {
         let current_entry = self.dcache.get_entry(&direntry_id)?;
         // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
-        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs_cloned = self
+            .get_filesystem(inode_id)
+            .expect("no filesystem")
+            .clone();
+        let iter = self
+            .get_filesystem(inode_id)
+            .expect("no filesystem")
+            .lock()
+            .lookup_directory(inode_id.inode_number as u32)?;
 
-        for (direntry, inode) in fs.lookup_directory(inode_id.inode_number as u32)? {
-            // dbg!(direntry);
-            // dbg!(inode.get_id());
-            self.dcache.add_entry(Some(direntry_id), direntry)?;
-            self.add_inode(inode);
+        for fs_entry in iter {
+            self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
+                .expect("add entry from filesystem failed");
         }
         Ok(())
     }
@@ -270,7 +298,7 @@ impl VirtualFileSystem {
         creds: &Credentials,
         path: Path,
         mode: FileType,
-        driver: Arc<DeadMutex<dyn Driver>>,
+        driver: Box<dyn Driver>,
     ) -> VfsResult<()> {
         // la fonction driver.set_inode_id() doit etre appele lors de la creation. C'est pour joindre l'inode au cas ou
         // Je ne sais pas encore si ce sera completement indispensable. Il vaut mieux que ce soit un type primitif afin
@@ -292,7 +320,8 @@ impl VirtualFileSystem {
 
                 inode_data.link_number += 1;
 
-                let new_inode = Inode::new(driver, inode_data);
+                let new_inode =
+                    Inode::new(Arc::new(DeadMutex::new(DeadFileSystem)), driver, inode_data);
 
                 assert!(self.inodes.insert(new_id, new_inode).is_none());
                 let mut new_direntry = DirectoryEntry::default();
@@ -379,7 +408,7 @@ impl VirtualFileSystem {
     /// on mount dir `mount_dir_id`
     pub fn mount_filesystem(
         &mut self,
-        filesystem: Box<dyn FileSystem>,
+        filesystem: Arc<DeadMutex<dyn FileSystem>>,
         fs_id: FileSystemId,
         mount_dir_id: DirectoryEntryId,
     ) -> VfsResult<()> {
@@ -391,20 +420,22 @@ impl VirtualFileSystem {
         if mount_dir.is_mounted()? {
             return Err(DirectoryIsMounted);
         }
-        let (mut root_dentry, mut root_inode) = filesystem.root()?;
+        let (mut root_dentry, mut root_inode_data) = filesystem.lock().root()?;
 
         // So much to undo if any of this fails...
         // let fs_id = self.add_entry(filesystem).unwrap(); // this
 
-        root_inode.id.filesystem_id = Some(fs_id);
+        root_inode_data.id.filesystem_id = Some(fs_id);
+        root_dentry.inode_id = root_inode_data.id;
 
-        root_dentry.inode_id = root_inode.id;
+        let root_dentry_id = self.add_entry_from_filesystem(
+            filesystem.clone(),
+            Some(mount_dir_id),
+            (root_dentry, root_inode_data),
+        )?;
 
-        let root_dentry_id = self.dcache.add_entry(Some(mount_dir_id), root_dentry)?;
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         mount_dir.set_mounted(root_dentry_id)?;
-
-        self.add_inode(root_inode);
 
         // self.recursive_build_subtree(root_dentry_id, fs_id)?;
         self.mounted_filesystems.insert(fs_id, filesystem);
@@ -438,7 +469,7 @@ impl VirtualFileSystem {
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(cwd, target)?;
-        self.mount_filesystem(Box::new(filesystem), fs_id, mount_dir_id)
+        self.mount_filesystem(Arc::new(DeadMutex::new(filesystem)), fs_id, mount_dir_id)
     }
 
     pub fn opendir(
@@ -491,7 +522,7 @@ impl VirtualFileSystem {
             .collect())
     }
 
-    pub fn unlink(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> VfsResult<()> {
+    pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> VfsResult<()> {
         use VfsError::*;
         let entry_id = self.pathname_resolution(cwd, path.clone())?;
         let inode_id;
@@ -515,9 +546,10 @@ impl VirtualFileSystem {
         //TODO: check that
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.unlink(parent_inode_id.inode_number as u32, unsafe {
-            path.filename().expect("no filename").as_str()
-        })?;
+        fs.lock()
+            .unlink(parent_inode_id.inode_number as u32, unsafe {
+                path.filename().expect("no filename").as_str()
+            })?;
         Ok(())
     }
 
@@ -544,7 +576,7 @@ impl VirtualFileSystem {
     pub fn open(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         path: Path,
         flags: OpenFlags,
         mode: FileType,
@@ -563,15 +595,15 @@ impl VirtualFileSystem {
                 let inode_id = parent_entry.inode_id;
                 let inode_number = inode_id.inode_number as u32;
                 let fs = self.get_filesystem_mut(inode_id).expect("no filesystem");
+                let fs_cloned = fs.clone();
 
-                let (new_direntry, new_inode) = fs.create(
+                let fs_entry = fs.lock().create(
                     unsafe { path.filename().expect("no filename").as_str() },
                     inode_number,
                     flags,
                     mode,
                 )?;
-                entry_id = self.dcache.add_entry(Some(parent_id), new_direntry)?;
-                self.add_inode(new_inode);
+                entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
         }
 
@@ -591,7 +623,7 @@ impl VirtualFileSystem {
         _flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
-        inode.inode_operations.lock().open()
+        inode.driver.open()
     }
 
     // pub fn creat(
@@ -631,7 +663,7 @@ impl VirtualFileSystem {
     pub fn chmod(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         path: Path,
         mode: FileType,
     ) -> VfsResult<()> {
@@ -644,7 +676,7 @@ impl VirtualFileSystem {
         inode.set_access_mode(mode);
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.chmod(inode_id.inode_number as u32, mode)?;
+        fs.lock().chmod(inode_id.inode_number as u32, mode)?;
 
         Ok(())
     }
@@ -652,7 +684,7 @@ impl VirtualFileSystem {
     pub fn chown(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         path: Path,
         owner: uid_t,
         group: gid_t,
@@ -667,7 +699,8 @@ impl VirtualFileSystem {
         inode.set_gid(group);
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.chown(inode_id.inode_number as u32, owner, group)?;
+        fs.lock()
+            .chown(inode_id.inode_number as u32, owner, group)?;
         Ok(())
     }
 
@@ -698,11 +731,14 @@ impl VirtualFileSystem {
         }
         self.unlink(cwd, creds, path)
     }
+    pub fn get_inode(&mut self, inode_id: InodeId) -> VfsResult<&mut Inode> {
+        self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)
+    }
 
     pub fn link(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         oldpath: Path,
         newpath: Path,
     ) -> VfsResult<()> {
@@ -735,7 +771,7 @@ impl VirtualFileSystem {
     pub fn rename(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
+        _creds: &Credentials,
         oldpath: Path,
         newpath: Path,
     ) -> VfsResult<()> {
@@ -816,8 +852,8 @@ impl KeyGenerator<FileSystemId> for VirtualFileSystem {
     }
 }
 
-impl Mapper<FileSystemId, Box<dyn FileSystem>> for VirtualFileSystem {
-    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Box<dyn FileSystem>> {
+impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem {
+    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> {
         &mut self.mounted_filesystems
     }
 }
