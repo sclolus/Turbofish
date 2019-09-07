@@ -33,7 +33,9 @@ $(BUILD_DIR):
 
 $(BUILD_DIR)/%: %.c $(LIBC_AR) Makefile
 	$(CC) $(CFLAGS) -o $@ $<
+ifneq ($(GNU),yes)
 	cp -rv --parents $@ $(SYSTEM_ROOT)
+endif
 
 clean:
 	rm -fv $(TARGET_C)

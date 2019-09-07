@@ -37,7 +37,6 @@ macro_rules! print_tty {
                         },
                         Some(term) => {
                             term.get_tty($tty_number).write_fmt(a).unwrap();
-                            term.get_tty($tty_number).as_mut().move_cursor($crate::ansi_escape_code::CursorMove::Forward(0));
                         }
                     }
                 }

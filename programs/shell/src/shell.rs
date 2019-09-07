@@ -4,7 +4,9 @@ mod ansi_escape_code;
 use ansi_escape_code::CursorMove;
 
 mod builtin;
-use builtin::{echo, exec, fish, hello_world, ls, more_fish, broken_fish, reboot_computer, shutdown_computer};
+use builtin::{
+    broken_fish, echo, exec, fish, hello_world, ls, more_fish, reboot_computer, shutdown_computer,
+};
 
 use alloc::string::String;
 use alloc::vec::Vec;
