@@ -18,7 +18,10 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/unlink/unlink_multiple"},
 	{.path = "/bin/write/create_write_read"},
+	{.path = "/bin/unlink/unlink"},
+	{.path = "/bin/access/access"},
 	{.path = "/bin/signal/SignalSimple"},
 	{.path = "/bin/signal/SignalSimpleDuo"},
 	{.path = "/bin/ProcessGroup"},

@@ -35,6 +35,7 @@ SRC_C += DeepThought \
 		write/create_write_read \
 		access/access \
 		unlink/unlink \
+		unlink/unlink_multiple \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl
 

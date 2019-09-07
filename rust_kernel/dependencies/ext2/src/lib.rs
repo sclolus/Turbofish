@@ -377,16 +377,13 @@ impl Ext2Filesystem {
         if new_size < inode.get_size() {
             self.truncate_inode((inode, inode_addr), new_size)?;
         } else {
-            inode.update_size(
-                entry_offset as u64 + entry.get_size() as u64,
-                self.block_size,
-            );
+            inode.update_size(new_size, self.block_size);
             self.disk.write_struct(inode_addr, inode)?;
         }
         Ok(())
     }
 
-    /// create a directory entry and an inode on the Directory inode: `inode_nbr`
+    /// push a directory entry on the Directory inode: `parent_inode_nbr`
     fn push_entry(
         &mut self,
         parent_inode_nbr: u32,
