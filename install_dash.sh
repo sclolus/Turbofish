@@ -10,6 +10,6 @@ tar -xf 'dash-0.5.10.tar.gz'
 cd dash-0.5.10
 mkdir build
 cd build
-CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --build=x86_64-pc-linux-gnu --host=$TARGET
+CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --build=`gcc -dumpmachine` --host=$TARGET
 make
 cp -v src/dash $TARGET_DIR
