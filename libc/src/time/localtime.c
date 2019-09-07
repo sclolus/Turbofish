@@ -51,8 +51,7 @@
 /// detected, localtime() shall return a null pointer [CX] [Option
 /// Start] and set errno to indicate the error.
 
-#warning DUMMY IMPLEMENTATION
-#include <custom.h>
+#warning missing tests
 
 static struct tm TM;
 
@@ -61,11 +60,7 @@ static struct tm TM;
 
 static time_t	get_month_from_yday(time_t yday)
 {
-	/* assert(yday < 367); */
-	if (yday > 366) {
-		return (time_t) -1;
-	}
-	printf("Went into get_month\n");
+	assert(yday < 367);
 	const uint32_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 	};
@@ -81,11 +76,7 @@ static time_t	get_month_from_yday(time_t yday)
 /// We could make those two functions generic and stuff.
 static time_t	get_day_of_month_from_yday(time_t yday)
 {
-	if (yday > 366) {
-		return (time_t) -1;
-	}
-	printf("Went into getdayof_month\n");
-	/* assert(yday < 367); */
+	assert(yday < 367);
 	const uint32_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 	};
@@ -98,29 +89,67 @@ static time_t	get_day_of_month_from_yday(time_t yday)
 	return (time_t)32; // there no 32nth day to a month, except in my childhood's MidSummer Night's Dreams.
 }
 
+// This algorithm calculates the day of the week based on those three parameters.
+// The `year` parameter is the based from 0 BC. (That is something like 2019 or 1970).
+// The `month` parameter confirming to the struct tm format ranges from 0 to 11.
+static time_t	zeller_congruence(time_t day_of_month, time_t month, time_t year)
+{
+	month++;
+	if (month == 1)
+	{
+		// This algorithm relys on January being equal to 13.
+		month = 13;
+		year--;
+	} else if (month == 2) {
+		// This algorithm relys on February being equal to 13.
+		month = 14;
+		year--;
+	}
+
+	int q = day_of_month;
+	int m = month;
+	int k = year % 100;
+	int j = year / 100;
+
+	int h = q + 13 * (m + 1) / 5 + k + k / 4 + j / 4 + 5 * j;
+
+	// The current value of h is the day of the week, but Saturday = 0, Sunday = 1.
+	h = h % 7;
+
+	/* Converts to tm format: Sunday = 0. */
+	if (h == 0) {
+		h = 7;
+	}
+
+	h -= 1;
+	return h;
+
+}
+
 struct tm *localtime(const time_t *timer)
 {
 	time_t t = *timer;
 
-	time_t years =  t / (3600 * 24 * 365) + 1970;
+	time_t years_from_bc =  t / (3600 * 24 * 365) + 1970;
 	time_t leap_days_in_seconds =
-		/* Compute the number of leapdays between 1970 and `years`
+		/* Compute the number of leapdays between 1970 and `years_from_bc`
 		  (exclusive).  There is a leapday every 4th years ...  */
-		(((years - 1) / 4 - 1970 / 4)
-		/* ... except every 100th years ... */
-		- ((years - 1) / 100 - 1970 / 100)
-		/* ... but still every 400th years.  */
-		 + ((years - 1) / 400 - 1970 / 400)) * SECSPERDAY;
+		(((years_from_bc - 1) / 4 - 1970 / 4)
+		/* ... except every 100th years_from_bc ... */
+		- ((years_from_bc - 1) / 100 - 1970 / 100)
+		/* ... but still every 400th years_from_bc.  */
+		 + ((years_from_bc - 1) / 400 - 1970 / 400)) * SECSPERDAY;
 
 
 	time_t secs  =  t % 60;
 	time_t mins  = (t / 60) % 60;
 	time_t hours = (t / 3600) % 24;
-	years =  (t - leap_days_in_seconds) / (SECSPERYEAR);
+	time_t years = (t - leap_days_in_seconds) / (SECSPERYEAR);
 	time_t yday  = ((t - (years) * SECSPERYEAR /* - leap_days_in_seconds- */) / SECSPERDAY) % 365;
 
 	time_t month = get_month_from_yday(yday);
 	time_t day_of_month = get_day_of_month_from_yday(yday);
+	time_t day_of_week = zeller_congruence(day_of_month, month, years_from_bc);
 
 	/* use zeller's congruence to get the day of the week */;
 	/* time_t day_of_week = */
@@ -133,10 +162,11 @@ struct tm *localtime(const time_t *timer)
 	TM.tm_mday  = (int)day_of_month; // Day of month [1,31].
 	TM.tm_mon   = (int)month; // Month of year [0,11].
 	TM.tm_year  = (int)(years + 70); // Years since 1900.
-	TM.tm_wday  = (int)0; // Day of week [0,6] (Sunday =0).
+	TM.tm_wday  = (int)day_of_week; // Day of week [0,6] (Sunday =0).
 	TM.tm_yday  = (int)yday; // Day of year [0,365].
 	TM.tm_isdst = (int)0; // Daylight Savings flag.
 	return &TM;
 }
 
 #undef SECSPERDAY
+#undef SECSPERYEAR

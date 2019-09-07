@@ -1,6 +1,6 @@
 #ifndef __ASSERT_H__
 # define __ASSERT_H__
 
-# define assert(assertion)((assertion) ?: abort())
+# define assert(assertion) ((assertion) ?: abort())
 
-#endif
+#endif  /* __ASSERT_H__ */

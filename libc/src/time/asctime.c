@@ -1,6 +1,8 @@
 #include <time.h>
 #include <stdio.h>
 
+#warning missing tests
+
 /// This is the proposed posix implementation of asctime.
 /// The asctime() function shall convert the broken-down time in the structure pointed to by timeptr into a string in the form:
 ///
