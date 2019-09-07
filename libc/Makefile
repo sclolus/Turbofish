@@ -180,8 +180,6 @@ HEADERS += strings.h
 SRC_C += is_ptr_valid
 VPATH += src/custom
 
-CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
-
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
 HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h
