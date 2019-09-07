@@ -10,6 +10,12 @@ use itertools::unfold;
 use lazy_static::lazy_static;
 use pic_8259_isr::*;
 
+mod icws;
+use icws::{ICWs, ICW1, ICW2, ICW3, ICW4};
+
+mod ocws;
+use ocws::{OCW1, OCW2, OCW3};
+
 const BIOS_PIC_MASTER_IDT_VECTOR: u8 = 0x08 as u8;
 const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 
@@ -131,52 +137,9 @@ impl Pic {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ICW1 {
-    byte: u8,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TriggeringMode {
     Level,
     Edge,
-}
-
-impl ICW1 {
-    pub fn new() -> Self {
-        // Bit 4 must be set.
-        Self { byte: 0b10000 }
-    }
-
-    /// If set, this flag indicates that the initialization procedure will require
-    /// a fourth Initialization Control Word.
-    pub fn set_icw4_needed(mut self, value: bool) -> Self {
-        self.byte.set_bit(0, value);
-        self
-    }
-
-    pub fn get_icw4_needed(self) -> bool {
-        self.byte.get_bit(0)
-    }
-
-    /// If `value` is true, then single mode is activated.
-    /// Otherwise, cascading mode is activated.
-    pub fn set_single_mode(mut self, value: bool) -> Self {
-        self.byte.set_bit(1, value);
-        self
-    }
-
-    /// Sets the call address interval to 4 if `value` is true.
-    /// Sets it to 8 otherwise.
-    pub fn set_call_address_interval(mut self, value: bool) -> Self {
-        self.byte.set_bit(2, value);
-        self
-    }
-
-    /// Sets the triggering mode of the PIC to `mode`.
-    pub fn set_triggering_mode(mut self, mode: TriggeringMode) -> Self {
-        self.byte.set_bit(3, mode == TriggeringMode::Level);
-        self
-    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -186,176 +149,17 @@ pub enum PICKind {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ICW2 {
-    byte: u8,
-}
-
-impl ICW2 {
-    pub fn new() -> Self {
-        Self { byte: 0 }
-    }
-
-    pub fn set_interrupt_vector(mut self, vector: u8) -> Self {
-        // The 3 lowest bits are not used in 8086/8088-mode.
-
-        // vector >>= 3;
-        // self.byte.set_bits(3..=7, vector);
-        self.byte = vector;
-        self
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ICW3 {
-    kind: PICKind,
-    byte: u8,
-    cascaded_lines: u8,
-}
-
-impl ICW3 {
-    pub fn new(kind: PICKind) -> Self {
-        Self {
-            kind,
-            byte: 0,
-            cascaded_lines: 0,
-        }
-    }
-
-    pub fn set_cascaded_line(mut self, line: usize, value: bool) -> Self {
-        if self.kind == PICKind::Slave {
-            panic!("Tried to set some irq line as cascade for a slave PIC");
-        } else if line > 7 {
-            panic!("Invalid irq line number provided");
-        }
-
-        self.cascaded_lines += 1;
-        self.byte.set_bit(line, value);
-        self
-    }
-
-    pub fn set_slave_identity(mut self, id: u8) -> Self {
-        if self.kind == PICKind::Master {
-            panic!("Tried to set slave identity for a Master PIC");
-        } else if id > 7 {
-            panic!("Invalid slave id: {}", id);
-        }
-
-        self.byte = id;
-        self
-    }
-
-    pub fn cascaded_lines(&self) -> usize {
-        if self.kind == PICKind::Slave {
-            panic!("Only a PIC master can have cascaded lines"); // check this
-        }
-        self.cascaded_lines as usize
-    }
-
-    pub fn pic_kind(&self) -> PICKind {
-        self.kind
-    }
-
-    // set slave id
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ICW4 {
-    byte: u8,
-}
-
 pub enum BufferingMode {
     NotBuffered,
     SlaveBuffered,
     MasterBuffered,
 }
 
-impl ICW4 {
-    pub fn new() -> Self {
-        Self {
-            // We only support the 8086/8088-mode
-            byte: 0b1,
-        }
-    }
-
-    pub fn set_automatic_eio(mut self, value: bool) -> Self {
-        self.byte.set_bit(1, value);
-        self
-    }
-
-    pub fn set_buffering_mode(mut self, mode: BufferingMode) -> Self {
-        use BufferingMode::*;
-
-        let value = match mode {
-            NotBuffered => 0b00,
-            SlaveBuffered => 0b10,
-            MasterBuffered => 0b11,
-        };
-
-        self.byte.set_bits(2..=3, value);
-        self
-    }
-
-    pub fn set_special_fully_nested_mode(mut self, value: bool) -> Self {
-        self.byte.set_bit(4, value);
-        self
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-pub struct ICWs {
-    icw1: Option<ICW1>,
-    icw2: Option<ICW2>,
-    icw3: Option<ICW3>,
-    icw4: Option<ICW4>,
-}
-
-impl ICWs {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn push_icw1(mut self, icw: ICW1) -> Self {
-        self.icw1 = Some(icw);
-        self
-    }
-
-    pub fn push_icw2(mut self, icw: ICW2) -> Self {
-        self.icw2 = Some(icw);
-        self
-    }
-
-    pub fn push_icw3(mut self, icw: ICW3) -> Self {
-        self.icw3 = Some(icw);
-        self
-    }
-
-    pub fn push_icw4(mut self, icw: ICW4) -> Self {
-        if !self.icw4_needed() {
-            panic!("Icw4_needed flag was not set in icw1");
-        }
-        self.icw4 = Some(icw);
-        self
-    }
-
-    fn icw4_needed(&self) -> bool {
-        self.icw1.expect("Icw1 was not provided").get_icw4_needed()
-    }
-
-    pub fn pic_kind(&self) -> PICKind {
-        self.icw3.expect("Icw3 was not provided").pic_kind()
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.icw1.is_some()
-            && self.icw2.is_some()
-            && self.icw3.is_some()
-            && (!self.icw4_needed() || self.icw4.is_some())
-    }
-
-    pub fn cascaded_lines(&self) -> usize {
-        assert_eq!(self.pic_kind(), PICKind::Master);
-        self.icw3.unwrap().cascaded_lines()
-    }
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PICRegister {
+    InRequest,
+    InService,
+    InterruptMasks,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
@@ -420,158 +224,6 @@ impl PicConfiguration {
             .filter_map(|&c| c)
             .filter(|&c| c.pic_kind() == PICKind::Slave);
         unfold((), move |_| slaves.next())
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-struct OCW1 {
-    byte: u8,
-}
-
-impl OCW1 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Sets the mask of some interrupt line to `value`.
-    /// When an interrupt line's mask is set, the interrupt line is disabled.
-    #[allow(unused)]
-    pub fn set_interrupt_mask(mut self, line: u8, value: bool) -> Self {
-        assert!(line < 8, "There are only 8 lines to set in a OCW1");
-
-        self.byte.set_bit(line as usize, value);
-        self
-    }
-
-    /// Sets the masks of all the lines of the given 8259 chip (PIC).
-    pub fn set_interrupt_masks(mut self, masks: u8) -> Self {
-        self.byte = masks;
-        self
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-struct OCW2 {
-    byte: u8,
-    ir_level_set: bool,
-    command_set: bool,
-}
-
-impl OCW2 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set_ir_level(mut self, level: u8) -> Self {
-        assert!(level < 8, "There are only 8 levels to be acted upon");
-
-        self.byte.set_bits(0..3, level);
-        self.ir_level_set = true;
-        self
-    }
-
-    fn set_command(mut self, value: u8) -> Self {
-        assert!(value < 8, "The OCW2 commands are 3 bits values");
-
-        self.byte.set_bits(5..=7, value);
-
-        // could check for command already set.
-        self.command_set = true;
-        self
-    }
-
-    pub fn set_non_specific_eoi(self) -> Self {
-        self.set_command(0b001)
-    }
-
-    #[allow(unused)]
-    pub fn set_specific_eoi(self) -> Self {
-        self.set_command(0b011)
-    }
-
-    #[allow(unused)]
-    pub fn set_rotate_on_non_specific_eoi(self) -> Self {
-        self.set_command(0b101)
-    }
-
-    #[allow(unused)]
-    pub fn set_rotate_in_automatic_eoi_mode(self, value: bool) -> Self {
-        if value {
-            self.set_command(0b100)
-        } else {
-            self.set_command(0b000)
-        }
-    }
-
-    #[allow(unused)]
-    pub fn set_rotate_on_specific_eoi(mut self) -> Self {
-        self.set_command(0b111)
-    }
-
-    #[allow(unused)]
-    pub fn set_priority_command(mut self) -> Self {
-        self.set_command(0b110)
-    }
-
-    #[allow(unused)]
-    pub fn set_no_op(mut self) -> Self {
-        self.set_command(0b010)
-    }
-
-    #[allow(unused)]
-    pub fn is_complete(&self) -> bool {
-        self.ir_level_set && self.command_set
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-struct OCW3 {
-    byte: u8,
-}
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PICRegister {
-    InRequest,
-    InService,
-    InterruptMasks,
-}
-
-impl OCW3 {
-    pub fn new() -> Self {
-        let mut new = Self { byte: 0 };
-
-        // Bit 3 must be set
-        new.byte.set_bit(3, true);
-        new
-    }
-
-    /// Sets the register to read at next read on the data port.
-    pub fn set_read_register(mut self, register: PICRegister) -> Self {
-        let bits = match register {
-            PICRegister::InRequest => 0b10,
-            PICRegister::InService => 0b11,
-            PICRegister::InterruptMasks => panic!("Can't get IMR by means of a OCW3."),
-        };
-
-        self.byte.set_bits(0..=1, bits);
-        self
-    }
-
-    #[allow(unused)]
-    pub fn set_poll_commmand(mut self) -> Self {
-        self.byte.set_bit(2, true);
-        self
-    }
-
-    /// If value is true, the OCW3 sets the special mask.
-    /// else, the OCW3 clears the special mask.
-    #[allow(unused)]
-    pub fn set_special_mask(mut self, value: bool) -> Self {
-        if value {
-            self.byte.set_bits(5..=6, 0b11);
-        } else {
-            self.byte.set_bits(5..=6, 0b10);
-        }
-        self
     }
 }
 

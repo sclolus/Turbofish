@@ -40,7 +40,6 @@ pub extern "C" fn kmain(
      * Initialize output
      */
     SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
-    init_terminal();
 
     let size = SCREEN_MONAD.lock().query_window_size();
     printfixed!(
@@ -57,16 +56,7 @@ pub extern "C" fn kmain(
      */
     unsafe {
         interrupts::disable();
-        let conf = Pic8259::default_pic_configuration();
-        PIC_8259.lock().initialize(conf);
-
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::SerialPortController2);
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::SerialPortController1);
-        PIC_8259.lock().enable_irq(pic_8259::Irq::ACPI);
+        PIC_8259.lock().init();
 
         init_keyboard_driver();
         PIC_8259
