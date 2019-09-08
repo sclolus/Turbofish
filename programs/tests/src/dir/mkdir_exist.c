@@ -1,13 +1,14 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 
 size_t NUMBER = 0;
 
-static void create_and_unlink() {
+int main() {
 	char filename[100];
 
 	pid_t pid = getpid();
@@ -19,24 +20,16 @@ static void create_and_unlink() {
 		perror("open");
 		exit(1);
 	}
-	int ret = access(filename, F_OK);
-	if (ret == -1) {
-		perror("access");
+
+	printf("creating dir: %s\n", filename);
+	int ret = mkdir(filename, 0644);
+	if (!(ret == -1)) {
+		dprintf(2, "perror should have failed cause a file exists: %s\n", filename);
 		exit(1);
 	}
 	ret = unlink(filename);
 	if (ret == -1) {
 		perror("unlink");
 		exit(1);
-	}
-	ret = access(filename, F_OK);
-	if (!(ret == -1)) {
-		exit(1);
-	}
-}
-
-int main() {
-	for (int i = 0; i < 4; i++) {
-		create_and_unlink();
 	}
 }

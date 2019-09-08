@@ -18,6 +18,9 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/dir/mkdir"},
+	{.path = "/bin/dir/mkdir_exist"},
+	{.path = "/bin/dir/rmdir_not_emtpy"},
 	{.path = "/bin/unlink/unlink_multiple"},
 	{.path = "/bin/write/create_write_read"},
 	{.path = "/bin/unlink/unlink"},
