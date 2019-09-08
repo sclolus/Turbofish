@@ -179,6 +179,9 @@ use fstat::sys_fstat;
 mod statfs;
 use statfs::sys_statfs;
 
+mod fstatfs;
+use fstatfs::sys_fstatfs;
+
 mod chdir;
 use chdir::sys_chdir;
 
@@ -334,6 +337,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
             ebx as *const libc_binding::c_char,
             ecx as *mut libc_binding::statfs,
         ),
+        FSTATFS => sys_fstatfs(ebx as Fd, ecx as *mut libc_binding::statfs),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         CHOWN => sys_chown(ebx as *const c_char, ecx as uid_t, edx as gid_t),
         GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),

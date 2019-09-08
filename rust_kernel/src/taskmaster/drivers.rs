@@ -23,7 +23,7 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{off_t, stat, termios, Errno, Pid, Whence};
+use libc_binding::{off_t, stat, statfs, termios, Errno, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -31,35 +31,47 @@ use sync::dead_mutex::DeadMutex;
 pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
     fn register(&mut self, _access_mode: Mode) {}
+
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, _access_mode: Mode) {}
-    /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
+
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
         Err(Errno::EINVAL)
     }
+
+    /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
+
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
 
     fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
         log::error!("UNIMPLEMENTED: fstat called on a non ext2 file");
-        return Ok(0);
+        Ok(0)
     }
 
     fn tcgetattr(&self, _termios_p: &mut termios) -> SysResult<u32> {
-        return Err(Errno::ENOTTY);
+        Err(Errno::ENOTTY)
     }
+
     fn tcsetattr(&mut self, _optional_actions: u32, _termios_p: &termios) -> SysResult<u32> {
-        return Err(Errno::ENOTTY);
+        Err(Errno::ENOTTY)
     }
+
     fn tcgetpgrp(&self) -> SysResult<Pid> {
-        return Err(Errno::ENOTTY);
+        Err(Errno::ENOTTY)
     }
+
     fn tcsetpgrp(&mut self, _pgid_id: Pid) -> SysResult<u32> {
-        return Err(Errno::ENOTTY);
+        Err(Errno::ENOTTY)
     }
+
     fn isatty(&mut self) -> SysResult<u32> {
-        return Err(Errno::ENOTTY);
+        Err(Errno::ENOTTY)
+    }
+
+    fn fstatfs(&mut self, _buf: &mut statfs) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
     }
 }
 

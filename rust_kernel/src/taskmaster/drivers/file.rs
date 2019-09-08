@@ -1,7 +1,7 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
 use super::{InodeId, VFS};
 use alloc::sync::Arc;
-use libc_binding::{off_t, stat, Errno, Whence};
+use libc_binding::{off_t, stat, statfs, Errno, Whence};
 use sync::DeadMutex;
 
 /// a driver of an ext2 file
@@ -55,6 +55,11 @@ impl FileOperation for Ext2FileOperation {
             .get_inode(self.inode_id)
             .expect("no such inode")
             .stat(stat)?;
+        Ok(0)
+    }
+
+    fn fstatfs(&mut self, buf: &mut statfs) -> SysResult<u32> {
+        VFS.lock().statfs(self.inode_id, buf)?;
         Ok(0)
     }
 

@@ -50,7 +50,7 @@ pub struct VirtualFileSystem {
 
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
-    dcache: Dcache,
+    pub dcache: Dcache,
 }
 
 #[allow(unused)]
@@ -831,18 +831,8 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    // pub fn file_exists(&mut self, current: &Current, path: Path) -> SysResult<bool> {
-    pub fn statfs(
-        &mut self,
-        cwd: &Path,
-        _creds: &Credentials,
-        path: Path,
-        buf: &mut statfs,
-    ) -> SysResult<()> {
-        let direntry_id = self.pathname_resolution(cwd, &path)?;
-        let direntry_id = self.dcache.get_entry(&direntry_id)?;
-
-        let fs_id = &direntry_id.inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
+    pub fn statfs(&mut self, inode_id: InodeId, buf: &mut statfs) -> SysResult<()> {
+        let fs_id = &inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
 
         let fs = self
             .mounted_filesystems
