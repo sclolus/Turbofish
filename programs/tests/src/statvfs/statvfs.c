@@ -21,6 +21,6 @@ int main(void)
 	assert(buf.f_files != 0);
 	assert(buf.f_ffree != 0);
 	assert(buf.f_favail != 0);
-	assert(buf.f_namemax == NAME_MAX);
+	assert(buf.f_namemax == NAME_MAX - 1);
 	return EXIT_SUCCESS;
 }
