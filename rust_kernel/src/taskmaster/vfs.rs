@@ -707,13 +707,30 @@ impl VirtualFileSystem {
     pub fn mkdir(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
-        path: Path,
+        _creds: &Credentials,
+        mut path: Path,
         mode: FileType,
     ) -> VfsResult<()> {
-        let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
+        if let Ok(_) = self.pathname_resolution(cwd, path.clone()) {
+            return Err(Errno(Errno::EEXIST));
+        }
+        let filename = path.pop();
+        filename;
+        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        if !entry.is_directory() {
+            return Err(Errno(Errno::ENOTDIR));
+        }
+        let inode_id = entry.inode_id;
 
-        self.open(cwd, creds, path, flags, mode)?;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs_cloned = fs.clone();
+        let fs_entry = fs.lock().create_dir(
+            inode_id.inode_number,
+            filename.expect("should have a filename").as_str(),
+            mode,
+        )?;
+        self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
 

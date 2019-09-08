@@ -348,18 +348,6 @@ impl Ext2Filesystem {
         None
     }
 
-    // /// create a directory entry and an inode on the Directory inode: `inode_nbr`, return the new inode nbr
-    // fn create_dir(&mut self, filename: &str, parent_inode_nbr: u32) -> IoResult<InodeNbr> {
-    //     let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
-    //     let (_, inode_addr) = self.get_inode(inode_nbr)?;
-    //     let inode = Inode::new(FileType::from_bits_truncate(0o644) | FileType::DIRECTORY);
-    //     self.disk.write_struct(inode_addr, &inode)?;
-    //     let mut new_entry =
-    //         DirectoryEntry::new(filename, DirectoryEntryType::Directory, inode_nbr)?;
-    //     self.push_entry(parent_inode_nbr, &mut new_entry)?;
-    //     Ok(inode_nbr)
-    // }
-
     /// the the entry at offset entry_offset the last entry of the directory
     pub fn set_as_last_entry(
         &mut self,

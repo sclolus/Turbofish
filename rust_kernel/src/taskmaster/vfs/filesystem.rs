@@ -51,13 +51,20 @@ pub trait FileSystem: Send + Debug {
     fn read(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &mut [u8]) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
+    fn create_dir(
+        &mut self,
+        _parent_inode_nbr: u32,
+        _filename: &str,
+        _mode: FileType,
+    ) -> SysResult<(DirectoryEntry, InodeData)> {
+        Err(Errno::ENOSYS)
+    }
     // fn lookup: Option<fn(&mut Superblock)>,
     // fn create: Option<fn(&mut Superblock)>,
     // fn unlink: Option<fn(&mut Superblock)>,
     // fn link: Option<fn(&mut Superblock)>,
     // fn symlink: Option<fn(&mut Superblock)>,
     // fn statfs: Option<fn(&mut Superblock)>,
-    // fn mkdir: Option<fn(&mut Superblock)>,
     // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
