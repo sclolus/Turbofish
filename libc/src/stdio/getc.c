@@ -28,8 +28,6 @@
 /// [CX] [Option Start] and shall set errno to indicate the
 /// error. [Option End]
 
-#warning DUMMY IMPLEMENTATION
-
 
 /// If the end-of-file indicator for the input stream pointed to by stream is not set and a next byte is present, the fgetc() function shall obtain the next byte as an unsigned char converted to an int, from the input stream pointed to by stream, and advance the associated file position indicator for the stream (if defined). Since fgetc() operates on bytes, reading a character consisting of multiple bytes (or "a multi-byte character") may require multiple calls to fgetc().
 
