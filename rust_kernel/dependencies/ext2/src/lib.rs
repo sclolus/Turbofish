@@ -9,7 +9,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-use libc_binding::{Errno, FileType, OpenFlags};
+use libc_binding::{Errno, FileType};
 
 mod tools;
 pub use tools::{align_next, align_prev, div_rounded_up, err_if_zero, Block, IoResult};
