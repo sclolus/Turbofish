@@ -1,4 +1,4 @@
-/// This file contains the primitives to enable and disable the NMI (Non-Maskable Interrupt)
+//! This file contains the primitives to enable and disable the NMI (Non-Maskable Interrupt)
 use io::{Io, Pio};
 
 /// Boilerplate structure to enable and disable the Non-Maskable Interrupt.

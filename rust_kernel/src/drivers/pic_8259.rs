@@ -313,6 +313,7 @@ pub struct Pic {
     /// The PIC's data port.
     data: Pio<u8>,
 
+    /// The configuration that was used to configure this 8259 chip.
     configuration: Option<ICWs>,
 }
 
