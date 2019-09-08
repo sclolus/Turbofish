@@ -17,7 +17,6 @@ int main(void)
 	// Remember the old umask value to test umask return value.
 	mode_t old = 0;
 	for (uint32_t i = 0; i <= 0777; i++) {
-		printf("Testing umask: %u\n", i);
 		mode_t new = (mode_t)i;
 		mode_t ret = umask(new);
 

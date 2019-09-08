@@ -59,6 +59,7 @@ impl Ext2Filesystem {
         filename: &str,
         parent_inode_nbr: u32,
         flags: OpenFlags,
+        timestamp: u32,
         mut mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
         let direntry_type;
@@ -71,7 +72,12 @@ impl Ext2Filesystem {
         }
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let inode = Inode::new(mode);
+        let mut inode = Inode::new(mode);
+
+        inode.last_access_time = timestamp;
+        inode.creation_time = timestamp;
+        inode.last_modification_time = timestamp;
+
         self.disk.write_struct(inode_addr, &inode)?;
 
         let mut new_entry = DirectoryEntry::new(filename, direntry_type, inode_nbr)?;
