@@ -58,6 +58,67 @@ impl DmaIo for Drive {
             }
         }
 
+        self.common_routine(udma)?;
+
+        // Copy the UDMA content into the Buf
+        let s = unsafe { core::slice::from_raw_parts_mut(buf, sectors_to_read.into()) };
+        for (i, chunk) in s.chunks_mut(Udma::PRD_SIZE.into()).enumerate() {
+            chunk.copy_from_slice(&udma.get_memory()[i][0..chunk.len()]);
+        }
+
+        Ok(sectors_to_read)
+    }
+
+    /// drive specific WRITE method
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+        udma: &mut Udma,
+    ) -> AtaResult<NbrSectors> {
+        if nbr_sectors == NbrSectors(0) {
+            log::error!("DMA request of 0 len");
+            return Ok(NbrSectors(0));
+        }
+        let sectors_to_write = core::cmp::min(udma.get_memory_amount().into(), nbr_sectors);
+
+        // Copy the Buf into the UDMA content
+        let s = unsafe { core::slice::from_raw_parts(buf, sectors_to_write.into()) };
+        for (i, chunk) in s.chunks(Udma::PRD_SIZE.into()).enumerate() {
+            &udma.get_memory()[i][0..chunk.len()].copy_from_slice(chunk);
+        }
+
+        udma.set_write(); /* 1 */
+        udma.clear_error(); /* 2 */
+        udma.clear_interrupt(); /* 2 */
+
+        /* 3, 4, 5 */
+        match self.capabilities {
+            Capabilities::Lba48 => {
+                self.init_lba48(start_sector, sectors_to_write);
+                Pio::<u8>::new(self.command_register + Self::COMMAND)
+                    .write(AtaCommand::AtaCmdWriteDmaExt as u8);
+            }
+            Capabilities::Lba28 => {
+                self.init_lba28(start_sector, sectors_to_write);
+                Pio::<u8>::new(self.command_register + Self::COMMAND)
+                    .write(AtaCommand::AtaCmdWriteDma as u8);
+            }
+            // I experiment a lack of documentation about this mode
+            Capabilities::Chs => {
+                return Err(AtaError::NotSupported);
+            }
+        }
+
+        self.common_routine(udma)?;
+
+        Ok(sectors_to_write)
+    }
+}
+
+impl Drive {
+    fn common_routine(&self, udma: &mut Udma) -> AtaResult<()> {
         // Set the current bus mastered register for the global IRQ handler
         unsafe {
             CURRENT_BUS_MASTERED_REGISTER = udma.get_bus_mastered_register();
@@ -107,32 +168,13 @@ impl DmaIo for Drive {
             return Err(AtaError::IoError);
         }
 
-        // Copy the UDMA content into the Buf
-        let s = unsafe { core::slice::from_raw_parts_mut(buf, sectors_to_read.into()) };
-        for (i, chunk) in s.chunks_mut(Udma::PRD_SIZE.into()).enumerate() {
-            chunk.copy_from_slice(&udma.get_memory()[i][0..chunk.len()]);
-        }
-
         // Set IRQ bit to 0
         udma.clear_irq_bit();
 
-        // udma.reset_command();
-        Ok(sectors_to_read)
-    }
-
-    /// drive specific WRITE method
-    fn write(
-        &self,
-        _start_sector: Sector,
-        _nbr_sectors: NbrSectors,
-        _buf: *const u8,
-        _udma: &mut Udma,
-    ) -> AtaResult<NbrSectors> {
-        unimplemented!();
-        // Ok(())
+        // udma.reset_command(); ???
+        Ok(())
     }
 }
-
 use core::sync::atomic::{AtomicBool, Ordering};
 
 static mut CURRENT_BUS_MASTERED_REGISTER: u16 = 0;
