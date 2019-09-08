@@ -2,7 +2,7 @@ use super::{DirectoryEntry, SysResult};
 use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId, Path};
 use alloc::vec::Vec;
 use core::fmt::Debug;
-use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, statfs, uid_t, Errno, FileType, OpenFlags};
 
 pub mod dead;
 pub use dead::DeadFileSystem;
@@ -92,7 +92,18 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
+
+    fn statfs(&self, _buf: &mut statfs) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+    // fn lookup: Option<fn(&mut Superblock)>,
+    // fn create: Option<fn(&mut Superblock)>,
+    // fn unlink: Option<fn(&mut Superblock)>,
+    // fn link: Option<fn(&mut Superblock)>,
+    // fn symlink: Option<fn(&mut Superblock)>,
     // fn statfs: Option<fn(&mut Superblock)>,
+    // fn mkdir: Option<fn(&mut Superblock)>,
+    // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq)]

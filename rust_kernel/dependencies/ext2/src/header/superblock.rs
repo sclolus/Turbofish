@@ -12,10 +12,10 @@ use core::fmt;
 pub struct SuperBlock {
     /// Total number of inodes in file system
     /*0 	3 	4*/
-    nbr_inode: u32,
+    pub nbr_inode: u32,
     /// Total number of blocks in file system
     /*4 	7 	4*/
-    nbr_blocks: u32,
+    pub nbr_blocks: u32,
     /// Number of blocks reserved for superuser (see offset 80)
     /*8 	11 	4*/
     nbr_blocks_reserved: u32,
@@ -33,7 +33,7 @@ pub struct SuperBlock {
     log2_block_size: u32,
     /// log2 (fragment size) - 10. (In other words, the number to shift 1,024 to the left by to obtain the fragment size)
     /*28 	31 	4*/
-    log2_fragment_size: u32,
+    pub log2_fragment_size: u32,
     /// Number of blocks in each block group
     /*32 	35 	4*/
     block_per_block_grp: u32,
