@@ -131,7 +131,7 @@ impl FileSystem for Ext2fs {
         mode: FileType,
     ) -> VfsResult<(DirectoryEntry, InodeData)> {
         // We probably should provide it as a parameter to this method.
-        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Acquire) };
+        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let (direntry, inode) =
             self.ext2
                 .lock()

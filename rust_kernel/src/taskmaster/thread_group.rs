@@ -89,6 +89,7 @@ pub struct ThreadGroup {
     /// Current job status of a process
     pub job: Job,
 
+    /// The umask of the process: The actived bits in it are disabled in all file creating operations.
     pub umask: mode_t,
 }
 
