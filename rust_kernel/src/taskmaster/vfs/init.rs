@@ -20,7 +20,7 @@ fn read_mbr(disk: &dyn BlockIo) -> Mbr {
     let mut v1 = [0; 512];
 
     disk.read(Sector(0x0), size_read, v1.as_mut_ptr())
-        .expect("bios read failed");
+        .expect("MBR read failed");
 
     let mut a = [0; 512];
     for (i, elem) in a.iter_mut().enumerate() {

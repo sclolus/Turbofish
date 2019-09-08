@@ -69,18 +69,20 @@ pub trait BlockIo: Send {
 
 pub fn init(multiboot_info: &MultibootInfo) {
     // Intialize SATA controller
-    // loop {}
     match SataController::init() {
         Some(sata_controller) => {
             log::info!("Sata Controller detected: {:#X?}", sata_controller);
             sata_controller.dump_hba();
         }
-        None => {}
+        None => {
+            log::info!("No Sata controller detected");
+        }
     }
 
     // Initialize IDE controller
     unsafe {
         ide_ata_controller::init().expect("ide_ata_controller init failed");
+        //println!("{:#X?}", IDE_ATA_CONTROLLER.as_mut().unwrap());
     }
 
     // Initialize BIOS controller

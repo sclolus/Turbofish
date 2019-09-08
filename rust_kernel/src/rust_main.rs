@@ -83,6 +83,7 @@ pub extern "C" fn kmain(
 
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
+    PCI.lock().list_pci_devices();
     log::info!("PCI buses has been scanned");
 
     // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));

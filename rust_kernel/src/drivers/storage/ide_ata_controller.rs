@@ -112,7 +112,10 @@ impl IdeAtaController {
 
         PIT0.lock().sleep(Duration::from_millis(40));
 
-        eprintln!("current pci status: {:#?}", pci.get_status(pci_location));
+        log::info!(
+            "current IDE pci status: {:#?}",
+            pci.get_status(pci_location)
+        );
 
         // Get primary and secondary IO ports (0 or 1 means ide default port values_
         let primary_base_register = if pci.bar0 == 0 || pci.bar0 == 1 {
@@ -145,22 +148,38 @@ impl IdeAtaController {
                 Rank::Primary(Hierarchy::Master),
                 primary_base_register,
                 primary_control_register,
-            ),
+            )
+            .map(|s| {
+                log::info!("IDE {:?} detected", Rank::Primary(Hierarchy::Master));
+                s
+            }),
             secondary_master: Drive::identify(
-                Rank::Primary(Hierarchy::Master),
+                Rank::Secondary(Hierarchy::Master),
                 secondary_base_register,
                 secondary_control_register,
-            ),
+            )
+            .map(|s| {
+                log::info!("IDE {:?} detected", Rank::Secondary(Hierarchy::Master));
+                s
+            }),
             primary_slave: Drive::identify(
                 Rank::Primary(Hierarchy::Slave),
                 primary_base_register,
                 primary_control_register,
-            ),
+            )
+            .map(|s| {
+                log::info!("IDE {:?} detected", Rank::Primary(Hierarchy::Slave));
+                s
+            }),
             secondary_slave: Drive::identify(
-                Rank::Primary(Hierarchy::Slave),
+                Rank::Secondary(Hierarchy::Slave),
                 secondary_base_register,
                 secondary_control_register,
-            ),
+            )
+            .map(|s| {
+                log::info!("IDE {:?} detected", Rank::Secondary(Hierarchy::Slave));
+                s
+            }),
             selected_drive: None,
             pci_location,
             pci,
@@ -444,7 +463,7 @@ impl Drive {
         ))
         .contains(StatusRegister::ERR)
         {
-            eprintln!(
+            log::warn!(
                 "unexpected error while polling status of {:?} err: {:?}",
                 rank,
                 ErrorRegister::from_bits_truncate(
