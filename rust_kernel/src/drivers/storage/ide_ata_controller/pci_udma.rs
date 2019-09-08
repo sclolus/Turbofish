@@ -2,8 +2,7 @@
 
 // TODO: IRQ handling seems broken (i dont know if is a Qemu bug or a mistake made by us)
 
-use super::udma;
-use super::{AtaError, AtaResult, Capabilities, DmaIo, Drive};
+use super::{AtaError, AtaResult, Capabilities, DmaIo, Drive, StatusRegister};
 use super::{Command, DmaStatus, Udma};
 use super::{NbrSectors, Sector};
 
@@ -28,28 +27,24 @@ impl DmaIo for Drive {
     /// drive specific READ method
     fn read(
         &self,
-        start_sector: Sector,
-        nbr_sectors: NbrSectors,
+        _start_sector: Sector,
+        _nbr_sectors: NbrSectors,
         _buf: *mut u8,
         udma: &mut Udma,
     ) -> AtaResult<()> {
-        println!("dma read");
+        let mut i = 0;
+        loop {
+            // udma.reset_command();
+            udma.set_read();
+            udma.clear_error();
+            udma.clear_interrupt();
 
-        udma.reset_command();
-        udma.set_read();
-        udma.clear_error();
-        udma.clear_interrupt();
+            self.fill_dma(Sector(i), NbrSectors(512), udma)?;
+            i += 1;
 
-        // udma.start_transfer();
-        self.fill_dma(start_sector, nbr_sectors, udma)?;
-        // udma.stop_transfer();
-
-        eprintln!(
-            "current status of DMA controller '{:X?}'",
-            udma.get_status()
-        );
-
-        Ok(())
+            PIT0.lock().sleep(Duration::from_millis(1));
+        }
+        // Ok(())
     }
 
     /// drive specific WRITE method
@@ -61,7 +56,7 @@ impl DmaIo for Drive {
         _udma: &mut Udma,
     ) -> AtaResult<()> {
         unimplemented!();
-//        Ok(())
+        // Ok(())
     }
 }
 
@@ -72,23 +67,20 @@ impl Drive {
         nbr_sectors: NbrSectors,
         udma: &mut Udma,
     ) -> AtaResult<()> {
-        println!("fill dma");
         if nbr_sectors == NbrSectors(0) {
             return Ok(());
         }
-        //let prd_size = NbrSectors::from(Udma::PRD_SIZE / 2);
-        let prd_size = NbrSectors(1);
-
-        PIT0.lock().sleep(Duration::from_millis(50));
+        // Use this size like a limit
+        // let prd_size = NbrSectors::from(Udma::PRD_SIZE / 2);
 
         match self.capabilities {
             Capabilities::Lba48 => {
-                self.init_lba48(start_sector, prd_size);
+                self.init_lba48(start_sector, nbr_sectors);
                 Pio::<u8>::new(self.command_register + Self::COMMAND)
                     .write(Command::AtaCmdReadDmaExt as u8);
             }
             Capabilities::Lba28 => {
-                self.init_lba28(start_sector, prd_size);
+                self.init_lba28(start_sector, nbr_sectors);
                 Pio::<u8>::new(self.command_register + Self::COMMAND)
                     .write(Command::AtaCmdReadDma as u8);
             }
@@ -97,46 +89,58 @@ impl Drive {
                 return Err(AtaError::NotSupported);
             }
         }
+
+        /*
+         * Start the DMA transfert
+         */
         udma.start_transfer();
 
-        // println!("after start transfer{:?}", udma.get_status());
-        // PIT0.lock().sleep(Duration::from_millis(1000));
+        let status = udma.get_status();
+        if status.contains(DmaStatus::FAILED) {
+            eprintln!("An error as occured: {:?}", status);
+            panic!("panic sa mere !");
+        }
 
-        // let status = udma.get_status();
-        // if status.contains(DmaStatus::FAILED) {
-        //     eprintln!("An error as occured: {:?}", status);
-        //     panic!("panic sa mere !");
-        // }
+        loop {
+            unsafe {
+                asm!("hlt");
+            }
 
-        // loop {
-        //     unsafe {
-        //         asm!("hlt");
-        //     }
+            // When transfer is done udma IRQ bit is set
+            if TRIGGER.compare_and_swap(true, false, Ordering::Relaxed) == true
+                && udma.get_status().contains(DmaStatus::IRQ)
+            {
+                break;
+            }
+        }
 
-        //     if TRIGGER.compare_and_swap(true, false, Ordering::Relaxed) == true
-        //         && udma.get_status().contains(DmaStatus::IRQ)
-        //     {
-        //         break;
-        //     }
-        // }
-
-        PIT0.lock().sleep(Duration::from_millis(500));
+        // Get the disk status to determine if the transfert was Okay,
+        // It is also a necessary thing to avoid the blocking of IRQ
+        let disk_status = Pio::<u8>::new(self.command_register + Self::STATUS).read();
+        println!(
+            "disk_status: {:?}",
+            StatusRegister::from_bits_truncate(disk_status)
+        );
 
         let u = udma.get_memory();
         for i in 0..512 {
             print!("{:X?} ", u[0][i]);
         }
 
-        udma.clear_interrupt();
+        // Get the dma status
+
+        /*
         let status = udma.get_status();
         if status.contains(DmaStatus::FAILED) {
             eprintln!("An error as occured: {:?}", status);
             panic!("panic sa mere !");
         }
-        //self.wait_available();
-        //udma.stop_transfer();
-        println!("\nSTATUS after the end transfer {:?}", udma.get_status());
-        dbg!(udma);
+        println!("\nSTATUS after the end transfer {:?}", status);
+        */
+
+        // Set IRQ bit to 0
+        Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).write(0b100);
+
         Ok(())
     }
 }
@@ -148,21 +152,17 @@ static TRIGGER: AtomicBool = AtomicBool::new(false);
 #[no_mangle]
 fn primary_hard_disk_interrupt_handler() -> u32 {
     eprintln!("{}", "primary IRQ");
+
     TRIGGER.store(true, Ordering::Relaxed);
 
-    // It seems to be wrong: Logically, we dont need to do things inside IRQ handling since we have Atomic recall
-    // read disk status
-    eprintln!("disk status {:?}", Pio::<u8>::new(0x0170 + 7).read());
+    // let s = Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).read();
+    // Pio::<u8>::new(0xc040 + Udma::DMA_COMMAND).write(s & !udma::DmaCommand::ONOFF.bits());
 
-    // read dma status
-    let s = Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).read();
-    eprintln!("dma status {:?}", s);
+    // It could be logical to check here is the IRQ flag is set and unset IRQ bit ?
 
-    // clear interrupt
-    Pio::<u8>::new(0xc040 + Udma::DMA_STATUS).write(s & !((1 << 2) as u8));
-
-    // stop DMA transfert
-    Pio::<u8>::new(0xc040 + Udma::DMA_COMMAND).write(s & !udma::DmaCommand::ONOFF.bits());
+    /*
+     * Eq to udma.stop_transfer() since we cannot have access to `self` and a extern handler
+     */
     Pio::<u8>::new(0xC040 + Udma::DMA_COMMAND).write(0);
     0
 }

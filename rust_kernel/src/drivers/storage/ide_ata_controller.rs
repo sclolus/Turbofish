@@ -141,7 +141,7 @@ impl IdeAtaController {
         };
 
         // DMA port is contained inside BAR 4 of the PCI device
-        let _dma_port = pci.bar4 as u16;
+        let dma_port = pci.bar4 as u16;
 
         // Construct all objects
         Some(Self {
@@ -185,14 +185,22 @@ impl IdeAtaController {
             pci_location,
             pci,
             // TODO: UDMA IRQ does not work at all: Set PioTransfert instead
-            operating_mode: OperatingMode::PioTransfert,
-            udma_capable: false,
-            udma_primary: None,
-            udma_secondary: None,
-            // operating_mode: OperatingMode::UdmaTransfert,
-            // udma_capable: true,
-            // udma_primary: if _dma_port != 0 { Some(Udma::init(_dma_port, Channel::Primary)) } else { None },
-            // udma_secondary: if _dma_port != 0 { Some(Udma::init(_dma_port + 8, Channel::Secondary)) } else { None },
+            // operating_mode: OperatingMode::PioTransfert,
+            // udma_capable: false,
+            // udma_primary: None,
+            // udma_secondary: None,
+            operating_mode: OperatingMode::UdmaTransfert,
+            udma_capable: true,
+            udma_primary: if dma_port != 0 {
+                Some(Udma::init(dma_port, Channel::Primary))
+            } else {
+                None
+            },
+            udma_secondary: if dma_port != 0 {
+                Some(Udma::init(dma_port + 8, Channel::Secondary))
+            } else {
+                None
+            },
         })
     }
 

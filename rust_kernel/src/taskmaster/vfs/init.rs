@@ -116,7 +116,7 @@ lazy_static! {
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     // we start by bootstraping ext2
-    init_ext2(&mut vfs, DiskDriverType::Bios);
+    init_ext2(&mut vfs, DiskDriverType::Ide);
     // then init tty on /dev/tty
     init_tty(&mut vfs);
     vfs
