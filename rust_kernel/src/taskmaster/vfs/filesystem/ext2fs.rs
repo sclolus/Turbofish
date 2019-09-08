@@ -157,4 +157,8 @@ impl FileSystem for Ext2fs {
             .create_dir(parent_inode_nbr, filename, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+    fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> SysResult<()> {
+        self.ext2.lock().rmdir(parent_inode_nbr, filename)?;
+        Ok(())
+    }
 }

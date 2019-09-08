@@ -59,6 +59,9 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
+    fn rmdir(&mut self, _parent_inode_nbr: u32, _filename: &str) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
     // fn lookup: Option<fn(&mut Superblock)>,
     // fn create: Option<fn(&mut Superblock)>,
     // fn unlink: Option<fn(&mut Superblock)>,

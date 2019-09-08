@@ -6,7 +6,7 @@ use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
-use libc_binding::{gid_t, mode_t, uid_t, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
     /// The access() function shall check the file named by the
@@ -128,29 +128,18 @@ impl Ext2Filesystem {
         Ok((new_entry, inode))
     }
 
-    // /// The rmdir() function shall remove a directory only if it is an
-    // /// empty directory.
-    // pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
-    //     let (parent_inode_nbr, entry) = self.find_path(path)?;
-    //     let inode_nbr = entry.0.get_inode();
-    //     let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
-
-    //     if !inode.is_a_directory() {
-    //         return Err(Errno::ENOTDIR);
-    //     }
-    //     if self
-    //         .iter_entries(inode_nbr)?
-    //         .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
-    //         || inode.nbr_hard_links > 2
-    //     {
-    //         return Err(Errno::ENOTEMPTY);
-    //     }
-    //     let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-    //     self.free_inode((&mut inode, inode_addr), inode_nbr)
-    //         .unwrap();
-    //     self.delete_entry(parent_inode_nbr, entry.1).unwrap();
-    //     Ok(())
-    // }
+    /// The rmdir() function shall remove a directory only if it is an
+    /// empty directory.
+    pub fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> IoResult<()> {
+        let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
+        let inode_nbr = entry.0.get_inode();
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        debug_assert!(inode.is_a_directory());
+        self.free_inode((&mut inode, inode_addr), inode_nbr)
+            .unwrap();
+        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
+        Ok(())
+    }
 
     /// for write syscall
     pub fn write(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &[u8]) -> IoResult<u64> {

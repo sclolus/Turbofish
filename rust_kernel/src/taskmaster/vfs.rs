@@ -715,7 +715,6 @@ impl VirtualFileSystem {
             return Err(Errno(Errno::EEXIST));
         }
         let filename = path.pop();
-        filename;
         let entry_id = self.pathname_resolution(cwd, path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
@@ -734,7 +733,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn rmdir(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> VfsResult<()> {
+    pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> VfsResult<()> {
         let filename = path.filename().ok_or(Errno(Errno::EINVAL))?;
         if filename == &"." || filename == &".." {
             return Err(Errno(Errno::EINVAL));
@@ -746,8 +745,24 @@ impl VirtualFileSystem {
         if !entry.is_directory() {
             return Err(NotADirectory);
         }
-        self.unlink(cwd, creds, path)
+        if !entry.is_directory_empty()? {
+            return Err(Errno(Errno::ENOTEMPTY));
+        }
+        let inode_id = entry.inode_id;
+        let parent_id = entry.parent_id;
+
+        self.dcache.remove_entry(entry_id)?;
+        self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+
+        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        fs.lock().rmdir(
+            parent_inode_id.inode_number as u32,
+            path.filename().expect("no filename").as_str(),
+        )?;
+        Ok(())
     }
+
     pub fn get_inode(&mut self, inode_id: InodeId) -> VfsResult<&mut Inode> {
         self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)
     }
