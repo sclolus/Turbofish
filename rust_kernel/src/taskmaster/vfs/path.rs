@@ -179,10 +179,10 @@ impl TryFrom<&str> for Filename {
     type Error = Errno;
     fn try_from(s: &str) -> SysResult<Self> {
         let mut n = [0 as c_char; NAME_MAX as usize + 1];
-        if s.bytes().find(|&b| b == '/' as u8).is_some() {
+        if s.bytes().find(|&b| b == '/' as u8).is_some() || s.len() == 0 {
             return Err(Errno::EINVAL);
         }
-        if s.len() > NAME_MAX as usize || s.len() == 0 {
+        if s.len() > NAME_MAX as usize {
             return Err(Errno::ENAMETOOLONG);
         } else {
             for (n, c) in n.iter_mut().zip(s.bytes()) {
