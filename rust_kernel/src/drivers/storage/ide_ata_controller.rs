@@ -101,6 +101,14 @@ const SECONDARY_BASE_REGISTER: u16 = 0x0170;
 const PRIMARY_CONTROL_REGISTER: u16 = 0x03f6;
 const SECONDARY_CONTROL_REGISTER: u16 = 0x376;
 
+/// Identify a Drive
+fn identify(rank: Rank, base_register: u16, control_register: u16) -> Option<Drive> {
+    Drive::identify(rank, base_register, control_register).map(|s| {
+        log::info!("ide {:?} detected", rank);
+        s
+    })
+}
+
 impl IdeAtaController {
     /// Invocation of a new PioMode-IDE controller
     pub fn new() -> Option<Self> {
@@ -149,25 +157,17 @@ impl IdeAtaController {
         // DMA port is contained inside BAR 4 of the PCI device
         let dma_port = pci.bar4 as u16;
 
-        let primary_master = Drive::identify(
+        let primary_master = identify(
             Rank::Primary(Hierarchy::Master),
             primary_base_register,
             primary_control_register,
-        )
-        .map(|s| {
-            log::info!("ide {:?} detected", Rank::Primary(Hierarchy::Master));
-            s
-        });
+        );
 
-        let primary_slave = Drive::identify(
+        let primary_slave = identify(
             Rank::Primary(Hierarchy::Slave),
             primary_base_register,
             primary_control_register,
-        )
-        .map(|s| {
-            log::info!("ide {:?} detected", Rank::Primary(Hierarchy::Slave));
-            s
-        });
+        );
 
         // Create primary DMA channel if devices was found
         let udma_primary = if (primary_master.is_some() || primary_slave.is_some()) && dma_port != 0
@@ -178,25 +178,17 @@ impl IdeAtaController {
             None
         };
 
-        let secondary_master = Drive::identify(
+        let secondary_master = identify(
             Rank::Secondary(Hierarchy::Master),
             secondary_base_register,
             secondary_control_register,
-        )
-        .map(|s| {
-            log::info!("ide {:?} detected", Rank::Secondary(Hierarchy::Master));
-            s
-        });
+        );
 
-        let secondary_slave = Drive::identify(
+        let secondary_slave = identify(
             Rank::Secondary(Hierarchy::Slave),
             secondary_base_register,
             secondary_control_register,
-        )
-        .map(|s| {
-            log::info!("ide {:?} detected", Rank::Secondary(Hierarchy::Slave));
-            s
-        });
+        );
 
         // Create secondary DMA channel if devices was found
         let udma_secondary =
