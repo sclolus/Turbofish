@@ -88,11 +88,11 @@ pub struct File {
 /// Global structure of ext2Filesystem
 #[derive(Debug)]
 pub struct Ext2Filesystem {
-    superblock: SuperBlock,
+    pub superblock: SuperBlock, // or remove pub and add get_superblock() method.
     superblock_addr: u64,
     disk: Disk,
     nbr_block_grp: u32,
-    block_size: u32,
+    pub block_size: u32, // or remove pub and add get_block_size() method.
 }
 
 type OffsetDirEntry = u32;

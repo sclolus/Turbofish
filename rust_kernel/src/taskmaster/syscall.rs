@@ -17,11 +17,11 @@ use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
-    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
+    FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
     GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
     MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID,
     SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP,
     TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
@@ -176,6 +176,9 @@ use lstat::sys_lstat;
 mod fstat;
 use fstat::sys_fstat;
 
+mod statfs;
+use statfs::sys_statfs;
+
 mod chdir;
 use chdir::sys_chdir;
 
@@ -327,6 +330,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ),
         SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
+        STATFS => sys_statfs(
+            ebx as *const libc_binding::c_char,
+            ecx as *mut libc_binding::statfs,
+        ),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         CHOWN => sys_chown(ebx as *const c_char, ecx as uid_t, edx as gid_t),
         GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),

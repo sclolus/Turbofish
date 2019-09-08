@@ -12,6 +12,7 @@
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/statfs.h>
 
 #include <assert.h>
 #include <ctype.h>

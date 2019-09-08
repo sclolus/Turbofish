@@ -34,6 +34,7 @@ use libc_binding::OpenFlags;
 
 use libc_binding::c_char;
 use libc_binding::dirent;
+use libc_binding::statfs;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
 use libc_binding::{gid_t, uid_t, Errno};
@@ -831,6 +832,27 @@ impl VirtualFileSystem {
     }
 
     // pub fn file_exists(&mut self, current: &Current, path: Path) -> SysResult<bool> {
+    pub fn statfs(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        buf: &mut statfs,
+    ) -> SysResult<()> {
+        let direntry_id = self.pathname_resolution(cwd, &path)?;
+        let direntry_id = self.dcache.get_entry(&direntry_id)?;
+
+        let fs_id = &direntry_id.inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
+
+        let fs = self
+            .mounted_filesystems
+            .get(fs_id)
+            .expect("No filesystem match the filesystem_id from an InodeId");
+
+        fs.lock().statfs(buf)
+    }
+
+    // pub fn file_exists(&mut self, current: &Current, path: Path) -> VfsResult<bool> {
     //     self.pathname_resolution(current.cwd, path).unwrap();
     //     Ok(true)
     // }

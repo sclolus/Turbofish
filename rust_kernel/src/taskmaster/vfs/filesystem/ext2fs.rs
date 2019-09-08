@@ -9,7 +9,7 @@ use core::default::Default;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use fallible_collections::TryCollect;
-use libc_binding::{gid_t, uid_t, FileType, OpenFlags};
+use libc_binding::{gid_t, statfs, uid_t, FileType, OpenFlags, EXT2_SUPER_MAGIC, NAME_MAX};
 
 use sync::DeadMutex;
 
@@ -137,6 +137,7 @@ impl FileSystem for Ext2fs {
                 .create(filename, parent_inode_nbr, flags, timestamp, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+
     fn write(&mut self, inode_number: u32, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
         Ok(self.ext2.lock().write(inode_number, offset, buf)? as u32)
     }
@@ -157,8 +158,27 @@ impl FileSystem for Ext2fs {
             .create_dir(parent_inode_nbr, filename, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+
     fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> SysResult<()> {
         self.ext2.lock().rmdir(parent_inode_nbr, filename)?;
         Ok(())
+    }
+
+    fn statfs(&self, buf: &mut statfs) -> SysResult<()> {
+        let fs = self.ext2.lock();
+
+        Ok(*buf = statfs {
+            f_type: EXT2_SUPER_MAGIC,
+            f_bsize: fs.block_size, // Actually Depends on underlying implementation of Disk I/O.
+            f_blocks: fs.superblock.nbr_blocks,
+            f_bfree: fs.superblock.nbr_free_blocks,
+            f_bavail: fs.superblock.nbr_free_blocks, // is nbr_blocks_reserved counted in this or not?
+            f_files: fs.superblock.nbr_inode,
+            f_ffree: fs.superblock.nbr_free_inodes,
+            f_fsid: self.fs_id.0 as u32, // consider method/Into<u32> implementation.
+            f_namelen: NAME_MAX - 1,
+            f_frsize: 1024 << fs.superblock.log2_fragment_size,
+            f_flags: 0, // TODO: For now this does not seem implementable.
+        })
     }
 }

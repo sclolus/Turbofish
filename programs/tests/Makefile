@@ -41,8 +41,11 @@ SRC_C += DeepThought \
 		dir/mkdir_exist \
 		dir/mkdir \
 		dir/rmdir_not_empty \
+		statfs/statfs \
+		statvfs/statvfs \
 
-VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask
+
+VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))

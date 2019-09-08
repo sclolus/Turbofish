@@ -100,6 +100,15 @@ SRC_C += stat lstat fstat mkfifo umask chmod mkdir mknod
 VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
+SRC_C += statfs fstatfs
+VPATH += src/sys/statfs
+HEADERS += sys/statfs.h
+
+SRC_C += statvfs fstatvfs
+VPATH += src/sys/statvfs
+HEADERS += sys/statvfs.h
+
+
 SRC_C += gettimeofday settimeofday
 VPATH += src/sys/time
 HEADERS += sys/time.h

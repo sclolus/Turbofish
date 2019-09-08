@@ -2,7 +2,7 @@ use super::{DirectoryEntry, SysResult};
 use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId};
 use alloc::vec::Vec;
 use core::fmt::Debug;
-use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, statfs, uid_t, Errno, FileType, OpenFlags};
 
 pub mod dead;
 pub use dead::DeadFileSystem;
@@ -51,6 +51,7 @@ pub trait FileSystem: Send + Debug {
     fn read(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &mut [u8]) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
+
     fn create_dir(
         &mut self,
         _parent_inode_nbr: u32,
@@ -59,7 +60,12 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
+
     fn rmdir(&mut self, _parent_inode_nbr: u32, _filename: &str) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn statfs(&self, _buf: &mut statfs) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
     // fn lookup: Option<fn(&mut Superblock)>,
@@ -68,6 +74,7 @@ pub trait FileSystem: Send + Debug {
     // fn link: Option<fn(&mut Superblock)>,
     // fn symlink: Option<fn(&mut Superblock)>,
     // fn statfs: Option<fn(&mut Superblock)>,
+    // fn mkdir: Option<fn(&mut Superblock)>,
     // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
