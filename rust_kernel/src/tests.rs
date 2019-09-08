@@ -23,6 +23,12 @@ pub mod hard_drive_read_pio;
 #[cfg(feature = "native-test-hard-drive-write-pio")]
 pub mod hard_drive_write_pio;
 
+#[cfg(feature = "native-test-hard-drive-read-udma")]
+pub mod hard_drive_read_udma;
+
+#[cfg(feature = "native-test-hard-drive-write-udma")]
+pub mod hard_drive_write_udma;
+
 #[cfg(feature = "native-test-hard-drive-read-bios")]
 pub mod hard_drive_read_bios;
 

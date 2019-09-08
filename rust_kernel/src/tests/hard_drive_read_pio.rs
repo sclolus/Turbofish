@@ -14,7 +14,7 @@ use crate::drivers::storage::{
     BlockIo, NbrSectors, Sector,
 };
 
-const NB_TESTS: usize = 32;
+const NB_TESTS: usize = 64;
 const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
