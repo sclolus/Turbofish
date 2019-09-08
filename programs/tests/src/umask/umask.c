@@ -22,7 +22,8 @@ int main(void)
 
 		assert(ret == old);
 
-		snprintf(filename, sizeof(filename), "umask_creat_test_%u", i);
+		pid_t pid = getpid();
+		snprintf(filename, sizeof(filename), "umask_creat_test_%u_%u", i, pid);
 
 		int fd = open(filename, O_CREAT | O_EXCL, 0777);
 
