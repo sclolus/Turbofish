@@ -52,9 +52,10 @@ SRC_C += DeepThought \
 		rename/rename_file_exist \
 		statfs/statfs \
 		statvfs/statvfs \
+		fstatfs/fstatfs \
+		fstatvfs/fstatvfs \
 
-
-VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/rename src/unlink src/dir src/symlink
+VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))
