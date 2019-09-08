@@ -546,10 +546,10 @@ impl VirtualFileSystem {
         //TODO: check that
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.lock()
-            .unlink(parent_inode_id.inode_number as u32, unsafe {
-                path.filename().expect("no filename").as_str()
-            })?;
+        fs.lock().unlink(
+            parent_inode_id.inode_number as u32,
+            path.filename().expect("no filename").as_str(),
+        )?;
         Ok(())
     }
 
@@ -598,7 +598,7 @@ impl VirtualFileSystem {
                 let fs_cloned = fs.clone();
 
                 let fs_entry = fs.lock().create(
-                    unsafe { path.filename().expect("no filename").as_str() },
+                    path.filename().expect("no filename").as_str(),
                     inode_number,
                     flags,
                     mode,
