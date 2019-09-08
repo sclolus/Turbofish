@@ -22,273 +22,14 @@ const BIOS_PIC_SLAVE_IDT_VECTOR: u8 = 0x70 as u8;
 pub const KERNEL_PIC_MASTER_IDT_VECTOR: u8 = 0x20 as u8;
 pub const KERNEL_PIC_SLAVE_IDT_VECTOR: u8 = 0x28 as u8;
 
-/// Represents a Programmable Interrupt Controller 8259
-pub struct Pic {
-    /// The PIC's command port.
-    command: Pio<u8>,
-
-    /// The PIC's data port.
-    data: Pio<u8>,
-
-    configuration: Option<ICWs>,
-}
-
-impl Pic {
-    /// The End of Interrupt command, used to reply to the PICs at the end of an interrupt handler
-    const _EOI: u8 = 0x20;
-
-    /// Creates a new PIC instance with port `port`
-    pub const fn new(port: u16) -> Self {
-        Pic {
-            command: Pio::new(port),
-            data: Pio::new(port + 1),
-            configuration: None,
-        }
-    }
-
-    /// Get the interrupt mask of the slave PIC
-    /// # Warning:
-    /// There must be no current command issued
-    pub fn get_interrupt_masks(&self) -> u8 {
-        self.data.read()
-    }
-
-    /// Quick explication on interrupt masks:
-    /// the masks are one byte. Each pic has one.
-    /// The bits of the masks correspond to the interrupts lines.
-    /// Each pic having 8 interrupts lines, when one bit is set in the IMR,
-    /// the corresponding interrupt line is disabled. (ignored by the PIC).
-    /// # Warning:
-    /// The IRQ line 2 of the master is the line used to receive the slave's interrupts.
-    /// Setting it will disable all the slave's interrupts.
-    pub unsafe fn set_interrupt_masks(&mut self, masks: u8) {
-        let ocw1 = OCW1::new().set_interrupt_masks(masks);
-
-        self.send_ocw1(ocw1);
-    }
-
-    unsafe fn send_ocw1(&mut self, operation_control_word: OCW1) {
-        self.data.write(operation_control_word.byte);
-    }
-
-    unsafe fn send_ocw2(&mut self, operation_control_word: OCW2) {
-        self.command.write(operation_control_word.byte);
-    }
-
-    unsafe fn send_ocw3(&mut self, operation_control_word: OCW3) {
-        self.command.write(operation_control_word.byte);
-    }
-
-    unsafe fn send_icw1(&mut self, initialization_control_word: ICW1) {
-        self.command.write(initialization_control_word.byte);
-    }
-
-    unsafe fn send_icw2(&mut self, initialization_control_word: ICW2) {
-        self.data.write(initialization_control_word.byte);
-    }
-
-    unsafe fn send_icw3(&mut self, initialization_control_word: ICW3) {
-        self.data.write(initialization_control_word.byte);
-    }
-
-    unsafe fn send_icw4(&mut self, initialization_control_word: ICW4) {
-        self.data.write(initialization_control_word.byte);
-    }
-
-    unsafe fn send_non_specific_eoi(&mut self) {
-        let ocw2 = OCW2::new().set_ir_level(0).set_non_specific_eoi();
-
-        self.send_ocw2(ocw2);
-    }
-
-    pub fn configure(&mut self, config: ICWs) {
-        assert!(config.is_complete());
-        // println!("ICW1: {:x}", config.icw1.unwrap().byte);
-        // println!("ICW2: {:x}", config.icw2.unwrap().byte);
-        // println!("ICW3: {:x}", config.icw3.unwrap().byte);
-        // println!("ICW4: {:x}", config.icw4.unwrap().byte);
-
-        let icw1 = config.icw1.unwrap();
-        let icw2 = config.icw2.unwrap();
-        let icw3 = config.icw3.unwrap();
-        let icw4 = config.icw4.unwrap();
-
-        unsafe {
-            self.send_icw1(icw1);
-            self.send_icw2(icw2);
-            self.send_icw3(icw3);
-            self.send_icw4(icw4);
-        }
-        self.configuration = Some(config);
-    }
-
-    pub fn get_register(&mut self, register: PICRegister) -> u8 {
-        if register == PICRegister::InterruptMasks {
-            return self.get_interrupt_masks();
-        }
-
-        let ocw3 = OCW3::new().set_read_register(register);
-
-        unsafe {
-            self.send_ocw3(ocw3);
-        }
-        self.command.read()
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum TriggeringMode {
-    Level,
-    Edge,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PICKind {
-    Master,
-    Slave,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum BufferingMode {
-    NotBuffered,
-    SlaveBuffered,
-    MasterBuffered,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PICRegister {
-    InRequest,
-    InService,
-    InterruptMasks,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-pub struct PicConfiguration {
-    configurations: [Option<ICWs>; 8],
-    nbr_pics: usize,
-    master_index: Option<usize>,
-}
-
-impl PicConfiguration {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn add_pic_configuration(&mut self, config: ICWs) -> &mut Self {
-        if self.nbr_pics == 8 {
-            panic!("A master pic can only be cascaded with a maximum of 8 slaves");
-        }
-
-        if !config.is_complete() {
-            panic!("Pic Configuration must be complete");
-        }
-
-        if config.pic_kind() == PICKind::Master {
-            assert!(
-                self.master_index.is_none(),
-                "There can only be one master PIC"
-            );
-            self.master_index = Some(self.nbr_pics);
-        }
-
-        self.configurations[self.nbr_pics] = Some(config);
-        self.nbr_pics += 1;
-        self
-    }
-
-    pub fn has_master(&self) -> bool {
-        self.master_index.is_some()
-    }
-
-    pub fn get_master(&self) -> &ICWs {
-        assert!(self.has_master(), "No PIC master were found.");
-        self.configurations[self.master_index.unwrap()]
-            .as_ref()
-            .unwrap()
-    }
-
-    pub fn nbr_pics(&self) -> usize {
-        self.nbr_pics
-    }
-
-    pub fn is_complete(&self) -> bool {
-        return self.nbr_pics != 0
-            && self.has_master()
-            && self.get_master().cascaded_lines() == self.nbr_pics.checked_sub(1).unwrap_or(0);
-    }
-
-    pub fn slaves<'a>(&'a self) -> impl Iterator<Item = ICWs> + 'a {
-        let mut slaves = self
-            .configurations
-            .iter()
-            .filter_map(|&c| c)
-            .filter(|&c| c.pic_kind() == PICKind::Slave);
-        unfold((), move |_| slaves.next())
-    }
+lazy_static! {
+    pub static ref PIC_8259: Spinlock<Pic8259> = Spinlock::new(Pic8259::new());
 }
 
 pub struct Pic8259 {
     master: Pic,
     slave: Pic,
     bios_imr: Option<u16>,
-}
-
-lazy_static! {
-    pub static ref PIC_8259: Spinlock<Pic8259> = Spinlock::new(Pic8259::new());
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Irq {
-    /// The System timer, (PIT: Programmable Interval Timer) IRQ.
-    SystemTimer = 0,
-
-    /// The Keyboard Controller IRQ.
-    KeyboardController = 1,
-
-    /// IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
-    SlaveCascadeIRQ = 2,
-
-    /// The Serial Port 2 IRQ (shared with the Serial Port 4, if it is present).
-    SerialPortController2 = 3,
-
-    /// The Serial Port 1 IRQ (shared with the Serial Port 3, if it is present).
-    SerialPortController1 = 4,
-
-    /// The IRQ for Parallel Ports 2 and 3, or the Sound card.
-    ParallelPort2And3 = 5, //  or  sound card
-
-    /// The IRQ for the FloppyDisk Controller.
-    FloppyDiskController = 6,
-
-    /// The IRQ for the Parallel Port 1.
-    /// Note: It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
-    ParallelPort1 = 7,
-
-    /// The Real Time Clock (RTC) IRQ.
-    RealTimeClock = 8, // (RTC)
-
-    /// The IRQ for the Advanced Configuration and Power Interface (on Intel chips, mostly).
-    ACPI = 9,
-
-    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC).
-    Irq10 = 10,
-
-    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
-    Irq11 = 11,
-
-    /// The IRQ for the mouse from the PS/2 Controller.
-    MouseOnPS2Controller = 12,
-
-    /// The IRQ for CPU co-processor or integrated floating point unit or inter-processor interrupt (use depends on OS).
-    Irq13 = 13,
-
-    /// The IRQ for the Primary ATA Channel.
-    /// (ATA interface usually serves hard disk drives and CD drives)
-    PrimaryATAChannel = 14,
-
-    /// The IRQ for the Secondary ATA Channel.
-    /// (ATA interface usually serves hard disk drives and CD drives)
-    SecondaryATAChannel = 15,
 }
 
 impl Pic8259 {
@@ -341,6 +82,7 @@ impl Pic8259 {
 
         let default_conf = Self::default_pic_configuration();
         self.initialize(default_conf);
+        self.disable_all_irqs();
 
         use crate::interrupts::idt::GateType::InterruptGate32;
         use crate::interrupts::idt::*;
@@ -374,6 +116,8 @@ impl Pic8259 {
         self.bios_imr != None
     }
 
+    /// Returns a default PicConfiguration for two 8259 chips, a master and a slave,
+    /// with their respective interrupt vectors set to `master_vector` and `slave_vector`.
     pub fn basic_pic_configuration(master_vector: u8, slave_vector: u8) -> PicConfiguration {
         use PICKind::*;
 
@@ -408,14 +152,20 @@ impl Pic8259 {
         configuration
     }
 
+    /// Returns a default bios PicConfiguration (Empirical).
     pub fn bios_pic_configuration() -> PicConfiguration {
         Self::basic_pic_configuration(BIOS_PIC_MASTER_IDT_VECTOR, BIOS_PIC_SLAVE_IDT_VECTOR)
     }
 
+    /// Returns the default PicConfiguration used by our kernel.
     pub fn default_pic_configuration() -> PicConfiguration {
         Self::basic_pic_configuration(KERNEL_PIC_MASTER_IDT_VECTOR, KERNEL_PIC_SLAVE_IDT_VECTOR)
     }
 
+    /// Initialize the PICs with the given `pic_configuration`.
+    /// This solely executes the initialization procedures of the described chips.
+    /// This does not set the corresponding Interruptions into the InterruptTable.
+    /// Refer to the init method for such features.
     pub fn initialize(&mut self, pic_configuration: PicConfiguration) {
         assert!(pic_configuration.is_complete());
         assert!(
@@ -552,5 +302,289 @@ impl Pic8259 {
     /// The bits 8 to 15 (inclusive) are the self.slave's IMR.
     pub fn get_masks(&mut self) -> u16 {
         self.get_pics_register(PICRegister::InterruptMasks)
+    }
+}
+
+/// Represents a Programmable Interrupt Controller 8259
+pub struct Pic {
+    /// The PIC's command port.
+    command: Pio<u8>,
+
+    /// The PIC's data port.
+    data: Pio<u8>,
+
+    configuration: Option<ICWs>,
+}
+
+impl Pic {
+    /// The End of Interrupt command, used to reply to the PICs at the end of an interrupt handler
+    const _EOI: u8 = 0x20;
+
+    /// Creates a new PIC instance with port `port`
+    pub const fn new(port: u16) -> Self {
+        Pic {
+            command: Pio::new(port),
+            data: Pio::new(port + 1),
+            configuration: None,
+        }
+    }
+
+    /// Get the interrupt mask of the slave PIC
+    /// # Warning:
+    /// There must be no current command issued
+    pub fn get_interrupt_masks(&self) -> u8 {
+        self.data.read()
+    }
+
+    /// Quick explication on interrupt masks:
+    /// the masks are one byte. Each pic has one.
+    /// The bits of the masks correspond to the interrupts lines.
+    /// Each pic having 8 interrupts lines, when one bit is set in the IMR,
+    /// the corresponding interrupt line is disabled. (ignored by the PIC).
+    /// # Warning:
+    /// The IRQ line 2 of the master is the line used to receive the slave's interrupts.
+    /// Setting it will disable all the slave's interrupts.
+    pub unsafe fn set_interrupt_masks(&mut self, masks: u8) {
+        let ocw1 = OCW1::new().set_interrupt_masks(masks);
+
+        self.send_ocw1(ocw1);
+    }
+
+    unsafe fn send_ocw1(&mut self, operation_control_word: OCW1) {
+        self.data.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_ocw2(&mut self, operation_control_word: OCW2) {
+        self.command.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_ocw3(&mut self, operation_control_word: OCW3) {
+        self.command.write(operation_control_word.byte);
+    }
+
+    unsafe fn send_icw1(&mut self, initialization_control_word: ICW1) {
+        self.command.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw2(&mut self, initialization_control_word: ICW2) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw3(&mut self, initialization_control_word: ICW3) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_icw4(&mut self, initialization_control_word: ICW4) {
+        self.data.write(initialization_control_word.byte);
+    }
+
+    unsafe fn send_non_specific_eoi(&mut self) {
+        let ocw2 = OCW2::new().set_ir_level(0).set_non_specific_eoi();
+
+        self.send_ocw2(ocw2);
+    }
+
+    pub fn configure(&mut self, config: ICWs) {
+        assert!(config.is_complete());
+        // println!("ICW1: {:x}", config.icw1.unwrap().byte);
+        // println!("ICW2: {:x}", config.icw2.unwrap().byte);
+        // println!("ICW3: {:x}", config.icw3.unwrap().byte);
+        // println!("ICW4: {:x}", config.icw4.unwrap().byte);
+
+        let icw1 = config.icw1.unwrap();
+        let icw2 = config.icw2.unwrap();
+        let icw3 = config.icw3.unwrap();
+        let icw4 = config.icw4.unwrap();
+
+        unsafe {
+            self.send_icw1(icw1);
+            self.send_icw2(icw2);
+            self.send_icw3(icw3);
+            self.send_icw4(icw4);
+        }
+        self.configuration = Some(config);
+    }
+
+    pub fn get_register(&mut self, register: PICRegister) -> u8 {
+        if register == PICRegister::InterruptMasks {
+            return self.get_interrupt_masks();
+        }
+
+        let ocw3 = OCW3::new().set_read_register(register);
+
+        unsafe {
+            self.send_ocw3(ocw3);
+        }
+        self.command.read()
+    }
+}
+
+/// Describes the triggering mode of interrupts for the chip.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum TriggeringMode {
+    Level,
+    Edge,
+}
+
+/// Describes the kind of 8259 chip: Master or Slave.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PICKind {
+    Master,
+    Slave,
+}
+
+/// Describes a buffering mode for a 8259 chip.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum BufferingMode {
+    NotBuffered,
+    SlaveBuffered,
+    MasterBuffered,
+}
+
+/// Describes a register for a 8259 chip.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PICRegister {
+    InRequest,
+    InService,
+    InterruptMasks,
+}
+#[derive(Debug, Copy, Clone)]
+pub enum Irq {
+    /// The System timer, (PIT: Programmable Interval Timer) IRQ.
+    SystemTimer = 0,
+
+    /// The Keyboard Controller IRQ.
+    KeyboardController = 1,
+
+    /// IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
+    SlaveCascadeIRQ = 2,
+
+    /// The Serial Port 2 IRQ (shared with the Serial Port 4, if it is present).
+    SerialPortController2 = 3,
+
+    /// The Serial Port 1 IRQ (shared with the Serial Port 3, if it is present).
+    SerialPortController1 = 4,
+
+    /// The IRQ for Parallel Ports 2 and 3, or the Sound card.
+    ParallelPort2And3 = 5, //  or  sound card
+
+    /// The IRQ for the FloppyDisk Controller.
+    FloppyDiskController = 6,
+
+    /// The IRQ for the Parallel Port 1.
+    /// Note: It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
+    ParallelPort1 = 7,
+
+    /// The Real Time Clock (RTC) IRQ.
+    RealTimeClock = 8, // (RTC)
+
+    /// The IRQ for the Advanced Configuration and Power Interface (on Intel chips, mostly).
+    ACPI = 9,
+
+    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC).
+    Irq10 = 10,
+
+    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
+    Irq11 = 11,
+
+    /// The IRQ for the mouse from the PS/2 Controller.
+    MouseOnPS2Controller = 12,
+
+    /// The IRQ for CPU co-processor or integrated floating point unit or inter-processor interrupt (use depends on OS).
+    Irq13 = 13,
+
+    /// The IRQ for the Primary ATA Channel.
+    /// (ATA interface usually serves hard disk drives and CD drives)
+    PrimaryATAChannel = 14,
+
+    /// The IRQ for the Secondary ATA Channel.
+    /// (ATA interface usually serves hard disk drives and CD drives)
+    SecondaryATAChannel = 15,
+}
+
+/// This data structure aggregates aggregations (the ICWs date structure) of ICWs,
+/// This describes a complete configuration for all the chips being configured.
+/// This asserts some conditions to make sure (At least for the obvious cases) that
+/// the overall configuration is not malformed.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct PicConfiguration {
+    configurations: [Option<ICWs>; 8],
+    nbr_pics: usize,
+    master_index: Option<usize>,
+}
+
+impl PicConfiguration {
+    /// Creates a new, unsetup, PicConfiguration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds a new ICWs (configuration for a specific 8259 chip)
+    /// to the, global, PicConfiguration.
+    ///
+    /// Panic:
+    /// - Panics if the PicConfiguration is full, that is, if already 8 chips
+    /// are being configured.
+    /// - If the given `config` chip configuration is not complete.
+    /// - If adding a `config` for a master chip while there is already one registed
+    ///   is attempted.
+    pub fn add_pic_configuration(&mut self, config: ICWs) -> &mut Self {
+        if self.nbr_pics == 8 {
+            panic!("A master pic can only be cascaded with a maximum of 8 slaves");
+        }
+
+        if !config.is_complete() {
+            panic!("Pic Configuration must be complete");
+        }
+
+        if config.pic_kind() == PICKind::Master {
+            assert!(
+                self.master_index.is_none(),
+                "There can only be one master PIC"
+            );
+            self.master_index = Some(self.nbr_pics);
+        }
+
+        self.configurations[self.nbr_pics] = Some(config);
+        self.nbr_pics += 1;
+        self
+    }
+
+    /// Returns whether a master chip configuration has been registered.
+    pub fn has_master(&self) -> bool {
+        self.master_index.is_some()
+    }
+
+    /// Gets the configuration for the master chip.
+    ///
+    /// Panic:
+    /// Panics if not such configuration has been registered.
+    pub fn get_master(&self) -> &ICWs {
+        assert!(self.has_master(), "No PIC master were found.");
+        self.configurations[self.master_index.unwrap()]
+            .as_ref()
+            .unwrap()
+    }
+
+    /// Returns the number of chip being registered.
+    pub fn nbr_pics(&self) -> usize {
+        self.nbr_pics
+    }
+
+    /// Returns whether the configuration of all registered PICs is complete.
+    pub fn is_complete(&self) -> bool {
+        return self.nbr_pics != 0
+            && self.has_master()
+            && self.get_master().cascaded_lines() == self.nbr_pics.checked_sub(1).unwrap_or(0);
+    }
+
+    /// Returns an iterator over all the slaves configurations (ICWs).
+    pub fn slaves<'a>(&'a self) -> impl Iterator<Item = ICWs> + 'a {
+        let mut slaves = self
+            .configurations
+            .iter()
+            .filter_map(|&c| c)
+            .filter(|&c| c.pic_kind() == PICKind::Slave);
+        unfold((), move |_| slaves.next())
     }
 }

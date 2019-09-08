@@ -1,6 +1,7 @@
 /// This file contains the primitives to enable and disable the NMI (Non-Maskable Interrupt)
 use io::{Io, Pio};
 
+/// Boilerplate structure to enable and disable the Non-Maskable Interrupt.
 pub struct Nmi {
     command: Pio<u8>,
 }
@@ -14,6 +15,7 @@ impl Nmi {
         }
     }
 
+    /// Enables the NMI.
     pub fn enable() {
         let mut controller = Self::new();
 
@@ -24,6 +26,7 @@ impl Nmi {
         controller.command.write(current_status);
     }
 
+    /// Disables the NMI.
     pub fn disable() {
         let mut controller = Self::new();
 
