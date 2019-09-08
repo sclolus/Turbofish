@@ -33,10 +33,10 @@ impl From<ext2::Inode> for InodeData {
         InodeData {
             //TODO: check if we can put the right types here
             id: Default::default(),
-            link_number: inode_ext2.nbr_hard_links as i32,
+            link_number: inode_ext2.nbr_hard_links,
             access_mode: inode_ext2.type_and_perm,
-            uid: inode_ext2.user_id as u32,
-            gid: inode_ext2.group_id as u32,
+            uid: inode_ext2.user_id,
+            gid: inode_ext2.group_id,
             atime: inode_ext2.last_access_time,
             mtime: inode_ext2.last_modification_time,
             ctime: inode_ext2.last_access_time,
