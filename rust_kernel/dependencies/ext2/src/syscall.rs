@@ -120,11 +120,19 @@ impl Ext2Filesystem {
         //TODO: use mode
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let inode = Inode::new(mode | FileType::DIRECTORY);
+        let mut inode = Inode::new(mode | FileType::DIRECTORY);
+        //TODO: check that
+        inode.nbr_hard_links = 3;
+
         self.disk.write_struct(inode_addr, &inode)?;
         let mut new_entry =
             DirectoryEntry::new(filename, DirectoryEntryType::Directory, inode_nbr)?;
         self.push_entry(parent_inode_nbr, &mut new_entry)?;
+
+        let mut point = DirectoryEntry::new(".", DirectoryEntryType::Directory, inode_nbr)?;
+        let mut point_point = DirectoryEntry::new("..", DirectoryEntryType::Directory, inode_nbr)?;
+        self.push_entry(inode_nbr, &mut point)?;
+        self.push_entry(inode_nbr, &mut point_point)?;
         Ok((new_entry, inode))
     }
 

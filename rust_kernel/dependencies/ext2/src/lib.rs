@@ -379,34 +379,35 @@ impl Ext2Filesystem {
     ) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(parent_inode_nbr)?;
         // Get the last entry of the Directory
-        let (mut entry, offset) = self
-            .iter_entries(parent_inode_nbr)?
-            .last()
-            .expect("directory contains no entries");
-        let offset = offset as u64;
+        match self.iter_entries(parent_inode_nbr)?.last() {
+            Some((mut entry, offset)) => {
+                let offset = offset as u64;
 
-        let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
-        // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry)?;
-        let entry_size = entry.size() as u64;
+                let entry_addr = self.inode_data((&mut inode, inode_addr), offset).unwrap();
+                // debug_assert_eq!(self.disk.read_struct::<DirectoryEntry>(entry_addr), entry)?;
+                let entry_size = entry.size() as u64;
 
-        let new_offset = {
-            let new_offset = align_next(offset + entry_size, 4);
-            // if we do not cross a Block
-            if self.to_block(new_offset) == self.to_block(new_offset + new_entry.size() as u64)
-        // and the block is already allocated
-            && self.inode_data((&mut inode, inode_addr), new_offset).is_ok()
-            //self.to_block( as u32) == self.to_block(offset)
-            {
-                new_offset
-            } else {
-                align_next(offset + entry_size, self.block_size as u64)
+                let new_offset = {
+                    let new_offset = align_next(offset + entry_size, 4);
+                    // if we do not cross a Block
+                    if self.to_block(new_offset) == self.to_block(new_offset + new_entry.size() as u64)
+                    // and the block is already allocated
+                        && self.inode_data((&mut inode, inode_addr), new_offset).is_ok()
+                    //self.to_block( as u32) == self.to_block(offset)
+                    {
+                        new_offset
+                    } else {
+                        align_next(offset + entry_size, self.block_size as u64)
+                    }
+                };
+                /* Update previous entry size */
+                entry.set_size((new_offset - offset) as u16);
+                entry.write_on_disk(entry_addr, &mut self.disk)?;
+
+                self.set_as_last_entry((&mut inode, inode_addr), (new_entry, new_offset as u32))
             }
-        };
-        /* Update previous entry size */
-        entry.set_size((new_offset - offset) as u16);
-        entry.write_on_disk(entry_addr, &mut self.disk)?;
-
-        self.set_as_last_entry((&mut inode, inode_addr), (new_entry, new_offset as u32))
+            None => self.set_as_last_entry((&mut inode, inode_addr), (new_entry, 0 as u32)),
+        }
     }
 
     /// find the directory entry a offset file.curr_offset
