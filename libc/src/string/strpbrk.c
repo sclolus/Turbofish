@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 
 /*
@@ -5,6 +6,7 @@
  */
 char *strpbrk(const char *s, const char *accept)
 {
+	TRACE
 	s += strcspn(s, accept);
 	return *s ? (char *)s : NULL;
 }

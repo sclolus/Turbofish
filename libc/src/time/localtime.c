@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <time.h>
 #include <stdint.h>
 #include <assert.h>
@@ -60,6 +61,7 @@ static struct tm TM;
 
 static time_t	get_month_from_yday(time_t yday)
 {
+	TRACE
 	assert(yday < 367);
 	const uint32_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
@@ -76,6 +78,7 @@ static time_t	get_month_from_yday(time_t yday)
 /// We could make those two functions generic and stuff.
 static time_t	get_day_of_month_from_yday(time_t yday)
 {
+	TRACE
 	assert(yday < 367);
 	const uint32_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
@@ -94,6 +97,7 @@ static time_t	get_day_of_month_from_yday(time_t yday)
 // The `month` parameter confirming to the struct tm format ranges from 0 to 11.
 static time_t	zeller_congruence(time_t day_of_month, time_t month, time_t year)
 {
+	TRACE
 	month++;
 	if (month == 1)
 	{
@@ -128,6 +132,7 @@ static time_t	zeller_congruence(time_t day_of_month, time_t month, time_t year)
 
 struct tm *localtime(const time_t *timer)
 {
+	TRACE
 	time_t t = *timer;
 
 	time_t years_from_bc =  t / (3600 * 24 * 365) + 1970;

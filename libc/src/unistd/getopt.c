@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
@@ -58,6 +59,7 @@ static void	error(uint32_t n, char **str) {
 
 static int32_t	getopt_done(const int argc, char *const argv[], uint64_t *index)
 {
+	TRACE
 	if (optreset)
 	{
 		*index = 1;
@@ -73,6 +75,7 @@ static int32_t	getopt_done(const int argc, char *const argv[], uint64_t *index)
 
 static void		getopt_err(const char opt_char, const int error_type)
 {
+	TRACE
 	if (!opterr)
 		return ;
 	if (error_type == GETOPT_ERR_ILLEGAL_OPTION)
@@ -88,6 +91,7 @@ static void		getopt_err(const char opt_char, const int error_type)
 static int		getopt_argument(const int argc, char *const argv[]
 								, uint64_t *index, const char *opt_char)
 {
+	TRACE
 	if (!argv[optind][*index + 1])
 	{
 		if (optind + 1 >= argc)
@@ -108,6 +112,7 @@ static int		getopt_argument(const int argc, char *const argv[]
 
 int				getopt(int argc, char *const argv[], const char *optstring)
 {
+	TRACE
 	static uint64_t		index = 1;
 	char			*opt_char;
 

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <custom.h>
@@ -37,6 +38,7 @@
 
 int fgetc(FILE *stream)
 {
+	TRACE
 	if (stream->eof) {
 		return EOF;
 	}

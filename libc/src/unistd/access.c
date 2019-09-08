@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -22,6 +23,7 @@
 /// granted to any user.
 int access(const char *path, int amode)
 {
+	TRACE
 	int ret = _user_syscall(ACCESS, 2, path, amode);
 	set_errno_and_return(ret);
 }

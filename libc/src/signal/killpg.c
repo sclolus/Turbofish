@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -8,6 +9,7 @@
  */
 int killpg(pid_t pgrp, int sig)
 {
+	TRACE
 	if (pgrp > 1) {
 		return kill(-pgrp, sig);
 	} else {

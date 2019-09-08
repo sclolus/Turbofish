@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <errno.h>
 
@@ -38,6 +39,7 @@ static const char *signal_str[] = {
 
 char *strsignal(int signum)
 {
+	TRACE
 	if (signum < 0 || signum > 31) {
 		errno = EINVAL;
 		return "Unknown signal";

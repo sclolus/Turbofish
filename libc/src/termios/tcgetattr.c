@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <termios.h>
 #include <errno.h>
 #include <user_syscall.h>

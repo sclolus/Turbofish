@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -9,6 +10,7 @@
 
 int chdir(const char *path)
 {
+	TRACE
 	int ret = _user_syscall(CHDIR, 1, path);
 	set_errno_and_return(ret);
 }

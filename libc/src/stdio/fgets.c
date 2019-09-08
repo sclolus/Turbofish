@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 
 /*
@@ -5,6 +6,7 @@
  */
 char    *fgets(char *restrict s, int n, FILE *restrict stream)
 {
+	TRACE
 	if (n == 0) { // I guess this is not an error.
 		return s;
 	}

@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 void	*memchr(const void *s, int c, size_t n)
 {
+	TRACE
 	unsigned char *s1;
 
 	s1 = (unsigned char *)s;

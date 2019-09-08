@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <errno.h>
 
@@ -6,6 +7,7 @@
  */
 int pause(void)
 {
+	TRACE
 	int ret = _user_syscall(PAUSE, 0);
 	/*
 	 * pause() returns only when a signal was caught and the signal-catching function returned.

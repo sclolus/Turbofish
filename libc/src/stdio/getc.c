@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -38,5 +39,6 @@
 # warning "thread-safety for getc hasn't been implemented yet."
 int getc(FILE *stream)
 {
+	TRACE
 	return fgetc(stream);
 }

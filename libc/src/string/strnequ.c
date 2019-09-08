@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 int	strnequ(char const *s1, char const *s2, size_t n)
 {
+	TRACE
 	size_t i;
 
 	i = 0;

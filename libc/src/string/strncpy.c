@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 char	*strncpy(char *dst, const char *src, size_t len)
 {
+	TRACE
 	size_t i;
 
 	i = 0;

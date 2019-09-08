@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <signal.h>
 #include <errno.h>
 

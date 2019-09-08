@@ -1,11 +1,14 @@
+#include <ltrace.h>
 #include <locale.h>
 #include <stddef.h>
 
 #warning SETLOCALE FUNCTION MUST BE DEFINED
+#include <ltrace.h>
 #include <custom.h>
 
 char *setlocale(int category, const char *locale)
 {
+	TRACE
 	DUMMY
 	(void)category;
 	(void)locale;
@@ -16,6 +19,7 @@ char *setlocale(int category, const char *locale)
 
 char *bindtextdomain(const char *domainname, const char *dirname)
 {
+	TRACE
 	DUMMY
 	(void)domainname;
 	(void)dirname;
@@ -26,6 +30,7 @@ char *bindtextdomain(const char *domainname, const char *dirname)
 
 char *textdomain(const char *domainname)
 {
+	TRACE
 	DUMMY
 	(void)domainname;
 	return NULL;

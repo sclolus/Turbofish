@@ -1,12 +1,15 @@
+#include <ltrace.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <user_syscall.h>
 
 #warning "NOT IMPLEMENTED"
+#include <ltrace.h>
 #include <custom.h>
 
 int fcntl(int fildes, int cmd, ...)
 {
+	TRACE
 	DUMMY
 	va_list ap;
 	int arg = 0;

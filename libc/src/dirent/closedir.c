@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 
 int closedir(DIR *dirp)
 {
+	TRACE
 	if (munmap(dirp->array, dirp->length * sizeof(struct dirent)) < 0) {
 		return -1;
 	}

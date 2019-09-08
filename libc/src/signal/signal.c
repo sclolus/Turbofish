@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <signal.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 sighandler_t signal(int signum, sighandler_t handler)
 {
+	TRACE
 	int ret = _user_syscall(SIGNAL, 2, signum, handler);
 	/*
 	 * signal() returns the previous value of the signal handler, or SIG_ERR on error.

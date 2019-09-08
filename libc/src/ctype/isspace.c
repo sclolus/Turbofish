@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <ctype.h>
 
 int isspace(int c)
 {
+	TRACE
 	if (c == ' ' ||
 	    c == '\f' ||
 	    c == '\n' ||

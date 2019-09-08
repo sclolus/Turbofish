@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 
 static char *__strtok(char *, const char *, char **);
@@ -8,6 +9,7 @@ static char *__strtok(char *, const char *, char **);
 
 char *strtok(char *s, const char *delim)
 {
+	TRACE
 	static char *olds;
 
 	return __strtok(s, delim, &olds);
@@ -15,6 +17,7 @@ char *strtok(char *s, const char *delim)
 
 char *strtok_r(char *s, const char *delim, char **save_ptr)
 {
+	TRACE
 	return __strtok(s, delim, save_ptr);
 }
 
@@ -32,6 +35,7 @@ char *strtok_r(char *s, const char *delim, char **save_ptr)
  */
 static char *__strtok(char *s, const char *delim, char **save_ptr)
 {
+	TRACE
 	char *end;
 
 	if (s == NULL)

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <signal.h>
 #include <user_syscall.h>
 
@@ -6,6 +7,7 @@
 
 uid_t getuid(void)
 {
+	TRACE
 	/*
 	 * This function is always successful.
 	 */

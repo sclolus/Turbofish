@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 pid_t fork()
 {
+	TRACE
 	int ret = _user_syscall(FORK, 0);
 	/*
 	 * On success, the PID of the child process is returned in the parent,

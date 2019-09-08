@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 unsigned int sleep(unsigned int seconds)
 {
+	TRACE
 	struct timespec input;
 	struct timespec output; /* no initialised first, setted by sys_libc */
 
@@ -34,6 +36,7 @@ unsigned int sleep(unsigned int seconds)
  */
 int usleep(useconds_t usec)
 {
+	TRACE
 	struct timespec input;
 	struct timespec output; /* no initialised first, setted by sys_libc */
 

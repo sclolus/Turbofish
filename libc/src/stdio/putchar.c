@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 
 /*
@@ -5,5 +6,6 @@
  */
 int putchar(int c)
 {
+	TRACE
 	return (int)write(1, &c, 1);
 }

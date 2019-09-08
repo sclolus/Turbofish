@@ -15,7 +15,9 @@
 /* If you consider tuning this algorithm, you should consult first:
    Engineering a sort function; Jon Bentley and M. Douglas McIlroy;
    Software - Practice and Experience; Vol. 23 (11), 1249-1265, 1993.  */
-/* #include <alloca.h> */
+/* 
+#include <alloca.h> */
+#include <ltrace.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,6 +75,7 @@ void
 qsort (void *const pbase, size_t total_elems, size_t size,
 	   int (*cmp)(const void *, const void *))
 {
+	TRACE
 	char *base_ptr = (char *) pbase;
 	const size_t max_thresh = MAX_THRESH * size;
 	if (total_elems == 0)

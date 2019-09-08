@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <time.h>
 #include <stdio.h>
 
@@ -10,6 +11,7 @@
 
 char *asctime(const struct tm *timeptr)
 {
+	TRACE
     static char wday_name[7][3] = {
         "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
     };

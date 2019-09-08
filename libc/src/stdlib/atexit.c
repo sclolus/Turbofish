@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdlib.h>
 
 #define ATEXIT_MAX 64
@@ -25,6 +26,7 @@ static size_t ATEXIT_FUNCS_INDEX = 0;
 /// shall return a non-zero value.
 int atexit(void(*f)(void))
 {
+	TRACE
 
 	if (ATEXIT_FUNCS_INDEX < ATEXIT_MAX) {
 		ATEXIT_FUNCS[ATEXIT_FUNCS_INDEX] = f;
@@ -37,6 +39,7 @@ int atexit(void(*f)(void))
 
 void execute_atexit_handlers()
 {
+	TRACE
 	while(1) {
 		if (ATEXIT_FUNCS_INDEX == 0) {
 			return ;

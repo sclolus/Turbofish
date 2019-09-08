@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 
@@ -6,5 +7,6 @@
 
 uid_t geteuid(void)
 {
+	TRACE
 	return (uid_t)_user_syscall(GETEUID, 0);
 }

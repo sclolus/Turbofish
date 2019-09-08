@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <grp.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@ struct s_gid {
 
 static int f_comp(struct group *ref, void *other)
 {
+	TRACE
 	gid_t gid  = ((struct s_gid *)other)->gid;
 	if (gid == ref->gr_gid) {
 		return 0;
@@ -30,6 +32,7 @@ static int f_comp(struct group *ref, void *other)
  */
 struct group *getgrgid(gid_t gid)
 {
+	TRACE
 	struct s_gid s_gid;
 
 	s_gid.gid = gid;
@@ -38,6 +41,7 @@ struct group *getgrgid(gid_t gid)
 
 void print_group(struct group *group)
 {
+	TRACE
 	printf("%s:%s:%u\n", group->gr_name,
 	       group->gr_passwd,
 	       group->gr_gid);
@@ -52,6 +56,7 @@ void print_group(struct group *group)
 
 void free_group(struct group *group)
 {
+	TRACE
 	free(group->gr_name);
 	free(group->gr_passwd);
 	free_array((void **)group->gr_mem);
@@ -59,6 +64,7 @@ void free_group(struct group *group)
 
 struct group *getgr_common(void *cmp, int f_comp(struct group *ref, void *cmp))
 {
+	TRACE
 	static struct group static_area = {0};
 
 	struct group **a = (struct group **)parse_2d_file("/etc/group", '\n', ':', sizeof(struct group), &f_get_group);
@@ -92,6 +98,7 @@ struct group *getgr_common(void *cmp, int f_comp(struct group *ref, void *cmp))
 
 int f_get_group(char **fields, void *_group)
 {
+	TRACE
 	struct group *group = _group;
 
 	uint32_t n_fields = array_size((void **)fields);

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <time.h>
 #include <custom.h>
 
@@ -7,6 +8,7 @@ static struct tm TM;
 
 struct tm *gmtime(const time_t *timep)
 {
+	TRACE
 	DUMMY
 	(void)timep;
 	TM.tm_sec   = 0; // Seconds [0,60].

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <signal.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 int kill(pid_t pid, int sig)
 {
+	TRACE
 	int ret = _user_syscall(KILL, 2, pid, sig);
 	/*
 	 * On success (at least one signal was sent), zero is returned.

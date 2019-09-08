@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 char	*strnstr(const char *big, const char *little, size_t len)
 {
+	TRACE
 	size_t i;
 
 	i = strlen(little);

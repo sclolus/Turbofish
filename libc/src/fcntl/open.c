@@ -1,9 +1,11 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <fcntl.h>
 #include <errno.h>
 
 static int vaarg_open(const char *path, int oflag, va_list ap)
 {
+	TRACE
 	int arg;
 
 	// Get new file stats if found a new file
@@ -26,6 +28,7 @@ static int vaarg_open(const char *path, int oflag, va_list ap)
  */
 int open(const char *path, int oflag, ...)
 {
+	TRACE
 	va_list ap;
 	va_start(ap, oflag);
 	int n = vaarg_open(path, oflag, ap);
@@ -35,6 +38,7 @@ int open(const char *path, int oflag, ...)
 
 int open64(const char *path, int oflag, ...)
 {
+	TRACE
 	va_list ap;
 	va_start(ap, oflag);
 	int n = vaarg_open(path, oflag, ap);

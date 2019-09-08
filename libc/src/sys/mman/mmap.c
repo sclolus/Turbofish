@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/mman.h>
 #include <stdio.h>
@@ -15,6 +16,7 @@ struct mmap_struct {
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
+	TRACE
 	struct mmap_struct s = {
 		addr = addr,
 		length = length,

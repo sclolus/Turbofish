@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <pwd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@ struct s_uid {
 
 static int f_comp(struct passwd *ref, void *other)
 {
+	TRACE
 	uid_t uid = ((struct s_uid *)other)->uid;
 	if (uid == ref->pw_uid) {
 		return 0;
@@ -30,6 +32,7 @@ static int f_comp(struct passwd *ref, void *other)
  */
 struct passwd *getpwuid(uid_t uid)
 {
+	TRACE
 	struct s_uid s_uid;
 
 	s_uid.uid = uid;
@@ -38,6 +41,7 @@ struct passwd *getpwuid(uid_t uid)
 
 struct passwd *getpw_common(void *cmp, int f_comp(struct passwd *ref, void *cmp))
 {
+	TRACE
 	static struct passwd static_area = {0};
 
 	struct passwd **a = (struct passwd **)parse_2d_file("/etc/passwd", '\n', ':', sizeof(struct passwd), &f_get_passwd);
@@ -72,6 +76,7 @@ struct passwd *getpw_common(void *cmp, int f_comp(struct passwd *ref, void *cmp)
 
 int f_get_passwd(char **fields, void *_pentry)
 {
+	TRACE
 	struct passwd *pentry = _pentry;
 
 	uint32_t n_fields = array_size((void **)fields);
@@ -94,6 +99,7 @@ int f_get_passwd(char **fields, void *_pentry)
 
 void free_passwd(struct passwd *pentry)
 {
+	TRACE
 	free(pentry->pw_name);
 	free(pentry->pw_passwd);
 	free(pentry->pw_dir);
@@ -103,6 +109,7 @@ void free_passwd(struct passwd *pentry)
 
 void print_passwd(struct passwd *pentry)
 {
+	TRACE
 	char	*pw_name = pentry->pw_name ?: "";
 	char	*pw_passwd = pentry->pw_passwd ?: "";
 	char	*pw_dir = pentry->pw_dir ?: "";

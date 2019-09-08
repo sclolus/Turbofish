@@ -82,6 +82,7 @@
 // respectively, depending on whether or not the AT_SYMLINK_NOFOLLOW
 // bit is set in flag.
 
+#include <ltrace.h>
 #include <sys/stat.h>
 
 #include <user_syscall.h>
@@ -95,6 +96,7 @@
  */
 int fstat(int fd, struct stat *restrict stat)
 {
+	TRACE
 	int ret = _user_syscall(FSTAT, 2, fd, stat);
 
 	/*
@@ -108,5 +110,6 @@ int fstat(int fd, struct stat *restrict stat)
  */
 int fstat64(int fd, struct stat64 *restrict stat)
 {
+	TRACE
 	return fstat(fd, (struct stat *restrict )stat);
 }

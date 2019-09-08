@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 int	strncmp(const char *s1, const char *s2, size_t n)
 {
+	TRACE
 	size_t i;
 
 	i = 0;

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -15,6 +16,7 @@ extern char **environ;
 
 int          execl(const char *path, const char *arg0, ...)
 {
+	TRACE
 	va_list	ap;
 	char	**argv;
 

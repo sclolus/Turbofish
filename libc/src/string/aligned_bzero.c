@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 
 /*
@@ -6,6 +7,7 @@
 
 void	aligned_bzero(void *s, size_t n)
 {
+	TRACE
 	unsigned int *dst;
 
 	dst = (unsigned int *)s;

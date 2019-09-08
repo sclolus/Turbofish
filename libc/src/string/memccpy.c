@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 void	*memccpy(void *restrict dst, const void *restrict src, int c, size_t n)
 {
+	TRACE
 	size_t		i;
 	unsigned char	*src1;
 	unsigned char	*dst1;

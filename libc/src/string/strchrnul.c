@@ -1,9 +1,11 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdlib.h>
 
 /* Find the first occurrence of C in S or the final NUL byte.  */
 char *strchrnul(const char *s, int c_in)
 {
+	TRACE
 	const unsigned char *char_ptr;
 	const unsigned long int *longword_ptr;
 	unsigned long int longword, magic_bits, charmask;

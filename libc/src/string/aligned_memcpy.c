@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -10,6 +11,7 @@ void	*aligned_memcpy(
 	const void *restrict src,
 	size_t n)
 {
+	TRACE
 	uint32_t *src1;
 	uint32_t *dst1;
 

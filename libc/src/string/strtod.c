@@ -12,6 +12,7 @@
  * RCS: @(#) $Id: strtod.c,v 1.1.1.4 2003/03/06 00:09:04 landonf Exp $
  */
 
+#include <ltrace.h>
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
@@ -72,6 +73,7 @@ const char *string;		/* A decimal ASCII floating-point number,
 char **endPtr;		/* If non-NULL, store terminating character's
 					 * address here. */
 {
+	TRACE
 	int sign, expSign = false;
 	double fraction, dblExp, *d;
 	register const char *p;

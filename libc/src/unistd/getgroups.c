@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -23,6 +24,7 @@
 
 int getgroups(int gidsetsize, gid_t grouplist[])
 {
+	TRACE
 	int ret = _user_syscall(GETGROUPS, 2, gidsetsize, grouplist);
 	set_errno_and_return(ret);
 }

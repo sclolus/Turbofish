@@ -1,9 +1,11 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
 
 int dup(int oldfd)
 {
+	TRACE
 	if (oldfd < 0) {
 		errno = EBADF;
 		return -1;

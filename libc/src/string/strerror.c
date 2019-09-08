@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <errno.h>
 
@@ -8,6 +9,7 @@ const char *err_str = "Invalid Errnum";
  */
 char *strerror(int errnum)
 {
+	TRACE
 	if (errnum < 0 || errnum >= sys_nerr) {
 		errno = EINVAL;
 		return (char *)err_str;

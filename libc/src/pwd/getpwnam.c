@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <pwd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@ void free_passwd(struct passwd *pentry);
 
 static int f_comp(struct passwd *ref, void *other)
 {
+	TRACE
 	return strcmp((char *)other, ref->pw_name);
 }
 
@@ -21,5 +23,6 @@ static int f_comp(struct passwd *ref, void *other)
  */
 struct passwd *getpwnam(const char *name)
 {
+	TRACE
 	return getpw_common((void *)name, &f_comp);
 }

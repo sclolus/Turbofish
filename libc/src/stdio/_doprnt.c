@@ -1,7 +1,4 @@
-//#include <config.h>
-//#include <ansidecl.h>
-//#include <safe-ctype.h>
-
+#include <ltrace.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -49,6 +46,7 @@
 int
 _doprnt(const char *format, va_list ap, FILE *stream)
 {
+	TRACE
   const char * ptr = format;
   char specifier[128];
   int total_printed = 0;

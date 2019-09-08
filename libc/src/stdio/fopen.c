@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -34,6 +35,7 @@ static const struct _flags flags[NBR_COMB_FLAGS] = {
  */
 FILE *fopen(const char *restrict pathname, const char *restrict mode)
 {
+	TRACE
 	if (pathname == NULL || mode == NULL) {
 		errno = EINVAL;
 		return NULL;

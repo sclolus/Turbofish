@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <sys/stat.h>
 #include <user_syscall.h>
 
@@ -24,6 +25,7 @@
 
 mode_t umask(mode_t cmask)
 {
+	TRACE
 	//umask() shall not fail.
 	return _user_syscall(UMASK, 1, cmask);
 }

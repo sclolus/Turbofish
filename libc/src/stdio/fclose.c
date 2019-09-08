@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
  */
 int fclose(FILE *stream)
 {
+	TRACE
 	int fd = stream->fd;
 
 	/*

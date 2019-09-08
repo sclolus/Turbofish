@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -9,6 +10,7 @@
 //// pointed to by list.
 int setgroups(size_t size, const gid_t *list)
 {
+	TRACE
 	int ret = _user_syscall(SETGROUPS, 2, size, list);
 	set_errno_and_return(ret);
 }
