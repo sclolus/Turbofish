@@ -88,6 +88,8 @@ fclean:
 	make -C $(KERNEL_DIRECTORY) fclean
 
 	sudo rm -rvf system
+	rm -rvf build_coreutils
+	rm -rvf build_dash
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
 
@@ -119,3 +121,8 @@ bindgen:
 	make -C libc re
 	make -C libc install
 	cd rust_kernel/dependencies/libc_binding && rm src/libc.rs && make && cargo build
+
+unix:
+	./install_dash.sh
+	./install_coreutils.sh
+	make

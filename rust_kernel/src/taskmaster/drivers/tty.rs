@@ -1,15 +1,13 @@
 //! This file contains all the stuff about TTY
 
-use super::SysResult;
-
 use super::IpcResult;
-use super::Mode;
+use super::SysResult;
 
 use super::{get_file_op_uid, Driver, FileOperation};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, Pid};
+use libc_binding::{termios, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
@@ -34,8 +32,8 @@ impl TtyFileOperation {
 
 /// Main Trait implementation of TtyFileOperation
 impl FileOperation for TtyFileOperation {
-    fn register(&mut self, _access_mode: Mode) {}
-    fn unregister(&mut self, _access_mode: Mode) {}
+    fn register(&mut self, _flags: OpenFlags) {}
+    fn unregister(&mut self, _flags: OpenFlags) {}
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let read_result = unsafe {
             TERMINAL
@@ -127,7 +125,10 @@ impl TtyDevice {
 
 /// Driver trait implementation of TtyDevice
 impl Driver for TtyDevice {
-    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+    fn open(
+        &mut self,
+        _flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let controlling_terminal = self.operation.lock().controlling_terminal;
         let file_op_uid = self.operation.lock().file_op_uid;
         unsafe {

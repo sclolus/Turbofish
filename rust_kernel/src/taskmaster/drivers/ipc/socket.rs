@@ -4,7 +4,8 @@ use super::SysResult;
 
 use super::FileOperation;
 use super::IpcResult;
-use super::Mode;
+
+use libc_binding::OpenFlags;
 
 /// This structure represents a FileOperation of type Socket
 #[derive(Debug, Default)]
@@ -19,10 +20,10 @@ impl Socket {
 
 /// Main Trait implementation
 impl FileOperation for Socket {
-    fn register(&mut self, _access_mode: Mode) {
+    fn register(&mut self, _flags: OpenFlags) {
         unimplemented!();
     }
-    fn unregister(&mut self, _access_mode: Mode) {
+    fn unregister(&mut self, _flags: OpenFlags) {
         unimplemented!();
     }
     fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {

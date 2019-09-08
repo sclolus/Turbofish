@@ -66,6 +66,8 @@ impl Ext2fs {
                 builder.set_directory();
             } else if direntry.header.type_indicator == DirectoryEntryType::RegularFile {
                 builder.set_regular();
+            } else if direntry.header.type_indicator == DirectoryEntryType::Fifo {
+                builder.set_fifo();
             }
             builder.build()
         };

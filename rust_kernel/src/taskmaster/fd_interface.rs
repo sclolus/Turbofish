@@ -11,7 +11,7 @@ use core::convert::TryFrom;
 
 use libc_binding::{Errno, FileType, OpenFlags};
 
-use super::drivers::ipc::{Fifo, Pipe, Socket};
+use super::drivers::ipc::{Pipe, Socket};
 use alloc::sync::Arc;
 
 use fallible_collections::btree::BTreeMap;
@@ -65,11 +65,11 @@ impl FileDescriptorInterface {
         let file_operator = VFS.lock().open(cwd, creds, path, flags, mode)?;
         match file_operator {
             IpcResult::Done(file_operator) => {
-                let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
+                let fd = self.insert_user_fd(flags, file_operator)?;
                 Ok(IpcResult::Done(fd))
             }
             IpcResult::Wait(file_operator, file_op_uid) => {
-                let fd = self.insert_user_fd(Mode::ReadWrite, file_operator)?;
+                let fd = self.insert_user_fd(flags, file_operator)?;
                 Ok(IpcResult::Wait(fd, file_op_uid))
             }
         }
@@ -104,9 +104,9 @@ impl FileDescriptorInterface {
         let pipe = Arc::try_new(DeadMutex::new(Pipe::new()))?;
         let cloned_pipe = pipe.clone();
 
-        let input_fd = self.insert_user_fd(Mode::ReadOnly, pipe)?;
+        let input_fd = self.insert_user_fd(OpenFlags::O_RDONLY, pipe)?;
         let output_fd = self
-            .insert_user_fd(Mode::WriteOnly, cloned_pipe)
+            .insert_user_fd(OpenFlags::O_WRONLY, cloned_pipe)
             .map_err(|e| {
                 let _r = self.user_fd_list.remove(&input_fd);
                 e
@@ -150,12 +150,12 @@ impl FileDescriptorInterface {
     /// return value: User File Descriptor index
     fn insert_user_fd(
         &mut self,
-        mode: Mode,
+        flags: OpenFlags,
         file_operation: Arc<DeadMutex<dyn FileOperation>>,
     ) -> SysResult<Fd> {
         let user_fd = self.get_lower_fd_value(0).ok_or::<Errno>(Errno::EMFILE)?;
         self.user_fd_list
-            .try_insert(user_fd, FileDescriptor::new(mode, file_operation))?;
+            .try_insert(user_fd, FileDescriptor::new(flags, file_operation))?;
         Ok(user_fd)
     }
 
@@ -177,27 +177,13 @@ impl FileDescriptorInterface {
         }
     }
 
-    // TODO: This function may be trashed in the furure
-    /// Open a Fifo. Block until the fifo is not open in two directions.
-    #[allow(dead_code)]
-    pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
-        if access_mode == Mode::ReadWrite {
-            return Err(Errno::EACCES);
-        }
-
-        let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
-        let fd = self.insert_user_fd(access_mode, fifo)?;
-
-        Ok(IpcResult::Done(fd))
-    }
-
     // TODO: This function may be trashed in the future
     /// Open a Socket
     /// The socket type must be pass as parameter
     #[allow(dead_code)]
-    pub fn open_socket(&mut self, access_mode: Mode) -> SysResult<Fd> {
+    pub fn open_socket(&mut self, flags: OpenFlags) -> SysResult<Fd> {
         let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
-        let fd = self.insert_user_fd(access_mode, socket)?;
+        let fd = self.insert_user_fd(flags, socket)?;
 
         Ok(fd)
     }
@@ -214,7 +200,7 @@ impl Drop for FileDescriptorInterface {
 /// We can normally clone the Arc
 #[derive(Debug)]
 struct FileDescriptor {
-    access_mode: Mode,
+    flags: OpenFlags,
     file_operation: Arc<DeadMutex<dyn FileOperation>>,
 }
 
@@ -223,9 +209,9 @@ use alloc::collections::CollectionAllocErr;
 /// TryClone Boilerplate. The ref counter of the FileOperation must be incremented when Cloning
 impl TryClone for FileDescriptor {
     fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
-        self.file_operation.lock().register(self.access_mode);
+        self.file_operation.lock().register(self.flags);
         Ok(Self {
-            access_mode: self.access_mode,
+            flags: self.flags.clone(),
             file_operation: self.file_operation.clone(),
         })
     }
@@ -234,10 +220,10 @@ impl TryClone for FileDescriptor {
 /// Standard implementation of an user File Descriptor
 impl FileDescriptor {
     /// When a new FileDescriptor is invoqued, Increment reference
-    fn new(access_mode: Mode, file_operation: Arc<DeadMutex<dyn FileOperation>>) -> Self {
-        file_operation.lock().register(access_mode);
+    fn new(flags: OpenFlags, file_operation: Arc<DeadMutex<dyn FileOperation>>) -> Self {
+        file_operation.lock().register(flags);
         Self {
-            access_mode,
+            flags,
             file_operation,
         }
     }
@@ -246,14 +232,22 @@ impl FileDescriptor {
 /// Drop boilerplate for an FileDescriptor structure. Decremente reference
 impl Drop for FileDescriptor {
     fn drop(&mut self) {
-        self.file_operation.lock().unregister(self.access_mode);
+        self.file_operation.lock().unregister(self.flags);
     }
 }
 
-/// The Access Mode of the File Descriptor
-#[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-pub enum Mode {
-    ReadOnly,
-    WriteOnly,
-    ReadWrite,
+/*
+// TODO: This function may be trashed in the furure
+/// Open a Fifo. Block until the fifo is not open in two directions.
+#[allow(dead_code)]
+pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
+    if access_mode == Mode::ReadWrite {
+        return Err(Errno::EACCES);
+    }
+
+    let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
+    let fd = self.insert_user_fd(access_mode, fifo)?;
+
+    Ok(IpcResult::Done(fd))
 }
+*/

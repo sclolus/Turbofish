@@ -1,7 +1,7 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
 use super::{InodeId, VFS};
 use alloc::sync::Arc;
-use libc_binding::{off_t, stat, Errno, Whence};
+use libc_binding::{off_t, stat, Errno, OpenFlags, Whence};
 use sync::DeadMutex;
 
 /// a driver of an ext2 file
@@ -17,7 +17,10 @@ impl Ext2DriverFile {
 }
 
 impl Driver for Ext2DriverFile {
-    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+    fn open(
+        &mut self,
+        _flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         Ok(IpcResult::Done(Arc::new(DeadMutex::new(
             Ext2FileOperation::new(self.inode_id),
         ))))
