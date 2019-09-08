@@ -6,6 +6,7 @@ use alloc::collections::CollectionAllocErr;
 macro_rules! impl_try_clone {
     ($($e: ty),*) => {
         $(impl TryClone for $e {
+            #[inline(always)]
             fn try_clone(&self) -> Result<Self, CollectionAllocErr>
             where
                 Self: core::marker::Sized,
