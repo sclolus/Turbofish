@@ -41,19 +41,21 @@ pub enum Channel {
     Secondary,
 }
 
-/// Physical region descriptor
+/// Physical region descriptor (size 8)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 struct PrdEntry {
     /// addr cannot cross 64K
     addr: Phys,
+    /// size of the prd entry: A byte count of 0 means 64K
     size: u16,
     /// if set indicate that it is the last entry in the prdt
     is_end: u16,
 }
 
+/// Alignement = sizeof(struct PrdEntry) * Udma::NBR_DMA_ENTRIES <- Cannot cross a 64k boundary (size 8 * 16 = 128)
+/// The PRDT must be uint32_t aligned, contiguous in physical memory, and cannot cross a 64K boundary.
 #[derive(Debug, Clone)]
-// Alignement = sizeof(struct PrdEntry) * Udma::NBR_DMA_ENTRIES <- Cannot cross a 64k boundary
 #[repr(align(128))]
 struct Prdt([PrdEntry; Udma::NBR_DMA_ENTRIES]);
 
@@ -101,11 +103,12 @@ impl Udma {
     /// Number of PRD chunk Per PRDT
     pub const NBR_DMA_ENTRIES: usize = 16;
 
-    /// Size of a PRD entries
+    /// Size of a PRD entries (eq to 64K)
     pub const PRD_SIZE: usize = 1 << 16;
 
     /// Init all UDMA channels
     pub fn init(mut bus_mastered_register: u16, channel: Channel) -> Self {
+        // The data buffers cannot cross a 64K boundary
         let mut memory = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
         let mut prdt = Box::new(Prdt::new());
 
@@ -119,10 +122,8 @@ impl Udma {
             .unwrap()
             .0;
 
-        eprintln!(
-            "Physical PRDT address = {:X?}",
-            physical_prdt_address as u32
-        );
+        // Check if physical_prdt_address is 'self' aligned and so cannot cross a 64k boundary
+        assert!(physical_prdt_address % core::mem::size_of::<Prdt>() == 0);
 
         // Set the IO/PORT on Bus master register with physical DMA PRDT Address
         Pio::<u32>::new(bus_mastered_register + Self::DMA_PRDT_ADDR)
@@ -137,8 +138,6 @@ impl Udma {
                     .enable_irq(pic_8259::Irq::SecondaryATAChannel),
             }
         }
-
-        // dbg_hex!(prdt.as_mut());
 
         Self {
             memory,
@@ -210,9 +209,11 @@ impl Udma {
 fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
     for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
         let addr = get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap();
+        // Check if data buffers are 64K aligned
+        assert!(addr.0 & 0xffff == 0);
         *prd = PrdEntry {
             addr,
-            size: 1 << 15,
+            size: 0,
             is_end: 0,
         }
     }

@@ -26,7 +26,6 @@ pub static mut IDE_ATA_CONTROLLER: Option<IdeAtaController> = None;
 pub unsafe fn init() -> AtaResult<()> {
     IDE_ATA_CONTROLLER = IdeAtaController::new();
 
-    // println!("{:#X?}", IDE_ATA_CONTROLLER);
     if let Some(d) = IDE_ATA_CONTROLLER.as_mut() {
         if let Ok(drive) = d.select_drive(Rank::Primary(Hierarchy::Master)) {
             log::info!("Selecting drive: {:#X?}", drive);
@@ -60,7 +59,6 @@ struct Drive {
     sector_capacity: NbrSectors,
     udma_support: u16,
     rank: Rank,
-    //udma: Option<Udma>,
 }
 
 /// Since data are copied into DMA for read, DmaIo copy DMA buff into buf address passed
@@ -108,7 +106,6 @@ impl IdeAtaController {
 
         // Become the BUS MASTER, it is very important on QEMU since it does not do it for us (give little tempos)
         PIT0.lock().sleep(Duration::from_millis(40));
-
         pci.set_command(PciCommand::BUS_MASTER, true, pci_location);
 
         PIT0.lock().sleep(Duration::from_millis(40));
@@ -143,64 +140,84 @@ impl IdeAtaController {
         // DMA port is contained inside BAR 4 of the PCI device
         let dma_port = pci.bar4 as u16;
 
-        // Construct all objects
-        Some(Self {
-            primary_master: Drive::identify(
-                Rank::Primary(Hierarchy::Master),
-                primary_base_register,
-                primary_control_register,
-            )
-            .map(|s| {
-                log::info!("IDE {:?} detected", Rank::Primary(Hierarchy::Master));
-                s
-            }),
-            secondary_master: Drive::identify(
-                Rank::Secondary(Hierarchy::Master),
-                secondary_base_register,
-                secondary_control_register,
-            )
-            .map(|s| {
-                log::info!("IDE {:?} detected", Rank::Secondary(Hierarchy::Master));
-                s
-            }),
-            primary_slave: Drive::identify(
-                Rank::Primary(Hierarchy::Slave),
-                primary_base_register,
-                primary_control_register,
-            )
-            .map(|s| {
-                log::info!("IDE {:?} detected", Rank::Primary(Hierarchy::Slave));
-                s
-            }),
-            secondary_slave: Drive::identify(
-                Rank::Secondary(Hierarchy::Slave),
-                secondary_base_register,
-                secondary_control_register,
-            )
-            .map(|s| {
-                log::info!("IDE {:?} detected", Rank::Secondary(Hierarchy::Slave));
-                s
-            }),
-            selected_drive: None,
-            pci_location,
-            pci,
-            // TODO: UDMA IRQ does not work at all: Set PioTransfert instead
-            // operating_mode: OperatingMode::PioTransfert,
-            // udma_capable: false,
-            // udma_primary: None,
-            // udma_secondary: None,
-            operating_mode: OperatingMode::UdmaTransfert,
-            udma_capable: true,
-            udma_primary: if dma_port != 0 {
-                Some(Udma::init(dma_port, Channel::Primary))
-            } else {
-                None
-            },
-            udma_secondary: if dma_port != 0 {
+        let primary_master = Drive::identify(
+            Rank::Primary(Hierarchy::Master),
+            primary_base_register,
+            primary_control_register,
+        )
+        .map(|s| {
+            log::info!("ide {:?} detected", Rank::Primary(Hierarchy::Master));
+            s
+        });
+
+        let primary_slave = Drive::identify(
+            Rank::Primary(Hierarchy::Slave),
+            primary_base_register,
+            primary_control_register,
+        )
+        .map(|s| {
+            log::info!("ide {:?} detected", Rank::Primary(Hierarchy::Slave));
+            s
+        });
+
+        // Create primary DMA channel if devices was found
+        let udma_primary = if (primary_master.is_some() || primary_slave.is_some()) && dma_port != 0
+        {
+            log::info!("Initialize of IDE-UDMA on Primary Channel");
+            Some(Udma::init(dma_port, Channel::Primary))
+        } else {
+            None
+        };
+
+        let secondary_master = Drive::identify(
+            Rank::Secondary(Hierarchy::Master),
+            secondary_base_register,
+            secondary_control_register,
+        )
+        .map(|s| {
+            log::info!("ide {:?} detected", Rank::Secondary(Hierarchy::Master));
+            s
+        });
+
+        let secondary_slave = Drive::identify(
+            Rank::Secondary(Hierarchy::Slave),
+            secondary_base_register,
+            secondary_control_register,
+        )
+        .map(|s| {
+            log::info!("ide {:?} detected", Rank::Secondary(Hierarchy::Slave));
+            s
+        });
+
+        // Create secondary DMA channel if devices was found
+        let udma_secondary =
+            if (secondary_master.is_some() || secondary_slave.is_some()) && dma_port != 0 {
+                log::info!("Initialize of IDE-UDMA on Secondary Channel");
                 Some(Udma::init(dma_port + 8, Channel::Secondary))
             } else {
                 None
-            },
+            };
+
+        // Sum DMA capability and set default Operating Mode
+        let (udma_capable, operating_mode) = if udma_primary.is_some() || udma_secondary.is_some() {
+            (true, OperatingMode::UdmaTransfert)
+        } else {
+            (false, OperatingMode::PioTransfert)
+        };
+
+        // Construct all objects
+        Some(Self {
+            primary_master,
+            secondary_master,
+            primary_slave,
+            secondary_slave,
+            selected_drive: None,
+            pci_location,
+            pci,
+            operating_mode,
+            udma_capable,
+            udma_primary,
+            udma_secondary,
         })
     }
 
