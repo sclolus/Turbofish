@@ -6,9 +6,6 @@ use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
 
-// use crate::drivers::PIT0;
-// use core::time::Duration;
-
 /// -------- INITIALISATION -------
 /// Prepare a PRDT in system memory.
 /// Send the physical PRDT address to the Bus Master PRDT Register.
@@ -34,6 +31,7 @@ impl DmaIo for Drive {
             log::error!("DMA request of 0 len");
             return Ok(NbrSectors(0));
         }
+        // Set limit as UDMA buffer max_size for a single read operation
         let sectors_to_read = core::cmp::min(udma.get_memory_amount().into(), nbr_sectors);
 
         udma.set_read(); /* 1 */
@@ -81,6 +79,7 @@ impl DmaIo for Drive {
             log::error!("DMA request of 0 len");
             return Ok(NbrSectors(0));
         }
+        // Set limit as UDMA buffer max_size for a single write operation
         let sectors_to_write = core::cmp::min(udma.get_memory_amount().into(), nbr_sectors);
 
         // Copy the Buf into the UDMA content
@@ -146,7 +145,6 @@ impl Drive {
 
                 if status.contains(DmaStatus::FAILED) {
                     log::error!("An error as occured: {:?}", status);
-                    udma.clear_error();
                     return Err(AtaError::IoError);
                 } else if status.contains(DmaStatus::IRQ) {
                     // If transfer is done udma IRQ bit is set
@@ -195,9 +193,7 @@ unsafe fn primary_hard_disk_interrupt_handler() -> u32 {
 }
 
 #[no_mangle]
-fn secondary_hard_disk_interrupt_handler() -> u32 {
-    /*
-     * Secondary hard drive management is currently not implemented
-     */
-    0
+unsafe fn secondary_hard_disk_interrupt_handler() -> u32 {
+    // TODO: For the moment. turbofish supports only one single disk operation at the same time
+    primary_hard_disk_interrupt_handler()
 }

@@ -119,7 +119,7 @@ impl Udma {
         init_prdt(prdt.as_mut(), &mut memory);
 
         let physical_prdt_address = get_physical_addr(Virt(prdt.as_ref() as *const _ as usize))
-            .unwrap()
+            .expect("Buddy Allocator is bullshit")
             .0;
 
         // Check if physical_prdt_address is 'self' aligned and so cannot cross a 64k boundary
@@ -223,7 +223,8 @@ impl Udma {
 /// Set a unique PRDT
 fn init_prdt(prdt: &mut Prdt, memory_zone: &mut Vec<Vec<u8>>) {
     for (mem, prd) in memory_zone.iter().zip(prdt.0.iter_mut()) {
-        let addr = get_physical_addr(Virt(mem.as_ptr() as usize)).unwrap();
+        let addr =
+            get_physical_addr(Virt(mem.as_ptr() as usize)).expect("Buddy Allocator is bullshit");
         // Check if data buffers are 64K aligned
         assert!(addr.0 & 0xffff == 0);
         *prd = PrdEntry {
