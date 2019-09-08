@@ -36,6 +36,7 @@ SRC_C += DeepThought \
 		access/access \
 		unlink/unlink \
 		unlink/unlink_multiple \
+		unlink/unlink_orphan \
 		umask/umask \
 		dir/mkdir_exist \
 		dir/mkdir \
