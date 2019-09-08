@@ -52,7 +52,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
-	getline getdelim getchar getchar_unlocked fgets fgetc rename \
+	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
 
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
@@ -109,7 +109,7 @@ SRC_C += sched
 VPATH += src/sched
 HEADERS += sched.h
 
-SRC_C += nanosleep localtime time gmtime
+SRC_C += nanosleep localtime time gmtime ctime asctime
 VPATH += src/time
 HEADERS += time.h
 

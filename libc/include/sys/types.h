@@ -61,9 +61,9 @@ typedef long unsigned int size_t;
 //    Used for sizes of objects.
 typedef long int ssize_t;
 //    Used for a count of bytes or an error indication.
-#define suseconds_t int
+typedef unsigned int suseconds_t;
 //    Used for time in microseconds.
-typedef int time_t;
+typedef unsigned int time_t;
 //    Used for time in seconds.
 #define timer_t int
 //    Used for timer ID returned by timer_create().

@@ -1,7 +1,6 @@
 #ifndef __SYS_TIME_H__
 # define __SYS_TIME_H__
 
-//The <sys/time.h> header shall define the timeval structure, which shall include at least the following members:
 
 #include <sys/types.h>
 //The <sys/time.h> header shall define the time_t and suseconds_t types as described in <sys/types.h>.
@@ -12,8 +11,8 @@
 //[OB] [Option Start] The <sys/time.h> header shall define the itimerval structure, which shall include at least the following members:
 
 struct itimerval {
-	struct timeval it_interval;// Timer interval. 
-	struct timeval it_value   ;// Current value. 
+	struct timeval it_interval;// Timer interval.
+	struct timeval it_value   ;// Current value.
 };
 
 //[Option End]

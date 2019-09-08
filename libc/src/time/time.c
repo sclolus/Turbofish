@@ -1,11 +1,18 @@
 #include <time.h>
+#include <sys/time.h>
 #include <custom.h>
+#include <errno.h>
 
-#warning DUMMY IMPLEMENTATION
+time_t time(time_t *tloc)
+{
+	struct timeval	tv;
 
-time_t time(time_t *tloc) {
-	DUMMY
-	(void)tloc;
-	time_t t = 0;
-	return t;
+	if (-1 == gettimeofday(&tv, NULL)) {
+		return (time_t)-1;
+	}
+
+	if (tloc) {
+		*tloc = tv.tv_sec;
+	}
+	return tv.tv_sec;
 }

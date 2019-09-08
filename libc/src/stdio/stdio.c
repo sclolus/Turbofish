@@ -91,8 +91,7 @@ int feof(FILE *stream)
 
 int fflush(FILE *stream)
 {
-	(void)stream;
-	return 0;
+	return (int)stream->eof;
 }
 
 int putc_unlocked(int c, FILE *stream)

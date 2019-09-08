@@ -255,6 +255,7 @@ typedef unsigned int		uintptr_t;
 # else
 #  define SIZE_MAX              (size_t)(~0U)
 # endif
+
 /* # define SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1UL)) */
 
 //

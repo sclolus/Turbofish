@@ -15,15 +15,15 @@
 
 //The <time.h> header shall declare the tm structure, which shall include at least the following members:
 struct tm {
-	int    tm_sec  ;// Seconds [0,60]. 
-	int    tm_min  ;// Minutes [0,59]. 
-	int    tm_hour ;// Hour [0,23]. 
-	int    tm_mday ;// Day of month [1,31]. 
-	int    tm_mon  ;// Month of year [0,11]. 
-	int    tm_year ;// Years since 1900. 
-	int    tm_wday ;// Day of week [0,6] (Sunday =0). 
-	int    tm_yday ;// Day of year [0,365]. 
-	int    tm_isdst;// Daylight Savings flag. 
+	int    tm_sec  ;// Seconds [0,60].
+	int    tm_min  ;// Minutes [0,59].
+	int    tm_hour ;// Hour [0,23].
+	int    tm_mday ;// Day of month [1,31].
+	int    tm_mon  ;// Month of year [0,11].
+	int    tm_year ;// Years since 1900.
+	int    tm_wday ;// Day of week [0,6] (Sunday =0).
+	int    tm_yday ;// Day of year [0,365].
+	int    tm_isdst;// Daylight Savings flag.
 };
 
 //The value of tm_isdst shall be positive if Daylight Savings Time is in effect, 0 if Daylight Savings Time is not in effect, and negative if the information is not available.
@@ -31,15 +31,15 @@ struct tm {
 //[CX] [Option Start] The <time.h> header shall declare the timespec structure, which shall include at least the following members:
 
 struct timespec {
-	time_t  tv_sec   ; // Seconds. 
-	long    tv_nsec  ; // Nanoseconds. 
+	time_t  tv_sec   ; // Seconds.
+	long    tv_nsec  ; // Nanoseconds.
 };
 
 //The <time.h> header shall also declare the itimerspec structure, which shall include at least the following members:
 
 struct itimerspec {
-	struct timespec  it_interval  ; //Timer period. 
-	struct timespec  it_value     ; //Timer expiration. 
+	struct timespec  it_interval  ; //Timer period.
+	struct timespec  it_value     ; //Timer expiration.
 };
 
 //[Option End]
@@ -77,7 +77,7 @@ struct itimerspec {
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 //
 //[OB][Option Start]
-//char      *asctime(const struct tm *);
+char      *asctime(const struct tm *);
 //[Option End]
 //[OB CX][Option Start]
 //char      *asctime_r(const struct tm *restrict, char *restrict);
@@ -94,7 +94,7 @@ struct itimerspec {
 //int        clock_settime(clockid_t, const struct timespec *);
 //[Option End]
 //[OB][Option Start]
-//char      *ctime(const time_t *);
+char      *ctime(const time_t *);
 //[Option End]
 //[OB CX][Option Start]
 //char      *ctime_r(const time_t *, char *);
@@ -125,7 +125,7 @@ int        nanosleep(const struct timespec *, struct timespec *);
 //char      *strptime(const char *restrict, const char *restrict,
 //               struct tm *restrict);
 //[Option End]
-//time_t     time(time_t *);
+time_t     time(time_t *);
 //[CX][Option Start]
 //int        timer_create(clockid_t, struct sigevent *restrict,
 //               timer_t *restrict);

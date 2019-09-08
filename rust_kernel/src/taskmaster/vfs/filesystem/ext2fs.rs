@@ -35,9 +35,9 @@ impl From<ext2::Inode> for InodeData {
             access_mode: inode_ext2.type_and_perm,
             uid: inode_ext2.user_id as u32,
             gid: inode_ext2.group_id as u32,
-            atime: inode_ext2.last_access_time as i32,
-            mtime: inode_ext2.last_modification_time as i32,
-            ctime: inode_ext2.last_access_time as i32,
+            atime: inode_ext2.last_access_time,
+            mtime: inode_ext2.last_modification_time,
+            ctime: inode_ext2.last_access_time,
             size: inode_ext2.get_size(),
         }
     }

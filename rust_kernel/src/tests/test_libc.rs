@@ -1,4 +1,5 @@
 use crate::drivers::pit_8253::OperatingMode;
+use crate::drivers::rtc::Rtc;
 use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
 use crate::interrupts;
 use crate::keyboard::init_keyboard_driver;
@@ -10,7 +11,6 @@ use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
 use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
-use crate::timer::Rtc;
 use crate::watch_dog;
 use core::time::Duration;
 use terminal::uart_16550::UART_16550;

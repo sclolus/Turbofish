@@ -9,6 +9,7 @@
 //The <stdio.h> header shall define the following data types through typedef:
 
 // A non-array type containing all information needed to specify uniquely every position within a file.
+
 typedef size_t fpos_t;
 
 // A structure containing information about a file.
@@ -141,6 +142,7 @@ int      getchar(void);
 int      getc_unlocked(FILE *);
 int      getchar_unlocked(void);
 //TODO: This prototypes conflict with corutils
+
 /* ssize_t  getdelim(char **, size_t *, int, */
 /*              FILE *); */
 /* ssize_t  getline(char **, size_t *, FILE *); */

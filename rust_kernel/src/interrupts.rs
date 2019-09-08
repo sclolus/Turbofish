@@ -2,7 +2,7 @@
 pub mod macros;
 pub mod idt;
 
-pub use self::idt::{Idtr, InterruptTable};
+pub use self::idt::{GateType, IdtGateEntry, Idtr, InterruptTable};
 
 /// Enables interrupts system-wide
 #[inline(always)]

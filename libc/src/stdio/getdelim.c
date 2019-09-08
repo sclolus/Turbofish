@@ -14,7 +14,6 @@
  */
 int  getdelim(char **line, size_t *n, int delim,
 		  FILE *stream)
-
 {
 	unsigned char	del = (unsigned char)delim;
 	size_t		count = 0;
@@ -27,7 +26,8 @@ int  getdelim(char **line, size_t *n, int delim,
 	}
 
 	if (!*line) {
-		char *new_line = malloc(__GETDELIM_MIN_LINE);
+		char	*new_line = malloc(__GETDELIM_MIN_LINE);
+
 		if (!new_line) {
 			errno = ENOMEM;
 			return -1;
@@ -47,6 +47,7 @@ int  getdelim(char **line, size_t *n, int delim,
 			size_t	new_size = count + __GROW;
 			char	*new_line;
 			new_line = realloc(*line, new_size + 1);
+
 			if (!new_line) {
 				errno = ENOMEM;
 				return -1;
@@ -68,7 +69,7 @@ int  getdelim(char **line, size_t *n, int delim,
 	else if (feof(stream) && count == 0) {
 		return -1;
 	}
-	/* return count; */
+
 	return (int)count;
 }
 
