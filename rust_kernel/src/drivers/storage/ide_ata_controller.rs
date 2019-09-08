@@ -4,7 +4,7 @@ pub mod pci_udma;
 pub mod pio_polling;
 
 mod udma;
-pub use udma::{Channel, DmaStatus, Udma};
+pub use udma::{Channel, DmaCommand, DmaStatus, Udma};
 
 use super::{
     BlockIo, DiskResult, IdeControllerProgIf, MassStorageControllerSubClass, NbrSectors,
@@ -69,21 +69,30 @@ pub trait DmaIo {
         nbr_sectors: NbrSectors,
         buf: *mut u8,
         udma: &mut Udma,
-    ) -> AtaResult<()>;
+    ) -> AtaResult<NbrSectors>;
     fn write(
         &self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
         udma: &mut Udma,
-    ) -> AtaResult<()>;
+    ) -> AtaResult<NbrSectors>;
 }
 
 /// When in PIO mode, buff address is passed by pointer and methods read or write on it
 pub trait PioIo {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()>;
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8)
-        -> AtaResult<()>;
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> AtaResult<NbrSectors>;
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> AtaResult<NbrSectors>;
 }
 
 /// Standard port location, if they are different, probe IDE controller in PCI driver
@@ -465,7 +474,7 @@ impl Drive {
         Pio::<u8>::new(command_register + Self::L3_CYLINDER).write(0);
 
         // send the IDENTIFY command (0xEC) to the Command IO port (0x1F7)
-        Pio::<u8>::new(command_register + Self::COMMAND).write(Command::AtaCmdIdentify as u8);
+        Pio::<u8>::new(command_register + Self::COMMAND).write(AtaCommand::AtaCmdIdentify as u8);
 
         // read the Status port (0x1F7). If the value read is 0, the drive does not exist
         if Pio::<u8>::new(command_register + Self::STATUS).read() == 0 {
@@ -711,7 +720,7 @@ bitflags! {
 
 #[allow(dead_code)]
 #[repr(u8)]
-enum Command {
+enum AtaCommand {
     AtaCmdReadPio = 0x20,
     AtaCmdReadPioExt = 0x24,
     AtaCmdReadDma = 0xC8,

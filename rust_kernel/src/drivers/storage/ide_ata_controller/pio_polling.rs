@@ -4,7 +4,7 @@ use super::Drive;
 use super::PioIo;
 use super::SECTOR_SIZE;
 use super::{check_bounds, AtaError, AtaResult, Capabilities};
-use super::{Command, ErrorRegister, StatusRegister};
+use super::{AtaCommand, ErrorRegister, StatusRegister};
 use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
@@ -13,7 +13,12 @@ use core::slice;
 
 impl PioIo for Drive {
     /// drive specific READ method
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()> {
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> AtaResult<NbrSectors> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
@@ -31,12 +36,12 @@ impl PioIo for Drive {
                     // Send the "READ SECTORS EXT" command (0x24) to port 0x1F7: outb(0x1F7, 0x24)
                     self.wait_available();
                     Pio::<u8>::new(self.command_register + Self::COMMAND)
-                        .write(Command::AtaCmdReadPioExt as u8);
+                        .write(AtaCommand::AtaCmdReadPioExt as u8);
 
                     // Read n sectors and put them into buf
                     self.read_sectors(sectors_to_read, chunk.as_mut_ptr())?;
                 }
-                Ok(())
+                Ok(nbr_sectors)
             }
             Capabilities::Lba28 => {
                 // Do disk operation for each 'chunk_size' bytes
@@ -50,12 +55,12 @@ impl PioIo for Drive {
                     // Send the "READ SECTORS" command (0x20) to port 0x1F7: outb(0x1F7, 0x20)
                     self.wait_available();
                     Pio::<u8>::new(self.command_register + Self::COMMAND)
-                        .write(Command::AtaCmdReadPio as u8);
+                        .write(AtaCommand::AtaCmdReadPio as u8);
 
                     // Read n sectors and put them into buf
                     self.read_sectors(sectors_to_read, chunk.as_mut_ptr())?;
                 }
-                Ok(())
+                Ok(nbr_sectors)
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Chs => Err(AtaError::NotSupported),
@@ -68,7 +73,7 @@ impl PioIo for Drive {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> AtaResult<()> {
+    ) -> AtaResult<NbrSectors> {
         check_bounds(start_sector, nbr_sectors, self.sector_capacity)?;
 
         let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
@@ -86,7 +91,7 @@ impl PioIo for Drive {
                     // Send the "WRITE SECTORS EXT" command (0x34) to port 0x1F7: outb(0x1F7, 0x34)
                     self.wait_available();
                     Pio::<u8>::new(self.command_register + Self::COMMAND)
-                        .write(Command::AtaCmdWritePioExt as u8);
+                        .write(AtaCommand::AtaCmdWritePioExt as u8);
 
                     // Write n sectors from buf to disk
                     self.write_sectors(sectors_to_write, chunk.as_ptr())?;
@@ -94,7 +99,7 @@ impl PioIo for Drive {
                     // Fflush write cache
                     self.fflush_write_cache();
                 }
-                Ok(())
+                Ok(nbr_sectors)
             }
             Capabilities::Lba28 => {
                 // Do disk operation for each 'chunk_size' bytes (32k max for lba28)
@@ -108,7 +113,7 @@ impl PioIo for Drive {
                     // Send the "WRITE SECTORS" command (0x30) to port 0x1F7: outb(0x1F7, 0x30)
                     self.wait_available();
                     Pio::<u8>::new(self.command_register + Self::COMMAND)
-                        .write(Command::AtaCmdWritePio as u8);
+                        .write(AtaCommand::AtaCmdWritePio as u8);
 
                     // Write n sectors from buf to disk
                     self.write_sectors(sectors_to_write, chunk.as_ptr())?;
@@ -116,7 +121,7 @@ impl PioIo for Drive {
                     // Fflush write cache
                     self.fflush_write_cache();
                 }
-                Ok(())
+                Ok(nbr_sectors)
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Chs => Err(AtaError::NotSupported),
@@ -189,9 +194,9 @@ impl Drive {
     fn fflush_write_cache(&self) {
         match self.capabilities {
             Capabilities::Lba28 => Pio::<u8>::new(self.command_register + Self::COMMAND)
-                .write(Command::AtaCmdCacheFlush as u8),
+                .write(AtaCommand::AtaCmdCacheFlush as u8),
             Capabilities::Lba48 => Pio::<u8>::new(self.command_register + Self::COMMAND)
-                .write(Command::AtaCmdCacheFlushExt as u8),
+                .write(AtaCommand::AtaCmdCacheFlushExt as u8),
             _ => {}
         };
 

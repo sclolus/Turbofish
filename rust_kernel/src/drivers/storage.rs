@@ -6,6 +6,8 @@ use super::pci::{
 };
 
 pub const SECTOR_SIZE: usize = 512;
+pub const SECTOR_MASK: usize = 0x1ff;
+pub const SECTOR_SHIFT: usize = 9;
 
 pub mod ide_ata_controller;
 use ide_ata_controller::AtaError;
@@ -87,7 +89,6 @@ pub fn init(multiboot_info: &MultibootInfo) {
     // Initialize IDE controller
     unsafe {
         ide_ata_controller::init().expect("ide_ata_controller init failed");
-        //println!("{:#X?}", IDE_ATA_CONTROLLER.as_mut().unwrap());
     }
 
     // Initialize BIOS controller

@@ -1,13 +1,13 @@
 //! This module contains udma read/write methods on IDE drive. See https://wiki.osdev.org/ATA/ATAPI_using_DMA
 
-use super::{AtaError, AtaResult, Capabilities, DmaIo, Drive, StatusRegister};
-use super::{Command, DmaStatus, Udma};
+use super::{AtaCommand, AtaError, AtaResult, Capabilities, Drive, ErrorRegister, StatusRegister};
+use super::{DmaCommand, DmaIo, DmaStatus, Udma};
 use super::{NbrSectors, Sector};
 
 use io::{Io, Pio};
 
-use crate::drivers::PIT0;
-use core::time::Duration;
+// use crate::drivers::PIT0;
+// use core::time::Duration;
 
 /// -------- INITIALISATION -------
 /// Prepare a PRDT in system memory.
@@ -29,29 +29,28 @@ impl DmaIo for Drive {
         nbr_sectors: NbrSectors,
         buf: *mut u8,
         udma: &mut Udma,
-    ) -> AtaResult<()> {
+    ) -> AtaResult<NbrSectors> {
         if nbr_sectors == NbrSectors(0) {
             log::error!("DMA request of 0 len");
-            return Ok(());
+            return Ok(NbrSectors(0));
         }
-        // Use this size like a limit
-        // let prd_size = NbrSectors::from(Udma::PRD_SIZE / 2);
+        let sectors_to_read = core::cmp::min(udma.get_memory_amount().into(), nbr_sectors);
 
         udma.set_read(); /* 1 */
         udma.clear_error(); /* 2 */
         udma.clear_interrupt(); /* 2 */
 
-        /* 3, 4 */
+        /* 3, 4, 5 */
         match self.capabilities {
             Capabilities::Lba48 => {
-                self.init_lba48(start_sector, nbr_sectors);
+                self.init_lba48(start_sector, sectors_to_read);
                 Pio::<u8>::new(self.command_register + Self::COMMAND)
-                    .write(Command::AtaCmdReadDmaExt as u8);
+                    .write(AtaCommand::AtaCmdReadDmaExt as u8);
             }
             Capabilities::Lba28 => {
-                self.init_lba28(start_sector, nbr_sectors);
+                self.init_lba28(start_sector, sectors_to_read);
                 Pio::<u8>::new(self.command_register + Self::COMMAND)
-                    .write(Command::AtaCmdReadDma as u8);
+                    .write(AtaCommand::AtaCmdReadDma as u8);
             }
             // I experiment a lack of documentation about this mode
             Capabilities::Chs => {
@@ -59,7 +58,12 @@ impl DmaIo for Drive {
             }
         }
 
-        /* 5 */
+        // Set the current bus mastered register for the global IRQ handler
+        unsafe {
+            CURRENT_BUS_MASTERED_REGISTER = udma.get_bus_mastered_register();
+        }
+
+        /* 6 */
         udma.start_transfer();
 
         /*
@@ -81,6 +85,7 @@ impl DmaIo for Drive {
 
                 if status.contains(DmaStatus::FAILED) {
                     log::error!("An error as occured: {:?}", status);
+                    udma.clear_error();
                     return Err(AtaError::IoError);
                 } else if status.contains(DmaStatus::IRQ) {
                     // If transfer is done udma IRQ bit is set
@@ -91,18 +96,28 @@ impl DmaIo for Drive {
 
         // Get the disk status to determine if the transfert was Okay,
         // It is also a necessary thing to avoid the blocking of IRQ /* 8 */
-        let _disk_status = Pio::<u8>::new(self.command_register + Self::STATUS).read();
-        // TODO: Check status
+        let disk_status = Pio::<u8>::new(self.command_register + Self::STATUS).read();
+        if StatusRegister::from_bits_truncate(disk_status).contains(StatusRegister::ERR) {
+            log::error!(
+                "unexpected disk error after DMA transfert: {:?}",
+                ErrorRegister::from_bits_truncate(
+                    Pio::<u8>::new(self.command_register + Self::ERROR).read()
+                )
+            );
+            return Err(AtaError::IoError);
+        }
 
-        unsafe {
-            core::ptr::copy(udma.get_memory()[0].as_ptr(), buf, nbr_sectors.into());
+        // Copy the UDMA content into the Buf
+        let s = unsafe { core::slice::from_raw_parts_mut(buf, sectors_to_read.into()) };
+        for (i, chunk) in s.chunks_mut(Udma::PRD_SIZE.into()).enumerate() {
+            chunk.copy_from_slice(&udma.get_memory()[i][0..chunk.len()]);
         }
 
         // Set IRQ bit to 0
-        Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).write(0b100);
+        udma.clear_irq_bit();
 
         // udma.reset_command();
-        Ok(())
+        Ok(sectors_to_read)
     }
 
     /// drive specific WRITE method
@@ -112,7 +127,7 @@ impl DmaIo for Drive {
         _nbr_sectors: NbrSectors,
         _buf: *const u8,
         _udma: &mut Udma,
-    ) -> AtaResult<()> {
+    ) -> AtaResult<NbrSectors> {
         unimplemented!();
         // Ok(())
     }
@@ -120,27 +135,27 @@ impl DmaIo for Drive {
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
+static mut CURRENT_BUS_MASTERED_REGISTER: u16 = 0;
 static TRIGGER: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
-fn primary_hard_disk_interrupt_handler() -> u32 {
-    //eprintln!("{}", "primary IRQ");
-
+unsafe fn primary_hard_disk_interrupt_handler() -> u32 {
     TRIGGER.store(true, Ordering::Relaxed);
 
-    // let s = Pio::<u8>::new(0xC040 + Udma::DMA_STATUS).read();
-    // Pio::<u8>::new(0xc040 + Udma::DMA_COMMAND).write(s & !udma::DmaCommand::ONOFF.bits());
-
-    // It could be logical to check here is the IRQ flag is set and unset IRQ bit ?
+    // It could be good to check here is the IRQ flag is set and unset IRQ bit ?
 
     /*
-     * Eq to udma.stop_transfer() since we cannot have access to `self` and a extern handler /* 6 */
+     * Eq to udma.stop_transfer() since we cannot have access to `self` and a extern handler /* 7 */
      */
-    Pio::<u8>::new(0xC040 + Udma::DMA_COMMAND).write(0);
+    Pio::<u8>::new(CURRENT_BUS_MASTERED_REGISTER + Udma::DMA_COMMAND)
+        .write(!DmaCommand::ONOFF.bits());
     0
 }
 
 #[no_mangle]
 fn secondary_hard_disk_interrupt_handler() -> u32 {
+    /*
+     * Secondary hard drive management is currently not implemented
+     */
     0
 }

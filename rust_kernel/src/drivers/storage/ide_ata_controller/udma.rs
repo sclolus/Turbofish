@@ -147,6 +147,16 @@ impl Udma {
         }
     }
 
+    /// Get the I/O port of the bus_mastered_register
+    pub fn get_bus_mastered_register(&self) -> u16 {
+        self.bus_mastered_register
+    }
+
+    /// Get the total size of the PRD(s)
+    pub fn get_memory_amount(&self) -> usize {
+        self.memory.len() * self.memory[0].len()
+    }
+
     /// Get the complete memory DMA zone
     pub fn get_memory(&mut self) -> &mut Vec<Vec<u8>> {
         &mut self.memory
@@ -202,6 +212,11 @@ impl Udma {
         DmaStatus {
             bits: Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read(),
         }
+    }
+
+    /// Clear the IRQ bit in status
+    pub fn clear_irq_bit(&self) {
+        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(0b100);
     }
 }
 
