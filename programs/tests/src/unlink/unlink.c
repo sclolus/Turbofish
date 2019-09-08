@@ -39,7 +39,7 @@ static void create_and_unlink() {
 }
 
 int main() {
-	for (int i = 0; i < 40; i++) {
+	for (int i = 0; i < 4; i++) {
 		create_and_unlink();
 	}
 }
