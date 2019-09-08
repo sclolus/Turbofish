@@ -10,14 +10,15 @@ use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{gid_t, mode_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR};
+use libc_binding::{dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
     FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
-    ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR,
-    PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
-    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
-    STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, WAITPID, WRITE,
+    ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
+    OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS,
+    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK,
+    WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -75,6 +76,12 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             ),
             CHDIR => log::info!("chdir({:#?})", ebx as *const c_char),
             CHMOD => log::info!("chmod({:#?})", ebx as *const libc_binding::c_char),
+            MKNOD => log::info!(
+                "mknod({:#?}, {:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as mode_t,
+                edx as dev_t,
+            ),
             STAT => log::info!(
                 "stat(filename: {:?}, buf: {:#X?})",
                 ebx as *const c_char,
@@ -136,6 +143,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SIGSUSPEND => log::info!("sigsuspend({:#?})", ebx as *const sigset_t),
             GETGROUPS => log::info!("getgroups({:#?}, {:#?})", ebx as i32, ecx as *mut gid_t),
             SETGROUPS => log::info!("setgroups({:#?}, {:#?})", ebx as i32, ecx as *const gid_t),
+            SYMLINK => log::info!(
+                "symlink({:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as *const libc_binding::c_char,
+            ),
             LSTAT => log::info!("lstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
             REBOOT => log::info!("reboot()"),
             MMAP => unsafe { log::info!("mmap({:#?})", *(ebx as *const MmapArgStruct)) },
