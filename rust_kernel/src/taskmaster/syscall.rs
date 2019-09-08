@@ -23,7 +23,7 @@ use libc_binding::{
     MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
     SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
     SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
-    UNLINK, WAITPID, WRITE,
+    UMASK, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -111,6 +111,9 @@ use mprotect::{sys_mprotect, MmapProt};
 
 mod munmap;
 use munmap::sys_munmap;
+
+mod umask;
+use umask::sys_umask;
 
 mod reboot;
 use reboot::sys_reboot;
@@ -321,6 +324,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),
+        UMASK => sys_umask(ebx as mode_t),
         SOCKETCALL => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
         CLONE => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
         MPROTECT => sys_mprotect(
