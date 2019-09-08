@@ -647,6 +647,9 @@ bitflags! {
         const OTHER_READ_PERMISSION = S_IROTH as u16;
         const OTHER_WRITE_PERMISSION = S_IWOTH as u16;
         const OTHER_EXECUTE_PERMISSION = S_IXOTH as u16;
+        const PERMISSIONS_MASK = S_IRWXU as u16 |
+                                 S_IRWXG as u16 |
+                                 S_IRWXO as u16;
     }
 }
 

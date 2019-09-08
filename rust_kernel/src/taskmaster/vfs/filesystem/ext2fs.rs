@@ -1,10 +1,12 @@
 use super::FileSystem;
 use super::{DirectoryEntry, FileSystemId, InodeData, VfsResult};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
+use crate::drivers::rtc::CURRENT_UNIX_TIME;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::default::Default;
+use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use libc_binding::{gid_t, uid_t, FileType, OpenFlags};
 
@@ -128,10 +130,12 @@ impl FileSystem for Ext2fs {
         flags: OpenFlags,
         mode: FileType,
     ) -> VfsResult<(DirectoryEntry, InodeData)> {
-        let (direntry, inode) = self
-            .ext2
-            .lock()
-            .create(filename, parent_inode_nbr, flags, mode)?;
+        // We probably should provide it as a parameter to this method.
+        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
+        let (direntry, inode) =
+            self.ext2
+                .lock()
+                .create(filename, parent_inode_nbr, flags, timestamp, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
     fn write(&mut self, inode_number: u32, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {

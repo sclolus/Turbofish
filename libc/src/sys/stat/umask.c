@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <user_syscall.h>
 
 // The umask() function shall set the file mode creation mask of the
 // process to cmask and return the previous value of the mask. Only
@@ -21,12 +22,8 @@
 // Bit positions that are set in cmask are cleared in the mode of the
 // created file.
 
-#warning NOT IMPLEMENTED
-#include <custom.h>
-
 mode_t umask(mode_t cmask)
 {
-	DUMMY
-	(void)cmask;
-	return 42;
+	//umask() shall not fail.
+	return _user_syscall(UMASK, 1, cmask);
 }

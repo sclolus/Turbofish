@@ -10,7 +10,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use fallible_collections::{btree::BTreeMap, FallibleVec, TryClone};
-use libc_binding::{gid_t, uid_t, Signum};
+use libc_binding::{gid_t, mode_t, uid_t, Signum};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
@@ -88,6 +88,9 @@ pub struct ThreadGroup {
     next_tid: Tid,
     /// Current job status of a process
     pub job: Job,
+
+    /// The umask of the process: The actived bits in it are disabled in all file creating operations.
+    pub umask: mode_t,
 }
 
 #[derive(Debug, TryClone)]
@@ -131,6 +134,7 @@ impl ThreadGroup {
             next_tid: 1,
             pgid,
             job: Job::new(),
+            umask: 0,
         })
     }
 
@@ -184,6 +188,7 @@ impl ThreadGroup {
             pgid: self.pgid,
             next_tid: 1,
             job: Job::new(),
+            umask: 0,
         })
     }
 
