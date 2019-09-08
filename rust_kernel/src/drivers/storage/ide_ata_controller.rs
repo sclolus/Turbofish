@@ -271,7 +271,7 @@ impl BlockIo for IdeAtaController {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
@@ -289,21 +289,20 @@ impl BlockIo for IdeAtaController {
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
+        Ok(match (self.operating_mode, udma, self.udma_capable) {
             (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                DmaIo::read(d, start_sector, nbr_sectors, buf, udma)?;
+                DmaIo::read(d, start_sector, nbr_sectors, buf, udma)?
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
-                PioIo::read(d, start_sector, nbr_sectors, buf)?;
+                PioIo::read(d, start_sector, nbr_sectors, buf)?
             }
             other => panic!(
                 "this device should not be in that configuration, {:?}",
                 other
             ),
-        }
-        Ok(())
+        })
     }
 
     /// Write nbr_sectors after start_sector location from the buf
@@ -312,7 +311,7 @@ impl BlockIo for IdeAtaController {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
@@ -330,21 +329,20 @@ impl BlockIo for IdeAtaController {
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
+        Ok(match (self.operating_mode, udma, self.udma_capable) {
             (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                DmaIo::write(d, start_sector, nbr_sectors, buf, udma)?;
+                DmaIo::write(d, start_sector, nbr_sectors, buf, udma)?
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
-                PioIo::write(d, start_sector, nbr_sectors, buf)?;
+                PioIo::write(d, start_sector, nbr_sectors, buf)?
             }
             other => panic!(
                 "this device should not be in that configuration, {:?}",
                 other
             ),
-        }
-        Ok(())
+        })
     }
 }
 

@@ -65,13 +65,13 @@ pub trait BlockIo: Send {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-    ) -> DiskResult<()>;
+    ) -> DiskResult<NbrSectors>;
     fn write(
         &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()>;
+    ) -> DiskResult<NbrSectors>;
 }
 
 pub fn init(multiboot_info: &MultibootInfo) {

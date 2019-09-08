@@ -206,7 +206,7 @@ impl BlockIo for BiosInt13h {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts_mut(buf, nbr_sectors.into()) };
@@ -247,7 +247,7 @@ impl BlockIo for BiosInt13h {
                 *elem = unsafe { *(p.add(i)) };
             }
         }
-        Ok(())
+        Ok(nbr_sectors)
     }
 
     /// Write nbr_sectors after start_sector location from the buf
@@ -256,7 +256,7 @@ impl BlockIo for BiosInt13h {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         check_bounds(start_sector, nbr_sectors, self.nb_sector)?;
 
         let s = unsafe { slice::from_raw_parts(buf, nbr_sectors.into()) };
@@ -299,7 +299,7 @@ impl BlockIo for BiosInt13h {
                 return Err(DiskError::IOError);
             }
         }
-        Ok(())
+        Ok(nbr_sectors)
     }
 }
 

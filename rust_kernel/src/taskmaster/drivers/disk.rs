@@ -51,7 +51,7 @@ impl BlockIo for BiosInt13hInstance {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             BIOS_INT13H
                 .as_mut()
@@ -65,7 +65,7 @@ impl BlockIo for BiosInt13hInstance {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             BIOS_INT13H
                 .as_mut()
@@ -84,7 +84,7 @@ impl BlockIo for IdeAtaInstance {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             IDE_ATA_CONTROLLER
                 .as_mut()
@@ -98,7 +98,7 @@ impl BlockIo for IdeAtaInstance {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             IDE_ATA_CONTROLLER
                 .as_mut()
