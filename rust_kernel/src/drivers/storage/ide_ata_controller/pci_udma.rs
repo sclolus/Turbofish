@@ -12,7 +12,7 @@ use io::{Io, Pio};
 /// ----------------------------------------------- READ / WRITE ------------------------------------------
 /// - 1: Set the direction of the data transfer by setting the Read/Write bit in the Bus Master Command Register.
 /// - 2: Clear the Error and Interrupt bit in the Bus Master Status Register.
-/// - 3: Select the drive. (since to be useless almost on qemu)
+/// - 3: Select the drive. (seems to be almost useless on qemu)
 /// - 4: Send the LBA and sector count to their respective ports.
 /// - 5: Send the DMA transfer command to the ATA controller.
 /// - 6: Set the Start/Stop bit on the Bus Master Command Register.
@@ -165,9 +165,6 @@ impl Drive {
             );
             return Err(AtaError::IoError);
         }
-
-        // Set IRQ bit to 0
-        udma.clear_irq_bit();
 
         // udma.reset_command(); ???
         Ok(())

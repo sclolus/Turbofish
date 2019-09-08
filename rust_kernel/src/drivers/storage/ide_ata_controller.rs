@@ -109,6 +109,18 @@ fn identify(rank: Rank, base_register: u16, control_register: u16) -> Option<Dri
     })
 }
 
+/// Get a UDMA instance
+fn get_udma(channel: Channel, dma_port: u16) -> Option<Udma> {
+    log::info!("Initialize of IDE-UDMA {:?}", channel);
+    match Udma::init(dma_port, channel) {
+        Ok(udma) => Some(udma),
+        Err(e) => {
+            log::error!("{:?}", e);
+            None
+        }
+    }
+}
+
 impl IdeAtaController {
     /// Invocation of a new PioMode-IDE controller
     pub fn new() -> Option<Self> {
@@ -172,8 +184,7 @@ impl IdeAtaController {
         // Create primary DMA channel if devices was found
         let udma_primary = if (primary_master.is_some() || primary_slave.is_some()) && dma_port != 0
         {
-            log::info!("Initialize of IDE-UDMA on Primary Channel");
-            Some(Udma::init(dma_port, Channel::Primary))
+            get_udma(Channel::Primary, dma_port)
         } else {
             None
         };
@@ -193,14 +204,13 @@ impl IdeAtaController {
         // Create secondary DMA channel if devices was found
         let udma_secondary =
             if (secondary_master.is_some() || secondary_slave.is_some()) && dma_port != 0 {
-                log::info!("Initialize of IDE-UDMA on Secondary Channel");
-                Some(Udma::init(dma_port + 8, Channel::Secondary))
+                get_udma(Channel::Secondary, dma_port + 8)
             } else {
                 None
             };
 
         // Sum DMA capability and set default Operating Mode
-        // TODO: We assume that is IDE board is UDMA capable, the connected device is too
+        // TODO: We assume that if IDE board is UDMA capable, the connected device is too
         let (udma_capable, operating_mode) = if udma_primary.is_some() || udma_secondary.is_some() {
             (true, OperatingMode::UdmaTransfert)
         } else {

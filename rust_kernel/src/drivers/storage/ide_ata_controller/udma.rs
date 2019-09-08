@@ -9,8 +9,10 @@ use crate::memory::ffi::get_physical_addr;
 use crate::memory::tools::*;
 
 use alloc::boxed::Box;
-use alloc::vec;
 use alloc::vec::Vec;
+
+use alloc::collections::CollectionAllocErr;
+use fallible_collections::{try_vec, FallibleBox};
 
 /// Global UDMA structure
 #[derive(Clone)]
@@ -107,10 +109,13 @@ impl Udma {
     pub const PRD_SIZE: usize = 1 << 16;
 
     /// Init all UDMA channels
-    pub fn init(mut bus_mastered_register: u16, channel: Channel) -> Self {
+    pub fn init(
+        mut bus_mastered_register: u16,
+        channel: Channel,
+    ) -> core::result::Result<Self, CollectionAllocErr> {
         // The data buffers cannot cross a 64K boundary
-        let mut memory = vec![vec![0; Self::PRD_SIZE]; Self::NBR_DMA_ENTRIES];
-        let mut prdt = Box::new(Prdt::new());
+        let mut memory = try_vec![try_vec![0; Self::PRD_SIZE]?; Self::NBR_DMA_ENTRIES]?;
+        let mut prdt = Box::try_new(Prdt::new())?;
 
         // Qemu quick fix
         bus_mastered_register &= 0xfffe;
@@ -139,12 +144,12 @@ impl Udma {
             }
         }
 
-        Self {
+        Ok(Self {
             memory,
             channel,
             prdt,
             bus_mastered_register,
-        }
+        })
     }
 
     /// Get the I/O port of the bus_mastered_register
@@ -212,11 +217,6 @@ impl Udma {
         DmaStatus {
             bits: Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).read(),
         }
-    }
-
-    /// Clear the IRQ bit in status
-    pub fn clear_irq_bit(&self) {
-        Pio::<u8>::new(self.bus_mastered_register + Self::DMA_STATUS).write(0b100);
     }
 }
 
