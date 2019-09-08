@@ -3,7 +3,7 @@ use super::SysResult;
 
 use libc_binding::{c_char, mode_t};
 
-pub fn sys_mkdir(path: *const c_char, _mode: mode_t) -> SysResult<u32> {
+pub fn sys_mkdir(path: *const c_char, mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -15,6 +15,9 @@ pub fn sys_mkdir(path: *const c_char, _mode: mode_t) -> SysResult<u32> {
 
             v.make_checked_str(path)?
         };
+        let mask = scheduler.current_thread_group().umask;
+        // Mask out the bits of mode which are set in umask.
+        let _mode = mode & !mask;
         unimplemented!()
     })
 }

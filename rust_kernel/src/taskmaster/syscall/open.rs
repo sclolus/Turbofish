@@ -7,7 +7,7 @@ use super::SysResult;
 use libc_binding::{c_char, mode_t, Errno, FileType, OpenFlags};
 
 /// Open a new file descriptor
-pub fn sys_open(filename: *const c_char, flags: u32, mode: mode_t) -> SysResult<u32> {
+pub fn sys_open(filename: *const c_char, flags: u32, mut mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -30,6 +30,11 @@ pub fn sys_open(filename: *const c_char, flags: u32, mode: mode_t) -> SysResult<
             .file_descriptor_interface;
 
         let flags = OpenFlags::from_bits(flags).ok_or(Errno::EINVAL)?;
+
+        let umask = tg.umask;
+        // Mask out the bits of mode which are set in umask.
+        mode &= !umask;
+
         let mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
         match fd_interface.open(cwd, creds, file, flags, mode)? {
             IpcResult::Wait(fd, file_op_uid) => {
