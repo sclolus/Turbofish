@@ -64,7 +64,6 @@ int  getdelim(char **line, size_t *n, int delim,
 	(*line)[count] = '\0';
 
 	if (ferror(stream)) {
-		free(*line);
 		return -1;
 	}
 	else if (feof(stream) && count == 0) {

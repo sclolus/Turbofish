@@ -101,7 +101,7 @@ static time_t	zeller_congruence(time_t day_of_month, time_t month, time_t year)
 		month = 13;
 		year--;
 	} else if (month == 2) {
-		// This algorithm relys on February being equal to 13.
+		// This algorithm relys on February being equal to 14.
 		month = 14;
 		year--;
 	}

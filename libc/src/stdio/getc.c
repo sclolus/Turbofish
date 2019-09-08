@@ -34,28 +34,6 @@
 /// RETURN VALUE
 /// Upon successful completion, fgetc() shall return the next byte from the input stream pointed to by stream. If the end-of-file indicator for the stream is set, or if the stream is at end-of-file, the end-of-file indicator for the stream shall be set and fgetc() shall return EOF. If a read error occurs, the error indicator for the stream shall be set, fgetc() shall return EOF, [CX] [Option Start]  and shall set errno to indicate the error. [Option End]
 
-# warning "thread-safety for fgetc hasn't been implemented yet."
-int fgetc(FILE *stream)
-{
-	if (stream->eof) {
-		return EOF;
-	}
-
-	unsigned char	c;
-	ssize_t ret = read(stream->fd, &c, 1);
-
-	if (ret == -1) {
-		stream->error = true;
-		return EOF;
-	} else if (ret == 0) {
-		stream->eof = true;
-		return EOF;
-	} else {
-		return (int)c;
-	}
-}
-
-
 /// The getc() function shall be equivalent to fgetc, except that if it is implemented as a macro it may evaluate stream more than once, so the argument should never be an expression with side-effects.
 # warning "thread-safety for getc hasn't been implemented yet."
 int getc(FILE *stream)
