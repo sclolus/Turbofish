@@ -29,6 +29,7 @@ int main() {
 		perror("write");
 		exit(1);
 	}
+	lseek(fd, 0, SEEK_SET);
 
 	char r[sizeof(s)];
 	ret = read(fd, r, sizeof(s));

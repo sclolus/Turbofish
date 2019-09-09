@@ -752,7 +752,7 @@ impl VirtualFileSystem {
         let parent_id = entry.parent_id;
 
         self.dcache.remove_entry(entry_id)?;
-        self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+        self.inodes.remove(&inode_id).expect("inode should be here");
 
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");

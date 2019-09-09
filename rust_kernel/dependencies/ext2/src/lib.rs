@@ -12,7 +12,10 @@ pub mod syscall;
 use libc_binding::{Errno, FileType};
 
 mod tools;
-pub use tools::{align_next, align_prev, div_rounded_up, err_if_zero, Block, IoResult};
+pub use tools::{
+    align_next, align_prev, div_rounded_up, err_if_zero, u32_align_next, u32_align_prev, Block,
+    IoResult,
+};
 
 use bit_field::BitField;
 mod header;
@@ -357,7 +360,7 @@ impl Ext2Filesystem {
         let entry_addr = self.inode_data_alloc((inode, inode_addr), entry_offset as u64)?;
 
         // =(the offset to the next block)
-        entry.set_size((align_next(entry_offset + 1, self.block_size) - entry_offset) as u16);
+        entry.set_size((u32_align_next(entry_offset + 1, self.block_size) - entry_offset) as u16);
         entry.write_on_disk(entry_addr, &mut self.disk)?;
         /* Update inode size */
 
@@ -528,7 +531,7 @@ impl Ext2Filesystem {
         err_if_zero({
             let pointer = self.disk.read_struct(pointer_addr)?;
             if alloc && pointer == Block(0) {
-                let new_block = self.alloc_block().ok_or(Errno::ENOMEM)?;
+                let new_block = self.alloc_block().ok_or(Errno::ENOSPC)?;
                 self.disk.write_struct(pointer_addr, &new_block)?;
                 new_block
             } else {
@@ -684,7 +687,7 @@ impl Ext2Filesystem {
         if block_off >= offset_start && block_off < offset_end {
             if alloc && inode.direct_block_pointers[block_off as usize] == Block(0) {
                 inode.direct_block_pointers[block_off as usize] =
-                    self.alloc_block().ok_or(Errno::ENOMEM)?;
+                    self.alloc_block().ok_or(Errno::ENOSPC)?;
                 self.disk.write_struct(inode_addr, inode)?;
             }
             return Ok(self.to_addr(err_if_zero(
@@ -704,7 +707,7 @@ impl Ext2Filesystem {
             let singly_indirect = err_if_zero({
                 if alloc && inode.singly_indirect_block_pointers == Block(0) {
                     inode.singly_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::ENOMEM)?;
+                        self.alloc_block().ok_or(Errno::ENOSPC)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.singly_indirect_block_pointers
@@ -727,7 +730,7 @@ impl Ext2Filesystem {
             let doubly_indirect = err_if_zero({
                 if alloc && inode.doubly_indirect_block_pointers == Block(0) {
                     inode.doubly_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::ENOMEM)?;
+                        self.alloc_block().ok_or(Errno::ENOSPC)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.doubly_indirect_block_pointers
@@ -757,7 +760,7 @@ impl Ext2Filesystem {
             let tripply_indirect = err_if_zero({
                 if alloc && inode.triply_indirect_block_pointers == Block(0) {
                     inode.triply_indirect_block_pointers =
-                        self.alloc_block().ok_or(Errno::ENOMEM)?;
+                        self.alloc_block().ok_or(Errno::ENOSPC)?;
                     self.disk.write_struct(inode_addr, inode)?;
                 }
                 inode.triply_indirect_block_pointers

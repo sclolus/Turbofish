@@ -1,6 +1,5 @@
 use core::ops::{Add, Mul, Sub};
 use libc_binding::Errno;
-use num_traits::Num;
 
 /// The Ext2 file system divides up disk space into logical blocks of contiguous space.
 /// The size of blocks need not be the same size as the sector size of the disk the file system resides on.
@@ -46,39 +45,45 @@ pub fn err_if_zero(x: Block) -> Result<Block, Errno> {
 }
 
 #[inline(always)]
-/// true if the num t is a multiple of on
-pub fn is_aligned_on<T>(t: T, on: T) -> bool
-where
-    T: Copy + Num,
-{
-    t % on == T::zero()
+/// align the num t on the next multiple of on
+pub fn align_prev(t: u64, on: u64) -> u64 {
+    debug_assert!(on.is_power_of_two());
+    if t & (on - 1) == 0 {
+        t
+    } else {
+        t - (t & (on - 1))
+    }
 }
 
 #[inline(always)]
-/// align the num t on the next multiple of on
-pub fn align_next<T>(t: T, on: T) -> T
-where
-    T: Copy + Num,
-{
-    if is_aligned_on(t, on) {
+pub fn align_next(t: u64, on: u64) -> u64 {
+    debug_assert!(on.is_power_of_two());
+    if t & (on - 1) == 0 {
         t
     } else {
-        t + (on - (t % on))
+        t + (on - (t & (on - 1)))
     }
 }
 
 #[inline(always)]
 /// align the num t on the next multiple of on
-pub fn align_prev<T>(t: T, on: T) -> T
-where
-    T: Copy + Num,
-{
-    if is_aligned_on(t, on) {
+pub fn u32_align_prev(t: u32, on: u32) -> u32 {
+    debug_assert!(on.is_power_of_two());
+    if t & (on - 1) == 0 {
         t
     } else {
-        t - (t % on)
+        t - (t & (on - 1))
     }
 }
 
+#[inline(always)]
+pub fn u32_align_next(t: u32, on: u32) -> u32 {
+    debug_assert!(on.is_power_of_two());
+    if t & (on - 1) == 0 {
+        t
+    } else {
+        t + (on - (t & (on - 1)))
+    }
+}
 /// Local Result structure
 pub type IoResult<T> = core::result::Result<T, Errno>;

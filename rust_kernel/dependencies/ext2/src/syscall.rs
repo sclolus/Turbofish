@@ -64,7 +64,7 @@ impl Ext2Filesystem {
     ) -> IoResult<(DirectoryEntry, Inode)> {
         mode |= FileType::REGULAR_FILE;
         let direntry_type = DirectoryEntryType::RegularFile;
-        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new(mode);
 
@@ -118,11 +118,11 @@ impl Ext2Filesystem {
         mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
         //TODO: use mode
-        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new(mode | FileType::DIRECTORY);
         //TODO: check that
-        inode.nbr_hard_links = 3;
+        inode.nbr_hard_links = 2;
 
         self.disk.write_struct(inode_addr, &inode)?;
         let mut new_entry =
@@ -130,7 +130,8 @@ impl Ext2Filesystem {
         self.push_entry(parent_inode_nbr, &mut new_entry)?;
 
         let mut point = DirectoryEntry::new(".", DirectoryEntryType::Directory, inode_nbr)?;
-        let mut point_point = DirectoryEntry::new("..", DirectoryEntryType::Directory, inode_nbr)?;
+        let mut point_point =
+            DirectoryEntry::new("..", DirectoryEntryType::Directory, parent_inode_nbr)?;
         self.push_entry(inode_nbr, &mut point)?;
         self.push_entry(inode_nbr, &mut point_point)?;
         Ok((new_entry, inode))
@@ -143,9 +144,8 @@ impl Ext2Filesystem {
         let inode_nbr = entry.0.get_inode();
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         debug_assert!(inode.is_a_directory());
-        self.free_inode((&mut inode, inode_addr), inode_nbr)
-            .unwrap();
-        self.delete_entry(parent_inode_nbr, entry.1).unwrap();
+        self.free_inode((&mut inode, inode_addr), inode_nbr)?;
+        self.delete_entry(parent_inode_nbr, entry.1)?;
         Ok(())
     }
 
