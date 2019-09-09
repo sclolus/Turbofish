@@ -100,7 +100,7 @@ impl<T> MessageQueue<T> {
 }
 
 /// message queue can contain 50 messages
-const MESSAGE_QUEUE_CAPACITY: usize = 50;
+const MESSAGE_QUEUE_CAPACITY: usize = 5;
 
 lazy_static! {
     /// Global Message queue of the kernel, Written by anybody and
