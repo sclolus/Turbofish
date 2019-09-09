@@ -26,17 +26,21 @@ make -C src sleep
 make -C src hostname
 make -C src pwd
 make -C src ls
-# make -C src chmod
+make -C src chmod
 make -C src cp
 make -C src date
 make -C src dd
-# make -C src df
-# make -C src ln
+make -C src df
+make -C src ln
 make -C src mkdir
-# make -C src mv
-# make -C src ps
+make -C src mv
 make -C src rm
+make -C src touch
 make -C src rmdir
+make -C src env
+make -C src head
+make -C src tail
+make -C src wc
 
 cp -v src/cat $TARGET_DIR
 cp -v src/echo $TARGET_DIR
@@ -46,14 +50,18 @@ cp -v src/hostname $TARGET_DIR
 cp -v src/pwd $TARGET_DIR
 cp -v src/yes $TARGET_DIR
 cp -v src/ls $TARGET_DIR
-# cp -v src/chmod $TARGET_DIR
+cp -v src/chmod $TARGET_DIR
 cp -v src/cp    $TARGET_DIR
 cp -v src/date  $TARGET_DIR
 cp -v src/dd    $TARGET_DIR
-# cp -v src/df    $TARGET_DIR
-# cp -v src/ln    $TARGET_DIR
+cp -v src/df    $TARGET_DIR
+cp -v src/ln    $TARGET_DIR
 cp -v src/mkdir $TARGET_DIR
-# cp -v src/mv    $TARGET_DIR
-# cp -v src/ps    $TARGET_DIR
+cp -v src/mv    $TARGET_DIR
 cp -v src/rm    $TARGET_DIR
+cp -v src/touch $TARGET_DIR
 cp -v src/rmdir $TARGET_DIR
+cp -v src/env $TARGET_DIR
+cp -v src/head $TARGET_DIR
+cp -v src/tail $TARGET_DIR
+cp -v src/wc $TARGET_DIR
