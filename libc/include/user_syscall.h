@@ -25,6 +25,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETUID       24
 #define PAUSE        29
 #define FSTAT        28
+#define UTIME        30
 #define ACCESS       33
 #define KILL         37
 #define RENAME       38

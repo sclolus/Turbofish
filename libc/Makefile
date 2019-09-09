@@ -169,6 +169,10 @@ SRC_C += getpwnam getpwuid
 VPATH += src/pwd
 HEADERS += pwd.h
 
+SRC_C += utime
+VPATH += src/utime
+HEADERS += utime.h
+
 SRC_C += getgrnam getgrgid
 VPATH += src/grp
 HEADERS += grp.h

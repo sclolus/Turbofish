@@ -10,7 +10,7 @@ use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR,
+    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, utimbuf, OpenFlags, Pid, DIR,
 };
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
@@ -19,7 +19,7 @@ use libc_binding::{
     OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS,
     SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
     STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK,
-    WAITPID, WRITE,
+    WAITPID, WRITE, UTIME,
 };
 
 #[allow(dead_code)]
@@ -101,6 +101,11 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             PAUSE => log::info!("pause()"),
             FSTAT => log::info!("fstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
             ACCESS => log::info!("access({:#?}, {:#?})", ebx as *const c_char, ecx as i32),
+            UTIME => log::info!(
+                "utime({:#?}, {:#?})",
+                ebx as *const libc_binding::c_char,
+                ecx as *const utimbuf
+            ),
             KILL => log::info!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
             RENAME => log::info!(
                 "rename(
@@ -226,6 +231,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         GETUID => "getuid",
         PAUSE => "pause",
         FSTAT => "fstat",
+        UTIME => "utime",
         ACCESS => "access",
         KILL => "kill",
         RENAME => "rename",

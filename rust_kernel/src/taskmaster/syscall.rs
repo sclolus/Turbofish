@@ -22,12 +22,12 @@ use libc_binding::{
     MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID,
     SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, WAITPID, WRITE,
+    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, WAITPID, WRITE, UTIME,
 };
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
+use libc_binding::{c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, utimbuf, timezone, uid_t, DIR};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -201,6 +201,8 @@ mod symlink;
 use symlink::sys_symlink;
 mod mknod;
 use mknod::sys_mknod;
+mod utime;
+use utime::sys_utime;
 
 /*
  * These below declarations are IPC related
@@ -283,6 +285,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         PAUSE => sys_pause(),
         FSTAT => sys_fstat(ebx as Fd, ecx as *mut libc_binding::stat),
         ACCESS => sys_access(ebx as *const c_char, ecx as u32),
+        UTIME => sys_utime(ebx as *const libc_binding::c_char, ecx as *const utimbuf),
         KILL => sys_kill(ebx as i32, ecx as u32),
         RENAME => sys_rename(ebx as *const c_char, ecx as *const c_char),
         MKDIR => sys_mkdir(ebx as *const c_char, ecx as mode_t),
