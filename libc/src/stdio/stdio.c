@@ -61,7 +61,11 @@ int fputc(int c, FILE *stream)
  */
 int puts(const char *s)
 {
-	return fputs(s, stdout);
+	if (!(write(STDOUT_FILENO, s, strlen(s)) < 0) && !(write(STDOUT_FILENO, "\n", 1) < 0)) {
+		return 0;
+	} else {
+		return EOF;
+	}
 }
 
 /*
