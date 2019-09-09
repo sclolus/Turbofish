@@ -155,10 +155,10 @@ int getpagesize(void);
 #define	STDERR_FILENO 2
 
 /* File number of stdout; 1. */
-#define STDIN_FILENO 1
+#define STDOUT_FILENO 1
 
 /* File number of stdin; 0. */
-#define STDOUT_FILENO 0
+#define STDIN_FILENO 0
 
 
 

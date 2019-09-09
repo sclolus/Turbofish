@@ -4,32 +4,51 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// The <fcntl.h> header shall define the following symbolic constant for use as the mask for file access modes. The value shall be suitable for use in #if preprocessing directives.
+// The <fcntl.h> header shall define the following symbolic constants for use as the file access modes for open(), openat(), and fcntl(). The values shall be unique, except that O_EXEC and O_SEARCH may have equal values. The values shall be suitable for use in #if preprocessing directives.
 
-//    The <fcntl.h> header shall define the following symbolic constants for the cmd argument used by fcntl(). The values shall be unique and shall be suitable for use in #if preprocessing directives.
+#define O_RDONLY        00000001 // Open for reading only.
+#define O_WRONLY        00000002 // Open for writing only.
+#define O_RDWR          00000004 // Open for reading and writing.
+#define O_EXEC          00000010 // Open for execute only (non-directory files). The result is unspecified if this flag is applied to a directory.
+#define O_SEARCH        00000020 // Open directory for search only. The result is unspecified if this flag is applied to a non-directory file.
+#define O_ACCMODE       00000037 // Mask for file access modes.
+
+// The <fcntl.h> header shall define the following symbolic constants as file creation flags for use in the oflag value to open() and openat(). The values shall be bitwise-distinct and shall be suitable for use in #if preprocessing directives.
+
+#define O_CREAT         00000100 // Create file if it does not exist.
+#define O_EXCL          00000200 // Exclusive use flag.
+#define O_NOCTTY        00000400 // Do not assign controlling terminal.
+
+#define O_TRUNC         00001000 // Truncate flag.
+#define O_APPEND        00002000 // Set append mode.
+#define O_NONBLOCK      00004000 // Non-blocking mode.
+
+#define O_DSYNC         00010000 // [SIO] [Option Start] Write according to synchronized I/O data integrity completion. [Option End]
+#define O_RSYNC         00020000 // [SIO] [Option Start] Synchronized read I/O operations. [Option End]
+#define O_SYNC          00040000 // Write according to synchronized I/O file integrity completion.
+
+#define O_CLOEXEC       00100000 // The FD_CLOEXEC flag associated with the new descriptor shall be set to close the file descriptor upon execution of an exec family function.
+#define O_DIRECTORY     00200000 // Fail if file is a non-directory file.
+#define O_NOFOLLOW      00400000 // Do not follow symbolic links.
+
+// The O_TTY_INIT flag can have the value zero and in this case it need not be bitwise-distinct from the other flags.
+#define O_TTY_INIT	0        // Set the termios structure terminal parameters to a state that provides conforming behavior; see Parameters that Can be Set.
+
+// The <fcntl.h> header shall define the following symbolic constants for the cmd argument used by fcntl(). The values shall be unique and shall be suitable for use in #if preprocessing directives.
 
 // WARN: if you add or change a value, add it also in libc_binding/lib.rs
-#define F_DUPFD 0
-//	Duplicate file descriptor.
-#define F_DUPFD_CLOEXEC 1030
-//	Duplicate file descriptor with the close-on- exec flag FD_CLOEXEC set.
-#define F_GETFD 1
-//	Get file descriptor flags.
-#define F_SETFD 2
-//	Set file descriptor flags.
-#define F_GETFL 3
-//	Get file status flags and file access modes.
-#define F_SETFL 4
-//	Set file status flags.
-#define F_GETLK 5
-//	Get record locking information.
-#define F_SETLK 6
-//	Set record locking information.
-#define F_SETLKW 7
-//	Set record locking information; wait if blocked.
-#define F_GETOWN 9
-//	Get process or process group ID to receive SIGURG signals.
-#define F_SETOWN 8
-	//	Set process or process group ID to receive SIGURG signals.
+#define F_DUPFD 0 // Duplicate file descriptor.
+#define F_DUPFD_CLOEXEC 1030 // Duplicate file descriptor with the close-on- exec flag FD_CLOEXEC set.
+#define F_GETFD 1 // Get file descriptor flags.
+#define F_SETFD 2 // Set file descriptor flags.
+#define F_GETFL 3 // Get file status flags and file access modes.
+#define F_SETFL 4 // Set file status flags.
+#define F_GETLK 5 // Get record locking information.
+#define F_SETLK 6 // Set record locking information.
+#define F_SETLKW 7 // Set record locking information; wait if blocked.
+#define F_SETOWN 8 // Set process or process group ID to receive SIGURG signals.
+#define F_GETOWN 9 // Get process or process group ID to receive SIGURG signals.
 
 //    The <fcntl.h> header shall define the following symbolic constant used for the fcntl() file descriptor flags, which shall be suitable for use in #if preprocessing directives.
 
@@ -47,58 +66,6 @@
 
 //The <fcntl.h> header shall define the values used for l_whence, SEEK_SET, SEEK_CUR, and SEEK_END as described in <stdio.h>.
 #include <stdio.h>
-
-//    The <fcntl.h> header shall define the following symbolic constants as file creation flags for use in the oflag value to open() and openat(). The values shall be bitwise-distinct and shall be suitable for use in #if preprocessing directives.
-
-#define O_CLOEXEC	02000000
-//        The FD_CLOEXEC flag associated with the new descriptor shall be set to close the file descriptor upon execution of an exec family function.
-#define O_CREAT		00000100
-//        Create file if it does not exist.
-#define O_DIRECTORY	0200000
-//        Fail if file is a non-directory file.
-#define O_EXCL		00000200
-//        Exclusive use flag.
-#define O_NOCTTY	00000400
-//        Do not assign controlling terminal.
-#define O_NOFOLLOW	00400000
-//        Do not follow symbolic links.
-#define O_TRUNC		00001000
-//        Truncate flag.
-#define O_TTY_INIT	0
-//        Set the termios structure terminal parameters to a state that provides conforming behavior; see Parameters that Can be Set.
-
-//    The O_TTY_INIT flag can have the value zero and in this case it need not be bitwise-distinct from the other flags.
-
-//    The <fcntl.h> header shall define the following symbolic constants for use as file status flags for open(), openat(), and fcntl(). The values shall be suitable for use in #if preprocessing directives.
-
-#define O_APPEND	00002000
-//        Set append mode.
-#define O_DSYNC		00010000
-//        [SIO] [Option Start] Write according to synchronized I/O data integrity completion. [Option End]
-#define O_NONBLOCK	00004000
-//        Non-blocking mode.
-#define O_RSYNC 42
-//        [SIO] [Option Start] Synchronized read I/O operations. [Option End]
-#define O_SYNC 42
-//        Write according to synchronized I/O file integrity completion.
-
-//    The <fcntl.h> header shall define the following symbolic constant for use as the mask for file access modes. The value shall be suitable for use in #if preprocessing directives.
-
-#define O_ACCMODE	00000003
-//        Mask for file access modes.
-
-//    The <fcntl.h> header shall define the following symbolic constants for use as the file access modes for open(), openat(), and fcntl(). The values shall be unique, except that O_EXEC and O_SEARCH may have equal values. The values shall be suitable for use in #if preprocessing directives.
-
-#define O_EXEC		00000004
-//        Open for execute only (non-directory files). The result is unspecified if this flag is applied to a directory.
-#define O_RDONLY	00000000
-//        Open for reading only.
-#define O_RDWR		00000002
-//        Open for reading and writing.
-#define O_SEARCH	00000004
-//        Open directory for search only. The result is unspecified if this flag is applied to a non-directory file.
-#define O_WRONLY	00000001
-//        Open for writing only.
 
 //    The <fcntl.h> header shall define the symbolic constants for file modes for use as values of mode_t as described in <sys/stat.h>.
 
