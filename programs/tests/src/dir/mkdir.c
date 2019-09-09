@@ -28,6 +28,7 @@ int main() {
 	}
 	if (!S_ISDIR(buf.st_mode)) {
 		dprintf(2, "it should be a directory: %s\n", dirname);
+		exit(1);
 	}
 	ret = rmdir(dirname);
 	if (ret == -1) {
