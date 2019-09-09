@@ -185,6 +185,9 @@ HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h
 HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
+ifeq ($(trace),yes)
+	CFLAGS += -D LTRACE
+endif
 
 OBJ_DIR = obj
 OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))

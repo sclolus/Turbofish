@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <signal.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 {
+	TRACE
 	int ret = _user_syscall(SIGACTION, 3, signum, act, oldact);
 	/*
 	 * sigaction() returns 0 on success; on error, -1 is returned,

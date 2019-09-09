@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 
 DIR *opendir(const char *dirname)
 {
+	TRACE
 	DIR *dir = (DIR *)malloc(sizeof(DIR));
 	if (dir == NULL) {
 		return NULL;

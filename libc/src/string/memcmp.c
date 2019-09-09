@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 int	memcmp(const void *s1, const void *s2, size_t n)
 {
+	TRACE
 	unsigned char	*s1a;
 	unsigned char	*s2a;
 	size_t		i;
@@ -19,5 +21,6 @@ int	memcmp(const void *s1, const void *s2, size_t n)
 
 int	ft_memcmp(const void *s1, const void *s2, size_t n)
 {
+	TRACE
 	return memcmp(s1, s2, n);
 }

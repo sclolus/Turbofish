@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 
 struct dirent *readdir(DIR *dirp)
 {
+	TRACE
 	/*
 	 * On success, readdir() returns a pointer to a dirent structure. (This structure may be statically allocated;
 	 * do not attempt to free(3) it.)

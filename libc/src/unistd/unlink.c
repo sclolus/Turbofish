@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
@@ -27,6 +28,7 @@
 /// update.
 int unlink(const char *pathname)
 {
+	TRACE
 	int ret = _user_syscall(UNLINK, 1, pathname);
 	set_errno_and_return(ret);
 }

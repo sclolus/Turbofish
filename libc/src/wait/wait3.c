@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stddef.h>
 #include <sys/resource.h>
 #include <sys/select.h>
@@ -10,6 +11,7 @@
  */
 pid_t wait3(int *wstatus, int options, struct rusage *rusage)
 {
+	TRACE
 	if (rusage != NULL) {
 		rusage->ru_utime.tv_sec = 0;
 		rusage->ru_utime.tv_usec = 0;

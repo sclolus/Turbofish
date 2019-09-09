@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@ extern int sys_clone(void *, int);
 int	clone(int (*fn)(void *), void *child_stack,
 		  int flags, void *arg/*, pid_t *ptid, void *newtls, pid_t *ctid*/)
 {
+	TRACE
 	// push the args on the child_stack
 	int *new_child_stack = child_stack;
 
@@ -38,6 +40,7 @@ int	clone(int (*fn)(void *), void *child_stack,
 // continue the clone fonction if we are in a child and the child_stack != NULL
 int	continue_clone_child(int (*fn)(void *), void *child_stack, int flags, void *arg)
 {
+	TRACE
 	if (child_stack == NULL) {
 		printf("panic child stack == NULL\n");
 		exit(1);

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -9,6 +10,7 @@
 // indicate the error.
 int isatty(int fildes)
 {
+	TRACE
 	int ret = _user_syscall(ISATTY, 1, fildes);
 
 	if (ret == 0) {

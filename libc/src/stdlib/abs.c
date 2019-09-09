@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdlib.h>
 
 /*
@@ -5,5 +6,6 @@
  */
 int abs(int j)
 {
+	TRACE
 	return j < 0 ? -j : j;
 }

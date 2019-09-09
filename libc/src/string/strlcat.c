@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 size_t	strlcat(char *restrict dst, const char *restrict src, size_t size)
 {
+	TRACE
 	size_t src_len;
 	size_t dst_len;
 

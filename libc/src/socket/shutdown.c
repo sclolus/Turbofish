@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -14,6 +15,7 @@ struct s_shutdown {
  */
 int shutdown(int sockfd, int how)
 {
+	TRACE
 	struct s_shutdown s = {sockfd, how};
 
 	int ret = _user_syscall(SOCKETCALL, 2, __SHUTDOWN, &s);

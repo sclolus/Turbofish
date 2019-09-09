@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -13,6 +14,7 @@
  */
 char    *strndup(const char *s, size_t size)
 {
+	TRACE
 	size_t s_len = strlen(s);
 	size_t len = s_len > size ? size : s_len;
 	char *new = (char *)malloc(len + 1);

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <sys/stat.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -26,6 +27,7 @@
 /// file status change timestamp of the file.
 int chmod(const char *path, mode_t mode)
 {
+	TRACE
 	int ret = _user_syscall(CHMOD, 2, path, mode);
 	set_errno_and_return(ret);
 }

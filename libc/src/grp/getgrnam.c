@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <grp.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@ void free_group(struct group *group);
 
 static int f_comp(struct group *ref, void *other)
 {
+	TRACE
 	return strcmp(ref->gr_name, (char *)other);
 }
 
@@ -21,5 +23,6 @@ static int f_comp(struct group *ref, void *other)
  */
 struct group *getgrnam(const char *name)
 {
+	TRACE
 	return getgr_common((void *)name, &f_comp);
 }

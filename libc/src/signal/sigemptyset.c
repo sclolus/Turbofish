@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <signal.h>
 
 /*
@@ -6,6 +7,7 @@
  */
 int    sigemptyset(sigset_t *set)
 {
+	TRACE
 	*set = 0;
 	return 0;
 }

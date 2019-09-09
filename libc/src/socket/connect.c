@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -13,6 +14,7 @@ struct s_connect {
  */
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
+	TRACE
 	struct s_connect s = {sockfd, addr, addrlen};
 
 	int ret = _user_syscall(SOCKETCALL, 2, __CONNECT, &s);

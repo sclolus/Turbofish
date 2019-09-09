@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -13,6 +14,7 @@ struct s_socket {
  */
 int socket(int domain, int type, int protocol)
 {
+	TRACE
 	struct s_socket s = {domain, type, protocol};
 
 	int ret = _user_syscall(SOCKETCALL, 2, __SOCKET, &s);

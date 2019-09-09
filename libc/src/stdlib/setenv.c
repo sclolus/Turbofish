@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@ size_t __array_size(void **array) { // remove this
 
 char	**search_env(const char *envname)
 {
+	TRACE
 	size_t envname_len = strlen(envname);
 
 	if (envname_len == 0) {
@@ -49,6 +51,7 @@ char	**search_env(const char *envname)
 
 char *make_env_entry(const char *envname, const char *envval)
 {
+	TRACE
 	size_t	name_len = strlen(envname);
 	size_t	val_len = strlen(envval);
 	size_t	total_len = name_len + val_len + 1;
@@ -68,6 +71,7 @@ char *make_env_entry(const char *envname, const char *envval)
 
 int32_t handle_null_environ(void)
 {
+	TRACE
 	if (!environ) {
 		char	**new = malloc(sizeof(char*));
 
@@ -83,6 +87,7 @@ int32_t handle_null_environ(void)
 
 int setenv(const char *envname, const char *envval, int overwrite)
 {
+	TRACE
 	size_t envname_len = strlen(envname);
 
 	if (envname_len == 0 || strchr(envname, '=')) {

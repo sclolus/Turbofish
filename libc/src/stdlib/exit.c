@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -25,6 +26,7 @@
 /// Termination. [Option End]
 void exit(int status)
 {
+	TRACE
 	execute_atexit_handlers();
 	_exit(status);
 }

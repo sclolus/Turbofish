@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -19,6 +20,7 @@ struct s_accept {
  */
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
+	TRACE
 	struct s_accept s = {sockfd, addr, addrlen};
 
 	int ret = _user_syscall(SOCKETCALL, 2, __ACCEPT, &s);

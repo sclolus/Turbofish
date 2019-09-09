@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ extern char **environ;
 
 char *getenv(const char *name)
 {
+	TRACE
 	if (!environ)
 		return NULL;
 

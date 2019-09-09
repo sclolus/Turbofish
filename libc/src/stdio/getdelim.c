@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
@@ -15,6 +16,7 @@
 int  getdelim(char **line, size_t *n, int delim,
 		  FILE *stream)
 {
+	TRACE
 	unsigned char	del = (unsigned char)delim;
 	size_t		count = 0;
 	int		read_c;

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -21,6 +22,7 @@
 
 char *getcwd(char *buf, size_t size)
 {
+	TRACE
 	int ret = _user_syscall(GETCWD, 2, buf, size);
 	if (ret < 0) {
 		errno = -ret;

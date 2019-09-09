@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <wait.h>
 #include <errno.h>
@@ -11,6 +12,7 @@
  */
 pid_t waitpid(pid_t pid, int *wstatus, int options)
 {
+	TRACE
 	pid_t ret = _user_syscall(WAITPID, 3, pid, wstatus, options);
 	/*
 	 * on success, returns the process ID of the child whose state
@@ -27,6 +29,7 @@ pid_t waitpid(pid_t pid, int *wstatus, int options)
  */
 pid_t wait(int *wstatus)
 {
+	TRACE
 	/*
 	 * on success, returns the process ID of the terminated child;
 	 * on error, -1 is returned.

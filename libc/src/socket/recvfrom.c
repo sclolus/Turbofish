@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -31,6 +32,7 @@ struct s_recvfrom {
  */
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen)
 {
+	TRACE
 	struct s_recvfrom s = {sockfd, buf, len, flags, src_addr, addrlen};
 
 	ssize_t ret = (ssize_t)_user_syscall(SOCKETCALL, 2, __RECVFROM, &s);

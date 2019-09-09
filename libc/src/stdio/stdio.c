@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -19,6 +20,7 @@ FILE *stdin = &_stdin;
  */
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
+	TRACE
 	size_t i;
 	for (i = 0; i < nmemb; i++) {
 		if (write(stream->fd, ptr, size) < 0) {
@@ -37,6 +39,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
  */
 int putc(int c, FILE *stream)
 {
+	TRACE
 	return fputc(c, stream);
 }
 
@@ -46,6 +49,7 @@ int putc(int c, FILE *stream)
  */
 int fputc(int c, FILE *stream)
 {
+	TRACE
 	unsigned char char_to_write = (unsigned char)c;
 	if (write(stream->fd, &char_to_write, 1) < 0) {
 		stream->error = true;
@@ -61,6 +65,7 @@ int fputc(int c, FILE *stream)
  */
 int puts(const char *s)
 {
+	TRACE
 	if (!(write(STDOUT_FILENO, s, strlen(s)) < 0) && !(write(STDOUT_FILENO, "\n", 1) < 0)) {
 		return 0;
 	} else {
@@ -74,6 +79,7 @@ int puts(const char *s)
  */
 int fputs(const char *s, FILE *stream)
 {
+	TRACE
 	if (write(stream->fd, s, strlen(s)) < 0) {
 		stream->error = true;
 		return EOF;
@@ -84,26 +90,31 @@ int fputs(const char *s, FILE *stream)
 
 int ferror(FILE *stream)
 {
+	TRACE
 	return (int)stream->error;
 }
 
 int feof(FILE *stream)
 {
+	TRACE
 	return (int)stream->eof;
 }
 
 
 int fflush(FILE *stream)
 {
+	TRACE
 	return (int)stream->eof;
 }
 
 int putc_unlocked(int c, FILE *stream)
 {
+	TRACE
 	return putc(c, stream);
 }
 
 int putchar_unlocked(int c)
 {
+	TRACE
 	return putchar(c);
 }

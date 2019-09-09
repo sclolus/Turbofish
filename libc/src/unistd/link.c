@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -31,6 +32,7 @@
 /// permission to access the existing file.
 int link(const char *path1, const char *path2)
 {
+	TRACE
 	int ret = _user_syscall(LINK, 2, path1, path2);
 	set_errno_and_return(ret);
 }

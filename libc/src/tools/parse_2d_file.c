@@ -1,4 +1,5 @@
 
+#include <ltrace.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -12,6 +13,7 @@ static int32_t parse_2d_entry(
 			      char delim,
 			      int fn(char **raw_fields, void *s))
 {
+	TRACE
 	if (entry == NULL || target == NULL) {
 		return -1;
 	}
@@ -36,6 +38,7 @@ void **parse_2d_file(
 		     size_t structure_len,
 		     int fn(char **raw_fields, void *s))
 {
+	TRACE
 	int fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		return NULL;

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -33,6 +34,7 @@
 /// parent directory.
 int rmdir(const char *path)
 {
+	TRACE
 	int ret = _user_syscall(RMDIR, 1, path);
 	set_errno_and_return(ret);
 }

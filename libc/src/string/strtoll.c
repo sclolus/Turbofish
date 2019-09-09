@@ -1,5 +1,6 @@
 // FROM GCC https://github.com/gcc-mirror/gcc/blob/master/libiberty/strtol.c
 
+#include <ltrace.h>
 #include <limits.h>
 #include <string.h>
 #include <errno.h>
@@ -16,6 +17,7 @@
  */
 long strtol(const char *nptr, char **endptr, register int base)
 {
+	TRACE
 	register const char *s = nptr;
 	register unsigned long acc;
 	register int c;

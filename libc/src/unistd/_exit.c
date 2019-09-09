@@ -1,8 +1,10 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 
 void _exit(int status)
 {
+	TRACE
 	/*
 	 * The exit() function does not return.
 	 */

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -13,6 +14,7 @@ extern char **environ;
 
 int unsetenv(const char *name)
 {
+	TRACE
 	size_t	name_len = strlen(name);
 
 	if (name_len == 0 || strchr(name, '=')) {

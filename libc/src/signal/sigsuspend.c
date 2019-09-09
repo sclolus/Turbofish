@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <signal.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -7,6 +8,7 @@
  */
 int sigsuspend(const sigset_t *sigmask)
 {
+	TRACE
 	int ret = _user_syscall(SIGSUSPEND, 1, sigmask);
 
 	set_errno_and_return(ret);

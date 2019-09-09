@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 
 #warning getline (stdio.h) is currently prefixed by _ft
@@ -7,5 +8,6 @@
  */
 int  ft_getline(char **line, size_t *n, FILE *stream)
 {
+	TRACE
 	return getdelim(line, n, '\n', stream);
 }

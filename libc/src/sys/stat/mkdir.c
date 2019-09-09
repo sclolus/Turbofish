@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <sys/stat.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -31,6 +32,7 @@
 /// the new entry shall be marked for update.
 int mkdir(const char *path, mode_t mode)
 {
+	TRACE
 	int ret = _user_syscall(MKDIR, 2, path, mode);
 	set_errno_and_return(ret);
 }

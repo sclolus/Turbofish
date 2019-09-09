@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -47,6 +48,7 @@
 /// need not be marked for update.
 int chown(const char *path, uid_t owner, gid_t group)
 {
+	TRACE
 	int ret = _user_syscall(CHOWN, 3, path, owner, group);
 	set_errno_and_return(ret);
 }

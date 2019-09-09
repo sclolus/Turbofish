@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -16,6 +17,7 @@
 
 int setuid(uid_t uid)
 {
+	TRACE
 	int ret = _user_syscall(SETUID, 1, uid);
 	set_errno_and_return(ret);
 }

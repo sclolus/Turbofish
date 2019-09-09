@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <time.h>
 #include <sys/time.h>
 #include <custom.h>
@@ -5,6 +6,7 @@
 
 time_t time(time_t *tloc)
 {
+	TRACE
 	struct timeval	tv;
 
 	if (-1 == gettimeofday(&tv, NULL)) {

@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stdio.h>
 
 /* Versions of the functions getc(), getchar(), putc(), and putchar()
@@ -6,5 +7,6 @@
 with the exception that they are not required to be implemented in a fully thread-safe manner. */
 int      getchar_unlocked(void)
 {
+	TRACE
 	return getchar();
 }

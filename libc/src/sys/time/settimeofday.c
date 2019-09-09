@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <sys/time.h>
 #include <custom.h>
 

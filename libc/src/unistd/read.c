@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <user_syscall.h>
 #include <unistd.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
  */
 ssize_t read(int fd, void *buf, size_t count)
 {
+	TRACE
 	ssize_t ret = _user_syscall(READ, 3, fd, buf, count);
 	/*
 	 * On success, the number of bytes read is returned (zero indicates end of file),

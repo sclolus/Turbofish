@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 // Discuss with the team about its obsolescence.
 char	    *getpass(const char *const prompt)
 {
+	TRACE
 	struct termios	old;
 	struct termios	new;
 	char		*pass = NULL;

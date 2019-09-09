@@ -1,10 +1,12 @@
 
+#include <ltrace.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tools.h>
 
 static uint32_t count_fields(char *const s, char del)
 {
+	TRACE
 	uint32_t count = 1;
 	uint32_t i = 0;
 
@@ -19,6 +21,7 @@ static uint32_t count_fields(char *const s, char del)
 
 char **strsplit(char *const s, char del)
 {
+	TRACE
 	uint32_t    count = count_fields(s, del);
 	char	    **fields = malloc(sizeof(char *) * (count + 1));
 

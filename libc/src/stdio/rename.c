@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <fcntl.h>
 #include <user_syscall.h>
 #include <errno.h>
@@ -64,6 +65,7 @@
 /// the parent directory of each file.
 int rename(const char *old, const char *new)
 {
+	TRACE
 	int ret = _user_syscall(RENAME, 2, old, new);
 	set_errno_and_return(ret);
 }

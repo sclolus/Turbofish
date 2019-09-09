@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 int	atoi(const char *str)
 {
+	TRACE
 	int result;
 	int sign;
 

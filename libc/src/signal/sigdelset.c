@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -8,6 +9,7 @@
  */
 int    sigdelset(sigset_t *set, int signo)
 {
+	TRACE
 	if (signo < 0 || signo > 31) {
 		errno = EINVAL;
 		return -1;

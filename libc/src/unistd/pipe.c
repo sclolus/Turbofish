@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -40,6 +41,7 @@
  */
 int pipe(int fd[2])
 {
+	TRACE
 	int ret = _user_syscall(PIPE, 1, fd);
 	/*
 	 * On success, zero is returned.  On error, -1 is returned,

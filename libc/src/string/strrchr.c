@@ -1,7 +1,9 @@
+#include <ltrace.h>
 #include <string.h>
 
 char	*strrchr(const char *s, int c)
 {
+	TRACE
 	char *tmp;
 
 	tmp = NULL;

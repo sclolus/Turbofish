@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -5,6 +6,7 @@
    which contains no characters from REJECT.  */
 size_t strcspn(const char *str, const char *reject)
 {
+	TRACE
 	if ((reject[0] == '\0')
 		|| (reject[1] == '\0'))
 		return strchrnul (str, reject [0]) - str;

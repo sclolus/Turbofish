@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -5,6 +6,7 @@
    of S which contains only characters in ACCEPT.  */
 size_t strspn (const char *str, const char *accept)
 {
+	TRACE
 	if (accept[0] == '\0')
 		return 0;
 	if ((accept[1] == '\0'))

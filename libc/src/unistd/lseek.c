@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <errno.h>
 #include <user_syscall.h>
@@ -44,6 +45,7 @@
 
 off_t lseek(int fildes, off_t offset, int whence)
 {
+	TRACE
 	off_t ret;
 	// 5 argument since off_t is a 8 bytes type
 	int result = _user_syscall(LSEEK, 5, &ret, fildes, offset, whence);

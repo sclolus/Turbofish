@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -6,6 +7,7 @@
  */
 int raise(int sig)
 {
+	TRACE
 	/*
 	 * raise() returns 0 on success, and nonzero for failure
 	 */

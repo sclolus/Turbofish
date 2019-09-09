@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <unistd.h>
 #include <user_syscall.h>
 
@@ -6,5 +7,6 @@
 
 gid_t getgid(void)
 {
+	TRACE
 	return (gid_t)_user_syscall(GETGID, 0);
 }

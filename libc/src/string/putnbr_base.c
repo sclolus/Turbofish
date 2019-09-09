@@ -1,8 +1,10 @@
+#include <ltrace.h>
 #include <string.h>
 #include <stdio.h>
 
 void	putnbr_base(int n, int base)
 {
+	TRACE
 	int	exponent;
 	int	sign;
 	int	i;
