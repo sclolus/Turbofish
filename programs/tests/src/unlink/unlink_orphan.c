@@ -38,6 +38,7 @@ int main() {
 	}
 	if (strcmp(r, s) != 0) {
 		printf("error data writen != data read\n");
+		exit(1);
 	}
 	close(fd);
 }
