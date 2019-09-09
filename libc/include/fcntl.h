@@ -12,7 +12,7 @@
 #define O_RDWR          00000004 // Open for reading and writing.
 #define O_EXEC          00000010 // Open for execute only (non-directory files). The result is unspecified if this flag is applied to a directory.
 #define O_SEARCH        00000020 // Open directory for search only. The result is unspecified if this flag is applied to a non-directory file.
-#define O_ACCMODE       00000040 // Mask for file access modes.
+#define O_ACCMODE       00000037 // Mask for file access modes.
 
 // The <fcntl.h> header shall define the following symbolic constants as file creation flags for use in the oflag value to open() and openat(). The values shall be bitwise-distinct and shall be suitable for use in #if preprocessing directives.
 
