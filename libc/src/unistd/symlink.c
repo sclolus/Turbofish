@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <user_syscall.h>
 #include <errno.h>
+#include <custom.h>
 
 /// the symbolic link created, path1 is the string contained in the
 /// symbolic link).
@@ -35,6 +36,7 @@
 /// modification and last file status change timestamps of the
 /// directory that contains the new entry shall be marked for update.
 int symlink(const char *path1, const char *path2) {
+    DUMMY_KERNEL
 	int ret = _user_syscall(SYMLINK, 2, path1, path2);
 	set_errno_and_return(ret);
 }
