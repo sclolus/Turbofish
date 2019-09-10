@@ -138,7 +138,7 @@ pub struct Scheduler {
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
     kernel_idle_process: Option<Box<KernelProcess>>,
-    /// Indicate if the scheduler is on idle mode. TODO: Use the boolinator xD
+    /// Indicate if the scheduler is on idle mode.
     idle_mode: bool,
 }
 
@@ -441,10 +441,8 @@ impl Scheduler {
     /// a system process shall not have a process ID of 1.
     fn get_available_pid(&self) -> Pid {
         // this check if the candidate does't pid match any active process group
-        let posix_constraits = |pid: Pid| -> bool {
-            // TODO: optimize that maybe
-            !self.iter_thread_groups().any(|pg| pg.pgid == pid)
-        };
+        let posix_constraits =
+            |pid: Pid| -> bool { !self.iter_thread_groups().any(|pg| pg.pgid == pid) };
 
         let pred = |pid| pid > 0 && !self.all_process.contains_key(&pid) && posix_constraits(pid);
         let mut pid = self.next_pid.fetch_add(1, Ordering::Relaxed);
@@ -714,7 +712,6 @@ pub unsafe fn get_current_pgid() -> Pid {
 
 #[no_mangle]
 pub extern "C" fn send_message(message: MessageTo) {
-    // TODO : check force_lock
     unsafe {
         SCHEDULER.force_unlock();
     }

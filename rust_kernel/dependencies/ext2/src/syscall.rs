@@ -10,15 +10,6 @@ use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
-    /// The access() function shall check the file named by the
-    /// pathname pointed to by the path argument for accessibility
-    /// according to the bit pattern contained in amode
-    pub fn access(&mut self, path: &str, amode: i32) -> IoResult<()> {
-        //TODO: check rights
-        let inode = self.find_inode(path)?;
-        Ok(())
-    }
-
     /// The chown() function shall change the user and group ownership
     /// of a file.
     pub fn chown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {

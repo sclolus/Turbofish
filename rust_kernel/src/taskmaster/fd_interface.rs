@@ -51,7 +51,6 @@ impl FileDescriptorInterface {
         Ok(elem.file_operation.lock())
     }
 
-    // TODO: fix dummy access_mode && manage flags
     /// Open a file and give a file descriptor
     pub fn open(
         &mut self,

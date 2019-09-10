@@ -228,7 +228,6 @@ impl UserProcess {
             virtual_allocator: if flags.contains(CloneFlags::VM) {
                 self.virtual_allocator.clone()
             } else {
-                // TODO: change that to Arc::try_new
                 Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
             symbol_table: self.symbol_table.as_ref().map(|elem| elem.clone()),

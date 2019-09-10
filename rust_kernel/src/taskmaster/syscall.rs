@@ -258,7 +258,6 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        // TODO: type parameter are not set and manage the third argument
         OPEN => sys_open(
             ebx as *const libc_binding::c_char,
             ecx as u32,

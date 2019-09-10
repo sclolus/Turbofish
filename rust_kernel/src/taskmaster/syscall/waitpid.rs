@@ -42,7 +42,6 @@ use libc_binding::{Errno, Pid};
 /// of zero or more of the following flags, defined in the
 /// <sys/wait.h> header:
 ///
-//TODO:
 /// WCONTINUED [XSI] [Option Start] The waitpid() function shall
 ///     report the status of any continued child process specified by
 ///     pid whose status has not been reported since it continued from
@@ -225,7 +224,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     // the two next macro are signal dedicated ... WIFSIGNALED(wstatus) && WTERMSIG(wstatus)
 
     // Return EINVAL for any unknown option
-    // TODO: Code at least WNOHANG and WUNTRACED for Posix
     let options = WaitOption::from_bits(options).ok_or(Errno::EINVAL)?;
 
     let thread_group = scheduler.current_thread_group();
@@ -261,7 +259,6 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
             if pid == 0 {
                 pid = thread_group.pgid;
             }
-            // TODO: can be optim
             let candidate_number = thread_group
                 .unwrap_running()
                 .child
