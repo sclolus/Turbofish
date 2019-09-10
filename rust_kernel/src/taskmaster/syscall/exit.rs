@@ -1,5 +1,6 @@
 use super::scheduler::{unpreemptible, SCHEDULER};
 use super::thread_group::Status;
+use super::SysResult;
 
 /// [CX] [Option Start] Process termination caused by any reason shall
 /// have the following consequences: [Option End]
@@ -125,9 +126,12 @@ use super::thread_group::Status;
 ///  posix_trace_shutdown() function, and mapping of trace event names
 ///  to trace event type identifiers of any process built for these
 ///  trace streams may be deallocated. [Option End]
-pub unsafe fn sys_exit(status: i32) -> ! {
+
+pub unsafe fn sys_exit(status: i32) -> SysResult<u32> {
+    // Avoid preempting when we are un the exit routine
     unpreemptible();
     SCHEDULER
         .lock()
         .current_thread_group_exit(Status::Exited(status));
+    Ok(0)
 }

@@ -254,7 +254,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
     } = (*cpu_state).registers;
 
     if eax != READ && eax != WRITE {
-        // trace_syscall::trace_syscall(cpu_state);
+        trace_syscall::trace_syscall(cpu_state);
     }
     let result = match eax {
         EXIT => sys_exit(ebx as i32),       // This syscall doesn't return !
@@ -352,7 +352,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
     };
 
     if eax != READ && eax != WRITE {
-        // trace_syscall::trace_syscall_result(cpu_state, result);
+        trace_syscall::trace_syscall_result(cpu_state, result);
     }
 
     let is_in_blocked_syscall = result == Err(Errno::EINTR);
@@ -365,9 +365,19 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
     // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
-        SCHEDULER.lock().current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
+        let mut scheduler = SCHEDULER.lock();
+        if let Some(_) = scheduler.on_exit_routine {
+            scheduler.idle_mode = true;
+            scheduler
+                .kernel_idle_process
+                .as_ref()
+                .expect("No idle process")
+                .kernel_esp
+        } else {
+            scheduler.current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
+            cpu_state as u32
+        }
     }}
-    cpu_state as u32
 }
 
 extern "C" {

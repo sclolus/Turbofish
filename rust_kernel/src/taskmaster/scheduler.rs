@@ -25,6 +25,8 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 use crate::system::PrivilegeLevel;
 use crate::terminal::ansi_escape_code::Colored;
 
+use super::DUMMY_LOCK;
+
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {
     /// This function is called by scheduler.current_thread_group_exit(). It can be considered as a hack.
@@ -59,66 +61,6 @@ extern "C" {
 pub type Tid = u32;
 pub use libc_binding::Pid;
 
-/// The pit handler (cpu_state represents a pointer to esp)
-#[no_mangle]
-unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
-    let mut scheduler = SCHEDULER.lock();
-
-    // Store the current kernel stack pointer
-    scheduler.store_kernel_esp(kernel_esp);
-
-    // Switch to the next elligible process then return new kernel ESP
-    scheduler.load_next_process(1)
-}
-
-/// Remove ressources of the exited process and note his exit status
-/// This function is not similar than scheduler_interrupt_handler()
-#[no_mangle]
-unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32) {
-    // Scheduler was previously lock by the caller scheduler.current_thread_group_exit(), unlock it
-    SCHEDULER.force_unlock();
-
-    let mut scheduler = SCHEDULER.lock();
-
-    // Get a reference to the dead process
-    let dead_process = scheduler
-        .get_thread_group_mut(process_to_free_pid)
-        .expect("WTF: No Dead Process");
-
-    // Send a sig child signal to the father
-    let parent_pid = dead_process.parent;
-    let parent = scheduler
-        .get_thread_mut((parent_pid, 0))
-        .expect("WTF: Parent not alive");
-    //TODO: Announce memory error later.
-    let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
-
-    // Set the dead process as zombie
-    let dead_process = scheduler
-        .get_thread_group_mut(process_to_free_pid)
-        .expect("WTF: No Dead Process");
-
-    // Call the drop chain of file_descriptor_interface before being a zombie !
-    dead_process
-        .unwrap_running_mut()
-        .file_descriptor_interface
-        .delete();
-    dead_process.set_zombie(status.into());
-
-    // Send a death testament message to the parent
-    send_message(MessageTo::Process {
-        pid: parent_pid,
-        content: ProcessMessage::ProcessUpdated {
-            pid: process_to_free_pid,
-            pgid: dead_process.pgid,
-            status,
-        },
-    });
-
-    // To avoid race conditions. the current execution thread was set as unpreemptible. Reallow it now
-    preemptible();
-}
-
 use core::fmt::{self, Debug};
 
 impl Debug for Scheduler {
@@ -147,9 +89,33 @@ pub struct Scheduler {
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
-    kernel_idle_process: Option<Box<KernelProcess>>,
+    pub kernel_idle_process: Option<Box<KernelProcess>>,
     /// Indicate if the scheduler is on idle mode.
-    idle_mode: bool,
+    pub idle_mode: bool,
+    /// Indicate if scheduler is on exit routine
+    pub on_exit_routine: Option<(Pid, Status)>,
+}
+
+/// The pit handler (cpu_state represents a pointer to esp)
+#[no_mangle]
+unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
+    DUMMY_LOCK = 1;
+    let mut scheduler = SCHEDULER.lock();
+
+    if let Some((pid, status)) = scheduler.on_exit_routine {
+        scheduler.exit_resume(pid, status);
+        scheduler.on_exit_routine = None;
+    }
+
+    // Store the current kernel stack pointer
+    scheduler.store_kernel_esp(kernel_esp);
+
+    // Switch to the next elligible process then return new kernel ESP
+    let esp = scheduler.load_next_process(1);
+    DUMMY_LOCK = 0;
+    esp
+    // if come from RING0 (maybe syscall or kernel process)
+    // set sys_process_esp to
 }
 
 /// Base Scheduler implementation
@@ -165,6 +131,7 @@ impl Scheduler {
             time_interval: None,
             kernel_idle_process: None,
             idle_mode: false,
+            on_exit_routine: None,
         }
     }
 
@@ -404,7 +371,7 @@ impl Scheduler {
     const REAPER_PID: Pid = 1;
 
     /// Exit form a process and go to the current process
-    pub fn current_thread_group_exit(&mut self, status: Status) -> ! {
+    pub fn current_thread_group_exit(&mut self, status: Status) {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -435,12 +402,56 @@ impl Scheduler {
 
         self.remove_thread_group_running(pid);
 
-        // Switch to the next process
-        unsafe {
-            let new_kernel_esp = self.load_next_process(0);
+        // Switch to idle mode
+        self.on_exit_routine = Some((pid, status));
+    }
 
-            _exit_resume(new_kernel_esp, pid, status.into());
-        };
+    /// Remove ressources of the exited process and note his exit status
+    fn exit_resume(&mut self, process_to_free_pid: Pid, status: Status) {
+        // let esp = self
+        //     .get_thread((process_to_free_pid, 0))
+        //     .as_ref()
+        //     .unwrap()
+        //     .unwrap_process()
+        //     .kernel_esp;
+        // Get a reference to the dead process
+        let dead_process = self
+            .get_thread_group_mut(process_to_free_pid)
+            .expect("WTF: No Dead Process");
+
+        // Send a sig child signal to the father
+        let parent_pid = dead_process.parent;
+        let parent = self
+            .get_thread_mut((parent_pid, 0))
+            .expect("WTF: Parent not alive");
+
+        //TODO: Announce memory error later.
+        let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
+
+        // Set the dead process as zombie
+        let dead_process = self
+            .get_thread_group_mut(process_to_free_pid)
+            .expect("WTF: No Dead Process");
+
+        let dead_process_pgid = dead_process.pgid;
+
+        // Call the drop chain of file_descriptor_interface before being a zombie !
+        dead_process
+            .unwrap_running_mut()
+            .file_descriptor_interface
+            .delete();
+
+        dead_process.set_zombie(status);
+
+        // Send a death testament message to the parent
+        self.send_message(MessageTo::Process {
+            pid: parent_pid,
+            content: ProcessMessage::ProcessUpdated {
+                pid: process_to_free_pid,
+                pgid: dead_process_pgid,
+                status: status.into(),
+            },
+        });
     }
 
     /// Gets the next available Pid for a new process.

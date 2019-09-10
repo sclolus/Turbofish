@@ -133,7 +133,6 @@ _schedule_next:
 	call scheduler_interrupt_handler
 	; Set the new stack pointer
 	mov esp, eax
-schedule_return:
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
@@ -175,29 +174,6 @@ _schedule_force_preempt:
 	add esp, 8 ; skip err code & cpu isr fields
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
-
-; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)
-extern scheduler_exit_resume
-
-; fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
-global _exit_resume
-_exit_resume:
-	push ebp
-	mov ebp, esp
-
-	mov ebx, dword [ebp + 12]   ; get PID of process to free
-	mov ecx, dword [ebp + 16]   ; get return status of process to free
-
-	; Go to the stack of the new current process
-	mov esp, dword [ebp + 8]
-
-	push ecx
-	push ebx
-	; Free the ressources of the existed process
-	call scheduler_exit_resume
-	add esp, 8
-
-	jmp schedule_return
 
 ; https://wiki.osdev.org/Exceptions
 ; These CPU ISR gates are on vector 0 -> 31
