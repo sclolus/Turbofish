@@ -18,6 +18,7 @@ pub mod vfs;
 pub use vfs::VFS;
 
 use core::convert::TryFrom;
+use core::convert::TryInto;
 use thread_group::Credentials;
 use vfs::Path;
 
@@ -111,7 +112,10 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
             unsafe {
                 UserProcess::new(
                     ProcessOrigin::Elf(&file),
-                    Some(ProcessArguments::new(argv.into(), envp.into())),
+                    Some(ProcessArguments::new(
+                        argv.try_into().expect("argv creation failed"),
+                        envp.try_into().expect("envp creation failed"),
+                    )),
                 )
             }
             .expect("Unexpected error when parsing ELF file"),

@@ -2,10 +2,13 @@
 
 use libc_binding::c_char;
 
+use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 
 use core::convert;
+use core::convert::TryInto;
 use core::fmt;
+use fallible_collections::{try_vec, FallibleVec};
 
 /// Main structure of CString
 pub struct CString(pub Vec<c_char>);
@@ -56,13 +59,14 @@ impl CString {
 }
 
 /// Create a CString from a RUST str slice
-impl convert::From<&str> for CString {
-    fn from(rust_str: &str) -> Self {
-        let v: Vec<c_char> = vec![0; rust_str.len() + 1];
+impl convert::TryFrom<&str> for CString {
+    type Error = CollectionAllocErr;
+    fn try_from(rust_str: &str) -> Result<Self, Self::Error> {
+        let v: Vec<c_char> = try_vec![0; rust_str.len() + 1]?;
         unsafe {
             (v.as_ptr() as *mut u8).copy_from(rust_str.as_ptr(), rust_str.len());
         }
-        Self(v)
+        Ok(Self(v))
     }
 }
 
@@ -165,22 +169,23 @@ impl CStringArray {
 }
 
 /// Create a CStringArray from a RUST str slice array
-impl convert::From<&[&str]> for CStringArray {
-    fn from(rust_str_array: &[&str]) -> Self {
+impl convert::TryFrom<&[&str]> for CStringArray {
+    type Error = CollectionAllocErr;
+    fn try_from(rust_str_array: &[&str]) -> Result<Self, Self::Error> {
         let mut c_pointer: Vec<*const c_char> = Vec::new();
         let mut owned_content: Vec<CString> = Vec::new();
 
         for &elem in rust_str_array.iter() {
-            let string: CString = elem.into();
-            c_pointer.push(string.as_ptr());
+            let string: CString = elem.try_into()?;
+            c_pointer.try_push(string.as_ptr())?;
             owned_content.push(string);
         }
         // nullptr to terminate the array
-        c_pointer.push(0x0 as *const c_char);
-        Self {
+        c_pointer.try_push(0x0 as *const c_char)?;
+        Ok(Self {
             c_pointer,
             owned_content,
-        }
+        })
     }
 }
 

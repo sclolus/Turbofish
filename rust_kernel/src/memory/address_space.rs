@@ -168,10 +168,10 @@ impl AddressSpace {
 
     pub fn make_checked_cstring(&self, s: *const c_char) -> Result<CString> {
         let s = self.make_checked_str(s)?;
-        let v: Vec<c_char> = try_vec![0 as c_char; s.len() + 1]?;
+        let mut v: Vec<c_char> = try_vec![0 as c_char; s.len() + 1]?;
 
         unsafe {
-            (v.as_ptr() as *mut u8).copy_from(s.as_ptr() as _, s.len());
+            (v.as_mut_ptr() as *mut u8).copy_from(s.as_ptr() as _, s.len());
         }
         Ok(CString(v))
     }
