@@ -12,9 +12,7 @@ use sync::DeadMutex;
 use itertools::unfold;
 
 mod tools;
-use tools::{DcacheError, DcacheResult, VfsError, VfsResult};
 use tools::{KeyGenerator, Mapper};
-use VfsError::*;
 
 mod path;
 mod posix_consts;
@@ -36,6 +34,7 @@ use libc_binding::OpenFlags;
 
 use libc_binding::c_char;
 use libc_binding::dirent;
+use libc_binding::Errno::*;
 use libc_binding::FileType;
 use libc_binding::{gid_t, uid_t, Errno};
 
@@ -57,7 +56,7 @@ pub struct VirtualFileSystem {
 type Vfs = VirtualFileSystem;
 
 impl VirtualFileSystem {
-    pub fn new() -> VfsResult<VirtualFileSystem> {
+    pub fn new() -> SysResult<VirtualFileSystem> {
         let mut new = Self {
             mounted_filesystems: BTreeMap::new(),
             inodes: BTreeMap::new(),
@@ -93,7 +92,7 @@ impl VirtualFileSystem {
         fs: Arc<DeadMutex<dyn FileSystem>>,
         parent: Option<DirectoryEntryId>,
         (direntry, inode_data): (DirectoryEntry, InodeData),
-    ) -> VfsResult<DirectoryEntryId> {
+    ) -> SysResult<DirectoryEntryId> {
         // dbg!(direntry);
         // dbg!(inode.get_id());
         let direntry = self.dcache.add_entry(parent, direntry)?;
@@ -108,7 +107,7 @@ impl VirtualFileSystem {
     }
 
     /// construct the files in directory `direntry_id` in ram form the filesystem
-    fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> VfsResult<()> {
+    fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> SysResult<()> {
         // unimplemented!()
         let current_entry = self.dcache.get_entry(&direntry_id)?;
         // dbg!(&current_entry);
@@ -135,11 +134,11 @@ impl VirtualFileSystem {
         cwd: &Path,
         id: DirectoryEntryId,
         new_pathname: Path,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let new_filename = new_pathname.filename().unwrap(); // ?
 
         if new_filename == &"." || new_filename == &".." {
-            return Err(VfsError::Errno(Errno::EINVAL));
+            return Err(Errno::EINVAL);
         }
 
         if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
@@ -150,11 +149,7 @@ impl VirtualFileSystem {
 
         self.dcache.move_dentry(id, new_parent_id)?;
 
-        let entry = self
-            .dcache
-            .d_entries
-            .get_mut(&id)
-            .ok_or(DcacheError::NoSuchEntry)?;
+        let entry = self.dcache.d_entries.get_mut(&id).ok_or(ENOENT)?;
 
         entry.set_filename(*new_filename);
         Ok(())
@@ -162,7 +157,7 @@ impl VirtualFileSystem {
 
     /// Construct a path from a DirectoryEntryId by follow up its
     /// parent
-    pub fn dentry_path(&self, id: DirectoryEntryId) -> DcacheResult<Path> {
+    pub fn dentry_path(&self, id: DirectoryEntryId) -> SysResult<Path> {
         let mut rev_path = self.dcache.dentry_path(id)?;
         rev_path.set_absolute(true)?;
         Ok(rev_path)
@@ -174,7 +169,7 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         pathname: Path,
-    ) -> VfsResult<DirectoryEntryId> {
+    ) -> SysResult<DirectoryEntryId> {
         let root = if pathname.is_absolute() {
             self.dcache.root_id
         } else {
@@ -191,9 +186,9 @@ impl VirtualFileSystem {
         mut root: DirectoryEntryId,
         pathname: &Path,
         recursion_level: usize,
-    ) -> VfsResult<DirectoryEntryId> {
+    ) -> SysResult<DirectoryEntryId> {
         if recursion_level > SYMLOOP_MAX {
-            return Err(VfsError::Errno(Errno::ELOOP));
+            return Err(Errno::ELOOP);
         }
 
         if pathname.is_absolute() {
@@ -201,7 +196,7 @@ impl VirtualFileSystem {
         }
 
         if !self.dcache.contains_entry(&root) {
-            return Err(VfsError::RootDoesNotExists);
+            return Err(ENOENT);
         }
 
         let mut current_dir_id = root;
@@ -211,12 +206,16 @@ impl VirtualFileSystem {
 
         // quick fix, this handle / mount point
         if current_entry.is_mounted()? {
-            current_dir_id = current_entry.get_mountpoint_entry()?;
+            current_dir_id = current_entry
+                .get_mountpoint_entry()
+                .expect("mount point entry should be there");
             current_entry = self.dcache.get_entry(&current_dir_id)?;
         }
         for component in components.by_ref() {
             if current_entry.is_mounted()? {
-                current_dir_id = current_entry.get_mountpoint_entry()?;
+                current_dir_id = current_entry
+                    .get_mountpoint_entry()
+                    .expect("mount point entry should be there");
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
             }
             let current_dir = current_entry.get_directory()?;
@@ -243,7 +242,7 @@ impl VirtualFileSystem {
                             .filename;
                         filename == component
                     })
-                    .ok_or(VfsError::NoSuchEntry)?;
+                    .ok_or(ENOENT)?;
 
                 current_entry = self.dcache.get_entry(next_entry_id)?;
                 if current_entry.is_symlink() {
@@ -263,7 +262,7 @@ impl VirtualFileSystem {
                         .filename;
                     filename == component
                 })
-                .ok_or(VfsError::NoSuchEntry)?;
+                .ok_or(ENOENT)?;
 
             current_entry = self.dcache.get_entry(next_entry_id)?;
             if current_entry.is_symlink() {
@@ -273,7 +272,10 @@ impl VirtualFileSystem {
             current_dir_id = *next_entry_id;
         }
         if was_symlink {
-            let mut new_path = current_entry.get_symbolic_content()?.clone();
+            let mut new_path = current_entry
+                .get_symbolic_content()
+                .expect("should be symlink")
+                .clone();
             new_path.chain(components.try_into()?)?;
 
             self._pathname_resolution(current_dir_id, &new_path, recursion_level + 1)
@@ -299,14 +301,14 @@ impl VirtualFileSystem {
         path: Path,
         mode: FileType,
         driver: Box<dyn Driver>,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         // la fonction driver.set_inode_id() doit etre appele lors de la creation. C'est pour joindre l'inode au cas ou
         // Je ne sais pas encore si ce sera completement indispensable. Il vaut mieux que ce soit un type primitif afin
         // qu'il n'y ait pas de reference croisees (j'ai mis usize dans l'exemple)
 
         // let entry_id;
         match self.pathname_resolution(cwd, path.clone()) {
-            Ok(_id) => return Err(Errno(Errno::EEXIST)),
+            Ok(_id) => return Err(EEXIST),
             Err(_e) => {
                 //TODO: Option(FileSystemId)
                 let new_id = self.get_available_id(None);
@@ -349,7 +351,7 @@ impl VirtualFileSystem {
     fn iter_directory_entries(
         &self,
         dir: DirectoryEntryId,
-    ) -> VfsResult<impl Iterator<Item = &DirectoryEntry>> {
+    ) -> SysResult<impl Iterator<Item = &DirectoryEntry>> {
         let dir = self.dcache.get_entry(&dir)?.get_directory()?;
 
         let mut entries = dir.entries();
@@ -371,11 +373,11 @@ impl VirtualFileSystem {
     //     &mut self,
     //     current_dir_id: DirectoryEntryId,
     //     fs_id: FileSystemId,
-    // ) -> VfsResult<()> {
+    // ) -> SysResult<()> {
     //     let direntry = self.dcache.get_entry(&current_dir_id)?;
 
     //     // Inode unexpectedly does not exists...
-    //     let inode = self.inodes.get(&direntry.inode_id).ok_or(NoSuchInode)?;
+    //     let inode = self.inodes.get(&direntry.inode_id).ok_or(ENOENT)?;
 
     //     if !inode.is_directory() {
     //         return Ok(());
@@ -411,14 +413,14 @@ impl VirtualFileSystem {
         filesystem: Arc<DeadMutex<dyn FileSystem>>,
         fs_id: FileSystemId,
         mount_dir_id: DirectoryEntryId,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
         if !mount_dir.is_directory() {
-            return Err(NotADirectory);
+            return Err(ENOTDIR);
         }
 
         if mount_dir.is_mounted()? {
-            return Err(DirectoryIsMounted);
+            return Err(EBUSY);
         }
         let (mut root_dentry, mut root_inode_data) = filesystem.lock().root()?;
 
@@ -450,7 +452,7 @@ impl VirtualFileSystem {
         creds: &Credentials,
         source: Path,
         target: Path,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         use crate::taskmaster::drivers::DiskWrapper;
         use ext2::Ext2Filesystem;
         use filesystem::Ext2fs;
@@ -477,7 +479,7 @@ impl VirtualFileSystem {
         cwd: &Path,
         _creds: &Credentials,
         path: Path,
-    ) -> VfsResult<Vec<dirent>> {
+    ) -> SysResult<Vec<dirent>> {
         let entry_id = self.pathname_resolution(cwd, path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
@@ -522,8 +524,7 @@ impl VirtualFileSystem {
             .collect())
     }
 
-    pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> VfsResult<()> {
-        use VfsError::*;
+    pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
         let entry_id = self.pathname_resolution(cwd, path.clone())?;
         let inode_id;
         let parent_id;
@@ -534,14 +535,14 @@ impl VirtualFileSystem {
             parent_id = entry.parent_id;
         }
 
-        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
+        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
         self.dcache.remove_entry(entry_id)?;
 
         corresponding_inode.link_number -= 1;
 
         //TODO: VFS check that
         if corresponding_inode.link_number == 0 {
-            self.inodes.remove(&inode_id).ok_or(NoSuchInode)?;
+            self.inodes.remove(&inode_id).ok_or(ENOENT)?;
         }
         //TODO: check that
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
@@ -622,7 +623,7 @@ impl VirtualFileSystem {
         _dentry_id: DirectoryEntryId,
         _flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let inode = self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)?;
+        let inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
         inode.driver.open()
     }
 
@@ -631,7 +632,7 @@ impl VirtualFileSystem {
     //     current: &mut Current,
     //     path: Path,
     //     mode: FileType,
-    // ) -> VfsResult<Fd> {
+    // ) -> SysResult<Fd> {
     //     let mut flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_TRUNC;
 
     //     if mode.contains(FileType::S_IFDIR) {
@@ -647,10 +648,10 @@ impl VirtualFileSystem {
     //     current: &mut Current,
     //     path: Path,
     //     mode: FileType,
-    // ) -> VfsResult<Fd> {
+    // ) -> SysResult<Fd> {
     //     let mut ancestors = path.ancestors();
 
-    //     let child = ancestors.next_back().ok_or(Errno(Errno::EINVAL))?;
+    //     let child = ancestors.next_back().ok_or(EINVAL)?;
     //     let ancestors = ancestors; //uncomment this
     //     for ancestor in ancestors {
     //         self.creat(current, ancestor, FileType::S_IFDIR)
@@ -666,12 +667,12 @@ impl VirtualFileSystem {
         _creds: &Credentials,
         path: Path,
         mode: FileType,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let entry_id = self.pathname_resolution(cwd, path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
+        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(ENOENT)?;
 
         inode.set_access_mode(mode);
 
@@ -688,12 +689,12 @@ impl VirtualFileSystem {
         path: Path,
         owner: uid_t,
         group: gid_t,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let entry_id = self.pathname_resolution(cwd, path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(NoSuchInode)?;
+        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(ENOENT)?;
 
         inode.set_uid(owner);
         inode.set_gid(group);
@@ -710,15 +711,15 @@ impl VirtualFileSystem {
         _creds: &Credentials,
         mut path: Path,
         mode: FileType,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         if let Ok(_) = self.pathname_resolution(cwd, path.clone()) {
-            return Err(Errno(Errno::EEXIST));
+            return Err(EEXIST);
         }
         let filename = path.pop();
         let entry_id = self.pathname_resolution(cwd, path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
-            return Err(Errno(Errno::ENOTDIR));
+            return Err(ENOTDIR);
         }
         let inode_id = entry.inode_id;
 
@@ -733,20 +734,20 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> VfsResult<()> {
-        let filename = path.filename().ok_or(Errno(Errno::EINVAL))?;
+    pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
+        let filename = path.filename().ok_or(EINVAL)?;
         if filename == &"." || filename == &".." {
-            return Err(Errno(Errno::EINVAL));
+            return Err(EINVAL);
         }
 
         let entry_id = self.pathname_resolution(cwd, path.clone())?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         if !entry.is_directory() {
-            return Err(NotADirectory);
+            return Err(ENOTDIR);
         }
         if !entry.is_directory_empty()? {
-            return Err(Errno(Errno::ENOTEMPTY));
+            return Err(ENOTEMPTY);
         }
         let inode_id = entry.inode_id;
         let parent_id = entry.parent_id;
@@ -763,8 +764,8 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn get_inode(&mut self, inode_id: InodeId) -> VfsResult<&mut Inode> {
-        self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)
+    pub fn get_inode(&mut self, inode_id: InodeId) -> SysResult<&mut Inode> {
+        self.inodes.get_mut(&inode_id).ok_or(ENOENT)
     }
 
     pub fn link(
@@ -773,24 +774,24 @@ impl VirtualFileSystem {
         _creds: &Credentials,
         oldpath: Path,
         newpath: Path,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
         if oldentry.is_directory() {
             //TODO: link on directories not currently supported.
-            return Err(Errno(Errno::EISDIR));
+            return Err(EISDIR);
         }
 
         if self.pathname_resolution(cwd, newpath.clone()).is_ok() {
-            return Err(Errno(Errno::EEXIST));
+            return Err(EEXIST);
         }
 
         let parent_new = self.pathname_resolution(cwd, newpath.parent())?;
 
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
-        let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(NoSuchInode)?;
+        let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(ENOENT)?;
 
         let mut newentry = oldentry.clone();
 
@@ -806,20 +807,20 @@ impl VirtualFileSystem {
         _creds: &Credentials,
         oldpath: Path,
         newpath: Path,
-    ) -> VfsResult<()> {
+    ) -> SysResult<()> {
         let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
 
         self.rename_dentry(cwd, oldentry_id, newpath)?;
         Ok(())
     }
 
-    // pub fn file_exists(&mut self, current: &Current, path: Path) -> VfsResult<bool> {
+    // pub fn file_exists(&mut self, current: &Current, path: Path) -> SysResult<bool> {
     //     self.pathname_resolution(current.cwd, path).unwrap();
     //     Ok(true)
     // }
 }
 
-// pub type VfsHandler<T> = fn(VfsHandlerParams) -> VfsResult<T>;
+// pub type VfsHandler<T> = fn(VfsHandlerParams) -> SysResult<T>;
 
 // #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 // pub enum VfsHandlerKind {
@@ -946,7 +947,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 
 //     // let mut callbacks: Vec<Box<ReplClosures>> = Vec::new();
 
-//     // let ls_closure = |fs: &mut Vfs, current: &mut Current, args: Vec<&str>| -> DcacheResult<()> {
+//     // let ls_closure = |fs: &mut Vfs, current: &mut Current, args: Vec<&str>| -> SysResult<()> {
 //     //     let arg = args.get(0);
 //     //     let path;
 //     //     let entry;
@@ -956,12 +957,12 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     //         Some(&arg) => {
 //     //             path = Path::try_from(arg)?;
 //     //             entry_id = dc.pathname_resolution(current.cwd, path)?;
-//     //             entry = dc.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
+//     //             entry = dc.d_entries.get(&entry_id).ok_or(ENOENT)?;
 
 //     //         },
 //     //         None => {
 //     //             entry_id = current.cwd;
-//     //             entry = dc.d_entries.get(cwd).ok_or(NoSuchEntry)?;
+//     //             entry = dc.d_entries.get(cwd).ok_or(ENOENT)?;
 //     //         }
 //     //     }
 
@@ -970,7 +971,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 
 //     //         println!("(DIRECTORY {}):", entry.filename);
 //     //         for entry_id in directory.entries() {
-//     //             let entry = dc.d_entries.get(entry_id).ok_or(NoSuchEntry)?;
+//     //             let entry = dc.d_entries.get(entry_id).ok_or(ENOENT)?;
 
 //     //             let postfix: Option<String>;
 //     //             let prefix;
@@ -991,14 +992,14 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     //     }
 //     //     Ok(())
 //     // };
-//     // // let cd_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+//     // // let cd_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
 //     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
 //     // //     let path = Path::try_from(path)?;
 //     // //     let search_root;
 //     // //     search_root = *cwd;
 
 //     // //     let entry_id = dcache.pathname_resolution(search_root, path)?;
-//     // //     let entry = dcache.d_entries.get(&entry_id).ok_or(NoSuchEntry)?;
+//     // //     let entry = dcache.d_entries.get(&entry_id).ok_or(ENOENT)?;
 //     // //     if entry.is_directory() {
 //     // //         *cwd = entry_id;
 //     // //     } else {
@@ -1006,7 +1007,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     // //     }
 //     // //     Ok(())
 //     // // };
-//     // // let unlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+//     // // let unlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
 //     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
 //     // //     let path = Path::try_from(path)?;
 
@@ -1021,7 +1022,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     // //     Ok(())
 //     // // };
 
-//     // // let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+//     // // let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
 //     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
 //     // //     let new_pathname: Path = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
 //     // //     let path = Path::try_from(path)?;
@@ -1034,7 +1035,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     // //     Ok(())
 //     // // };
 
-//     // // let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+//     // // let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
 //     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
 //     // //     let new_symlink_pathname = args.get(1).ok_or(NotEnoughArguments)?;
 //     // //     let path = Path::try_from(path)?;
@@ -1059,14 +1060,14 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     // //     Ok(())
 //     // // };
 
-//     // let no_such_command_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> DcacheResult<()> {
+//     // let no_such_command_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
 //     //     println!("No such command");
 //     //     Ok(())
 //     // };
 //     // let callbacks_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
 //     //                          , "help", ""];
 
-//     // let help = |_dcache: &mut Dcache, _cwd: &mut DirectoryEntryId, _args: Vec<&str>| -> DcacheResult<()> {
+//     // let help = |_dcache: &mut Dcache, _cwd: &mut DirectoryEntryId, _args: Vec<&str>| -> SysResult<()> {
 //     //     let command_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
 //     //                            , "help", ""];
 
@@ -1085,7 +1086,7 @@ impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem 
 //     //     stdout().flush()
 //     // };
 
-//     // type ReplClosures = dyn Fn(&mut Vfs, &mut Current, Vec<&str>) -> DcacheResult<()>;
+//     // type ReplClosures = dyn Fn(&mut Vfs, &mut Current, Vec<&str>) -> SysResult<()>;
 //     // callbacks.push(Box::new(ls_closure));
 //     // // callbacks.push(Box::new(cd_closure));
 //     // // callbacks.push(Box::new(unlink_closure));

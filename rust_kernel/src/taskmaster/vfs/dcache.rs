@@ -1,8 +1,8 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
-use super::tools::{DcacheError, DcacheResult};
+use super::SysResult;
 use alloc::collections::BTreeMap;
-use DcacheError::*;
+use libc_binding::Errno::*;
 
 pub struct Dcache {
     pub root_id: DirectoryEntryId,
@@ -25,12 +25,12 @@ impl Dcache {
         new
     }
 
-    pub fn get_entry(&self, id: &DirectoryEntryId) -> DcacheResult<&DirectoryEntry> {
-        Ok(self.d_entries.get(&id).ok_or(NoSuchEntry)?)
+    pub fn get_entry(&self, id: &DirectoryEntryId) -> SysResult<&DirectoryEntry> {
+        Ok(self.d_entries.get(&id).ok_or(ENOENT)?)
     }
 
-    pub fn get_entry_mut(&mut self, id: &DirectoryEntryId) -> DcacheResult<&mut DirectoryEntry> {
-        Ok(self.d_entries.get_mut(&id).ok_or(NoSuchEntry)?)
+    pub fn get_entry_mut(&mut self, id: &DirectoryEntryId) -> SysResult<&mut DirectoryEntry> {
+        Ok(self.d_entries.get_mut(&id).ok_or(ENOENT)?)
     }
 
     pub fn contains_entry(&self, id: &DirectoryEntryId) -> bool {
@@ -41,19 +41,19 @@ impl Dcache {
         &mut self,
         parent: Option<DirectoryEntryId>,
         mut entry: DirectoryEntry,
-    ) -> DcacheResult<DirectoryEntryId> {
+    ) -> SysResult<DirectoryEntryId> {
         let id = self.get_available_id();
 
         entry.id = id;
         entry.parent_id = parent.unwrap_or(self.root_id); //eeeeeh yeah
         if self.d_entries.contains_key(&id) {
-            return Err(FileAlreadyExists);
+            return Err(EEXIST);
         }
         self.d_entries.insert(id, entry);
 
         if let Some(parent) = parent {
             let parent = match self.d_entries.get_mut(&parent) {
-                None => return Err(NoSuchEntry),
+                None => return Err(ENOENT),
                 Some(parent) => parent,
             };
 
@@ -62,47 +62,44 @@ impl Dcache {
         Ok(id)
     }
 
-    pub fn remove_entry(&mut self, id: DirectoryEntryId) -> DcacheResult<DirectoryEntry> {
+    pub fn remove_entry(&mut self, id: DirectoryEntryId) -> SysResult<DirectoryEntry> {
         let parent_id;
         {
             let entry = match self.d_entries.get(&id) {
-                None => return Err(NoSuchEntry),
+                None => return Err(ENOENT),
                 Some(entry) => entry,
             };
 
             if entry.is_directory() {
                 if !entry.is_directory_empty()? {
-                    return Err(NotEmpty);
+                    return Err(ENOTEMPTY);
                 } else if entry.is_mounted()? {
-                    return Err(DirectoryIsMounted)?;
+                    return Err(EBUSY)?;
                 }
             }
             parent_id = entry.parent_id;
         }
-        let parent_dir = self
-            .d_entries
-            .get_mut(&parent_id)
-            .ok_or(EntryNotConnected)?;
-
-        parent_dir.remove_entry(id)?;
+        if let Some(parent_dir) = self.d_entries.get_mut(&parent_id) {
+            parent_dir.remove_entry(id)?;
+        }
         Ok(match self.d_entries.remove(&id) {
-            None => return Err(NoSuchEntry),
+            None => return Err(ENOENT),
             Some(entry) => entry,
         })
     }
 
     #[allow(dead_code)]
-    pub fn dentry_path(&self, id: DirectoryEntryId) -> DcacheResult<Path> {
+    pub fn dentry_path(&self, id: DirectoryEntryId) -> SysResult<Path> {
         let mut current_id = id;
         let mut rev_path = Path::new();
-        let mut entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
+        let mut entry = self.d_entries.get(&current_id).ok_or(ENOENT)?;
         loop {
             if entry.id == entry.parent_id {
                 break;
             }
             rev_path.push(entry.filename)?;
             current_id = entry.parent_id;
-            entry = self.d_entries.get(&current_id).ok_or(NoSuchEntry)?;
+            entry = self.d_entries.get(&current_id).ok_or(ENOENT)?;
             if entry.is_mounted()? {
                 rev_path.pop();
             }
@@ -115,11 +112,11 @@ impl Dcache {
         Ok(path)
     }
 
-    pub fn walk_tree<F: FnMut(&DirectoryEntry) -> DcacheResult<()>>(
+    pub fn walk_tree<F: FnMut(&DirectoryEntry) -> SysResult<()>>(
         &self,
         root: &DirectoryEntry,
         callback: &mut F,
-    ) -> DcacheResult<()> {
+    ) -> SysResult<()> {
         let directory = root.get_directory()?;
 
         let mapping_closure = |entry_id| {
@@ -145,19 +142,16 @@ impl Dcache {
         &mut self,
         id: DirectoryEntryId,
         new_parent: DirectoryEntryId,
-    ) -> DcacheResult<()> {
+    ) -> SysResult<()> {
         let parent_id;
         {
-            let entry = self.d_entries.get(&id).ok_or(NoSuchEntry)?;
+            let entry = self.d_entries.get(&id).ok_or(ENOENT)?;
             parent_id = entry.parent_id;
         }
-        let parent_dir = self
-            .d_entries
-            .get_mut(&parent_id)
-            .ok_or(EntryNotConnected)?;
-
-        parent_dir.remove_entry(id)?;
-        let entry = self.d_entries.remove(&id).ok_or(NoSuchEntry)?;
+        if let Some(parent_dir) = self.d_entries.get_mut(&parent_id) {
+            parent_dir.remove_entry(id)?;
+        }
+        let entry = self.d_entries.remove(&id).ok_or(ENOENT)?;
         self.add_entry(Some(new_parent), entry)?;
         Ok(())
     }
