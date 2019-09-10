@@ -3,7 +3,7 @@
 mod tss;
 use tss::TSS;
 
-use super::safe_ffi::{c_char, CStringArray};
+use super::safe_ffi::CStringArray;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
@@ -17,7 +17,7 @@ use fallible_collections::FallibleArc;
 
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::{try_vec, FallibleBox};
-use libc_binding::Errno;
+use libc_binding::{c_char, Errno};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};

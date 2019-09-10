@@ -42,7 +42,7 @@ impl<T> IpcResult<T> {
 pub use process::{
     get_file_content, KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess,
 };
-pub use safe_ffi::CStringArray;
+pub use safe_ffi::{CString, CStringArray};
 
 use scheduler::SCHEDULER;
 

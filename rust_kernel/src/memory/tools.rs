@@ -15,6 +15,8 @@ pub use alloc_flags::*;
 pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_SIZE_MASK: usize = 0xFFF;
 
+use alloc::collections::CollectionAllocErr;
+
 #[allow(missing_docs)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryError {
@@ -51,5 +53,11 @@ impl From<MemoryError> for Errno {
             MemoryError::BadAddr => Errno::EFAULT,
             _ => Errno::ENOMEM,
         }
+    }
+}
+
+impl From<CollectionAllocErr> for MemoryError {
+    fn from(_e: CollectionAllocErr) -> Self {
+        Self::OutOfMem
     }
 }

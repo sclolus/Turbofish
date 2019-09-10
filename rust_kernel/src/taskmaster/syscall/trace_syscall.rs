@@ -6,11 +6,12 @@ use super::Fd;
 use super::MmapProt;
 use super::SocketArgsPtr;
 use super::SysResult;
-use crate::ffi::c_char;
 use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
-use libc_binding::{dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR};
+use libc_binding::{
+    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, OpenFlags, Pid, DIR,
+};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
     FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
@@ -65,8 +66,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             UNLINK => log::info!("unlink({:#?})", ebx as *const u8),
             LINK => log::info!(
                 "link({:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
-                ecx as *const libc_binding::c_char,
+                ebx as *const c_char,
+                ecx as *const c_char,
             ),
             EXECVE => log::info!(
                 "execve({:#?}, {:#?}, {:#?})",
@@ -75,10 +76,10 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as *const *const c_char,
             ),
             CHDIR => log::info!("chdir({:#?})", ebx as *const c_char),
-            CHMOD => log::info!("chmod({:#?})", ebx as *const libc_binding::c_char),
+            CHMOD => log::info!("chmod({:#?})", ebx as *const c_char),
             MKNOD => log::info!(
                 "mknod({:#?}, {:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
+                ebx as *const c_char,
                 ecx as mode_t,
                 edx as dev_t,
             ),
@@ -99,24 +100,16 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             GETUID => log::info!("getuid()"),
             PAUSE => log::info!("pause()"),
             FSTAT => log::info!("fstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
-            ACCESS => log::info!(
-                "access({:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
-                ecx as i32
-            ),
+            ACCESS => log::info!("access({:#?}, {:#?})", ebx as *const c_char, ecx as i32),
             KILL => log::info!("kill({:#?}, {:#?})", ebx as i32, ecx as u32),
             RENAME => log::info!(
                 "rename(
 {:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
-                ecx as *const libc_binding::c_char,
+                ebx as *const c_char,
+                ecx as *const c_char,
             ),
-            MKDIR => log::info!(
-                "mkdir({:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
-                ecx as i32
-            ),
-            RMDIR => log::info!("rmdir({:#?})", ebx as *const libc_binding::c_char),
+            MKDIR => log::info!("mkdir({:#?}, {:#?})", ebx as *const c_char, ecx as i32),
+            RMDIR => log::info!("rmdir({:#?})", ebx as *const c_char),
             PIPE => log::info!("pipe({:#?})", ebx as *const i32),
             DUP => log::info!("dup({:#?})", ebx as u32),
             SETGID => log::info!("setgid({:#?})", ebx as gid_t),
@@ -145,8 +138,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETGROUPS => log::info!("setgroups({:#?}, {:#?})", ebx as i32, ecx as *const gid_t),
             SYMLINK => log::info!(
                 "symlink({:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
-                ecx as *const libc_binding::c_char,
+                ebx as *const c_char,
+                ecx as *const c_char,
             ),
             LSTAT => log::info!("lstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
             REBOOT => log::info!("reboot()"),
@@ -180,7 +173,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             CHOWN => log::info!(
                 "chown(
 {:#?}, {:#?}, {:#?})",
-                ebx as *const libc_binding::c_char,
+                ebx as *const c_char,
                 ecx as uid_t,
                 edx as gid_t,
             ),

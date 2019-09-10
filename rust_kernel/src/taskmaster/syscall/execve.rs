@@ -5,11 +5,10 @@ use super::SysResult;
 use super::process::{
     get_file_content, CpuState, Process, ProcessArguments, ProcessOrigin, UserProcess,
 };
-use super::safe_ffi::{c_char, CStringArray};
+use super::safe_ffi::CStringArray;
 use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
-
-use core::convert::TryInto;
+use libc_binding::c_char;
 
 /// File descriptors open in the calling process image shall remain
 /// open in the new process image, except for those whose close-on-
@@ -107,11 +106,11 @@ pub fn sys_execve(
 
         let path: &str = v.make_checked_str(path)?;
 
-        let argv_content: CStringArray = (&v, argv).try_into()?;
+        let argv_content: CStringArray = v.make_checked_cstring_array(argv)?;
         // Get the argv len to store the argc value
         let argv_content_len = argv_content.len();
 
-        let envp_content: CStringArray = (&v, envp).try_into()?;
+        let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
         drop(v);
 
         let tg = scheduler.current_thread_group();

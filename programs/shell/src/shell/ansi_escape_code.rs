@@ -20,11 +20,13 @@ pub enum EscapedCode {
 pub const CSI: &str = "\x1b[";
 
 ///Iterator on escape sequence
+#[allow(dead_code)]
 pub fn iter_escaped<'a>(s: &'a str) -> IterEscaped<'a> {
     IterEscaped { s, off: 0 }
 }
 
 ///Document not founded
+#[allow(dead_code)]
 pub struct IterEscaped<'a> {
     off: usize,
     s: &'a str,
