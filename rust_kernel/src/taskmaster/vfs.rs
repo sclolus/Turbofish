@@ -141,11 +141,11 @@ impl VirtualFileSystem {
             return Err(Errno::EINVAL);
         }
 
-        if let Ok(id) = self.pathname_resolution(cwd, new_pathname.clone()) {
+        if let Ok(id) = self.pathname_resolution(cwd, &new_pathname) {
             self.dcache.remove_entry(id)?;
         };
 
-        let new_parent_id = self.pathname_resolution(cwd, new_pathname.parent())?;
+        let new_parent_id = self.pathname_resolution(cwd, &new_pathname.parent())?;
 
         self.dcache.move_dentry(id, new_parent_id)?;
 
@@ -168,17 +168,17 @@ impl VirtualFileSystem {
     pub fn pathname_resolution(
         &mut self,
         cwd: &Path,
-        pathname: Path,
+        pathname: &Path,
     ) -> SysResult<DirectoryEntryId> {
         let root = if pathname.is_absolute() {
             self.dcache.root_id
         } else {
-            assert!(cwd.is_absolute());
-            self._pathname_resolution(self.dcache.root_id, &cwd, 0)?
+            debug_assert!(cwd.is_absolute());
+            self._pathname_resolution(self.dcache.root_id, cwd, 0)?
         };
 
         // self._pathname_resolution(root, pathname, 0)
-        self._pathname_resolution(root, &pathname, 0)
+        self._pathname_resolution(root, pathname, 0)
     }
 
     fn _pathname_resolution(
@@ -307,7 +307,7 @@ impl VirtualFileSystem {
         // qu'il n'y ait pas de reference croisees (j'ai mis usize dans l'exemple)
 
         // let entry_id;
-        match self.pathname_resolution(cwd, path.clone()) {
+        match self.pathname_resolution(cwd, &path) {
             Ok(_id) => return Err(EEXIST),
             Err(_e) => {
                 //TODO: Option(FileSystemId)
@@ -327,7 +327,7 @@ impl VirtualFileSystem {
 
                 assert!(self.inodes.insert(new_id, new_inode).is_none());
                 let mut new_direntry = DirectoryEntry::default();
-                let parent_id = self.pathname_resolution(cwd, path.parent())?;
+                let parent_id = self.pathname_resolution(cwd, &path.parent())?;
 
                 new_direntry
                     .set_filename(*path.filename().unwrap())
@@ -470,7 +470,7 @@ impl VirtualFileSystem {
 
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
-        let mount_dir_id = self.pathname_resolution(cwd, target)?;
+        let mount_dir_id = self.pathname_resolution(cwd, &target)?;
         self.mount_filesystem(Arc::new(DeadMutex::new(filesystem)), fs_id, mount_dir_id)
     }
 
@@ -480,7 +480,7 @@ impl VirtualFileSystem {
         _creds: &Credentials,
         path: Path,
     ) -> SysResult<Vec<dirent>> {
-        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         if entry.get_directory()?.entries().count() == 0 {
@@ -525,7 +525,7 @@ impl VirtualFileSystem {
     }
 
     pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, path.clone())?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let inode_id;
         let parent_id;
 
@@ -583,14 +583,14 @@ impl VirtualFileSystem {
         mode: FileType,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let entry_id;
-        match self.pathname_resolution(cwd, path.clone()) {
+        match self.pathname_resolution(cwd, &path) {
             Ok(_id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
                 return Err(Errno::EEXIST)
             }
             Ok(id) => entry_id = id,
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
-                let parent_id = self.pathname_resolution(cwd, path.parent())?;
+                let parent_id = self.pathname_resolution(cwd, &path.parent())?;
                 let parent_entry = self.dcache.get_entry(&parent_id)?;
 
                 let inode_id = parent_entry.inode_id;
@@ -668,7 +668,7 @@ impl VirtualFileSystem {
         path: Path,
         mode: FileType,
     ) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
@@ -690,7 +690,7 @@ impl VirtualFileSystem {
         owner: uid_t,
         group: gid_t,
     ) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
@@ -712,11 +712,11 @@ impl VirtualFileSystem {
         mut path: Path,
         mode: FileType,
     ) -> SysResult<()> {
-        if let Ok(_) = self.pathname_resolution(cwd, path.clone()) {
+        if let Ok(_) = self.pathname_resolution(cwd, &path) {
             return Err(EEXIST);
         }
         let filename = path.pop();
-        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
             return Err(ENOTDIR);
@@ -740,7 +740,7 @@ impl VirtualFileSystem {
             return Err(EINVAL);
         }
 
-        let entry_id = self.pathname_resolution(cwd, path.clone())?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         if !entry.is_directory() {
@@ -775,7 +775,7 @@ impl VirtualFileSystem {
         oldpath: Path,
         newpath: Path,
     ) -> SysResult<()> {
-        let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
+        let oldentry_id = self.pathname_resolution(cwd, &oldpath)?;
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
         if oldentry.is_directory() {
@@ -783,11 +783,11 @@ impl VirtualFileSystem {
             return Err(EISDIR);
         }
 
-        if self.pathname_resolution(cwd, newpath.clone()).is_ok() {
+        if self.pathname_resolution(cwd, &newpath).is_ok() {
             return Err(EEXIST);
         }
 
-        let parent_new = self.pathname_resolution(cwd, newpath.parent())?;
+        let parent_new = self.pathname_resolution(cwd, &newpath.parent())?;
 
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
@@ -808,7 +808,7 @@ impl VirtualFileSystem {
         oldpath: Path,
         newpath: Path,
     ) -> SysResult<()> {
-        let oldentry_id = self.pathname_resolution(cwd, oldpath)?;
+        let oldentry_id = self.pathname_resolution(cwd, &oldpath)?;
 
         self.rename_dentry(cwd, oldentry_id, newpath)?;
         Ok(())
