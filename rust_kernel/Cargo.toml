@@ -21,7 +21,6 @@ bit_field = "0.10.0"
 bitflags = "1.0.4"
 log = "0.4.6"
 lock_api = "0.1.5"
-hashmap_core = "0.1.10"
 io = { path = "dependencies/io" }
 keyboard = { path = "dependencies/keyboard" }
 mbr = { path = "dependencies/mbr" }

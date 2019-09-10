@@ -80,11 +80,6 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "hashmap_core"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "io"
 version = "0.1.0"
 
@@ -413,7 +408,6 @@ dependencies = [
  "elf_loader 0.1.0",
  "ext2 0.1.0",
  "fallible_collections 0.1.0",
- "hashmap_core 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "io 0.1.0",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keyboard 0.1.0",
@@ -469,7 +463,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5527cfe0d098f36e3f8839852688e63c8fff1c90b2b405aef730615f9a7bcf7b"
 "checksum fuchsia-cprng 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
-"checksum hashmap_core 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "2d6852e5a86250521973b0c1d39677166d8a9c0047c908d7e04f1aa04177973c"
 "checksum itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5b8467d9c1cebe26feb08c640139247fac215782d35371ade9a2136ed6085358"
 "checksum lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 "checksum libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)" = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
