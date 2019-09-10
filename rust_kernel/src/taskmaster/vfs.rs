@@ -391,6 +391,21 @@ impl VirtualFileSystem {
         }))
     }
 
+    /// Returns the FileType of the file pointed by the Path `path`.
+    pub fn file_type(&mut self, cwd: &Path, path: Path) -> VfsResult<FileType> {
+        let direntry_id = self.pathname_resolution(cwd, path)?;
+        let inode_id = &self
+            .dcache
+            .get_entry(&direntry_id)
+            .expect("Dcache is corrupted: Could not find expected direntry")
+            .inode_id;
+        Ok(self
+            .inodes
+            .get(inode_id)
+            .expect("Vfs Inodes are corrupted: Could not find expected inode")
+            .access_mode)
+    }
+
     // fn recursive_build_subtree(
     //     // This should be refactored with recursive_creat.
     //     &mut self,

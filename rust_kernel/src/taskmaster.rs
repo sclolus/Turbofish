@@ -17,8 +17,7 @@ mod thread_group;
 pub mod vfs;
 pub use vfs::VFS;
 
-use core::convert::TryFrom;
-use core::convert::TryInto;
+use core::convert::{TryFrom, TryInto};
 use thread_group::Credentials;
 use vfs::Path;
 
@@ -105,7 +104,10 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     lazy_static::initialize(&VFS);
 
     // Register the first process
-    let file = get_file_content(&Path::try_from("/").unwrap(), &Credentials::ROOT, filename)
+    let path = filename
+        .try_into()
+        .expect("The path of the init program is not valid");
+    let file = get_file_content(&Path::try_from("/").unwrap(), &Credentials::ROOT, path)
         .expect("Cannot syncing");
     SCHEDULER
         .lock()

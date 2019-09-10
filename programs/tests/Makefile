@@ -13,6 +13,7 @@ SRC_C += DeepThought \
 		signal/SignalSimpleDuo \
 		execve/argv \
 		execve/check_argv \
+		execve/cannot_exec_directory \
 		sigprocmask/sigprocmask \
 		wait/wait \
 		wait/wuntraced \
