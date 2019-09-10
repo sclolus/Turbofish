@@ -108,7 +108,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *const c_char,
                 ecx as *const c_char,
             ),
-            MKDIR => log::info!("mkdir({:#?}, {:#?})", ebx as *const c_char, ecx as i32),
+            MKDIR => log::info!("mkdir({:#?}, {:#?})", ebx as *const c_char, ecx as mode_t),
             RMDIR => log::info!("rmdir({:#?})", ebx as *const c_char),
             PIPE => log::info!("pipe({:#?})", ebx as *const i32),
             DUP => log::info!("dup({:#?})", ebx as u32),
