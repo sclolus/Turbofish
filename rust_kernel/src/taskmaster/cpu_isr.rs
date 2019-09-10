@@ -208,7 +208,7 @@ fn trace_process(
 }
 
 #[no_mangle]
-unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
+unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let cs = (*cpu_state).cs;
     // Error from ring 0
     if cs & 0b11 == 0 {
@@ -217,7 +217,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             let virtual_page_allocator = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap();
             // Kernel valloc case
             if let Ok(()) = virtual_page_allocator.valloc_handle_page_fault(_read_cr2()) {
-                return;
+                return cpu_state as u32;
             } else {
                 let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
                 eprintln!("{}     address: {:#X?}", page_fault_cause, _read_cr2());
@@ -292,4 +292,5 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         qemu_check();
         loop {}
     }
+    cpu_state as u32
 }

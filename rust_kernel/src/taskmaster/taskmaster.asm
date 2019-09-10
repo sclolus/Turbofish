@@ -114,7 +114,26 @@ _isr_syscall:
 	STORE_CONTEXT
 
 	call syscall_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
+
+	LOAD_CONTEXT
+	add esp, 8 ; skip err code & cpu isr fields
+	; Return contains now new registers, new eflags, new esp and new eip
+	iret
+
+extern scheduler_interrupt_handler
+
+; It is time to schedule
+global _schedule_next
+_schedule_next:
+	sub esp, 8 ; skip err code & cpu isr fields
+	STORE_CONTEXT
+
+	call scheduler_interrupt_handler
+	; Set the new stack pointer
+	mov esp, eax
+schedule_return:
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
@@ -135,23 +154,6 @@ _start_process:
 
 	LOAD_CONTEXT
 
-	add esp, 8 ; skip err code & cpu isr fields
-	; Return contains now new registers, new eflags, new esp and new eip
-	iret
-
-extern scheduler_interrupt_handler
-
-global _schedule_next
-_schedule_next:
-	sub esp, 8 ; skip err code & cpu isr fields
-	STORE_CONTEXT
-
-	call scheduler_interrupt_handler
-	; Set the new stack pointer
-	mov esp, eax
-schedule_return:
-
-	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
@@ -210,7 +212,8 @@ _cpu_isr_%2:
 
 	STORE_CONTEXT
 	call cpu_isr_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
@@ -224,7 +227,8 @@ _cpu_isr_%2:
 
 	STORE_CONTEXT
 	call cpu_isr_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields

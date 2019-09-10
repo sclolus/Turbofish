@@ -240,7 +240,7 @@ extern "C" {
 /// Global syscall interrupt handler called from assembly code
 /// See https://www.informatik.htw-dresden.de/~beck/ASM/syscall_list.html
 #[no_mangle]
-pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
+pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     #[allow(unused_variables)]
     let BaseRegisters {
         eax,
@@ -367,6 +367,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
     unpreemptible_context! {{
         SCHEDULER.lock().current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
     }}
+    cpu_state as u32
 }
 
 extern "C" {
