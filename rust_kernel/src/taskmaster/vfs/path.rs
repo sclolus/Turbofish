@@ -1,14 +1,12 @@
+use super::posix_consts::{NAME_MAX, PATH_MAX};
+use super::SysResult;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
-use core::result::Result as StdResult;
+use fallible_collections::FallibleVec;
 use libc_binding::{c_char, Errno};
 use try_clone_derive::TryClone;
-
-use super::posix_consts::{NAME_MAX, PATH_MAX};
-
-type Result<T> = StdResult<T, Errno>;
 
 #[derive(Debug, Clone, TryClone)]
 pub struct Path {
@@ -51,7 +49,7 @@ impl Path {
         Self::null_path()
     }
 
-    pub fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
+    pub fn set_absolute(&mut self, value: bool) -> SysResult<&mut Self> {
         if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
         }
@@ -87,7 +85,7 @@ impl Path {
         Ancestors::from_path(self)
     }
 
-    pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
+    pub fn push(&mut self, component: Filename) -> SysResult<&mut Self> {
         // this is an Option return type actually
         let total_length;
         if self.depth() != 0 {
@@ -100,7 +98,7 @@ impl Path {
             return Err(Errno::ENAMETOOLONG);
         }
         self.total_length = total_length;
-        self.components.push(component);
+        self.components.try_push(component)?;
         Ok(self)
     }
 
@@ -135,7 +133,7 @@ impl Path {
         Components::from_path(self)
     }
 
-    pub fn chain(&mut self, other: Path) -> Result<&mut Self> {
+    pub fn chain(&mut self, other: Path) -> SysResult<&mut Self> {
         if self == &Path::null_path() {
             *self = other;
             Ok(self)
@@ -145,7 +143,7 @@ impl Path {
         }
     }
 
-    pub fn chain_components<'a, T>(&mut self, comps: T) -> Result<&mut Self>
+    pub fn chain_components<'a, T>(&mut self, comps: T) -> SysResult<&mut Self>
     where
         T: Iterator<Item = &'a Filename>,
     {
@@ -155,7 +153,7 @@ impl Path {
         Ok(self)
     }
 
-    pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
+    pub fn replace(&mut self, offset: usize, other: Path) -> SysResult<&mut Self> {
         let stack = self.clone(); // well need to copy data temporary.
         let (comps_begin, comps_end) = stack.components().divide_at(offset);
 
@@ -179,7 +177,7 @@ pub struct Filename(pub [c_char; NAME_MAX as usize + 1], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self> {
+    fn try_from(s: &str) -> SysResult<Self> {
         let mut n = [0 as c_char; NAME_MAX as usize + 1];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
             return Err(Errno::EINVAL);
@@ -418,7 +416,7 @@ impl<'a> From<&'a Path> for Components<'a> {
 
 impl<'a> TryFrom<Components<'a>> for Path {
     type Error = Errno;
-    fn try_from(comps: Components<'a>) -> Result<Self> {
+    fn try_from(comps: Components<'a>) -> SysResult<Self> {
         let mut path = Path::new();
 
         path.set_absolute(comps.is_absolute())?;
@@ -431,7 +429,7 @@ impl<'a> TryFrom<Components<'a>> for Path {
 
 impl TryFrom<&str> for Path {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self> {
+    fn try_from(s: &str) -> SysResult<Self> {
         if s.len() > PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
         }

@@ -8,6 +8,7 @@ use crate::taskmaster::SysResult;
 use super::FileSystemId;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
     dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, FileType,
 };
@@ -47,13 +48,12 @@ impl Inode {
             driver,
         }
     }
-    pub fn root_inode() -> Self {
-        Self {
+    pub fn root_inode() -> SysResult<Self> {
+        Ok(Self {
             inode_data: InodeData::root_inode(),
-            // TODO: FallibleArc
-            driver: Box::new(DefaultDriver),
-            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
-        }
+            driver: Box::try_new(DefaultDriver)?,
+            filesystem: Arc::try_new(DeadMutex::new(DeadFileSystem))?,
+        })
     }
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         self.inode_data.stat(stat)
@@ -69,17 +69,6 @@ impl Inode {
             .filesystem
             .lock()
             .read(self.id.inode_number, offset, buf)? as u32)
-    }
-}
-
-impl Default for Inode {
-    fn default() -> Self {
-        Self {
-            inode_data: Default::default(),
-            // TODO: FallibleArc
-            driver: Box::new(DefaultDriver),
-            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
-        }
     }
 }
 

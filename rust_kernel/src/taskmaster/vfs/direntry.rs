@@ -2,6 +2,7 @@ use super::inode::InodeId;
 use super::path::{Filename, Path};
 use super::SysResult;
 use alloc::vec::Vec;
+use fallible_collections::FallibleVec;
 use libc_binding::{c_char, dirent, Errno::*};
 
 #[derive(Debug, Clone)]
@@ -180,7 +181,7 @@ impl DirectoryEntry {
     pub fn add_entry(&mut self, entry: DirectoryEntryId) -> SysResult<()> {
         let directory = self.inner.get_directory_mut()?;
 
-        directory.entries.push(entry);
+        directory.entries.try_push(entry)?;
         Ok(())
     }
 

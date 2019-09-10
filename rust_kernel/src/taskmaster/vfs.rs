@@ -5,7 +5,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
-use fallible_collections::btree::BTreeMap;
+use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox};
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
@@ -63,7 +63,7 @@ impl VirtualFileSystem {
             dcache: Dcache::new(),
         };
 
-        let root_inode = Inode::root_inode();
+        let root_inode = Inode::root_inode()?;
         let root_inode_id = root_inode.id;
 
         new.inodes.try_insert(root_inode_id, root_inode)?;
@@ -99,7 +99,7 @@ impl VirtualFileSystem {
         let direntry = self.dcache.add_entry(parent, direntry)?;
         let inode = Inode::new(
             fs,
-            Box::new(Ext2DriverFile::new(inode_data.id)),
+            Box::try_new(Ext2DriverFile::new(inode_data.id))?,
             // TODO: handle othre drivers
             inode_data,
         );
@@ -323,8 +323,11 @@ impl VirtualFileSystem {
 
                 inode_data.link_number += 1;
 
-                let new_inode =
-                    Inode::new(Arc::new(DeadMutex::new(DeadFileSystem)), driver, inode_data);
+                let new_inode = Inode::new(
+                    Arc::try_new(DeadMutex::new(DeadFileSystem))?,
+                    driver,
+                    inode_data,
+                );
 
                 self.add_inode(new_inode)?;
                 let mut new_direntry = DirectoryEntry::default();
@@ -466,13 +469,18 @@ impl VirtualFileSystem {
             .expect("disk driver open failed");
 
         let ext2_disk = DiskWrapper(file_operation);
-        let ext2 = Ext2Filesystem::new(Box::new(ext2_disk)).expect("ext2 filesystem new failed");
+        let ext2 =
+            Ext2Filesystem::new(Box::try_new(ext2_disk)?).expect("ext2 filesystem new failed");
         let fs_id: FileSystemId = self.gen();
 
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(cwd, &target)?;
-        self.mount_filesystem(Arc::new(DeadMutex::new(filesystem)), fs_id, mount_dir_id)
+        self.mount_filesystem(
+            Arc::try_new(DeadMutex::new(filesystem))?,
+            fs_id,
+            mount_dir_id,
+        )
     }
 
     pub fn opendir(

@@ -5,7 +5,7 @@ use crate::taskmaster::drivers::{
 use alloc::format;
 use alloc::sync::Arc;
 use core::convert::TryFrom;
-use fallible_collections::boxed::FallibleBox;
+use fallible_collections::{FallibleArc, FallibleBox};
 use sync::DeadMutex;
 
 use super::*;
@@ -52,20 +52,22 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
         DiskDriverType::Bios => {
             let mut disk = BiosInt13hInstance;
             let mbr = read_mbr(&mut disk);
-            Box::new(DiskDriver::new(
+            Box::try_new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
             ))
+            .expect("box new disk driver failed: ENOMEM")
         }
         DiskDriverType::Ide => {
             let mut disk = IdeAtaInstance;
             let mbr = read_mbr(&mut disk);
-            Box::new(DiskDriver::new(
+            Box::try_new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
                 mbr.parts[0].size as u64 * 512,
             ))
+            .expect("box new disk driver failed: ENOMEM")
         }
         _ => unimplemented!(),
     };
@@ -80,7 +82,7 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     let fs_id: FileSystemId = vfs.gen();
     let ext2fs = Ext2fs::new(ext2, fs_id);
     vfs.mount_filesystem(
-        Arc::new(DeadMutex::new(ext2fs)),
+        Arc::try_new(DeadMutex::new(ext2fs)).expect("arc new ext2fs failed"),
         fs_id,
         DirectoryEntryId::new(2),
     )
