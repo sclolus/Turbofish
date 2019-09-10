@@ -4,14 +4,11 @@ use super::scheduler::{Scheduler, SCHEDULER};
 use super::vfs::{Path, VFS};
 use super::IpcResult;
 use core::convert::TryFrom;
-use libc_binding::c_char;
-use libc_binding::stat;
+use libc_binding::{c_char, stat, FileType, OpenFlags};
 
 pub fn statfn(scheduler: &Scheduler, path: Path, buf: &mut stat) -> SysResult<u32> {
-    let mode = libc_binding::FileType::from_bits(0o777).expect("file permission creation failed");
-    // TODO: REMOVE THIS SHIT
-    // TODO: REMOVE THIS SHIT
-    let flags = libc_binding::OpenFlags::O_RDWR;
+    let mode = FileType::from_bits(0o777).expect("file permission creation failed");
+    let flags = OpenFlags::empty();
 
     let tg = scheduler.current_thread_group();
     let creds = &tg.credentials;
