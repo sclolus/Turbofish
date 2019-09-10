@@ -9,13 +9,19 @@ extern char **environ;
 
 int main(void)
 {
-	if (-1 == access("/bin", F_OK)) {
-		assert(0 == mkdir("/bin/", 0777));
-	}
+	char	filename[256];
+	pid_t	pid = getpid();
 
-	assert(-1 == execve("/bin/", (char *[]){"env", NULL}, environ));
+	snprintf(filename, sizeof(filename), "cannot_exec_dir_%u", pid);
+	assert(-1 != mkdir(filename, 0777));
+
+
+	assert(-1 == execve(filename, (char *[]){filename, NULL}, environ));
 	assert(errno == EACCESS);
-	assert(-1 == execve("/bin", (char *[]){"env", NULL}, environ));
+
+	snprintf(filename, sizeof(filename), "cannot_exec_dir_%u/", pid);
+	assert(-1 == execve(filename, (char *[]){filename, NULL}, environ));
 	assert(errno == EACCESS);
+	assert(-1 != rmdir(filename));
 	return EXIT_SUCCESS;
 }
