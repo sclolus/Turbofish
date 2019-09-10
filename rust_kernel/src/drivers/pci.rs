@@ -350,13 +350,13 @@ impl AddressSpace {
 impl core::fmt::Display for PciDevice {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let device_type = match self.registers {
-            PciDeviceRegisters::PciType0(_) => "Simple and basic device",
+            PciDeviceRegisters::PciType0(_) => "Dev",
             PciDeviceRegisters::PciType1(_) => "Pci to Pci bridge",
             PciDeviceRegisters::PciType2(_) => "Pci to CardBus bridge",
         };
         write!(
             f,
-            "{:02X?}:{:02X?}.{:X?} {:?} {:?}",
+            "{:02X?}:{:02X?}.{:X?} {:?} {}",
             self.address_space.bus,
             self.address_space.slot,
             self.address_space.function,
@@ -474,8 +474,8 @@ impl Pci {
 
     /// List and enumerate all devices
     pub fn list_pci_devices(&mut self) {
-        for (i, elem) in self.devices_list.iter().enumerate() {
-            println!("{} {}", i, elem);
+        for (_i, elem) in self.devices_list.iter().enumerate() {
+            log::info!("{}", elem);
         }
     }
 

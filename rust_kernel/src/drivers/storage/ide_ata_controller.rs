@@ -4,7 +4,7 @@ pub mod pci_udma;
 pub mod pio_polling;
 
 mod udma;
-pub use udma::{Channel, DmaStatus, Udma};
+pub use udma::{Channel, DmaCommand, DmaStatus, Udma};
 
 use super::{
     BlockIo, DiskResult, IdeControllerProgIf, MassStorageControllerSubClass, NbrSectors,
@@ -26,7 +26,6 @@ pub static mut IDE_ATA_CONTROLLER: Option<IdeAtaController> = None;
 pub unsafe fn init() -> AtaResult<()> {
     IDE_ATA_CONTROLLER = IdeAtaController::new();
 
-    // println!("{:#X?}", IDE_ATA_CONTROLLER);
     if let Some(d) = IDE_ATA_CONTROLLER.as_mut() {
         if let Ok(drive) = d.select_drive(Rank::Primary(Hierarchy::Master)) {
             log::info!("Selecting drive: {:#X?}", drive);
@@ -69,22 +68,31 @@ pub trait DmaIo {
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *mut u8,
-        // udma: &mut Udma,
-    ) -> AtaResult<()>;
+        udma: &mut Udma,
+    ) -> AtaResult<NbrSectors>;
     fn write(
         &self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-        // udma: &mut Udma,
-    ) -> AtaResult<()>;
+        udma: &mut Udma,
+    ) -> AtaResult<NbrSectors>;
 }
 
 /// When in PIO mode, buff address is passed by pointer and methods read or write on it
 pub trait PioIo {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> AtaResult<()>;
-    fn write(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *const u8)
-        -> AtaResult<()>;
+    fn read(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> AtaResult<NbrSectors>;
+    fn write(
+        &self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *const u8,
+    ) -> AtaResult<NbrSectors>;
 }
 
 /// Standard port location, if they are different, probe IDE controller in PCI driver
@@ -92,6 +100,26 @@ const PRIMARY_BASE_REGISTER: u16 = 0x01F0;
 const SECONDARY_BASE_REGISTER: u16 = 0x0170;
 const PRIMARY_CONTROL_REGISTER: u16 = 0x03f6;
 const SECONDARY_CONTROL_REGISTER: u16 = 0x376;
+
+/// Identify a Drive
+fn identify(rank: Rank, base_register: u16, control_register: u16) -> Option<Drive> {
+    Drive::identify(rank, base_register, control_register).map(|s| {
+        log::info!("ide {:?} detected", rank);
+        s
+    })
+}
+
+/// Get a UDMA instance
+fn get_udma(channel: Channel, dma_port: u16) -> Option<Udma> {
+    log::info!("Initialize of IDE-UDMA {:?}", channel);
+    match Udma::init(dma_port, channel) {
+        Ok(udma) => Some(udma),
+        Err(e) => {
+            log::error!("{:?}", e);
+            None
+        }
+    }
+}
 
 impl IdeAtaController {
     /// Invocation of a new PioMode-IDE controller
@@ -107,12 +135,14 @@ impl IdeAtaController {
 
         // Become the BUS MASTER, it is very important on QEMU since it does not do it for us (give little tempos)
         PIT0.lock().sleep(Duration::from_millis(40));
-
         pci.set_command(PciCommand::BUS_MASTER, true, pci_location);
 
         PIT0.lock().sleep(Duration::from_millis(40));
 
-        eprintln!("current pci status: {:#?}", pci.get_status(pci_location));
+        log::info!(
+            "current IDE pci status: {:#?}",
+            pci.get_status(pci_location)
+        );
 
         // Get primary and secondary IO ports (0 or 1 means ide default port values_
         let primary_base_register = if pci.bar0 == 0 || pci.bar0 == 1 {
@@ -137,42 +167,69 @@ impl IdeAtaController {
         };
 
         // DMA port is contained inside BAR 4 of the PCI device
-        let _dma_port = pci.bar4 as u16;
+        let dma_port = pci.bar4 as u16;
+
+        let primary_master = identify(
+            Rank::Primary(Hierarchy::Master),
+            primary_base_register,
+            primary_control_register,
+        );
+
+        let primary_slave = identify(
+            Rank::Primary(Hierarchy::Slave),
+            primary_base_register,
+            primary_control_register,
+        );
+
+        // Create primary DMA channel if devices was found
+        let udma_primary = if (primary_master.is_some() || primary_slave.is_some()) && dma_port != 0
+        {
+            get_udma(Channel::Primary, dma_port)
+        } else {
+            None
+        };
+
+        let secondary_master = identify(
+            Rank::Secondary(Hierarchy::Master),
+            secondary_base_register,
+            secondary_control_register,
+        );
+
+        let secondary_slave = identify(
+            Rank::Secondary(Hierarchy::Slave),
+            secondary_base_register,
+            secondary_control_register,
+        );
+
+        // Create secondary DMA channel if devices was found
+        let udma_secondary =
+            if (secondary_master.is_some() || secondary_slave.is_some()) && dma_port != 0 {
+                get_udma(Channel::Secondary, dma_port + 8)
+            } else {
+                None
+            };
+
+        // Sum DMA capability and set default Operating Mode
+        // TODO: We assume that if IDE board is UDMA capable, the connected device is too
+        let (udma_capable, operating_mode) = if udma_primary.is_some() || udma_secondary.is_some() {
+            (true, OperatingMode::UdmaTransfert)
+        } else {
+            (false, OperatingMode::PioTransfert)
+        };
 
         // Construct all objects
         Some(Self {
-            primary_master: Drive::identify(
-                Rank::Primary(Hierarchy::Master),
-                primary_base_register,
-                primary_control_register,
-            ),
-            secondary_master: Drive::identify(
-                Rank::Primary(Hierarchy::Master),
-                secondary_base_register,
-                secondary_control_register,
-            ),
-            primary_slave: Drive::identify(
-                Rank::Primary(Hierarchy::Slave),
-                primary_base_register,
-                primary_control_register,
-            ),
-            secondary_slave: Drive::identify(
-                Rank::Primary(Hierarchy::Slave),
-                secondary_base_register,
-                secondary_control_register,
-            ),
+            primary_master,
+            secondary_master,
+            primary_slave,
+            secondary_slave,
             selected_drive: None,
             pci_location,
             pci,
-            // TODO: UDMA IRQ does not work at all: Set PioTransfert instead
-            operating_mode: OperatingMode::PioTransfert,
-            udma_capable: false,
-            udma_primary: None,
-            udma_secondary: None,
-            // operating_mode: OperatingMode::UdmaTransfert,
-            // udma_capable: true,
-            // udma_primary: if _dma_port != 0 { Some(Udma::init(_dma_port, Channel::Primary)) } else { None },
-            // udma_secondary: if _dma_port != 0 { Some(Udma::init(_dma_port + 8, Channel::Secondary)) } else { None },
+            operating_mode,
+            udma_capable,
+            udma_primary,
+            udma_secondary,
         })
     }
 
@@ -220,82 +277,83 @@ impl IdeAtaController {
 
 impl BlockIo for IdeAtaController {
     /// Read nbr_sectors after start_sector location and write it into the buf
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<NbrSectors> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
                     Hierarchy::Master => self.primary_master.as_ref(),
                     Hierarchy::Slave => self.primary_slave.as_ref(),
                 },
-                self.udma_primary.as_ref(),
+                self.udma_primary.as_mut(),
             ),
             Rank::Secondary(h) => (
                 match h {
                     Hierarchy::Master => self.secondary_master.as_ref(),
                     Hierarchy::Slave => self.secondary_slave.as_ref(),
                 },
-                self.udma_secondary.as_ref(),
+                self.udma_secondary.as_mut(),
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+        Ok(match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                unimplemented!()
-                // DmaIo::read(d, start_sector, nbr_sectors, buf, u)?;
+                DmaIo::read(d, start_sector, nbr_sectors, buf, udma)?
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
-                PioIo::read(d, start_sector, nbr_sectors, buf)?;
+                PioIo::read(d, start_sector, nbr_sectors, buf)?
             }
             other => panic!(
                 "this device should not be in that configuration, {:?}",
                 other
             ),
-        }
-        Ok(())
+        })
     }
 
     /// Write nbr_sectors after start_sector location from the buf
     fn write(
-        &self,
+        &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         let (drive, udma) = match self.selected_drive.ok_or(AtaError::DeviceNotFound)? {
             Rank::Primary(h) => (
                 match h {
                     Hierarchy::Master => self.primary_master.as_ref(),
                     Hierarchy::Slave => self.primary_slave.as_ref(),
                 },
-                self.udma_primary.as_ref(),
+                self.udma_primary.as_mut(),
             ),
             Rank::Secondary(h) => (
                 match h {
                     Hierarchy::Master => self.secondary_master.as_ref(),
                     Hierarchy::Slave => self.secondary_slave.as_ref(),
                 },
-                self.udma_secondary.as_ref(),
+                self.udma_secondary.as_mut(),
             ),
         };
         let d = drive.ok_or(AtaError::DeviceNotFound)?;
-        match (self.operating_mode, udma, self.udma_capable) {
-            (OperatingMode::UdmaTransfert, Some(_u), true) => {
+        Ok(match (self.operating_mode, udma, self.udma_capable) {
+            (OperatingMode::UdmaTransfert, Some(udma), true) => {
                 d.enable_interrupt();
-                // DmaIo::write(d, start_sector, nbr_sectors, buf, u)?;
-                unimplemented!()
+                DmaIo::write(d, start_sector, nbr_sectors, buf, udma)?
             }
             (OperatingMode::PioTransfert, _, _) => {
                 d.disable_interrupt();
-                PioIo::write(d, start_sector, nbr_sectors, buf)?;
+                PioIo::write(d, start_sector, nbr_sectors, buf)?
             }
             other => panic!(
                 "this device should not be in that configuration, {:?}",
                 other
             ),
-        }
-        Ok(())
+        })
     }
 }
 
@@ -417,7 +475,7 @@ impl Drive {
         Pio::<u8>::new(command_register + Self::L3_CYLINDER).write(0);
 
         // send the IDENTIFY command (0xEC) to the Command IO port (0x1F7)
-        Pio::<u8>::new(command_register + Self::COMMAND).write(Command::AtaCmdIdentify as u8);
+        Pio::<u8>::new(command_register + Self::COMMAND).write(AtaCommand::AtaCmdIdentify as u8);
 
         // read the Status port (0x1F7). If the value read is 0, the drive does not exist
         if Pio::<u8>::new(command_register + Self::STATUS).read() == 0 {
@@ -444,7 +502,7 @@ impl Drive {
         ))
         .contains(StatusRegister::ERR)
         {
-            eprintln!(
+            log::warn!(
                 "unexpected error while polling status of {:?} err: {:?}",
                 rank,
                 ErrorRegister::from_bits_truncate(
@@ -663,7 +721,7 @@ bitflags! {
 
 #[allow(dead_code)]
 #[repr(u8)]
-enum Command {
+enum AtaCommand {
     AtaCmdReadPio = 0x20,
     AtaCmdReadPioExt = 0x24,
     AtaCmdReadDma = 0xC8,

@@ -56,7 +56,7 @@ pub extern "C" fn kmain(
 
     let mut d = IdeAtaController::new().unwrap();
 
-    d.force_operating_mode(ide_ata_controller::OperatingMode::PioTransfert)
+    d.force_operating_mode(ide_ata_controller::OperatingMode::UdmaTransfert)
         .unwrap();
 
     println!("{:#X?}", d);
@@ -89,5 +89,6 @@ pub extern "C" fn kmain(
         }
     }
     crate::watch_dog();
+    eprintln!("Test successfull !");
     exit_qemu(0);
 }

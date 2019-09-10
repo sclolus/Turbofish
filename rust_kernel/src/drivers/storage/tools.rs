@@ -1,4 +1,5 @@
-use super::SECTOR_SIZE;
+use super::{SECTOR_MASK, SECTOR_SHIFT};
+
 use core::ops::{Add, Sub};
 
 /// new type representing a number of sectors
@@ -7,13 +8,13 @@ pub struct NbrSectors(pub u64);
 
 impl Into<usize> for NbrSectors {
     fn into(self) -> usize {
-        self.0 as usize * SECTOR_SIZE
+        (self.0 as usize) << SECTOR_SHIFT
     }
 }
 
 impl From<usize> for NbrSectors {
     fn from(u: usize) -> Self {
-        Self((u / SECTOR_SIZE + if u % SECTOR_SIZE != 0 { 1 } else { 0 }) as u64)
+        Self(((u >> SECTOR_SHIFT) + if u & SECTOR_MASK != 0 { 1 } else { 0 }) as u64)
     }
 }
 
@@ -31,7 +32,7 @@ pub struct Sector(pub u64);
 
 impl From<u64> for Sector {
     fn from(u: u64) -> Self {
-        Self(u / SECTOR_SIZE as u64)
+        Self(u >> SECTOR_SHIFT)
     }
 }
 

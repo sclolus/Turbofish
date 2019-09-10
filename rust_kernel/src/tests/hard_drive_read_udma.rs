@@ -1,4 +1,4 @@
-use crate::drivers::pit_8253::OperatingMode;
+use crate::drivers::pit_8253;
 use crate::drivers::{PCI, PIC_8259, PIT0};
 
 use crate::interrupts;
@@ -14,7 +14,7 @@ use crate::drivers::storage::{
     BlockIo, NbrSectors, Sector,
 };
 
-const NB_TESTS: usize = 48;
+const NB_TESTS: usize = 64;
 const DISK_SECTOR_CAPACITY: u16 = 0x8000;
 const SECTOR_SIZE: u64 = 512;
 
@@ -35,7 +35,8 @@ pub extern "C" fn kmain(
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
 
-        PIT0.lock().configure(OperatingMode::RateGenerator);
+        PIT0.lock()
+            .configure(pit_8253::OperatingMode::RateGenerator);
         PIT0.lock().start_at_frequency(1000.).unwrap();
 
         crate::watch_dog();
@@ -56,7 +57,7 @@ pub extern "C" fn kmain(
 
     let mut d = IdeAtaController::new().unwrap();
 
-    d.force_operating_mode(ide_ata_controller::OperatingMode::PioTransfert)
+    d.force_operating_mode(ide_ata_controller::OperatingMode::UdmaTransfert)
         .unwrap();
 
     println!("{:#X?}", d);
@@ -76,18 +77,18 @@ pub extern "C" fn kmain(
         }
         let nbr_sectors = NbrSectors(n);
 
-        let r = srand::<u8>(255);
+        let mut v: Vec<u32> = vec![0; n as usize * SECTOR_SIZE as usize / 4];
+        d.read(start_sector, nbr_sectors, v.as_mut_ptr() as *mut u8)
+            .unwrap();
 
-        let src: Vec<u8> = vec![r; n as usize * SECTOR_SIZE as usize];
-        d.write(start_sector, nbr_sectors, src.as_ptr()).unwrap();
-
-        let mut dst: Vec<u8> = vec![0; n as usize * SECTOR_SIZE as usize];
-        d.read(start_sector, nbr_sectors, dst.as_mut_ptr()).unwrap();
-
-        for i in 0..src.len() {
-            assert_eq!(src[i], dst[i]);
+        for (j, i) in (start_sector.0 * SECTOR_SIZE..(start_sector.0 + nbr_sectors.0) * SECTOR_SIZE)
+            .step_by(4)
+            .enumerate()
+        {
+            assert_eq!(v[j], i as u32);
         }
     }
     crate::watch_dog();
+    eprintln!("Test successfull !");
     exit_qemu(0);
 }

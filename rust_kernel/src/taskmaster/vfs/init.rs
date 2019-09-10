@@ -15,12 +15,12 @@ use ext2::Ext2Filesystem;
 use mbr::Mbr;
 
 /// read the mbr form a disk
-fn read_mbr(disk: &dyn BlockIo) -> Mbr {
+fn read_mbr(disk: &mut dyn BlockIo) -> Mbr {
     let size_read = NbrSectors(1);
     let mut v1 = [0; 512];
 
     disk.read(Sector(0x0), size_read, v1.as_mut_ptr())
-        .expect("bios read failed");
+        .expect("MBR read failed");
 
     let mut a = [0; 512];
     for (i, elem) in a.iter_mut().enumerate() {
@@ -50,8 +50,8 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
 
     let mut disk_driver: Box<dyn Driver> = match driver {
         DiskDriverType::Bios => {
-            let disk = BiosInt13hInstance;
-            let mbr = read_mbr(&disk);
+            let mut disk = BiosInt13hInstance;
+            let mbr = read_mbr(&mut disk);
             Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
@@ -59,8 +59,8 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
             ))
         }
         DiskDriverType::Ide => {
-            let disk = IdeAtaInstance;
-            let mbr = read_mbr(&disk);
+            let mut disk = IdeAtaInstance;
+            let mbr = read_mbr(&mut disk);
             Box::new(DiskDriver::new(
                 disk,
                 mbr.parts[0].start as u64 * 512,
@@ -116,7 +116,7 @@ lazy_static! {
 pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     // we start by bootstraping ext2
-    init_ext2(&mut vfs, DiskDriverType::Bios);
+    init_ext2(&mut vfs, DiskDriverType::Ide);
     // then init tty on /dev/tty
     init_tty(&mut vfs);
     vfs

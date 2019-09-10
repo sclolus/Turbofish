@@ -46,24 +46,29 @@ impl<D: BlockIo + Clone + Debug> Driver for DiskDriver<D> {
 pub struct BiosInt13hInstance;
 
 impl BlockIo for BiosInt13hInstance {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             BIOS_INT13H
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .read(start_sector, nbr_sectors, buf)
         }
     }
 
     fn write(
-        &self,
+        &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             BIOS_INT13H
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .write(start_sector, nbr_sectors, buf)
         }
@@ -74,24 +79,29 @@ impl BlockIo for BiosInt13hInstance {
 pub struct IdeAtaInstance;
 
 impl BlockIo for IdeAtaInstance {
-    fn read(&self, start_sector: Sector, nbr_sectors: NbrSectors, buf: *mut u8) -> DiskResult<()> {
+    fn read(
+        &mut self,
+        start_sector: Sector,
+        nbr_sectors: NbrSectors,
+        buf: *mut u8,
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             IDE_ATA_CONTROLLER
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .read(start_sector, nbr_sectors, buf)
         }
     }
 
     fn write(
-        &self,
+        &mut self,
         start_sector: Sector,
         nbr_sectors: NbrSectors,
         buf: *const u8,
-    ) -> DiskResult<()> {
+    ) -> DiskResult<NbrSectors> {
         unsafe {
             IDE_ATA_CONTROLLER
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .write(start_sector, nbr_sectors, buf)
         }
