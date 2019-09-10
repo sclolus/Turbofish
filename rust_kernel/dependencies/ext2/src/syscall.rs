@@ -137,8 +137,10 @@ impl Ext2Filesystem {
         Ok((new_entry, inode))
     }
 
-    /// The rmdir() function shall remove a directory only if it is an
-    /// empty directory.
+    /// The rmdir() function shall remove the directory pointed by
+    /// filename in the parent directory corresponding to
+    /// parent_inode_nbr
+    /// # Warining: the caller must assure that the directory is empty
     pub fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> IoResult<()> {
         let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
         let inode_nbr = entry.0.get_inode();
