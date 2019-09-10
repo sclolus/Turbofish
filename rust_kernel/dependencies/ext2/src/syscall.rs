@@ -194,9 +194,10 @@ impl Ext2Filesystem {
 
     /// return all the (directory, inode) conainted in inode_nbr
     pub fn lookup_directory(&mut self, inode_nbr: u32) -> IoResult<Vec<(DirectoryEntry, Inode)>> {
-        //TODO: fallible
-        let entries: Vec<DirectoryEntry> =
-            self.iter_entries(inode_nbr)?.map(|(dir, _)| dir).collect();
+        let entries: Vec<DirectoryEntry> = self
+            .iter_entries(inode_nbr)?
+            .map(|(dir, _)| dir)
+            .try_collect()?;
         Ok(entries
             .into_iter()
             .filter_map(|dir| match self.get_inode(dir.get_inode()) {
