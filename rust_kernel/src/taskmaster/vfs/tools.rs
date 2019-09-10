@@ -1,7 +1,7 @@
 use core::cmp::Ord;
 use core::ops::Add;
 
-use alloc::collections::BTreeMap;
+// use fallible_collections::btree::BTreeMap;
 
 pub trait KeyGenerator<K>
 where
@@ -21,41 +21,42 @@ where
     }
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum MapperError {
-    EntryAlreadyExists,
-    NoSuchEntry,
-}
+// #[derive(Debug)]
+// #[allow(dead_code)]
+// pub enum MapperError {
+//     EntryAlreadyExists,
+//     NoSuchEntry,
+//     Nomem,
+// }
 
-#[allow(dead_code)]
-pub type MapperResult<T> = Result<T, MapperError>;
+// #[allow(dead_code)]
+// pub type MapperResult<T> = Result<T, MapperError>;
 
-pub trait Mapper<K, V>: KeyGenerator<K>
-where
-    K: Ord + Add<usize, Output = K> + Default + Copy,
-{
-    fn get_map(&mut self) -> &mut BTreeMap<K, V>;
+// pub trait Mapper<K, V>: KeyGenerator<K>
+// where
+//     K: Ord + Add<usize, Output = K> + Default + Copy,
+// {
+//     fn get_map(&mut self) -> &mut BTreeMap<K, V>;
 
-    fn add_entry(&mut self, entry: V) -> MapperResult<K> {
-        let key = self.gen();
-        let map = self.get_map();
+//     fn add_entry(&mut self, entry: V) -> MapperResult<K> {
+//         let key = self.gen();
+//         let map = self.get_map();
 
-        if map.contains_key(&key) {
-            panic!("Mapper: KeyGenerator::gen() returned a contained key");
-        }
+//         if map.contains_key(&key) {
+//             panic!("Mapper: KeyGenerator::gen() returned a contained key");
+//         }
 
-        map.insert(key, entry);
-        Ok(key)
-    }
+//         map.try_insert(key, entry)?;
+//         Ok(key)
+//     }
 
-    fn remove_entry(&mut self, key: K) -> MapperResult<V> {
-        let map = self.get_map();
-        if !map.contains_key(&key) {
-            return Err(MapperError::NoSuchEntry);
-        }
-        Ok(map
-            .remove(&key)
-            .expect("Entry is unexpectedly not contained"))
-    }
-}
+//     fn remove_entry(&mut self, key: K) -> MapperResult<V> {
+//         let map = self.get_map();
+//         if !map.contains_key(&key) {
+//             return Err(MapperError::NoSuchEntry);
+//         }
+//         Ok(map
+//             .remove(&key)
+//             .expect("Entry is unexpectedly not contained"))
+//     }
+// }

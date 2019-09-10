@@ -2,17 +2,17 @@ use super::drivers::{DefaultDriver, Driver, Ext2DriverFile, FileOperation};
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
+use fallible_collections::btree::BTreeMap;
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
 use itertools::unfold;
 
 mod tools;
-use tools::{KeyGenerator, Mapper};
+use tools::KeyGenerator;
 
 mod path;
 mod posix_consts;
@@ -66,14 +66,15 @@ impl VirtualFileSystem {
         let root_inode = Inode::root_inode();
         let root_inode_id = root_inode.id;
 
-        new.inodes.insert(root_inode_id, root_inode);
+        new.inodes.try_insert(root_inode_id, root_inode)?;
         Ok(new)
     }
-    fn add_inode(&mut self, inode: Inode) {
+    fn add_inode(&mut self, inode: Inode) -> SysResult<()> {
         if self.inodes.contains_key(&inode.get_id()) {
             panic!("inode already there"); // fix this panic
         }
-        self.inodes.insert(inode.get_id(), inode);
+        self.inodes.try_insert(inode.get_id(), inode)?;
+        Ok(())
     }
 
     fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
@@ -102,7 +103,7 @@ impl VirtualFileSystem {
             // TODO: handle othre drivers
             inode_data,
         );
-        self.add_inode(inode);
+        self.add_inode(inode)?;
         Ok(direntry)
     }
 
@@ -325,7 +326,7 @@ impl VirtualFileSystem {
                 let new_inode =
                     Inode::new(Arc::new(DeadMutex::new(DeadFileSystem)), driver, inode_data);
 
-                assert!(self.inodes.insert(new_id, new_inode).is_none());
+                self.add_inode(new_inode)?;
                 let mut new_direntry = DirectoryEntry::default();
                 let parent_id = self.pathname_resolution(cwd, &path.parent())?;
 
@@ -440,7 +441,7 @@ impl VirtualFileSystem {
         mount_dir.set_mounted(root_dentry_id)?;
 
         // self.recursive_build_subtree(root_dentry_id, fs_id)?;
-        self.mounted_filesystems.insert(fs_id, filesystem);
+        self.mounted_filesystems.try_insert(fs_id, filesystem)?;
 
         Ok(())
     }
@@ -885,240 +886,10 @@ impl KeyGenerator<FileSystemId> for VirtualFileSystem {
     }
 }
 
-impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem {
-    fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> {
-        &mut self.mounted_filesystems
-    }
-}
-
-// use core::convert::{TryFrom, TryInto};
-// use core::fs::{read_dir, DirEntry, FileType};
-// use core::os::unix::fs::PermissionsExt;
-// use core::path::Path as StdPath;
-// use walkdir::WalkDir;
-// fn main() {
-//     use std::env;
-//     let mut vfs = Vfs::new().unwrap();
-
-//     let mut args = env::args().skip(1);
-//     let mut current =
-//         Current { cwd: DirectoryEntryId::new(2), uid: 0, euid: 0, gid: 0, egid: 0, open_fds: BTreeMap::new() };
-
-//     fn construct_tree(vfs: &mut Vfs, current: &mut Current, root: &StdPath, current_path: Path) {
-//         let mut iter = read_dir(root).unwrap().filter_map(|e| e.ok());
-
-//         for entry in iter {
-//             let filename = Filename::try_from(entry.file_name().to_str().unwrap()).unwrap();
-//             let mut path = current_path.clone();
-
-//             path.push(filename).unwrap();
-//             // let mut new = DirectoryEntry::default();
-
-//             // new.set_filename();
-//             // new.set_id(get_available_directory_entry_id());
-//             let filetype = entry.file_type().unwrap();
-//             let mode = unsafe { FileType::from_u32(entry.metadata().unwrap().permissions().mode()) };
-
-//             let mut flags = OpenFlags::O_CREAT;
-
-//             if filetype.is_dir() {
-//                 flags |= OpenFlags::O_DIRECTORY;
-//             } else if filetype.is_symlink() {
-//                 // let std_path = std::fs::read_link(entry.path()).unwrap();
-//                 // let path = std_path.as_os_str().to_str().unwrap().try_into().unwrap();
-//                 // new.set_symlink(path);
-//             }
-
-//             // println!("{}", path);
-//             vfs.open(current, path.clone(), flags, mode).unwrap();
-//             if entry.file_type().unwrap().is_dir() {
-//                 construct_tree(vfs, current, &entry.path(), path);
-//             }
-//         }
+// impl Mapper<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> for VirtualFileSystem {
+//     fn get_map(&mut self) -> &mut BTreeMap<FileSystemId, Arc<DeadMutex<dyn FileSystem>>> {
+//         &mut self.mounted_filesystems
 //     }
-
-//     let path = args.next().unwrap();
-
-//     construct_tree(&mut vfs, &mut current, &StdPath::new(&path), "/".try_into().unwrap());
-
-//     let mut line = String::new();
-//     let mut stdin = stdin();
-//     use std::io::stdin;
-
-//     // let mut callbacks: Vec<Box<ReplClosures>> = Vec::new();
-
-//     // let ls_closure = |fs: &mut Vfs, current: &mut Current, args: Vec<&str>| -> SysResult<()> {
-//     //     let arg = args.get(0);
-//     //     let path;
-//     //     let entry;
-//     //     let entry_id;
-
-//     //     match arg {
-//     //         Some(&arg) => {
-//     //             path = Path::try_from(arg)?;
-//     //             entry_id = dc.pathname_resolution(current.cwd, path)?;
-//     //             entry = dc.d_entries.get(&entry_id).ok_or(ENOENT)?;
-
-//     //         },
-//     //         None => {
-//     //             entry_id = current.cwd;
-//     //             entry = dc.d_entries.get(cwd).ok_or(ENOENT)?;
-//     //         }
-//     //     }
-
-//     //     if entry.is_directory() {
-//     //         let directory = entry.get_directory()?;
-
-//     //         println!("(DIRECTORY {}):", entry.filename);
-//     //         for entry_id in directory.entries() {
-//     //             let entry = dc.d_entries.get(entry_id).ok_or(ENOENT)?;
-
-//     //             let postfix: Option<String>;
-//     //             let prefix;
-//     //             if entry.is_directory() {
-//     //                 postfix = None;
-//     //                 prefix = "d---------";
-//     //             } else if entry.is_symlink() {
-//     //                 postfix = Some(format!("-> {}", entry.get_symbolic_content()?));
-//     //                 prefix = "l---------";
-//     //             } else {
-//     //                 postfix = None;
-//     //                 prefix = "----------";
-//     //             }
-//     //             println!("+={} {} {}", prefix, entry.filename, &postfix.unwrap_or("".to_string()));
-//     //         }
-//     //     } else {
-//     //         println!("-> {}", dc.dentry_path(entry_id)?);
-//     //     }
-//     //     Ok(())
-//     // };
-//     // // let cd_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
-//     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-//     // //     let path = Path::try_from(path)?;
-//     // //     let search_root;
-//     // //     search_root = *cwd;
-
-//     // //     let entry_id = dcache.pathname_resolution(search_root, path)?;
-//     // //     let entry = dcache.d_entries.get(&entry_id).ok_or(ENOENT)?;
-//     // //     if entry.is_directory() {
-//     // //         *cwd = entry_id;
-//     // //     } else {
-//     // //         return Err(NotADirectory)
-//     // //     }
-//     // //     Ok(())
-//     // // };
-//     // // let unlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
-//     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-//     // //     let path = Path::try_from(path)?;
-
-//     // //     let search_root;
-//     // //     search_root = *cwd;
-
-//     // //     let entry_id = dc.pathname_resolution(search_root, path)?;
-//     // //     if entry_id == *cwd {
-//     // //         *cwd = dc.d_entries.get(&entry_id).ok_or(EntryNotConnected)?.parent_id;
-//     // //     }
-//     // //     dc.remove_entry(entry_id)?;
-//     // //     Ok(())
-//     // // };
-
-//     // // let rename_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
-//     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-//     // //     let new_pathname: Path = args.get(1).ok_or(NotEnoughArguments).map(|x| *x)?.try_into()?;
-//     // //     let path = Path::try_from(path)?;
-
-//     // //     let search_root;
-//     // //         search_root = *cwd;
-
-//     // //     let entry_id = dc.pathname_resolution(search_root, path)?;
-//     // //     dc.rename_dentry(*cwd, entry_id, new_pathname)?;
-//     // //     Ok(())
-//     // // };
-
-//     // // let symlink_closure = |dc: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
-//     // //     let path = *args.get(0).ok_or(NotEnoughArguments)?;
-//     // //     let new_symlink_pathname = args.get(1).ok_or(NotEnoughArguments)?;
-//     // //     let path = Path::try_from(path)?;
-//     // //     let new_symlink_path = Path::try_from(*new_symlink_pathname)?;
-
-//     // //     let search_root;
-//     // //         search_root = *cwd;
-
-//     // //     let parent_path = new_symlink_path.parent();
-//     // //     let filename = new_symlink_path.filename().unwrap(); //remove this unwrap
-//     // //     let parent_id = dc.pathname_resolution(search_root, parent_path)?;
-//     // //     let mut new_symlink_entry = DirectoryEntry::default();
-
-//     // //     println!("Created symlink {} with path: {}", new_symlink_path, path);
-
-//     // //     new_symlink_entry
-//     // //         .set_filename(*filename)
-//     // //         .set_id(get_available_directory_entry_id())
-//     // //         .set_symlink(path);
-
-//     // //     dc.add_entry(Some(parent_id), new_symlink_entry)?;
-//     // //     Ok(())
-//     // // };
-
-//     // let no_such_command_closure = |dcache: &mut Dcache, cwd: &mut DirectoryEntryId, args: Vec<&str>| -> SysResult<()> {
-//     //     println!("No such command");
-//     //     Ok(())
-//     // };
-//     // let callbacks_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
-//     //                          , "help", ""];
-
-//     // let help = |_dcache: &mut Dcache, _cwd: &mut DirectoryEntryId, _args: Vec<&str>| -> SysResult<()> {
-//     //     let command_strings = ["ls"// , "cd", "unlink", "rename", "symlink"
-//     //                            , "help", ""];
-
-//     //     println!("Available commands:");
-//     //     for command in command_strings.iter() {
-//     //         println!("- {}", command);
-//     //     }
-//     //     Ok(())
-//     // };
-
-//     // let print_prompt_closure = |dcache: &Dcache, cwd: &DirectoryEntryId| {
-//     //     let entry = dcache.d_entries.get(cwd).unwrap();
-//     //     print!("{}> ", entry.filename);
-//     //     use std::io::{stdout, Write};
-
-//     //     stdout().flush()
-//     // };
-
-//     // type ReplClosures = dyn Fn(&mut Vfs, &mut Current, Vec<&str>) -> SysResult<()>;
-//     // callbacks.push(Box::new(ls_closure));
-//     // // callbacks.push(Box::new(cd_closure));
-//     // // callbacks.push(Box::new(unlink_closure));
-//     // // callbacks.push(Box::new(rename_closure));
-//     // // callbacks.push(Box::new(symlink_closure));
-//     // callbacks.push(Box::new(help));
-//     // callbacks.push(Box::new(no_such_command_closure));
-//     // let mut cwd_id = dcache.root_id;
-
-//     // loop {
-//     //     line.clear();
-//     //     print_prompt_closure(&dcache, &cwd_id);
-//     //     match stdin.read_line(&mut line) {
-//     //         Ok(_) => {
-//     //             println!("-> {}", line);
-//     //         },
-//     //         Err(e) => {
-//     //             println!("(ERROR) -> {}", e);
-//     //         }
-//     //     }
-//     //     let fields = line.split_ascii_whitespace().collect::<Vec<&str>>();
-//     //     if fields.len() == 0 {
-//     //         continue
-//     //     }
-
-//     //     let callback = callbacks_strings.iter().zip(callbacks.iter()).find(|(&x, _)| x == fields[0] || x == "")
-//     //         .map(|(_, callback)| callback).unwrap();
-
-//     //     if let Err(e) = (callback)(&mut dcache, &mut cwd_id, fields[1..].to_vec()) {
-//     //         println!("Error(e) => {:?}", e);
-//     //     }
-//     // }
 // }
 
 #[cfg(test)]

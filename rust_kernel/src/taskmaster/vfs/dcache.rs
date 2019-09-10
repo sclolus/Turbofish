@@ -1,7 +1,7 @@
 use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
 use super::SysResult;
-use alloc::collections::BTreeMap;
+use fallible_collections::btree::BTreeMap;
 use libc_binding::Errno::*;
 
 pub struct Dcache {
@@ -49,7 +49,7 @@ impl Dcache {
         if self.d_entries.contains_key(&id) {
             return Err(EEXIST);
         }
-        self.d_entries.insert(id, entry);
+        self.d_entries.try_insert(id, entry)?;
 
         if let Some(parent) = parent {
             let parent = match self.d_entries.get_mut(&parent) {
