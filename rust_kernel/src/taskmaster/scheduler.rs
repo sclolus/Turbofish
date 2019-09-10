@@ -754,6 +754,10 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         }
         TaskMode::Multi(mut scheduler_frequency) => {
             let mut period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
+            // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
+            // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
+            // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
+            // this is a critical point. Never change that without a serious good reason.
             if period < 2 {
                 log::warn!("Too high frequency detected ! Setting period divisor to 2");
                 scheduler_frequency = PIT0.lock().get_frequency().unwrap() / 2.;
@@ -767,22 +771,18 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         }
     };
 
-    // TIPS: If waiting state are correctly managed, these below lines are useless: Use only for hard debug
-    // // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
-    // // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
-    // // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
-    // // this is a critical point. Never change that without a serious good reason.
-    // if let Some(period) = t {
-    //     if period < 2 {
-    //         panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
-    //     }
-    // }
-
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;
 
-    // Initialise the first process and get a reference on it
-    let p = scheduler.current_thread_mut().unwrap_process_mut();
+    // Initialise the idle process and get a reference on it
+    // Give it a pointer to the function _preemptible()
+    scheduler.idle_mode = true;
+    let p = scheduler
+        .kernel_idle_process
+        .as_mut()
+        .expect("idle process must exists at this point");
+    let kernel_esp = p.kernel_esp as *mut CpuState;
+    (*kernel_esp).registers.eax = _preemptible as u32;
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
@@ -794,7 +794,6 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         None => _update_process_end_time(-1 as i32 as u32),
     }
 
-    preemptible();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }
