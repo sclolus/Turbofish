@@ -97,6 +97,19 @@ impl Inode {
             ..Default::default()
         }
     }
+    pub fn read_symlink(&self) -> Option<&str> {
+        unsafe {
+            if self.low_size <= 60 {
+                let slice = core::slice::from_raw_parts(
+                    &self.direct_block_pointers as *const Block as *const u8,
+                    self.low_size as usize,
+                );
+                core::str::from_utf8(slice).ok()
+            } else {
+                None
+            }
+        }
+    }
 
     pub fn is_a_directory(&self) -> bool {
         self.type_and_perm.contains(FileType::DIRECTORY)

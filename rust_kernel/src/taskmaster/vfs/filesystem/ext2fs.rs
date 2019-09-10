@@ -1,11 +1,12 @@
 use super::FileSystem;
-use super::{DirectoryEntry, FileSystemId, InodeData};
+use super::{DirectoryEntry, FileSystemId, InodeData, Path};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::drivers::rtc::CURRENT_UNIX_TIME;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::default::Default;
+use core::str;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use fallible_collections::TryCollect;
@@ -47,7 +48,7 @@ impl From<ext2::Inode> for InodeData {
 
 impl Ext2fs {
     fn convert_entry_ext2_to_vfs(
-        &self,
+        &mut self,
         direntry: ext2::DirectoryEntry,
         inode: ext2::Inode,
     ) -> (DirectoryEntry, InodeData) {
@@ -68,6 +69,8 @@ impl Ext2fs {
                 builder.set_regular();
             } else if direntry.header.type_indicator == DirectoryEntryType::Fifo {
                 builder.set_fifo();
+            } else if direntry.header.type_indicator == DirectoryEntryType::SymbolicLink {
+                builder.set_symlink(self.read_symlink(&inode, inode_nbr).unwrap());
             }
             builder.build()
         };
@@ -75,6 +78,20 @@ impl Ext2fs {
         let mut inode_data = InodeData::from(inode);
         inode_data.set_id(inode_id);
         (direntry, inode_data)
+    }
+    fn read_symlink(&mut self, inode: &ext2::Inode, inode_number: u32) -> SysResult<Path> {
+        // dbg!(inode);
+        let mut buf = [0; 255];
+        // if inode size < 60 it is a fast symbolic link (ie the
+        // string is stocked directly in the struct inode)
+        let pathname = if inode.get_size() <= 60 {
+            inode.read_symlink()
+        } else {
+            let mut offset = 0;
+            self.read(inode_number, &mut offset, &mut buf)?;
+            str::from_utf8(&buf[0..offset as usize]).ok()
+        };
+        Ok(Path::try_from(pathname.unwrap_or("corrupted link"))?)
     }
 }
 
@@ -98,7 +115,7 @@ impl FileSystem for Ext2fs {
         Ok((direntry, inode_data))
     }
 
-    fn lookup_directory(&self, inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
+    fn lookup_directory(&mut self, inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
         let res = self.ext2.lock().lookup_directory(inode_nbr)?;
         Ok(res
             .into_iter()

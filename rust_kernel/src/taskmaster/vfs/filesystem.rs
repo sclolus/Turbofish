@@ -1,5 +1,5 @@
 use super::{DirectoryEntry, SysResult};
-use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId};
+use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId, Path};
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
@@ -13,7 +13,7 @@ pub trait FileSystem: Send + Debug {
     // fn name(&self) -> &str;
     // fn load_inode(&self, inode_number: InodeNumber) -> SysResult<Inode>;
     /// return all the directory entry and inode present in the inode_nbr
-    fn lookup_directory(&self, _inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
+    fn lookup_directory(&mut self, _inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
         Err(Errno::ENOSYS)
     }
 
