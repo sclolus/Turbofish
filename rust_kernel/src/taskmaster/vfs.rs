@@ -329,7 +329,6 @@ impl VirtualFileSystem {
                     inode_data,
                 );
 
-                self.add_inode(new_inode)?;
                 let mut new_direntry = DirectoryEntry::default();
                 let parent_id = self.pathname_resolution(cwd, &path.parent())?;
 
@@ -339,8 +338,14 @@ impl VirtualFileSystem {
 
                 new_direntry.set_regular();
 
-                //entry_id =
-                self.dcache.add_entry(Some(parent_id), new_direntry)?;
+                self.add_inode(new_inode)?;
+                self.dcache
+                    .add_entry(Some(parent_id), new_direntry)
+                    /*CLEANUP*/
+                    .map_err(|e| {
+                        self.inodes.remove(&new_id);
+                        e
+                    })?;
             }
         }
 
@@ -428,9 +433,6 @@ impl VirtualFileSystem {
         }
         let (mut root_dentry, mut root_inode_data) = filesystem.lock().root()?;
 
-        // So much to undo if any of this fails...
-        // let fs_id = self.add_entry(filesystem).unwrap(); // this
-
         root_inode_data.id.filesystem_id = Some(fs_id);
         root_dentry.inode_id = root_inode_data.id;
 
@@ -440,11 +442,16 @@ impl VirtualFileSystem {
             (root_dentry, root_inode_data),
         )?;
 
-        let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
-        mount_dir.set_mounted(root_dentry_id)?;
+        let mount_dir = self
+            .dcache
+            .get_entry_mut(&mount_dir_id)
+            .expect("WTF: mount_dir_id should be valid");
+        mount_dir
+            .set_mounted(root_dentry_id)
+            .expect("WTF: and should be a directory");
 
-        // self.recursive_build_subtree(root_dentry_id, fs_id)?;
         self.mounted_filesystems.try_insert(fs_id, filesystem)?;
+        //TODO: cleanup root dentry_id
 
         Ok(())
     }
