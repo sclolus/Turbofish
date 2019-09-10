@@ -16,9 +16,9 @@ pub fn sys_mkdir(path: *const c_char, mut mode: mode_t) -> SysResult<u32> {
 
             v.make_checked_str(path)?
         };
-        let mask = scheduler.current_thread_group().umask;
         let tg = scheduler.current_thread_group_mut();
 
+        let mask = tg.umask;
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
         let path = Path::try_from(safe_path)?;

@@ -4,7 +4,7 @@ use super::SysResult;
 use core::convert::TryFrom;
 use libc_binding::{c_char, dev_t, mode_t, Errno, FileType};
 
-pub fn sys_mknod(path: *const c_char, mode: mode_t, _dev: dev_t) -> SysResult<u32> {
+pub fn sys_mknod(path: *const c_char, mut mode: mode_t, _dev: dev_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -17,6 +17,9 @@ pub fn sys_mknod(path: *const c_char, mode: mode_t, _dev: dev_t) -> SysResult<u3
             v.make_checked_str(path)?
         };
         let tg = scheduler.current_thread_group_mut();
+
+        let mask = tg.umask;
+        mode = mode & !mask;
 
         let _creds = &tg.credentials;
         let _cwd = &tg.cwd;
