@@ -63,7 +63,7 @@ impl Ext2Filesystem {
         timestamp: u32,
         mut mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        mode |= FileType::REGULAR_FILE;
+        mode = (FileType::PERMISSIONS_MASK & mode) | FileType::REGULAR_FILE;
         let direntry_type = DirectoryEntryType::RegularFile;
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
@@ -118,11 +118,9 @@ impl Ext2Filesystem {
         filename: &str,
         mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        //TODO: use mode
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let mut inode = Inode::new(mode | FileType::DIRECTORY);
-        //TODO: check that
+        let mut inode = Inode::new((mode & FileType::PERMISSIONS_MASK) | FileType::DIRECTORY);
         inode.nbr_hard_links = 2;
 
         self.disk.write_struct(inode_addr, &inode)?;

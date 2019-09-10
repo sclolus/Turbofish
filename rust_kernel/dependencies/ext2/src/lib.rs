@@ -173,7 +173,6 @@ impl Ext2Filesystem {
         new_size: u64,
     ) -> IoResult<()> {
         let size = inode.get_size();
-        // TODO: Check that but it seems false
         assert!(new_size <= size);
         if size == 0 {
             return Ok(());
