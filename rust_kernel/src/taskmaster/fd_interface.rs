@@ -225,7 +225,7 @@ impl TryClone for FileDescriptor {
     fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
         self.file_operation.lock().register(self.access_mode);
         Ok(Self {
-            access_mode: self.access_mode.clone(),
+            access_mode: self.access_mode,
             file_operation: self.file_operation.clone(),
         })
     }
