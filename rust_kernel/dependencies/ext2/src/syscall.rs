@@ -6,6 +6,7 @@ use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
+use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
@@ -204,7 +205,7 @@ impl Ext2Filesystem {
                 Ok((inode, _)) => Some((dir, inode)),
                 Err(_e) => None,
             })
-            .collect())
+            .try_collect()?)
     }
 
     /// return the root inode of the ext2

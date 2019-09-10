@@ -5,7 +5,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
-use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox};
+use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, TryCollect};
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
@@ -530,7 +530,7 @@ impl VirtualFileSystem {
                     .inode_id
                     .inode_number as u32,
             }))
-            .collect())
+            .try_collect()?)
     }
 
     pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {

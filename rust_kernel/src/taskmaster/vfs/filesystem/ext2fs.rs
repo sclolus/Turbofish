@@ -8,6 +8,7 @@ use core::convert::TryFrom;
 use core::default::Default;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
+use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, FileType, OpenFlags};
 
 use sync::DeadMutex;
@@ -107,7 +108,7 @@ impl FileSystem for Ext2fs {
                     Some(self.convert_entry_ext2_to_vfs(direntry, inode))
                 }
             })
-            .collect())
+            .try_collect()?)
     }
 
     fn chmod(&self, inode_nbr: u32, mode: FileType) -> SysResult<()> {

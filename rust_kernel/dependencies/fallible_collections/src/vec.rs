@@ -259,6 +259,38 @@ impl<T: TryClone> TryClone for Vec<T> {
     }
 }
 
+pub trait TryFromIterator<I>: Sized {
+    fn try_from_iterator<T: IntoIterator<Item = I>>(
+        iterator: T,
+    ) -> Result<Self, CollectionAllocErr>;
+}
+
+impl<I> TryFromIterator<I> for Vec<I> {
+    fn try_from_iterator<T: IntoIterator<Item = I>>(iterator: T) -> Result<Self, CollectionAllocErr>
+    where
+        T: IntoIterator<Item = I>,
+    {
+        let mut new = Self::new();
+        for i in iterator {
+            new.try_push(i)?;
+        }
+        Ok(new)
+    }
+}
+
+pub trait TryCollect<I> {
+    fn try_collect<C: TryFromIterator<I>>(self) -> Result<C, CollectionAllocErr>;
+}
+
+impl<I, T> TryCollect<I> for T
+where
+    T: IntoIterator<Item = I>,
+{
+    fn try_collect<C: TryFromIterator<I>>(self) -> Result<C, CollectionAllocErr> {
+        C::try_from_iterator(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
