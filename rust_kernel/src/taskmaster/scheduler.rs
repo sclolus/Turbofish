@@ -752,17 +752,18 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             log::info!("Scheduler initialised at mono-task");
             None
         }
-        TaskMode::Multi(scheduler_frequency) => {
+        TaskMode::Multi(mut scheduler_frequency) => {
+            let mut period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
+            if period < 2 {
+                log::warn!("Too high frequency detected ! Setting period divisor to 2");
+                scheduler_frequency = PIT0.lock().get_frequency().unwrap() / 2.;
+                period = 2;
+            }
             log::info!(
                 "Scheduler initialised at frequency: {:?} hz",
                 scheduler_frequency
             );
-            let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
-            if period == 0 {
-                Some(1)
-            } else {
-                Some(period)
-            }
+            Some(period)
         }
     };
 
