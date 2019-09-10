@@ -196,7 +196,11 @@ impl Scheduler {
         self.running_process.try_reserve(1)?;
         self.all_process.try_insert(
             pid,
-            ThreadGroup::try_new(father_pid, Thread::new(ProcessState::Running(process)), pid)?,
+            ThreadGroup::try_new(
+                father_pid,
+                Thread::new(ProcessState::Running(process))?,
+                pid,
+            )?,
         )?;
         self.running_process.push((pid, 0));
         Ok(pid)
