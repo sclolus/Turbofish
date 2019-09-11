@@ -1,4 +1,5 @@
 use super::filesystem::Ext2fs;
+use super::SmartMutex;
 use crate::taskmaster::drivers::{
     BiosInt13hInstance, DiskDriver, DiskWrapper, Driver, IdeAtaInstance, TtyDevice,
 };
@@ -112,7 +113,7 @@ fn init_tty(vfs: &mut Vfs) {
 }
 
 lazy_static! {
-    pub static ref VFS: DeadMutex<Vfs> = DeadMutex::new(init());
+    pub static ref VFS: SmartMutex<Vfs> = SmartMutex::new(init());
 }
 
 /// init the vfs
