@@ -193,4 +193,16 @@ impl FileSystem for Ext2fs {
                 .symlink(parent_inode_nbr, target, filename, timestamp)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+    fn link(
+        &mut self,
+        parent_inode_nbr: u32,
+        target_inode_nbr: u32,
+        filename: &str,
+    ) -> SysResult<DirectoryEntry> {
+        let (direntry, inode) =
+            self.ext2
+                .lock()
+                .link(parent_inode_nbr, target_inode_nbr, filename)?;
+        Ok(self.convert_entry_ext2_to_vfs(direntry, inode).0)
+    }
 }

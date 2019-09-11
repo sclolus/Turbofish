@@ -81,7 +81,13 @@ impl VirtualFileSystem {
     }
     fn add_inode(&mut self, inode: Inode) -> SysResult<()> {
         if self.inodes.contains_key(&inode.get_id()) {
-            panic!("inode already there"); // fix this panic
+            // if it is not from an hard link we panic
+            if inode.link_number == 1 {
+                panic!("inode already there");
+            } else {
+                // else we already put the inode pointed by the hard link
+                return Ok(());
+            }
         }
         self.inodes.try_insert(inode.get_id(), inode)?;
         Ok(())
@@ -104,8 +110,6 @@ impl VirtualFileSystem {
         parent: Option<DirectoryEntryId>,
         (direntry, inode_data): (DirectoryEntry, InodeData),
     ) -> SysResult<DirectoryEntryId> {
-        // dbg!(direntry);
-        // dbg!(inode.get_id());
         let direntry = self.dcache.add_entry(parent, direntry)?;
 
         let inode = Inode::new(
@@ -848,7 +852,7 @@ impl VirtualFileSystem {
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
         if oldentry.is_directory() {
-            //TODO: link on directories not currently supported.
+            // link on directories not currently supported.
             return Err(EISDIR);
         }
 
@@ -856,17 +860,29 @@ impl VirtualFileSystem {
             return Err(EEXIST);
         }
 
-        let parent_new = self.pathname_resolution(cwd, &newpath.parent())?;
+        let parent_new_id = self.pathname_resolution(cwd, &newpath.parent())?;
+        let parent_inode_id = self.dcache.get_entry_mut(&parent_new_id)?.inode_id;
+        let parent_inode_number = parent_inode_id.inode_number;
 
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
+        let inode_id = oldentry.inode_id;
+        let target_inode_number = inode_id.inode_number;
+
         let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(ENOENT)?;
 
-        let mut newentry = oldentry.clone();
-
-        newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
-        self.dcache.add_entry(Some(parent_new), newentry)?;
+        let filename = newpath.filename().unwrap();
+        // let mut newentry = oldentry.clone();
+        // newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
         inode.link_number += 1;
+
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+
+        let newentry =
+            fs.lock()
+                .link(parent_inode_number, target_inode_number, filename.as_str())?;
+        // self.add_entry_from_filesystem(fs_cloned, Some(parent_new_id), fs_entry)?;
+        self.dcache.add_entry(Some(parent_new_id), newentry)?;
         Ok(())
     }
 
