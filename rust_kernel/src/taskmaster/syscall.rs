@@ -366,16 +366,17 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
     // If ring0 process -> Can't happened normally
     unpreemptible_context! {{
         let mut scheduler = SCHEDULER.lock();
+        // An exit() routine may be engaged by the exit() syscall
         if let Some(_) = scheduler.on_exit_routine {
-            scheduler.idle_mode = true;
-            scheduler
-                .kernel_idle_process
-                .as_ref()
-                .expect("No idle process")
-                .kernel_esp
+            scheduler.set_idle_mode()
         } else {
             scheduler.current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
-            cpu_state as u32
+            // An exit() routine may be engaged after handling a deadly signal
+            if let Some(_) = scheduler.on_exit_routine {
+                scheduler.set_idle_mode()
+            } else {
+                cpu_state as u32
+            }
         }
     }}
 }

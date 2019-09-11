@@ -280,9 +280,17 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
         };
 
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
-        SCHEDULER
-            .lock()
+        // Ce sera sans doute un signal fatal. L'exit routine va etre certainement declenchee.
+        let mut scheduler = SCHEDULER.lock();
+        scheduler
             .current_thread_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL);
+
+        // An exit() routine may be engaged after handling a deadly signal
+        if let Some(_) = scheduler.on_exit_routine {
+            scheduler.set_idle_mode()
+        } else {
+            cpu_state as u32
+        }
     // Unknown ring
     } else {
         eprintln!(
@@ -292,5 +300,4 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
         qemu_check();
         loop {}
     }
-    cpu_state as u32
 }

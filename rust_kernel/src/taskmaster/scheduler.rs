@@ -89,9 +89,9 @@ pub struct Scheduler {
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
-    pub kernel_idle_process: Option<Box<KernelProcess>>,
+    kernel_idle_process: Option<Box<KernelProcess>>,
     /// Indicate if the scheduler is on idle mode.
-    pub idle_mode: bool,
+    idle_mode: bool,
     /// Indicate if scheduler is on exit routine
     pub on_exit_routine: Option<(Pid, Status)>,
 }
@@ -463,6 +463,15 @@ impl Scheduler {
                 status: status.into(),
             },
         });
+    }
+
+    /// Set exit mode as idle and return idle program kernel esp
+    pub fn set_idle_mode(&mut self) -> u32 {
+        self.idle_mode = true;
+        self.kernel_idle_process
+            .as_ref()
+            .expect("No idle process")
+            .kernel_esp
     }
 
     /// Gets the next available Pid for a new process.
@@ -872,6 +881,11 @@ impl PreemptionGuard {
         Self {
             already_locked: unpreemptible(),
         }
+    }
+
+    /// Overwrite the lock as already locked
+    pub fn force_unpreemptible(&mut self) {
+        self.already_locked = true;
     }
 }
 
