@@ -1,6 +1,7 @@
 //! this file contains the scheduler description
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
+use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
@@ -16,7 +17,6 @@ use fallible_collections::FallibleVec;
 use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
-use sync::Spinlock;
 use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
@@ -720,48 +720,8 @@ pub unsafe extern "C" fn send_message(message: MessageTo) {
     SCHEDULER.lock().send_message(message);
 }
 
-use super::sync::SmartMutex;
-
-pub struct Test {
-    value: u32,
-}
-
-impl Test {
-    fn new(value: u32) -> Self {
-        Self { value }
-    }
-    fn get_value(&self) -> u32 {
-        self.value
-    }
-
-    fn set_value(&mut self, value: u32) {
-        self.value = value;
-    }
-}
-
-lazy_static! {
-    pub static ref TEST: SmartMutex<Test> = SmartMutex::new(Test::new(42));
-}
-
-#[no_mangle]
-fn lock() {
-    let mut test = TEST.lock();
-    println!("value: {}", test.get_value());
-    test.set_value(162);
-    println!("value: {}", test.get_value());
-}
-
 /// Start the whole scheduler
 pub unsafe fn start(task_mode: TaskMode) -> ! {
-    let mut test = TEST.lock();
-    println!("value: {}", test.get_value());
-    test.set_value(84);
-    println!("value: {}", test.get_value());
-    println!("Pass 1");
-    lock();
-
-    loop {}
-
     // Inhibit all hardware interrupts, particulary timer.
     interrupts::disable();
 
@@ -829,7 +789,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 }
 
 lazy_static! {
-    pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
+    pub static ref SCHEDULER: SmartMutex<Scheduler> = SmartMutex::new(Scheduler::new());
 }
 
 /// Auto-preempt will cause schedule into the next process
