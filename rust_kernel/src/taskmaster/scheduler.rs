@@ -47,7 +47,10 @@ extern "C" {
     fn _update_process_end_time(update: u32);
 
     /// Prevent the current execution thread by some scheduler interrupt.
-    fn _unpreemptible();
+    /// Return the current preemptif status
+    /// 0 => UNLOCKED
+    /// 1 => LOCKED
+    fn _unpreemptible() -> u32;
 
     /// Allow the current execution thread to be interruptible by the scheduler again.
     fn _preemptible();
@@ -810,11 +813,12 @@ pub fn auto_preempt() -> SysResult<AutoPreemptReturnValue> {
 }
 
 /// Protect process again scheduler interruption
+/// Return the current preemptive status
+/// 0 => UNLOCKED
+/// 1 => LOCKED
 #[inline(always)]
-pub fn unpreemptible() {
-    unsafe {
-        _unpreemptible();
-    }
+pub fn unpreemptible() -> bool {
+    unsafe { _unpreemptible() != 0 }
 }
 
 // TODO: If scheduler is disable, the kernel will crash
@@ -836,20 +840,25 @@ pub fn preemptible() {
 
 /// A Finalizer-pattern Struct that disables preemption upon instantiation.
 /// then reenables it at Drop time.
-pub struct PreemptionGuard;
+pub struct PreemptionGuard {
+    already_locked: bool,
+}
 
 impl PreemptionGuard {
     /// The instantiation methods that disables preemption and creates the guard.
     pub fn new() -> Self {
-        unpreemptible();
-        Self
+        Self {
+            already_locked: unpreemptible(),
+        }
     }
 }
 
 impl Drop for PreemptionGuard {
     /// The drop implementation of the guard reenables preemption.
     fn drop(&mut self) {
-        preemptible();
+        if !self.already_locked {
+            preemptible();
+        }
     }
 }
 

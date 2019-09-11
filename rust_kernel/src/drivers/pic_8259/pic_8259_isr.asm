@@ -83,9 +83,19 @@ _isr_timer:
 	iret
 
 ; Avoid Atomically the preemptive call of the scheduler
+; Return the current preemptive status
+; 0 => UNLOCKED
+; 1 => LOCKED
+; fn _unpreemptible() -> u32;
 global _unpreemptible
 _unpreemptible:
-	lock or dword [_preemptible_state], LOCKED
+	xor eax, eax
+	mov edx, dword LOCKED
+	lock cmpxchg dword [_preemptible_state], edx
+	; if the destination operand [_preemptible_state] (=0) is egal to EAX (0). The EDX value (1: LOCKED) is loaded into [_preemptible_state]. EAX return stay 0.
+	; if the destination operand [_preemptible_state] (=1) is different to EAX (0). EAX take the value of [_preemptible_state] so 1.
+	; On return: if EAX == 0. The [_preemptible_state] wasn't locked before calling 'lock cmpxchg'
+	;            if EAX == 1. The [_preemptible_state] was already on a locked state
 	ret
 
 ; Allow Atomically the preemptive call of the scheduler
