@@ -1,6 +1,7 @@
 //! this file contains the scheduler description
 use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
 use super::signal_interface::JobAction;
+use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
@@ -16,7 +17,6 @@ use fallible_collections::FallibleVec;
 use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
-use sync::Spinlock;
 use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
@@ -789,7 +789,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 }
 
 lazy_static! {
-    pub static ref SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
+    pub static ref SCHEDULER: SmartMutex<Scheduler> = SmartMutex::new(Scheduler::new());
 }
 
 /// Auto-preempt will cause schedule into the next process
