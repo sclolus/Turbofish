@@ -29,7 +29,7 @@ pub fn sys_statfs(path: *const c_char, buf: *mut statfs) -> SysResult<u32> {
         let path = Path::try_from(safe_path)?;
 
         let mut vfs = VFS.lock();
-        let direntry_id = vfs.pathname_resolution(cwd, path).or(Err(Errno::ENOENT))?;
+        let direntry_id = vfs.pathname_resolution(cwd, &path).or(Err(Errno::ENOENT))?;
         let inode_id = {
             vfs.dcache
                 .get_entry(&direntry_id)
