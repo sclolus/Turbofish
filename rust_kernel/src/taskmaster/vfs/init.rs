@@ -74,7 +74,7 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     };
 
     let file_operation = disk_driver
-        .open(OpenFlags::default())
+        .open(OpenFlags::O_RDWR)
         .expect("open sda1 failed")
         .expect("disk driver open failed");
 
