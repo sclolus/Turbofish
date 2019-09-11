@@ -65,13 +65,14 @@ unsafe impl RawMutex for RawSmartMutex {
 
     /// Try to lock the mutex
     fn try_lock(&self) -> bool {
-        let result: u32;
+        let current_ebp: u32;
 
         unsafe {
-            asm!("mov %ebp, %eax" : "={eax}"(result):);
+            asm!("mov %ebp, %eax" : "={eax}"(current_ebp):);
         }
-        let ebp = self.0.compare_and_swap(0, result, Ordering::Relaxed) as *const u32;
+        let ebp = self.0.compare_and_swap(0, current_ebp, Ordering::Relaxed) as *const u32;
         if ebp != 0 as *const u32 {
+            // Here a DeadLock, we trace back the process which had put his EBP in the mutex
             eprintln!("--- Previous locker backtrace ----");
             unsafe {
                 trace_back(ebp);
