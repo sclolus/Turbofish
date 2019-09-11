@@ -90,9 +90,10 @@ void launch_test(size_t i) {
 		printf("child_pid: %d\n", child_pid);
 		execve(TEST_PROGRAMS[i].path, args, env);
 		perror("execve failed");
-		while (42) {
+		for (int j = 0; j < 10; j++) {
 			printf("%s\n", TEST_PROGRAMS[i].path);
 		}
+		while (1) {}
 		_exit_qemu(1);
 	}
 	//father
