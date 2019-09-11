@@ -63,17 +63,23 @@ typedef double double_t;
 
 //The <math.h> header shall define the following macros:
 //
-#define HUGE_VAL 42.0
-//    A positive double constant expression, not necessarily representable as a float. Used as an error value returned by the mathematics library. HUGE_VAL evaluates to +infinity on systems supporting IEEE Std 754-1985.
 //HUGE_VALF
 //    A positive float constant expression. Used as an error value returned by the mathematics library. HUGE_VALF evaluates to +infinity on systems supporting IEEE Std 754-1985.
 //HUGE_VALL
 //    A positive long double constant expression. Used as an error value returned by the mathematics library. HUGE_VALL evaluates to +infinity on systems supporting IEEE Std 754-1985.
 //INFINITY
 //    A constant expression of type float representing positive or unsigned infinity, if available; else a positive constant of type float that overflows at translation time.
+# define INFINITY ((float)__builtin_inff())
+
+# define HUGE_VAL INFINITY
+//    A positive double constant expression, not necessarily representable as a float. Used as an error value returned by the mathematics library. HUGE_VAL evaluates to +infinity on systems supporting IEEE Std 754-1985.
+
 //NAN
 //    A constant expression of type float representing a quiet NaN. This macro is only defined if the implementation supports quiet NaNs for the float type.
-//
+# define NAN ((float)__builtin_nanf(""))
+
+// The only number that is not equal to itself is nan.
+# define isnan(x) ((x) != (x))
 //The following macros shall be defined for number classification. They represent the mutually-exclusive kinds of floating-point values. They expand to integer constant expressions with distinct values. Additional implementation-defined floating-point classifications, with macro definitions beginning with FP_ and an uppercase letter, may also be specified by the implementation.
 //
 //    FP_INFINITE
@@ -231,7 +237,7 @@ double      modf(double, double *);
 float       modff(float, float *);
 long double modfl(long double, long double *);
 double      nan(const char *);
-float       nanf(const char *);
+float       nanf(const char *tagp);
 long double nanl(const char *);
 double      nearbyint(double);
 float       nearbyintf(float);
@@ -242,7 +248,8 @@ long double nextafterl(long double, long double);
 double      nexttoward(double, long double);
 float       nexttowardf(float, long double);
 long double nexttowardl(long double, long double);
-double      pow(double, double);
+double	    __turbofish_pow(double x, double y, double *result);
+double      pow(double x, double y);
 float       powf(float, float);
 long double powl(long double, long double);
 double      remainder(double, double);
