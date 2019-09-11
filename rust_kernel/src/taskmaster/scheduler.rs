@@ -143,10 +143,7 @@ impl Scheduler {
         // Switch between processes
         let action = self.advance_next_process(next_process);
         // Set all the context of the illigible process
-        let new_kernel_esp = self.load_new_context(action);
-
-        // Restore kernel_esp for the new process/
-        new_kernel_esp
+        self.load_new_context(action)
     }
 
     fn dispatch_messages(&mut self) {
@@ -283,7 +280,11 @@ impl Scheduler {
                         self.current_thread_deliver_pending_signals(
                             kernel_esp as *mut CpuState,
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
-                        )
+                        );
+                        // An exit() routine may be engaged after handling a deadly signal
+                        if let Some(_) = self.on_exit_routine {
+                            return self.set_idle_mode();
+                        }
                     }
                 }
                 kernel_esp
