@@ -9,7 +9,7 @@ use super::vfs::Path;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
-use fallible_collections::{btree::BTreeMap, FallibleVec, TryClone};
+use fallible_collections::{btree::BTreeMap, TryClone};
 use libc_binding::{gid_t, mode_t, uid_t, Signum};
 use try_clone_derive::TryClone;
 
@@ -163,8 +163,7 @@ impl ThreadGroup {
         child_stack: *const c_void,
         flags: CloneFlags,
     ) -> SysResult<Self> {
-        // TODO: if new_thread_group fail remove that
-        self.unwrap_running_mut().child.try_push(child_pid)?;
+        self.unwrap_running_mut().child.try_reserve(1)?;
 
         let new_thread = self
             .get_thread(father_tid)
@@ -173,7 +172,7 @@ impl ThreadGroup {
 
         let mut all_thread = BTreeMap::new();
         all_thread.try_insert(0, new_thread)?;
-        Ok(Self {
+        let child = Self {
             parent: father_pid,
             credentials: self.credentials.try_clone()?,
             cwd: self.cwd.try_clone()?,
@@ -189,7 +188,10 @@ impl ThreadGroup {
             next_tid: 1,
             job: Job::new(),
             umask: 0,
-        })
+        };
+
+        self.unwrap_running_mut().child.push(child_pid);
+        Ok(child)
     }
 
     /// remove pid `pid` from the child list, Panic if not present

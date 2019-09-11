@@ -6,18 +6,10 @@ use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
+use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
-    /// The access() function shall check the file named by the
-    /// pathname pointed to by the path argument for accessibility
-    /// according to the bit pattern contained in amode
-    pub fn access(&mut self, path: &str, amode: i32) -> IoResult<()> {
-        //TODO: check rights
-        let inode = self.find_inode(path)?;
-        Ok(())
-    }
-
     /// The chown() function shall change the user and group ownership
     /// of a file.
     pub fn chown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {
@@ -62,7 +54,7 @@ impl Ext2Filesystem {
         timestamp: u32,
         mut mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        mode |= FileType::REGULAR_FILE;
+        mode = (FileType::PERMISSIONS_MASK & mode) | FileType::REGULAR_FILE;
         let direntry_type = DirectoryEntryType::RegularFile;
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
@@ -117,11 +109,9 @@ impl Ext2Filesystem {
         filename: &str,
         mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        //TODO: use mode
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let mut inode = Inode::new(mode | FileType::DIRECTORY);
-        //TODO: check that
+        let mut inode = Inode::new((mode & FileType::PERMISSIONS_MASK) | FileType::DIRECTORY);
         inode.nbr_hard_links = 2;
 
         self.disk.write_struct(inode_addr, &inode)?;
@@ -195,16 +185,17 @@ impl Ext2Filesystem {
 
     /// return all the (directory, inode) conainted in inode_nbr
     pub fn lookup_directory(&mut self, inode_nbr: u32) -> IoResult<Vec<(DirectoryEntry, Inode)>> {
-        //TODO: fallible
-        let entries: Vec<DirectoryEntry> =
-            self.iter_entries(inode_nbr)?.map(|(dir, _)| dir).collect();
+        let entries: Vec<DirectoryEntry> = self
+            .iter_entries(inode_nbr)?
+            .map(|(dir, _)| dir)
+            .try_collect()?;
         Ok(entries
             .into_iter()
             .filter_map(|dir| match self.get_inode(dir.get_inode()) {
                 Ok((inode, _)) => Some((dir, inode)),
                 Err(_e) => None,
             })
-            .collect())
+            .try_collect()?)
     }
 
     /// return the root inode of the ext2

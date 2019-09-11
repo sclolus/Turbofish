@@ -1,5 +1,5 @@
 use super::FileSystem;
-use super::{DirectoryEntry, FileSystemId, InodeData, VfsResult};
+use super::{DirectoryEntry, FileSystemId, InodeData};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::drivers::rtc::CURRENT_UNIX_TIME;
 use alloc::sync::Arc;
@@ -8,6 +8,7 @@ use core::convert::TryFrom;
 use core::default::Default;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
+use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, FileType, OpenFlags};
 
 use sync::DeadMutex;
@@ -31,7 +32,6 @@ impl Ext2fs {
 impl From<ext2::Inode> for InodeData {
     fn from(inode_ext2: ext2::Inode) -> InodeData {
         InodeData {
-            //TODO: check if we can put the right types here
             id: Default::default(),
             link_number: inode_ext2.nbr_hard_links,
             access_mode: inode_ext2.type_and_perm,
@@ -77,7 +77,7 @@ impl Ext2fs {
 }
 
 impl FileSystem for Ext2fs {
-    fn root(&self) -> VfsResult<(DirectoryEntry, InodeData)> {
+    fn root(&self) -> SysResult<(DirectoryEntry, InodeData)> {
         let root_inode = self.ext2.lock().root_inode()?;
 
         let inode_id = InodeId::new(2, Some(self.fs_id));
@@ -96,7 +96,7 @@ impl FileSystem for Ext2fs {
         Ok((direntry, inode_data))
     }
 
-    fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, InodeData)>> {
+    fn lookup_directory(&self, inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
         let res = self.ext2.lock().lookup_directory(inode_nbr)?;
         Ok(res
             .into_iter()
@@ -107,18 +107,18 @@ impl FileSystem for Ext2fs {
                     Some(self.convert_entry_ext2_to_vfs(direntry, inode))
                 }
             })
-            .collect())
+            .try_collect()?)
     }
 
-    fn chmod(&self, inode_nbr: u32, mode: FileType) -> VfsResult<()> {
+    fn chmod(&self, inode_nbr: u32, mode: FileType) -> SysResult<()> {
         Ok(self.ext2.lock().chmod(inode_nbr, mode)?)
     }
 
-    fn chown(&self, inode_nbr: u32, owner: uid_t, group: gid_t) -> VfsResult<()> {
+    fn chown(&self, inode_nbr: u32, owner: uid_t, group: gid_t) -> SysResult<()> {
         Ok(self.ext2.lock().chown(inode_nbr, owner, group)?)
     }
 
-    fn unlink(&self, dir_inode_nbr: u32, name: &str) -> VfsResult<()> {
+    fn unlink(&self, dir_inode_nbr: u32, name: &str) -> SysResult<()> {
         Ok(self.ext2.lock().unlink(dir_inode_nbr, name)?)
     }
 
@@ -128,7 +128,7 @@ impl FileSystem for Ext2fs {
         parent_inode_nbr: u32,
         flags: OpenFlags,
         mode: FileType,
-    ) -> VfsResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData)> {
         // We probably should provide it as a parameter to this method.
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let (direntry, inode) =

@@ -20,8 +20,18 @@ pub fn unset_faillible_context() {
     }
 }
 
+/// pointer returned by GlobalAlloc::alloc when requesting a 0 size
+/// allocation
+const DEVIL_POINTER: *mut u8 = 0x666 as *mut u8;
+
 unsafe impl GlobalAlloc for RustGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // This is for allocation of Empty struct rust, we can't
+        // return 0x0 because it is considered as an allocErr by rust,
+        // and we want to avoid alloc so we return DEVIL_POINTER
+        if layout.size() == 0 && layout.align() == 1 {
+            return DEVIL_POINTER;
+        }
         // This condition is just made for checking faillible contextes
         if HOOK_FAILLIBLE_CHECKER == true {
             return 0x0 as *mut u8;
@@ -48,6 +58,9 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        if ptr == DEVIL_POINTER {
+            return;
+        }
         match &mut KERNEL_ALLOCATOR {
             KernelAllocator::Kernel(a) => {
                 if layout.size() <= PAGE_SIZE && layout.align() <= 16 {

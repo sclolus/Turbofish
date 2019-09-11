@@ -18,6 +18,7 @@ pub mod vfs;
 pub use vfs::VFS;
 
 use core::convert::TryFrom;
+use core::convert::TryInto;
 use thread_group::Credentials;
 use vfs::Path;
 
@@ -42,7 +43,7 @@ impl<T> IpcResult<T> {
 pub use process::{
     get_file_content, KernelProcess, Process, ProcessArguments, ProcessOrigin, UserProcess,
 };
-pub use safe_ffi::CStringArray;
+pub use safe_ffi::{CString, CStringArray};
 
 use scheduler::SCHEDULER;
 
@@ -111,7 +112,10 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
             unsafe {
                 UserProcess::new(
                     ProcessOrigin::Elf(&file),
-                    Some(ProcessArguments::new(argv.into(), envp.into())),
+                    Some(ProcessArguments::new(
+                        argv.try_into().expect("argv creation failed"),
+                        envp.try_into().expect("envp creation failed"),
+                    )),
                 )
             }
             .expect("Unexpected error when parsing ELF file"),

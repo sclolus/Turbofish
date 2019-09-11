@@ -1,9 +1,9 @@
 use super::inode::InodeId;
 use super::path::{Filename, Path};
-use super::{DcacheError, DcacheResult};
+use super::SysResult;
 use alloc::vec::Vec;
-use libc_binding::{c_char, dirent};
-use DcacheError::*;
+use fallible_collections::FallibleVec;
+use libc_binding::{c_char, dirent, Errno::*};
 
 #[derive(Debug, Clone)]
 pub struct DirectoryEntry {
@@ -126,7 +126,7 @@ impl DirectoryEntry {
         self
     }
 
-    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> SysResult<()> {
         self.inner.set_mounted(on)
     }
 
@@ -154,43 +154,43 @@ impl DirectoryEntry {
         self.inner.is_regular()
     }
 
-    pub fn get_symbolic_content(&self) -> DcacheResult<&Path> {
+    pub fn get_symbolic_content(&self) -> Option<&Path> {
         self.inner.get_symbolic_content()
     }
 
-    pub fn get_directory(&self) -> DcacheResult<&EntryDirectory> {
+    pub fn get_directory(&self) -> SysResult<&EntryDirectory> {
         self.inner.get_directory()
     }
 
-    pub fn get_directory_mut(&mut self) -> DcacheResult<&mut EntryDirectory> {
+    pub fn get_directory_mut(&mut self) -> SysResult<&mut EntryDirectory> {
         self.inner.get_directory_mut()
     }
 
-    pub fn is_directory_empty(&self) -> DcacheResult<bool> {
+    pub fn is_directory_empty(&self) -> SysResult<bool> {
         self.inner.is_directory_empty()
     }
 
-    pub fn is_mounted(&self) -> DcacheResult<bool> {
+    pub fn is_mounted(&self) -> SysResult<bool> {
         self.inner.is_mounted()
     }
 
-    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
+    pub fn get_mountpoint_entry(&self) -> Option<DirectoryEntryId> {
         self.inner.get_mountpoint_entry()
     }
 
-    pub fn add_entry(&mut self, entry: DirectoryEntryId) -> DcacheResult<()> {
+    pub fn add_entry(&mut self, entry: DirectoryEntryId) -> SysResult<()> {
         let directory = self.inner.get_directory_mut()?;
 
-        directory.entries.push(entry);
+        directory.entries.try_push(entry)?;
         Ok(())
     }
 
-    pub fn remove_entry(&mut self, entry: DirectoryEntryId) -> DcacheResult<()> {
+    pub fn remove_entry(&mut self, entry: DirectoryEntryId) -> SysResult<()> {
         let directory = self.inner.get_directory_mut()?;
 
         let index = match directory.entries.iter().position(|&x| x == entry) {
             Some(index) => index,
-            None => return Err(NoSuchEntry),
+            None => return Err(ENOENT),
         };
         directory.entries.swap_remove(index);
         Ok(())
@@ -249,8 +249,8 @@ impl EntryDirectory {
         self.mounted.is_some()
     }
 
-    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
-        self.mounted.ok_or(DirectoryNotMounted)
+    pub fn get_mountpoint_entry(&self) -> Option<DirectoryEntryId> {
+        self.mounted
     }
 
     pub fn set_mounted(&mut self, on: DirectoryEntryId) {
@@ -298,43 +298,45 @@ impl DirectoryEntryInner {
         is_variant!(Regular = self)
     }
 
-    pub fn is_directory_empty(&self) -> DcacheResult<bool> {
+    pub fn is_directory_empty(&self) -> SysResult<bool> {
         Ok(self.get_directory()?.is_directory_empty())
     }
 
-    pub fn get_directory(&self) -> DcacheResult<&EntryDirectory> {
+    pub fn get_directory(&self) -> SysResult<&EntryDirectory> {
         use DirectoryEntryInner::*;
         Ok(match self {
             Directory(ref directory) => directory,
-            _ => return Err(NotADirectory),
+            _ => return Err(ENOTDIR),
         })
     }
 
-    pub fn get_directory_mut(&mut self) -> DcacheResult<&mut EntryDirectory> {
+    pub fn get_directory_mut(&mut self) -> SysResult<&mut EntryDirectory> {
         use DirectoryEntryInner::*;
         Ok(match self {
             Directory(ref mut directory) => directory,
-            _ => return Err(NotADirectory),
+            _ => return Err(ENOTDIR),
         })
     }
 
-    pub fn get_symbolic_content(&self) -> DcacheResult<&Path> {
+    pub fn get_symbolic_content(&self) -> Option<&Path> {
         use DirectoryEntryInner::*;
-        Ok(match self {
-            Symlink(ref path) => path,
-            _ => return Err(NotASymlink),
-        })
+        match self {
+            Symlink(ref path) => Some(path),
+            _ => return None,
+        }
     }
 
-    pub fn is_mounted(&self) -> DcacheResult<bool> {
+    pub fn is_mounted(&self) -> SysResult<bool> {
         Ok(self.get_directory()?.is_mounted())
     }
 
-    pub fn get_mountpoint_entry(&self) -> DcacheResult<DirectoryEntryId> {
-        self.get_directory()?.get_mountpoint_entry()
+    pub fn get_mountpoint_entry(&self) -> Option<DirectoryEntryId> {
+        self.get_directory()
+            .ok()
+            .and_then(|d| d.get_mountpoint_entry())
     }
 
-    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> DcacheResult<()> {
+    pub fn set_mounted(&mut self, on: DirectoryEntryId) -> SysResult<()> {
         self.get_directory_mut()?.set_mounted(on);
         Ok(())
     }

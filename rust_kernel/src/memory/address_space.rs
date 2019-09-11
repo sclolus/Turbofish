@@ -1,8 +1,11 @@
 use super::allocator::{BuddyAllocator, VirtualPageAllocator};
 use crate::memory::mmu::{Entry, PageDirectory};
 use crate::memory::tools::*;
+pub use crate::taskmaster::{CString, CStringArray};
+use alloc::vec::Vec;
 use core::convert::Into;
 use core::mem::size_of;
+use fallible_collections::{try_vec, FallibleVec};
 use libc_binding::c_char;
 
 #[derive(Debug)]
@@ -161,6 +164,56 @@ impl AddressSpace {
     ) -> Result<&'unbound mut [T]> {
         self.check_user_mut_ptr_with_len(ptr, elem_number)?;
         Ok(unsafe { core::slice::from_raw_parts_mut(ptr, elem_number) })
+    }
+
+    pub fn make_checked_cstring(&self, s: *const c_char) -> Result<CString> {
+        let s = self.make_checked_str(s)?;
+        let mut v: Vec<c_char> = try_vec![0 as c_char; s.len() + 1]?;
+
+        unsafe {
+            (v.as_mut_ptr() as *mut u8).copy_from(s.as_ptr() as _, s.len());
+        }
+        Ok(CString(v))
+    }
+
+    pub fn make_checked_cstring_array(&self, s: *const *const c_char) -> Result<CStringArray> {
+        // tips: Constructs a new, empty Vec<T>. The vector will not allocate until elements are pushed onto it.
+        let mut c_pointer: Vec<*const c_char> = Vec::new();
+        let mut owned_content: Vec<CString> = Vec::new();
+
+        // Direct NULL pointer case
+        if s != 0x0 as _ {
+            unsafe {
+                let mut curr_ptr = s;
+                let pointer_size = core::mem::size_of::<*const char>();
+                loop {
+                    // Check if the pointer exists in address space
+                    self.check_user_ptr::<*const c_char>(curr_ptr)?;
+                    // Set the remaining length, relative to page size
+                    let limit = PAGE_SIZE - (curr_ptr as usize) % PAGE_SIZE;
+
+                    let mut i = 0;
+                    while i != limit && *(curr_ptr.add(i / pointer_size)) != core::ptr::null() {
+                        let string: CString =
+                            self.make_checked_cstring(*(curr_ptr.add(i / pointer_size)))?;
+                        c_pointer.try_push(string.as_ptr())?;
+                        owned_content.try_push(string)?;
+                        i += pointer_size;
+                    }
+                    if i != limit {
+                        break;
+                    }
+                    curr_ptr = (curr_ptr as usize + limit) as _;
+                }
+            }
+        }
+
+        // nullptr to terminate the array
+        c_pointer.try_push(0x0 as _)?;
+        Ok(CStringArray {
+            c_pointer,
+            owned_content,
+        })
     }
 
     pub fn alloc<N>(&mut self, length: N, alloc_flags: AllocFlags) -> Result<*mut u8>

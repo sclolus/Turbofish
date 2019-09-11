@@ -8,6 +8,7 @@ use crate::taskmaster::SysResult;
 use super::FileSystemId;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
     dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, FileType,
 };
@@ -47,13 +48,12 @@ impl Inode {
             driver,
         }
     }
-    pub fn root_inode() -> Self {
-        Self {
+    pub fn root_inode() -> SysResult<Self> {
+        Ok(Self {
             inode_data: InodeData::root_inode(),
-            // TODO: FallibleArc
-            driver: Box::new(DefaultDriver),
-            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
-        }
+            driver: Box::try_new(DefaultDriver)?,
+            filesystem: Arc::try_new(DeadMutex::new(DeadFileSystem))?,
+        })
     }
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         self.inode_data.stat(stat)
@@ -72,17 +72,6 @@ impl Inode {
     }
 }
 
-impl Default for Inode {
-    fn default() -> Self {
-        Self {
-            inode_data: Default::default(),
-            // TODO: FallibleArc
-            driver: Box::new(DefaultDriver),
-            filesystem: Arc::new(DeadMutex::new(DeadFileSystem)),
-        }
-    }
-}
-
 #[derive(Default, Debug)]
 pub struct InodeData {
     /// This inode's id.
@@ -91,7 +80,7 @@ pub struct InodeData {
     /// This inode's hard link number
     pub link_number: nlink_t,
     pub access_mode: FileType,
-    // pub file_type: Filetype, ??????????
+
     pub uid: uid_t,
     pub gid: gid_t,
 
@@ -160,14 +149,6 @@ impl InodeData {
         self.id
     }
 
-    // pub fn set_inode_operations(
-    //     &mut self,
-    //     inode_operations: Arc<DeadMutex<dyn Driver>>,
-    // ) -> &mut Self {
-    //     self.inode_operations = inode_operations;
-    //     self
-    // }
-
     pub fn root_inode() -> Self {
         let access_mode = FileType::S_IRWXU | FileType::DIRECTORY;
 
@@ -207,34 +188,11 @@ impl InodeData {
     pub fn is_socket(&self) -> bool {
         self.access_mode.is_socket()
     }
-
-    // pub fn dispatch_handler(
-    //     &self,
-    //     params: VfsHandlerParams,
-    //     kind: VfsHandlerKind,
-    // ) -> VfsResult<i32> {
-    //     use VfsHandlerKind::*;
-    //     let ops = self.inode_operations;
-    //     match kind {
-    //         // Open => ops.open.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // LookupInode => ops.lookup_inode.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // LookupEntries => ops.lookup_entries.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Creat => ops.creat.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Rename => ops.rename.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Chmod => ops.chmod.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Chown => ops.chown.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Lchown => ops.lchown.ok_or(VfsError::UndefinedHandler)?(params),
-    //         // Truncate => ops.truncate.ok_or(VfsError::UndefinedHandler)?(params),
-    //         TestOpen => ops.test_open.ok_or(VfsError::UndefinedHandler)?(params),
-    //         _ => unimplemented!(),
-    //     }
-    // }
 }
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
-    //TODO: VFS Option<FileSystemId>
     pub filesystem_id: Option<FileSystemId>,
 }
 
@@ -246,184 +204,6 @@ impl InodeId {
         }
     }
 }
-
-// #[derive(Default, Copy, Clone)]
-// pub struct InodeOperations {
-//     pub open: Option<fn(&mut Inode, &mut File) -> VfsResult<i32>>,
-//     pub lookup_direntry: Option<fn(&Inode, &Filename) -> Option<DirectoryEntry>>,
-//     pub lookup_inode: Option<fn(InodeId) -> Option<Inode>>,
-
-//     // This is temporary.
-//     pub lookup_entries: Option<fn(&Inode) -> Vec<DirectoryEntry>>,
-//     // pub creat: Option<fn(Inode, &mut DirectoryEntry, DirectoryEntry, mode_t) -> VfsResult<impl Into<Inode>>>,
-//     // pub link: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
-//     // pub symlink: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
-//     pub rename: Option<fn(&mut Inode, &mut DirectoryEntry, DirectoryEntry) -> VfsResult<i32>>,
-//     // pub stat: Option<fn(&mut Inode, &mut DirectoryEntry, &mut UserStat) -> VfsResult<i32>>,
-//     // pub mkdir: Option<fn(&mut Inode, &mut DirectoryEntry, mode_t) -> VfsResult<i32>>,
-//     // pub rmdir: Option<fn(&mut Inode, &mut DirectoryEntry) -> VfsResult<i32>>,
-//     pub chmod: Option<fn(&mut Inode, &mut DirectoryEntry, FileType) -> VfsResult<i32>>,
-//     pub chown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>,
-//     pub lchown: Option<fn(&mut Inode, &mut DirectoryEntry, uid_t, gid_t) -> VfsResult<i32>>, // probably can implement this with just chown on VFS' side.
-//     pub truncate: Option<fn(&mut Inode, &mut DirectoryEntry, Offset) -> VfsResult<i32>>,
-
-//     pub test_open: Option<fn(params: VfsHandlerParams) -> VfsResult<i32>>,
-// }
-
-// impl InodeOperations {
-// pub fn set_open(mut self, open: VfsHandler<i32>) -> Self {
-//     self.open = Some(open);
-//     self
-// }
-
-// pub fn set_lookup_inode(mut self, lookup_inode: VfsHandler<i32>) -> Self {
-//     self.lookup_inode = Some(lookup_inode);
-//     self
-// }
-
-// pub fn set_lookup_entries(mut self, lookup_entries: VfsHandler<i32>) -> Self {
-//     self.lookup_entries = Some(lookup_entries);
-//     self
-// }
-
-// pub fn set_creat(mut self, creat: VfsHandler<i32>) -> Self {
-//     self.creat = Some(creat);
-//     self
-// }
-
-// pub fn set_rename(mut self, rename: VfsHandler<i32>) -> Self {
-//     self.rename = Some(rename);
-//     self
-// }
-
-// pub fn set_chmod(mut self, chmod: VfsHandler<i32>) -> Self {
-//     self.chmod = Some(chmod);
-//     self
-// }
-
-// pub fn set_chown(mut self, chown: VfsHandler<i32>) -> Self {
-//     self.chown = Some(chown);
-//     self
-// }
-
-// pub fn set_lchown(mut self, lchown: VfsHandler<i32>) -> Self {
-//     self.lchown = Some(lchown);
-//     self
-// }
-
-// pub fn set_truncate(mut self, truncate: VfsHandler<i32>) -> Self {
-//     self.truncate = Some(truncate);
-//     self
-// }
-
-// pub fn set_test_open(mut self, test_open: VfsHandler<i32>) -> Self {
-//     self.test_open = Some(test_open);
-//     self
-// }
-
-// pub fn unset_open(mut self) -> Self {
-//     self.open = None;
-//     self
-// }
-
-// pub fn unset_lookup_inode(mut self) -> Self {
-//     self.lookup_inode = None;
-//     self
-// }
-
-// pub fn unset_lookup_entries(mut self) -> Self {
-//     self.lookup_entries = None;
-//     self
-// }
-
-// // pub fn unset_creat(mut self) -> Self {
-// //     self.creat = None;
-// //     self
-// // }
-
-// pub fn unset_rename(mut self) -> Self {
-//     self.rename = None;
-//     self
-// }
-
-// pub fn unset_chmod(mut self) -> Self {
-//     self.chmod = None;
-//     self
-// }
-
-// pub fn unset_chown(mut self) -> Self {
-//     self.chown = None;
-//     self
-// }
-
-// pub fn unset_lchown(mut self) -> Self {
-//     self.lchown = None;
-//     self
-// }
-
-// pub fn unset_truncate(mut self) -> Self {
-//     self.truncate = None;
-//     self
-// }
-
-// pub fn unset_test_open(mut self) -> Self {
-//     self.test_open = None;
-//     self
-// }
-// }
-
-// /// Type of file
-// #[derive(Debug, Copy, Clone, PartialEq)]
-// pub enum Filetype {
-//     RegularFile,
-//     Directory,
-//     CharacterDevice,
-//     BlockDevice,
-//     Fifo,
-//     Socket,
-//     SymbolicLink,
-// }
-
-//make some tests
-// /// The structure defining an `Open File Description` for a file.
-// pub struct File {
-//     /// The id of the inode.
-//     pub id: InodeId,
-
-//     /// The id of the directory entry associated with the Open File Description.
-//     pub dentry_id: DirectoryEntryId,
-
-//     pub offset: usize,
-//     pub flags: OpenFlags,
-// }
-
-// impl File {
-//     pub fn new(id: InodeId, dentry_id: DirectoryEntryId) -> Self {
-//         Self {
-//             id,
-//             dentry_id,
-//             offset: 0,
-//             flags: OpenFlags::default(),
-//         }
-//     }
-// }
-
-// pub type Offset = usize; //TODO:  change this
-
-// /// Filesystem specific operations on 'OpenFileDescriptions' `File`s
-// #[allow(unused)] // TODO: remove this
-// pub struct FileOperations {
-//     pub read: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
-//     pub lseek: Option<fn(&mut File, Offset, Whence) -> Offset>,
-//     // pub flush: Option<fn()>,
-//     pub write: Option<fn(&mut File, &mut [u8]) -> VfsResult<isize>>,
-//     pub release: Option<fn(&mut File) -> VfsResult<i32>>,
-//     pub ftruncate: Option<fn(&mut File, Offset) -> VfsResult<i32>>,
-//     // pub fstat: Option<fn(&mut File, &mut UserStat) -> VfsResult<i32>>,
-//     pub fchmod: Option<fn(&mut File, FileType) -> VfsResult<i32>>,
-//     pub fchown: Option<fn(&mut File, uid_t, gid_t) -> VfsResult<i32>>,
-//     // pub open: Option<fn(&mut Inode, &mut File, i32, mode_t) -> VfsResult<i32>>,
-// }
 
 #[cfg(test)]
 mod test {

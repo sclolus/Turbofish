@@ -3,7 +3,7 @@
 mod tss;
 use tss::TSS;
 
-use super::safe_ffi::{c_char, CStringArray};
+use super::safe_ffi::CStringArray;
 use super::syscall::clone::CloneFlags;
 use super::SysResult;
 use sync::{DeadMutex, DeadMutexGuard};
@@ -17,7 +17,7 @@ use fallible_collections::FallibleArc;
 
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::{try_vec, FallibleBox};
-use libc_binding::Errno;
+use libc_binding::{c_char, Errno};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
@@ -228,7 +228,6 @@ impl UserProcess {
             virtual_allocator: if flags.contains(CloneFlags::VM) {
                 self.virtual_allocator.clone()
             } else {
-                // TODO: change that to Arc::try_new
                 Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
             symbol_table: self.symbol_table.as_ref().map(|elem| elem.clone()),
@@ -545,10 +544,9 @@ use libc_binding::FileType;
 
 /// Return a file content using raw ext2 methods
 pub fn get_file_content(cwd: &Path, creds: &Credentials, pathname: &str) -> SysResult<Vec<u8>> {
-    // TODO: REMOVE THIS SHIT
     let path = super::vfs::Path::try_from(pathname)?;
     let mode = FileType::from_bits(0o777).expect("file permission creation failed");
-    let flags = libc_binding::OpenFlags::O_RDONLY;
+    let flags = libc_binding::OpenFlags::empty();
     let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
         IpcResult::Done(file_operator) => file_operator,
         IpcResult::Wait(file_operator, _) => file_operator,

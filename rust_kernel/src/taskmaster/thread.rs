@@ -12,6 +12,7 @@ use core::ffi::c_void;
 use fallible_collections::FallibleBox;
 
 use alloc::boxed::Box;
+use alloc::collections::CollectionAllocErr;
 
 use core::mem;
 
@@ -42,12 +43,12 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub fn new(process_state: ProcessState) -> Self {
-        Self {
+    pub fn new(process_state: ProcessState) -> Result<Self, CollectionAllocErr> {
+        Ok(Self {
             process_state,
             signal: SignalInterface::new(),
-            autopreempt_return_value: Box::new(Ok(Default::default())),
-        }
+            autopreempt_return_value: Box::try_new(Ok(Default::default()))?,
+        })
     }
 
     pub fn get_waiting_state(&self) -> Option<&WaitingState> {

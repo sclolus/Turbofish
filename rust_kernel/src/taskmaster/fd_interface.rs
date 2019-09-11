@@ -51,7 +51,6 @@ impl FileDescriptorInterface {
         Ok(elem.file_operation.lock())
     }
 
-    // TODO: fix dummy access_mode && manage flags
     /// Open a file and give a file descriptor
     pub fn open(
         &mut self,
@@ -226,7 +225,7 @@ impl TryClone for FileDescriptor {
     fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
         self.file_operation.lock().register(self.access_mode);
         Ok(Self {
-            access_mode: self.access_mode.clone(),
+            access_mode: self.access_mode,
             file_operation: self.file_operation.clone(),
         })
     }

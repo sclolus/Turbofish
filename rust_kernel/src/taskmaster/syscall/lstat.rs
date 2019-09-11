@@ -25,10 +25,8 @@ pub fn sys_lstat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {
         let mode =
             libc_binding::FileType::from_bits(0o777).expect("file permission creation failed");
         use core::convert::TryFrom;
-        // TODO: REMOVE THIS SHIT
         let path = super::vfs::Path::try_from(safe_filename)?;
-        // TODO: REMOVE THIS SHIT
-        let flags = libc_binding::OpenFlags::O_RDWR;
+        let flags = libc_binding::OpenFlags::empty();
 
         let tg = scheduler.current_thread_group();
         let creds = &tg.credentials;

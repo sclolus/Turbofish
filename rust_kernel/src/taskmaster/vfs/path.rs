@@ -1,14 +1,12 @@
+use super::posix_consts::{NAME_MAX, PATH_MAX};
+use super::SysResult;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
-use core::result::Result as StdResult;
+use fallible_collections::FallibleVec;
 use libc_binding::{c_char, Errno};
 use try_clone_derive::TryClone;
-
-use super::posix_consts::{NAME_MAX, PATH_MAX};
-
-type Result<T> = StdResult<T, Errno>;
 
 #[derive(Debug, Clone, TryClone)]
 pub struct Path {
@@ -51,7 +49,7 @@ impl Path {
         Self::null_path()
     }
 
-    pub fn set_absolute(&mut self, value: bool) -> Result<&mut Self> {
+    pub fn set_absolute(&mut self, value: bool) -> SysResult<&mut Self> {
         if !self.is_absolute() && value && self.total_length == PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
         }
@@ -87,7 +85,7 @@ impl Path {
         Ancestors::from_path(self)
     }
 
-    pub fn push(&mut self, component: Filename) -> Result<&mut Self> {
+    pub fn push(&mut self, component: Filename) -> SysResult<&mut Self> {
         // this is an Option return type actually
         let total_length;
         if self.depth() != 0 {
@@ -100,7 +98,7 @@ impl Path {
             return Err(Errno::ENAMETOOLONG);
         }
         self.total_length = total_length;
-        self.components.push(component);
+        self.components.try_push(component)?;
         Ok(self)
     }
 
@@ -135,7 +133,7 @@ impl Path {
         Components::from_path(self)
     }
 
-    pub fn chain(&mut self, other: Path) -> Result<&mut Self> {
+    pub fn chain(&mut self, other: Path) -> SysResult<&mut Self> {
         if self == &Path::null_path() {
             *self = other;
             Ok(self)
@@ -145,7 +143,7 @@ impl Path {
         }
     }
 
-    pub fn chain_components<'a, T>(&mut self, comps: T) -> Result<&mut Self>
+    pub fn chain_components<'a, T>(&mut self, comps: T) -> SysResult<&mut Self>
     where
         T: Iterator<Item = &'a Filename>,
     {
@@ -155,21 +153,21 @@ impl Path {
         Ok(self)
     }
 
-    pub fn replace(&mut self, offset: usize, other: Path) -> Result<&mut Self> {
-        let stack = self.clone(); // well need to copy data temporary.
-        let (comps_begin, comps_end) = stack.components().divide_at(offset);
+    // pub fn replace(&mut self, offset: usize, other: Path) -> SysResult<&mut Self> {
+    //     let stack = self.try_clone()?; // well need to copy data temporary.
+    //     let (comps_begin, comps_end) = stack.components().divide_at(offset);
 
-        // comps_begin.next_back();
-        // comps_end.next();
+    //     // comps_begin.next_back();
+    //     // comps_end.next();
 
-        println!("Begin: {:?}", comps_begin);
-        println!("End: {:?}", comps_end);
-        let mut new = Self::try_from(comps_begin)?;
+    //     println!("Begin: {:?}", comps_begin);
+    //     println!("End: {:?}", comps_end);
+    //     let mut new = Self::try_from(comps_begin)?;
 
-        new.chain(other)?.chain_components(comps_end)?;
-        *self = new;
-        Ok(self)
-    }
+    //     new.chain(other)?.chain_components(comps_end)?;
+    //     *self = new;
+    //     Ok(self)
+    // }
 }
 
 /// Newtype of filename
@@ -179,7 +177,7 @@ pub struct Filename(pub [c_char; NAME_MAX as usize + 1], pub usize);
 
 impl TryFrom<&str> for Filename {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self> {
+    fn try_from(s: &str) -> SysResult<Self> {
         let mut n = [0 as c_char; NAME_MAX as usize + 1];
         if s.bytes().find(|&b| b == '/' as u8).is_some() {
             return Err(Errno::EINVAL);
@@ -286,18 +284,18 @@ impl<'a> Components<'a> {
         }
     }
 
-    pub fn divide_at(mut self, offset: usize) -> (Self, Self) {
-        if !self.current.as_ref().unwrap_or(&(0..0)).contains(&offset) {
-            self.current = None;
-            let (a, b) = (self.clone(), self.clone());
-            return (a, b);
-        }
+    // pub fn divide_at(mut self, offset: usize) -> SysResult<(Self, Self)> {
+    //     if !self.current.as_ref().unwrap_or(&(0..0)).contains(&offset) {
+    //         self.current = None;
+    //         let (a, b) = (self.try_clone()?, self.try_clone()?);
+    //         return (a, b);
+    //     }
 
-        let (mut a, mut b) = (self.clone(), self.clone());
-        a.current = dbg!(a.current.map(|range| range.start..offset));
-        b.current = b.current.map(|range| offset..range.end);
-        (a, b)
-    }
+    //     let (mut a, mut b) = (self.try_clone()?, self.try_clone()?);
+    //     a.current = dbg!(a.current.map(|range| range.start..offset));
+    //     b.current = b.current.map(|range| offset..range.end);
+    //     (a, b)
+    // }
 }
 
 impl<'a> Iterator for Components<'a> {
@@ -418,7 +416,7 @@ impl<'a> From<&'a Path> for Components<'a> {
 
 impl<'a> TryFrom<Components<'a>> for Path {
     type Error = Errno;
-    fn try_from(comps: Components<'a>) -> Result<Self> {
+    fn try_from(comps: Components<'a>) -> SysResult<Self> {
         let mut path = Path::new();
 
         path.set_absolute(comps.is_absolute())?;
@@ -431,7 +429,7 @@ impl<'a> TryFrom<Components<'a>> for Path {
 
 impl TryFrom<&str> for Path {
     type Error = Errno;
-    fn try_from(s: &str) -> Result<Self> {
+    fn try_from(s: &str) -> SysResult<Self> {
         if s.len() > PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
         }
@@ -1057,81 +1055,81 @@ mod test {
         };
     }
 
-    #[test]
-    fn path_replace_basic() {
-        let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
+    // #[test]
+    // fn path_replace_basic() {
+    //     let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
 
-        let a = expect(Path::try_from("a/b/c"));
-        let b = expect(Path::try_from("e/f"));
-        let expected = [
-            expect(Path::try_from("e/f/b/c")),
-            expect(Path::try_from("a/e/f/c")),
-            expect(Path::try_from("a/b/e/f")),
-        ];
+    //     let a = expect(Path::try_from("a/b/c"));
+    //     let b = expect(Path::try_from("e/f"));
+    //     let expected = [
+    //         expect(Path::try_from("e/f/b/c")),
+    //         expect(Path::try_from("a/e/f/c")),
+    //         expect(Path::try_from("a/b/e/f")),
+    //     ];
 
-        for offset in 0..a.depth() {
-            let mut test = a.clone();
+    //     for offset in 0..a.depth() {
+    //         let mut test = a.clone();
 
-            test.replace(offset, b.clone());
-            assert_eq!(test, expected[offset]);
-        }
-    }
+    //         test.replace(offset, b.clone());
+    //         assert_eq!(test, expected[offset]);
+    //     }
+    // }
 
-    #[test]
-    fn components_divide_at() {
-        let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
+    // #[test]
+    // fn components_divide_at() {
+    //     let expect = |res: Result<_>| res.expect("Invalid hardcoded test values");
 
-        let a = expect(Path::try_from("/a/b/c/d/e/f"));
-        let expected = [
-            (
-                expect(Path::try_from("/")),
-                expect(Path::try_from("a/b/c/d/e/f")),
-            ),
-            (
-                expect(Path::try_from("/a/")),
-                expect(Path::try_from("b/c/d/e/f")),
-            ),
-            (
-                expect(Path::try_from("/a/b/")),
-                expect(Path::try_from("c/d/e/f")),
-            ),
-            (
-                expect(Path::try_from("/a/b/c/")),
-                expect(Path::try_from("d/e/f")),
-            ),
-            (
-                expect(Path::try_from("/a/b/c/d/")),
-                expect(Path::try_from("e/f")),
-            ),
-            (
-                expect(Path::try_from("/a/b/c/d/e/")),
-                expect(Path::try_from("f")),
-            ),
-            (
-                expect(Path::try_from("/a/b/c/d/e/f")),
-                expect(Path::try_from("")),
-            ),
-        ];
+    //     let a = expect(Path::try_from("/a/b/c/d/e/f"));
+    //     let expected = [
+    //         (
+    //             expect(Path::try_from("/")),
+    //             expect(Path::try_from("a/b/c/d/e/f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/")),
+    //             expect(Path::try_from("b/c/d/e/f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/b/")),
+    //             expect(Path::try_from("c/d/e/f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/b/c/")),
+    //             expect(Path::try_from("d/e/f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/b/c/d/")),
+    //             expect(Path::try_from("e/f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/b/c/d/e/")),
+    //             expect(Path::try_from("f")),
+    //         ),
+    //         (
+    //             expect(Path::try_from("/a/b/c/d/e/f")),
+    //             expect(Path::try_from("")),
+    //         ),
+    //     ];
 
-        for offset in 0..a.depth() {
-            let test = a.clone();
-            let (test_1, test_2) = test.components().divide_at(offset);
+    //     for offset in 0..a.depth() {
+    //         let test = a.clone();
+    //         let (test_1, test_2) = test.components().divide_at(offset);
 
-            println!(
-                "test_1 {:?}\nexpect: {:?}",
-                test_1,
-                expected[offset].0.components()
-            );
-            println!(
-                "test_2 {:?}\nexpect: {:?}",
-                test_2,
-                expected[offset].1.components()
-            );
+    //         println!(
+    //             "test_1 {:?}\nexpect: {:?}",
+    //             test_1,
+    //             expected[offset].0.components()
+    //         );
+    //         println!(
+    //             "test_2 {:?}\nexpect: {:?}",
+    //             test_2,
+    //             expected[offset].1.components()
+    //         );
 
-            assert!(test_1.eq(expected[offset].0.components()));
-            assert!(test_2.eq(expected[offset].1.components()));
-        }
-    }
+    //         assert!(test_1.eq(expected[offset].0.components()));
+    //         assert!(test_2.eq(expected[offset].1.components()));
+    //     }
+    // }
 
     use core::convert::TryInto;
 

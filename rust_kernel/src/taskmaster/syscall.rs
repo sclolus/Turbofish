@@ -13,7 +13,6 @@ use super::thread_group;
 use super::vfs;
 use super::IpcResult;
 use super::{IntoRawResult, SysResult};
-use crate::ffi::c_char;
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
@@ -28,7 +27,7 @@ use libc_binding::{
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
+use libc_binding::{c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -258,35 +257,20 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         FORK => sys_fork(cpu_state as u32), // CpuState represents kernel_esp
         READ => sys_read(ebx as i32, ecx as *mut u8, edx as usize),
         WRITE => sys_write(ebx as i32, ecx as *const u8, edx as usize),
-        // TODO: type parameter are not set and manage the third argument
-        OPEN => sys_open(
-            ebx as *const libc_binding::c_char,
-            ecx as u32,
-            edx as mode_t,
-        ),
+        OPEN => sys_open(ebx as *const c_char, ecx as u32, edx as mode_t),
         CLOSE => sys_close(ebx as i32),
         WAITPID => sys_waitpid(ebx as i32, ecx as *mut i32, edx as u32),
-        LINK => sys_link(
-            ebx as *const libc_binding::c_char,
-            ecx as *const libc_binding::c_char,
-        ),
-        UNLINK => sys_unlink(ebx as *const libc_binding::c_char),
-        STAT => sys_stat(
-            ebx as *const libc_binding::c_char,
-            ecx as *mut libc_binding::stat,
-        ),
+        LINK => sys_link(ebx as *const c_char, ecx as *const c_char),
+        UNLINK => sys_unlink(ebx as *const c_char),
+        STAT => sys_stat(ebx as *const c_char, ecx as *mut libc_binding::stat),
         EXECVE => sys_execve(
             ebx as *const c_char,
             ecx as *const *const c_char,
             edx as *const *const c_char,
         ),
-        CHDIR => sys_chdir(ebx as *const libc_binding::c_char),
-        CHMOD => sys_chmod(ebx as *const libc_binding::c_char, ecx as mode_t),
-        MKNOD => sys_mknod(
-            ebx as *const libc_binding::c_char,
-            ecx as mode_t,
-            edx as dev_t,
-        ),
+        CHDIR => sys_chdir(ebx as *const c_char),
+        CHMOD => sys_chmod(ebx as *const c_char, ecx as mode_t),
+        MKNOD => sys_mknod(ebx as *const c_char, ecx as mode_t, edx as dev_t),
         LSEEK => sys_lseek(
             ebx as *mut off_t,
             ecx as Fd,
@@ -298,14 +282,11 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         FSTAT => sys_fstat(ebx as Fd, ecx as *mut libc_binding::stat),
-        ACCESS => sys_access(ebx as *const libc_binding::c_char, ecx as u32),
+        ACCESS => sys_access(ebx as *const c_char, ecx as u32),
         KILL => sys_kill(ebx as i32, ecx as u32),
-        RENAME => sys_rename(
-            ebx as *const libc_binding::c_char,
-            ecx as *const libc_binding::c_char,
-        ),
-        MKDIR => sys_mkdir(ebx as *const libc_binding::c_char, ecx as mode_t),
-        RMDIR => sys_rmdir(ebx as *const libc_binding::c_char),
+        RENAME => sys_rename(ebx as *const c_char, ecx as *const c_char),
+        MKDIR => sys_mkdir(ebx as *const c_char, ecx as mode_t),
+        RMDIR => sys_rmdir(ebx as *const c_char),
         PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
         DUP => sys_dup(ebx as u32),
         SETGID => sys_setgid(ebx as gid_t),
@@ -326,14 +307,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
         GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
-        SYMLINK => sys_symlink(
-            ebx as *const libc_binding::c_char,
-            ecx as *const libc_binding::c_char,
-        ),
-        LSTAT => sys_lstat(
-            ebx as *const libc_binding::c_char,
-            ecx as *mut libc_binding::stat,
-        ),
+        SYMLINK => sys_symlink(ebx as *const c_char, ecx as *const c_char),
+        LSTAT => sys_lstat(ebx as *const c_char, ecx as *mut libc_binding::stat),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),
@@ -348,12 +323,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
-        CHOWN => sys_chown(
-            ebx as *const libc_binding::c_char,
-            ecx as uid_t,
-            edx as gid_t,
-        ),
-        GETCWD => sys_getcwd(ebx as *mut libc_binding::c_char, ecx as usize),
+        CHOWN => sys_chown(ebx as *const c_char, ecx as uid_t, edx as gid_t),
+        GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),
         GETTIMEOFDAY => sys_gettimeofday(ebx as *mut timeval, ecx as *mut timezone),
         SIGRETURN => sys_sigreturn(cpu_state),
         SHUTDOWN => sys_shutdown(),
@@ -367,8 +338,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SETEGID => sys_setegid(ebx as gid_t),
         SETEUID => sys_seteuid(ebx as uid_t),
         ISATTY => sys_isatty(ebx as u32),
-        OPENDIR => sys_opendir(ebx as *const libc_binding::c_char, ecx as *mut DIR),
-        IS_STR_VALID => sys_is_str_valid(ebx as *const libc_binding::c_char),
+        OPENDIR => sys_opendir(ebx as *const c_char, ecx as *mut DIR),
+        IS_STR_VALID => sys_is_str_valid(ebx as *const c_char),
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),

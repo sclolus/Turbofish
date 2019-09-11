@@ -2,7 +2,9 @@
 use super::TryClone;
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
+use core::alloc::Layout;
 use core::borrow::Borrow;
+use core::mem::{align_of, size_of};
 
 /// trait to implement Fallible Box
 pub trait FallibleBox<T> {
@@ -16,10 +18,16 @@ pub trait FallibleBox<T> {
 impl<T> FallibleBox<T> for Box<T> {
     fn try_new(t: T) -> Result<Self, CollectionAllocErr> {
         let mut g = alloc::alloc::Global;
-        let ptr = core::alloc::Alloc::alloc_one(&mut g)?;
+        let ptr = unsafe {
+            core::alloc::Alloc::alloc(
+                &mut g,
+                Layout::from_size_align(size_of::<T>(), align_of::<T>()).unwrap(),
+            )?
+        }
+        .as_ptr() as *mut T;
         unsafe {
-            core::ptr::write(ptr.as_ptr(), t);
-            Ok(Box::from_raw(ptr.as_ptr()))
+            core::ptr::write(ptr, t);
+            Ok(Box::from_raw(ptr))
         }
     }
 }

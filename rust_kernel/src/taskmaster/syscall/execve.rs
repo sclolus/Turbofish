@@ -5,12 +5,10 @@ use super::SysResult;
 use super::process::{
     get_file_content, CpuState, Process, ProcessArguments, ProcessOrigin, UserProcess,
 };
-use super::safe_ffi::{c_char, CString, CStringArray};
+use super::safe_ffi::CStringArray;
 use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
-
-use alloc::format;
-use core::convert::TryInto;
+use libc_binding::c_char;
 
 /// File descriptors open in the calling process image shall remain
 /// open in the new process image, except for those whose close-on-
@@ -94,7 +92,7 @@ use core::convert::TryInto;
 /// executable image being loaded and executed. No destructor
 /// functions or cleanup handlers shall be called.
 pub fn sys_execve(
-    filename: *const c_char,
+    path: *const c_char,
     argv: *const *const c_char,
     envp: *const *const c_char,
 ) -> SysResult<u32> {
@@ -106,26 +104,19 @@ pub fn sys_execve(
             .unwrap_process_mut()
             .get_virtual_allocator();
 
-        let filename: CString = (&v, filename).try_into()?;
+        let path: &str = v.make_checked_str(path)?;
 
-        let argv_content: CStringArray = (&v, argv).try_into()?;
+        let argv_content: CStringArray = v.make_checked_cstring_array(argv)?;
         // Get the argv len to store the argc value
         let argv_content_len = argv_content.len();
 
-        let envp_content: CStringArray = (&v, envp).try_into()?;
+        let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
         drop(v);
-
-        // TODO: Use PWD later. (note that format! macro is not in a faillible memory context)
-        let pathname = format!("{}", filename);
-
-        if !(pathname.starts_with("/")) {
-            unimplemented!();
-        }
 
         let tg = scheduler.current_thread_group();
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
-        let content = get_file_content(cwd, creds, &pathname)?;
+        let content = get_file_content(cwd, creds, path)?;
 
         let mut new_process = unsafe {
             UserProcess::new(
