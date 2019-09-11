@@ -10,17 +10,27 @@ use crate::memory::tools::address::Virt;
 use crate::system::BaseRegisters;
 use core::ffi::c_void;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, uid_t, utimbuf, OpenFlags, Pid, DIR,
+    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, timeval, timezone, uid_t, utimbuf,
+    OpenFlags, Pid, DIR,
 };
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
-    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID, GETUID,
-    ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
-    OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK,
-    UTIME, WAITPID, WRITE,
+    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
+    GETTIMEOFDAY, GETUID, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP,
+    NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
+    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR,
+    TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
+
+/// Get the len of a C style *const c_char
+pub unsafe fn strlen(ptr: *const c_char) -> usize {
+    let mut i = 0;
+    while (*ptr.add(i)) != 0 {
+        i += 1;
+    }
+    i
+}
 
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
@@ -53,7 +63,12 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             // TODO: type parameter are not set and manage the third argument
             OPEN => log::info!(
                 "open({:#?}, {:#?})",
-                ebx as *const u8,
+                unsafe {
+                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                        ebx as *const u8,
+                        strlen(ebx as *const c_char),
+                    ))
+                },
                 OpenFlags::from_bits(ecx as u32)
             ),
             CLOSE => log::info!("close({:#?})", ebx as i32),
@@ -147,9 +162,21 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ecx as *const c_char,
             ),
             LSTAT => log::info!("lstat(fd: {:?}, buf: {:#X?})", ebx as Fd, ecx as *mut stat),
+            READLINK => log::info!(
+                "readlink({:#?}, {:#?}, {:#?})",
+                ebx as *const c_char,
+                ecx as *mut c_char,
+                edx as u32
+            ),
             REBOOT => log::info!("reboot()"),
             MMAP => unsafe { log::info!("mmap({:#?})", *(ebx as *const MmapArgStruct)) },
             MUNMAP => log::info!("munmap({:#?}, {:#?})", Virt(ebx as usize), ecx as usize),
+            UMASK => log::info!("umask({:#?})", ebx as mode_t),
+            GETTIMEOFDAY => log::info!(
+                "gettimeofday({:#?}, {:#?})",
+                ebx as *mut timeval,
+                ecx as *mut timezone
+            ),
             SOCKETCALL => log::info!("socketcall({:#?}, {:#?})", ebx as u32, ecx as SocketArgsPtr),
             CLONE => log::info!(
                 "clone({:#?}, {:#?}, {:#?})",
@@ -201,8 +228,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             SETEUID => log::info!("seteuid({:#?})", ebx as uid_t),
             ISATTY => log::info!("isatty({:#?})", ebx as u32),
             OPENDIR => log::info!("opendir({:#?}, {:#?})", ebx as *const u8, ecx as *mut DIR),
-            UMASK => log::info!("umask({:#?})", ebx as mode_t),
-            _ => log::info!("unknown syscall()",),
+            unknown => log::info!("unknown syscall: {}", unknown),
         }
     })
 }
@@ -251,9 +277,12 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         GETGROUPS => "getgroups",
         SETGROUPS => "setgroups",
         LSTAT => "lstat",
+        READLINK => "readlink",
         REBOOT => "reboot",
         MMAP => "mmap",
         MUNMAP => "munmap",
+        UMASK => "umask",
+        GETTIMEOFDAY => "gettimeofday",
         SOCKETCALL => "socketcall",
         CLONE => "clone",
         MPROTECT => "mprotect",
@@ -275,7 +304,6 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         SETEUID => "seteuid",
         ISATTY => "isatty",
         OPENDIR => "opendir",
-        UMASK => "umask",
         _ => "unknown syscall",
     };
     unpreemptible_context!({

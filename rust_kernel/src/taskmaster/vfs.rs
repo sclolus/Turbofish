@@ -37,7 +37,7 @@ use libc_binding::c_char;
 use libc_binding::dirent;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
-use libc_binding::{gid_t, uid_t, Errno};
+use libc_binding::{gid_t, stat, uid_t, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -179,6 +179,22 @@ impl VirtualFileSystem {
     }
 
     /// resolve the path `pathname` from root `root`, return the
+    /// directory_entry_id associate with the file, used for lstat
+    pub fn pathname_resolution_no_follow_last_symlink(
+        &mut self,
+        cwd: &Path,
+        pathname: &Path,
+    ) -> SysResult<DirectoryEntryId> {
+        let root = if pathname.is_absolute() {
+            self.dcache.root_id
+        } else {
+            debug_assert!(cwd.is_absolute());
+            self._pathname_resolution(self.dcache.root_id, cwd, 0, true)?
+        };
+        self._pathname_resolution(root, pathname, 0, false)
+    }
+
+    /// resolve the path `pathname` from root `root`, return the
     /// directory_entry_id associate with the file
     pub fn pathname_resolution(
         &mut self,
@@ -189,11 +205,9 @@ impl VirtualFileSystem {
             self.dcache.root_id
         } else {
             debug_assert!(cwd.is_absolute());
-            self._pathname_resolution(self.dcache.root_id, cwd, 0)?
+            self._pathname_resolution(self.dcache.root_id, cwd, 0, true)?
         };
-
-        // self._pathname_resolution(root, pathname, 0)
-        self._pathname_resolution(root, pathname, 0)
+        self._pathname_resolution(root, pathname, 0, true)
     }
 
     fn _pathname_resolution(
@@ -201,6 +215,7 @@ impl VirtualFileSystem {
         mut root: DirectoryEntryId,
         pathname: &Path,
         recursion_level: usize,
+        follow_last_symlink: bool,
     ) -> SysResult<DirectoryEntryId> {
         if recursion_level > SYMLOOP_MAX {
             return Err(Errno::ELOOP);
@@ -287,13 +302,21 @@ impl VirtualFileSystem {
             current_dir_id = *next_entry_id;
         }
         if was_symlink {
+            if components.len() == 0 && !follow_last_symlink {
+                return Ok(current_entry.id);
+            }
             let mut new_path = current_entry
                 .get_symbolic_content()
                 .expect("should be symlink")
                 .clone();
             new_path.chain(components.try_into()?)?;
 
-            self._pathname_resolution(current_dir_id, &new_path, recursion_level + 1)
+            self._pathname_resolution(
+                current_dir_id,
+                &new_path,
+                recursion_level + 1,
+                follow_last_symlink,
+            )
         } else {
             Ok(self.dcache.get_entry(&current_dir_id).unwrap().id)
         }
@@ -843,6 +866,60 @@ impl VirtualFileSystem {
         newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
         self.dcache.add_entry(Some(parent_new), newentry)?;
         inode.link_number += 1;
+        Ok(())
+    }
+
+    pub fn lstat(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        buf: &mut stat,
+    ) -> SysResult<u32> {
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        let inode_id = entry.inode_id;
+        let inode = self.get_inode(inode_id)?;
+        inode.stat(buf)
+    }
+
+    pub fn readlink(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        buf: &mut [c_char],
+    ) -> SysResult<u32> {
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
+        let symbolic_content = self
+            .dcache
+            .get_entry(&entry_id)?
+            .get_symbolic_content()
+            .ok_or(EINVAL)?;
+
+        let size = buf.len();
+        let mut i = 0;
+        for b in symbolic_content.iter_bytes() {
+            // keep a place for the \0
+            if i >= size - 1 {
+                return Err(ERANGE);
+            }
+            buf[i] = *b;
+            i += 1;
+        }
+        if i > 0 {
+            buf[i - 1] = '\0' as c_char;
+        }
+        Ok(i as u32)
+    }
+
+    pub fn symlink(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path1: Path,
+        path2: Path,
+    ) -> SysResult<()> {
         Ok(())
     }
 

@@ -317,7 +317,16 @@ impl<'a> Iterator for Components<'a> {
             Some(&self.path.components[start])
         }
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let current = self.current.as_ref().unwrap_or(&(0..0));
+        let start = current.start;
+        let end = current.end;
+        let len = end.checked_sub(start).unwrap_or(0);
+        (len, Some(len))
+    }
 }
+
+impl<'a> ExactSizeIterator for Components<'a> {}
 
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
