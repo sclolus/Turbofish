@@ -10,8 +10,7 @@ use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
 use libc_binding::c_char;
 
-// use alloc::format;
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 
 use fallible_collections::TryClone;
 use libc_binding::Errno;
@@ -112,11 +111,18 @@ pub fn sys_execve(
             .unwrap_process_mut()
             .get_virtual_allocator();
 
+        let path: &str = v.make_checked_str(path)?;
+        let pathname = Path::try_from(path)?;
+        let argv_content: CStringArray = v.make_checked_cstring_array(argv)?;
+
+        // Get the argv len to store the argc value
+        let argv_content_len = argv_content.len();
+        let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
+        drop(v);
+
         let tg = scheduler.current_thread_group();
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
-        let path: &str = v.make_checked_str(path)?;
-      	let pathname = Path::try_from(path)?;
         // This seems unefficient since pathname resolution will be executed two times:
         // here and in get_file_content. And pathname needs to be clone...
         let file_type = VFS.lock().file_type(cwd, pathname.try_clone()?)?;
@@ -124,39 +130,7 @@ pub fn sys_execve(
         if !file_type.is_regular() {
             return Err(Errno::EACCESS);
         }
-        let argv_content: CStringArray = v.make_checked_cstring_array(argv)?;
-        // Get the argv len to store the argc value
-        let argv_content_len = argv_content.len();
-
-        let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
-        drop(v);
-       let content = get_file_content(cwd, creds, pathname)?;
-
-        // let tg = scheduler.current_thread_group();
-        // let creds = &tg.credentials;
-        // let cwd = &tg.cwd;
-        // let content = get_file_content(cwd, creds, path)?;
-
-        // TODO: Use PWD later. (note that format! macro is not in a faillible memory context)
-        // let pathname = Path::try_from(format!("{}", filename).as_str())?;
-
-        // if !(pathname.starts_with("/")) { // I think this is implemented though.
-        //     unimplemented!();
-        // }
-
-        // let tg = scheduler.current_thread_group();
-        // let creds = &tg.credentials;
-        // let cwd = &tg.cwd;
-
-        // This seems unefficient since pathname resolution will be executed two times:
-        // here and in get_file_content. And pathname needs to be clone...
-        // let file_type = VFS.lock().file_type(cwd, pathname.try_clone()?)?;
-
-        // if !file_type.is_regular() {
-        //     return Err(Errno::EACCESS);
-        // }
-
-        // let content = get_file_content(cwd, creds, pathname)?;
+        let content = get_file_content(cwd, creds, pathname)?;
 
         let mut new_process = unsafe {
             UserProcess::new(

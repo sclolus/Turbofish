@@ -392,8 +392,8 @@ impl VirtualFileSystem {
     }
 
     /// Returns the FileType of the file pointed by the Path `path`.
-    pub fn file_type(&mut self, cwd: &Path, path: Path) -> VfsResult<FileType> {
-        let direntry_id = self.pathname_resolution(cwd, path)?;
+    pub fn file_type(&mut self, cwd: &Path, path: Path) -> SysResult<FileType> {
+        let direntry_id = self.pathname_resolution(cwd, &path)?;
         let inode_id = &self
             .dcache
             .get_entry(&direntry_id)
