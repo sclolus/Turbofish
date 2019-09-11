@@ -22,6 +22,8 @@ use core::convert::TryInto;
 use thread_group::Credentials;
 use vfs::Path;
 
+mod sync;
+
 /// Describe what to do after an IPC request and result return
 #[derive(Debug)]
 pub enum IpcResult<T> {

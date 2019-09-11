@@ -720,8 +720,48 @@ pub unsafe extern "C" fn send_message(message: MessageTo) {
     SCHEDULER.lock().send_message(message);
 }
 
+use super::sync::SmartMutex;
+
+pub struct Test {
+    value: u32,
+}
+
+impl Test {
+    fn new(value: u32) -> Self {
+        Self { value }
+    }
+    fn get_value(&self) -> u32 {
+        self.value
+    }
+
+    fn set_value(&mut self, value: u32) {
+        self.value = value;
+    }
+}
+
+lazy_static! {
+    pub static ref TEST: SmartMutex<Test> = SmartMutex::new(Test::new(42));
+}
+
+#[no_mangle]
+fn lock() {
+    let mut test = TEST.lock();
+    println!("value: {}", test.get_value());
+    test.set_value(162);
+    println!("value: {}", test.get_value());
+}
+
 /// Start the whole scheduler
 pub unsafe fn start(task_mode: TaskMode) -> ! {
+    let mut test = TEST.lock();
+    println!("value: {}", test.get_value());
+    test.set_value(84);
+    println!("value: {}", test.get_value());
+    println!("Pass 1");
+    lock();
+
+    loop {}
+
     // Inhibit all hardware interrupts, particulary timer.
     interrupts::disable();
 
