@@ -1,0 +1,1 @@
+/dev/sda1 / ext2 rw,relatime,block_validity,barrier,user_xattr,acl,errors=remount-ro 0 0
