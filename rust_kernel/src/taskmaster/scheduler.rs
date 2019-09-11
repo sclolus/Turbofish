@@ -384,25 +384,36 @@ impl Scheduler {
             _ => {}
         }
 
-        // When the father die, the process Self::REAPER_PID adopts all his orphelans
         while let Some(child_pid) = self.current_thread_group_running_mut().child.pop() {
-            self.get_thread_group_mut(child_pid)
-                .expect("Hashmap corrupted")
-                .parent = Self::REAPER_PID;
+            use super::thread_group::ThreadGroupState;
 
-            self.get_thread_group_mut(Self::REAPER_PID)
-                .expect("no reaper process")
-                .unwrap_running_mut()
-                .child
-                .try_push(child_pid)
-                .expect("no memory to push on the reaper pid");
+            let thread_group = self
+                .get_thread_group_mut(child_pid)
+                .expect("Hashmap corrupted");
+            match thread_group.thread_group_state {
+                // If the child is on RunningState. The REAPER must adopt him
+                ThreadGroupState::Running(_) => {
+                    thread_group.parent = Self::REAPER_PID;
+
+                    let _r = self
+                        .get_thread_group_mut(Self::REAPER_PID)
+                        .expect("no reaper process")
+                        .unwrap_running_mut()
+                        .child
+                        .try_push(child_pid)
+                        .map_err(|_| log::error!("no memory to push on the reaper pid"));
+                }
+                // Else, definitively destroy it
+                ThreadGroupState::Zombie(_) => {
+                    self.remove_thread_group(child_pid);
+                }
+            }
         }
 
         let (pid, _) = self.current_task_id;
 
         self.remove_thread_group_running(pid);
 
-        // Switch to idle mode
         self.on_exit_routine = Some((pid, status));
     }
 
