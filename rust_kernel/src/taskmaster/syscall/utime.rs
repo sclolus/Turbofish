@@ -10,7 +10,7 @@ pub fn sys_utime(path: *const c_char, times: *const utimbuf) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let (safe_buf, _times) = {
+        let (safe_path, _times) = {
             let v = scheduler
                 .current_thread()
                 .unwrap_process()
@@ -29,7 +29,7 @@ pub fn sys_utime(path: *const c_char, times: *const utimbuf) -> SysResult<u32> {
         let tg = scheduler.current_thread_group_mut();
         // let creds = &tg.credentials;
         let _cwd = &tg.cwd;
-        let _path = Path::try_from(safe_buf)?;
+        let _path = Path::try_from(safe_path)?;
 
         unimplemented!()
     })

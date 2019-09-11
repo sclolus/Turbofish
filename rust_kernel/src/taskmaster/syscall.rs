@@ -22,12 +22,14 @@ use libc_binding::{
     MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID,
     SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, WAITPID, WRITE, UTIME,
+    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, utimbuf, timezone, uid_t, DIR};
+use libc_binding::{
+    c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, utimbuf, DIR,
+};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
