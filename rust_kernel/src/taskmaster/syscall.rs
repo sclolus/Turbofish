@@ -5,7 +5,7 @@ use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
 use super::scheduler;
-use super::scheduler::{Pid, SCHEDULER};
+use super::scheduler::{Pid, PreemptionGuard, SCHEDULER};
 use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
@@ -362,23 +362,31 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         // Return value will be on EAX. Errno always represents the low 7 bits
         (*cpu_state).registers.eax = result.into_raw_result();
     }
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
-    // If ring0 process -> Can't happened normally
-    unpreemptible_context! {{
-        let mut scheduler = SCHEDULER.lock();
-        // An exit() routine may be engaged by the exit() syscall
+    let mut preemption_guard = PreemptionGuard::new();
+    exit_from_syscall(cpu_state, is_in_blocked_syscall, &mut preemption_guard)
+}
+
+fn exit_from_syscall(
+    cpu_state: *mut CpuState,
+    is_in_blocked_syscall: bool,
+    preemption_guard: &mut PreemptionGuard,
+) -> u32 {
+    let mut scheduler = SCHEDULER.lock();
+    // An exit() routine may be engaged by the exit() syscall
+    if let Some(_) = scheduler.on_exit_routine {
+        scheduler.set_idle_mode()
+    } else {
+        // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
+        // If ring0 process -> Can't happened normally
+        scheduler.current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
+        // An exit() routine may be engaged after handling a deadly signal OR process execution while in ring 0
         if let Some(_) = scheduler.on_exit_routine {
+            preemption_guard.force_unpreemptible();
             scheduler.set_idle_mode()
         } else {
-            scheduler.current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
-            // An exit() routine may be engaged after handling a deadly signal
-            if let Some(_) = scheduler.on_exit_routine {
-                scheduler.set_idle_mode()
-            } else {
-                cpu_state as u32
-            }
+            cpu_state as u32
         }
-    }}
+    }
 }
 
 extern "C" {
