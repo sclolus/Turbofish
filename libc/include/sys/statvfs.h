@@ -2,6 +2,7 @@
 # define __SYS_STATVFS_H__
 
 # include <sys/types.h>
+# include <sys/statfs.h>
 //    The <sys/statvfs.h> header shall define the statvfs structure, which shall include at least the following members:
 //
 struct statvfs {

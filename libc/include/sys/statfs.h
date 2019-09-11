@@ -6,7 +6,6 @@
 typedef unsigned long	__fsword_t;
 typedef unsigned long	fsid_t;
 
-/* # define xxx 0 */
 struct statfs {
 	__fsword_t f_type;    /* Type of filesystem (see below) */
 	__fsword_t f_bsize;   /* Optimal transfer block size */
@@ -21,11 +20,10 @@ struct statfs {
 	__fsword_t f_frsize;  /* Fragment size (since Linux 2.6) */
 	__fsword_t f_flags;   /* Mount flags of filesystem
 				 (since Linux 2.6.36) */
-	/* __fsword_t f_spare[xxx]; */
-	/* /\* Padding bytes reserved for future use *\/ */
-};
 
-/* # undef xxx */
+	/* /\* Padding bytes reserved for future use *\/ */
+	/* __fsword_t f_spare[4]; */
+};
 
 # define ADFS_SUPER_MAGIC      0xadf5
 # define AFFS_SUPER_MAGIC      0xadff

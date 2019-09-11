@@ -11,8 +11,8 @@ ifeq ($(unit-tests),yes)
 	AR = ar
 	RANLIB = ranlib
 	CFLAGS += -D UNIT_TESTS -g3 -fsanitize=address
-	ASFLAGS =
-	IFLAGS = -I./include/ltrace
+	ASFLAGS = --32
+	IFLAGS = -Iinclude/ltrace -Iinclude/tools
 else
 	TARGET = $(TARGET_LIBC)
 	AS = i686-turbofish-as
@@ -31,7 +31,7 @@ SRC_C += libc_ctor
 SRC_ASM += user_syscall
 PRIVATE_HEADERS += include/user_syscall.h
 
-TESTED_SRC_C = getenv setenv unsetenv clearenv execl
+TESTED_SRC_C = strsplit array getenv setenv unsetenv clearenv execl getmntent
 
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
@@ -85,9 +85,7 @@ SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _
 VPATH += src/stdlib
 HEADERS += stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown link rmdir getpagesize symlink
-
-SRC_C += dup dup2 pipe readlink
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink
 
 VPATH += src/unistd
 HEADERS += unistd.h
@@ -172,7 +170,7 @@ HEADERS += math.h
 
 SRC_C += strsplit array parse_2d_file
 VPATH += src/tools
-HEADERS += tools.h
+HEADERS += tools/tools.h
 
 SRC_C += getpwnam getpwuid
 VPATH += src/pwd
@@ -190,12 +188,17 @@ SRC_C += strcasecmp
 VPATH += src/strings
 HEADERS += strings.h
 
+SRC_C += setmntent getmntent endmntent addmntent hasmntopt
+VPATH += src/mntent
+HEADERS += mntent.h
+
+
 SRC_C += is_ptr_valid
 VPATH += src/custom
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
-HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h
+HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
 
 HEADERS += ltrace/ltrace.h
 
