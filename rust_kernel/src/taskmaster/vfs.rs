@@ -52,6 +52,14 @@ pub struct VirtualFileSystem {
     dcache: Dcache,
 }
 
+use core::fmt::{self, Debug};
+
+impl Debug for VirtualFileSystem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VirtualFileSystem")
+    }
+}
+
 #[allow(unused)]
 type Vfs = VirtualFileSystem;
 

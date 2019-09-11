@@ -1,6 +1,7 @@
 //! This file contains a smart mutex with dump backtrace of last locker feature
+use core::fmt::Debug;
+use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicU32, Ordering};
-use lock_api::{GuardSend, RawMutex};
 
 use crate::ffi::c_str;
 
@@ -50,18 +51,10 @@ unsafe fn trace_back(mut ebp: *const u32) {
 }
 
 // 2. Implement RawMutex for this type
-unsafe impl RawMutex for RawSmartMutex {
+impl RawSmartMutex {
     const INIT: RawSmartMutex = RawSmartMutex(AtomicU32::new(0));
 
     // A spinlock guard can be sent to another thread and unlocked there
-    type GuardMarker = GuardSend;
-
-    /// Lock the mutex
-    fn lock(&self) {
-        if !self.try_lock() {
-            panic!("Dead lock");
-        }
-    }
 
     /// Try to lock the mutex
     fn try_lock(&self) -> bool {
@@ -72,7 +65,7 @@ unsafe impl RawMutex for RawSmartMutex {
         }
         let ebp = self.0.compare_and_swap(0, current_ebp, Ordering::Relaxed) as *const u32;
         if ebp != 0 as *const u32 {
-            // Here a DeadLock, we trace back the process which had put his EBP in the mutex
+            // Here a DeadSmartMutex, we trace back the process which had put his EBP in the mutex
             eprintln!("--- Previous locker backtrace ----");
             unsafe {
                 trace_back(ebp);
@@ -90,6 +83,53 @@ unsafe impl RawMutex for RawSmartMutex {
     }
 }
 
+pub struct SmartMutexGuard<'a, T: Debug>(&'a mut SmartMutex<T>);
+
+impl<'a, T: Debug> Drop for SmartMutexGuard<'a, T> {
+    fn drop(&mut self) {
+        self.0.raw_lock.unlock();
+    }
+}
+
+impl<'a, T: Debug> Deref for SmartMutexGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.data
+    }
+}
+
+impl<'a, T: Debug> DerefMut for SmartMutexGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.data
+    }
+}
+
+/// A lock Wrapper for a generic Datatype
+pub struct SmartMutex<T: Debug> {
+    data: T,
+    raw_lock: RawSmartMutex,
+}
+
+impl<'a, T: Debug> SmartMutex<T> {
+    pub fn new(data: T) -> Self {
+        SmartMutex {
+            data,
+            raw_lock: RawSmartMutex::INIT,
+        }
+    }
+    pub fn lock(&'a self) -> SmartMutexGuard<'a, T> {
+        if !self.raw_lock.try_lock() {
+            panic!("Dead lock {:?}", self.data);
+        }
+        SmartMutexGuard(unsafe { &mut *(self as *const Self as *mut Self) })
+    }
+    pub fn force_unlock(&'a self) {
+        self.raw_lock.unlock();
+    }
+}
+
+unsafe impl<T: Debug> Send for SmartMutex<T> {}
+unsafe impl<T: Debug> Sync for SmartMutex<T> {}
+
 // 3. Export the wrappers. This are the types that your users will actually use.
-pub type SmartMutex<T> = lock_api::Mutex<RawSmartMutex, T>;
-pub type SmartMutexGuard<'a, T> = lock_api::MutexGuard<'a, RawSmartMutex, T>;
