@@ -200,7 +200,10 @@ impl Ext2Filesystem {
         assert!(inode_nbr >= 1);
 
         /* Delete Data Blocks */
-        self.truncate_inode((inode, inode_addr), 0).unwrap();
+        // don't truncate inode if it is a fast symbolic link
+        if !(inode.type_and_perm.contains(FileType::SYMBOLIC_LINK) && inode.get_size() <= 60) {
+            self.truncate_inode((inode, inode_addr), 0).unwrap();
+        }
 
         /* Unset Inode bitmap */
         let block_grp = (inode_nbr - 1) / self.superblock.inodes_per_block_grp;

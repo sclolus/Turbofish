@@ -593,7 +593,7 @@ impl VirtualFileSystem {
     }
 
     pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
         let inode_id;
         let parent_id;
 
@@ -917,9 +917,34 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         _creds: &Credentials,
-        path1: Path,
-        path2: Path,
+        target: &str,
+        mut linkname: Path,
     ) -> SysResult<()> {
+        if let Ok(_) = self.pathname_resolution(cwd, &linkname) {
+            return Err(EEXIST);
+        }
+        let filename = linkname.pop().expect("no filename");
+        let direntry_id = self.pathname_resolution(cwd, &linkname)?;
+        let direntry = self.dcache.get_entry(&direntry_id)?;
+        if !direntry.is_directory() {
+            return Err(ENOENT);
+        }
+
+        let inode_id = direntry.inode_id;
+
+        let parent_inode_id = self.dcache.get_entry_mut(&direntry_id)?.inode_id;
+        let fs_cloned = self
+            .get_filesystem(inode_id)
+            .expect("no filesystem")
+            .clone();
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs_entry = fs.lock().symlink(
+            parent_inode_id.inode_number as u32,
+            target,
+            filename.as_str(),
+        )?;
+        self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
+            .expect("add entry from filesystem failed");
         Ok(())
     }
 

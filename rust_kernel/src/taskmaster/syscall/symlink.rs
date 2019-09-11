@@ -6,25 +6,24 @@ use core::convert::TryFrom;
 
 use libc_binding::c_char;
 
-pub fn sys_symlink(path1: *const c_char, path2: *const c_char) -> SysResult<u32> {
+pub fn sys_symlink(target: *const c_char, linkname: *const c_char) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        let (safe_path1, safe_path2) = {
+        let (safe_target, safe_linkname) = {
             let v = scheduler
                 .current_thread_mut()
                 .unwrap_process_mut()
                 .get_virtual_allocator();
 
-            (v.make_checked_str(path1)?, v.make_checked_str(path2)?)
+            (v.make_checked_str(target)?, v.make_checked_str(linkname)?)
         };
 
-        let path1 = Path::try_from(safe_path1)?;
-        let path2 = Path::try_from(safe_path2)?;
+        let linkname = Path::try_from(safe_linkname)?;
         let tg = scheduler.current_thread_group();
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
-        VFS.lock().symlink(cwd, creds, path1, path2)?;
+        VFS.lock().symlink(cwd, creds, safe_target, linkname)?;
         Ok(0)
     })
 }

@@ -42,6 +42,7 @@ SRC_C += DeepThought \
 		dir/mkdir_exist \
 		dir/mkdir \
 		dir/rmdir_not_empty \
+		symlink/symlink \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask
 

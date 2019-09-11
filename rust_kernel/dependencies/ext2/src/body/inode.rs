@@ -97,6 +97,20 @@ impl Inode {
             ..Default::default()
         }
     }
+
+    pub fn write_symlink(&mut self, target: &str) {
+        let target_len = target.len();
+        assert!(target_len <= 60);
+        unsafe {
+            let slice = core::slice::from_raw_parts_mut(
+                &mut self.direct_block_pointers as *mut _ as *mut u8,
+                target_len,
+            );
+            slice.copy_from_slice(target.as_bytes());
+            self.low_size = target_len as u32;
+        }
+    }
+
     pub fn read_symlink(&self) -> Option<&str> {
         unsafe {
             if self.low_size <= 60 {

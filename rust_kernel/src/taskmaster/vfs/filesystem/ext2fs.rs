@@ -180,4 +180,17 @@ impl FileSystem for Ext2fs {
         self.ext2.lock().rmdir(parent_inode_nbr, filename)?;
         Ok(())
     }
+    fn symlink(
+        &mut self,
+        parent_inode_nbr: u32,
+        target: &str,
+        filename: &str,
+    ) -> SysResult<(DirectoryEntry, InodeData)> {
+        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
+        let (direntry, inode) =
+            self.ext2
+                .lock()
+                .symlink(parent_inode_nbr, target, filename, timestamp)?;
+        Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
+    }
 }
