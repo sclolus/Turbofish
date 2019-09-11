@@ -6,7 +6,7 @@
 #include <string.h>
 #include "tools.h"
 
-size_t NB_FILE = 42;
+size_t NB_FILE = 10;
 
 int main() {
 	char filename[100];
