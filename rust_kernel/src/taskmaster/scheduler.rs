@@ -715,10 +715,8 @@ pub unsafe fn get_current_pgid() -> Pid {
 }
 
 #[no_mangle]
-pub extern "C" fn send_message(message: MessageTo) {
-    unsafe {
-        SCHEDULER.force_unlock();
-    }
+pub unsafe extern "C" fn send_message(message: MessageTo) {
+    SCHEDULER.force_unlock();
     SCHEDULER.lock().send_message(message);
 }
 

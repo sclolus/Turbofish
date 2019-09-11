@@ -92,7 +92,7 @@ use libc_binding::c_char;
 /// executable image being loaded and executed. No destructor
 /// functions or cleanup handlers shall be called.
 pub fn sys_execve(
-    path: *const libc_binding::c_char,
+    path: *const c_char,
     argv: *const *const c_char,
     envp: *const *const c_char,
 ) -> SysResult<u32> {
