@@ -16,6 +16,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define UNLINK       10
 #define EXECVE       11
 #define CHDIR        12
+#define MKNOD        14
 #define CHMOD        15
 #define STAT         18
 #define LSEEK        19
@@ -45,6 +46,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SIGSUSPEND   72
 #define GETGROUPS    80
 #define SETGROUPS    81
+#define SYMLINK      83
 #define LSTAT        84
 #define REBOOT       88
 #define MMAP         90

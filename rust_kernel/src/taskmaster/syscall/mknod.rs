@@ -1,10 +1,10 @@
 use super::scheduler::SCHEDULER;
-use super::vfs::{Path, VFS};
+use super::vfs::Path;
 use super::SysResult;
 use core::convert::TryFrom;
-use libc_binding::{c_char, mode_t, Errno, FileType};
+use libc_binding::{c_char, dev_t, mode_t, Errno, FileType};
 
-pub fn sys_mkdir(path: *const c_char, mut mode: mode_t) -> SysResult<u32> {
+pub fn sys_mknod(path: *const c_char, mut mode: mode_t, _dev: dev_t) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
@@ -19,13 +19,13 @@ pub fn sys_mkdir(path: *const c_char, mut mode: mode_t) -> SysResult<u32> {
         let tg = scheduler.current_thread_group_mut();
 
         let mask = tg.umask;
-        let creds = &tg.credentials;
-        let cwd = &tg.cwd;
-        let path = Path::try_from(safe_path)?;
-        // Mask out the bits of mode which are set in umask.
         mode = mode & !mask;
-        let mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
-        VFS.lock().mkdir(cwd, creds, path, mode)?;
-        Ok(0)
+
+        let _creds = &tg.credentials;
+        let _cwd = &tg.cwd;
+        let _path = Path::try_from(safe_path)?;
+        let _mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
+        // VFS.lock().mknod(cwd, creds, path, mode)?;
+        unimplemented!()
     })
 }

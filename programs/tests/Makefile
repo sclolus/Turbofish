@@ -36,7 +36,11 @@ SRC_C += DeepThought \
 		access/access \
 		unlink/unlink \
 		unlink/unlink_multiple \
+		unlink/unlink_orphan \
 		umask/umask \
+		dir/mkdir_exist \
+		dir/mkdir \
+		dir/rmdir_not_empty \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask
 

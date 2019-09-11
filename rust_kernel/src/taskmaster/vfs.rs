@@ -546,10 +546,10 @@ impl VirtualFileSystem {
         //TODO: check that
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.lock()
-            .unlink(parent_inode_id.inode_number as u32, unsafe {
-                path.filename().expect("no filename").as_str()
-            })?;
+        fs.lock().unlink(
+            parent_inode_id.inode_number as u32,
+            path.filename().expect("no filename").as_str(),
+        )?;
         Ok(())
     }
 
@@ -598,7 +598,7 @@ impl VirtualFileSystem {
                 let fs_cloned = fs.clone();
 
                 let fs_entry = fs.lock().create(
-                    unsafe { path.filename().expect("no filename").as_str() },
+                    path.filename().expect("no filename").as_str(),
                     inode_number,
                     flags,
                     mode,
@@ -707,17 +707,33 @@ impl VirtualFileSystem {
     pub fn mkdir(
         &mut self,
         cwd: &Path,
-        creds: &Credentials,
-        path: Path,
+        _creds: &Credentials,
+        mut path: Path,
         mode: FileType,
     ) -> VfsResult<()> {
-        let flags = OpenFlags::O_DIRECTORY | OpenFlags::O_CREAT;
+        if let Ok(_) = self.pathname_resolution(cwd, path.clone()) {
+            return Err(Errno(Errno::EEXIST));
+        }
+        let filename = path.pop();
+        let entry_id = self.pathname_resolution(cwd, path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        if !entry.is_directory() {
+            return Err(Errno(Errno::ENOTDIR));
+        }
+        let inode_id = entry.inode_id;
 
-        self.open(cwd, creds, path, flags, mode)?;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs_cloned = fs.clone();
+        let fs_entry = fs.lock().create_dir(
+            inode_id.inode_number,
+            filename.expect("should have a filename").as_str(),
+            mode,
+        )?;
+        self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
 
-    pub fn rmdir(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> VfsResult<()> {
+    pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> VfsResult<()> {
         let filename = path.filename().ok_or(Errno(Errno::EINVAL))?;
         if filename == &"." || filename == &".." {
             return Err(Errno(Errno::EINVAL));
@@ -729,8 +745,24 @@ impl VirtualFileSystem {
         if !entry.is_directory() {
             return Err(NotADirectory);
         }
-        self.unlink(cwd, creds, path)
+        if !entry.is_directory_empty()? {
+            return Err(Errno(Errno::ENOTEMPTY));
+        }
+        let inode_id = entry.inode_id;
+        let parent_id = entry.parent_id;
+
+        self.dcache.remove_entry(entry_id)?;
+        self.inodes.remove(&inode_id).expect("inode should be here");
+
+        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        fs.lock().rmdir(
+            parent_inode_id.inode_number as u32,
+            path.filename().expect("no filename").as_str(),
+        )?;
+        Ok(())
     }
+
     pub fn get_inode(&mut self, inode_id: InodeId) -> VfsResult<&mut Inode> {
         self.inodes.get_mut(&inode_id).ok_or(NoSuchInode)
     }

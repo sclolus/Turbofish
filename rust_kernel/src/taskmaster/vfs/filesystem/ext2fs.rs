@@ -33,10 +33,10 @@ impl From<ext2::Inode> for InodeData {
         InodeData {
             //TODO: check if we can put the right types here
             id: Default::default(),
-            link_number: inode_ext2.nbr_hard_links as i32,
+            link_number: inode_ext2.nbr_hard_links,
             access_mode: inode_ext2.type_and_perm,
-            uid: inode_ext2.user_id as u32,
-            gid: inode_ext2.group_id as u32,
+            uid: inode_ext2.user_id,
+            gid: inode_ext2.group_id,
             atime: inode_ext2.last_access_time,
             mtime: inode_ext2.last_modification_time,
             ctime: inode_ext2.last_access_time,
@@ -95,9 +95,6 @@ impl FileSystem for Ext2fs {
         inode_data.set_id(inode_id);
         Ok((direntry, inode_data))
     }
-    // fn name(&self) -> &str {
-    //     "Ext2fs"
-    // }
 
     fn lookup_directory(&self, inode_nbr: u32) -> VfsResult<Vec<(DirectoryEntry, InodeData)>> {
         let res = self.ext2.lock().lookup_directory(inode_nbr)?;
@@ -112,6 +109,7 @@ impl FileSystem for Ext2fs {
             })
             .collect())
     }
+
     fn chmod(&self, inode_nbr: u32, mode: FileType) -> VfsResult<()> {
         Ok(self.ext2.lock().chmod(inode_nbr, mode)?)
     }
@@ -123,6 +121,7 @@ impl FileSystem for Ext2fs {
     fn unlink(&self, dir_inode_nbr: u32, name: &str) -> VfsResult<()> {
         Ok(self.ext2.lock().unlink(dir_inode_nbr, name)?)
     }
+
     fn create(
         &mut self,
         filename: &str,
@@ -141,7 +140,25 @@ impl FileSystem for Ext2fs {
     fn write(&mut self, inode_number: u32, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
         Ok(self.ext2.lock().write(inode_number, offset, buf)? as u32)
     }
+
     fn read(&mut self, inode_number: u32, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
         Ok(self.ext2.lock().read(inode_number, offset, buf)? as u32)
+    }
+
+    fn create_dir(
+        &mut self,
+        parent_inode_nbr: u32,
+        filename: &str,
+        mode: FileType,
+    ) -> SysResult<(DirectoryEntry, InodeData)> {
+        let (direntry, inode) = self
+            .ext2
+            .lock()
+            .create_dir(parent_inode_nbr, filename, mode)?;
+        Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
+    }
+    fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> SysResult<()> {
+        self.ext2.lock().rmdir(parent_inode_nbr, filename)?;
+        Ok(())
     }
 }

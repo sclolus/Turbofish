@@ -11,10 +11,6 @@ terminal = { path = "../terminal" }
 fallible_collections = { path = "../fallible_collections" }
 libc_binding = { path = "../libc_binding" }
 
-[dependencies.num-traits]
-version = "0.2"
-default-features = false
-
 [dev-dependencies]
 rand = "0.6.5"
 

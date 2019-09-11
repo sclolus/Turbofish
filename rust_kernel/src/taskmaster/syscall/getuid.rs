@@ -7,6 +7,6 @@ use super::SysResult;
 /// process. The getuid() function shall not modify errno.
 pub fn sys_getuid() -> SysResult<u32> {
     Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_thread_group().credentials.uid
+        SCHEDULER.lock().current_thread_group().credentials.uid as u32
     }))
 }

@@ -18,6 +18,9 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/dir/mkdir"},
+	{.path = "/bin/dir/mkdir_exist"},
+	{.path = "/bin/dir/rmdir_not_empty"},
 	{.path = "/bin/unlink/unlink_multiple"},
 	{.path = "/bin/write/create_write_read"},
 	{.path = "/bin/unlink/unlink"},
@@ -87,6 +90,10 @@ void launch_test(size_t i) {
 		printf("child_pid: %d\n", child_pid);
 		execve(TEST_PROGRAMS[i].path, args, env);
 		perror("execve failed");
+		for (int j = 0; j < 10; j++) {
+			printf("%s\n", TEST_PROGRAMS[i].path);
+		}
+		while (1) {}
 		_exit_qemu(1);
 	}
 	//father

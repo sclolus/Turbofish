@@ -7,6 +7,6 @@ use super::SysResult;
 /// calling process. The getgid() function shall not modify errno.
 pub fn sys_getgid() -> SysResult<u32> {
     Ok(unpreemptible_context!({
-        SCHEDULER.lock().current_thread_group().credentials.gid
+        SCHEDULER.lock().current_thread_group().credentials.gid as u32
     }))
 }

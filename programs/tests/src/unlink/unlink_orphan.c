@@ -5,13 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-size_t NUMBER = 0;
-
-static void create_and_unlink() {
+int main() {
 	char filename[100];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./file_%d_%lu", pid, NUMBER++);
+	sprintf(filename, "./file_%d", pid);
 
 	printf("creating file: %s\n", filename);
 	int fd = open(filename, O_RDWR | O_CREAT, 0644);
@@ -19,24 +17,29 @@ static void create_and_unlink() {
 		perror("open");
 		exit(1);
 	}
-	int ret = access(filename, F_OK);
-	if (ret == -1) {
-		perror("access");
-		exit(1);
-	}
-	ret = unlink(filename);
+	int ret = unlink(filename);
 	if (ret == -1) {
 		perror("unlink");
 		exit(1);
 	}
-	ret = access(filename, F_OK);
-	if (!(ret == -1)) {
+
+	char s[] = "banane";
+	ret = write(fd, s, sizeof(s));
+	if (ret == -1) {
+		perror("write");
 		exit(1);
 	}
-}
+	lseek(fd, 0, SEEK_SET);
 
-int main() {
-	for (int i = 0; i < 4; i++) {
-		create_and_unlink();
+	char r[sizeof(s)];
+	ret = read(fd, r, sizeof(s));
+	if (ret == -1) {
+		perror("read");
+		exit(1);
 	}
+	if (strcmp(r, s) != 0) {
+		printf("error data writen != data read\n");
+		exit(1);
+	}
+	close(fd);
 }

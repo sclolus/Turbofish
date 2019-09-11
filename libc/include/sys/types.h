@@ -15,7 +15,7 @@ typedef int dev_t;
 //    Used for file system block counts.
 #define fsfilcnt_t unsigned int
 //    Used for file system file counts.
-typedef unsigned int gid_t;
+typedef unsigned short gid_t;
 //    Used for group IDs.
 #define id_t int
 //    Used as a general identifier; can be used to contain at least a pid_t, uid_t, or gid_t.
@@ -23,9 +23,9 @@ typedef unsigned int ino_t;
 //    Used for file serial numbers.
 #define key_t int
 //    [XSI] [Option Start] Used for XSI interprocess communication. [Option End]
-typedef int mode_t;
+typedef unsigned short mode_t;
 //    Used for some file attributes.
-typedef int nlink_t;
+typedef unsigned short nlink_t;
 //    Used for link counts.
 typedef long long off_t ;
 //    Used for file sizes.
@@ -75,7 +75,7 @@ typedef unsigned int time_t;
 ////    [OB TEF] [Option Start] Used to identify a trace event type set. [Option End]
 //trace_id_t;
 ////    [OB TRC] [Option Start] Used to identify a trace stream. [Option End]
-typedef unsigned int uid_t;
+typedef unsigned short uid_t;
 //    Used for user IDs.
 
 #endif

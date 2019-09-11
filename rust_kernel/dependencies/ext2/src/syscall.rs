@@ -44,7 +44,7 @@ impl Ext2Filesystem {
         unimplemented!();
     }
 
-    /// The truncate() function shall cause the regular file named by
+    /// The Truncate() Function Shall cause the regular file named by
     /// path to have a size which shall be equal to length bytes.
     pub fn truncate(&mut self, path: &str, length: u64) -> IoResult<()> {
         let (mut inode, inode_addr) = self.find_inode(path)?;
@@ -62,15 +62,9 @@ impl Ext2Filesystem {
         timestamp: u32,
         mut mode: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        let direntry_type;
-        if flags.contains(OpenFlags::O_DIRECTORY) {
-            mode |= FileType::DIRECTORY;
-            direntry_type = DirectoryEntryType::Directory;
-        } else {
-            mode |= FileType::REGULAR_FILE;
-            direntry_type = DirectoryEntryType::RegularFile;
-        }
-        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOMEM)?;
+        mode |= FileType::REGULAR_FILE;
+        let direntry_type = DirectoryEntryType::RegularFile;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new(mode);
 
@@ -115,49 +109,47 @@ impl Ext2Filesystem {
     //         curr_offset: 0,
     //     })
     // }
-    /// The mkdir() function shall create a new directory with name
-    /// path.
-    // pub fn mkdir(&mut self, path: &str, _mode: mode_t) -> IoResult<()> {
-    //     let mut inode_nbr = 2;
-    //     let mut iter_path = path.split('/').peekable();
-    //     while let Some(p) = iter_path.next() {
-    //         let entry = self
-    //             .iter_entries(inode_nbr)?
-    //             .find(|(x, _)| unsafe { x.get_filename() } == p)
-    //             .ok_or(Errno::ENOENT);
-    //         // dbg!(entry?.0.get_filename());
-    //         if entry.is_err() && iter_path.peek().is_none() {
-    //             inode_nbr = self.create_dir(p, inode_nbr)?;
-    //         } else {
-    //             inode_nbr = entry?.0.get_inode();
-    //         }
-    //     }
-    //     Ok(())
-    // }
+    /// create a directory entry and an inode on the Directory inode:
+    /// `parent_inode_nbr`, return the new inode nbr
+    pub fn create_dir(
+        &mut self,
+        parent_inode_nbr: u32,
+        filename: &str,
+        mode: FileType,
+    ) -> IoResult<(DirectoryEntry, Inode)> {
+        //TODO: use mode
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
+        let (_, inode_addr) = self.get_inode(inode_nbr)?;
+        let mut inode = Inode::new(mode | FileType::DIRECTORY);
+        //TODO: check that
+        inode.nbr_hard_links = 2;
 
-    // /// The rmdir() function shall remove a directory only if it is an
-    // /// empty directory.
-    // pub fn rmdir(&mut self, path: &str) -> IoResult<()> {
-    //     let (parent_inode_nbr, entry) = self.find_path(path)?;
-    //     let inode_nbr = entry.0.get_inode();
-    //     let (inode, _inode_addr) = self.get_inode(inode_nbr)?;
+        self.disk.write_struct(inode_addr, &inode)?;
+        let mut new_entry =
+            DirectoryEntry::new(filename, DirectoryEntryType::Directory, inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
 
-    //     if !inode.is_a_directory() {
-    //         return Err(Errno::ENOTDIR);
-    //     }
-    //     if self
-    //         .iter_entries(inode_nbr)?
-    //         .any(|(x, _)| unsafe { x.get_filename() != "." && x.get_filename() != ".." })
-    //         || inode.nbr_hard_links > 2
-    //     {
-    //         return Err(Errno::ENOTEMPTY);
-    //     }
-    //     let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-    //     self.free_inode((&mut inode, inode_addr), inode_nbr)
-    //         .unwrap();
-    //     self.delete_entry(parent_inode_nbr, entry.1).unwrap();
-    //     Ok(())
-    // }
+        let mut point = DirectoryEntry::new(".", DirectoryEntryType::Directory, inode_nbr)?;
+        let mut point_point =
+            DirectoryEntry::new("..", DirectoryEntryType::Directory, parent_inode_nbr)?;
+        self.push_entry(inode_nbr, &mut point)?;
+        self.push_entry(inode_nbr, &mut point_point)?;
+        Ok((new_entry, inode))
+    }
+
+    /// The rmdir() function shall remove the directory pointed by
+    /// filename in the parent directory corresponding to
+    /// parent_inode_nbr
+    /// # Warining: the caller must assure that the directory is empty
+    pub fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> IoResult<()> {
+        let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
+        let inode_nbr = entry.0.get_inode();
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        debug_assert!(inode.is_a_directory());
+        self.free_inode((&mut inode, inode_addr), inode_nbr)?;
+        self.delete_entry(parent_inode_nbr, entry.1)?;
+        Ok(())
+    }
 
     /// for write syscall
     pub fn write(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &[u8]) -> IoResult<u64> {

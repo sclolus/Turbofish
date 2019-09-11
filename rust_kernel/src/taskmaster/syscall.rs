@@ -19,16 +19,16 @@ use crate::system::BaseRegisters;
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
     FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
-    GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MMAP, MPROTECT,
-    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
-    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
-    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST,
-    UMASK, UNLINK, WAITPID, WRITE,
+    GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
+    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID,
+    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
 use libc_binding::Errno;
-use libc_binding::{gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
+use libc_binding::{dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, DIR};
 
 mod mmap;
 use mmap::{sys_mmap, MmapArgStruct};
@@ -198,6 +198,10 @@ mod rmdir;
 use rmdir::sys_rmdir;
 mod rename;
 use rename::sys_rename;
+mod symlink;
+use symlink::sys_symlink;
+mod mknod;
+use mknod::sys_mknod;
 
 /*
  * These below declarations are IPC related
@@ -278,6 +282,11 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         ),
         CHDIR => sys_chdir(ebx as *const libc_binding::c_char),
         CHMOD => sys_chmod(ebx as *const libc_binding::c_char, ecx as mode_t),
+        MKNOD => sys_mknod(
+            ebx as *const libc_binding::c_char,
+            ecx as mode_t,
+            edx as dev_t,
+        ),
         LSEEK => sys_lseek(
             ebx as *mut off_t,
             ecx as Fd,
@@ -317,6 +326,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         SIGSUSPEND => sys_sigsuspend(ebx as *const sigset_t),
         GETGROUPS => sys_getgroups(ebx as i32, ecx as *mut gid_t),
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
+        SYMLINK => sys_symlink(
+            ebx as *const libc_binding::c_char,
+            ecx as *const libc_binding::c_char,
+        ),
         LSTAT => sys_lstat(
             ebx as *const libc_binding::c_char,
             ecx as *mut libc_binding::stat,
