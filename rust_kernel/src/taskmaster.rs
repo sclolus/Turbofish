@@ -81,18 +81,11 @@ pub enum TaskMode {
 use keyboard::keysymb::KeySymb;
 use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
 
-pub static mut DUMMY_LOCK: usize = 0;
-
 /// we send a message
 pub fn handle_key_press(key_pressed: KeySymb) {
     // in the keyboard interrupt handler, after reading the keysymb,
     // we send a message to the tty which will be handled in the next
     // schedule
-    unsafe {
-        if DUMMY_LOCK == 1 {
-            panic!("DUMMY LOCK IS OUT !");
-        }
-    }
     messaging::push_message(MessageTo::Tty { key_pressed })
 }
 

@@ -25,8 +25,6 @@ use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptT
 use crate::system::PrivilegeLevel;
 use crate::terminal::ansi_escape_code::Colored;
 
-use super::DUMMY_LOCK;
-
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {
     /// This function is called by scheduler.current_thread_group_exit(). It can be considered as a hack.
@@ -99,7 +97,6 @@ pub struct Scheduler {
 /// The pit handler (cpu_state represents a pointer to esp)
 #[no_mangle]
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
-    DUMMY_LOCK = 1;
     let mut scheduler = SCHEDULER.lock();
 
     if let Some((pid, status)) = scheduler.on_exit_routine {
@@ -111,11 +108,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     scheduler.store_kernel_esp(kernel_esp);
 
     // Switch to the next elligible process then return new kernel ESP
-    let esp = scheduler.load_next_process(1);
-    DUMMY_LOCK = 0;
-    esp
-    // if come from RING0 (maybe syscall or kernel process)
-    // set sys_process_esp to
+    scheduler.load_next_process(1)
 }
 
 /// Base Scheduler implementation
@@ -420,12 +413,6 @@ impl Scheduler {
 
     /// Remove ressources of the exited process and note his exit status
     fn exit_resume(&mut self, process_to_free_pid: Pid, status: Status) {
-        // let esp = self
-        //     .get_thread((process_to_free_pid, 0))
-        //     .as_ref()
-        //     .unwrap()
-        //     .unwrap_process()
-        //     .kernel_esp;
         // Get a reference to the dead process
         let dead_process = self
             .get_thread_group_mut(process_to_free_pid)
@@ -519,8 +506,8 @@ impl Scheduler {
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
             self.current_thread_group_exit(Status::Signaled(signum));
-        } // exitstatus::new_signaled(signum) ->
-    } //            new_exited(value) ->
+        }
+    }
 
     /// Update the Job process state regarding to the get_job_action() return value
     pub fn current_thread_get_job_action(&mut self) -> JobAction {
