@@ -10,6 +10,13 @@ use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
 use libc_binding::c_char;
 
+use core::convert::TryFrom;
+
+use fallible_collections::TryClone;
+use libc_binding::Errno;
+
+use super::vfs::{Path, VFS};
+
 /// File descriptors open in the calling process image shall remain
 /// open in the new process image, except for those whose close-on-
 /// exec flag FD_CLOEXEC is set. For those file descriptors that
@@ -105,18 +112,25 @@ pub fn sys_execve(
             .get_virtual_allocator();
 
         let path: &str = v.make_checked_str(path)?;
-
+        let pathname = Path::try_from(path)?;
         let argv_content: CStringArray = v.make_checked_cstring_array(argv)?;
+
         // Get the argv len to store the argc value
         let argv_content_len = argv_content.len();
-
         let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
         drop(v);
 
         let tg = scheduler.current_thread_group();
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
-        let content = get_file_content(cwd, creds, path)?;
+        // This seems unefficient since pathname resolution will be executed two times:
+        // here and in get_file_content. And pathname needs to be clone...
+        let file_type = VFS.lock().file_type(cwd, pathname.try_clone()?)?;
+
+        if !file_type.is_regular() {
+            return Err(Errno::EACCESS);
+        }
+        let content = get_file_content(cwd, creds, pathname)?;
 
         let mut new_process = unsafe {
             UserProcess::new(

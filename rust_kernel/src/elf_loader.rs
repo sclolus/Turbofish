@@ -1,6 +1,8 @@
 use alloc::vec::Vec;
 use core::mem;
 use elf_loader::{ElfHeader, ProgramHeader};
+use fallible_collections::vec::FallibleVec;
+use libc_binding::Errno;
 
 /// This structure is the result of the parsing of a ELF file
 #[derive(Debug)]
@@ -10,8 +12,8 @@ pub struct Elf {
 }
 
 /// Parse a ELF file from a slice
-pub fn load_elf(content: &[u8]) -> Elf {
-    let header = ElfHeader::from_bytes(&content).unwrap();
+pub fn load_elf(content: &[u8]) -> Result<Elf, Errno> {
+    let header = ElfHeader::from_bytes(&content).or(Err(Errno::ENOEXEC))?;
 
     let program_header_table = {
         let mut ph_table = Vec::new();
@@ -26,14 +28,15 @@ pub fn load_elf(content: &[u8]) -> Elf {
         };
         // println!("\nProgram header table:");
         for (_index, program_header) in program_header_table.iter().enumerate() {
-            let pheader = ProgramHeader::from_bytes(program_header as &[u8]).unwrap();
+            let pheader =
+                ProgramHeader::from_bytes(program_header as &[u8]).or(Err(Errno::ENOEXEC))?;
             // println!("{}: {:#X?}", index, pheader);
-            ph_table.push(pheader);
+            ph_table.try_push(pheader)?;
         }
         ph_table
     };
-    Elf {
+    Ok(Elf {
         header,
         program_header_table,
-    }
+    })
 }

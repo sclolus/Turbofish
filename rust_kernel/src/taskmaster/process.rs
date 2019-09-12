@@ -265,7 +265,7 @@ impl Process for UserProcess {
         let (eip, symbol_table) = match origin {
             ProcessOrigin::Elf(content) => {
                 // Parse Elf and generate stuff
-                let elf = load_elf(content);
+                let elf = load_elf(content)?;
                 for h in &elf.program_header_table {
                     if h.segment_type == SegmentType::Load {
                         let segment = {
@@ -539,12 +539,10 @@ pub unsafe fn get_ring(context_ptr: u32) -> PrivilegeLevel {
 
 use super::IpcResult;
 use super::{thread_group::Credentials, vfs::Path};
-use core::convert::TryFrom;
 use libc_binding::FileType;
 
 /// Return a file content using raw ext2 methods
-pub fn get_file_content(cwd: &Path, creds: &Credentials, pathname: &str) -> SysResult<Vec<u8>> {
-    let path = super::vfs::Path::try_from(pathname)?;
+pub fn get_file_content(cwd: &Path, creds: &Credentials, path: Path) -> SysResult<Vec<u8>> {
     let mode = FileType::from_bits(0o777).expect("file permission creation failed");
     let flags = libc_binding::OpenFlags::empty();
     let file_operator = match super::vfs::VFS.lock().open(cwd, creds, path, flags, mode)? {
