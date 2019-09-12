@@ -53,7 +53,7 @@ pub struct VirtualFileSystem {
 
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
-    pub dcache: Dcache,
+    dcache: Dcache,
 }
 
 use core::fmt::{self, Debug};
@@ -1059,7 +1059,27 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn statfs(&mut self, inode_id: InodeId, buf: &mut statfs) -> SysResult<()> {
+    pub fn statfs(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        buf: &mut statfs,
+    ) -> SysResult<()> {
+        let direntry_id = self
+            .pathname_resolution(cwd, &path)
+            .or(Err(Errno::ENOENT))?;
+        let inode_id = {
+            self.dcache
+                .get_entry(&direntry_id)
+                .expect("No corresponding inode for direntry")
+                .inode_id
+        };
+
+        self.fstatfs(inode_id, buf)
+    }
+
+    pub fn fstatfs(&self, inode_id: InodeId, buf: &mut statfs) -> SysResult<()> {
         let fs_id = &inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
         let fs = self
             .mounted_filesystems

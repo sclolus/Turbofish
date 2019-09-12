@@ -24,19 +24,11 @@ pub fn sys_statfs(path: *const c_char, buf: *mut statfs) -> SysResult<u32> {
         };
 
         let tg = scheduler.current_thread_group_mut();
-        let _creds = &tg.credentials;
+        let creds = &tg.credentials;
         let cwd = &tg.cwd;
         let path = Path::try_from(safe_path)?;
 
-        let mut vfs = VFS.lock();
-        let direntry_id = vfs.pathname_resolution(cwd, &path).or(Err(Errno::ENOENT))?;
-        let inode_id = {
-            vfs.dcache
-                .get_entry(&direntry_id)
-                .or(Err(Errno::ENOENT))?
-                .inode_id
-        };
-        vfs.statfs(inode_id, safe_buf)?;
+        VFS.lock().statfs(cwd, creds, path, safe_buf)?;
         Ok(0)
     })
 }
