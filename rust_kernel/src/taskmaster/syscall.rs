@@ -5,7 +5,7 @@ use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
 use super::scheduler;
-use super::scheduler::{Pid, SCHEDULER};
+use super::scheduler::{Pid, PreemptionGuard, SCHEDULER};
 use super::signal_interface;
 use super::signal_interface::{sigset_t, StructSigaction};
 use super::thread;
@@ -239,8 +239,9 @@ extern "C" {
 
 /// Global syscall interrupt handler called from assembly code
 /// See https://www.informatik.htw-dresden.de/~beck/ASM/syscall_list.html
+/// This function returns a pointer on a process stack to follow
 #[no_mangle]
-pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
+pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     #[allow(unused_variables)]
     let BaseRegisters {
         eax,
@@ -362,11 +363,28 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) {
         // Return value will be on EAX. Errno always represents the low 7 bits
         (*cpu_state).registers.eax = result.into_raw_result();
     }
-    // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
-    // If ring0 process -> Can't happened normally
-    unpreemptible_context! {{
-        SCHEDULER.lock().current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall);
-    }}
+    exit_from_syscall(cpu_state, is_in_blocked_syscall)
+}
+
+fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u32 {
+    let mut preemption_guard = PreemptionGuard::new();
+    let mut scheduler = SCHEDULER.lock();
+    // An exit() routine may be engaged by the exit() syscall - An exit() routine is already on execution
+    if let Some(_) = scheduler.on_exit_routine {
+        scheduler.set_idle_mode()
+    } else {
+        // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
+        // If ring0 process -> Can't happened normally
+        if let Some(_) =
+            scheduler.current_thread_deliver_pending_signals(cpu_state, is_in_blocked_syscall)
+        {
+            // An exit() routine may be engaged after handling a deadly signal - An exit() routine is already on execution - block interrupts
+            preemption_guard.set_already_unpreemptible();
+            scheduler.set_idle_mode()
+        } else {
+            cpu_state as u32
+        }
+    }
 }
 
 extern "C" {

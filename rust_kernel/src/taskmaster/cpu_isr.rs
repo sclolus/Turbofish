@@ -207,8 +207,10 @@ fn trace_process(
     Ok(())
 }
 
+/// Global Cpu Isr Interrupt Handler
+/// This function returns a pointer on a process stack to follow
 #[no_mangle]
-unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
+unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     let cs = (*cpu_state).cs;
     // Error from ring 0
     if cs & 0b11 == 0 {
@@ -217,7 +219,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
             let virtual_page_allocator = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap();
             // Kernel valloc case
             if let Ok(()) = virtual_page_allocator.valloc_handle_page_fault(_read_cr2()) {
-                return;
+                return cpu_state as u32;
             } else {
                 let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
                 eprintln!("{}     address: {:#X?}", page_fault_cause, _read_cr2());
@@ -280,9 +282,16 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) {
         };
 
         // On ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame.
-        SCHEDULER
-            .lock()
-            .current_thread_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL);
+        // Ce sera sans doute un signal fatal. L'exit routine va etre certainement declenchee.
+        let mut scheduler = SCHEDULER.lock();
+        if let Some(_) = scheduler
+            .current_thread_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL)
+        {
+            // An exit() routine may be engaged after handling a deadly signal
+            scheduler.set_idle_mode()
+        } else {
+            cpu_state as u32
+        }
     // Unknown ring
     } else {
         eprintln!(

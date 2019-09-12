@@ -1,5 +1,5 @@
 //! this file contains the scheduler description
-use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
+use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, UserProcess};
 use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
@@ -54,70 +54,14 @@ extern "C" {
 
     /// Allow the current execution thread to be interruptible by the scheduler again.
     fn _preemptible();
+
+    /// Idle process
+    static _idle_process_len: usize;
+    fn _idle_process_code();
 }
 
 pub type Tid = u32;
 pub use libc_binding::Pid;
-
-/// The pit handler (cpu_state represents a pointer to esp)
-#[no_mangle]
-unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
-    let mut scheduler = SCHEDULER.lock();
-
-    // Store the current kernel stack pointer
-    scheduler.store_kernel_esp(kernel_esp);
-
-    // Switch to the next elligible process then return new kernel ESP
-    scheduler.load_next_process(1)
-}
-
-/// Remove ressources of the exited process and note his exit status
-/// This function is not similar than scheduler_interrupt_handler()
-#[no_mangle]
-unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32) {
-    // Scheduler was previously lock by the caller scheduler.current_thread_group_exit(), unlock it
-    SCHEDULER.force_unlock();
-
-    let mut scheduler = SCHEDULER.lock();
-
-    // Get a reference to the dead process
-    let dead_process = scheduler
-        .get_thread_group_mut(process_to_free_pid)
-        .expect("WTF: No Dead Process");
-
-    // Send a sig child signal to the father
-    let parent_pid = dead_process.parent;
-    let parent = scheduler
-        .get_thread_mut((parent_pid, 0))
-        .expect("WTF: Parent not alive");
-    //TODO: Announce memory error later.
-    let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
-
-    // Set the dead process as zombie
-    let dead_process = scheduler
-        .get_thread_group_mut(process_to_free_pid)
-        .expect("WTF: No Dead Process");
-
-    // Call the drop chain of file_descriptor_interface before being a zombie !
-    dead_process
-        .unwrap_running_mut()
-        .file_descriptor_interface
-        .delete();
-    dead_process.set_zombie(status.into());
-
-    // Send a death testament message to the parent
-    send_message(MessageTo::Process {
-        pid: parent_pid,
-        content: ProcessMessage::ProcessUpdated {
-            pid: process_to_free_pid,
-            pgid: dead_process.pgid,
-            status,
-        },
-    });
-
-    // To avoid race conditions. the current execution thread was set as unpreemptible. Reallow it now
-    preemptible();
-}
 
 use core::fmt::{self, Debug};
 
@@ -147,9 +91,28 @@ pub struct Scheduler {
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
-    kernel_idle_process: Option<Box<KernelProcess>>,
+    kernel_idle_process: Box<KernelProcess>,
     /// Indicate if the scheduler is on idle mode.
     idle_mode: bool,
+    /// Indicate if scheduler is on exit routine
+    pub on_exit_routine: Option<(Pid, Status)>,
+}
+
+/// The pit handler (cpu_state represents a pointer to esp)
+#[no_mangle]
+unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
+    let mut scheduler = SCHEDULER.lock();
+
+    if let Some((pid, status)) = scheduler.on_exit_routine {
+        scheduler.exit_resume(pid, status);
+        scheduler.on_exit_routine = None;
+    }
+
+    // Store the current kernel stack pointer
+    scheduler.store_kernel_esp(kernel_esp);
+
+    // Switch to the next elligible process then return new kernel ESP
+    scheduler.load_next_process(1)
 }
 
 /// Base Scheduler implementation
@@ -163,8 +126,15 @@ impl Scheduler {
             current_task_index: 0,
             current_task_id: (1, 0),
             time_interval: None,
-            kernel_idle_process: None,
+            kernel_idle_process: unsafe {
+                KernelProcess::new(
+                    ProcessOrigin::Raw(_idle_process_code as *const u8, _idle_process_len),
+                    None,
+                )
+                .expect("Cannot assign Idle process to scheduler")
+            },
             idle_mode: false,
+            on_exit_routine: None,
         }
     }
 
@@ -176,10 +146,7 @@ impl Scheduler {
         // Switch between processes
         let action = self.advance_next_process(next_process);
         // Set all the context of the illigible process
-        let new_kernel_esp = self.load_new_context(action);
-
-        // Restore kernel_esp for the new process/
-        new_kernel_esp
+        self.load_new_context(action)
     }
 
     fn dispatch_messages(&mut self) {
@@ -216,20 +183,11 @@ impl Scheduler {
         Ok(pid)
     }
 
-    /// Set the idle process for the scheduler
-    pub fn set_idle_process(&mut self, idle_process: Box<KernelProcess>) -> Result<(), ()> {
-        self.kernel_idle_process = Some(idle_process);
-        Ok(())
-    }
-
     /// Backup of the current process kernel_esp
     fn store_kernel_esp(&mut self, kernel_esp: u32) {
         match self.idle_mode {
             true => {
-                self.kernel_idle_process
-                    .as_mut()
-                    .expect("No idle mode process")
-                    .kernel_esp = kernel_esp;
+                self.kernel_idle_process.kernel_esp = kernel_esp;
                 self.idle_mode = false;
             }
             false => {
@@ -293,10 +251,7 @@ impl Scheduler {
     /// Prepare the context for the new illigible process
     fn load_new_context(&mut self, action: JobAction) -> u32 {
         match self.idle_mode {
-            true => {
-                let process = self.kernel_idle_process.as_ref();
-                process.expect("No idle mode process").kernel_esp
-            }
+            true => self.kernel_idle_process.kernel_esp,
             false => {
                 let p = self.current_thread_mut();
 
@@ -313,10 +268,13 @@ impl Scheduler {
                     || action.intersects(JobAction::INTERRUPT)
                 {
                     if ring == PrivilegeLevel::Ring3 {
-                        self.current_thread_deliver_pending_signals(
+                        if let Some(_) = self.current_thread_deliver_pending_signals(
                             kernel_esp as *mut CpuState,
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
-                        )
+                        ) {
+                            // An exit() routine may be engaged after handling a deadly signal
+                            return self.set_idle_mode();
+                        }
                     }
                 }
                 kernel_esp
@@ -403,8 +361,8 @@ impl Scheduler {
 
     const REAPER_PID: Pid = 1;
 
-    /// Exit form a process and go to the current process
-    pub fn current_thread_group_exit(&mut self, status: Status) -> ! {
+    /// Start the exit() routine: Return informations about the process to destroy
+    pub fn current_thread_group_exit(&mut self, status: Status) -> Option<(Pid, Status)> {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -417,30 +375,89 @@ impl Scheduler {
             _ => {}
         }
 
-        // When the father die, the process Self::REAPER_PID adopts all his orphelans
         while let Some(child_pid) = self.current_thread_group_running_mut().child.pop() {
-            self.get_thread_group_mut(child_pid)
-                .expect("Hashmap corrupted")
-                .parent = Self::REAPER_PID;
+            use super::thread_group::ThreadGroupState;
 
-            self.get_thread_group_mut(Self::REAPER_PID)
-                .expect("no reaper process")
-                .unwrap_running_mut()
-                .child
-                .try_push(child_pid)
-                .expect("no memory to push on the reaper pid");
+            let thread_group = self
+                .get_thread_group_mut(child_pid)
+                .expect("Hashmap corrupted");
+            match thread_group.thread_group_state {
+                // If the child is on RunningState. The REAPER must adopt him
+                ThreadGroupState::Running(_) => {
+                    thread_group.parent = Self::REAPER_PID;
+
+                    let _r = self
+                        .get_thread_group_mut(Self::REAPER_PID)
+                        .expect("no reaper process")
+                        .unwrap_running_mut()
+                        .child
+                        .try_push(child_pid)
+                        .map_err(|_| {
+                            log::error!("no memory to push on the reaper pid: Trashing zombie");
+                            self.remove_thread_group(child_pid);
+                        });
+                }
+                // Else, definitively destroy it
+                ThreadGroupState::Zombie(_) => {
+                    self.remove_thread_group(child_pid);
+                }
+            }
         }
 
         let (pid, _) = self.current_task_id;
 
         self.remove_thread_group_running(pid);
 
-        // Switch to the next process
-        unsafe {
-            let new_kernel_esp = self.load_next_process(0);
+        self.on_exit_routine = Some((pid, status));
+        self.on_exit_routine
+    }
 
-            _exit_resume(new_kernel_esp, pid, status.into());
-        };
+    /// Finalize the exit() routine: Remove ressources of the exited process and send his exit status
+    fn exit_resume(&mut self, process_to_free_pid: Pid, status: Status) {
+        // Get a reference to the dead process
+        let dead_process = self
+            .get_thread_group_mut(process_to_free_pid)
+            .expect("WTF: No Dead Process");
+
+        // Send a sig child signal to the father
+        let parent_pid = dead_process.parent;
+        let parent = self
+            .get_thread_mut((parent_pid, 0))
+            .expect("WTF: Parent not alive");
+
+        //TODO: Announce memory error later.
+        let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
+
+        // Set the dead process as zombie
+        let dead_process = self
+            .get_thread_group_mut(process_to_free_pid)
+            .expect("WTF: No Dead Process");
+
+        let dead_process_pgid = dead_process.pgid;
+
+        // Call the drop chain of file_descriptor_interface before being a zombie !
+        dead_process
+            .unwrap_running_mut()
+            .file_descriptor_interface
+            .delete();
+
+        dead_process.set_zombie(status);
+
+        // Send a death testament message to the parent
+        self.send_message(MessageTo::Process {
+            pid: parent_pid,
+            content: ProcessMessage::ProcessUpdated {
+                pid: process_to_free_pid,
+                pgid: dead_process_pgid,
+                status: status.into(),
+            },
+        });
+    }
+
+    /// Set exit mode as idle and return idle program kernel esp
+    pub fn set_idle_mode(&mut self) -> u32 {
+        self.idle_mode = true;
+        self.kernel_idle_process.kernel_esp
     }
 
     /// Gets the next available Pid for a new process.
@@ -471,11 +488,12 @@ impl Scheduler {
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
+    /// Eventually. Returns informations about a process on killing
     pub fn current_thread_deliver_pending_signals(
         &mut self,
         cpu_state: *mut CpuState,
         in_blocked_syscall: bool,
-    ) {
+    ) -> Option<(Pid, Status)> {
         debug_assert_eq!(
             unsafe { get_ring(cpu_state as u32) },
             PrivilegeLevel::Ring3,
@@ -486,9 +504,11 @@ impl Scheduler {
             .signal
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
-            self.current_thread_group_exit(Status::Signaled(signum));
-        } // exitstatus::new_signaled(signum) ->
-    } //            new_exited(value) ->
+            self.current_thread_group_exit(Status::Signaled(signum))
+        } else {
+            None
+        }
+    }
 
     /// Update the Job process state regarding to the get_job_action() return value
     pub fn current_thread_get_job_action(&mut self) -> JobAction {
@@ -752,36 +772,34 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             log::info!("Scheduler initialised at mono-task");
             None
         }
-        TaskMode::Multi(scheduler_frequency) => {
+        TaskMode::Multi(mut scheduler_frequency) => {
+            let mut period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
+            // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
+            // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
+            // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
+            // this is a critical point. Never change that without a serious good reason.
+            if period < 2 {
+                log::warn!("Too high frequency detected ! Setting period divisor to 2");
+                scheduler_frequency = PIT0.lock().get_frequency().unwrap() / 2.;
+                period = 2;
+            }
             log::info!(
                 "Scheduler initialised at frequency: {:?} hz",
                 scheduler_frequency
             );
-            let period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
-            if period == 0 {
-                Some(1)
-            } else {
-                Some(period)
-            }
+            Some(period)
         }
     };
-
-    // TIPS: If waiting state are correctly managed, these below lines are useless: Use only for hard debug
-    // // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
-    // // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
-    // // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
-    // // this is a critical point. Never change that without a serious good reason.
-    // if let Some(period) = t {
-    //     if period < 2 {
-    //         panic!("Given scheduler frequency is too high. Minimal divisor must be 2");
-    //     }
-    // }
 
     let mut scheduler = SCHEDULER.lock();
     scheduler.time_interval = t;
 
-    // Initialise the first process and get a reference on it
-    let p = scheduler.current_thread_mut().unwrap_process_mut();
+    // Initialise the idle process and get a reference on it
+    // Give it a pointer to the function _preemptible()
+    scheduler.idle_mode = true;
+    let p = &scheduler.kernel_idle_process;
+    let kernel_esp = p.kernel_esp as *mut CpuState;
+    (*kernel_esp).registers.eax = _preemptible as u32;
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();
@@ -793,7 +811,6 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         None => _update_process_end_time(-1 as i32 as u32),
     }
 
-    preemptible();
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
 }
@@ -841,22 +858,28 @@ pub fn preemptible() {
 /// A Finalizer-pattern Struct that disables preemption upon instantiation.
 /// then reenables it at Drop time.
 pub struct PreemptionGuard {
-    already_locked: bool,
+    /// Contains information about the preemptible state when the new() method is invocated
+    already_unpreemptible: bool,
 }
 
 impl PreemptionGuard {
     /// The instantiation methods that disables preemption and creates the guard.
     pub fn new() -> Self {
         Self {
-            already_locked: unpreemptible(),
+            already_unpreemptible: unpreemptible(),
         }
+    }
+
+    /// Overwrite the lock as already locked
+    pub fn set_already_unpreemptible(&mut self) {
+        self.already_unpreemptible = true;
     }
 }
 
 impl Drop for PreemptionGuard {
     /// The drop implementation of the guard reenables preemption.
     fn drop(&mut self) {
-        if !self.already_locked {
+        if !self.already_unpreemptible {
             preemptible();
         }
     }

@@ -522,7 +522,7 @@ impl Process for KernelProcess {
     }
 
     unsafe fn start(&self) -> ! {
-        // Launch the kerne; process on its own kernel stack
+        // Launch the kernel process on its own kernel stack
         _start_process(self.kernel_esp)
     }
 

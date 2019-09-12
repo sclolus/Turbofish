@@ -114,7 +114,25 @@ _isr_syscall:
 	STORE_CONTEXT
 
 	call syscall_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
+
+	LOAD_CONTEXT
+	add esp, 8 ; skip err code & cpu isr fields
+	; Return contains now new registers, new eflags, new esp and new eip
+	iret
+
+extern scheduler_interrupt_handler
+
+; It is time to schedule
+global _schedule_next
+_schedule_next:
+	sub esp, 8 ; skip err code & cpu isr fields
+	STORE_CONTEXT
+
+	call scheduler_interrupt_handler
+	; Set the new stack pointer
+	mov esp, eax
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
@@ -139,23 +157,6 @@ _start_process:
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
-extern scheduler_interrupt_handler
-
-global _schedule_next
-_schedule_next:
-	sub esp, 8 ; skip err code & cpu isr fields
-	STORE_CONTEXT
-
-	call scheduler_interrupt_handler
-	; Set the new stack pointer
-	mov esp, eax
-schedule_return:
-
-	LOAD_CONTEXT
-	add esp, 8 ; skip err code & cpu isr fields
-	; Return contains now new registers, new eflags, new esp and new eip
-	iret
-
 extern _preemptible
 
 ; It is identical to the above its mark system as scheduler-preemptible
@@ -174,29 +175,6 @@ _schedule_force_preempt:
 	; Return contains now new registers, new eflags, new esp and new eip
 	iret
 
-; unsafe extern "C" fn scheduler_exit_resume(process_to_free: Pid, status: i32)
-extern scheduler_exit_resume
-
-; fn _exit_resume(new_kernel_esp: u32, process_to_free: Pid, status: i32) -> !;
-global _exit_resume
-_exit_resume:
-	push ebp
-	mov ebp, esp
-
-	mov ebx, dword [ebp + 12]   ; get PID of process to free
-	mov ecx, dword [ebp + 16]   ; get return status of process to free
-
-	; Go to the stack of the new current process
-	mov esp, dword [ebp + 8]
-
-	push ecx
-	push ebx
-	; Free the ressources of the existed process
-	call scheduler_exit_resume
-	add esp, 8
-
-	jmp schedule_return
-
 ; https://wiki.osdev.org/Exceptions
 ; These CPU ISR gates are on vector 0 -> 31
 
@@ -210,7 +188,8 @@ _cpu_isr_%2:
 
 	STORE_CONTEXT
 	call cpu_isr_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
@@ -224,7 +203,8 @@ _cpu_isr_%2:
 
 	STORE_CONTEXT
 	call cpu_isr_interrupt_handler
-	add esp, 4
+	; Set the new stack pointer
+	mov esp, eax
 
 	LOAD_CONTEXT
 	add esp, 8 ; skip err code & cpu isr fields
