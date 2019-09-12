@@ -19,8 +19,8 @@ use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
     FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
     GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
-    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, REBOOT, RENAME, RMDIR, SETEGID,
-    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR,
+    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
     SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
     TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
@@ -205,6 +205,8 @@ mod mknod;
 use mknod::sys_mknod;
 mod utime;
 use utime::sys_utime;
+mod readlink;
+use readlink::sys_readlink;
 
 /*
  * These below declarations are IPC related
@@ -315,6 +317,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         SETGROUPS => sys_setgroups(ebx as i32, ecx as *const gid_t),
         SYMLINK => sys_symlink(ebx as *const c_char, ecx as *const c_char),
         LSTAT => sys_lstat(ebx as *const c_char, ecx as *mut libc_binding::stat),
+        READLINK => sys_readlink(ebx as *const c_char, ecx as *mut c_char, edx as u32),
         REBOOT => sys_reboot(),
         MMAP => sys_mmap(ebx as *const MmapArgStruct),
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),

@@ -49,6 +49,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define SETGROUPS    81
 #define SYMLINK      83
 #define LSTAT        84
+#define READLINK     85
 #define REBOOT       88
 #define MMAP         90
 #define MUNMAP       91

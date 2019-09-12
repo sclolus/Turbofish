@@ -18,6 +18,7 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/symlink/symlink"},
 	{.path = "/bin/dir/mkdir"},
 	{.path = "/bin/dir/mkdir_exist"},
 	{.path = "/bin/dir/rmdir_not_empty"},

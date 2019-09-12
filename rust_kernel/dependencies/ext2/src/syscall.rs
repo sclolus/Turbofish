@@ -254,4 +254,42 @@ impl Ext2Filesystem {
     pub fn get_block_size(&self) -> u32 {
         self.block_size
     }
+
+    pub fn symlink(
+        &mut self,
+        parent_inode_nbr: u32,
+        target: &str,
+        filename: &str,
+        timestamp: u32,
+    ) -> IoResult<(DirectoryEntry, Inode)> {
+        let direntry_type = DirectoryEntryType::SymbolicLink;
+        let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
+        let (_, inode_addr) = self.get_inode(inode_nbr)?;
+        //TODO: rights and mode
+        let mut inode = Inode::new(FileType::SYMBOLIC_LINK);
+        if target.len() <= Inode::FAST_SYMLINK_SIZE_MAX {
+            // If target is a fast symlink write the target directly
+            // on inode
+            inode.write_symlink(target);
+        }
+
+        inode.last_access_time = timestamp;
+        inode.creation_time = timestamp;
+        inode.last_modification_time = timestamp;
+
+        self.disk.write_struct(inode_addr, &inode)?;
+        if target.len() > Inode::FAST_SYMLINK_SIZE_MAX {
+            // Else write on the inode data after writing the empty
+            // inode on the disk
+            let mut offset = 0;
+            self.write(inode_nbr, &mut offset, target.as_bytes())?;
+            // fetch the inode
+            let (inode_updated, _) = self.get_inode(inode_nbr)?;
+            inode = inode_updated;
+        }
+
+        let mut new_entry = DirectoryEntry::new(filename, direntry_type, inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
+        Ok((new_entry, inode))
+    }
 }

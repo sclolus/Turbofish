@@ -88,6 +88,9 @@ pub struct Inode {
 }
 
 impl Inode {
+    /// the len max of a symlink stocked directly on the struct Inode
+    pub const FAST_SYMLINK_SIZE_MAX: usize = 60;
+
     pub fn new(type_and_perm: FileType) -> Self {
         Self {
             //TODO: put the true time
@@ -95,6 +98,38 @@ impl Inode {
             nbr_hard_links: 1,
             type_and_perm,
             ..Default::default()
+        }
+    }
+
+    /// write the 'fast' symlink target (whole len must be <=
+    /// FAST_SYMLINK_SIZE_MAX) directly on the inode. Panic if len >
+    /// FAST_SYMLINK_SIZE_MAX
+    pub fn write_symlink(&mut self, target: &str) {
+        let target_len = target.len();
+        assert!(target_len <= Self::FAST_SYMLINK_SIZE_MAX);
+        unsafe {
+            let slice = core::slice::from_raw_parts_mut(
+                &mut self.direct_block_pointers as *mut _ as *mut u8,
+                target_len,
+            );
+            slice.copy_from_slice(target.as_bytes());
+            self.low_size = target_len as u32;
+        }
+    }
+
+    /// read the fast symlink on the inode if it exist, return None
+    /// otherwise
+    pub fn read_symlink(&self) -> Option<&str> {
+        unsafe {
+            if self.low_size <= Self::FAST_SYMLINK_SIZE_MAX as u32 {
+                let slice = core::slice::from_raw_parts(
+                    &self.direct_block_pointers as *const Block as *const u8,
+                    self.low_size as usize,
+                );
+                core::str::from_utf8(slice).ok()
+            } else {
+                None
+            }
         }
     }
 
