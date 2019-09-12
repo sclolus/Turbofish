@@ -5,6 +5,7 @@ use super::{DirectoryEntry, Inode};
 use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
+use bitflags::bitflags;
 use core::cmp::min;
 use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, utimbuf, Errno, FileType, OpenFlags};
