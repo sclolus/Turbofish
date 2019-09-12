@@ -88,6 +88,15 @@ impl DirectoryEntry {
     }
 
     /// Get the file name
+    pub fn set_filename(&mut self, filename: &str) -> IoResult<()> {
+        let filenamelen = filename.len();
+        assert!(filenamelen <= 255);
+        self.filename = filename.try_into()?;
+        self.header.name_length = filenamelen as u8;
+        Ok(())
+    }
+
+    /// Get the file name
     pub unsafe fn get_filename(&self) -> &str {
         let slice: &[u8] = core::slice::from_raw_parts(
             &self.filename.0 as *const c_char as *const u8,

@@ -176,10 +176,12 @@ impl FileSystem for Ext2fs {
             .create_dir(parent_inode_nbr, filename, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+
     fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> SysResult<()> {
         self.ext2.lock().rmdir(parent_inode_nbr, filename)?;
         Ok(())
     }
+
     fn symlink(
         &mut self,
         parent_inode_nbr: u32,
@@ -193,6 +195,7 @@ impl FileSystem for Ext2fs {
                 .symlink(parent_inode_nbr, target, filename, timestamp)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
+
     fn link(
         &mut self,
         parent_inode_nbr: u32,
@@ -204,5 +207,20 @@ impl FileSystem for Ext2fs {
                 .lock()
                 .link(parent_inode_nbr, target_inode_nbr, filename)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode).0)
+    }
+
+    fn rename(
+        &mut self,
+        parent_inode_nbr: u32,
+        filename: &str,
+        new_parent_inode_nbr: u32,
+        new_filename: &str,
+    ) -> SysResult<()> {
+        self.ext2.lock().rename(
+            parent_inode_nbr,
+            filename,
+            new_parent_inode_nbr,
+            new_filename,
+        )
     }
 }

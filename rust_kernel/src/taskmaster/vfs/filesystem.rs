@@ -51,6 +51,7 @@ pub trait FileSystem: Send + Debug {
     fn read(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &mut [u8]) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
+
     fn create_dir(
         &mut self,
         _parent_inode_nbr: u32,
@@ -59,9 +60,11 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
+
     fn rmdir(&mut self, _parent_inode_nbr: u32, _filename: &str) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
+
     fn symlink(
         &mut self,
         _parent_inode_nbr: u32,
@@ -70,6 +73,7 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
+
     fn link(
         &mut self,
         _parent_inode_nbr: u32,
@@ -78,7 +82,16 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<DirectoryEntry> {
         Err(Errno::ENOSYS)
     }
-    // fn link: Option<fn(&mut Superblock)>,
+
+    fn rename(
+        &mut self,
+        _parent_inode_nbr: u32,
+        _filename: &str,
+        _new_parent_inode_nbr: u32,
+        _new_filename: &str,
+    ) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
     // fn statfs: Option<fn(&mut Superblock)>,
 }
 

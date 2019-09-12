@@ -31,11 +31,6 @@ impl Ext2Filesystem {
         unimplemented!();
     }
 
-    /// The rename() function shall change the name of a file
-    pub fn rename(&mut self, old: &str, new: &str) -> IoResult<()> {
-        unimplemented!();
-    }
-
     /// The Truncate() Function Shall cause the regular file named by
     /// path to have a size which shall be equal to length bytes.
     pub fn truncate(&mut self, path: &str, length: u64) -> IoResult<()> {
@@ -308,5 +303,20 @@ impl Ext2Filesystem {
         inode.nbr_hard_links += 1;
         self.disk.write_struct(inode_addr, &inode)?;
         Ok((new_entry, inode))
+    }
+
+    pub fn rename(
+        &mut self,
+        parent_inode_nbr: u32,
+        filename: &str,
+        new_parent_inode_nbr: u32,
+        new_filename: &str,
+    ) -> IoResult<()> {
+        let (mut entry, entry_offset) = self.find_entry_in_inode(parent_inode_nbr, filename)?;
+        self.delete_entry(parent_inode_nbr, entry_offset).unwrap();
+        entry.set_filename(new_filename)?;
+
+        self.push_entry(new_parent_inode_nbr, &mut entry)?;
+        Ok(())
     }
 }
