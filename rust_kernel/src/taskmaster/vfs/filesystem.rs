@@ -70,6 +70,14 @@ pub trait FileSystem: Send + Debug {
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
+    fn link(
+        &mut self,
+        _parent_inode_nbr: u32,
+        _target_inode_nbr: u32,
+        _filename: &str,
+    ) -> SysResult<DirectoryEntry> {
+        Err(Errno::ENOSYS)
+    }
     // fn link: Option<fn(&mut Superblock)>,
     // fn statfs: Option<fn(&mut Superblock)>,
 }

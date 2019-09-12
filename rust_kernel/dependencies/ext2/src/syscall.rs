@@ -292,4 +292,21 @@ impl Ext2Filesystem {
         self.push_entry(parent_inode_nbr, &mut new_entry)?;
         Ok((new_entry, inode))
     }
+
+    pub fn link(
+        &mut self,
+        parent_inode_nbr: u32,
+        target_inode_nbr: u32,
+        filename: &str,
+    ) -> IoResult<(DirectoryEntry, Inode)> {
+        let (mut inode, inode_addr) = self.get_inode(target_inode_nbr)?;
+
+        let mut new_entry =
+            DirectoryEntry::new(filename, DirectoryEntryType::RegularFile, target_inode_nbr)?;
+        self.push_entry(parent_inode_nbr, &mut new_entry)?;
+
+        inode.nbr_hard_links += 1;
+        self.disk.write_struct(inode_addr, &inode)?;
+        Ok((new_entry, inode))
+    }
 }
