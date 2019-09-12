@@ -116,7 +116,14 @@ unsafe extern "C" fn scheduler_exit_resume(process_to_free_pid: Pid, status: i32
     preemptible();
 }
 
-#[derive(Debug)]
+use core::fmt::{self, Debug};
+
+impl Debug for Scheduler {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Scheduler")
+    }
+}
+
 /// Scheduler structure
 pub struct Scheduler {
     /// contains a hashmap of pid, process
@@ -856,7 +863,8 @@ macro_rules! unpreemptible_context {
         use crate::taskmaster::scheduler::PreemptionGuard;
 
         let _guard = PreemptionGuard::new();
-
-        $code
+        let _ret = { $code };
+        #[allow(unreachable_code)]
+        _ret
     }};
 }
