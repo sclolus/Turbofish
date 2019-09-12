@@ -10,7 +10,6 @@
 int main() {
 	char filename[100];
 	char newname[100];
-	char file_in_newname[255];
 
 	pid_t pid = getpid();
 	sprintf(filename, "./dir_%d", pid);
@@ -22,12 +21,13 @@ int main() {
 
 	assert(mkdir(newname, 0644) == 0);
 
-	sprintf(file_in_newname, "%s/file", newname);
-	assert(-1 != open(file_in_newname, O_RDWR | O_CREAT, 0644));
+	if (rename(filename, newname) == -1) {
+		perror("rename");
+	exit(1);
+	}
+	struct stat buf1;
 
-	assert(rename(filename, newname) == -1);
-
-	assert(unlink(file_in_newname) == 0);
+	assert(stat(filename, &buf1) == -1);
+	assert(stat(newname, &buf1) == 0);
 	assert(rmdir(newname) == 0);
-	assert(rmdir(filename) == 0);
 }
