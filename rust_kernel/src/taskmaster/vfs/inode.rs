@@ -3,6 +3,7 @@ use super::DeadFileSystem;
 use super::DefaultDriver;
 use super::Driver;
 use super::FileSystem;
+use super::{FileOperation, IpcResult, OpenFlags};
 use crate::taskmaster::SysResult;
 // use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
 use super::FileSystemId;
@@ -17,7 +18,12 @@ use sync::DeadMutex;
 #[derive(Debug)]
 pub struct Inode {
     inode_data: InodeData,
-    pub driver: Box<dyn Driver>,
+    driver: Box<dyn Driver>,
+    /// a reference counter of open file operation on this inode
+    nbr_open_file_operation: usize,
+    /// if true, the inode need to be unlink when
+    /// nbr_open_file_operation reach to 0
+    lazy_unlink: bool,
     pub filesystem: Arc<DeadMutex<dyn FileSystem>>,
 }
 
@@ -37,6 +43,14 @@ impl DerefMut for Inode {
 }
 
 impl Inode {
+    pub fn open(
+        &mut self,
+        flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        let res = self.driver.open(flags)?;
+        self.nbr_open_file_operation += 1;
+        Ok(res)
+    }
     pub fn new(
         filesystem: Arc<DeadMutex<dyn FileSystem>>,
         driver: Box<dyn Driver>,
@@ -46,6 +60,8 @@ impl Inode {
             inode_data,
             filesystem,
             driver,
+            nbr_open_file_operation: 0,
+            lazy_unlink: false,
         }
     }
     pub fn root_inode() -> SysResult<Self> {
@@ -53,6 +69,8 @@ impl Inode {
             inode_data: InodeData::root_inode(),
             driver: Box::try_new(DefaultDriver)?,
             filesystem: Arc::try_new(DeadMutex::new(DeadFileSystem))?,
+            nbr_open_file_operation: 0,
+            lazy_unlink: false,
         })
     }
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
@@ -69,6 +87,27 @@ impl Inode {
             .filesystem
             .lock()
             .read(self.id.inode_number, offset, buf)? as u32)
+    }
+
+    /// return if we can unlink directly or not
+    pub fn close(&mut self) -> bool {
+        assert!(self.nbr_open_file_operation > 0);
+        self.nbr_open_file_operation -= 1;
+        self.link_number == 0 && self.nbr_open_file_operation == 0
+    }
+
+    /// return if we can unlink directly or not
+    pub fn unlink(&mut self) -> bool {
+        assert!(self.link_number > 0);
+        self.link_number -= 1;
+        if self.link_number == 0 && self.nbr_open_file_operation > 0 {
+            self.lazy_unlink = true;
+        }
+        self.link_number == 0 && !self.lazy_unlink
+    }
+
+    pub fn get_id(&self) -> InodeId {
+        self.inode_data.get_id()
     }
 }
 

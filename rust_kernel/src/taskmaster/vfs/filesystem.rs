@@ -30,7 +30,11 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
-    fn unlink(&self, _dir_inode_nbr: u32, _name: &str) -> SysResult<()> {
+    fn unlink(&self, _dir_inode_nbr: u32, _name: &str, _free_inode_data: bool) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn remove_inode(&mut self, _inode_nbr: u32) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
 

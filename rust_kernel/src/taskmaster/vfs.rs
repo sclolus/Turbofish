@@ -592,20 +592,34 @@ impl VirtualFileSystem {
         let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
         self.dcache.remove_entry(entry_id)?;
 
-        corresponding_inode.link_number -= 1;
-
-        //TODO: VFS check that
-        if corresponding_inode.link_number == 0 {
+        // If the link number reach 0 and there is no open file
+        // operation, we unlink on the filesystem directly, else we
+        // will unlink when the last file operation is closed
+        let free_inode_data: bool = corresponding_inode.unlink();
+        // we remove the inode only if we free the inode data
+        if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
         }
-        //TODO: check that
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
             parent_inode_id.inode_number as u32,
             path.filename().expect("no filename").as_str(),
+            free_inode_data,
         )?;
         Ok(())
+    }
+
+    pub fn close_file_operation(&mut self, inode_id: InodeId) {
+        let corresponding_inode = self.inodes.get_mut(&inode_id).expect("no such inode");
+        let inode_id = corresponding_inode.get_id();
+        if corresponding_inode.close() {
+            self.inodes.remove(&inode_id).expect("no such inode");
+            let fs = self.get_filesystem(inode_id).expect("no filesystem");
+            fs.lock()
+                .remove_inode(inode_id.inode_number)
+                .expect("remove inode failed");
+        }
     }
 
     fn get_available_id(&self, filesystem_id: Option<FileSystemId>) -> InodeId {
@@ -664,21 +678,13 @@ impl VirtualFileSystem {
 
         let entry = self.dcache.get_entry(&entry_id)?;
         let entry_inode_id = entry.inode_id;
-        let entry_id = entry.id;
         if flags.contains(OpenFlags::O_DIRECTORY) && !entry.is_directory() {
             return Err(Errno::ENOTDIR);
         }
-        self.open_inode(entry_inode_id, entry_id, flags)
-    }
-
-    fn open_inode(
-        &mut self,
-        inode_id: InodeId,
-        _dentry_id: DirectoryEntryId,
-        flags: OpenFlags,
-    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
-        inode.driver.open(flags)
+        self.inodes
+            .get_mut(&entry_inode_id)
+            .ok_or(ENOENT)?
+            .open(flags)
     }
 
     // pub fn creat(

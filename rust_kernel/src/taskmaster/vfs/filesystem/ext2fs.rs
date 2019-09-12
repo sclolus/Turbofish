@@ -139,8 +139,15 @@ impl FileSystem for Ext2fs {
         Ok(self.ext2.lock().chown(inode_nbr, owner, group)?)
     }
 
-    fn unlink(&self, dir_inode_nbr: u32, name: &str) -> SysResult<()> {
-        Ok(self.ext2.lock().unlink(dir_inode_nbr, name)?)
+    fn unlink(&self, dir_inode_nbr: u32, name: &str, free_inode_data: bool) -> SysResult<()> {
+        Ok(self
+            .ext2
+            .lock()
+            .unlink(dir_inode_nbr, name, free_inode_data)?)
+    }
+
+    fn remove_inode(&mut self, inode_nbr: u32) -> SysResult<()> {
+        Ok(self.ext2.lock().remove_inode(inode_nbr)?)
     }
 
     fn create(

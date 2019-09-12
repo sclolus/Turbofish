@@ -118,3 +118,9 @@ impl FileOperation for Ext2FileOperation {
         Ok(0)
     }
 }
+
+impl Drop for Ext2FileOperation {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
+    }
+}

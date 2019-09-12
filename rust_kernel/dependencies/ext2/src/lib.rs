@@ -228,12 +228,12 @@ impl Ext2Filesystem {
         Ok(())
     }
 
-    /// decrement link count of the inode and delete it if it becomes < 2
-    pub fn unlink_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
+    /// decrement link count of the inode and delete it if it becomes 0
+    /// panic if the inode refers to a directory
+    pub fn unlink_inode(&mut self, inode_nbr: u32, free_inode_data: bool) -> IoResult<()> {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        if (inode.is_a_directory() && inode.nbr_hard_links <= 2)
-            || (inode.is_a_regular_file() && inode.nbr_hard_links <= 1)
-        {
+        assert!(!inode.is_a_directory());
+        if inode.nbr_hard_links <= 1 && free_inode_data {
             return self.free_inode((&mut inode, inode_addr), inode_nbr);
         }
         inode.nbr_hard_links -= 1;
