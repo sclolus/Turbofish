@@ -958,12 +958,12 @@ impl VirtualFileSystem {
     ) -> SysResult<()> {
         // If either pathname argument refers to a path whose final
         // component is either dot or dot-dot, rename() shall fail.
-        let old_filename = oldpath.filename().unwrap(); // ?
+        let old_filename = oldpath.filename().ok_or(EINVAL)?;
 
         if old_filename == &"." || old_filename == &".." {
             return Err(Errno::EINVAL);
         }
-        let new_filename = newpath.filename().unwrap(); // ?
+        let new_filename = newpath.filename().ok_or(EINVAL)?;
 
         if new_filename == &"." || new_filename == &".." {
             return Err(Errno::EINVAL);
@@ -1042,7 +1042,11 @@ impl VirtualFileSystem {
 
         let oldentry_id = self.dcache.move_dentry(oldentry_id, new_parent_id)?;
 
-        let entry = self.dcache.d_entries.get_mut(&oldentry_id).ok_or(ENOENT)?;
+        let entry = self
+            .dcache
+            .d_entries
+            .get_mut(&oldentry_id)
+            .expect("oldentry sould be there");
 
         entry.set_filename(*new_filename);
         Ok(())

@@ -13,7 +13,7 @@ int main() {
 	char file_in_newname[255];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./dir_%d", pid);
+	sprintf(filename, "./dir_test_rename_dir_not_empty_%d", pid);
 	sprintf(newname, "./renamed_dir_%d", pid);
 
 	printf("creating dir: %s\n", filename);

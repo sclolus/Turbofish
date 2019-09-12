@@ -13,7 +13,7 @@ int main() {
 
 	pid_t pid = getpid();
 	sprintf(filename, "./file_%d", pid);
-	sprintf(newname, "./renamed_file_%d", pid);
+	sprintf(newname, "./renamed_file_test_rename_file_exist%d", pid);
 
 	printf("creating file: %s\n", filename);
 	int fd = open(filename, O_RDWR | O_CREAT, 0644);

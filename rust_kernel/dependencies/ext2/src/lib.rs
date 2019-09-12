@@ -201,7 +201,7 @@ impl Ext2Filesystem {
 
         /* Delete Data Blocks */
         // don't truncate inode if it is a fast symbolic link
-        if !(inode.type_and_perm.contains(FileType::SYMBOLIC_LINK)
+        if !(inode.type_and_perm.is_symlink()
             && inode.get_size() <= Inode::FAST_SYMLINK_SIZE_MAX as u64)
         {
             self.truncate_inode((inode, inode_addr), 0).unwrap();

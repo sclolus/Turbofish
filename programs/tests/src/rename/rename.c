@@ -12,7 +12,7 @@ int main() {
 	char newname[100];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./file_%d", pid);
+	sprintf(filename, "./file_test_rename_%d", pid);
 	sprintf(newname, "./renamed_file_%d", pid);
 
 	printf("creating file: %s\n", filename);

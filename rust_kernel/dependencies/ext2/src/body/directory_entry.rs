@@ -90,7 +90,7 @@ impl DirectoryEntry {
     /// Get the file name
     pub fn set_filename(&mut self, filename: &str) -> IoResult<()> {
         let filenamelen = filename.len();
-        assert!(filenamelen <= 255);
+        assert!(filenamelen <= NAME_MAX as usize);
         self.filename = filename.try_into()?;
         self.header.name_length = filenamelen as u8;
         Ok(())

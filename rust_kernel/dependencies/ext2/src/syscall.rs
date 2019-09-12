@@ -313,7 +313,7 @@ impl Ext2Filesystem {
         new_filename: &str,
     ) -> IoResult<()> {
         let (mut entry, entry_offset) = self.find_entry_in_inode(parent_inode_nbr, filename)?;
-        self.delete_entry(parent_inode_nbr, entry_offset).unwrap();
+        self.delete_entry(parent_inode_nbr, entry_offset)?;
         entry.set_filename(new_filename)?;
 
         self.push_entry(new_parent_inode_nbr, &mut entry)?;
