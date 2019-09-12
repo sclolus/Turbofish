@@ -23,7 +23,7 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{off_t, stat, statfs, termios, Errno, OpenFlags, Pid, Whence};
+use libc_binding::{off_t, stat, statfs, termios, Errno, FileType, OpenFlags, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -34,20 +34,27 @@ pub trait FileOperation: core::fmt::Debug + Send {
 
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, _flags: OpenFlags) {}
-
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
         Err(Errno::EINVAL)
     }
 
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>>;
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        Err(Errno::ENOSYS)
+    }
 
     /// Write something into the File Descriptor: Important ! When in blocked syscall, the slice must be verified before write op
-    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>>;
+    fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        Err(Errno::ENOSYS)
+    }
 
     fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
         log::error!("UNIMPLEMENTED: fstat called on a non ext2 file");
         Ok(0)
+    }
+
+    fn fchmod(&mut self, _mode: FileType) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
     }
 
     fn tcgetattr(&self, _termios_p: &mut termios) -> SysResult<u32> {

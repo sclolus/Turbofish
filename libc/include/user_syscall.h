@@ -18,6 +18,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define CHDIR        12
 #define MKNOD        14
 #define CHMOD        15
+#define FCHMOD	     16
 #define STAT         18
 #define LSEEK        19
 #define GETPID       20

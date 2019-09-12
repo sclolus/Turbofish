@@ -5,6 +5,7 @@ use super::{DirectoryEntry, Inode};
 use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
+use bitflags::bitflags;
 use core::cmp::min;
 use fallible_collections::TryCollect;
 use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
@@ -26,9 +27,17 @@ impl Ext2Filesystem {
     /// The chmod() function shall change S_ISUID, S_ISGID, [XSI]
     /// [Option Start] S_ISVTX, [Option End] and the file permission
     /// bits of the file
-    pub fn chmod(&mut self, inode_nbr: u32, mode: FileType) -> IoResult<()> {
-        // let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        unimplemented!();
+    pub fn chmod(&mut self, inode_nbr: u32, mut mode: FileType) -> IoResult<()> {
+        // Ensure that only the file permission bits and special bits are modified.
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        mode &= mask;
+
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        inode.type_and_perm.remove(mask);
+        inode.type_and_perm.insert(mode);
+
+        self.disk.write_struct(inode_addr, &inode)?;
+        Ok(())
     }
 
     /// The Truncate() Function Shall cause the regular file named by

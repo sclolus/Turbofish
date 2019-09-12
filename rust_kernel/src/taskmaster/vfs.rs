@@ -719,19 +719,37 @@ impl VirtualFileSystem {
         cwd: &Path,
         _creds: &Credentials,
         path: Path,
-        mode: FileType,
+        mut mode: FileType,
     ) -> SysResult<()> {
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        mode &= mask;
+
         let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(ENOENT)?;
+        self.fchmod(inode_id, mode)
+    }
 
-        inode.set_access_mode(mode);
+    pub fn fchmod(&mut self, inode_id: InodeId, mut mode: FileType) -> SysResult<()> {
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        mode &= mask;
 
-        let fs = self.get_filesystem(inode_id).expect("no filesystem");
-        fs.lock().chmod(inode_id.inode_number as u32, mode)?;
+        self.get_filesystem(inode_id)
+            .expect("No corresponding filesystem")
+            .lock()
+            .chmod(inode_id.inode_number as u32, mode)?;
 
+        let inode = self
+            .inodes
+            .get_mut(&inode_id)
+            .expect("No corresponding inode for direntry");
+        let mut new_mode = inode.access_mode;
+
+        new_mode.remove(mask);
+        new_mode.insert(mode);
+
+        inode.set_access_mode(new_mode);
         Ok(())
     }
 
