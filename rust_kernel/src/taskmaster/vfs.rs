@@ -11,6 +11,7 @@ use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, TryCollect
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
+use fallible_collections::TryClone;
 use itertools::unfold;
 
 mod tools;
@@ -83,7 +84,7 @@ impl VirtualFileSystem {
         if self.inodes.contains_key(&inode.get_id()) {
             // if it is not from an hard link we panic
             if inode.link_number == 1 {
-                panic!("inode already there");
+                panic!("inode already there {:?}", inode);
             } else {
                 // else we already put the inode pointed by the hard link
                 return Ok(());
@@ -146,32 +147,6 @@ impl VirtualFileSystem {
             self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
                 .expect("add entry from filesystem failed");
         }
-        Ok(())
-    }
-
-    pub fn rename_dentry(
-        &mut self,
-        cwd: &Path,
-        id: DirectoryEntryId,
-        new_pathname: Path,
-    ) -> SysResult<()> {
-        let new_filename = new_pathname.filename().unwrap(); // ?
-
-        if new_filename == &"." || new_filename == &".." {
-            return Err(Errno::EINVAL);
-        }
-
-        if let Ok(id) = self.pathname_resolution(cwd, &new_pathname) {
-            self.dcache.remove_entry(id)?;
-        };
-
-        let new_parent_id = self.pathname_resolution(cwd, &new_pathname.parent())?;
-
-        self.dcache.move_dentry(id, new_parent_id)?;
-
-        let entry = self.dcache.d_entries.get_mut(&id).ok_or(ENOENT)?;
-
-        entry.set_filename(*new_filename);
         Ok(())
     }
 
@@ -372,7 +347,7 @@ impl VirtualFileSystem {
                 );
 
                 let mut new_direntry = DirectoryEntry::default();
-                let parent_id = self.pathname_resolution(cwd, &path.parent())?;
+                let parent_id = self.pathname_resolution(cwd, &path.parent()?)?;
 
                 new_direntry
                     .set_filename(*path.filename().unwrap())
@@ -604,6 +579,10 @@ impl VirtualFileSystem {
 
         {
             let entry = self.dcache.get_entry_mut(&entry_id)?;
+            if entry.is_directory() {
+                // unlink on directory not supported
+                return Err(EISDIR);
+            }
             inode_id = entry.inode_id;
             parent_id = entry.parent_id;
         }
@@ -663,7 +642,7 @@ impl VirtualFileSystem {
             Ok(id) => entry_id = id,
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
-                let parent_id = self.pathname_resolution(cwd, &path.parent())?;
+                let parent_id = self.pathname_resolution(cwd, &path.parent()?)?;
                 let parent_entry = self.dcache.get_entry(&parent_id)?;
 
                 let inode_id = parent_entry.inode_id;
@@ -866,7 +845,7 @@ impl VirtualFileSystem {
             return Err(EEXIST);
         }
 
-        let parent_new_id = self.pathname_resolution(cwd, &newpath.parent())?;
+        let parent_new_id = self.pathname_resolution(cwd, &newpath.parent()?)?;
         let parent_inode_id = self.dcache.get_entry_mut(&parent_new_id)?.inode_id;
         let parent_inode_number = parent_inode_id.inode_number;
 
@@ -971,23 +950,113 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn resolve_path(&mut self, cwd: &Path, path: &Path) -> SysResult<Path> {
+        let direntry_id = self.pathname_resolution(cwd, &path)?;
+        self.dentry_path(direntry_id)
+    }
+
     pub fn rename(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         oldpath: Path,
         newpath: Path,
     ) -> SysResult<()> {
-        let oldentry_id = self.pathname_resolution(cwd, &oldpath)?;
+        // If either pathname argument refers to a path whose final
+        // component is either dot or dot-dot, rename() shall fail.
+        let old_filename = oldpath.filename().ok_or(EINVAL)?;
 
-        self.rename_dentry(cwd, oldentry_id, newpath)?;
+        if old_filename == &"." || old_filename == &".." {
+            return Err(Errno::EINVAL);
+        }
+        let new_filename = newpath.filename().ok_or(EINVAL)?;
+
+        if new_filename == &"." || new_filename == &".." {
+            return Err(Errno::EINVAL);
+        }
+
+        let oldentry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &oldpath)?;
+        // The old pathname shall not name an ancestor directory of
+        // the new pathname.
+        let resolved_old_path = self.resolve_path(cwd, &oldpath)?;
+        let mut resolved_new_path = self.resolve_path(cwd, &newpath.parent()?)?;
+        resolved_new_path.push(*new_filename)?;
+        if resolved_new_path
+            .ancestors()
+            .any(|p| p == resolved_old_path)
+        {
+            return Err(Errno::EINVAL);
+        }
+
+        match self.pathname_resolution_no_follow_last_symlink(cwd, &newpath) {
+            Ok(new_entry_id) => {
+                let new_entry = self.dcache.get_entry(&new_entry_id)?;
+
+                let oldentry = self.dcache.get_entry(&oldentry_id)?;
+                if oldentry.is_directory()
+                    && (!new_entry.is_directory() || !new_entry.is_directory_empty()?)
+                {
+                    // If the old argument points to the pathname of a
+                    // directory, the new argument shall not point to the
+                    // pathname of a file that is not a directory, it
+                    // shall be required to be an empty directory.
+                    return Err(Errno::EEXIST);
+                } else if !oldentry.is_directory() && new_entry.is_directory() {
+                    // If the old argument points to the pathname of a
+                    // file that is not a directory, the new argument
+                    // shall not point to the pathname of a directory
+                    return Err(Errno::EISDIR);
+                }
+                // If the old argument and the new argument resolve to
+                // either the same existing directory entry or
+                // different directory entries for the same existing
+                // file, rename() shall return successfully and
+                // perform no other action.
+                if new_entry.inode_id.inode_number == oldentry.inode_id.inode_number {
+                    return Ok(());
+                }
+
+                if new_entry.is_directory() {
+                    self.rmdir(cwd, creds, newpath.try_clone()?)?;
+                } else {
+                    self.unlink(cwd, creds, newpath.try_clone()?)?;
+                }
+            }
+            Err(_) => {}
+        }
+        // newpath does not exist in either case
+
+        let oldentry = self.dcache.get_entry(&oldentry_id)?;
+        let old_parent_id = oldentry.parent_id;
+        let old_parent_inode_id = self.dcache.get_entry_mut(&old_parent_id)?.inode_id;
+        let old_parent_inode_nbr = old_parent_inode_id.inode_number;
+
+        let new_parent_id = self.pathname_resolution(cwd, &newpath.parent()?)?;
+        let new_parent_inode_id = self.dcache.get_entry_mut(&new_parent_id)?.inode_id;
+        let new_parent_inode_nbr = new_parent_inode_id.inode_number;
+
+        let fs = self
+            .get_filesystem(old_parent_inode_id)
+            .expect("no filesystem");
+
+        fs.lock().rename(
+            old_parent_inode_nbr,
+            old_filename.as_str(),
+            new_parent_inode_nbr,
+            new_filename.as_str(),
+        )?;
+
+        let oldentry_id = self.dcache.move_dentry(oldentry_id, new_parent_id)?;
+
+        let entry = self
+            .dcache
+            .d_entries
+            .get_mut(&oldentry_id)
+            .expect("oldentry sould be there");
+
+        entry.set_filename(*new_filename);
         Ok(())
     }
-
-    // pub fn file_exists(&mut self, current: &Current, path: Path) -> SysResult<bool> {
-    //     self.pathname_resolution(current.cwd, path).unwrap();
-    //     Ok(true)
-    // }
 }
 
 // pub type VfsHandler<T> = fn(VfsHandlerParams) -> SysResult<T>;

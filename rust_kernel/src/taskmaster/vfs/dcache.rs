@@ -142,7 +142,7 @@ impl Dcache {
         &mut self,
         id: DirectoryEntryId,
         new_parent: DirectoryEntryId,
-    ) -> SysResult<()> {
+    ) -> SysResult<DirectoryEntryId> {
         let parent_id;
         {
             let entry = self.d_entries.get(&id).ok_or(ENOENT)?;
@@ -152,8 +152,7 @@ impl Dcache {
             parent_dir.remove_entry(id)?;
         }
         let entry = self.d_entries.remove(&id).ok_or(ENOENT)?;
-        self.add_entry(Some(new_parent), entry)?;
-        Ok(())
+        self.add_entry(Some(new_parent), entry)
     }
 
     fn get_available_id(&self) -> DirectoryEntryId {

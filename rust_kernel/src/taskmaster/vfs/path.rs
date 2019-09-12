@@ -74,11 +74,11 @@ impl Path {
         self.components.iter().last()
     }
 
-    pub fn parent(&self) -> Path {
+    pub fn parent(&self) -> SysResult<Path> {
         let mut components = self.components();
         components.next_back();
 
-        Self::try_from(components).unwrap() // well for now this should not be happening
+        Self::try_from(components)
     }
 
     pub fn ancestors(&self) -> Ancestors {

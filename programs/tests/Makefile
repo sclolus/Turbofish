@@ -44,6 +44,11 @@ SRC_C += DeepThought \
 		dir/rmdir_not_empty \
 		symlink/symlink \
 		link/link \
+		rename/rename \
+		rename/rename_dir \
+		rename/rename_dir_exist \
+		rename/rename_dir_not_empty \
+		rename/rename_file_exist \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask
 
