@@ -23,15 +23,6 @@ use libc_binding::{
     TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
-/// Get the len of a C style *const c_char
-pub unsafe fn strlen(ptr: *const c_char) -> usize {
-    let mut i = 0;
-    while (*ptr.add(i)) != 0 {
-        i += 1;
-    }
-    i
-}
-
 #[allow(dead_code)]
 pub fn trace_syscall(cpu_state: *mut CpuState) {
     let BaseRegisters {
@@ -63,12 +54,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             // TODO: type parameter are not set and manage the third argument
             OPEN => log::info!(
                 "open({:#?}, {:#?})",
-                unsafe {
-                    core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                        ebx as *const u8,
-                        strlen(ebx as *const c_char),
-                    ))
-                },
+                ebx as *const u8,
                 OpenFlags::from_bits(ecx as u32)
             ),
             CLOSE => log::info!("close({:#?})", ebx as i32),
