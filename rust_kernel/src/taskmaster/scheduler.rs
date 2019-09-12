@@ -1,5 +1,5 @@
 //! this file contains the scheduler description
-use super::process::{get_ring, CpuState, KernelProcess, Process, UserProcess};
+use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, UserProcess};
 use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
@@ -54,6 +54,10 @@ extern "C" {
 
     /// Allow the current execution thread to be interruptible by the scheduler again.
     fn _preemptible();
+
+    /// Idle process
+    static _idle_process_len: usize;
+    fn _idle_process_code();
 }
 
 pub type Tid = u32;
@@ -87,7 +91,7 @@ pub struct Scheduler {
     /// time interval in PIT tics between two schedules
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
-    kernel_idle_process: Option<Box<KernelProcess>>,
+    kernel_idle_process: Box<KernelProcess>,
     /// Indicate if the scheduler is on idle mode.
     idle_mode: bool,
     /// Indicate if scheduler is on exit routine
@@ -122,7 +126,13 @@ impl Scheduler {
             current_task_index: 0,
             current_task_id: (1, 0),
             time_interval: None,
-            kernel_idle_process: None,
+            kernel_idle_process: unsafe {
+                KernelProcess::new(
+                    ProcessOrigin::Raw(_idle_process_code as *const u8, _idle_process_len),
+                    None,
+                )
+                .expect("Cannot assign Idle process to scheduler")
+            },
             idle_mode: false,
             on_exit_routine: None,
         }
@@ -173,20 +183,11 @@ impl Scheduler {
         Ok(pid)
     }
 
-    /// Set the idle process for the scheduler
-    pub fn set_idle_process(&mut self, idle_process: Box<KernelProcess>) -> Result<(), ()> {
-        self.kernel_idle_process = Some(idle_process);
-        Ok(())
-    }
-
     /// Backup of the current process kernel_esp
     fn store_kernel_esp(&mut self, kernel_esp: u32) {
         match self.idle_mode {
             true => {
-                self.kernel_idle_process
-                    .as_mut()
-                    .expect("No idle mode process")
-                    .kernel_esp = kernel_esp;
+                self.kernel_idle_process.kernel_esp = kernel_esp;
                 self.idle_mode = false;
             }
             false => {
@@ -250,10 +251,7 @@ impl Scheduler {
     /// Prepare the context for the new illigible process
     fn load_new_context(&mut self, action: JobAction) -> u32 {
         match self.idle_mode {
-            true => {
-                let process = self.kernel_idle_process.as_ref();
-                process.expect("No idle mode process").kernel_esp
-            }
+            true => self.kernel_idle_process.kernel_esp,
             false => {
                 let p = self.current_thread_mut();
 
@@ -459,10 +457,7 @@ impl Scheduler {
     /// Set exit mode as idle and return idle program kernel esp
     pub fn set_idle_mode(&mut self) -> u32 {
         self.idle_mode = true;
-        self.kernel_idle_process
-            .as_ref()
-            .expect("No idle process")
-            .kernel_esp
+        self.kernel_idle_process.kernel_esp
     }
 
     /// Gets the next available Pid for a new process.
@@ -802,10 +797,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     // Initialise the idle process and get a reference on it
     // Give it a pointer to the function _preemptible()
     scheduler.idle_mode = true;
-    let p = scheduler
-        .kernel_idle_process
-        .as_mut()
-        .expect("idle process must exists at this point");
+    let p = &scheduler.kernel_idle_process;
     let kernel_esp = p.kernel_esp as *mut CpuState;
     (*kernel_esp).registers.eax = _preemptible as u32;
 

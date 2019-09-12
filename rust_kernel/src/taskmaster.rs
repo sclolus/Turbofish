@@ -134,23 +134,6 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
             .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
     }
 
-    // Set the scheduler idle process
-    SCHEDULER
-        .lock()
-        .set_idle_process(unsafe {
-            KernelProcess::new(
-                ProcessOrigin::Raw(_idle_process_code as *const u8, _idle_process_len),
-                None,
-            )
-            .expect("Unexpected error while creating idle process")
-        })
-        .expect("Scheduler is bullshit");
-
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }
-}
-
-extern "C" {
-    fn _idle_process_code();
-    static _idle_process_len: usize;
 }
