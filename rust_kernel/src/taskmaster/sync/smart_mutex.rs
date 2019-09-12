@@ -54,15 +54,17 @@ unsafe fn trace_back(mut ebp: *const u32) {
 impl RawSmartMutex {
     const INIT: RawSmartMutex = RawSmartMutex(AtomicU32::new(0));
 
-    // A spinlock guard can be sent to another thread and unlocked there
-
     /// Try to lock the mutex
     fn try_lock(&self) -> bool {
-        let current_ebp: u32;
+        let mut current_ebp: u32;
 
         unsafe {
             asm!("mov %ebp, %eax" : "={eax}"(current_ebp):);
-        }
+            // Get the ancestor EBP value
+            // NOTE: In case of inlined code. this raw deferencing may causes a page fault
+            current_ebp = *(current_ebp as *const u32) as _;
+            assert_ne!(current_ebp, 0);
+        };
         let ebp = self.0.compare_and_swap(0, current_ebp, Ordering::Relaxed) as *const u32;
         if ebp != 0 as *const u32 {
             // Here a DeadSmartMutex, we trace back the process which had put his EBP in the mutex
