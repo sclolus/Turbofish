@@ -59,7 +59,7 @@ impl FileOperation for Ext2FileOperation {
     }
 
     fn fstatfs(&mut self, buf: &mut statfs) -> SysResult<u32> {
-        VFS.lock().statfs(self.inode_id, buf)?;
+        VFS.lock().fstatfs(self.inode_id, buf)?;
         Ok(0)
     }
 
