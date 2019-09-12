@@ -863,7 +863,8 @@ macro_rules! unpreemptible_context {
         use crate::taskmaster::scheduler::PreemptionGuard;
 
         let _guard = PreemptionGuard::new();
-
-        $code
+        let _ret = { $code };
+        #[allow(unreachable_code)]
+        _ret
     }};
 }
