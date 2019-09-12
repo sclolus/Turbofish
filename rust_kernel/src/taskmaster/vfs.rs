@@ -841,6 +841,7 @@ impl VirtualFileSystem {
         self.inodes.get_mut(&inode_id).ok_or(ENOENT)
     }
 
+    /// this implementation follow symbolic links
     pub fn link(
         &mut self,
         cwd: &Path,
@@ -854,6 +855,11 @@ impl VirtualFileSystem {
         if oldentry.is_directory() {
             // link on directories not currently supported.
             return Err(EISDIR);
+        }
+
+        // works only on regular files
+        if !oldentry.is_regular() {
+            return Err(EINVAL);
         }
 
         if self.pathname_resolution(cwd, &newpath).is_ok() {
@@ -871,7 +877,7 @@ impl VirtualFileSystem {
 
         let inode = self.inodes.get_mut(&oldentry.inode_id).ok_or(ENOENT)?;
 
-        let filename = newpath.filename().unwrap();
+        let filename = newpath.filename().ok_or(EINVAL)?;
         // let mut newentry = oldentry.clone();
         // newentry.filename = *newpath.filename().unwrap(); // remove this unwrap somehow.
         inode.link_number += 1;
