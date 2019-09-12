@@ -84,7 +84,7 @@ impl VirtualFileSystem {
         if self.inodes.contains_key(&inode.get_id()) {
             // if it is not from an hard link we panic
             if inode.link_number == 1 {
-                panic!("inode already there");
+                panic!("inode already there {:?}", inode);
             } else {
                 // else we already put the inode pointed by the hard link
                 return Ok(());
@@ -997,6 +997,15 @@ impl VirtualFileSystem {
                     // shall not point to the pathname of a directory
                     return Err(Errno::EISDIR);
                 }
+                // If the old argument and the new argument resolve to
+                // either the same existing directory entry or
+                // different directory entries for the same existing
+                // file, rename() shall return successfully and
+                // perform no other action.
+                if new_entry.inode_id.inode_number == oldentry.inode_id.inode_number {
+                    return Ok(());
+                }
+
                 if new_entry.is_directory() {
                     self.rmdir(cwd, creds, newpath.try_clone()?)?;
                 } else {
