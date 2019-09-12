@@ -26,6 +26,7 @@ SRC_C += DeepThought \
 		pipe/pipe_fister \
 		pipe/pipe_lorem_ipsum \
 		math/roundf \
+		math/pow \
 		ctype/longlong \
 		lseek/sda \
 		lseek/lseek_return \

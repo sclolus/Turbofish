@@ -7,7 +7,6 @@ __attribute__((noreturn, always_inline)) inline static void	__assertion_failure(
 {
 	dprintf(2, "assertion failed(%s:%u): %s\n", file, line, assertion);
 	abort();
-
 }
 
 # define assert(assertion) ((assertion) ? (void)0 : __assertion_failure(#assertion, __FILE__, __LINE__))

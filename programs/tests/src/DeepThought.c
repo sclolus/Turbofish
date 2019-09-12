@@ -49,6 +49,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/pipe/pipe_fister"},
 	{.path = "/bin/pipe/pipe_lorem_ipsum"},
 	{.path = "/bin/math/roundf"},
+	{.path = "/bin/math/pow"},
 	{.path = "/bin/ctype/longlong"},
 	{.path = "/bin/lseek/sda"},
 	{.path = "/bin/lseek/lseek_return"},

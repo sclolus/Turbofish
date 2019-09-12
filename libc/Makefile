@@ -11,15 +11,15 @@ ifeq ($(unit-tests),yes)
 	AR = ar
 	RANLIB = ranlib
 	CFLAGS += -D UNIT_TESTS -g3 -fsanitize=address
-	ASFLAGS = --32
-	IFLAGS =
+	ASFLAGS =
+	IFLAGS = -I./include/ltrace
 else
 	TARGET = $(TARGET_LIBC)
 	AS = i686-turbofish-as
 	CC = i686-turbofish-gcc
 	AR = i686-turbofish-ar
 	RANLIB = i686-turbofish-ranlib
-	IFLAGS = -Iinclude
+	IFLAGS = -Iinclude -I./include/ltrace
 	ASFLAGS = --32
 endif
 
@@ -158,7 +158,7 @@ SRC_ASM += setjmp
 HEADERS += setjmp.h
 
 VPATH += src/math
-SRC_NASM += round
+SRC_NASM += round __pow nanf
 HEADERS += math.h
 
 SRC_C += strsplit array parse_2d_file
@@ -187,6 +187,8 @@ VPATH += src/custom
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
 HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h
+
+HEADERS += ltrace/ltrace.h
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 ifeq ($(trace),yes)
