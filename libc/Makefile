@@ -98,6 +98,11 @@ SRC_C += stat lstat fstat mkfifo umask chmod mkdir mknod
 VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
+SRC_C += select
+VPATH += src/sys/select/
+VPATH += sys/select.h
+
+
 SRC_C += statfs fstatfs
 VPATH += src/sys/statfs
 HEADERS += sys/statfs.h
@@ -198,7 +203,7 @@ VPATH += src/custom
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
-HEADERS += sys/select.h getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
+HEADERS += getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 ifeq ($(trace),yes)
