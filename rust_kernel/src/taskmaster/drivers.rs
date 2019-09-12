@@ -23,7 +23,9 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{off_t, stat, statfs, termios, Errno, FileType, OpenFlags, Pid, Whence};
+use libc_binding::{
+    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, Whence,
+};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
@@ -54,6 +56,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
     }
 
     fn fchmod(&mut self, _mode: FileType) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn fchown(&mut self, _owner: uid_t, _group: gid_t) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 

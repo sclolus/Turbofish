@@ -51,7 +51,7 @@ int          execv(const char *, char *const []);
 int          execvp(const char *, char *const []);
 int          faccessat(int, const char *, int, int);
 int          fchdir(int);
-int          fchown(int, uid_t, gid_t);
+int          fchown(int fd, uid_t owner, gid_t group);
 int          fchownat(int, const char *, uid_t, gid_t, int);
 //[SIO][Option Start]
 int          fdatasync(int);

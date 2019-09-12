@@ -65,7 +65,8 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define FSTATFS	    138
 #define NANOSLEEP   162
 #define CHOWN       182
-#define GETCWD      183
+#define FCHOWN      183
+#define GETCWD      184
 #define SIGRETURN   200
 #define SHUTDOWN    293
 
