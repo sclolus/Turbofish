@@ -267,7 +267,7 @@ impl Ext2Filesystem {
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         //TODO: rights and mode
         let mut inode = Inode::new(FileType::SYMBOLIC_LINK);
-        if target.len() <= 60 {
+        if target.len() <= Inode::FAST_SYMLINK_SIZE_MAX {
             // If target is a fast symlink write the target directly
             // on inode
             inode.write_symlink(target);
@@ -278,7 +278,7 @@ impl Ext2Filesystem {
         inode.last_modification_time = timestamp;
 
         self.disk.write_struct(inode_addr, &inode)?;
-        if target.len() > 60 {
+        if target.len() > Inode::FAST_SYMLINK_SIZE_MAX {
             // Else write on the inode data after writing the empty
             // inode on the disk
             let mut offset = 0;

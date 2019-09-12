@@ -84,7 +84,7 @@ impl Ext2fs {
         let mut buf = [0; 255];
         // if inode size < 60 it is a fast symbolic link (ie the
         // string is stocked directly in the struct inode)
-        let pathname = if inode.get_size() <= 60 {
+        let pathname = if inode.get_size() <= ext2::Inode::FAST_SYMLINK_SIZE_MAX as u64 {
             inode.read_symlink()
         } else {
             let mut offset = 0;
