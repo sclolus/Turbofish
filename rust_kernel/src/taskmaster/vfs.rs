@@ -1027,7 +1027,7 @@ impl VirtualFileSystem {
             new_filename.as_str(),
         )?;
 
-        self.dcache.move_dentry(oldentry_id, new_parent_id)?;
+        let oldentry_id = self.dcache.move_dentry(oldentry_id, new_parent_id)?;
 
         let entry = self.dcache.d_entries.get_mut(&oldentry_id).ok_or(ENOENT)?;
 
