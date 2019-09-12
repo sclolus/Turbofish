@@ -270,12 +270,11 @@ impl Scheduler {
                     || action.intersects(JobAction::INTERRUPT)
                 {
                     if ring == PrivilegeLevel::Ring3 {
-                        self.current_thread_deliver_pending_signals(
+                        if let Some(_) = self.current_thread_deliver_pending_signals(
                             kernel_esp as *mut CpuState,
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
-                        );
-                        // An exit() routine may be engaged after handling a deadly signal
-                        if let Some(_) = self.on_exit_routine {
+                        ) {
+                            // An exit() routine may be engaged after handling a deadly signal
                             return self.set_idle_mode();
                         }
                     }
@@ -364,8 +363,8 @@ impl Scheduler {
 
     const REAPER_PID: Pid = 1;
 
-    /// Exit form a process and go to the current process
-    pub fn current_thread_group_exit(&mut self, status: Status) {
+    /// Start the exit() routine: Return informations about the process to destroy
+    pub fn current_thread_group_exit(&mut self, status: Status) -> Option<(Pid, Status)> {
         log::info!(
             "exit called for process with PID: {:?} STATUS: {:?}",
             self.running_process[self.current_task_index],
@@ -395,7 +394,10 @@ impl Scheduler {
                         .unwrap_running_mut()
                         .child
                         .try_push(child_pid)
-                        .map_err(|_| log::error!("no memory to push on the reaper pid"));
+                        .map_err(|_| {
+                            log::error!("no memory to push on the reaper pid: Trashing zombie");
+                            self.remove_thread_group(child_pid);
+                        });
                 }
                 // Else, definitively destroy it
                 ThreadGroupState::Zombie(_) => {
@@ -409,9 +411,10 @@ impl Scheduler {
         self.remove_thread_group_running(pid);
 
         self.on_exit_routine = Some((pid, status));
+        self.on_exit_routine
     }
 
-    /// Remove ressources of the exited process and note his exit status
+    /// Finalize the exit() routine: Remove ressources of the exited process and send his exit status
     fn exit_resume(&mut self, process_to_free_pid: Pid, status: Status) {
         // Get a reference to the dead process
         let dead_process = self
@@ -490,11 +493,12 @@ impl Scheduler {
     pub const NOT_IN_BLOCKED_SYSCALL: bool = false;
 
     /// apply pending signal, must be called when process is in ring 3
+    /// Eventually. Returns informations about a process on killing
     pub fn current_thread_deliver_pending_signals(
         &mut self,
         cpu_state: *mut CpuState,
         in_blocked_syscall: bool,
-    ) {
+    ) -> Option<(Pid, Status)> {
         debug_assert_eq!(
             unsafe { get_ring(cpu_state as u32) },
             PrivilegeLevel::Ring3,
@@ -505,7 +509,9 @@ impl Scheduler {
             .signal
             .exec_signal_handler(cpu_state, in_blocked_syscall);
         if let Some(signum) = signum {
-            self.current_thread_group_exit(Status::Signaled(signum));
+            self.current_thread_group_exit(Status::Signaled(signum))
+        } else {
+            None
         }
     }
 
@@ -860,27 +866,28 @@ pub fn preemptible() {
 /// A Finalizer-pattern Struct that disables preemption upon instantiation.
 /// then reenables it at Drop time.
 pub struct PreemptionGuard {
-    already_locked: bool,
+    /// Contains information about the preemptible state when the new() method is invocated
+    already_unpreemptible: bool,
 }
 
 impl PreemptionGuard {
     /// The instantiation methods that disables preemption and creates the guard.
     pub fn new() -> Self {
         Self {
-            already_locked: unpreemptible(),
+            already_unpreemptible: unpreemptible(),
         }
     }
 
     /// Overwrite the lock as already locked
-    pub fn force_unpreemptible(&mut self) {
-        self.already_locked = true;
+    pub fn set_already_unpreemptible(&mut self) {
+        self.already_unpreemptible = true;
     }
 }
 
 impl Drop for PreemptionGuard {
     /// The drop implementation of the guard reenables preemption.
     fn drop(&mut self) {
-        if !self.already_locked {
+        if !self.already_unpreemptible {
             preemptible();
         }
     }
