@@ -12,10 +12,10 @@ int main() {
 	char newname[100];
 
 	pid_t pid = getpid();
-	sprintf(filename, "./file_%d", pid);
-	sprintf(newname, "./renamed_file_%d", pid);
+	sprintf(filename, "./dir_%d", pid);
+	sprintf(newname, "./renamed_dir_%d", pid);
 
-	printf("creating file: %s\n", filename);
+	printf("creating dir: %s\n", filename);
 
 	assert(mkdir(filename, 0644) == 0);
 	if (rename(filename, newname) == -1) {
@@ -26,5 +26,5 @@ int main() {
 
 	assert(stat(filename, &buf1) == -1);
 	assert(stat(newname, &buf1) == 0);
-	assert(unlink(newname) == 0);
+	assert(rmdir(newname) == 0);
 }
