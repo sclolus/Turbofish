@@ -18,6 +18,8 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/rename/rename"},
+	{.path = "/bin/rename/rename_dir"},
 	{.path = "/bin/link/link"},
 	{.path = "/bin/symlink/symlink"},
 	{.path = "/bin/dir/mkdir"},
