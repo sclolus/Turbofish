@@ -579,6 +579,10 @@ impl VirtualFileSystem {
 
         {
             let entry = self.dcache.get_entry_mut(&entry_id)?;
+            if entry.is_directory() {
+                // unlink on directory not supported
+                return Err(EISDIR);
+            }
             inode_id = entry.inode_id;
             parent_id = entry.parent_id;
         }
