@@ -104,6 +104,13 @@ _preemptible:
 	lock and dword [_preemptible_state], UNLOCKED
 	ret
 
+; Get the actual preemptible state (good for debugging)
+global _get_preemptible_state
+_get_preemptible_state:
+	xor eax, eax
+	lock cmpxchg dword [_preemptible_state], eax
+	ret
+
 ; Get atomically the actual pit time
 global _get_pit_time
 _get_pit_time:

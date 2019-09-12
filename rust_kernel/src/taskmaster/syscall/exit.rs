@@ -128,7 +128,7 @@ use super::SysResult;
 ///  trace streams may be deallocated. [Option End]
 
 pub unsafe fn sys_exit(status: i32) -> SysResult<u32> {
-    // Avoid preempting when we are un the exit routine
+    // Avoid preempting when we are on the exit routine
     unpreemptible();
     SCHEDULER
         .lock()
