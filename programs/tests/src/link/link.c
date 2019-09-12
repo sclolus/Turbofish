@@ -8,7 +8,7 @@
 #include <assert.h>
 
 void debug_stat(struct stat *buf) {
-	printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+	printf("%d %d %d %d %d %d %d %lld %d %d %d %d %d\n",
 		   buf->st_dev,          // Device ID of device containing file.
 		   buf->st_ino,          // File serial number.
 		   buf->st_mode,         // Mode of file (see below).
@@ -17,9 +17,9 @@ void debug_stat(struct stat *buf) {
 		   buf->st_gid,            // Group ID of file.
 		   buf->st_rdev,           // Device ID (if file is character or block special).
 		   buf->st_size,           // For regular files, the file size in bytes.
-		   buf->st_atim, // Last data access timestamp.
-		   buf->st_mtim, // Last data modification timestamp.
-		   buf->st_ctim, // Last file status change timestamp.
+		   buf->st_atim.tv_sec, // Last data access timestamp.
+		   buf->st_mtim.tv_sec, // Last data modification timestamp.
+		   buf->st_ctim.tv_sec, // Last file status change timestamp.
 		   buf->st_blksize,    // A file system-specific preferred I/O block size
 		   buf->st_blocks      // Number of blocks allocated for this object.
 		);

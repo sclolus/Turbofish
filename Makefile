@@ -33,9 +33,6 @@ all: system_root $(IMG_DISK)
 	sudo rsync -av $(SYSTEM_ROOT)/ /mnt/
 	@echo ""
 
-	# rm -f /mnt/bin/original /mnt/bin/link_original
-	# echo banane > /mnt/bin/original
-	# ln -T /mnt/bin/original /mnt/bin/link_original
 	sudo umount /mnt
 	sudo losetup -d $(LOOP_DEVICE)
 
