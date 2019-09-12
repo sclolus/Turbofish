@@ -669,7 +669,7 @@ impl VirtualFileSystem {
         flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
-	inode.driver.open(flags)
+        inode.driver.open(flags)
     }
 
     // pub fn creat(
