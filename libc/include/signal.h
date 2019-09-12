@@ -130,17 +130,17 @@ typedef void (*sighandler_t)(int);
 //The sigval union shall be defined as:
 
 typedef union sigval {
-	int    sival_int;//    Integer signal value. 
-	void  *sival_ptr;//    Pointer signal value. 
-} sigval_t; 
+	int    sival_int;//    Integer signal value.
+	void  *sival_ptr;//    Pointer signal value.
+} sigval_t;
 
 struct sigevent {
-	int              sigev_notify            ;//Notification type. 
-	int              sigev_signo             ;//Signal number. 
-	union sigval     sigev_value             ;//Signal value. 
+	int              sigev_notify            ;//Notification type.
+	int              sigev_signo             ;//Signal number.
+	union sigval     sigev_value             ;//Signal value.
 	void           (*sigev_notify_function)(union sigval);
-	//Notification function. 
-	pthread_attr_t *sigev_notify_attributes;//  Notification attributes. 
+	//Notification function.
+	pthread_attr_t *sigev_notify_attributes;//  Notification attributes.
 };
 
 //The <signal.h> header shall define the following symbolic constants for the values of sigev_notify:
@@ -173,45 +173,45 @@ struct sigevent {
 typedef int mcontext_t;
 
 typedef struct stack {
-	void     *ss_sp       ;//Stack base or pointer. 
-	size_t    ss_size     ;//Stack size. 
-	int       ss_flags    ;//Flags. 
+	void     *ss_sp       ;//Stack base or pointer.
+	size_t    ss_size     ;//Stack size.
+	int       ss_flags    ;//Flags.
 } stack_t;
 //[CX] [Option Start] The <signal.h> header shall define the ucontext_t type as a structure that shall include at least the following members:
 
 typedef struct ucontext {
-	struct ucontext *uc_link    ; // Pointer to the context that is resumed 
-	// when this context returns. 
-	sigset_t    uc_sigmask ; // The set of signals that are blocked when this 
-	// context is active. 
-	stack_t     uc_stack   ; // The stack used by this context. 
-	mcontext_t  uc_mcontext; // A machine-specific representation of the saved 
-							 //context. 
+	struct ucontext *uc_link    ; // Pointer to the context that is resumed
+	// when this context returns.
+	sigset_t    uc_sigmask ; // The set of signals that are blocked when this
+	// context is active.
+	stack_t     uc_stack   ; // The stack used by this context.
+	mcontext_t  uc_mcontext; // A machine-specific representation of the saved
+							 //context.
 } ucontext_t;
 
 //[Option End]
 
 //[CX] [Option Start] The <signal.h> header shall define the siginfo_t type as a structure, which shall include at least the following members: [Option End]
-/* 
+/*
  * [CX][Option Start]
- * int           si_signo  Signal number. 
- * int           si_code   Signal code. 
+ * int           si_signo  Signal number.
+ * int           si_code   Signal code.
  * [Option End]
  * [XSI][Option Start]
- * int           si_errno  If non-zero, an errno value associated with 
- *                       this signal, as described in <errno.h>. 
+ * int           si_errno  If non-zero, an errno value associated with
+ *                       this signal, as described in <errno.h>.
  * [Option End]
  * [CX][Option Start]
- * pid_t         si_pid    Sending process ID. 
- * uid_t         si_uid    Real user ID of sending process. 
- * void         *si_addr   Address of faulting instruction. 
- * int           si_status Exit value or signal. 
+ * pid_t         si_pid    Sending process ID.
+ * uid_t         si_uid    Real user ID of sending process.
+ * void         *si_addr   Address of faulting instruction.
+ * int           si_status Exit value or signal.
  * [Option End]
  * [OB XSR][Option Start]
- * long          si_band   Band event for SIGPOLL. 
+ * long          si_band   Band event for SIGPOLL.
  * [Option End]
  * [CX][Option Start]
- * union sigval  si_value  Signal value. 
+ * union sigval  si_value  Signal value.
  * [Option End]
  */
 
@@ -234,14 +234,14 @@ typedef struct siginfo {
 
 //[CX] [Option Start] The <signal.h> header shall declare the sigaction structure, which shall include at least the following members:
 
-/* 
- * void   (*sa_handler)(int)  Pointer to a signal-catching function 
- *                            or one of the SIG_IGN or SIG_DFL. 
- * sigset_t sa_mask           Set of signals to be blocked during execution 
- *                            of the signal handling function. 
- * int      sa_flags          Special flags. 
+/*
+ * void   (*sa_handler)(int)  Pointer to a signal-catching function
+ *                            or one of the SIG_IGN or SIG_DFL.
+ * sigset_t sa_mask           Set of signals to be blocked during execution
+ *                            of the signal handling function.
+ * int      sa_flags          Special flags.
  * void   (*sa_sigaction)(int, siginfo_t *, void *)
- *                            Pointer to a signal-catching function. 
+ *                            Pointer to a signal-catching function.
  */
 struct sigaction {
 	union {
@@ -287,7 +287,7 @@ int    killpg(pid_t, int);
 //[Option End]
 //[CX][Option Start]
 void   psiginfo(const siginfo_t *, const char *);
-void   psignal(int, const char *);
+/* void   psignal(int, const char *); */
 int    pthread_kill(pthread_t, int);
 int    pthread_sigmask(int, const sigset_t *restrict,
            sigset_t *restrict);

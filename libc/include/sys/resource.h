@@ -38,15 +38,15 @@ typedef int rlim_t;
 //The <sys/resource.h> header shall define the rlimit structure, which shall include at least the following members:
 //
 struct rlimit {
-	rlim_t rlim_cur; //The current (soft) limit. 
-	rlim_t rlim_max; //The hard limit. 
+	rlim_t rlim_cur; //The current (soft) limit.
+	rlim_t rlim_max; //The hard limit.
 };
 //
 //The <sys/resource.h> header shall define the rusage structure, which shall include at least the following members:
 //
 struct rusage {
-	struct timeval ru_utime; //  User time used. 
-	struct timeval ru_stime; //  System time used. 
+	struct timeval ru_utime; //  User time used.
+	struct timeval ru_stime; //  System time used.
 };
 //
 //The <sys/resource.h> header shall define the timeval structure as described in <sys/time.h>.

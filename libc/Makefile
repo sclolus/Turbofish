@@ -35,7 +35,7 @@ TESTED_SRC_C = strsplit array getenv setenv unsetenv clearenv execl getmntent
 
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
-	strlen strcpy strncpy strcat strncat strlcat \
+	strlen strcpy strncpy stpcpy strcat strncat strlcat \
 	strchr strrchr strstr strnstr strcmp strncmp \
 	atoi toupper \
 	strclr striter striteri \
@@ -197,13 +197,17 @@ SRC_C += setmntent getmntent endmntent addmntent hasmntopt
 VPATH += src/mntent
 HEADERS += mntent.h
 
+SRC_C += getrusage
+VPATH += src/sys/resource
+HEADERS += sys/resource.h
+
 
 SRC_C += is_ptr_valid
 VPATH += src/custom
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
-HEADERS += getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
+HEADERS += getopt.h sys/ioctl.h sys/times.h libintl.h mntent.h
 
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 ifeq ($(trace),yes)

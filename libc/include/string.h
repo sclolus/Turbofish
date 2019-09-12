@@ -12,7 +12,7 @@ extern "C" {
 //    The <string.h> header shall define NULL and size_t as described in <stddef.h>.
 
 //    [CX] [Option Start] The <string.h> header shall define the locale_t type as described in <locale.h>. [Option End]
-	
+
 #include <locale.h>
 //    The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided for use with ISO C standard compilers.
 
@@ -37,6 +37,7 @@ int      strcoll(const char *, const char *);
 int      strcoll_l(const char *, const char *, locale_t);
 //    [Option End]
 char    *strcpy(char *restrict, const char *restrict);
+char	*stpcpy(char *dst, const char *src);
 size_t   strcspn(const char *, const char *);
 //    [CX][Option Start]
 char    *strdup(const char *);
