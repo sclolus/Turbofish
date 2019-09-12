@@ -1,6 +1,7 @@
-use super::drivers::{DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
+
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -105,10 +106,15 @@ impl VirtualFileSystem {
         // dbg!(direntry);
         // dbg!(inode.get_id());
         let direntry = self.dcache.add_entry(parent, direntry)?;
+
         let inode = Inode::new(
             fs,
-            Box::try_new(Ext2DriverFile::new(inode_data.id))?,
-            // TODO: handle othre drivers
+            if inode_data.is_fifo() {
+                Box::try_new(FifoDriver::try_new(inode_data.id)?)?
+            } else {
+                // TODO: handle others drivers
+                Box::try_new(Ext2DriverFile::new(inode_data.id))?
+            },
             inode_data,
         );
         self.add_inode(inode)?;
@@ -645,10 +651,10 @@ impl VirtualFileSystem {
         &mut self,
         inode_id: InodeId,
         _dentry_id: DirectoryEntryId,
-        _flags: OpenFlags,
+        flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
-        inode.driver.open()
+	inode.driver.open(flags)
     }
 
     // pub fn creat(

@@ -11,7 +11,7 @@ use core::cmp::min;
 use core::fmt::{self, Debug};
 use ext2::IoResult;
 use libc_binding::off_t;
-use libc_binding::Errno;
+use libc_binding::{Errno, OpenFlags};
 
 #[derive(Debug)]
 pub struct DiskDriver<D: BlockIo + Clone + Debug + 'static> {
@@ -31,7 +31,10 @@ impl<D: BlockIo + Clone + Debug> DiskDriver<D> {
 }
 
 impl<D: BlockIo + Clone + Debug> Driver for DiskDriver<D> {
-    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+    fn open(
+        &mut self,
+        _flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         Ok(IpcResult::Done(Arc::new(DeadMutex::new(
             DiskFileOperation::new(
                 self.disk.clone(),

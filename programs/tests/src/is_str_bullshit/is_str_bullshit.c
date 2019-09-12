@@ -1,11 +1,16 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <stdio.h>
+
+#ifndef GNU
 #include <custom.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
 int main() {
+	#ifndef GNU
 	int  page_size = getpagesize();
 	char *addr = mmap(NULL, 256 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (addr == MAP_FAILED) {
@@ -50,4 +55,5 @@ int main() {
 		dprintf(2, "ptr should be valid");
 		exit(1);
 	}
+	#endif
 }

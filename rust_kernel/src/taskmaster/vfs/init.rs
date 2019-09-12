@@ -6,6 +6,7 @@ use alloc::format;
 use alloc::sync::Arc;
 use core::convert::TryFrom;
 use fallible_collections::{FallibleArc, FallibleBox};
+use libc_binding::OpenFlags;
 use sync::DeadMutex;
 
 use super::*;
@@ -73,7 +74,7 @@ fn init_ext2(vfs: &mut Vfs, driver: DiskDriverType) {
     };
 
     let file_operation = disk_driver
-        .open()
+        .open(OpenFlags::O_RDWR)
         .expect("open sda1 failed")
         .expect("disk driver open failed");
 

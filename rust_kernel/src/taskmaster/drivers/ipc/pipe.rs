@@ -4,11 +4,10 @@ use super::SysResult;
 
 use super::FileOperation;
 use super::IpcResult;
-use super::Mode;
 
 use super::get_file_op_uid;
 
-use libc_binding::Errno;
+use libc_binding::{Errno, OpenFlags};
 
 use core::cmp;
 
@@ -74,38 +73,38 @@ impl Pipe {
 
 /// Main Trait implementation
 impl FileOperation for Pipe {
-    fn register(&mut self, access_mode: Mode) {
-        match access_mode {
-            Mode::ReadOnly => self.input_ref += 1,
-            Mode::WriteOnly => self.output_ref += 1,
-            _ => panic!("Pipe invalid access mode"),
-        };
+    fn register(&mut self, flags: OpenFlags) {
+        if flags.contains(OpenFlags::O_RDONLY) {
+            self.input_ref += 1;
+        } else if flags.contains(OpenFlags::O_WRONLY) {
+            self.output_ref += 1;
+        } else {
+            panic!("Pipe invalid access mode");
+        }
     }
-    fn unregister(&mut self, access_mode: Mode) {
-        match access_mode {
-            Mode::ReadOnly => {
-                self.input_ref -= 1;
-                // Announce to writer(s) that the last reader is gone
-                if self.input_ref == 0 {
-                    unsafe {
-                        messaging::send_message(MessageTo::Writer {
-                            uid_file_op: self.file_op_uid,
-                        });
-                    }
+    fn unregister(&mut self, flags: OpenFlags) {
+        if flags.contains(OpenFlags::O_RDONLY) {
+            self.input_ref -= 1;
+            // Announce to writer(s) that the last reader is gone
+            if self.input_ref == 0 {
+                unsafe {
+                    messaging::send_message(MessageTo::Writer {
+                        uid_file_op: self.file_op_uid,
+                    });
                 }
             }
-            Mode::WriteOnly => {
-                self.output_ref -= 1;
-                // Announce to reader(s) that the last writer is gone
-                if self.output_ref == 0 {
-                    unsafe {
-                        messaging::send_message(MessageTo::Reader {
-                            uid_file_op: self.file_op_uid,
-                        });
-                    }
+        } else if flags.contains(OpenFlags::O_WRONLY) {
+            self.output_ref -= 1;
+            // Announce to reader(s) that the last writer is gone
+            if self.output_ref == 0 {
+                unsafe {
+                    messaging::send_message(MessageTo::Reader {
+                        uid_file_op: self.file_op_uid,
+                    });
                 }
             }
-            _ => panic!("Pipe invalid access mode"),
+        } else {
+            panic!("Pipe invalid access mode");
         };
     }
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {

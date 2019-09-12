@@ -2,14 +2,14 @@
 
 use super::SysResult;
 
-use super::fd_interface::Mode;
+use super::vfs;
 use super::vfs::{InodeId, VFS};
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::Fifo;
 pub use ipc::Pipe;
 pub use ipc::Socket;
+pub use ipc::{FifoDriver, FifoFileOperation};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -23,16 +23,16 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{off_t, stat, termios, Errno, Pid, Whence};
+use libc_binding::{off_t, stat, termios, Errno, OpenFlags, Pid, Whence};
 use sync::dead_mutex::DeadMutex;
 
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
     /// Invoqued when a new FD is registered
-    fn register(&mut self, _access_mode: Mode) {}
+    fn register(&mut self, _flags: OpenFlags) {}
     /// Invoqued quen a FD is droped
-    fn unregister(&mut self, _access_mode: Mode) {}
+    fn unregister(&mut self, _flags: OpenFlags) {}
     /// Read something from the File Descriptor: Important ! When in blocked syscall, the slice must be verified before read op
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
         Err(Errno::EINVAL)
@@ -67,8 +67,8 @@ pub trait FileOperation: core::fmt::Debug + Send {
 pub struct DefaultFileOperation;
 
 impl FileOperation for DefaultFileOperation {
-    fn register(&mut self, _access_mode: Mode) {}
-    fn unregister(&mut self, _access_mode: Mode) {}
+    fn register(&mut self, _flags: OpenFlags) {}
+    fn unregister(&mut self, _flags: OpenFlags) {}
     fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         Err(Errno::EINVAL)
     }
@@ -80,14 +80,18 @@ impl FileOperation for DefaultFileOperation {
 /// This Trait represent a File Driver in the VFS
 pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
-    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
+    fn open(&mut self, flags: OpenFlags)
+        -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
 }
 
 #[derive(Debug)]
 pub struct DefaultDriver;
 
 impl Driver for DefaultDriver {
-    fn open(&mut self) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+    fn open(
+        &mut self,
+        _flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let res = Arc::try_new(DeadMutex::new(DefaultFileOperation))?;
         Ok(IpcResult::Done(res))
     }
@@ -102,14 +106,3 @@ pub fn get_file_op_uid() -> usize {
 }
 
 static mut FILE_OP_UID: usize = 0;
-
-// /// Here the type of the Kernel File Descriptor
-// #[derive(Clone, Copy, Debug, Eq, PartialEq, TryClone)]
-// enum FileOperationType {
-//     Pipe,
-//     Fifo,
-//     Socket,
-//     Stdin,
-//     Stdout,
-//     Stderr,
-// }

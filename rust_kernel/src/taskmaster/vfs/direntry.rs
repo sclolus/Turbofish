@@ -63,6 +63,11 @@ impl DirectoryEntryBuilder {
         self
     }
 
+    pub fn set_fifo(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::Fifo);
+        self
+    }
+
     pub fn set_symlink(&mut self, path: Path) -> &mut Self {
         self.inner = Some(DirectoryEntryInner::Symlink(path));
         self
@@ -118,6 +123,11 @@ impl DirectoryEntry {
 
     pub fn set_regular(&mut self) -> &mut Self {
         self.inner = DirectoryEntryInner::Regular;
+        self
+    }
+
+    pub fn set_fifo(&mut self) -> &mut Self {
+        self.inner = DirectoryEntryInner::Fifo;
         self
     }
 
@@ -272,6 +282,7 @@ pub enum DirectoryEntryInner {
     Regular,
     Directory(EntryDirectory),
     Symlink(Path),
+    Fifo,
 }
 
 use DirectoryEntryInner::*;
