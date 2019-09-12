@@ -40,6 +40,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define FCNTL        55
 #define SIGNAL       48
 #define SETPGID      57
+#define UMASK	     60
 #define DUP2         63
 #define GETPPID      64
 #define GETPGRP      65
@@ -54,7 +55,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define MMAP         90
 #define MUNMAP       91
 #define FCHMOD	     94
-#define UMASK	     95
+#define FCHOWN	     95
 #define GETTIMEOFDAY 96
 #define SOCKETCALL  102
 #define CLONE       120
@@ -65,8 +66,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define FSTATFS	    138
 #define NANOSLEEP   162
 #define CHOWN       182
-#define FCHOWN      183
-#define GETCWD      184
+#define GETCWD      183
 #define SIGRETURN   200
 #define SHUTDOWN    293
 
