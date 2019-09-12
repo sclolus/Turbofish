@@ -10,7 +10,9 @@ use core::str;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use fallible_collections::TryCollect;
-use libc_binding::{gid_t, statfs, uid_t, FileType, OpenFlags, EXT2_SUPER_MAGIC, NAME_MAX};
+use libc_binding::{
+    gid_t, statfs, uid_t, utimbuf, FileType, OpenFlags, EXT2_SUPER_MAGIC, NAME_MAX,
+};
 
 use sync::DeadMutex;
 
@@ -241,5 +243,16 @@ impl FileSystem for Ext2fs {
             f_frsize: 1024 << fs.superblock.log2_fragment_size,
             f_flags: 0, // TODO: For now this does not seem implementable.
         })
+    }
+
+    fn utime(&mut self, inode_number: u32, times: Option<&utimbuf>) -> SysResult<()> {
+        let current_time = if times.is_none() {
+            unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) }
+        } else {
+            0
+        };
+
+        self.ext2.lock().utime(inode_number, times, current_time)?;
+        Ok(())
     }
 }

@@ -25,14 +25,8 @@
 ///
 /// Upon successful completion, the utime() function shall mark the
 /// last file status change timestamp for update; see <sys/stat.h>.
-
-#warning NOT IMPLEMENTED IN KERNEL
-
-#include <custom.h>
-
 int utime(const char *path, const struct utimbuf *times)
 {
-	DUMMY_KERNEL
 	TRACE
 	int ret = _user_syscall(UTIME, 2, path, times);
 	set_errno_and_return(ret);

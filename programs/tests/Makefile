@@ -58,8 +58,9 @@ SRC_C += DeepThought \
 		chmod_tests/chmod_normal \
 		fchmod/einval_mode \
 		fchmod/fchmod_normal \
+		utime/utime_basic
 
-VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod
+VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))

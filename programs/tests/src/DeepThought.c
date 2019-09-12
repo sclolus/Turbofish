@@ -66,6 +66,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/chmod_tests/chmod_normal"},
 	{.path = "/bin/fchmod/einval_mode"},
 	{.path = "/bin/fchmod/fchmod_normal"},
+	{.path = "/bin/utime/utime_basic"},
 };
 
 void _exit_qemu(int val)
