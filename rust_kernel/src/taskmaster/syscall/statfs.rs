@@ -2,7 +2,7 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 use super::vfs::{Path, VFS};
-use libc_binding::{c_char, statfs, Errno};
+use libc_binding::{c_char, statfs};
 
 use core::convert::TryFrom;
 
