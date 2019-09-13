@@ -21,7 +21,7 @@ use libc_binding::{c_char, Errno};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::{_enable_paging, _read_cr3};
-use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
+use crate::memory::tools::{AllocFlags, NbrPages, Page, Phys, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::{mmu::Entry, AddressSpace};
 use crate::registers::Eflags;
@@ -251,6 +251,28 @@ impl KernelProcess {
     const KERNEL_PROCESS_STACK_SIZE: NbrPages = NbrPages::_64K;
 }
 
+/// a finilizer pattern to switch back to old cr3 when it is drop
+struct ContextSwitchGuard {
+    old_cr3: Phys,
+}
+
+impl ContextSwitchGuard {
+    unsafe fn new(address_space: &mut AddressSpace) -> Self {
+        let old_cr3 = _read_cr3();
+        address_space.context_switch();
+        Self { old_cr3 }
+    }
+}
+
+impl Drop for ContextSwitchGuard {
+    fn drop(&mut self) {
+        // Re-enable kernel virtual space memory
+        unsafe {
+            _enable_paging(self.old_cr3);
+        }
+    }
+}
+
 /// Main implementation of process trait for UserProcess
 impl Process for UserProcess {
     unsafe fn new(
@@ -258,11 +280,10 @@ impl Process for UserProcess {
         arguments: Option<ProcessArguments>,
     ) -> SysResult<Box<Self>> {
         // Store kernel CR3
-        let old_cr3 = _read_cr3();
         // Create the process Page directory
         let mut virtual_allocator = AddressSpace::try_new()?;
-        // Switch to this process Page Directory
-        virtual_allocator.context_switch();
+        // This will switch to this process Page Directory
+        let _context_switch_guard = ContextSwitchGuard::new(&mut virtual_allocator);
 
         let (eip, symbol_table) = match origin {
             ProcessOrigin::Elf(content) => {
@@ -401,9 +422,6 @@ impl Process for UserProcess {
 
         // Fill the kernel stack of the new process with start cpu states.
         *(kernel_esp as *mut CpuState) = cpu_state;
-
-        // Re-enable kernel virtual space memory
-        _enable_paging(old_cr3);
 
         Ok(Box::try_new(UserProcess {
             kernel_stack,
