@@ -14,8 +14,8 @@ use libc_binding::{
     OpenFlags, Pid, DIR,
 };
 use libc_binding::{
-    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
-    FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
+    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCNTL,
+    FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
     GETTIMEOFDAY, GETUID, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP,
     NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
     SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
@@ -77,7 +77,8 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as *const *const c_char,
             ),
             CHDIR => log::info!("chdir({:#?})", ebx as *const c_char),
-            CHMOD => log::info!("chmod({:#?})", ebx as *const c_char),
+            CHMOD => log::info!("chmod({:#?}, {:#?})", ebx as *const c_char, ecx as mode_t),
+            FCHMOD => log::info!("fchmod({:#?}, {:#?})", ebx as Fd, ecx as mode_t),
             MKNOD => log::info!(
                 "mknod({:#?}, {:#?}, {:#?})",
                 ebx as *const c_char,
@@ -236,6 +237,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         EXECVE => "execve",
         CHDIR => "chdir",
         CHMOD => "chmod",
+        FCHMOD => "fchmod",
         STAT => "stat",
         LSEEK => "lseek",
         GETPID => "getpid",

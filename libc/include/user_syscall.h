@@ -53,6 +53,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define REBOOT       88
 #define MMAP         90
 #define MUNMAP       91
+#define FCHMOD	     94
 #define UMASK	     95
 #define GETTIMEOFDAY 96
 #define SOCKETCALL  102

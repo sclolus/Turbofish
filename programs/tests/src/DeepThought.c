@@ -62,6 +62,10 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/fstatfs/fstatfs"},
 	{.path = "/bin/statvfs/statvfs"},
 	{.path = "/bin/fstatvfs/fstatvfs"},
+	{.path = "/bin/chmod_tests/einval_mode"},
+	{.path = "/bin/chmod_tests/chmod_normal"},
+	{.path = "/bin/fchmod/einval_mode"},
+	{.path = "/bin/fchmod/fchmod_normal"},
 };
 
 void _exit_qemu(int val)

@@ -125,7 +125,7 @@ struct stat64 {
 
 // [Option End]
 
-// The <sys/stat.h> header shall define the following symbolic constants as distinct integer values outside of the range [0,999999999], for use with the futimens() and utimensat() functions: UTIME_NOW UTIME_OMI
+// The <sys/stat.h> header shall define the following symbolic constants as distinct integer values outside of the ra nge [0,999999999], for use with the futimens() and utimensat() functions: UTIME_NOW UTIME_OMI
 
 /*
  * The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
@@ -139,8 +139,8 @@ int stat64(const char *restrict pathname, struct stat64 *restrict);
 int lstat64(const char *restrict pathname, struct stat64 *restrict);
 int fstat64(int fd, struct stat64 *restrict);
 
-int chmod(const char *, mode_t);
-int fchmod(int, mode_t);
+int chmod(const char *path, mode_t mode);
+int fchmod(int fd, mode_t mode);
 int fchmodat(int, const char *, mode_t, int);
 int fstatat(int, const char *restrict, struct stat *restrict, int);
 int futimens(int, const struct timespec [2]);

@@ -633,6 +633,9 @@ bitflags! {
         const SET_USER_ID = S_ISUID as u16;
         const SET_GROUP_ID = S_ISGID as u16;
         const STICKY_BIT = S_ISVTX as u16;
+        const SPECIAL_BITS = Self::SET_USER_ID.bits() |
+                            Self::SET_GROUP_ID.bits() |
+                            Self::STICKY_BIT.bits();
 
         const S_IRWXU = S_IRWXU as u16;
         const USER_READ_PERMISSION = S_IRUSR as u16;
@@ -694,6 +697,21 @@ impl FileType {
     /// retrurn the other rights on the file, in a bitflags Amode
     pub fn other_access(&self) -> Amode {
         Amode::from_bits((*self & FileType::S_IRWXO).bits() as u32).expect("bits should be valid")
+    }
+
+    /// Returns whether self is solely composed of special bits and/or file permissions bits
+    pub fn is_pure_mode(&self) -> bool {
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        let excess_bits = *self & !mask;
+
+        excess_bits.is_empty()
+    }
+}
+
+impl TryFrom<mode_t> for FileType {
+    type Error = Errno;
+    fn try_from(value: mode_t) -> Result<Self, Self::Error> {
+        FileType::from_bits(value as u16).ok_or(Errno::EINVAL)
     }
 }
 

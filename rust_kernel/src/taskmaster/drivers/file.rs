@@ -1,7 +1,7 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
 use super::{InodeId, VFS};
 use alloc::sync::Arc;
-use libc_binding::{off_t, stat, statfs, Errno, OpenFlags, Whence};
+use libc_binding::{off_t, stat, statfs, Errno, FileType, OpenFlags, Whence};
 use sync::DeadMutex;
 
 /// a driver of an ext2 file
@@ -106,5 +106,10 @@ impl FileOperation for Ext2FileOperation {
         // }
         self.offset = new_offset;
         Ok(self.offset as off_t)
+    }
+
+    fn fchmod(&mut self, mode: FileType) -> SysResult<u32> {
+        VFS.lock().fchmod(self.inode_id, mode)?;
+        Ok(0)
     }
 }

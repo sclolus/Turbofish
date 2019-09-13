@@ -16,13 +16,13 @@ use super::{IntoRawResult, SysResult};
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCNTL, FORK,
-    FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
-    GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
-    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR,
-    SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
-    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP,
-    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
+    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCNTL,
+    FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
+    GETPPID, GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD,
+    MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME,
+    RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
+    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK,
+    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -193,10 +193,16 @@ use is_str_valid::sys_is_str_valid;
 
 mod access;
 use access::sys_access;
+
 mod chmod;
 use chmod::sys_chmod;
+
 mod chown;
 use chown::sys_chown;
+
+mod fchmod;
+use fchmod::sys_fchmod;
+
 mod link;
 use link::sys_link;
 mod mkdir;
@@ -283,6 +289,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         ),
         CHDIR => sys_chdir(ebx as *const c_char),
         CHMOD => sys_chmod(ebx as *const c_char, ecx as mode_t),
+        FCHMOD => sys_fchmod(ebx as Fd, ecx as mode_t),
         MKNOD => sys_mknod(ebx as *const c_char, ecx as mode_t, edx as dev_t),
         LSEEK => sys_lseek(
             ebx as *mut off_t,

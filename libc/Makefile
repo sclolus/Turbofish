@@ -94,7 +94,7 @@ SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman
 HEADERS += sys/mman.h
 
-SRC_C += stat lstat fstat mkfifo umask chmod mkdir mknod
+SRC_C += stat lstat fstat mkfifo umask chmod fchmod mkdir mknod
 VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
