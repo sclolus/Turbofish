@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
-#define NBR_TEST 100
+#define NBR_TEST 5
 #define INCR 3
 int main(void)
 {

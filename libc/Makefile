@@ -19,7 +19,7 @@ else
 	CC = i686-turbofish-gcc
 	AR = i686-turbofish-ar
 	RANLIB = i686-turbofish-ranlib
-	IFLAGS = -Iinclude -I./include/ltrace
+	IFLAGS = -Iinclude -I./include/ltrace -Iinclude/tools
 	ASFLAGS = --32
 endif
 
