@@ -14,7 +14,7 @@ pub fn sys_chdir(buf: *const c_char) -> SysResult<u32> {
     unpreemptible_context!({
         let mut scheduler = SCHEDULER.lock();
 
-        // Check if given pointers are not bullshit
+        // Check if given pointer is not bullshit
         let safe_buf = {
             let v = scheduler
                 .current_thread()

@@ -58,6 +58,10 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/execl/execl"},
 	{.path = "/bin/is_str_bullshit/is_str_bullshit"},
 	{.path = "/bin/umask/umask"},
+	{.path = "/bin/statfs/statfs"},
+	{.path = "/bin/fstatfs/fstatfs"},
+	{.path = "/bin/statvfs/statvfs"},
+	{.path = "/bin/fstatvfs/fstatvfs"},
 };
 
 void _exit_qemu(int val)

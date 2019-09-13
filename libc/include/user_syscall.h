@@ -60,6 +60,8 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define MPROTECT    125
 #define SIGPROCMASK 126
 #define GETPGID     132
+#define STATFS	    137
+#define FSTATFS	    138
 #define NANOSLEEP   162
 #define CHOWN       182
 #define GETCWD      183
