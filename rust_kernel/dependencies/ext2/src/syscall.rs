@@ -111,11 +111,22 @@ impl Ext2Filesystem {
     }
 
     /// The unlink() function shall remove a link to a file.
-    pub fn unlink(&mut self, parent_inode_nbr: u32, filename: &str) -> IoResult<()> {
+    pub fn unlink(
+        &mut self,
+        parent_inode_nbr: u32,
+        filename: &str,
+        free_inode_data: bool,
+    ) -> IoResult<()> {
         let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
-        self.unlink_inode(entry.0.get_inode())?;
+        self.unlink_inode(entry.0.get_inode(), free_inode_data)?;
         self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
+    }
+
+    pub fn remove_inode(&mut self, inode_nbr: u32) -> IoResult<()> {
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+        assert!(inode.nbr_hard_links == 0);
+        self.free_inode((&mut inode, inode_addr), inode_nbr)
     }
 
     // /// The open() function shall establish the connection between a
