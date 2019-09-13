@@ -396,7 +396,7 @@ fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u
     let mut scheduler = SCHEDULER.lock();
     // An exit() routine may be engaged by the exit() syscall - An exit() routine is already on execution
     if let Some(_) = scheduler.on_exit_routine {
-        scheduler.set_idle_mode()
+        scheduler.set_dustman_mode()
     } else {
         // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
         // If ring0 process -> Can't happened normally
@@ -405,7 +405,7 @@ fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u
         {
             // An exit() routine may be engaged after handling a deadly signal - An exit() routine is already on execution - block interrupts
             preemption_guard.set_already_unpreemptible();
-            scheduler.set_idle_mode()
+            scheduler.set_dustman_mode()
         } else {
             cpu_state as u32
         }

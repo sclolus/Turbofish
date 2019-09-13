@@ -288,7 +288,7 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
             .current_thread_deliver_pending_signals(cpu_state, Scheduler::NOT_IN_BLOCKED_SYSCALL)
         {
             // An exit() routine may be engaged after handling a deadly signal
-            scheduler.set_idle_mode()
+            scheduler.set_dustman_mode()
         } else {
             cpu_state as u32
         }

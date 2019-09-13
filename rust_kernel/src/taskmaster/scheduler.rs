@@ -7,6 +7,9 @@ use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
 use super::{SysResult, TaskMode};
 
+mod dustman;
+use dustman::{dustman_handler, DUSTMAN_TRIGGER};
+
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
@@ -27,10 +30,6 @@ use crate::terminal::ansi_escape_code::Colored;
 
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {
-    /// This function is called by scheduler.current_thread_group_exit(). It can be considered as a hack.
-    /// It switch the kernel stack from the existed_process to the next_process then call scheduler_exit_resume().
-    fn _exit_resume(new_kernel_esp: u32, process_to_free_pid: Pid, status: i32) -> !;
-
     /// Usable by blocking syscalls. 'Freeze' a given proces then switch to another process.
     fn _auto_preempt() -> i32;
 
@@ -92,8 +91,10 @@ pub struct Scheduler {
     time_interval: Option<u32>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
     kernel_idle_process: Box<KernelProcess>,
-    /// Indicate if the scheduler is on idle mode.
-    idle_mode: bool,
+    /// DustMan: The process Ripper
+    dustman: Box<KernelProcess>,
+    /// Current mode of the scheduler
+    mode: Mode,
     /// Indicate if scheduler is on exit routine
     pub on_exit_routine: Option<(Pid, Status)>,
 }
@@ -103,8 +104,7 @@ pub struct Scheduler {
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
 
-    if let Some((pid, status)) = scheduler.on_exit_routine {
-        scheduler.exit_resume(pid, status);
+    if let Some(_) = scheduler.on_exit_routine {
         scheduler.on_exit_routine = None;
     }
 
@@ -113,6 +113,13 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
 
     // Switch to the next elligible process then return new kernel ESP
     scheduler.load_next_process(1)
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Mode {
+    Normal,
+    Idle,
+    DustMan,
 }
 
 /// Base Scheduler implementation
@@ -133,7 +140,11 @@ impl Scheduler {
                 )
                 .expect("Cannot assign Idle process to scheduler")
             },
-            idle_mode: false,
+            dustman: unsafe {
+                KernelProcess::new(ProcessOrigin::KernelFunction(dustman_handler), None)
+                    .expect("Cannot assign Idle process to scheduler")
+            },
+            mode: Mode::Normal,
             on_exit_routine: None,
         }
     }
@@ -185,15 +196,19 @@ impl Scheduler {
 
     /// Backup of the current process kernel_esp
     fn store_kernel_esp(&mut self, kernel_esp: u32) {
-        match self.idle_mode {
-            true => {
-                self.kernel_idle_process.kernel_esp = kernel_esp;
-                self.idle_mode = false;
-            }
-            false => {
+        use Mode::*;
+        match self.mode {
+            Normal => {
                 self.current_thread_mut().unwrap_process_mut().kernel_esp = kernel_esp;
             }
+            Idle => {
+                self.kernel_idle_process.kernel_esp = kernel_esp;
+            }
+            DustMan => {
+                self.dustman.kernel_esp = kernel_esp;
+            }
         }
+        self.mode = Normal;
     }
 
     /// Advance until a next elligible process was found, modify
@@ -244,15 +259,17 @@ impl Scheduler {
                 }
             };
         }
-        self.idle_mode = true;
+        self.mode = Mode::Idle;
         JobAction::default()
     }
 
     /// Prepare the context for the new illigible process
     fn load_new_context(&mut self, action: JobAction) -> u32 {
-        match self.idle_mode {
-            true => self.kernel_idle_process.kernel_esp,
-            false => {
+        use Mode::*;
+        match self.mode {
+            DustMan => self.dustman.kernel_esp,
+            Idle => self.kernel_idle_process.kernel_esp,
+            Normal => {
                 let p = self.current_thread_mut();
 
                 let process = p.unwrap_process();
@@ -273,7 +290,7 @@ impl Scheduler {
                             Scheduler::NOT_IN_BLOCKED_SYSCALL,
                         ) {
                             // An exit() routine may be engaged after handling a deadly signal
-                            return self.set_idle_mode();
+                            return self.set_dustman_mode();
                         }
                     }
                 }
@@ -408,6 +425,9 @@ impl Scheduler {
 
         self.remove_thread_group_running(pid);
 
+        DUSTMAN_TRIGGER.store(true, Ordering::Relaxed);
+        unpreemptible();
+
         self.on_exit_routine = Some((pid, status));
         self.on_exit_routine
     }
@@ -454,10 +474,10 @@ impl Scheduler {
         });
     }
 
-    /// Set exit mode as idle and return idle program kernel esp
-    pub fn set_idle_mode(&mut self) -> u32 {
-        self.idle_mode = true;
-        self.kernel_idle_process.kernel_esp
+    /// Call the DustMan to trash a process
+    pub fn set_dustman_mode(&mut self) -> u32 {
+        self.mode = Mode::DustMan;
+        self.dustman.kernel_esp
     }
 
     /// Gets the next available Pid for a new process.
@@ -796,10 +816,8 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
 
     // Initialise the idle process and get a reference on it
     // Give it a pointer to the function _preemptible()
-    scheduler.idle_mode = true;
-    let p = &scheduler.kernel_idle_process;
-    let kernel_esp = p.kernel_esp as *mut CpuState;
-    (*kernel_esp).registers.eax = _preemptible as u32;
+    scheduler.mode = Mode::DustMan;
+    let p = &scheduler.dustman;
 
     // force unlock the scheduler as process borrows it and we won't get out of scope
     SCHEDULER.force_unlock();

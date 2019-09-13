@@ -176,6 +176,8 @@ pub enum ProcessOrigin<'a> {
     Elf(&'a [u8]),
     /// Just a dummy function
     Raw(*const u8, usize),
+    /// A regular Kernel Process With his entry point inside the kernel
+    KernelFunction(unsafe extern "C" fn()),
 }
 
 /// Main implementation of UserProcess
@@ -313,6 +315,7 @@ impl Process for UserProcess {
                 base_addr.copy_from(code, code_len);
                 (base_addr as u32, None)
             }
+            ProcessOrigin::KernelFunction(_) => unimplemented!(),
         };
 
         // Allocate the kernel stack of the process
@@ -462,6 +465,7 @@ impl Process for KernelProcess {
                 base_addr.copy_from(code, code_len);
                 base_addr as u32
             }
+            ProcessOrigin::KernelFunction(function_pointer) => function_pointer as u32,
         };
 
         // Allocate the kernel stack of the process
