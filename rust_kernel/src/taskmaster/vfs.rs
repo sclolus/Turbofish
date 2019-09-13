@@ -2,11 +2,12 @@ use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, Fil
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
-
+use crate::drivers::rtc::CURRENT_UNIX_TIME;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
+use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, TryCollect};
 use lazy_static::lazy_static;
 use sync::DeadMutex;
@@ -40,7 +41,7 @@ use libc_binding::dirent;
 use libc_binding::statfs;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
-use libc_binding::{gid_t, stat, uid_t, Errno};
+use libc_binding::{gid_t, stat, uid_t, utimbuf, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -773,6 +774,33 @@ impl VirtualFileSystem {
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock()
             .chown(inode_id.inode_number as u32, owner, group)?;
+        Ok(())
+    }
+
+    pub fn utime(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        times: Option<&utimbuf>,
+    ) -> SysResult<()> {
+        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let inode_id = self.dcache.get_entry(&entry_id)?.inode_id;
+        let fs = self.get_filesystem(inode_id).expect("No filesystem");
+
+        fs.lock().utime(inode_id.inode_number as u32, times)?;
+
+        let inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
+
+        if let Some(times) = times {
+            inode.atime = times.actime;
+            inode.mtime = times.modtime;
+        } else {
+            let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
+
+            inode.atime = current_time;
+            inode.mtime = current_time;
+        }
         Ok(())
     }
 

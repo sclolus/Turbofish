@@ -7,9 +7,34 @@ use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
 use fallible_collections::TryCollect;
-use libc_binding::{gid_t, uid_t, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, uid_t, utimbuf, Errno, FileType, OpenFlags};
 
 impl Ext2Filesystem {
+    /// The utime() function shall set the access and modification
+    /// times  of the file named by the path argument.
+    ///
+    /// If times is a null pointer, the access and modification times
+    /// of the file shall be set to the current time.
+    pub fn utime(
+        &mut self,
+        inode_number: u32,
+        times: Option<&utimbuf>,
+        current_time: u32,
+    ) -> IoResult<()> {
+        let (mut inode, inode_addr) = self.get_inode(inode_number)?;
+
+        if let Some(times) = times {
+            inode.last_access_time = times.actime;
+            inode.creation_time = times.modtime;
+        } else {
+            inode.last_access_time = current_time;
+            inode.creation_time = current_time;
+        }
+
+        self.disk.write_struct(inode_addr, &inode)?;
+        Ok(())
+    }
+
     /// The chown() function shall change the user and group ownership
     /// of a file.
     pub fn chown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {
