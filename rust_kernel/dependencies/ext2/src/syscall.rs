@@ -38,7 +38,18 @@ impl Ext2Filesystem {
     /// The chown() function shall change the user and group ownership
     /// of a file.
     pub fn chown(&mut self, inode_nbr: u32, owner: uid_t, group: gid_t) -> IoResult<()> {
-        unimplemented!();
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
+
+        if owner != uid_t::max_value() {
+            inode.user_id = owner;
+        }
+
+        if group != gid_t::max_value() {
+            inode.group_id = group;
+        }
+
+        self.disk.write_struct(inode_addr, &inode)?;
+        Ok(())
     }
 
     // /// The lchown() function shall be equivalent to chown(), except

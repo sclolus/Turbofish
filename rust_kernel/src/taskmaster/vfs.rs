@@ -766,14 +766,26 @@ impl VirtualFileSystem {
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        let inode = self.inodes.get_mut(&entry.inode_id).ok_or(ENOENT)?;
+        self.fchown(inode_id, owner, group)
+    }
 
-        inode.set_uid(owner);
-        inode.set_gid(group);
-
+    pub fn fchown(&mut self, inode_id: InodeId, owner: uid_t, group: gid_t) -> SysResult<()> {
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock()
             .chown(inode_id.inode_number as u32, owner, group)?;
+
+        let inode = self
+            .inodes
+            .get_mut(&inode_id)
+            .expect("No corresponding inode for direntry");
+
+        if owner != uid_t::max_value() {
+            inode.set_uid(owner);
+        }
+
+        if group != gid_t::max_value() {
+            inode.set_gid(group);
+        }
         Ok(())
     }
 

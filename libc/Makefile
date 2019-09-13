@@ -19,7 +19,7 @@ else
 	CC = i686-turbofish-gcc
 	AR = i686-turbofish-ar
 	RANLIB = i686-turbofish-ranlib
-	IFLAGS = -Iinclude -I./include/ltrace
+	IFLAGS = -Iinclude -I./include/ltrace -Iinclude/tools
 	ASFLAGS = --32
 endif
 
@@ -85,7 +85,7 @@ SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _
 VPATH += src/stdlib
 HEADERS += stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown fchown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink
 
 VPATH += src/unistd
 HEADERS += unistd.h

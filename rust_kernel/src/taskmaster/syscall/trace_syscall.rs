@@ -14,13 +14,13 @@ use libc_binding::{
     OpenFlags, Pid, DIR,
 };
 use libc_binding::{
-    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCNTL,
-    FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID, GETPPID,
-    GETTIMEOFDAY, GETUID, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP,
-    NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, SETEGID, SETEUID,
-    SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
-    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR,
-    TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
+    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
+    FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
+    GETPPID, GETTIMEOFDAY, GETUID, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP, MPROTECT,
+    MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, SETEGID,
+    SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK,
+    SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP,
+    TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -190,12 +190,19 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ecx as *mut TimeSpec
             ),
             CHOWN => log::info!(
-                "chown(
-{:#?}, {:#?}, {:#?})",
+                "chown({:#?}, {:#?}, {:#?})",
                 ebx as *const c_char,
                 ecx as uid_t,
                 edx as gid_t,
             ),
+
+            FCHOWN => log::info!(
+                "fchown({:#?}, {:#?}, {:#?})",
+                ebx as Fd,
+                ecx as uid_t,
+                edx as gid_t,
+            ),
+
             GETCWD => log::info!("getcwd({:#?}, {:#?})", ebx as *const c_char, ecx as usize),
             SIGRETURN => log::info!("sigreturn({:#?})", cpu_state),
             SHUTDOWN => log::info!("shutdown()"),
@@ -277,6 +284,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         SIGPROCMASK => "sigprocmask",
         GETPGID => "getpgid",
         CHOWN => "chown",
+        FCHOWN => "fchown",
         NANOSLEEP => "nanosleep",
         GETCWD => "getcwd",
         SIGRETURN => "sigreturn",

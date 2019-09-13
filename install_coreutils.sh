@@ -39,6 +39,7 @@ make -C src env
 make -C src head
 make -C src tail
 make -C src wc
+make -C src chown
 
 cp -v src/cat $TARGET_DIR
 cp -v src/echo $TARGET_DIR
@@ -63,3 +64,4 @@ cp -v src/env $TARGET_DIR
 cp -v src/head $TARGET_DIR
 cp -v src/tail $TARGET_DIR
 cp -v src/wc $TARGET_DIR
+cp -v src/chown $TARGET_DIR

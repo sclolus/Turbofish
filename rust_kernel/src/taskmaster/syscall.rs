@@ -16,12 +16,12 @@ use super::{IntoRawResult, SysResult};
 use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::system::BaseRegisters;
 use libc_binding::{
-    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCNTL,
-    FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
-    GETPPID, GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD,
-    MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME,
-    RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
-    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK,
+    ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
+    FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
+    GETPID, GETPPID, GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR,
+    MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT,
+    RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK,
     TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
@@ -200,6 +200,9 @@ use chmod::sys_chmod;
 mod chown;
 use chown::sys_chown;
 
+mod fchown;
+use fchown::sys_fchown;
+
 mod fchmod;
 use fchmod::sys_fchmod;
 
@@ -351,6 +354,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         FSTATFS => sys_fstatfs(ebx as Fd, ecx as *mut libc_binding::statfs),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         CHOWN => sys_chown(ebx as *const c_char, ecx as uid_t, edx as gid_t),
+        FCHOWN => sys_fchown(ebx as Fd, ecx as uid_t, edx as gid_t),
         GETCWD => sys_getcwd(ebx as *mut c_char, ecx as usize),
         GETTIMEOFDAY => sys_gettimeofday(ebx as *mut timeval, ecx as *mut timezone),
         SIGRETURN => sys_sigreturn(cpu_state),
