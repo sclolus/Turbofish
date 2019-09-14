@@ -36,6 +36,7 @@ fn main() {
     opts.optflag("g", "graphical", "launch qemu with console");
     opts.optflag("", "nocapture", "show output even if test succeed");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("o", "optim", "Compile the kernel with optimizations");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(_f) => {
@@ -99,9 +100,18 @@ fn main() {
                 &[
                     "-C",
                     if native { "../" } else { "./" },
-                    "DEBUG=yes",
+                    if matches.opt_present("o") {
+                        "OPTIM=yes"
+                    } else {
+                        "DEBUG=yes"
+                    },
                     &format!(
-                        "cargo_flags=--features {},test,{}",
+                        "cargo_flags={} --features {},test,{}",
+                        if matches.opt_present("o") {
+                            "--release"
+                        } else {
+                            ""
+                        },
                         feature,
                         if matches.opt_present("g") {
                             ""
@@ -135,6 +145,7 @@ fn main() {
                 env!("PWD"),
                 format!("{}-output", feature)
             );
+            exec_command("date", &[]);
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
@@ -209,4 +220,5 @@ fn main() {
         total_succeed,
         total_failed
     );
+    exec_command("date", &[]);
 }
