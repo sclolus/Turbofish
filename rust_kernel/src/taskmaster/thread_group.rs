@@ -3,6 +3,7 @@ use super::scheduler::{Pid, Tid};
 use super::syscall::clone::CloneFlags;
 use super::thread::Thread;
 use super::SysResult;
+use libc_binding::{Amode, FileType, PermissionClass};
 
 use super::vfs::Path;
 
@@ -116,6 +117,82 @@ impl Credentials {
         sgid: 0,
         groups: Vec::new(),
     };
+
+    /// Checks if the `self` credentials evaluates to the root credentials,
+    ///
+    /// This checks for the `euid` and `eguid` flags.
+    pub fn is_root(&self) -> bool {
+        self.euid == Self::ROOT.uid && self.egid == Self::ROOT.gid
+    }
+
+    /// Checks with the same semantics of `access(2)` whether access
+    /// shall be granted for an file access permission type
+    /// `access_type` on a file that has a FileType `filetype` for the
+    /// `self` credentials.
+    ///
+    /// Checks using the `uid` and `gid` fields of the Credentials.
+    pub fn access(&self, filetype: FileType, access_type: Amode) -> bool {
+        unimplemented!()
+    }
+
+    pub fn is_in_class(&self, (uid, gid): (uid_t, gid_t), class: PermissionClass) -> bool {
+        use PermissionClass::*;
+        let in_class = |class| self.is_in_class((uid, gid), class);
+
+        match class {
+            Owner => self.euid == uid,
+            Group => {
+                !in_class(Owner) && self.egid == gid
+                    || self.groups.iter().any(|&supp_egid| supp_egid == gid)
+            }
+            Other => !(in_class(Owner) || in_class(Group)),
+        }
+    }
+
+    /// Returns the file permission class of `self` for a file whose owner is `owner`
+    /// and whose group is `group`
+    pub fn file_class_of(&self, owner: uid_t, group: gid_t) -> PermissionClass {
+        use PermissionClass::*;
+        let in_class = |class| self.is_in_class((owner, group), class);
+
+        if in_class(Owner) {
+            Owner
+        } else if in_class(Group) {
+            Group
+        } else {
+            Other
+        }
+    }
+
+    /// Checks whether access shall be granted for an file access permission type
+    /// `access_type` on a file that has a FileType `filetype` for the
+    /// `self` credentials.
+    ///
+    /// Checks using the `euid` an `egid` fields of the Credentials.
+    /// Note that composed access requests are supported,
+    /// thus calling this method with `access_type` == Amode::WRITE | Amode::READ,
+    /// is equivalent to asking calling it twice with `access_type`
+    /// being successively Amode::WRITE and Amode::READ.
+    pub fn is_access_granted(
+        &self,
+        filetype: FileType,
+        access_type: Amode,
+        (owner, group): (uid_t, gid_t),
+    ) -> bool {
+        if self.is_root() {
+            if access_type.contains(Amode::EXECUTE) {
+                filetype.owner_access().contains(Amode::EXECUTE)
+                    || filetype.group_access().contains(Amode::EXECUTE)
+                    || filetype.other_access().contains(Amode::EXECUTE)
+            } else {
+                true
+            }
+        } else {
+            let class = self.file_class_of(owner, group);
+
+            filetype.class_access(class).contains(access_type)
+        }
+    }
 }
 
 impl ThreadGroup {
@@ -368,5 +445,235 @@ impl Job {
     /// get the last event
     pub fn get_last_event(&self) -> Option<JobState> {
         self.last_event
+    }
+}
+
+#[cfg(test)]
+mod credentials_should {
+    use super::{Amode, Credentials, FileType};
+
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    macro_rules! make_root_no_rights_test {
+        (failing, $amode: expr, $filetype: expr, $mode: expr, $name: ident) => {
+            make_test!(
+                failing,
+                {
+                    let root_creds = Credentials::ROOT;
+                    let filetype: FileType = $filetype | $mode;
+
+                    assert!(root_creds.is_access_granted(filetype, $amode, (0, 0)));
+                },
+                $name
+            );
+        };
+
+        (failing, $amode: expr, $mode: expr, $name: ident) => {
+            make_test!(
+                failing,
+                {
+                    let root_creds = Credentials::ROOT;
+                    let filetype: FileType = FileType::REGULAR_FILE | $mode;
+
+                    assert!(root_creds.is_access_granted(filetype, $amode, (0, 0)));
+                },
+                $name
+            );
+        };
+
+        ($amode: expr, $mode: expr, $name: ident) => {
+            make_test!(
+                {
+                    let root_creds = Credentials::ROOT;
+                    let filetype: FileType = FileType::REGULAR_FILE | $mode;
+
+                    assert!(root_creds.is_access_granted(filetype, $amode, (0, 0)));
+                },
+                $name
+            );
+        };
+
+        ($amode: expr, $filetype: expr, $mode: expr, $name: ident) => {
+            make_test!(
+                {
+                    let root_creds = Credentials::ROOT;
+                    let filetype: FileType = $filetype | $mode;
+
+                    assert!(root_creds.is_access_granted(filetype, $amode, (0, 0)));
+                },
+                $name
+            );
+        };
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_regular_file
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_regular_file
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_regular_file
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::UNIX_SOCKET,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_unix_socket
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::UNIX_SOCKET,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_unix_socket
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::UNIX_SOCKET,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_unix_socket
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::SYMBOLIC_LINK,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_symbolic_link
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::SYMBOLIC_LINK,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_symbolic_link
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::SYMBOLIC_LINK,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_symbolic_link
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::BLOCK_DEVICE,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_block_device
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::BLOCK_DEVICE,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_block_device
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::BLOCK_DEVICE,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_block_device
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::DIRECTORY,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_directory
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::DIRECTORY,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_directory
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::DIRECTORY,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_directory
+    }
+
+    make_root_no_rights_test! {
+        Amode::SEARCH,
+        FileType::DIRECTORY,
+        FileType::empty(),
+        grant_search_access_to_root_for_no_rights_directory
+    }
+
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::CHARACTER_DEVICE,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_character_device
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::CHARACTER_DEVICE,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_character_device
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::CHARACTER_DEVICE,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_character_device
+    }
+    make_root_no_rights_test! {
+        Amode::READ,
+        FileType::FIFO,
+        FileType::empty(),
+        grant_read_access_to_root_for_no_rights_fifo
+    }
+
+    make_root_no_rights_test! {
+        Amode::WRITE,
+        FileType::FIFO,
+        FileType::empty(),
+        grant_write_access_to_root_for_no_rights_fifo
+    }
+
+    make_root_no_rights_test! {
+        failing,
+        Amode::EXECUTE,
+        FileType::FIFO,
+        FileType::empty(),
+        grant_execute_access_to_root_for_no_rights_fifo
     }
 }

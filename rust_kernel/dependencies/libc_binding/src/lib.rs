@@ -682,21 +682,29 @@ impl FileType {
         self.contains(Self::UNIX_SOCKET)
     }
 
-    /// retrurn the owner rights on the file, in a bitflags Amode
+    /// returns the owner rights on the file, in a bitflags Amode
     pub fn owner_access(&self) -> Amode {
         Amode::from_bits((*self & FileType::S_IRWXU).bits() as u32 >> 6)
             .expect("bits should be valid")
     }
 
-    /// retrurn the group rights on the file, in a bitflags Amode
+    /// returns the group rights on the file, in a bitflags Amode
     pub fn group_access(&self) -> Amode {
         Amode::from_bits((*self & FileType::S_IRWXG).bits() as u32 >> 3)
             .expect("bits should be valid")
     }
 
-    /// retrurn the other rights on the file, in a bitflags Amode
+    /// returns the other rights on the file, in a bitflags Amode
     pub fn other_access(&self) -> Amode {
         Amode::from_bits((*self & FileType::S_IRWXO).bits() as u32).expect("bits should be valid")
+    }
+
+    pub fn class_access(&self, class: PermissionClass) -> Amode {
+        match class {
+            PermissionClass::Owner => self.owner_access(),
+            PermissionClass::Group => self.group_access(),
+            PermissionClass::Other => self.other_access(),
+        }
     }
 
     /// Returns whether self is solely composed of special bits and/or file permissions bits
@@ -721,5 +729,23 @@ bitflags! {
         const R_OK = R_OK;
         const W_OK = W_OK;
         const X_OK = X_OK;
+
+        const READ = Self::R_OK.bits();
+        const WRITE = Self::W_OK.bits();
+        const EXECUTE = Self::X_OK.bits();
+
+        /// Independent definition of search permission Amode.
+        /// It is intended to used it as separate semantics then execute permission Amode,
+        /// even if in a unix/POSIX system they are equivalent.
+        /// It is defined as the same actual value to respect that aspect of UNIX permissions.
+        const SEARCH = Self::X_OK.bits();
     }
+}
+
+/// Also known as File Classes in POSIX-2018.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PermissionClass {
+    Owner,
+    Group,
+    Other,
 }
