@@ -11,5 +11,5 @@ build_toolchain/
 build_coreutils/
 build_dash/
 !.gitignore
-system/
+system_disk/
 *~
