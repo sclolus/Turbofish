@@ -8,7 +8,7 @@ AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
 SRC_C += init \
-		tty \
+		session_manager \
 
 VPATH += src
 
