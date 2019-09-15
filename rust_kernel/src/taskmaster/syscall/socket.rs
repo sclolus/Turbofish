@@ -6,7 +6,10 @@ use super::scheduler::{Scheduler, SCHEDULER};
 
 pub type SocketArgsPtr = *const u8;
 
-use libc_binding::Errno;
+use libc_binding::{Errno, PATH_MAX};
+
+const PATH_MAX_USIZE: usize = PATH_MAX as usize;
+
 use sync::DeadMutexGuard;
 
 use core::convert::TryInto;
@@ -132,12 +135,10 @@ safe_convertible_enum!(
     }
 );
 
-const UNIX_PATHNAME_MAXSIZE: usize = 108;
-
 visible_byte_array!(
     /// Unix pathname
     #[derive(Copy, Clone)]
-    struct SockPathname([u8; UNIX_PATHNAME_MAXSIZE]);
+    struct SockPathname([u8; PATH_MAX_USIZE]);
 );
 
 /// This is the basic structure for exchanging packet with UNIX socket
@@ -201,6 +202,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         use CallType::*;
         match call {
             SysSocket => {
+                dbg!("socket");
                 v.check_user_ptr::<SocketArgs>(args as *const SocketArgs)?;
                 drop(v);
                 let SocketArgs {
@@ -216,6 +218,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysBind => {
+                dbg!("bind");
                 v.check_user_ptr::<BindArgs>(args as *const BindArgs)?;
                 let BindArgs {
                     socket_fd,
@@ -227,6 +230,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 bind(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysConnect => {
+                dbg!("connect");
                 v.check_user_ptr::<ConnectArgs>(args as *const ConnectArgs)?;
                 let ConnectArgs {
                     socket_fd,
@@ -238,12 +242,14 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 connect(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysListen => {
+                dbg!("listen");
                 v.check_user_ptr::<ListenArgs>(args as *const ListenArgs)?;
                 drop(v);
                 let ListenArgs { socket_fd, backlog } = unsafe { *(args as *const ListenArgs) };
                 listen(&mut scheduler, socket_fd as i32, backlog as i32)
             }
             SysAccept => {
+                dbg!("accept");
                 v.check_user_ptr::<AcceptArgs>(args as *const AcceptArgs)?;
                 drop(v);
                 let AcceptArgs {
@@ -260,6 +266,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysSend => {
+                dbg!("send");
                 v.check_user_ptr::<SendArgs>(args as *const SendArgs)?;
                 let SendArgs {
                     socket_fd,
@@ -272,6 +279,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 send(&mut scheduler, socket_fd as i32, mem, flags)
             }
             SysRecv => {
+                dbg!("recv");
                 v.check_user_ptr::<RecvArgs>(args as *const RecvArgs)?;
                 let RecvArgs {
                     socket_fd,
@@ -284,6 +292,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 recv(&mut scheduler, socket_fd as i32, mem, flags)
             }
             SysSendTo => {
+                dbg!("sendto");
                 v.check_user_ptr::<SendToArgs>(args as *const SendToArgs)?;
                 let SendToArgs {
                     socket_fd,
@@ -303,6 +312,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 send_to(&mut scheduler, socket_fd as i32, mem, flags, sockaddr_opt)
             }
             SysRecvFrom => {
+                dbg!("recvfrom");
                 v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
                 drop(v);
                 let RecvFromArgs {
@@ -325,6 +335,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysShutdown => {
+                dbg!("shutdown");
                 v.check_user_ptr::<ShutdownArgs>(args as *const ShutdownArgs)?;
                 drop(v);
                 let ShutdownArgs { socket_fd, how } = unsafe { *(args as *const ShutdownArgs) };
