@@ -64,6 +64,8 @@ SRC_C += MasterDeepThought \
 		fchown/fchown_basic \
 		execve/bad_elf \
 		fifo/fifo \
+		socket/sockdgram \
+		socket/sockdgram_connect \
 
 VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown
 

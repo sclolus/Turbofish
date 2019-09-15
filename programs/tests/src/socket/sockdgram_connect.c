@@ -17,16 +17,18 @@ void fill_sockaddr(struct sockaddr_un *addr) {
 
 char MESSAGE[] = "hello world!";
 
-void child() {
+void child(int sock) {
 	struct sockaddr_un dest_addr;
 	fill_sockaddr(&dest_addr);
 
-	int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (sock == -1) {
-		perror("socket");
+
+	int ret = connect(sock, (const struct sockaddr *)&dest_addr, sizeof(struct sockaddr_un));
+	if (ret == -1) {
+		perror("connect");
 		exit(1);
 	}
-	ssize_t len_send = sendto(sock, MESSAGE, sizeof(MESSAGE), 0, (const struct sockaddr *)&dest_addr, sizeof(struct sockaddr_un));
+
+	ssize_t len_send = send(sock, MESSAGE, sizeof(MESSAGE), 0);
 	printf("len send: %ld\n", len_send);
 	if (len_send == -1) {
 		perror("sendto");
@@ -38,7 +40,6 @@ void child() {
 void father(int sock) {
 	char buffer[100];
 
-	sleep(1);
     ssize_t len_received = recv(sock, buffer, 100, 0);
 	printf("len received: %ld\n", len_received);
 	if (len_received == -1) {
@@ -46,6 +47,7 @@ void father(int sock) {
 		exit(1);
 	}
 	assert(strcmp(buffer, MESSAGE) == 0);
+
 	assert(unlink(CLIENT_PATH) == 0);
 }
 
@@ -59,9 +61,10 @@ int main() {
 		perror("socket");
 		exit(1);
 	}
+	/* int ret = connect(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_un)); */
 	int ret = bind(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_un));
 	if (ret == -1) {
-		perror("bind");
+		perror("connect");
 		exit(1);
 	}
 	int child_pid = fork();
@@ -69,8 +72,8 @@ int main() {
 		perror("fork");
 		exit(1);
 	} else if (child_pid == 0) {
-		close(sock);
-		child();
+		/* close(sock); */
+		child(sock);
 		exit(0);
 	} else {
 		father(sock);
