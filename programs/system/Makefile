@@ -8,6 +8,7 @@ AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
 SRC_C += init \
+		tty \
 
 VPATH += src
 

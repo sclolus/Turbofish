@@ -7,7 +7,8 @@ VPATH += src
 AS = i686-turbofish-ld
 CC = i686-turbofish-gcc
 
-SRC_C += DeepThought \
+SRC_C += MasterDeepThought \
+		DeepThought \
 		ProcessGroup \
 		signal/SignalSimple \
 		signal/SignalSimpleDuo \
