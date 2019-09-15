@@ -3,10 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <wait.h>
-
-#ifndef GNU
-#include <custom.h>
-#endif
+#include <stdbool.h>
 
 // Control if tests are launched one by one or not
 bool LINEAR = false;
@@ -72,15 +69,6 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/fchown/fchown_basic"},
 };
 
-void _exit_qemu(int val)
-{
-#ifdef GNU
-	exit(val);
-#else
-	exit_qemu(val);
-#endif
-}
-
 #define TEST_PROGRAMS_LEN sizeof(TEST_PROGRAMS) / sizeof(struct program_test)
 
 size_t find_program(pid_t pid) {
@@ -90,7 +78,6 @@ size_t find_program(pid_t pid) {
 		}
 	}
 	dprintf(2, "program not found WTF\n");
-	_exit_qemu(1);
 	return 1;
 }
 
@@ -114,8 +101,7 @@ void launch_test(size_t i) {
 		for (int j = 0; j < 10; j++) {
 			printf("%s\n", TEST_PROGRAMS[i].path);
 		}
-		while (1) {}
-		_exit_qemu(1);
+		exit(1);
 	}
 	//father
 	TEST_PROGRAMS[i].pid = pid;
@@ -126,19 +112,18 @@ void wait_test() {
 	int ret = wait(&status);
 	if (ret == -1) {
 		perror("Deepthought wait failed");
-		_exit_qemu(1);
+		exit(1);
 	}
 	if (status != 0) {
 		// qemu exit fail
 		size_t i = find_program(ret);
 		dprintf(2, "test: '%s' failed", TEST_PROGRAMS[i].path);
 		dprintf(2, "status '%d'", status);
-		sleep(1000);
 		if (!WIFEXITED(status)) {
-			_exit_qemu(1);
+			exit(1);
 		}
 		if (WEXITSTATUS(status) != 0) {
-			_exit_qemu(1);
+			exit(1);
 		}
 	}
 }
@@ -155,8 +140,6 @@ int main() {
 			wait_test();
 		}
 	}
-	/* sleep(100); */
 	printf("All tests succesfull\n");
-	sleep(5);
-	_exit_qemu(0);
+	return 0;
 }
