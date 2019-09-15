@@ -1,6 +1,7 @@
 use super::get_file_op_uid;
 use super::IpcResult;
 use super::SysResult;
+use super::VFS;
 use super::{Driver, FileOperation};
 
 use super::vfs;
