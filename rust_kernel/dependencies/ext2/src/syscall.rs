@@ -264,7 +264,6 @@ impl Ext2Filesystem {
         file_offset: &mut u64,
         mut buf: &mut [u8],
     ) -> IoResult<u64> {
-        // println!("Read syscall of {:?}", buf.len());
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
 
         if *file_offset > inode.get_size() {
@@ -287,7 +286,6 @@ impl Ext2Filesystem {
         let file_curr_offset_start = *file_offset;
         let block_mask = (self.block_size - 1) as u64;
 
-        //println!("inode_size: {:#X?} file_offset: {:#X?} len buf: {:?}", inode.get_size(), *file_offset, buf.len());
         while buf.len() != 0 {
             let mut bytes_to_read = 0;
 
@@ -313,7 +311,6 @@ impl Ext2Filesystem {
                 }
                 last_data_address = Some(data_address);
             }
-            //println!("Reading chunk of {:?}: {:#X?} {:#X?} len buf: {:?}", bytes_to_read, inode.get_size(), *file_offset, buf.len());
             let data_read = self.disk.read_buffer(
                 start_data_address.expect("WOOT"),
                 &mut buf[0..bytes_to_read as usize],
@@ -327,6 +324,11 @@ impl Ext2Filesystem {
     /// return the block size of ext2
     pub fn get_block_size(&self) -> u32 {
         self.block_size
+    }
+
+    /// Superblock ascessor
+    pub fn get_superblock(&self) -> super::SuperBlock {
+        self.superblock
     }
 
     pub fn symlink(

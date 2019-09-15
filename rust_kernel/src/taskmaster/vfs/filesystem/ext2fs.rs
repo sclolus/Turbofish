@@ -236,18 +236,19 @@ impl FileSystem for Ext2fs {
 
     fn statfs(&self, buf: &mut statfs) -> SysResult<()> {
         let fs = self.ext2.lock();
+        let superblock = fs.get_superblock();
 
         Ok(*buf = statfs {
             f_type: EXT2_SUPER_MAGIC,
-            f_bsize: fs.block_size, // Actually Depends on underlying implementation of Disk I/O.
-            f_blocks: fs.superblock.nbr_blocks,
-            f_bfree: fs.superblock.nbr_free_blocks,
-            f_bavail: fs.superblock.nbr_free_blocks, // is nbr_blocks_reserved counted in this or not?
-            f_files: fs.superblock.nbr_inode,
-            f_ffree: fs.superblock.nbr_free_inodes,
+            f_bsize: fs.get_block_size(), // Actually Depends on underlying implementation of Disk I/O.
+            f_blocks: superblock.nbr_blocks,
+            f_bfree: superblock.nbr_free_blocks,
+            f_bavail: superblock.nbr_free_blocks, // is nbr_blocks_reserved counted in this or not?
+            f_files: superblock.nbr_inode,
+            f_ffree: superblock.nbr_free_inodes,
             f_fsid: self.fs_id.0 as u32, // consider method/Into<u32> implementation.
             f_namelen: NAME_MAX - 1,
-            f_frsize: 1024 << fs.superblock.log2_fragment_size,
+            f_frsize: 1024 << superblock.log2_fragment_size,
             f_flags: 0, // TODO: For now this does not seem implementable.
         })
     }

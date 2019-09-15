@@ -39,11 +39,13 @@ use core::mem::size_of;
 /// Global structure of ext2Filesystem, such as disk partition.
 #[derive(Debug)]
 pub struct Ext2Filesystem {
-    pub superblock: SuperBlock, // or remove pub and add get_superblock() method.
+    superblock: SuperBlock,
     superblock_addr: u64,
     disk: Disk,
     nbr_block_grp: u32,
-    pub block_size: u32, // or remove pub and add get_block_size() method.
+    block_size: u32,
+    block_mask: u32,
+    block_shift: u32,
     cache: Cache<u64, Block>,
 }
 
@@ -116,9 +118,15 @@ impl Ext2Filesystem {
         assert_eq!(nbr_block_grp, superblock.get_inode_block_grp());
 
         let block_size = 1024 << superblock.get_log2_block_size();
+        // Check block_size constraints
+        assert!(block_size != 0 && (block_size & (block_size - 1)) == 0);
+        let block_mask = block_size - 1;
+        let block_shift = u32::trailing_zeros(block_size);
 
         Ok(Self {
             block_size,
+            block_mask,
+            block_shift,
             superblock,
             superblock_addr,
             nbr_block_grp,
@@ -404,7 +412,7 @@ impl Ext2Filesystem {
                     // if we do not cross a Block
                     if self.to_block(new_offset) == self.to_block(new_offset + new_entry.size() as u64)
                     // and the block is already allocated
-                        && self.inode_data_may_alloc((&mut inode, inode_addr), new_offset, true).is_ok()
+                        && self.inode_data_may_alloc((&mut inode, inode_addr), new_offset, false).is_ok()
                     //self.to_block( as u32) == self.to_block(offset)
                     {
                         new_offset
@@ -533,7 +541,6 @@ impl Ext2Filesystem {
     /// alloc a pointer (used by the function inode_data_alloc)
     fn alloc_pointer(&mut self, pointer_addr: u64, alloc: bool) -> IoResult<Block> {
         err_if_zero({
-            //            println!("reading at {:#X?}", pointer_addr);
             let pointer = self.disk.read_struct(pointer_addr)?;
             if alloc && pointer == Block(0) {
                 let new_block = self.alloc_block().ok_or(Errno::ENOSPC)?;
@@ -565,7 +572,7 @@ impl Ext2Filesystem {
         let blocknumber_per_block = (self.block_size as usize / size_of::<Block>()) as u32;
         let block_off = block_off.0 as u64;
 
-        /* SIMPLE ADDRESSING */
+        // SIMPLE ADDRESSING
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
@@ -576,7 +583,7 @@ impl Ext2Filesystem {
             return Ok(());
         }
 
-        /* SINGLY INDIRECT ADDRESSING */
+        // SINGLY INDIRECT ADDRESSING
         // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
         offset_start = offset_end;
         offset_end += blocknumber_per_block as u64;
@@ -595,11 +602,10 @@ impl Ext2Filesystem {
             return Ok(());
         }
 
-        /* DOUBLY INDIRECT ADDRESSING */
+        // DOUBLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
-            // dbg!("doubly indirect addressing");
             let doubly_indirect = err_if_zero(inode.doubly_indirect_block_pointers)?;
 
             let off_doubly = (block_off - offset_start) / blocknumber_per_block as u64;
@@ -625,12 +631,11 @@ impl Ext2Filesystem {
             return Ok(());
         }
 
-        /* TRIPLY INDIRECT ADDRESSING */
+        // TRIPLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end +=
             (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
-            // dbg!("triply indirect addressing");
             let off_triply =
                 (block_off - offset_start) / (blocknumber_per_block * blocknumber_per_block) as u64;
 
@@ -686,9 +691,7 @@ impl Ext2Filesystem {
         let block_off = offset / self.block_size as u64;
         let blocknumber_per_block = self.block_size as usize / size_of::<Block>();
 
-        /*
-         * SIMPLE ADDRESSING
-         */
+        // SIMPLE ADDRESSING
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
@@ -702,10 +705,8 @@ impl Ext2Filesystem {
             )?) + offset % self.block_size as u64);
         }
 
-        /*
-         * SINGLY INDIRECT ADDRESSING
-         * 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
-         */
+        // SINGLY INDIRECT ADDRESSING
+        // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
         offset_start = offset_end;
         offset_end += blocknumber_per_block as u64;
         if block_off >= offset_start && block_off < offset_end {
@@ -728,9 +729,7 @@ impl Ext2Filesystem {
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
 
-        /*
-         * DOUBLY INDIRECT ADDRESSING
-         */
+        // DOUBLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
@@ -755,9 +754,7 @@ impl Ext2Filesystem {
             return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
         }
 
-        /*
-         * TRIPLY INDIRECT ADDRESSING
-         */
+        // TRIPLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end +=
             (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
@@ -803,24 +800,22 @@ impl Ext2Filesystem {
     /// Return which block store the file data at offset T
     /// Simple Read
     fn inode_data(&mut self, inode: &Inode, offset: u64) -> IoResult<u64> {
-        let block_off = offset / self.block_size as u64;
+        let block_off = offset >> self.block_shift as u64;
         let blocknumber_per_block = self.block_size as usize / size_of::<Block>();
+        let blocknumber_per_block_mask = blocknumber_per_block - 1;
+        let blocknumber_per_block_shift = usize::trailing_zeros(blocknumber_per_block);
 
-        /*
-         * SIMPLE ADDRESSING
-         */
+        // SIMPLE ADDRESSING
         let mut offset_start = 0;
         let mut offset_end = 12;
         if block_off >= offset_start && block_off < offset_end {
             return Ok(self.to_addr(err_if_zero(
                 inode.direct_block_pointers[block_off as usize],
-            )?) + offset % self.block_size as u64);
+            )?) + (offset & self.block_mask as u64));
         }
 
-        /*
-         * SINGLY INDIRECT ADDRESSING
-         * 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
-         */
+        // SINGLY INDIRECT ADDRESSING
+        // 12 * blocksize .. 12 * blocksize + (blocksize / 4) * blocksize
         offset_start = offset_end;
         offset_end += blocknumber_per_block as u64;
         if block_off >= offset_start && block_off < offset_end {
@@ -829,32 +824,28 @@ impl Ext2Filesystem {
 
             let addr = self.to_addr(singly_indirect);
             let pointer = self.get_pointer(addr, off, Level::L1)?;
-            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+            return Ok(self.to_addr(pointer) + (offset & self.block_mask as u64));
         }
 
-        /*
-         * DOUBLY INDIRECT ADDRESSING
-         */
+        // DOUBLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end += (blocknumber_per_block * blocknumber_per_block) as u64;
         if block_off >= offset_start && block_off < offset_end {
-            let off = (block_off - offset_start) / blocknumber_per_block as u64;
+            let off = (block_off - offset_start) >> blocknumber_per_block_shift as u64;
             let doubly_indirect = err_if_zero({ inode.doubly_indirect_block_pointers })?;
 
             let addr = self.to_addr(doubly_indirect);
             let pointer_to_pointer = self.get_pointer(addr, off, Level::L1)?;
 
-            let off = (block_off - offset_start) % blocknumber_per_block as u64;
+            let off = (block_off - offset_start) & blocknumber_per_block_mask as u64;
 
             let addr = self.to_addr(pointer_to_pointer);
             let pointer = self.get_pointer(addr, off, Level::L2)?;
 
-            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+            return Ok(self.to_addr(pointer) + (offset & self.block_mask as u64));
         }
 
-        /*
-         * TRIPLY INDIRECT ADDRESSING
-         */
+        // TRIPLY INDIRECT ADDRESSING
         offset_start = offset_end;
         offset_end +=
             (blocknumber_per_block * blocknumber_per_block * blocknumber_per_block) as u64;
@@ -868,19 +859,19 @@ impl Ext2Filesystem {
 
             let off = (((block_off - offset_start)
                 % (blocknumber_per_block * blocknumber_per_block) as u64)
-                / blocknumber_per_block as u64) as u64;
+                >> blocknumber_per_block_shift as u64) as u64;
 
             let addr = self.to_addr(pointer_to_pointer_to_pointer);
             let pointer_to_pointer = self.get_pointer(addr, off, Level::L2)?;
 
             let off = (((block_off - offset_start)
                 % (blocknumber_per_block * blocknumber_per_block) as u64)
-                % blocknumber_per_block as u64) as u64;
+                & blocknumber_per_block_mask as u64) as u64;
 
             let addr = self.to_addr(pointer_to_pointer);
             let pointer = self.get_pointer(addr, off, Level::L3)?;
 
-            return Ok(self.to_addr(pointer) + offset % self.block_size as u64);
+            return Ok(self.to_addr(pointer) + (offset & self.block_mask as u64));
         }
         Err(Errno::EFBIG)
     }
