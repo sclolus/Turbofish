@@ -1,5 +1,5 @@
 use super::scheduler::SCHEDULER;
-use super::vfs::Path;
+use super::vfs::{Path, VFS};
 use super::SysResult;
 use core::convert::TryFrom;
 use libc_binding::{c_char, dev_t, mode_t, Errno, FileType};
@@ -21,11 +21,11 @@ pub fn sys_mknod(path: *const c_char, mut mode: mode_t, _dev: dev_t) -> SysResul
         let mask = tg.umask;
         mode = mode & !mask;
 
-        let _creds = &tg.credentials;
-        let _cwd = &tg.cwd;
-        let _path = Path::try_from(safe_path)?;
-        let _mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
-        // VFS.lock().mknod(cwd, creds, path, mode)?;
-        unimplemented!()
+        let creds = &tg.credentials;
+        let cwd = &tg.cwd;
+        let path = Path::try_from(safe_path)?;
+        let mode = FileType::from_bits(mode as u16).ok_or(Errno::EINVAL)?;
+        VFS.lock().mknod(cwd, creds, path, mode)?;
+        Ok(0)
     })
 }

@@ -6,8 +6,9 @@ use crate::tools::IoResult;
 use crate::Ext2Filesystem;
 use alloc::vec::Vec;
 use core::cmp::min;
+use core::convert::TryFrom;
 use fallible_collections::TryCollect;
-use libc_binding::{gid_t, uid_t, utimbuf, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, uid_t, utimbuf, Errno, FileType};
 
 impl Ext2Filesystem {
     /// The utime() function shall set the access and modification
@@ -89,15 +90,14 @@ impl Ext2Filesystem {
         &mut self,
         filename: &str,
         parent_inode_nbr: u32,
-        flags: OpenFlags,
         timestamp: u32,
-        mut mode: FileType,
+        file_type: FileType,
     ) -> IoResult<(DirectoryEntry, Inode)> {
-        mode = (FileType::PERMISSIONS_MASK & mode) | FileType::REGULAR_FILE;
-        let direntry_type = DirectoryEntryType::RegularFile;
+        let direntry_type = DirectoryEntryType::try_from(file_type).expect("bad file type");
+        //TODO: remove expect
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        let mut inode = Inode::new(mode);
+        let mut inode = Inode::new(file_type);
 
         inode.last_access_time = timestamp;
         inode.creation_time = timestamp;

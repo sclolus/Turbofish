@@ -669,8 +669,8 @@ impl VirtualFileSystem {
                 let fs_entry = fs.lock().create(
                     path.filename().expect("no filename").as_str(),
                     inode_number,
-                    flags,
-                    mode,
+                    // Open creates regular files
+                    FileType::REGULAR_FILE | mode,
                 )?;
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
@@ -832,7 +832,7 @@ impl VirtualFileSystem {
         if let Ok(_) = self.pathname_resolution(cwd, &path) {
             return Err(EEXIST);
         }
-        let filename = path.pop();
+        let filename = path.pop().ok_or(EINVAL)?;
         let entry_id = self.pathname_resolution(cwd, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
@@ -842,11 +842,40 @@ impl VirtualFileSystem {
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
-        let fs_entry = fs.lock().create_dir(
-            inode_id.inode_number,
-            filename.expect("should have a filename").as_str(),
-            mode,
-        )?;
+        let fs_entry = fs
+            .lock()
+            .create_dir(inode_id.inode_number, filename.as_str(), mode)?;
+        self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
+        Ok(())
+    }
+
+    pub fn mknod(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        mut path: Path,
+        mode: FileType,
+    ) -> SysResult<()> {
+        if mode & FileType::S_IFMT != FileType::FIFO {
+            unimplemented!()
+        }
+        if let Ok(_) = self.pathname_resolution(cwd, &path) {
+            return Err(EEXIST);
+        }
+        let filename = path.pop().ok_or(EINVAL)?;
+        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        if !entry.is_directory() {
+            return Err(ENOTDIR);
+        }
+        let inode_id = entry.inode_id;
+
+        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs_cloned = fs.clone();
+
+        let fs_entry = fs
+            .lock()
+            .create(filename.as_str(), inode_id.inode_number, mode)?;
         self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
