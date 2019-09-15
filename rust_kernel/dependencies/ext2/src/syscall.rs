@@ -258,44 +258,68 @@ impl Ext2Filesystem {
     }
 
     /// for read syscall
-    pub fn read(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &mut [u8]) -> IoResult<u64> {
+    pub fn read(
+        &mut self,
+        inode_nbr: u32,
+        file_offset: &mut u64,
+        mut buf: &mut [u8],
+    ) -> IoResult<u64> {
+        // println!("Read syscall of {:?}", buf.len());
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
-        let file_curr_offset_start = *file_offset;
+
         if *file_offset > inode.get_size() {
             panic!("file_offset > inode.get_size()");
         }
+
+        // EOF
         if *file_offset == inode.get_size() {
             return Ok(0);
         }
 
-        let data_address = self
-            .inode_data((&mut inode, inode_addr), *file_offset)
-            .unwrap();
-        let offset = min(
-            inode.get_size() - *file_offset,
-            min(
-                self.block_size as u64 - *file_offset % self.block_size as u64,
-                buf.len() as u64,
-            ),
-        );
-        let data_read = self
-            .disk
-            .read_buffer(data_address, &mut buf[0..offset as usize])?;
-        *file_offset += data_read as u64;
-        if data_read < offset {
-            return Ok(*file_offset - file_curr_offset_start);
+        // Resize buf if read overflow
+        if *file_offset + buf.len() as u64 > inode.get_size() {
+            buf = &mut buf[..(inode.get_size() - *file_offset) as usize];
         }
 
-        for chunk in buf[offset as usize..].chunks_mut(self.block_size as usize) {
-            let data_address = self
-                .inode_data((&mut inode, inode_addr), *file_offset)
-                .unwrap();
-            let offset = min((inode.get_size() - *file_offset) as usize, chunk.len());
-            let data_read = self.disk.read_buffer(data_address, &mut chunk[0..offset])?;
-            *file_offset += data_read as u64;
-            if data_read < chunk.len() as u64 {
-                return Ok(*file_offset - file_curr_offset_start);
+        let file_curr_offset_start = *file_offset;
+        let block_mask = (self.block_size - 1) as u64;
+
+        //println!("buf size: {:?}", buf.len());
+        //println!("inode_size: {:#X?} file_offset: {:#X?} len buf: {:?}", inode.get_size(), *file_offset, buf.len());
+        while buf.len() != 0 {
+            let mut bytes_to_read = 0;
+
+            let mut start_data_address = None;
+            let mut last_data_address: Option<u64> = None;
+            loop {
+                let data_address = self
+                    .inode_data((&mut inode, inode_addr), *file_offset)
+                    .expect("WTF");
+                if let Some(last_address) = last_data_address {
+                    if data_address != last_address + self.block_size as u64 {
+                        break;
+                    }
+                } else {
+                    start_data_address = Some(data_address);
+                }
+                let bytes = min(
+                    self.block_size as u64 - (*file_offset & block_mask),
+                    inode.get_size() - *file_offset,
+                );
+                *file_offset += bytes;
+                bytes_to_read += bytes;
+                if bytes_to_read == buf.len() as u64 {
+                    break;
+                }
+                last_data_address = Some(data_address);
             }
+            //println!("Reading chunk of {:?}: {:#X?} {:#X?} len buf: {:?}", bytes_to_read, inode.get_size(), *file_offset, buf.len());
+            let data_read = self.disk.read_buffer(
+                start_data_address.expect("WOOT"),
+                &mut buf[0..bytes_to_read as usize],
+            )?;
+            //assert!(data_read == bytes_to_read);
+            buf = &mut buf[bytes_to_read as usize..];
         }
         Ok(*file_offset - file_curr_offset_start)
     }
