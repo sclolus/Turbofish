@@ -125,7 +125,7 @@ pub fn sys_execve(
         let cwd = &tg.cwd;
         // This seems unefficient since pathname resolution will be executed two times:
         // here and in get_file_content. And pathname needs to be clone...
-        let file_type = VFS.lock().file_type(cwd, pathname.try_clone()?)?;
+        let file_type = VFS.lock().file_type(cwd, creds, pathname.try_clone()?)?;
 
         if !file_type.is_regular() {
             return Err(Errno::EACCESS);

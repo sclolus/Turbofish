@@ -120,6 +120,7 @@ pub struct InodeData {
     pub link_number: nlink_t,
     pub access_mode: FileType,
 
+    //TODO: chnage this to (owner, group),
     pub uid: uid_t,
     pub gid: gid_t,
 
