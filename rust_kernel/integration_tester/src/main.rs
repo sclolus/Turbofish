@@ -4,7 +4,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::process::{Command, ExitStatus};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use toml::Value;
 use wait_timeout::ChildExt;
 
@@ -81,7 +81,7 @@ fn main() {
         }
     };
     println!("running {} tests", tests.len());
-    let all_result: Vec<Result<(), TestError>> = tests
+    let all_result: Vec<Result<Duration, TestError>> = tests
         .iter()
         .map(|feature| {
             let native = if feature.starts_with("native-test-") {
@@ -145,7 +145,7 @@ fn main() {
                 env!("PWD"),
                 format!("{}-output", feature)
             );
-            exec_command("date", &[]);
+            let start_test = Instant::now();
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
@@ -196,7 +196,7 @@ fn main() {
                             show_output();
                         }
                         println!("{}", "Ok".green().bold());
-                        Ok(())
+                        Ok(Instant::duration_since(&Instant::now(), start_test))
                     }
                 }
                 Ok(None) => {
@@ -208,6 +208,11 @@ fn main() {
             }
         })
         .collect();
+    for res in &all_result {
+        if let Ok(duration) = res {
+            println!("Test Duration: {:#?}s", duration.as_secs());
+        }
+    }
     let total_succeed = all_result.iter().filter(|r| r.is_ok()).count();
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(
@@ -220,5 +225,4 @@ fn main() {
         total_succeed,
         total_failed
     );
-    exec_command("date", &[]);
 }
