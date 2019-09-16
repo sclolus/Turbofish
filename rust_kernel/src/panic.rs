@@ -166,6 +166,6 @@ pub fn qemu_check() {
     {
         // for integration test
         use crate::tests::helpers::exit_qemu;
-        exit_qemu(1);
+        let _res = exit_qemu(1);
     }
 }
