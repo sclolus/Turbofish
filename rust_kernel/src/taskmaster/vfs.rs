@@ -668,6 +668,29 @@ impl VirtualFileSystem {
             .expect("No corresponding Inode for Directory"))
     }
 
+    /// Checks if the given `amode` is permitted for the file pointed by `path`
+    pub fn is_access_granted(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+        amode: Amode,
+    ) -> bool {
+        let direntry_id = match self.pathname_resolution(cwd, creds, path) {
+            Err(_) => return false,
+            Ok(id) => id,
+        };
+
+        let inode = self.get_inode_from_direntry_id(direntry_id).unwrap();
+
+        // Ensure that non-regular files are not executables regardless of the file permissions.
+        if !inode.access_mode.is_regular() && amode.contains(Amode::EXECUTE) {
+            return false;
+        }
+
+        creds.is_access_granted(inode.access_mode, amode, (inode.uid, inode.gid))
+    }
+
     /// La fonction open() du vfs sera appelee par la fonction open()
     /// de l'ipc
     /// Elle doit logiquement renvoyer un FileOperation ou une erreur

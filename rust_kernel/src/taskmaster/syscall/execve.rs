@@ -13,7 +13,7 @@ use libc_binding::c_char;
 use core::convert::TryFrom;
 
 use fallible_collections::TryClone;
-use libc_binding::Errno;
+use libc_binding::{Amode, Errno};
 
 use super::vfs::{Path, VFS};
 
@@ -125,11 +125,13 @@ pub fn sys_execve(
         let cwd = &tg.cwd;
         // This seems unefficient since pathname resolution will be executed two times:
         // here and in get_file_content. And pathname needs to be clone...
-        let file_type = VFS.lock().file_type(cwd, creds, pathname.try_clone()?)?;
-
-        if !file_type.is_regular() {
+        if !VFS
+            .lock()
+            .is_access_granted(cwd, creds, &pathname.try_clone()?, Amode::EXECUTE)
+        {
             return Err(Errno::EACCESS);
         }
+
         let content = get_file_content(cwd, creds, pathname)?;
 
         let mut new_process = unsafe {
