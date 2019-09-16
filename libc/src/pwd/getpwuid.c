@@ -51,7 +51,7 @@ struct passwd *getpw_common(void *cmp, int f_comp(struct passwd *ref, void *cmp)
 
 	bool founded = false;
 	for (int i = 0; a[i] != NULL; i++) {
-		print_passwd(a[i]);
+		/* print_passwd(a[i]); */
 		if (f_comp(a[i], cmp) == 0) {
 			if (static_area.pw_name != NULL) {
 				free_passwd(&static_area);
