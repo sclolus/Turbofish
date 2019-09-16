@@ -89,12 +89,11 @@ pub fn handle_key_press(key_pressed: KeySymb) {
     messaging::push_message(MessageTo::Tty { key_pressed })
 }
 
-use elf_loader::{SegmentType, SymbolTable};
-use fallible_collections::FallibleArc;
-use kernel_modules::{ModuleName, ModuleResult, SymbolList};
-
 use alloc::sync::Arc;
 use core::slice;
+use elf_loader::{SegmentType, SymbolTable};
+use fallible_collections::FallibleArc;
+use kernel_modules::{ForeignAllocMethods, ModuleName, ModuleResult, SymbolList};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
@@ -103,6 +102,13 @@ use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 fn write(s: &str) {
     print!("{}", s);
+}
+
+extern "C" {
+    fn kmalloc(len: usize) -> *mut u8;
+    fn kcalloc(count: usize, size: usize) -> *mut u8;
+    fn kfree(ptr: *mut u8);
+    fn krealloc(addr: *mut u8, new_size: usize) -> *mut u8;
 }
 
 fn test() {
@@ -173,7 +179,18 @@ fn test() {
 
     let p: fn(SymbolList, ModuleName) -> ModuleResult<()> = unsafe { core::mem::transmute(addr) };
 
-    let ret = p(SymbolList { write }, ModuleName::Dummy);
+    let ret = p(
+        SymbolList {
+            write,
+            alloc_tools: ForeignAllocMethods {
+                kmalloc,
+                kcalloc,
+                kfree,
+                krealloc,
+            },
+        },
+        ModuleName::Dummy,
+    );
     println!("ret = {:?}", ret);
 }
 

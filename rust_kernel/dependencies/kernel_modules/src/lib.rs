@@ -18,14 +18,16 @@ pub enum ModuleName {
 #[derive(Copy, Clone)]
 pub struct SymbolList {
     pub write: fn(&str),
+    pub alloc_tools: ForeignAllocMethods,
 }
 
-// fn begin(symtab_list: *const SymbolList, module_type: ModuleName) -> ModuleResult<()>;
-
-// use core::mem;
-// use raw_data::define_raw_data;
-
-// define_raw_data!(FlatBinaryExecutableCode, 440);
+#[derive(Copy, Clone)]
+pub struct ForeignAllocMethods {
+    pub kmalloc: unsafe extern "C" fn(usize) -> *mut u8,
+    pub kcalloc: unsafe extern "C" fn(usize, usize) -> *mut u8,
+    pub kfree: unsafe extern "C" fn(*mut u8),
+    pub krealloc: unsafe extern "C" fn(*mut u8, usize) -> *mut u8,
+}
 
 #[cfg(test)]
 mod tests {
