@@ -710,9 +710,19 @@ impl VirtualFileSystem {
             _ => {
                 let parent_id = self.pathname_resolution(cwd, creds, &path.parent()?)?;
                 let parent_entry = self.dcache.get_entry(&parent_id)?;
+                let parent_inode = self.get_inode_from_direntry_id(parent_id)?;
 
                 let inode_id = parent_entry.inode_id;
                 let inode_number = inode_id.inode_number as u32;
+
+                if !creds.is_access_granted(
+                    parent_inode.access_mode,
+                    Amode::WRITE,
+                    (parent_inode.uid, parent_inode.gid),
+                ) {
+                    return Err(Errno::EACCES);
+                }
+
                 let fs = self.get_filesystem_mut(inode_id).expect("no filesystem");
                 let fs_cloned = fs.clone();
 
