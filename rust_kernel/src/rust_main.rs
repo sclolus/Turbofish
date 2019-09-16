@@ -97,5 +97,9 @@ pub extern "C" fn kmain(
 
     crate::drivers::storage::init(&multiboot_info);
 
-    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/session_manager", "/bin/shell"], &[]);
+    crate::taskmaster::start(
+        "/bin/init",
+        &["/bin/init", "/bin/session_manager", "/bin/shell"],
+        &[],
+    );
 }

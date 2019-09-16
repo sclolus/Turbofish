@@ -9,6 +9,8 @@ CC = i686-turbofish-gcc
 
 SRC_C += init \
 		session_manager \
+		rmmod \
+		insmod \
 
 VPATH += src
 
