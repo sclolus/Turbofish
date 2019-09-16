@@ -18,8 +18,9 @@ rust_archive := target/$(target)/release/lib$(LIBMOD).a
 
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 
-AS = i686-turbofish-ld
+AS = i686-turbofish-as
 CC = i686-turbofish-gcc
+LD = i686-turbofish-ld
 NASM = nasm
 
 ASFLAGS = -f elf
@@ -37,7 +38,6 @@ OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C))))
 all: .rust-toolchain .xbuild-toolchain build_rust $(MODULE)
 
 $(MODULE): $(OBJ_ASM) $(rust_archive)
-	echo $(MODULE)
 	$(LD) $(LDFLAGS) -o $@ $^
 	cp -rv --parents $@ $(SYSTEM_ROOT)/turbofish/
 
