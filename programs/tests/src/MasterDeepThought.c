@@ -15,6 +15,7 @@ void _exit_qemu(int val)
 	exit(val);
 #else
 	exit_qemu(val);
+	while (1);
 #endif
 }
 

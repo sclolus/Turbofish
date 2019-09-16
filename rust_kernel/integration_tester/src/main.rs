@@ -9,6 +9,7 @@ use toml::Value;
 use wait_timeout::ChildExt;
 
 const TIMEOUT: Duration = Duration::from_secs(120);
+const GRAPHIC_TIMEOUT: Duration = Duration::from_secs(3006);
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -114,7 +115,7 @@ fn main() {
                         },
                         feature,
                         if matches.opt_present("g") {
-                            ""
+                            "no-exit-qemu"
                         } else {
                             "serial-eprintln,exit-on-panic"
                         }
@@ -183,7 +184,11 @@ fn main() {
                 println!("{}: {}", "OUTPUT".blue().bold(), output);
             };
 
-            match child.wait_timeout(TIMEOUT) {
+            match child.wait_timeout(if matches.opt_present("g") {
+                GRAPHIC_TIMEOUT
+            } else {
+                TIMEOUT
+            }) {
                 Err(e) => panic!("Internal error: {}", e),
                 Ok(Some(exit_status)) => {
                     let exit_status = exit_status.code().unwrap() >> 1;
