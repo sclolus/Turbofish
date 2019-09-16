@@ -64,6 +64,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/fifo/fifo"},
 	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},
+	{.path = "/bin/open/cannot_open_with_bad_perms"},
 	{.path = "/bin/open/open_fails_with_eaccess_basic"},
 	{.path = "/bin/rename/rename_dir_not_empty"},
 	{.path = "/bin/rename/rename_dir_exist"},

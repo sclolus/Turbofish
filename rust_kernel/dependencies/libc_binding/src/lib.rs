@@ -742,10 +742,83 @@ bitflags! {
     }
 }
 
+/// We can creat an Amode from an Openflags that tells us the requested access permissions.
+impl From<OpenFlags> for Amode {
+    fn from(flags: OpenFlags) -> Self {
+        let ASSOC: [(OpenFlags, Amode); 6] = [
+            (OpenFlags::O_EXEC, Amode::EXECUTE),
+            (OpenFlags::O_RDONLY, Amode::READ),
+            (OpenFlags::O_WRONLY, Amode::WRITE),
+            (OpenFlags::O_RDWR, Amode::READ | Amode::WRITE),
+            (OpenFlags::O_SEARCH, Amode::SEARCH),
+            (OpenFlags::O_TRUNC, Amode::WRITE),
+        ];
+        ASSOC
+            .iter()
+            .fold(Amode::empty(), |mut amode, (corresponding, requested)| {
+                if flags.contains(*corresponding) {
+                    amode.insert(*requested);
+                }
+                amode
+            })
+    }
+}
+
 /// Also known as File Classes in POSIX-2018.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PermissionClass {
     Owner,
     Group,
     Other,
+}
+
+mod amode_should {
+    use super::{Amode, OpenFlags};
+
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    macro_rules! amode_from_openflags {
+        (failing, $amode: expr, $flags: expr, $name: ident) => {
+            make_test!(failing, { assert_eq!(Amode::from($flags), $amode) }, $name);
+        };
+
+        ($amode: expr, $flags: expr, $name: ident) => {
+            make_test!({ assert_eq!(Amode::from($flags), $amode) }, $name);
+        };
+    }
+
+    amode_from_openflags! {
+        Amode::READ, OpenFlags::O_RDONLY, be_read_on_o_rdonly
+    }
+
+    amode_from_openflags! {
+        Amode::WRITE, OpenFlags::O_WRONLY, be_write_on_o_wronly
+    }
+
+    amode_from_openflags! {
+        Amode::SEARCH, OpenFlags::O_SEARCH, be_search_on_o_search
+    }
+
+    amode_from_openflags! {
+        Amode::READ | Amode::WRITE, OpenFlags::O_RDWR, be_read_write_on_o_rdwr
+    }
+
+    amode_from_openflags! {
+        Amode::WRITE, OpenFlags::O_TRUNC, be_write_on_o_trunc
+    }
+
 }

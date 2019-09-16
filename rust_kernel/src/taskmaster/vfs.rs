@@ -653,6 +653,21 @@ impl VirtualFileSystem {
         }
     }
 
+    /// Gets the corresponding inode for a directory entry of id `direntry_id`.
+    /// This methods helps removing the currently popular boilerplate.
+    ///
+    /// Panic:
+    /// Panics if there is no corresponding inode for the given direntry_id.
+    fn get_inode_from_direntry_id(&self, direntry_id: DirectoryEntryId) -> SysResult<&Inode> {
+        let direntry = self.dcache.get_entry(&direntry_id)?;
+
+        // should we remove this panic
+        Ok(self
+            .inodes
+            .get(&direntry.inode_id)
+            .expect("No corresponding Inode for Directory"))
+    }
+
     /// La fonction open() du vfs sera appelee par la fonction open()
     /// de l'ipc
     /// Elle doit logiquement renvoyer un FileOperation ou une erreur
@@ -674,7 +689,23 @@ impl VirtualFileSystem {
             Ok(_id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
                 return Err(Errno::EEXIST)
             }
-            Ok(id) => entry_id = id,
+            Ok(id) => {
+                let amode = Amode::from(flags);
+                let inode = self.get_inode_from_direntry_id(id)?;
+
+                log::warn!(
+                    "inode: {}, filetyp: {:?}, amode: {:?}",
+                    path,
+                    inode.access_mode,
+                    amode
+                );
+                if !creds.is_access_granted(inode.access_mode, amode, (inode.uid, inode.gid)) {
+                    return Err(Errno::EACCES);
+                }
+                log::warn!("Access was granted");
+
+                entry_id = id;
+            }
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
                 let parent_id = self.pathname_resolution(cwd, creds, &path.parent()?)?;
@@ -691,6 +722,7 @@ impl VirtualFileSystem {
                     // Open creates regular files
                     FileType::REGULAR_FILE | mode,
                 )?;
+                log::error!("Created: {} with filetype {:?}", path, mode);
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
         }
