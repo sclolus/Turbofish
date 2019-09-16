@@ -6,13 +6,14 @@ use super::scheduler::{Scheduler, SCHEDULER};
 
 pub type SocketArgsPtr = *const u8;
 
-use libc_binding::{Errno, PATH_MAX};
+use super::vfs::{Path, VFS};
+use libc_binding::{Errno, FileType, PATH_MAX};
 
 const PATH_MAX_USIZE: usize = PATH_MAX as usize;
 
 use sync::DeadMutexGuard;
 
-use core::convert::TryInto;
+use core::convert::{TryFrom, TryInto};
 use core::slice;
 
 use crate::memory::AddressSpace;
@@ -31,7 +32,7 @@ macro_rules! safe_convertible_enum {
         #[$main_doc]
         #[$derive]
         #[repr($primitive_type)]
-        enum $name {
+        pub enum $name {
             $(
                 #[$doc]
                 $variant = $value,
@@ -141,6 +142,13 @@ visible_byte_array!(
     struct SockPathname([u8; PATH_MAX_USIZE]);
 );
 
+impl SockPathname {
+    pub fn as_str(&self) -> SysResult<&str> {
+        let end = self.0.iter().position(|c| *c == 0).ok_or(Errno::EINVAL)?;
+        core::str::from_utf8(&self.0[0..end]).map_err(|_| Errno::EINVAL)
+    }
+}
+
 /// This is the basic structure for exchanging packet with UNIX socket
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
@@ -155,7 +163,7 @@ struct SockaddrUnix {
 #[derive(Debug)]
 enum Sockaddr {
     /// UNIX socket
-    Unix(&'static SockaddrUnix),
+    Unix(SockaddrUnix),
 }
 
 /// TryFrom boilerplate for Sockaddr
@@ -174,9 +182,9 @@ impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const u8, usize
                         .check_user_ptr::<SockaddrUnix>(arg.1 as *const SockaddrUnix)?;
                     unsafe {
                         Ok(Sockaddr::Unix(
-                            (arg.1 as *const SockaddrUnix)
+                            *((*arg.1 as *const SockaddrUnix)
                                 .as_ref()
-                                .ok_or(Errno::EINVAL)?,
+                                .ok_or(Errno::EINVAL)?),
                         ))
                     }
                 } else {
@@ -384,7 +392,7 @@ raw_deferencing_struct!(
 type SockLen = usize;
 
 fn socket(
-    _scheduler: &mut Scheduler,
+    scheduler: &mut Scheduler,
     domain: Domain,
     socket_type: SocketType,
     protocol: u32,
@@ -396,7 +404,12 @@ fn socket(
         socket_type,
         protocol
     );
-    Ok(3)
+    let tg = scheduler.current_thread_group_mut();
+    let fd_interface = &mut tg
+        .thread_group_state
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    fd_interface.open_socket(domain, socket_type)
 }
 
 raw_deferencing_struct!(
@@ -413,8 +426,17 @@ raw_deferencing_struct!(
     }
 );
 
-fn bind(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
+fn bind(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
     println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
+
+    let tg = scheduler.current_thread_group_mut();
+    let creds = &tg.credentials;
+    let cwd = &tg.cwd;
+    let path = match sockaddr {
+        Sockaddr::Unix(unix_sockaddr) => Path::try_from(unix_sockaddr.sun_path.as_str()?)?,
+        // _ => Err(Errno::EINVAL)?,
+    };
+    VFS.lock().mknod(cwd, creds, path, FileType::UNIX_SOCKET)?;
     Ok(0)
 }
 

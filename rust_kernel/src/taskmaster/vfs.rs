@@ -856,7 +856,9 @@ impl VirtualFileSystem {
         mut path: Path,
         mode: FileType,
     ) -> SysResult<()> {
-        if mode & FileType::S_IFMT != FileType::FIFO {
+        if mode & FileType::S_IFMT != FileType::FIFO
+            && mode & FileType::S_IFMT != FileType::UNIX_SOCKET
+        {
             //TODO: remove that, and check create function filesystem
             unimplemented!()
         }

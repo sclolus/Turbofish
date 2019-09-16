@@ -7,9 +7,7 @@ use super::vfs::{InodeId, VFS};
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::Pipe;
-pub use ipc::Socket;
-pub use ipc::{FifoDriver, FifoFileOperation};
+pub use ipc::{FifoDriver, FifoFileOperation, Pipe, Socket};
 
 pub mod tty;
 pub use tty::TtyDevice;

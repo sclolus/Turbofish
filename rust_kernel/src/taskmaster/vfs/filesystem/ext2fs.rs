@@ -71,6 +71,8 @@ impl Ext2fs {
                 builder.set_fifo();
             } else if direntry.header.type_indicator == DirectoryEntryType::SymbolicLink {
                 builder.set_symlink(self.read_symlink(&inode, inode_nbr).unwrap());
+            } else if direntry.header.type_indicator == DirectoryEntryType::Socket {
+                builder.set_socket();
             }
             builder.build()
         };
