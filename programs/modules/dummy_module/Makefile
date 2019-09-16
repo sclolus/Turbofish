@@ -13,8 +13,12 @@ SRC_C +=
 arch := ivybridge-cpu
 target := $(arch)
 custom_target := $(arch).json
-cargo_flags += --release
-rust_archive := target/$(target)/release/lib$(LIBMOD).a
+ifeq ($(DEBUG),yes)
+	rust_archive = target/$(target)/debug/lib$(LIBMOD).a
+else
+	optim_level += --release
+	rust_archive = target/$(target)/release/lib$(LIBMOD).a
+endif
 
 CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 
@@ -61,7 +65,7 @@ $(OBJ_DIR)/%.o: %.c Makefile
 
 build_rust:
 	echo $(MODULE)
-	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
+	cargo xbuild $(optim_level) --target $(custom_target) --verbose
 
 clean:
 	cargo clean
