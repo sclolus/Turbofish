@@ -12,4 +12,3 @@ int mknod(const char *path, mode_t mode, dev_t dev)
 	int ret = _user_syscall(MKNOD, 3, path, mode, dev);
 	set_errno_and_return(ret);
 }
-

@@ -13,7 +13,7 @@ use core::cmp;
 
 use messaging::MessageTo;
 
-struct Buf([u8; Self::BUF_SIZE]);
+pub struct Buf([u8; Self::BUF_SIZE]);
 
 /// Deref boilerplate for Buf
 impl core::ops::Deref for Buf {
@@ -49,7 +49,7 @@ impl core::fmt::Debug for Buf {
 
 /// Buf implementation
 impl Buf {
-    const BUF_SIZE: usize = 128;
+    pub const BUF_SIZE: usize = 128;
 }
 
 /// This structure represents a FileOperation of type Pipe

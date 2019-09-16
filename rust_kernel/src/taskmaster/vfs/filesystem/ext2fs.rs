@@ -10,9 +10,7 @@ use core::str;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use fallible_collections::TryCollect;
-use libc_binding::{
-    gid_t, statfs, uid_t, utimbuf, FileType, OpenFlags, EXT2_SUPER_MAGIC, NAME_MAX,
-};
+use libc_binding::{gid_t, statfs, uid_t, utimbuf, FileType, EXT2_SUPER_MAGIC, NAME_MAX};
 
 use sync::DeadMutex;
 
@@ -154,7 +152,6 @@ impl FileSystem for Ext2fs {
         &mut self,
         filename: &str,
         parent_inode_nbr: u32,
-        flags: OpenFlags,
         mode: FileType,
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         // We probably should provide it as a parameter to this method.
@@ -162,7 +159,7 @@ impl FileSystem for Ext2fs {
         let (direntry, inode) =
             self.ext2
                 .lock()
-                .create(filename, parent_inode_nbr, flags, timestamp, mode)?;
+                .create(filename, parent_inode_nbr, timestamp, mode)?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
 

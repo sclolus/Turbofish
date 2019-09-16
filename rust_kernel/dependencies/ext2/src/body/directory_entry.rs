@@ -5,7 +5,7 @@ use crate::tools::IoResult;
 use core::convert::{TryFrom, TryInto};
 use core::fmt;
 use core::mem::size_of;
-use libc_binding::{c_char, Errno, NAME_MAX};
+use libc_binding::{c_char, Errno, FileType, NAME_MAX};
 
 // Directories are inodes which contain some number of "entries" as their contents.
 // These entries are nothing more than a name/inode pair. For instance the inode
@@ -71,6 +71,22 @@ pub enum DirectoryEntryType {
     Fifo,
     Socket,
     SymbolicLink,
+}
+
+impl TryFrom<FileType> for DirectoryEntryType {
+    type Error = Errno;
+    fn try_from(file_type: FileType) -> Result<Self, Self::Error> {
+        Ok(match file_type & FileType::S_IFMT {
+            FileType::UNIX_SOCKET => DirectoryEntryType::Socket,
+            FileType::SYMBOLIC_LINK => DirectoryEntryType::SymbolicLink,
+            FileType::REGULAR_FILE => DirectoryEntryType::RegularFile,
+            FileType::BLOCK_DEVICE => DirectoryEntryType::BlockDevice,
+            FileType::DIRECTORY => DirectoryEntryType::Directory,
+            FileType::CHARACTER_DEVICE => DirectoryEntryType::CharacterDevice,
+            FileType::FIFO => DirectoryEntryType::Fifo,
+            _ => Err(Errno::EINVAL)?,
+        })
+    }
 }
 
 /// Implementations of the Directory Entry

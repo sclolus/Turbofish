@@ -2,7 +2,7 @@ use super::{DirectoryEntry, SysResult};
 use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId, Path};
 use alloc::vec::Vec;
 use core::fmt::Debug;
-use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType, OpenFlags};
+use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
 
 pub mod dead;
 pub use dead::DeadFileSystem;
@@ -42,7 +42,6 @@ pub trait FileSystem: Send + Debug {
         &mut self,
         _filename: &str,
         _parent_inode_nbr: u32,
-        _flags: OpenFlags,
         _mode: FileType,
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
