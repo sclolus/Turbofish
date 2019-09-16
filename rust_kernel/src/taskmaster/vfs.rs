@@ -857,6 +857,7 @@ impl VirtualFileSystem {
         mode: FileType,
     ) -> SysResult<()> {
         if mode & FileType::S_IFMT != FileType::FIFO {
+            //TODO: remove that, and check create function filesystem
             unimplemented!()
         }
         if let Ok(_) = self.pathname_resolution(cwd, &path) {

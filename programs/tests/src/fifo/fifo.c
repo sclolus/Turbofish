@@ -48,6 +48,7 @@ int main() {
 	sprintf(filename, "./my_fifo_%d", pid);
 
 	printf("creating fifo: %s\n", filename);
+	unlink(filename);
 	assert(mkfifo(filename, 0644) == 0);
 
 

@@ -23,7 +23,7 @@ use messaging::MessageTo;
 #[derive(Debug)]
 pub struct FifoDriver {
     inode_id: InodeId,
-    operation: Arc<DeadMutex<FifoFileOperation>>,
+    operation: Arc<DeadMutex<FifoFileOperationData>>,
 }
 
 /// Main implementation of FifoDriver
@@ -32,8 +32,15 @@ impl FifoDriver {
         log::info!("Fifo Driver created !");
         Ok(Self {
             inode_id,
-            operation: Arc::try_new(DeadMutex::new(FifoFileOperation::new(inode_id)))?,
+            operation: Arc::try_new(DeadMutex::new(FifoFileOperationData::new(inode_id)))?,
         })
+    }
+
+    /// generate a fifo file operation which share its FifoFileOperationData with the driver
+    pub fn generate_file_operation(&self) -> SysResult<Arc<DeadMutex<dyn FileOperation>>> {
+        Ok(Arc::try_new(DeadMutex::new(FifoFileOperation::new(
+            self.operation.clone(),
+        )))?)
     }
 }
 
@@ -45,25 +52,23 @@ impl Driver for FifoDriver {
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         log::info!("Opening fifo");
 
-        // dbg!(flags);
-        // dbg!(&self.operation);
         if flags.contains(OpenFlags::O_RDONLY) {
             if self.operation.lock().output_ref == 0 {
                 Ok(IpcResult::Wait(
-                    self.operation.clone(),
+                    self.generate_file_operation()?,
                     self.operation.lock().file_op_uid,
                 ))
             } else {
-                Ok(IpcResult::Done(self.operation.clone()))
+                Ok(IpcResult::Done(self.generate_file_operation()?))
             }
         } else if flags.contains(OpenFlags::O_WRONLY) {
             if self.operation.lock().input_ref == 0 {
                 Ok(IpcResult::Wait(
-                    self.operation.clone(),
+                    self.generate_file_operation()?,
                     self.operation.lock().file_op_uid,
                 ))
             } else {
-                Ok(IpcResult::Done(self.operation.clone()))
+                Ok(IpcResult::Done(self.generate_file_operation()?))
             }
         } else {
             Err(Errno::EINVAL)
@@ -71,33 +76,58 @@ impl Driver for FifoDriver {
     }
 }
 
-/// This structure represents a FileOperation of type Fifo
 #[derive(Debug, Default)]
 pub struct FifoFileOperation {
+    pub data: Arc<DeadMutex<FifoFileOperationData>>,
+}
+
+impl FifoFileOperation {
+    pub fn new(data: Arc<DeadMutex<FifoFileOperationData>>) -> Self {
+        Self { data }
+    }
+}
+
+/// This structure represents a FileOperation of type Fifo
+#[derive(Debug, Default)]
+pub struct FifoFileOperationData {
     inode_id: InodeId,
     buf: Buf,
     input_ref: usize,
     output_ref: usize,
     current_index: usize,
     file_op_uid: usize,
+    ref_count: usize,
 }
 
 /// Main implementation for Fifo file operation
-impl FifoFileOperation {
+impl FifoFileOperationData {
     pub fn new(inode_id: InodeId) -> Self {
         log::info!("New fifo file operation registered");
-        let mut fifo = FifoFileOperation::default();
+        let mut fifo = FifoFileOperationData::default();
         fifo.file_op_uid = get_file_op_uid();
         fifo.inode_id = inode_id;
         fifo
     }
 }
 
-/// Main Trait implementation
 impl FileOperation for FifoFileOperation {
     fn register(&mut self, flags: OpenFlags) {
-        // dbg!("register");
-        // dbg!(flags);
+        self.data.lock().register(flags)
+    }
+    fn unregister(&mut self, flags: OpenFlags) {
+        self.data.lock().unregister(flags)
+    }
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        self.data.lock().read(buf)
+    }
+    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        self.data.lock().write(buf)
+    }
+}
+
+/// Main Trait implementation
+impl FileOperation for FifoFileOperationData {
+    fn register(&mut self, flags: OpenFlags) {
         if flags.contains(OpenFlags::O_RDONLY) {
             if self.input_ref == 0 && self.output_ref > 0 {
                 // if there wasn't any reader, but some writers, wake them all
@@ -205,6 +235,6 @@ impl FileOperation for FifoFileOperation {
 impl Drop for FifoFileOperation {
     fn drop(&mut self) {
         eprintln!("Fifo droped !");
-        VFS.lock().close_file_operation(self.inode_id);
+        VFS.lock().close_file_operation(self.data.lock().inode_id);
     }
 }
