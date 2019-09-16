@@ -18,6 +18,7 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},
 	{.path = "/bin/rename/rename_dir_not_empty"},
 	{.path = "/bin/rename/rename_dir_exist"},
@@ -155,7 +156,6 @@ int main() {
 			wait_test();
 		}
 	}
-	/* sleep(100); */
 	printf("All tests succesfull\n");
 	sleep(5);
 	_exit_qemu(0);
