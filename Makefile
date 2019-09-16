@@ -45,6 +45,7 @@ system_root:
 	mkdir -pv $(SYSTEM_ROOT)/grub
 	mkdir -pv $(SYSTEM_ROOT)/home
 	mkdir -pv $(SYSTEM_ROOT)/turbofish
+	mkdir -pv $(SYSTEM_ROOT)/turbofish/mod
 
 $(IMG_DISK):
 	dd if=/dev/zero of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)
