@@ -1,7 +1,7 @@
 #!/bin/bash
 export TARGET="i686-turbofish"
 export PATH="/toolchain_turbofish/cross/bin:$PATH"
-export TARGET_DIR="../../../system/bin"
+export TARGET_DIR="../../../system_disk/bin"
 
 mkdir -pv build_coreutils
 cp patch-coreutils build_coreutils
