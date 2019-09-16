@@ -4,7 +4,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::process::{Command, ExitStatus};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use toml::Value;
 use wait_timeout::ChildExt;
 
@@ -36,6 +36,7 @@ fn main() {
     opts.optflag("g", "graphical", "launch qemu with console");
     opts.optflag("", "nocapture", "show output even if test succeed");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("o", "optim", "Compile the kernel with optimizations");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(_f) => {
@@ -80,7 +81,7 @@ fn main() {
         }
     };
     println!("running {} tests", tests.len());
-    let all_result: Vec<Result<(), TestError>> = tests
+    let all_result: Vec<Result<Duration, TestError>> = tests
         .iter()
         .map(|feature| {
             let native = if feature.starts_with("native-test-") {
@@ -99,9 +100,18 @@ fn main() {
                 &[
                     "-C",
                     if native { "../" } else { "./" },
-                    "DEBUG=yes",
+                    if matches.opt_present("o") {
+                        "OPTIM=yes"
+                    } else {
+                        "DEBUG=yes"
+                    },
                     &format!(
-                        "cargo_flags=--features {},test,{}",
+                        "cargo_flags={} --features {},test,{}",
+                        if matches.opt_present("o") {
+                            "--release"
+                        } else {
+                            ""
+                        },
                         feature,
                         if matches.opt_present("g") {
                             ""
@@ -135,6 +145,7 @@ fn main() {
                 env!("PWD"),
                 format!("{}-output", feature)
             );
+            let start_test = Instant::now();
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
@@ -185,7 +196,7 @@ fn main() {
                             show_output();
                         }
                         println!("{}", "Ok".green().bold());
-                        Ok(())
+                        Ok(Instant::duration_since(&Instant::now(), start_test))
                     }
                 }
                 Ok(None) => {
@@ -197,6 +208,11 @@ fn main() {
             }
         })
         .collect();
+    for res in &all_result {
+        if let Ok(duration) = res {
+            println!("Test Duration: {:#?}s", duration.as_secs());
+        }
+    }
     let total_succeed = all_result.iter().filter(|r| r.is_ok()).count();
     let total_failed = all_result.iter().filter(|r| r.is_err()).count();
     println!(

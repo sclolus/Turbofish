@@ -2,11 +2,16 @@ use super::standard_sodomizer::make_somization;
 use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
-use crate::memory::ffi::{kfree, kmalloc, ksize};
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
 use crate::terminal::UART_16550;
 use crate::tests::helpers::exit_qemu;
+
+extern "C" {
+    fn kmalloc(len: usize) -> *mut u8;
+    fn kfree(ptr: *mut u8);
+    fn ksize(ptr: *mut u8) -> usize;
+}
 
 #[no_mangle]
 pub extern "C" fn kmain(

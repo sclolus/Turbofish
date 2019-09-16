@@ -15,8 +15,8 @@ use crate::drivers::storage::{
 };
 
 const NB_TESTS: usize = 64;
-const DISK_SECTOR_CAPACITY: u16 = 0x8000;
-const SECTOR_SIZE: u64 = 512;
+const DISK_SECTOR_CAPACITY: usize = 0x8000;
+const SECTOR_SIZE: usize = 512;
 
 #[no_mangle]
 pub extern "C" fn kmain(
@@ -70,10 +70,10 @@ pub extern "C" fn kmain(
     use alloc::vec::Vec;
 
     for _i in 0..NB_TESTS {
-        let start_sector = Sector(srand::<u16>(DISK_SECTOR_CAPACITY - 1) as u64);
-        let mut n = srand::<u16>(1024) as u64;
-        if start_sector.0 + n > DISK_SECTOR_CAPACITY as u64 {
-            n = DISK_SECTOR_CAPACITY as u64 - start_sector.0;
+        let start_sector = Sector(srand::<usize>(DISK_SECTOR_CAPACITY - 1));
+        let mut n = srand::<usize>(1024);
+        if start_sector.0 + n > DISK_SECTOR_CAPACITY {
+            n = DISK_SECTOR_CAPACITY - start_sector.0;
         }
         let nbr_sectors = NbrSectors(n);
 

@@ -4,7 +4,8 @@ use super::FileOperation;
 use super::IpcResult;
 use super::SysResult;
 use crate::drivers::storage::{
-    BlockIo, DiskResult, NbrSectors, Sector, BIOS_INT13H, IDE_ATA_CONTROLLER, SECTOR_SIZE,
+    BlockIo, DiskResult, NbrSectors, Sector, BIOS_INT13H, IDE_ATA_CONTROLLER, SECTOR_MASK,
+    SECTOR_SHIFT, SECTOR_SIZE,
 };
 use alloc::sync::Arc;
 use core::cmp::min;
@@ -118,7 +119,7 @@ pub struct DiskFileOperation<D: BlockIo> {
     offset: u64,
     start_of_partition: u64,
     partition_size: u64,
-    buf: [u8; SECTOR_SIZE],
+    tmp_buf: [u8; SECTOR_SIZE],
 }
 
 impl<D: BlockIo> Debug for DiskFileOperation<D> {
@@ -138,7 +139,8 @@ impl<D: BlockIo> DiskFileOperation<D> {
             offset: 0,
             start_of_partition,
             partition_size,
-            buf: [0; SECTOR_SIZE],
+            // Hopefully. We got a temporary buf of SECTOR_SIZE for unaligned read/write !
+            tmp_buf: [0; SECTOR_SIZE],
         }
     }
 }
@@ -157,12 +159,13 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
 
             let sector = Sector::from(self.offset + self.start_of_partition);
             self.disk
-                .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                .read(sector, NbrSectors(1), self.tmp_buf.as_mut_ptr())
                 .map_err(|_| Errno::EIO)?;
             let target_read = (self.offset % SECTOR_SIZE as u64) as usize;
-            self.buf[target_read..target_read + size_write].copy_from_slice(&buf[0..size_write]);
+            self.tmp_buf[target_read..target_read + size_write]
+                .copy_from_slice(&buf[0..size_write]);
             self.disk
-                .write(sector, NbrSectors(1), self.buf.as_ptr())
+                .write(sector, NbrSectors(1), self.tmp_buf.as_ptr())
                 .map_err(|_| Errno::EIO)?;
             buf = &buf[size_write..];
             self.offset += size_write as u64;
@@ -170,26 +173,61 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
         Ok(IpcResult::Done(len as u32))
     }
 
+    /// Read data fron DiskIo: Convert bytes len to Sectors
     fn read(&mut self, mut buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let len = buf.len();
-        loop {
-            let size_read = min(
-                (SECTOR_SIZE as u64 - self.offset % SECTOR_SIZE as u64) as usize,
-                buf.len(),
-            );
+        //let start_offset = self.offset; // Just used for Assert
 
-            let sector = Sector::from(self.offset + self.start_of_partition);
+        // Unaligned read start: in case of start_offset not multiple of SECTOR_SIZE
+        let start_unaligned_bytes = (self.offset & SECTOR_MASK as u64) as usize;
+        if start_unaligned_bytes != 0 {
+            let sector = Sector::from(self.offset + self.start_of_partition as u64);
             self.disk
-                .read(sector, NbrSectors(1), self.buf.as_mut_ptr())
+                .read(sector, NbrSectors(1), self.tmp_buf.as_mut_ptr())
                 .map_err(|_| Errno::EIO)?;
-            let target_read = (self.offset % SECTOR_SIZE as u64) as usize;
-            buf[0..size_read].copy_from_slice(&self.buf[target_read..target_read + size_read]);
-            if size_read == buf.len() {
-                break;
+            let size_to_copy = min(SECTOR_SIZE - start_unaligned_bytes, buf.len());
+            buf[..size_to_copy].copy_from_slice(
+                &self.tmp_buf[start_unaligned_bytes..start_unaligned_bytes + size_to_copy],
+            );
+            self.offset += size_to_copy as u64;
+            if size_to_copy == buf.len() {
+                //assert!(self.offset == start_offset + len as u64);
+                return Ok(IpcResult::Done(len as u32));
+            } else {
+                buf = &mut buf[size_to_copy..];
             }
-            buf = &mut buf[size_read..];
-            self.offset += size_read as u64;
         }
+
+        //assert!(self.offset & SECTOR_MASK as u64 == 0);
+        // Aligned read
+        let mut aligned_sectors: NbrSectors = NbrSectors(buf.len() >> SECTOR_SHIFT);
+        while aligned_sectors != NbrSectors(0) {
+            let sector = Sector::from(self.offset + self.start_of_partition as u64);
+            let aligned_sectors_readen = self
+                .disk
+                .read(sector, aligned_sectors, buf.as_mut_ptr())
+                .map_err(|_| Errno::EIO)?;
+            //assert!(aligned_sectors_readen != NbrSectors(0));
+            aligned_sectors = aligned_sectors - aligned_sectors_readen;
+            let bytes_readen: usize = aligned_sectors_readen.0 << SECTOR_SHIFT;
+
+            self.offset += bytes_readen as u64;
+            buf = &mut buf[bytes_readen..];
+        }
+        //assert!(self.offset & SECTOR_MASK as u64 == 0);
+        // Unaligned read end: in case of end_offset not multiple of SECTOR_SIZE
+        let end_unaligned_bytes = ((self.offset + buf.len() as u64) & SECTOR_MASK as u64) as usize;
+        if end_unaligned_bytes != 0 {
+            let sector = Sector::from(self.offset + self.start_of_partition as u64);
+            self.disk
+                .read(sector, NbrSectors(1), self.tmp_buf.as_mut_ptr())
+                .map_err(|_| Errno::EIO)?;
+            let size_to_copy = min(end_unaligned_bytes, buf.len());
+            buf[..size_to_copy].copy_from_slice(&self.tmp_buf[..size_to_copy]);
+            self.offset += size_to_copy as u64;
+        }
+
+        //assert!(self.offset == start_offset + len as u64);
         Ok(IpcResult::Done(len as u32))
     }
 

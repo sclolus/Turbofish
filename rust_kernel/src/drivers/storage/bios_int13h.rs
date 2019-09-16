@@ -13,6 +13,7 @@ use bit_field::BitField;
 use bitflags::bitflags;
 use const_assert::const_assert;
 
+use core::convert::TryInto;
 use core::slice;
 
 /// This module call 16 bits payloads which contain interrupt 13h calls
@@ -180,8 +181,17 @@ impl BiosInt13h {
             return Err(DiskError::NotSupported);
         }
 
-        let (nb_sector, sector_size) =
-            unsafe { (NbrSectors((*p).nb_sector), (*p).bytes_per_sector) };
+        // Not Supported if the nbr of sectors if bigger than usize
+        let (nb_sector, sector_size) = unsafe {
+            (
+                NbrSectors(
+                    ((*p).nb_sector)
+                        .try_into()
+                        .map_err(|_| DiskError::NotSupported)?,
+                ),
+                (*p).bytes_per_sector,
+            )
+        };
 
         // Sector size != 512 is very difficult to manage in our kernel, skip out !
         if sector_size != SECTOR_SIZE as u16 {
@@ -217,7 +227,7 @@ impl BlockIo for BiosInt13h {
             // Initalize a new DAP packet
             unsafe {
                 create_dap(
-                    Sector(start_sector.0 + (i * N_SECTOR) as u64),
+                    Sector(start_sector.0 + (i * N_SECTOR)),
                     sectors_to_read,
                     DAP_LOCATION,
                 );
@@ -267,7 +277,7 @@ impl BlockIo for BiosInt13h {
             // Initalize a new DAP packet
             unsafe {
                 create_dap(
-                    Sector(start_sector.0 + (i * N_SECTOR) as u64),
+                    Sector(start_sector.0 + (i * N_SECTOR)),
                     sectors_to_write,
                     DAP_LOCATION,
                 );
@@ -313,10 +323,10 @@ fn check_bounds(
     if nbr_sectors == NbrSectors(0) {
         Err(DiskError::NothingToDo)
     // Be careful with logical overflow
-    } else if start_sector.0 as u64 > u64::max_value() as u64 - nbr_sectors.0 as u64 {
+    } else if start_sector.0 > usize::max_value() - nbr_sectors.0 {
         Err(DiskError::OutOfBound)
     // Raise disk capacity
-    } else if start_sector.0 + nbr_sectors.0 as u64 > drive_capacity.0 {
+    } else if start_sector.0 + nbr_sectors.0 > drive_capacity.0 {
         Err(DiskError::OutOfBound)
     } else {
         Ok(())
@@ -329,7 +339,7 @@ unsafe fn create_dap(start_sector: Sector, nb_sectors: NbrSectors, addr: usize) 
 
     (*dap).size_of_dap = 0x10;
     (*dap).unused = 0;
-    (*dap).nb_sectors = nb_sectors.0 as u16;
+    (*dap).nb_sectors = nb_sectors.0 as _;
     (*dap).memory = REAL_BUFFER_LOCATION;
-    (*dap).sector = start_sector.0;
+    (*dap).sector = start_sector.0 as _;
 }
