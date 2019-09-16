@@ -12,7 +12,7 @@ use crate::terminal::init_terminal;
 use crate::terminal::monitor::Drawer;
 use crate::terminal::monitor::SCREEN_MONAD;
 use crate::watch_dog;
-use core::time::Duration;
+// use core::time::Duration;
 use terminal::uart_16550::UART_16550;
 
 #[no_mangle]
@@ -79,7 +79,7 @@ pub extern "C" fn kmain(
     PCI.lock().scan_pci_buses();
     log::info!("PCI buses has been scanned");
 
-    crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
+    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
     let mut rtc = Rtc::new();
     log::info!("RTC system seems to be working perfectly");
@@ -93,5 +93,5 @@ pub extern "C" fn kmain(
     crate::drivers::storage::init(&multiboot_info);
 
     eprintln!("Launching Taskmaster:");
-    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/DeepThought"], &[]);
+    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/MasterDeepThought"], &[]);
 }

@@ -4,7 +4,7 @@ PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
 SHELL             := env PATH=$(PATH) /bin/bash
 
 # Turbofish root must be defined as environement variable
-SYSTEM_ROOT       := $(TURBOFISH_ROOT)/system
+SYSTEM_ROOT       := $(TURBOFISH_ROOT)/system_disk
 
 TOOLCHAIN_SYSROOT := /toolchain_turbofish/sysroot
 LIBC_AR           := $(TOOLCHAIN_SYSROOT)/usr/lib/libc.a
