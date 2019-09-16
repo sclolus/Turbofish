@@ -95,7 +95,7 @@ dependencies = [
 name = "kernel_modules"
 version = "0.1.0"
 dependencies = [
- "raw_data 0.1.0",
+ "keyboard 0.1.0",
 ]
 
 [[package]]

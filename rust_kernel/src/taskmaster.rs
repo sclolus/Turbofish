@@ -93,7 +93,9 @@ use alloc::sync::Arc;
 use core::slice;
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::FallibleArc;
-use kernel_modules::{ForeignAllocMethods, ModuleName, ModuleResult, SymbolList};
+use kernel_modules::{
+    ForeignAllocMethods, ModuleResult, ModuleSpecificConfig, ModuleSpecificReturn, SymbolList,
+};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
@@ -177,20 +179,18 @@ fn test() {
     let addr: u32 = eip as u32;
     println!("Toto address: {:#X?}", addr);
 
-    let p: fn(SymbolList, ModuleName) -> ModuleResult<()> = unsafe { core::mem::transmute(addr) };
+    let p: fn(SymbolList) -> ModuleResult = unsafe { core::mem::transmute(addr) };
 
-    let ret = p(
-        SymbolList {
-            write,
-            alloc_tools: ForeignAllocMethods {
-                kmalloc,
-                kcalloc,
-                kfree,
-                krealloc,
-            },
+    let ret = p(SymbolList {
+        write,
+        alloc_tools: ForeignAllocMethods {
+            kmalloc,
+            kcalloc,
+            kfree,
+            krealloc,
         },
-        ModuleName::Dummy,
-    );
+        kernel_callback: ModuleSpecificConfig::Dummy,
+    });
     println!("ret = {:?}", ret);
 }
 
