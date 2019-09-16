@@ -17,3 +17,9 @@ debug = true
 crate-type = ["staticlib"]
 
 [dependencies]
+kernel_modules = { path = "dependencies/kernel_modules" }
+
+[workspace]
+members = [
+	"dependencies/kernel_modules",
+]

@@ -7,7 +7,7 @@ LIBMOD = richard
 MODULE = $(addprefix $(BUILD_DIR)/, $(addsuffix .mod, $(basename $(notdir $(LIBMOD)))))
 
 VPATH += src
-SRC_ASM += start
+SRC_ASM +=
 SRC_C +=
 
 arch := ivybridge-cpu
@@ -41,7 +41,7 @@ OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C))))
 
 all: .rust-toolchain .xbuild-toolchain build_rust $(MODULE)
 
-$(MODULE): $(OBJ_ASM) $(rust_archive)
+$(MODULE): $(rust_archive)
 	$(LD) $(LDFLAGS) -o $@ $^
 	cp -rv --parents $@ $(SYSTEM_ROOT)/turbofish/
 

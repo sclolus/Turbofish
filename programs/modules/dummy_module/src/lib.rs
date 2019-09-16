@@ -1,21 +1,16 @@
 #![cfg_attr(not(test), no_std)]
 
+use kernel_modules::{ModuleName, ModuleResult, SymbolList};
+
 #[no_mangle]
-pub extern "C" fn rustmain() -> i32 {
-    unsafe {
-        user_write(1, STRING.as_ptr(), STRING.len());
-    }
-    0
+//fn _start(_symtab_list: *const SymbolList, _module_type: ModuleName) -> ModuleResult<()> {
+fn _start(symtab_list: SymbolList, _module_type: ModuleName) -> ModuleResult<()> {
+    (symtab_list.write)("I've never install GNU/Linux.\n");
+    Ok(())
 }
 
 #[panic_handler]
 #[no_mangle]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
-}
-
-static STRING: &str = "I've never install GNU/Linux.\n";
-
-extern "C" {
-    fn user_write(fd: i32, s: *const u8, len: usize) -> i32;
 }

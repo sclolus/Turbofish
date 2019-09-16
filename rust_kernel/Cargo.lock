@@ -92,6 +92,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kernel_modules"
+version = "0.1.0"
+dependencies = [
+ "raw_data 0.1.0",
+]
+
+[[package]]
 name = "keyboard"
 version = "0.1.0"
 dependencies = [
@@ -410,6 +417,7 @@ dependencies = [
  "fallible_collections 0.1.0",
  "io 0.1.0",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kernel_modules 0.1.0",
  "keyboard 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc_binding 0.1.0",

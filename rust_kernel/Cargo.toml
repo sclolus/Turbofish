@@ -35,6 +35,7 @@ try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
 libc_binding = { path = "dependencies/libc_binding" }
+kernel_modules = { path = "dependencies/kernel_modules" }
 
 [dependencies.itertools]
 version = "0.8.0"
@@ -86,5 +87,6 @@ members = [
 "dependencies/fallible_collections",
 "dependencies/messaging",
 "dependencies/libc_binding",
+"dependencies/kernel_modules",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]
