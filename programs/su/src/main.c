@@ -135,11 +135,11 @@ int main(int argc, char **argv)
 	memset(hash, 0, 16);
 	free(hash);
 
-	if (-1 == setgid(entry->gid)) {
+	if (-1 == setegid(entry->gid)) {
 		err_errno("Failed to setgid(%d (%s))", entry->gid, login);
 	}
 
-	if (-1 == setuid(entry->uid)) {
+	if (-1 == seteuid(entry->uid)) {
 		err_errno("Failed to setuid(%d (%s))", entry->uid, login);
 	}
 

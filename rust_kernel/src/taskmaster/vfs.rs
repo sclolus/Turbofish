@@ -899,6 +899,16 @@ impl VirtualFileSystem {
         if !entry.is_directory() {
             return Err(ENOTDIR);
         }
+
+        let parent_inode = self.get_inode_from_direntry_id(entry_id)?;
+        if !creds.is_access_granted(
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let inode_id = entry.inode_id;
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
