@@ -552,6 +552,19 @@ impl VirtualFileSystem {
         let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
+        let inode = self
+            .inodes
+            .get(&entry.inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            inode.access_mode,
+            Amode::READ,
+            (inode.uid, inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         if entry.get_directory()?.entries().count() == 0 {
             self.lookup_directory(entry_id)?;
         }
