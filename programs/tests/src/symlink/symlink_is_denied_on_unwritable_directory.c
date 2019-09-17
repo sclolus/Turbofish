@@ -21,7 +21,7 @@ int main(void)
 	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
 
-	snprintf(dir_filename, sizeof(dir_filename), "dir_open_o_creat_is_denied_for_unwritable_dir_%u", pid);
+	snprintf(dir_filename, sizeof(dir_filename), "dir_symlink_is_denied_for_unwritable_dir_%u", pid);
 	snprintf(filename, sizeof(filename), "%s/symlink_%u", dir_filename, pid);
 
 	// First creat directory without rights to write to it.

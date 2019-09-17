@@ -21,7 +21,7 @@ int main(void)
 	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
 
-	snprintf(dir_filename, sizeof(dir_filename), "dir_open_o_creat_is_denied_for_unwritable_dir_%u", pid);
+	snprintf(dir_filename, sizeof(dir_filename), "dir_opendir_is_denied_for_unwritable_dir_%u", pid);
 	// First creat directory without rights to read to it.
 	assert(0 == mkdir(dir_filename, 0333));
 

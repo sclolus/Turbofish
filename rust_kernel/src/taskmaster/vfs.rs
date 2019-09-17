@@ -1068,6 +1068,19 @@ impl VirtualFileSystem {
         let parent_inode_id = self.dcache.get_entry_mut(&parent_new_id)?.inode_id;
         let parent_inode_number = parent_inode_id.inode_number;
 
+        let parent_inode = self
+            .get_inode(parent_inode_id)
+            .expect("No corresponding inode");
+
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
         let inode_id = oldentry.inode_id;

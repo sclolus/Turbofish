@@ -48,6 +48,7 @@ SRC_C += MasterDeepThought \
 		symlink/symlink \
 		symlink/symlink_is_denied_on_unwritable_directory \
 		link/link \
+		link/link_is_denied_on_unwritable_directory \
 		rename/rename \
 		rename/rename_dir \
 		rename/rename_dir_exist \
@@ -71,7 +72,7 @@ SRC_C += MasterDeepThought \
 		open/open_o_creat_is_denied_for_unwritable_parent \
 		opendir/opendir_is_denied_on_unreachable
 
-VPATH += src/open src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown fifo/fifo src/opendir
+VPATH += src/open src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown fifo/fifo src/opendir src/link
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))
