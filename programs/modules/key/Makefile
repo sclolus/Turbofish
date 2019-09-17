@@ -64,7 +64,6 @@ $(OBJ_DIR)/%.o: %.c Makefile
 	$(CC) $(ASFLAGS) -o $@ $<
 
 build_rust:
-	echo $(MODULE)
 	cargo xbuild $(optim_level) --target $(custom_target) --verbose
 
 clean:

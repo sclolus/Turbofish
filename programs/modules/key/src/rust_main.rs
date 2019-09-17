@@ -1,6 +1,8 @@
 //! This file contains the main function of the module
 
-use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER};
+use kernel_modules::{
+    KeyboardReturn, ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER,
+};
 
 use keyboard::{init_keyboard_driver, KEYBOARD_DRIVER};
 
@@ -11,11 +13,11 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
         #[cfg(not(test))]
         crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
-    if let ModConfig::Keyboard(_idt_fn, _callback_fn) = symtab_list.kernel_callback {
+    if let ModConfig::Keyboard(_keyboard_config) = symtab_list.kernel_callback {
         init_keyboard_driver();
         // Set IRQ/IDT
         // CallBack function
-        Ok(ModReturn::Keyboard(drop_module))
+        Ok(ModReturn::Keyboard(KeyboardReturn { stop: drop_module }))
     } else {
         Err(ModError::BadIdentification)
     }

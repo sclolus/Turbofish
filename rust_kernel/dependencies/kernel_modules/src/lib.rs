@@ -31,9 +31,25 @@ pub enum ModConfig {
     /// The dummy module need nothing !
     Dummy,
     /// The RTC module have to set an IDT entry
-    RTC(fn(usize, Option<unsafe extern "C" fn()>)),
+    RTC(RTCConfig),
     /// The Keyboard module have to set an IDT entry and return kerboard activities with a kernel callback
-    Keyboard(fn(usize, Option<unsafe extern "C" fn()>), CallbackKeyboard),
+    Keyboard(KeyboardConfig),
+}
+
+/// Configuration parameters of the RTC module
+#[derive(Debug, Copy, Clone)]
+pub struct RTCConfig {
+    /// Give ability to redirect an IDT entry to a specific function or None to disable
+    pub set_idt_entry: fn(usize, Option<unsafe extern "C" fn()>),
+}
+
+/// Configuration parameters of the Keyboard module
+#[derive(Debug, Copy, Clone)]
+pub struct KeyboardConfig {
+    /// Give ability to redirect an IDT entry to a specific function or None to disable
+    pub set_idt_entry: fn(usize, Option<unsafe extern "C" fn()>),
+    /// Keyboard callback given by the kernel
+    pub callback: CallbackKeyboard,
 }
 
 /// This module describes function specifics that the kernel could call
@@ -42,9 +58,25 @@ pub enum ModReturn {
     /// The kernel cannot ask the Dummy module
     Dummy,
     /// The RTC can be stopped and should give the time to the kernel
-    RTC(fn(), fn() -> u32),
+    RTC(RTCReturn),
     /// The keyboard can be stopped but The kernel cannot ask it
-    Keyboard(fn()),
+    Keyboard(KeyboardReturn),
+}
+
+/// Return parameters of the RTC module
+#[derive(Debug, Copy, Clone)]
+pub struct RTCReturn {
+    /// Stop the RTC module
+    pub stop: fn(),
+    /// Ask for current time
+    pub get_time: fn() -> u32,
+}
+
+/// Return parameters of the Keyboard module
+#[derive(Debug, Copy, Clone)]
+pub struct KeyboardReturn {
+    /// Stop the Keyboard module
+    pub stop: fn(),
 }
 
 /// This structure is passed zhen _start point of the module is invoqued
