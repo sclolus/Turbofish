@@ -1,12 +1,8 @@
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
-ifeq ($(make_pass),yes)
-	TARGET = hasher
-	CFLAGS += -D MAKE_PASS
-else
-	TARGET = su
-endif
+TARGET_UNIT_TESTS = unit-tests
+TARGET_LOGIN = login
 
 ifeq ($(debug),yes)
 	CFLAGS += -g3 -fsanitize=address
@@ -16,8 +12,6 @@ ifneq ($(unit-tests), yes)
 endif
 endif
 
-TARGET_SU=bin/su
-TARGET_UNIT_TESTS=unit-tests
 
 ifeq ($(unit-tests),yes)
 	LD_LIBRARY_PATH := /usr/local/lib:$(LD_LIBRARY_PATH)
@@ -30,34 +24,20 @@ ifeq ($(unit-tests),yes)
 	ASFLAGS = --32
 	IFLAGS =
 else
-	TARGET = $(TARGET_SU)
+	TARGET = $(TARGET_LOGIN)
 	AS = i686-turbofish-as
 	CC = i686-turbofish-gcc
 	AR = i686-turbofish-ar
 	RANLIB = i686-turbofish-ranlib
-	IFLAGS = -Iinclude
+	IFLAGS = # -Iinclude
 endif
 
-SRC_C += main \
-	strsplit \
-	get_file_contents \
-	md5 \
-	encode_base64.c \
-	decode_base64.c \
-	hash_fuzzer \
-	hash_tester \
-	left_rotate_32 \
-	print_hash \
-	print_memory \
-	passwd \
-	shadow \
-	utils
-
-HEADERS += include/su.h
+SRC_C += login
+HEADERS +=
 
 VPATH += src
 
-IFLAGS = -I include
+IFLAGS = # -I include
 
 TEST=  -DTESTS
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer $(IFLAGS)
@@ -67,16 +47,16 @@ CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer $(IFLAGS)
 OBJ_DIR = objs
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
 
+BUILD_DIR = bin
+
 all: $(TARGET) Makefile
 
-$(TARGET): $(OBJ_C) $(LIBC_AR) | Makefile
-	$(CC) -Wl,--gc-sections -o $@ $(CFLAGS) $^
-	sudo cp -v --parents $@ $(SYSTEM_ROOT)
-	sudo cp -v --parents etc/* $(SYSTEM_ROOT)
-
-	@# Removing thoses lines _WILL_ make su not work properly for non-root users.
-	sudo chown root:root $(SYSTEM_ROOT)/$(TARGET)
-	sudo chmod u+s $(SYSTEM_ROOT)/$(TARGET)
+$(TARGET): $(OBJ_C)
+	make -C ../su 		# well.
+	@mkdir -pv $(BUILD_DIR)
+	$(CC) -o $(BUILD_DIR)/$@ $(CFLAGS) $^
+	sudo chown root:root $(BUILD_DIR)/$(TARGET)
+	cp -v --parents $(BUILD_DIR)/$@ $(SYSTEM_ROOT)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	@mkdir -pv $(OBJ_DIR)

@@ -187,7 +187,7 @@ $(kernel): src/boot/bootstrap/build/bootstrap.o $(OBJ_ASM_KERNEL) $(OBJ_C_KERNEL
 	$(link_kernel)
 
 build_rust:
-	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose
+	cargo xbuild $(cargo_flags) --target $(custom_target) --verbose --features=$(features)
 
 build_libasm_i386:
 	make -C libasm_i386 all
