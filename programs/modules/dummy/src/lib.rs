@@ -14,23 +14,21 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
-use kernel_modules::{ModuleResult, ModuleSpecificConfig, ModuleSpecificReturn, SymbolList};
-
-use keyboard::{init_keyboard_driver, KEYBOARD_DRIVER};
+use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList};
 
 #[no_mangle]
-fn _start(symtab_list: SymbolList) -> ModuleResult {
+fn _start(symtab_list: SymbolList) -> ModResult {
     (symtab_list.write)("I've never install GNU/Linux.\n");
     unsafe {
         MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
-    let b = Box::new("Displaying allocated String !\n");
-    (symtab_list.write)(&b);
-
-    init_keyboard_driver();
-    // Set IRQ/IDT
-    // CallBack function
-    Ok(ModuleSpecificReturn::Dummy)
+    if let ModConfig::Dummy = symtab_list.kernel_callback {
+        let b = Box::new("Displaying allocated String !\n");
+        (symtab_list.write)(&b);
+        Ok(ModReturn::Dummy)
+    } else {
+        Err(ModError::BadIdentification)
+    }
 }
 
 #[panic_handler]

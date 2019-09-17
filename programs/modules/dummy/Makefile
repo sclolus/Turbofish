@@ -3,7 +3,7 @@ include $(TURBOFISH_ROOT)/boilerplates.mk
 
 BUILD_DIR = mod
 
-LIBMOD = richard
+LIBMOD = dummy
 MODULE = $(addprefix $(BUILD_DIR)/, $(addsuffix .mod, $(basename $(notdir $(LIBMOD)))))
 
 VPATH += src

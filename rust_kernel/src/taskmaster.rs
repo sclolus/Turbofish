@@ -93,9 +93,7 @@ use alloc::sync::Arc;
 use core::slice;
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::FallibleArc;
-use kernel_modules::{
-    ForeignAllocMethods, ModuleResult, ModuleSpecificConfig, ModuleSpecificReturn, SymbolList,
-};
+use kernel_modules::{ForeignAllocMethods, ModConfig, ModResult, ModReturn, SymbolList};
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
@@ -129,7 +127,7 @@ fn test() {
                     KERNEL_VIRTUAL_PAGE_ALLOCATOR
                         .as_mut()
                         .unwrap()
-                        .alloc_on_raw(
+                        .alloc_on_from_raw_types(
                             h.vaddr as *mut u8,
                             h.memsz as usize,
                             AllocFlags::KERNEL_MEMORY,
@@ -179,7 +177,7 @@ fn test() {
     let addr: u32 = eip as u32;
     println!("Toto address: {:#X?}", addr);
 
-    let p: fn(SymbolList) -> ModuleResult = unsafe { core::mem::transmute(addr) };
+    let p: fn(SymbolList) -> ModResult = unsafe { core::mem::transmute(addr) };
 
     let ret = p(SymbolList {
         write,
@@ -189,7 +187,7 @@ fn test() {
             kfree,
             krealloc,
         },
-        kernel_callback: ModuleSpecificConfig::Dummy,
+        kernel_callback: ModConfig::Dummy,
     });
     println!("ret = {:?}", ret);
 }

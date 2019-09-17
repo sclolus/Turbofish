@@ -3,18 +3,26 @@
 
 use keyboard::CallbackKeyboard;
 
+/// Fixed Virtual address of the modules
+#[derive(Debug, Copy, Clone)]
+#[repr(u32)]
+pub enum ModAddress {
+    Dummy = 0xE0000000,
+    Keyboard = 0xE1000000,
+}
+
 /// Errors on module
 #[derive(Debug, Copy, Clone)]
-pub enum ModuleError {
+pub enum ModError {
     BadIdentification,
 }
 
 /// Result of a _start request
-pub type ModuleResult = core::result::Result<ModuleSpecificReturn, ModuleError>;
+pub type ModResult = core::result::Result<ModReturn, ModError>;
 
 /// This enum describes kernel functions specifics that the module could call
 #[derive(Debug, Copy, Clone)]
-pub enum ModuleSpecificConfig {
+pub enum ModConfig {
     /// The dummy module need nothing !
     Dummy,
     /// The RTC module have to set an IDT entry
@@ -25,7 +33,7 @@ pub enum ModuleSpecificConfig {
 
 /// This module describes function specifics that the kernel could call
 #[derive(Debug, Copy, Clone)]
-pub enum ModuleSpecificReturn {
+pub enum ModReturn {
     /// The kernel cannot ask the Dummy module
     Dummy,
     /// The RTC can be stopped and should give the time to the kernel
@@ -42,7 +50,7 @@ pub struct SymbolList {
     /// Allow modules to allocate or free memory
     pub alloc_tools: ForeignAllocMethods,
     /// Specifics methods given by the kernel
-    pub kernel_callback: ModuleSpecificConfig,
+    pub kernel_callback: ModConfig,
 }
 
 /// The allocators methods are passed by the kernel while module is initialized

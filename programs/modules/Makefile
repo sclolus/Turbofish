@@ -2,10 +2,12 @@
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
 all:
-	make -C dummy_module
+	make -C dummy
+	make -C key
 
 fclean:
-	make -C dummy_module fclean
+	make -C dummy fclean
+	make -C key fclean
 
 clean: fclean
 

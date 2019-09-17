@@ -222,7 +222,7 @@ impl VirtualPageAllocator {
         Ok(vaddr.into())
     }
 
-    pub fn alloc_on_raw(
+    pub fn alloc_on_from_raw_types(
         &mut self,
         vaddr: *mut u8,
         size: usize,
