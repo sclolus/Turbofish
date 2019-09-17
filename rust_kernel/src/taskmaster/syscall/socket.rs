@@ -163,7 +163,7 @@ struct SockaddrUnix {
 #[derive(Debug)]
 enum Sockaddr {
     /// UNIX socket
-    Unix(SockaddrUnix),
+    Unix(&'static SockaddrUnix),
 }
 
 /// TryFrom boilerplate for Sockaddr
@@ -182,9 +182,9 @@ impl core::convert::TryFrom<(&DeadMutexGuard<'_, AddressSpace>, *const u8, usize
                         .check_user_ptr::<SockaddrUnix>(arg.1 as *const SockaddrUnix)?;
                     unsafe {
                         Ok(Sockaddr::Unix(
-                            *((*arg.1 as *const SockaddrUnix)
+                            (arg.1 as *const SockaddrUnix)
                                 .as_ref()
-                                .ok_or(Errno::EINVAL)?),
+                                .ok_or(Errno::EINVAL)?,
                         ))
                     }
                 } else {
