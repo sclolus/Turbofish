@@ -152,7 +152,7 @@ impl SockPathname {
 /// This is the basic structure for exchanging packet with UNIX socket
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
-struct SockaddrUnix {
+pub struct SockaddrUnix {
     /// TypeOf Socket
     sun_family: SunFamily,
     /// Unix pathname
@@ -161,9 +161,24 @@ struct SockaddrUnix {
 
 /// They are differents types of sockaddr
 #[derive(Debug)]
-enum Sockaddr {
+pub enum Sockaddr {
     /// UNIX socket
     Unix(&'static SockaddrUnix),
+}
+
+impl TryFrom<SockaddrUnix> for Path {
+    type Error = Errno;
+    fn try_from(unix_sockaddr: SockaddrUnix) -> Result<Self, Self::Error> {
+        Ok(Path::try_from(unix_sockaddr.sun_path.as_str()?)?)
+    }
+}
+impl TryFrom<Sockaddr> for Path {
+    type Error = Errno;
+    fn try_from(sockaddr: Sockaddr) -> Result<Self, Self::Error> {
+        Ok(match sockaddr {
+            Sockaddr::Unix(unix_sockaddr) => Path::try_from(*unix_sockaddr)?,
+        })
+    }
 }
 
 /// TryFrom boilerplate for Sockaddr
@@ -297,7 +312,14 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 } = unsafe { *(args as *const RecvArgs) };
                 let mem = v.make_checked_mut_slice(buf as *mut u8, len as usize)?;
                 drop(v);
-                recv(&mut scheduler, socket_fd as i32, mem, flags)
+                recv_from(
+                    &mut scheduler,
+                    socket_fd as i32,
+                    mem,
+                    flags,
+                    None,
+                    core::ptr::null_mut(),
+                )
             }
             SysSendTo => {
                 dbg!("sendto");
@@ -322,7 +344,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
             SysRecvFrom => {
                 dbg!("recvfrom");
                 v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
-                drop(v);
                 let RecvFromArgs {
                     socket_fd,
                     buf,
@@ -331,6 +352,15 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     src_addr,
                     addr_len,
                 } = unsafe { *(args as *const RecvFromArgs) };
+                let src_addr = {
+                    let src_addr = src_addr as *mut SockaddrUnix;
+                    if src_addr.is_null() {
+                        None
+                    } else {
+                        Some(v.make_checked_ref_mut(src_addr)?)
+                    }
+                };
+                drop(v);
                 let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
                 // UNSAFE pointers are passed to recv_from(). The syscall MUST check them before filling
                 recv_from(
@@ -338,7 +368,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     socket_fd as i32,
                     mem,
                     flags,
-                    src_addr as *mut u8,
+                    src_addr,
                     addr_len as *mut SockLen,
                 )
             }
@@ -432,12 +462,13 @@ fn bind(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysRes
     let tg = scheduler.current_thread_group_mut();
     let creds = &tg.credentials;
     let cwd = &tg.cwd;
-    let path = match sockaddr {
-        Sockaddr::Unix(unix_sockaddr) => Path::try_from(unix_sockaddr.sun_path.as_str()?)?,
-        // _ => Err(Errno::EINVAL)?,
-    };
-    VFS.lock().mknod(cwd, creds, path, FileType::UNIX_SOCKET)?;
-    Ok(0)
+    let fd_interface = &mut tg
+        .thread_group_state
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    let path = sockaddr.try_into()?;
+    file_operation.bind(&cwd, creds, path)
 }
 
 raw_deferencing_struct!(
@@ -582,7 +613,7 @@ raw_deferencing_struct!(
 );
 
 fn send_to(
-    _scheduler: &mut Scheduler,
+    scheduler: &mut Scheduler,
     socket_fd: i32,
     buf: &[u8],
     flags: u32,
@@ -596,6 +627,18 @@ fn send_to(
         flags,
         sockaddr_opt
     );
+    let tg = scheduler.current_thread_group_mut();
+    let cwd = &tg.cwd;
+    let fd_interface = &mut tg
+        .thread_group_state
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    let path = match sockaddr_opt {
+        Some(sockaddr) => Some(VFS.lock().resolve_path(cwd, &sockaddr.try_into()?)?),
+        None => None,
+    };
+    file_operation.send_to(buf, flags, path)?;
     Ok(0)
 }
 
@@ -621,22 +664,30 @@ raw_deferencing_struct!(
 
 // This function cannot be completely safe by nature of theses functionalities.
 fn recv_from(
-    _scheduler: &mut Scheduler,
+    scheduler: &mut Scheduler,
     socket_fd: i32,
     buf: &mut [u8],
     flags: u32,
-    src_addr: *mut u8,
+    src_addr: Option<&mut SockaddrUnix>,
     addr_len: *mut SockLen,
 ) -> SysResult<u32> {
     println!(
         "{:?}: {:?} {:?} {:?} {:?} {:?}",
         function!(),
         socket_fd,
-        unsafe { core::str::from_utf8_unchecked(buf) },
+        buf,
         flags,
         src_addr,
         addr_len
     );
+    let tg = scheduler.current_thread_group_mut();
+    let cwd = &tg.cwd;
+    let fd_interface = &mut tg
+        .thread_group_state
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    file_operation.recv_from(buf, flags)?;
     Ok(0)
 }
 

@@ -1,4 +1,7 @@
-use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::drivers::{
+    ipc::{FifoDriver, SocketDriver},
+    DefaultDriver, Driver, Ext2DriverFile, FileOperation,
+};
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
@@ -119,6 +122,8 @@ impl VirtualFileSystem {
             fs,
             if inode_data.is_fifo() {
                 Box::try_new(FifoDriver::try_new(inode_data.id)?)?
+            } else if inode_data.is_socket() {
+                Box::try_new(SocketDriver::try_new()?)?
             } else {
                 // TODO: handle others drivers
                 Box::try_new(Ext2DriverFile::new(inode_data.id))?
@@ -304,6 +309,9 @@ impl VirtualFileSystem {
         }
     }
 
+    pub fn get_driver(&mut self, inode_id: InodeId) -> SysResult<&mut dyn Driver> {
+        Ok(self.get_inode(inode_id).map_err(|_| ENOENT)?.get_driver())
+    }
     /// Ici j'enregistre un filename associe a son driver (que je
     /// provide depuis l'ipc)
     /// constrainte: Prototype, filename et Arc<DeadMutex<dyn Driver>>
@@ -849,13 +857,24 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn inode_id_from_absolute_path(&mut self, path: Path) -> SysResult<InodeId> {
+        if !path.is_absolute() {
+            panic!("path is not absolute");
+        }
+        let entry_id = self
+            .pathname_resolution(&Path::root(), &path)
+            .map_err(|_| ENOENT)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        Ok(entry.inode_id)
+    }
+
     pub fn mknod(
         &mut self,
         cwd: &Path,
         _creds: &Credentials,
         mut path: Path,
         mode: FileType,
-    ) -> SysResult<()> {
+    ) -> SysResult<InodeId> {
         if mode & FileType::S_IFMT != FileType::FIFO
             && mode & FileType::S_IFMT != FileType::UNIX_SOCKET
         {
@@ -879,8 +898,9 @@ impl VirtualFileSystem {
         let fs_entry = fs
             .lock()
             .create(filename.as_str(), inode_id.inode_number, mode)?;
-        self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
-        Ok(())
+        let new_entry_id = self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
+        let new_entry = self.dcache.get_entry(&new_entry_id)?;
+        Ok(new_entry.inode_id)
     }
 
     pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {

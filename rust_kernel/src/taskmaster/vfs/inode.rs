@@ -109,6 +109,10 @@ impl Inode {
     pub fn get_id(&self) -> InodeId {
         self.inode_data.get_id()
     }
+
+    pub fn get_driver(&mut self) -> &mut dyn Driver {
+        &mut *self.driver as &mut dyn Driver
+    }
 }
 
 #[derive(Default, Debug)]
