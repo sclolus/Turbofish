@@ -190,6 +190,11 @@ fn test() {
         kernel_callback: ModConfig::Dummy,
     });
     println!("ret = {:?}", ret);
+    if let Ok(ModReturn::Dummy(dummy_return)) = ret {
+        (dummy_return.stop)();
+    } else {
+        println!("test failed !");
+    }
 }
 
 // Create an ASM dummy process based on a simple function
