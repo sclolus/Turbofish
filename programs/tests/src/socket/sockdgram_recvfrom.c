@@ -59,6 +59,7 @@ void child() {
 		exit(1);
 	}
 
+	sleep(2);
 	printf("message send: %s\n", MESSAGE);
 	ssize_t len_send = sendto(sock, MESSAGE, sizeof(MESSAGE), 0, (const struct sockaddr *)&dest_addr, sizeof(struct sockaddr_un));
 	printf("len send: %ld\n", len_send);
@@ -76,7 +77,6 @@ void father(int sock) {
 
 	memset(&sender_addr, 0, sizeof(struct sockaddr_un));
 
-	sleep(1);
     ssize_t len_received = recvfrom(sock, buffer, 100, 0, (struct sockaddr *)&sender_addr, &len);
 	printf("len received: %ld from: '%s'\n", len_received, sender_addr.sun_path);
 	if (len_received == -1) {

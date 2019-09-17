@@ -8,6 +8,7 @@ use super::scheduler::{Scheduler, SCHEDULER};
 
 pub type SocketArgsPtr = *const u8;
 
+use super::thread::WaitingState;
 use super::vfs::{Path, VFS};
 use core::mem::transmute;
 use libc_binding::c_char;
@@ -327,14 +328,8 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 } = unsafe { *(args as *const RecvArgs) };
                 let mem = v.make_checked_mut_slice(buf as *mut u8, len as usize)?;
                 drop(v);
-                recv_from(
-                    &mut scheduler,
-                    socket_fd as i32,
-                    mem,
-                    flags,
-                    None,
-                    core::ptr::null_mut(),
-                )
+                drop(scheduler);
+                recv_from(socket_fd as i32, mem, flags, None, core::ptr::null_mut())
             }
             SysSendTo => {
                 dbg!("sendto");
@@ -376,10 +371,9 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     }
                 };
                 drop(v);
+                drop(scheduler);
                 let mem = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len as usize) };
-                // UNSAFE pointers are passed to recv_from(). The syscall MUST check them before filling
                 recv_from(
-                    &mut scheduler,
                     socket_fd as i32,
                     mem,
                     flags,
@@ -679,7 +673,6 @@ raw_deferencing_struct!(
 
 // This function cannot be completely safe by nature of theses functionalities.
 fn recv_from(
-    scheduler: &mut Scheduler,
     socket_fd: i32,
     buf: &mut [u8],
     flags: u32,
@@ -695,31 +688,34 @@ fn recv_from(
         src_addr,
         addr_len
     );
-    let tg = scheduler.current_thread_group_mut();
-    let _cwd = &tg.cwd;
-    let fd_interface = &mut tg
-        .thread_group_state
-        .unwrap_running_mut()
-        .file_descriptor_interface;
-    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
     loop {
-        match file_operation.recv_from(buf, flags)? {
-            IpcResult::Done((readen_bytes, sender_path)) => {
-                if let Some(src_addr) = src_addr {
-                    if let Some(sender_path) = sender_path {
-                        *src_addr = SockaddrUnix {
-                            sun_family: SunFamily::AfUnix,
-                            sun_path: sender_path.try_into()?,
+        unpreemptible_context!({
+            let mut scheduler = SCHEDULER.lock();
+            let fd_interface = &mut scheduler
+                .current_thread_group_running_mut()
+                .file_descriptor_interface;
+            let res =
+                (&mut fd_interface.get_file_operation(socket_fd as u32)?).recv_from(buf, flags)?;
+            match res {
+                IpcResult::Wait(_res, file_op_uid) => {
+                    scheduler
+                        .current_thread_mut()
+                        .set_waiting(WaitingState::Read(file_op_uid));
+                    let _ret = auto_preempt()?;
+                }
+                IpcResult::Done((readen_bytes, sender_path)) => {
+                    if let Some(src_addr) = src_addr {
+                        if let Some(sender_path) = sender_path {
+                            *src_addr = SockaddrUnix {
+                                sun_family: SunFamily::AfUnix,
+                                sun_path: sender_path.try_into()?,
+                            }
                         }
                     }
+                    return Ok(readen_bytes);
                 }
-                return Ok(readen_bytes);
             }
-            IpcResult::Wait(_, _) => {
-                // UNLOCK SCHEDULER
-                let _ret = auto_preempt()?;
-            }
-        }
+        })
     }
 }
 

@@ -3,6 +3,7 @@
 use super::SysResult;
 use crate::taskmaster::syscall::socket;
 
+use super::get_file_op_uid;
 use super::Credentials;
 use super::Driver;
 use super::FileOperation;
@@ -18,6 +19,7 @@ use core::cmp;
 use fallible_collections::FallibleVec;
 use fallible_collections::TryClone;
 use libc_binding::{Errno, FileType, OpenFlags};
+use messaging::MessageTo;
 use sync::dead_mutex::DeadMutex;
 
 #[derive(Debug)]
@@ -37,12 +39,15 @@ impl DgramMessage {
 #[derive(Debug)]
 pub struct SocketDriver {
     messages: VecDeque<DgramMessage>,
+    file_op_uid: usize,
 }
 
 impl SocketDriver {
     pub fn try_new() -> SysResult<Self> {
+        let file_op_uid = get_file_op_uid();
         Ok(Self {
             messages: VecDeque::new(),
+            file_op_uid,
         })
     }
 }
@@ -58,6 +63,11 @@ impl Driver for SocketDriver {
     fn send_from(&mut self, buf: &[u8], _flags: u32, sender: Option<Path>) -> SysResult<u32> {
         self.messages.try_reserve(1)?;
         self.messages.push_back(DgramMessage::try_new(buf, sender)?);
+        unsafe {
+            messaging::send_message(MessageTo::Reader {
+                uid_file_op: self.file_op_uid,
+            });
+        }
         dbg!(&self.messages);
         dbg!("send from");
         Ok(buf.len() as u32)
@@ -75,7 +85,8 @@ impl Driver for SocketDriver {
                 buf[0..min].copy_from_slice(&message.buf[0..min]);
                 IpcResult::Done((min as u32, message.sender))
             }
-            None => IpcResult::Wait((0, None), 0),
+            // fill the file_op_uid field of IpcResult::Wait
+            None => IpcResult::Wait((0, None), self.file_op_uid),
         })
     }
 }
