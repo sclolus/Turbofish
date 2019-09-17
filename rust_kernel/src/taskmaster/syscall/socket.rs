@@ -315,7 +315,7 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 } = unsafe { *(args as *const SendArgs) };
                 let mem = v.make_checked_slice(buf as *const u8, len as usize)?;
                 drop(v);
-                send(&mut scheduler, socket_fd as i32, mem, flags)
+                send_to(&mut scheduler, socket_fd as i32, mem, flags, None)
             }
             SysRecv => {
                 dbg!("recv");
@@ -494,9 +494,18 @@ raw_deferencing_struct!(
     }
 );
 
-fn connect(_scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
+fn connect(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
     println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
-    Ok(0)
+    let tg = scheduler.current_thread_group_mut();
+    let creds = &tg.credentials;
+    let cwd = &tg.cwd;
+    let fd_interface = &mut tg
+        .thread_group_state
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    let path = sockaddr.try_into()?;
+    file_operation.connect(&cwd, creds, path)
 }
 
 raw_deferencing_struct!(
@@ -563,16 +572,16 @@ raw_deferencing_struct!(
     }
 );
 
-fn send(_scheduler: &mut Scheduler, socket_fd: i32, buf: &[u8], flags: u32) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        unsafe { core::str::from_utf8_unchecked(buf) },
-        flags
-    );
-    Ok(0)
-}
+// fn send(_scheduler: &mut Scheduler, socket_fd: i32, buf: &[u8], flags: u32) -> SysResult<u32> {
+//     println!(
+//         "{:?}: {:?} {:?} {:?}",
+//         function!(),
+//         socket_fd,
+//         unsafe { core::str::from_utf8_unchecked(buf) },
+//         flags
+//     );
+//     Ok(0)
+// }
 
 raw_deferencing_struct!(
     /// Arguments for recv() function

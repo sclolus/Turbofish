@@ -98,6 +98,8 @@ pub struct Socket {
     socket_type: socket::SocketType,
     inode_id: Option<InodeId>,
     path: Option<Path>,
+    peer_address: Option<Path>,
+    peer_inode_id: Option<InodeId>,
 }
 
 /// Main implementation for Socket
@@ -108,6 +110,8 @@ impl Socket {
             socket_type,
             inode_id: None,
             path: None,
+            peer_address: None,
+            peer_inode_id: None,
         })
     }
 }
@@ -137,16 +141,32 @@ impl FileOperation for Socket {
         Ok(0)
     }
 
+    fn connect(&mut self, cwd: &Path, _creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
+        let mut vfs = VFS.lock();
+        let absolute_path = vfs.resolve_path(cwd, &sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path)?;
+        self.peer_address = Some(absolute_path);
+        self.peer_inode_id = Some(inode_id);
+        dbg!(&self.peer_address);
+        Ok(0)
+    }
+
     fn send_to(&mut self, buf: &[u8], flags: u32, sockaddr_opt: Option<Path>) -> SysResult<u32> {
-        match sockaddr_opt {
-            Some(sockaddr) => {
-                let mut vfs = VFS.lock();
-                let inode_id = vfs.inode_id_from_absolute_path(sockaddr)?;
-                let driver = vfs.get_driver(inode_id)?;
-                driver.send_from(buf, flags, self.path.try_clone()?)
+        let sockaddr = match sockaddr_opt {
+            Some(sockaddr) => sockaddr,
+            None => {
+                if let Some(peer_addr) = &self.peer_address {
+                    dbg!(&peer_addr);
+                    peer_addr.try_clone()?
+                } else {
+                    return Err(Errno::EDESTADDRREQ);
+                }
             }
-            None => unimplemented!(),
-        }
+        };
+        let mut vfs = VFS.lock();
+        let inode_id = vfs.inode_id_from_absolute_path(&sockaddr)?;
+        let driver = vfs.get_driver(inode_id)?;
+        driver.send_from(buf, flags, self.path.try_clone()?)
     }
 
     fn recv_from(

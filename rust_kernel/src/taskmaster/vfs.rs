@@ -857,12 +857,12 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn inode_id_from_absolute_path(&mut self, path: Path) -> SysResult<InodeId> {
+    pub fn inode_id_from_absolute_path(&mut self, path: &Path) -> SysResult<InodeId> {
         if !path.is_absolute() {
             panic!("path is not absolute");
         }
         let entry_id = self
-            .pathname_resolution(&Path::root(), &path)
+            .pathname_resolution(&Path::root(), path)
             .map_err(|_| ENOENT)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         Ok(entry.inode_id)

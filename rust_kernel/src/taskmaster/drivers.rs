@@ -98,6 +98,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
+    fn connect(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
     fn send_to(&mut self, _buf: &[u8], _flags: u32, _sockaddr_opt: Option<Path>) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
