@@ -102,7 +102,11 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn recv_from(&mut self, _buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(
+        &mut self,
+        _buf: &mut [u8],
+        _flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         Err(Errno::ENOSYS)
     }
 }
@@ -129,7 +133,11 @@ pub trait Driver: core::fmt::Debug + Send {
     fn send_from(&mut self, _buf: &[u8], _flags: u32, _sender: Option<Path>) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
-    fn recv_from(&mut self, _buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(
+        &mut self,
+        _buf: &mut [u8],
+        _flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         Err(Errno::ENOSYS)
     }
 }

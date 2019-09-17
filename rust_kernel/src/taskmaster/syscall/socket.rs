@@ -1,5 +1,7 @@
 //! This file contains the description of the socketcall syscall
 
+use super::scheduler::auto_preempt;
+use super::IpcResult;
 use super::SysResult;
 
 use super::scheduler::{Scheduler, SCHEDULER};
@@ -7,6 +9,8 @@ use super::scheduler::{Scheduler, SCHEDULER};
 pub type SocketArgsPtr = *const u8;
 
 use super::vfs::{Path, VFS};
+use core::mem::transmute;
+use libc_binding::c_char;
 use libc_binding::{Errno, PATH_MAX};
 
 const PATH_MAX_USIZE: usize = PATH_MAX as usize;
@@ -77,11 +81,11 @@ macro_rules! raw_deferencing_struct {
 macro_rules! visible_byte_array {
     (#[$main_doc:meta]
      $(#[$e:meta])*
-     struct $name:tt([u8; $q:ident]);
+     struct $name:tt([$type:tt; $q:ident]);
     ) => {
         #[$main_doc]
         $(#[$e])*
-        struct $name([u8; $q]);
+        struct $name([$type; $q]);
 
         impl core::fmt::Debug for $name {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -139,13 +143,14 @@ safe_convertible_enum!(
 visible_byte_array!(
     /// Unix pathname
     #[derive(Copy, Clone)]
-    struct SockPathname([u8; PATH_MAX_USIZE]);
+    struct SockPathname([c_char; PATH_MAX_USIZE]);
 );
 
 impl SockPathname {
     pub fn as_str(&self) -> SysResult<&str> {
         let end = self.0.iter().position(|c| *c == 0).ok_or(Errno::EINVAL)?;
-        core::str::from_utf8(&self.0[0..end]).map_err(|_| Errno::EINVAL)
+        core::str::from_utf8(unsafe { transmute::<&[i8], &[u8]>(&self.0[0..end]) })
+            .map_err(|_| Errno::EINVAL)
     }
 }
 
@@ -172,6 +177,16 @@ impl TryFrom<SockaddrUnix> for Path {
         Ok(Path::try_from(unix_sockaddr.sun_path.as_str()?)?)
     }
 }
+
+impl TryInto<SockPathname> for Path {
+    type Error = Errno;
+    fn try_into(self) -> Result<SockPathname, Self::Error> {
+        let mut res = SockPathname([0; PATH_MAX_USIZE]);
+        self.write_path_in_buffer(&mut res.0[..])?;
+        Ok(res)
+    }
+}
+
 impl TryFrom<Sockaddr> for Path {
     type Error = Errno;
     fn try_from(sockaddr: Sockaddr) -> Result<Self, Self::Error> {
@@ -687,8 +702,25 @@ fn recv_from(
         .unwrap_running_mut()
         .file_descriptor_interface;
     let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
-    file_operation.recv_from(buf, flags)?;
-    Ok(0)
+    loop {
+        match file_operation.recv_from(buf, flags)? {
+            IpcResult::Done((readen_bytes, sender_path)) => {
+                if let Some(src_addr) = src_addr {
+                    if let Some(sender_path) = sender_path {
+                        *src_addr = SockaddrUnix {
+                            sun_family: SunFamily::AfUnix,
+                            sun_path: sender_path.try_into()?,
+                        }
+                    }
+                }
+                return Ok(readen_bytes);
+            }
+            IpcResult::Wait(_, _) => {
+                // UNLOCK SCHEDULER
+                let _ret = auto_preempt()?;
+            }
+        }
+    }
 }
 
 raw_deferencing_struct!(

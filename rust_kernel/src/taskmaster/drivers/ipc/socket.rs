@@ -16,6 +16,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp;
 use fallible_collections::FallibleVec;
+use fallible_collections::TryClone;
 use libc_binding::{Errno, FileType, OpenFlags};
 use sync::dead_mutex::DeadMutex;
 
@@ -62,15 +63,19 @@ impl Driver for SocketDriver {
         Ok(buf.len() as u32)
     }
 
-    fn recv_from(&mut self, buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(
+        &mut self,
+        buf: &mut [u8],
+        _flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         let message = self.messages.pop_front();
         Ok(match message {
             Some(message) => {
                 let min = cmp::min(buf.len(), message.buf.len());
                 buf[0..min].copy_from_slice(&message.buf[0..min]);
-                IpcResult::Done(min as u32)
+                IpcResult::Done((min as u32, message.sender))
             }
-            None => IpcResult::Wait(0, 0),
+            None => IpcResult::Wait((0, None), 0),
         })
     }
 }
@@ -81,6 +86,7 @@ pub struct Socket {
     domain: socket::Domain,
     socket_type: socket::SocketType,
     inode_id: Option<InodeId>,
+    path: Option<Path>,
 }
 
 /// Main implementation for Socket
@@ -90,6 +96,7 @@ impl Socket {
             domain,
             socket_type,
             inode_id: None,
+            path: None,
         })
     }
 }
@@ -105,10 +112,11 @@ impl FileOperation for Socket {
         unimplemented!();
     }
     fn bind(&mut self, cwd: &Path, creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
-        let inode_id = VFS
-            .lock()
-            .mknod(cwd, creds, sockaddr, FileType::UNIX_SOCKET)?;
+        let inode_id =
+            VFS.lock()
+                .mknod(cwd, creds, sockaddr.try_clone()?, FileType::UNIX_SOCKET)?;
         self.inode_id = Some(inode_id);
+        self.path = Some(sockaddr);
         unsafe {
             VFS.lock()
                 .get_inode(inode_id)
@@ -124,16 +132,24 @@ impl FileOperation for Socket {
                 let mut vfs = VFS.lock();
                 let inode_id = vfs.inode_id_from_absolute_path(sockaddr)?;
                 let driver = vfs.get_driver(inode_id)?;
-                driver.send_from(buf, flags, None)
+                driver.send_from(buf, flags, self.path.try_clone()?)
             }
             None => unimplemented!(),
         }
     }
 
-    fn recv_from(&mut self, buf: &mut [u8], flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(
+        &mut self,
+        buf: &mut [u8],
+        flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         let mut vfs = VFS.lock();
         let driver = vfs.get_driver(self.inode_id.ok_or(Errno::EINVAL)?)?;
         driver.recv_from(buf, flags)
+    }
+
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        self.inode_id.ok_or(Errno::ENOSYS)
     }
 }
 

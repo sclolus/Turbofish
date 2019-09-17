@@ -19,9 +19,8 @@ char MESSAGE[] = "hello world!";
 
 void child(int sock) {
 	struct sockaddr_un dest_addr;
+
 	fill_sockaddr(&dest_addr);
-
-
 	int ret = connect(sock, (const struct sockaddr *)&dest_addr, sizeof(struct sockaddr_un));
 	if (ret == -1) {
 		perror("connect");

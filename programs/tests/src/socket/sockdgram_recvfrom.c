@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <string.h>
 
@@ -20,15 +21,32 @@ void fill_sockaddr(struct sockaddr_un *addr) {
 
 char MESSAGE[] = "hello world!";
 
+void assert_same_file(char *path1, char *path2) {
+	struct stat buf1;
+	struct stat buf2;
+
+	printf("path1: %s, path2: %s\n", path1, path2);
+	int stat_res1 = stat(path1, &buf1);
+	int stat_res2 = stat(path2, &buf2);
+	assert(stat_res1 == 0);
+	assert(stat_res2 == 0);
+
+	assert(buf1.st_dev == buf2.st_dev );
+	assert(buf1.st_ino == buf2.st_ino );
+	assert(buf1.st_mode == buf2.st_mode );
+	assert(buf1.st_nlink == buf2.st_nlink );
+	assert(buf1.st_uid == buf2.st_uid );
+	assert(buf1.st_gid == buf2.st_gid );
+	assert(buf1.st_rdev == buf2.st_rdev );
+	assert(buf1.st_size == buf2.st_size );
+	assert(buf1.st_blksize== buf2.st_blksize);
+	assert(buf1.st_blocks == buf2.st_blocks );
+
+}
+
 void child() {
 	struct sockaddr_un dest_addr;
 	fill_sockaddr(&dest_addr);
-
-	pid_t pid = getpid();
-	sprintf(SENDER_PATH, "./socket_file_sender_%d", pid);
-	memset(&SENDER_ADDR, 0, sizeof(struct sockaddr_un));
-	SENDER_ADDR.sun_family = AF_UNIX;
-	strcpy((char *)SENDER_ADDR.sun_path, SENDER_PATH);
 
 	int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock == -1) {
@@ -67,6 +85,8 @@ void father(int sock) {
 	}
 	printf("message received: %s\n", buffer);
 	assert(strcmp(buffer, MESSAGE) == 0);
+	printf("SENDER_PATH: %s\n", SENDER_PATH);
+	assert_same_file((char *)sender_addr.sun_path, SENDER_PATH);
 	/* assert(memcmp(sender_addr, ); */
 	assert(unlink(CLIENT_PATH) == 0);
 }
@@ -78,6 +98,12 @@ int main() {
 	pid_t pid = getpid();
 	sprintf(CLIENT_PATH, "./socket_file_%d", pid);
 	fill_sockaddr(&addr);
+
+	sprintf(SENDER_PATH, "./socket_file_sender_%d", pid);
+	memset(&SENDER_ADDR, 0, sizeof(struct sockaddr_un));
+	SENDER_ADDR.sun_family = AF_UNIX;
+	strcpy((char *)SENDER_ADDR.sun_path, SENDER_PATH);
+
 	int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock == -1) {
 		perror("socket");
