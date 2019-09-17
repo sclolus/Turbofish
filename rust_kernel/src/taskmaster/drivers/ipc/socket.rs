@@ -109,8 +109,13 @@ impl FileOperation for Socket {
             .lock()
             .mknod(cwd, creds, sockaddr, FileType::UNIX_SOCKET)?;
         self.inode_id = Some(inode_id);
+        unsafe {
+            VFS.lock()
+                .get_inode(inode_id)
+                .expect("no inode wtf")
+                .incr_nbr_open_file_operation();
+        }
         Ok(0)
-        //     VFS.lock().get_driver(dest_addr).send();
     }
 
     fn send_to(&mut self, buf: &[u8], flags: u32, sockaddr_opt: Option<Path>) -> SysResult<u32> {
@@ -136,5 +141,8 @@ impl FileOperation for Socket {
 impl Drop for Socket {
     fn drop(&mut self) {
         println!("Socket droped !");
+        if let Some(inode_id) = self.inode_id {
+            VFS.lock().close_file_operation(inode_id);
+        }
     }
 }

@@ -2,7 +2,6 @@
 
 use super::SysResult;
 
-use super::syscall::socket;
 use super::vfs;
 use super::vfs::Path;
 use super::vfs::{InodeId, VFS};
