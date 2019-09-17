@@ -1,5 +1,10 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(alloc_error_handler)]
+#![feature(const_fn)]
+
+#[macro_use]
+pub mod writer;
+pub use writer::WRITER;
 
 pub mod memory;
 #[cfg(not(test))]
@@ -20,6 +25,7 @@ use keyboard::{init_keyboard_driver, KEYBOARD_DRIVER};
 fn _start(symtab_list: SymbolList) -> ModResult {
     (symtab_list.write)("Inserting Keyboard module\n");
     unsafe {
+        WRITER.set_write_callback(symtab_list.write);
         MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
     if let ModConfig::Keyboard(_idt_fn, _callback_fn) = symtab_list.kernel_callback {

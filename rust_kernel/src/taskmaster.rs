@@ -112,7 +112,7 @@ extern "C" {
 }
 
 fn test() {
-    let path = "/turbofish/mod/richard.mod"
+    let path = "/turbofish/mod/dummy.mod"
         .try_into()
         .expect("The path of the module is not valid");
     let content = get_file_content(&Path::try_from("/").unwrap(), &Credentials::ROOT, path)

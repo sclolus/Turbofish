@@ -1,5 +1,10 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(alloc_error_handler)]
+#![feature(const_fn)]
+
+#[macro_use]
+pub mod writer;
+pub use writer::WRITER;
 
 pub mod memory;
 #[cfg(not(test))]
@@ -20,11 +25,13 @@ use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList};
 fn _start(symtab_list: SymbolList) -> ModResult {
     (symtab_list.write)("I've never install GNU/Linux.\n");
     unsafe {
+        WRITER.set_write_callback(symtab_list.write);
         MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
     if let ModConfig::Dummy = symtab_list.kernel_callback {
         let b = Box::new("Displaying allocated String !\n");
         (symtab_list.write)(&b);
+        println!("Test println!");
         Ok(ModReturn::Dummy)
     } else {
         Err(ModError::BadIdentification)
