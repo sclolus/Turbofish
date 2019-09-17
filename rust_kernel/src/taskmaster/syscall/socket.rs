@@ -7,7 +7,7 @@ use super::scheduler::{Scheduler, SCHEDULER};
 pub type SocketArgsPtr = *const u8;
 
 use super::vfs::{Path, VFS};
-use libc_binding::{Errno, FileType, PATH_MAX};
+use libc_binding::{Errno, PATH_MAX};
 
 const PATH_MAX_USIZE: usize = PATH_MAX as usize;
 
@@ -581,16 +581,16 @@ raw_deferencing_struct!(
     }
 );
 
-fn recv(_scheduler: &mut Scheduler, socket_fd: i32, buf: &mut [u8], flags: u32) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        unsafe { core::str::from_utf8_unchecked(buf) },
-        flags
-    );
-    Ok(0)
-}
+// fn recv(_scheduler: &mut Scheduler, socket_fd: i32, buf: &mut [u8], flags: u32) -> SysResult<u32> {
+//     println!(
+//         "{:?}: {:?} {:?} {:?}",
+//         function!(),
+//         socket_fd,
+//         unsafe { core::str::from_utf8_unchecked(buf) },
+//         flags
+//     );
+//     Ok(0)
+// }
 
 raw_deferencing_struct!(
     /// Arguments for send_to() function
@@ -681,7 +681,7 @@ fn recv_from(
         addr_len
     );
     let tg = scheduler.current_thread_group_mut();
-    let cwd = &tg.cwd;
+    let _cwd = &tg.cwd;
     let fd_interface = &mut tg
         .thread_group_state
         .unwrap_running_mut()

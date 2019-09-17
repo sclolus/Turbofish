@@ -14,7 +14,8 @@ use super::VFS;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::convert::TryInto;
+use core::cmp;
+use fallible_collections::FallibleVec;
 use libc_binding::{Errno, FileType, OpenFlags};
 use sync::dead_mutex::DeadMutex;
 
@@ -22,6 +23,14 @@ use sync::dead_mutex::DeadMutex;
 pub struct DgramMessage {
     buf: Vec<u8>,
     sender: Option<Path>,
+}
+
+impl DgramMessage {
+    fn try_new(slice: &[u8], sender: Option<Path>) -> SysResult<Self> {
+        let mut buf = Vec::new();
+        buf.try_extend_from_slice(slice)?;
+        Ok(Self { buf, sender })
+    }
 }
 
 #[derive(Debug)]
@@ -45,9 +54,24 @@ impl Driver for SocketDriver {
         Err(Errno::ENOSYS)
     }
 
-    fn send_from(&mut self, buf: &[u8], flags: u32, sender: Option<Path>) -> SysResult<u32> {
+    fn send_from(&mut self, buf: &[u8], _flags: u32, sender: Option<Path>) -> SysResult<u32> {
+        self.messages.try_reserve(1)?;
+        self.messages.push_back(DgramMessage::try_new(buf, sender)?);
+        dbg!(&self.messages);
         dbg!("send from");
-        Err(Errno::ENOSYS)
+        Ok(buf.len() as u32)
+    }
+
+    fn recv_from(&mut self, buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
+        let message = self.messages.pop_front();
+        Ok(match message {
+            Some(message) => {
+                let min = cmp::min(buf.len(), message.buf.len());
+                buf[0..min].copy_from_slice(&message.buf[0..min]);
+                IpcResult::Done(min as u32)
+            }
+            None => IpcResult::Wait(0, 0),
+        })
     }
 }
 

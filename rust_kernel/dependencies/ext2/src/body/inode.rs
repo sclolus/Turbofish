@@ -134,11 +134,11 @@ impl Inode {
     }
 
     pub fn is_a_directory(&self) -> bool {
-        self.type_and_perm.contains(FileType::DIRECTORY)
+        self.type_and_perm & FileType::S_IFMT == FileType::DIRECTORY
     }
 
     pub fn is_a_regular_file(&self) -> bool {
-        self.type_and_perm.contains(FileType::REGULAR_FILE)
+        self.type_and_perm & FileType::S_IFMT == FileType::REGULAR_FILE
     }
 
     pub fn get_size(&self) -> u64 {

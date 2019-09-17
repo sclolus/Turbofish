@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <string.h>
 
-char CLIENT_PATH[] = "socket_file";
+char CLIENT_PATH[100];
 
 void fill_sockaddr(struct sockaddr_un *addr) {
 	memset(addr, 0, sizeof(struct sockaddr_un));
@@ -26,6 +26,7 @@ void child() {
 		perror("socket");
 		exit(1);
 	}
+	printf("message send: %s\n", MESSAGE);
 	ssize_t len_send = sendto(sock, MESSAGE, sizeof(MESSAGE), 0, (const struct sockaddr *)&dest_addr, sizeof(struct sockaddr_un));
 	printf("len send: %ld\n", len_send);
 	if (len_send == -1) {
@@ -45,6 +46,7 @@ void father(int sock) {
 		perror("recv");
 		exit(1);
 	}
+	printf("message received: %s\n", buffer);
 	assert(strcmp(buffer, MESSAGE) == 0);
 	assert(unlink(CLIENT_PATH) == 0);
 }
@@ -53,6 +55,8 @@ int main() {
 
 	struct sockaddr_un addr;
 
+	pid_t pid = getpid();
+	sprintf(CLIENT_PATH, "./socket_file_%d", pid);
 	fill_sockaddr(&addr);
 	int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock == -1) {

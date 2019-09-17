@@ -88,15 +88,15 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn bind(&mut self, cwd: &Path, creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
+    fn bind(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
-    fn send_to(&mut self, buf: &[u8], flags: u32, sockaddr_opt: Option<Path>) -> SysResult<u32> {
+    fn send_to(&mut self, _buf: &[u8], _flags: u32, _sockaddr_opt: Option<Path>) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
-    fn recv_from(&mut self, buf: &mut [u8], flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(&mut self, _buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
         Err(Errno::ENOSYS)
     }
 }
@@ -120,10 +120,10 @@ pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self, flags: OpenFlags)
         -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
-    fn send_from(&mut self, buf: &[u8], flags: u32, sender: Option<Path>) -> SysResult<u32> {
+    fn send_from(&mut self, _buf: &[u8], _flags: u32, _sender: Option<Path>) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
-    fn recv_from(&mut self, buf: &mut [u8], flags: u32) -> SysResult<IpcResult<u32>> {
+    fn recv_from(&mut self, _buf: &mut [u8], _flags: u32) -> SysResult<IpcResult<u32>> {
         Err(Errno::ENOSYS)
     }
 }

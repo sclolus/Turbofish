@@ -9,7 +9,7 @@ use crate::disk::Disk;
 pub use disk::DiskIo;
 
 pub mod syscall;
-use libc_binding::{Errno, FileType};
+use libc_binding::Errno;
 
 mod tools;
 pub use tools::{
@@ -443,7 +443,7 @@ impl Ext2Filesystem {
     /// iter of the entries of inodes if inode is a directory
     pub fn iter_entries<'a>(&'a mut self, inode: InodeNbr) -> IoResult<EntryIter<'a>> {
         let (inode, inode_addr) = self.get_inode(inode)?;
-        if !inode.type_and_perm.contains(FileType::DIRECTORY) {
+        if !inode.is_a_directory() {
             return Err(Errno::ENOTDIR);
         }
         Ok(EntryIter {
