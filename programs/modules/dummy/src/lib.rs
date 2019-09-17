@@ -2,6 +2,11 @@
 #![feature(alloc_error_handler)]
 #![feature(const_fn)]
 
+extern crate alloc;
+
+mod rust_main;
+use rust_main::rust_main;
+
 pub mod memory;
 #[cfg(not(test))]
 use crate::memory::RustGlobalAlloc;
@@ -11,31 +16,18 @@ use crate::memory::RustGlobalAlloc;
 #[global_allocator]
 static mut MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc::new();
 
-extern crate alloc;
-
-use alloc::boxed::Box;
-
 #[macro_use]
 extern crate kernel_modules;
-use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER};
 
+use kernel_modules::{ModResult, SymbolList, WRITER};
+
+#[cfg(not(test))]
 #[no_mangle]
 fn _start(symtab_list: SymbolList) -> ModResult {
-    (symtab_list.write)("I've never install GNU/Linux.\n");
-    unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
-    }
-    if let ModConfig::Dummy = symtab_list.kernel_callback {
-        let b = Box::new("Displaying allocated String !\n");
-        (symtab_list.write)(&b);
-        println!("Test println!");
-        Ok(ModReturn::Dummy)
-    } else {
-        Err(ModError::BadIdentification)
-    }
+    rust_main(symtab_list)
 }
 
+#[cfg(not(test))]
 #[panic_handler]
 #[no_mangle]
 fn panic(_info: &core::panic::PanicInfo) -> ! {

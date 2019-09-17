@@ -2,6 +2,11 @@
 #![feature(alloc_error_handler)]
 #![feature(const_fn)]
 
+extern crate alloc;
+
+mod rust_main;
+use rust_main::rust_main;
+
 pub mod memory;
 #[cfg(not(test))]
 use crate::memory::RustGlobalAlloc;
@@ -11,33 +16,18 @@ use crate::memory::RustGlobalAlloc;
 #[global_allocator]
 static mut MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc::new();
 
-extern crate alloc;
-
 #[macro_use]
 extern crate kernel_modules;
-use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER};
 
-use keyboard::{init_keyboard_driver, KEYBOARD_DRIVER};
+use kernel_modules::{ModResult, SymbolList, WRITER};
 
+#[cfg(not(test))]
 #[no_mangle]
 fn _start(symtab_list: SymbolList) -> ModResult {
-    (symtab_list.write)("Inserting Keyboard module\n");
-    unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
-    }
-    if let ModConfig::Keyboard(_idt_fn, _callback_fn) = symtab_list.kernel_callback {
-        init_keyboard_driver();
-        // Set IRQ/IDT
-        // CallBack function
-        Ok(ModReturn::Keyboard(drop_module))
-    } else {
-        Err(ModError::BadIdentification)
-    }
+    rust_main(symtab_list)
 }
 
-fn drop_module() {}
-
+#[cfg(not(test))]
 #[panic_handler]
 #[no_mangle]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
