@@ -37,19 +37,7 @@ pub fn sys_getcwd(buf: *mut c_char, size: usize) -> SysResult<u32> {
         };
 
         let cwd = &scheduler.current_thread_group().cwd;
-        let mut i = 0;
-        for b in cwd.iter_bytes() {
-            // keep a place for the \0
-            if i >= size - 1 {
-                return Err(Errno::ERANGE);
-            }
-            safe_buf[i] = *b;
-            i += 1;
-        }
-        if i == 0 {
-            panic!("cwd is empty");
-        }
-        safe_buf[i] = '\0' as c_char;
+        cwd.write_path_in_buffer(safe_buf)?;
         Ok(0)
     })
 }

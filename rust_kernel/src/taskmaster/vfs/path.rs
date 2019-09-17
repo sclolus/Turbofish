@@ -21,8 +21,28 @@ impl Path {
         Self::try_from("/").expect("path / creation failed")
     }
 
+    pub fn write_path_in_buffer(&self, buf: &mut [c_char]) -> SysResult<u32> {
+        let size = buf.len();
+        let mut i = 0;
+        for b in self.iter_bytes() {
+            // keep a place for the \0
+            if i >= size - 1 {
+                return Err(Errno::ERANGE);
+            }
+            buf[i] = *b;
+            i += 1;
+        }
+        if i > 0 &&
+            // do not erase the slash if the path is /
+            !(i == 1 && buf[0] == '/' as c_char)
+        {
+            buf[i - 1] = '\0' as c_char;
+        }
+        Ok(i as u32)
+    }
+
     /// iterator over the char of the path
-    /// WARNING: return a trailing backslach
+    /// WARNING: return a trailing slash
     pub fn iter_bytes(&self) -> impl Iterator<Item = &c_char> {
         if self.is_absolute() {
             Some(&('/' as c_char))
@@ -441,6 +461,9 @@ impl TryFrom<&str> for Path {
     fn try_from(s: &str) -> SysResult<Self> {
         if s.len() > PATH_MAX - 1 {
             return Err(Errno::ENAMETOOLONG);
+        }
+        if s.len() == 0 {
+            return Err(Errno::EINVAL);
         }
         let is_absolute = s.starts_with('/');
         let components = s.split('/').filter(|&x| x != "");

@@ -1016,20 +1016,7 @@ impl VirtualFileSystem {
             .get_symbolic_content()
             .ok_or(EINVAL)?;
 
-        let size = buf.len();
-        let mut i = 0;
-        for b in symbolic_content.iter_bytes() {
-            // keep a place for the \0
-            if i >= size - 1 {
-                return Err(ERANGE);
-            }
-            buf[i] = *b;
-            i += 1;
-        }
-        if i > 0 {
-            buf[i - 1] = '\0' as c_char;
-        }
-        Ok(i as u32)
+        symbolic_content.write_path_in_buffer(buf)
     }
 
     pub fn symlink(
