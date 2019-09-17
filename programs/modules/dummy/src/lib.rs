@@ -2,10 +2,6 @@
 #![feature(alloc_error_handler)]
 #![feature(const_fn)]
 
-#[macro_use]
-pub mod writer;
-pub use writer::WRITER;
-
 pub mod memory;
 #[cfg(not(test))]
 use crate::memory::RustGlobalAlloc;
@@ -19,7 +15,9 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
-use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList};
+#[macro_use]
+extern crate kernel_modules;
+use kernel_modules::{ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER};
 
 #[no_mangle]
 fn _start(symtab_list: SymbolList) -> ModResult {
