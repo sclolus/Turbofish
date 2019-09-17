@@ -40,11 +40,13 @@ SRC_C += MasterDeepThought \
 		unlink/unlink \
 		unlink/unlink_multiple \
 		unlink/unlink_orphan \
+		unlink/unlink_is_denied_on_unwritable_directory \
 		umask/umask \
 		dir/mkdir_exist \
 		dir/mkdir \
 		dir/rmdir_not_empty \
 		symlink/symlink \
+		symlink/symlink_is_denied_on_unwritable_directory \
 		link/link \
 		rename/rename \
 		rename/rename_dir \

@@ -620,6 +620,19 @@ impl VirtualFileSystem {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
         }
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
+        let parent_inode = self
+            .inodes
+            .get(&parent_inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
             parent_inode_id.inode_number as u32,
@@ -812,6 +825,7 @@ impl VirtualFileSystem {
         path: Path,
         mut mode: FileType,
     ) -> SysResult<()> {
+        // TODO: handle permissions here pretty please.
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
 
@@ -823,6 +837,7 @@ impl VirtualFileSystem {
     }
 
     pub fn fchmod(&mut self, inode_id: InodeId, mut mode: FileType) -> SysResult<()> {
+        // TODO: handle permissions here pretty please.
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
 
@@ -852,6 +867,7 @@ impl VirtualFileSystem {
         owner: uid_t,
         group: gid_t,
     ) -> SysResult<()> {
+        // TODO: handle permissions here pretty please.
         let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
@@ -860,6 +876,7 @@ impl VirtualFileSystem {
     }
 
     pub fn fchown(&mut self, inode_id: InodeId, owner: uid_t, group: gid_t) -> SysResult<()> {
+        // TODO: handle permissions here please.
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock()
             .chown(inode_id.inode_number as u32, owner, group)?;
@@ -1122,6 +1139,20 @@ impl VirtualFileSystem {
         }
 
         let parent_inode_id = direntry.inode_id;
+
+        // let's remove this code duplication with `get_inode_from_direntry_id` or something.
+        let parent_inode = self
+            .inodes
+            .get(&parent_inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
 
         let fs_cloned = self
             .get_filesystem(parent_inode_id)
