@@ -7,7 +7,7 @@ use super::{get_file_op_uid, Driver, FileOperation};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, OpenFlags, Pid};
+use libc_binding::{stat, termios, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
@@ -95,6 +95,12 @@ impl FileOperation for TtyFileOperation {
     }
     fn isatty(&mut self) -> SysResult<u32> {
         return Ok(1);
+    }
+
+    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
+        //TODO: this is a hack to make dash works, stock and use
+        // inodeid instead
+        Ok(0)
     }
 }
 

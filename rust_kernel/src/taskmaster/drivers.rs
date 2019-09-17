@@ -31,6 +31,9 @@ use sync::dead_mutex::DeadMutex;
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Err(Errno::ENOSYS)
+    }
     /// Invoqued when a new FD is registered
     fn register(&mut self, _flags: OpenFlags) {}
 
@@ -50,8 +53,12 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
-        log::error!("UNIMPLEMENTED: fstat called on a non ext2 file");
+    fn fstat(&mut self, stat: &mut stat) -> SysResult<u32> {
+        let inode_id = self.get_inode_id()?;
+        VFS.lock()
+            .get_inode(inode_id)
+            .expect("no such inode")
+            .stat(stat)?;
         Ok(0)
     }
 

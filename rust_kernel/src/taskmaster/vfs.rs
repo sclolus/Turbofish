@@ -988,6 +988,20 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn stat(
+        &mut self,
+        cwd: &Path,
+        _creds: &Credentials,
+        path: Path,
+        buf: &mut stat,
+    ) -> SysResult<u32> {
+        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        let inode_id = entry.inode_id;
+        let inode = self.get_inode(inode_id)?;
+        inode.stat(buf)
+    }
+
     pub fn lstat(
         &mut self,
         cwd: &Path,
