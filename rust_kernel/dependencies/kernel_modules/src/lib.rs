@@ -38,7 +38,7 @@ pub enum ModError {
 pub type ModResult = core::result::Result<ModReturn, ModError>;
 
 /// Status of a given module
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Status {
     /// Module is inactive and unloaded
     Inactive,
@@ -46,15 +46,22 @@ pub enum Status {
     Active,
 }
 
+/// Default boilerplate for status
+impl Default for Status {
+    fn default() -> Self {
+        Status::Inactive
+    }
+}
+
 /// Status of all modules
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct ModStatus {
     /// Dummy module status
-    dummy: Status,
+    pub dummy: Status,
     /// RTC module status
-    rtc: Status,
+    pub rtc: Status,
     /// Keyboard module status
-    keybard: Status,
+    pub keybard: Status,
 }
 
 /// This enum describes kernel functions specifics that the module could call

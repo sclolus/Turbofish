@@ -249,7 +249,7 @@ use isatty::sys_isatty;
 /*
  * Module kernel management
  */
-mod kernel_mod;
+pub mod kernel_mod;
 use kernel_mod::{sys_insmod, sys_rmmod};
 
 mod trace_syscall;

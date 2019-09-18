@@ -3,6 +3,7 @@ use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, 
 use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
+use super::syscall::kernel_mod::KernelModules;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
 use super::{SysResult, TaskMode};
@@ -72,6 +73,8 @@ impl Debug for Scheduler {
 
 /// Scheduler structure
 pub struct Scheduler {
+    /// contains status of kernel modules
+    pub kernel_modules: KernelModules,
     /// contains a hashmap of pid, process
     all_process: BTreeMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
@@ -127,6 +130,7 @@ impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
         Self {
+            kernel_modules: KernelModules::new(),
             running_process: Vec::new(),
             all_process: BTreeMap::new(),
             next_pid: AtomicI32::new(1),
