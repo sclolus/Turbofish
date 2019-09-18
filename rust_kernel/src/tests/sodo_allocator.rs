@@ -9,7 +9,7 @@ use crate::tests::helpers::exit_qemu;
 pub extern "C" fn kmain(
     multiboot_info: *const MultibootInfo,
     device_map_ptr: *const DeviceMap,
-) -> u32 {
+) -> ! {
     unsafe {
         UART_16550.init();
     }
@@ -99,5 +99,12 @@ pub extern "C" fn kmain(
     make_somization(1024, || srand::<u32>(64) as usize * 4096).expect("failed sodo 3");
     make_somization(1024 * 4, || srand::<u32>(4096) as usize).expect("failed sodo 4");
 
-    exit_qemu(0);
+    crate::watch_dog();
+    let _r = exit_qemu(0);
+    loop {
+        unsafe {
+            asm!("hlt");
+        }
+    }
+
 }
