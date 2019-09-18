@@ -24,7 +24,9 @@ use sync::dead_mutex::DeadMutex;
 
 #[derive(Debug)]
 pub struct DgramMessage {
+    /// the data of the message
     buf: Vec<u8>,
+    /// the sender
     sender: Option<Path>,
 }
 
@@ -38,6 +40,7 @@ impl DgramMessage {
 
 #[derive(Debug)]
 pub struct SocketDriver {
+    /// the messaging for the dgram message
     messages: VecDeque<DgramMessage>,
     file_op_uid: usize,
 }
@@ -60,6 +63,7 @@ impl Driver for SocketDriver {
         Err(Errno::ENOSYS)
     }
 
+    /// send a message on the socket from the sender `sender`
     fn send_from(&mut self, buf: &[u8], _flags: u32, sender: Option<Path>) -> SysResult<u32> {
         self.messages.try_reserve(1)?;
         self.messages.push_back(DgramMessage::try_new(buf, sender)?);
@@ -94,11 +98,17 @@ impl Driver for SocketDriver {
 /// This structure represents a FileOperation of type Socket
 #[derive(Debug)]
 pub struct Socket {
+    /// we only handle AF_UNIX domain
     domain: socket::Domain,
+    /// the type of the socket(Dgram, Stream, SeqPacket)
     socket_type: socket::SocketType,
+    /// the inode id of the socket if it is binded
     inode_id: Option<InodeId>,
+    /// the address of the socket file if the socket is binded
     path: Option<Path>,
+    /// the peer address if the socket is connected
     peer_address: Option<Path>,
+    /// the peer inode id if the socket is connected
     peer_inode_id: Option<InodeId>,
 }
 
@@ -133,6 +143,9 @@ impl FileOperation for Socket {
         self.inode_id = Some(inode_id);
         self.path = Some(sockaddr);
         unsafe {
+            // we increment the counter of file operation on the
+            // inode manualy, because we didn't call open on the
+            // inode
             VFS.lock()
                 .get_inode(inode_id)
                 .expect("no inode wtf")
