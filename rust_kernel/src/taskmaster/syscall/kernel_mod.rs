@@ -64,37 +64,20 @@ pub struct KernelModules {
     dummy: Option<Module>,
 }
 
+/// Stored structure of a given module
+struct Module {
+    start_point: u32,
+    symbol_table: Box<SymbolTable>,
+    mod_return: ModReturn,
+    alloc_table: AllocTable,
+}
+
 /// Main implementation
 impl KernelModules {
     pub fn new() -> Self {
         Self {
             status: ModStatus::default(),
             dummy: None,
-        }
-    }
-}
-
-/// Stored structure of a given module
-struct Module {
-    start_point: u32,
-    symbol_table: Box<SymbolTable>,
-    mod_return: ModReturn,
-    alloc_table: Vec<AllocEntry>,
-}
-
-struct AllocEntry {
-    page_index: Page<Virt>,
-    nbr_pages: NbrPages,
-}
-
-impl AllocEntry {
-    fn free(&self) -> SysResult<()> {
-        unsafe {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                .as_mut()
-                .unwrap()
-                .dealloc_on(self.page_index, self.nbr_pages)
-                .map_err(|e| e.into())
         }
     }
 }
@@ -136,10 +119,7 @@ impl Scheduler {
                     },
                     kernel_callback: ModConfig::Dummy,
                 })
-                .map_err(|_e| {
-                    /* Free memory */
-                    Errno::EINVAL
-                })?;
+                .map_err(|_e| Errno::EINVAL)?;
 
                 self.kernel_modules.status.dummy = Status::Active;
                 self.kernel_modules.dummy = Some(Module {
@@ -164,23 +144,17 @@ impl Scheduler {
                     log::warn!("Dummy Module already inactive");
                     return Ok(0);
                 }
-                // Invoque Stop fn
-                if let ModReturn::Dummy(dummy_return) =
-                    self.kernel_modules.dummy.as_ref().expect("WOOT").mod_return
-                {
-                    (dummy_return.stop)();
-                } else {
-                    panic!("WTF");
-                }
-                for elem in self
-                    .kernel_modules
-                    .dummy
-                    .as_mut()
-                    .expect("WTF")
-                    .alloc_table
-                    .iter()
-                {
-                    elem.free().expect("WOOT 2");
+
+                match self.kernel_modules.dummy.as_ref() {
+                    None => panic!("module should be present"),
+                    Some(module) => {
+                        if let ModReturn::Dummy(dummy_return) = module.mod_return {
+                            // Invoque Stop fn
+                            (dummy_return.stop)();
+                        } else {
+                            panic!("incorrect modReturn");
+                        }
+                    }
                 }
                 self.kernel_modules.status.dummy = Status::Inactive;
                 self.kernel_modules.dummy = None;
@@ -205,9 +179,50 @@ extern "C" {
     fn krealloc(addr: *mut u8, new_size: usize) -> *mut u8;
 }
 
+struct AllocTable(Vec<AllocEntry>);
+
+impl AllocTable {
+    fn free_memory(&self) -> SysResult<()> {
+        for elem in self.0.iter() {
+            elem.free_memory()?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for AllocTable {
+    fn drop(&mut self) {
+        self.free_memory().expect("Unexpected memory error");
+    }
+}
+
+struct AllocEntry {
+    page_index: Page<Virt>,
+    nbr_pages: NbrPages,
+}
+
+impl AllocEntry {
+    fn new(page_index: Page<Virt>, nbr_pages: NbrPages) -> Self {
+        Self {
+            page_index,
+            nbr_pages,
+        }
+    }
+
+    fn free_memory(&self) -> SysResult<()> {
+        unsafe {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .dealloc_on(self.page_index, self.nbr_pages)
+                .map_err(|e| e.into())
+        }
+    }
+}
+
 /// Load a module from ELF
-fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, Vec<AllocEntry>)> {
-    let mut alloc_table: Vec<AllocEntry> = Vec::new();
+fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, AllocTable)> {
+    let mut alloc_table: AllocTable = AllocTable(Vec::new());
     // Parse Elf and generate stuff
     let elf = load_elf(content)?;
     for h in &elf.program_header_table {
@@ -215,17 +230,13 @@ fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, Vec<
             let segment = unsafe {
                 let page_index: Page<Virt> = Virt(h.vaddr as usize).into();
                 let nbr_pages: NbrPages = (h.memsz as usize).into();
-
+                alloc_table.0.try_reserve(1)?;
                 KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc_on(
                     page_index,
                     nbr_pages,
                     AllocFlags::KERNEL_MEMORY,
                 )?;
-                // TODO: Make fallible
-                alloc_table.push(AllocEntry {
-                    page_index,
-                    nbr_pages,
-                });
+                alloc_table.0.push(AllocEntry::new(page_index, nbr_pages));
                 slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
             };
             segment[0..h.filez as usize]
