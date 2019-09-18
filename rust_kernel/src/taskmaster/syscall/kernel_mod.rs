@@ -20,7 +20,7 @@ use core::slice;
 
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
-use crate::memory::tools::{AllocFlags, Page, Virt};
+use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
 /// Insert a kernel module
@@ -59,6 +59,7 @@ pub fn sys_rmmod(modname: *const c_char) -> SysResult<u32> {
 
 /// Main structure
 pub struct KernelModules {
+    /// this structure may be shared between modules to check dependencies
     status: ModStatus,
     dummy: Option<Module>,
 }
@@ -78,6 +79,24 @@ struct Module {
     start_point: u32,
     symbol_table: Box<SymbolTable>,
     mod_return: ModReturn,
+    alloc_table: Vec<AllocEntry>,
+}
+
+struct AllocEntry {
+    page_index: Page<Virt>,
+    nbr_pages: NbrPages,
+}
+
+impl AllocEntry {
+    fn free(&self) -> SysResult<()> {
+        unsafe {
+            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                .as_mut()
+                .unwrap()
+                .dealloc_on(self.page_index, self.nbr_pages)
+                .map_err(|e| e.into())
+        }
+    }
 }
 
 impl Scheduler {
@@ -93,7 +112,7 @@ impl Scheduler {
                 // Generate content from disk
                 let content = get_module_raw_content("/turbofish/mod/dummy.mod")?;
                 // Try to parse ELF
-                let (eip, symbol_table) = load_module(&content)?;
+                let (eip, symbol_table, alloc_table) = load_module(&content)?;
 
                 let symbol_table = match symbol_table {
                     Some(s) => s,
@@ -127,6 +146,7 @@ impl Scheduler {
                     start_point,
                     symbol_table,
                     mod_return,
+                    alloc_table,
                 });
                 log::info!("Inserting Dummy Module");
             }
@@ -152,7 +172,16 @@ impl Scheduler {
                 } else {
                     panic!("WTF");
                 }
-                /* Free memory */
+                for elem in self
+                    .kernel_modules
+                    .dummy
+                    .as_mut()
+                    .expect("WTF")
+                    .alloc_table
+                    .iter()
+                {
+                    elem.free().expect("WOOT 2");
+                }
                 self.kernel_modules.status.dummy = Status::Inactive;
                 self.kernel_modules.dummy = None;
                 log::info!("Removing Dummy Module");
@@ -177,17 +206,26 @@ extern "C" {
 }
 
 /// Load a module from ELF
-fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>)> {
+fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, Vec<AllocEntry>)> {
+    let mut alloc_table: Vec<AllocEntry> = Vec::new();
     // Parse Elf and generate stuff
     let elf = load_elf(content)?;
     for h in &elf.program_header_table {
         if h.segment_type == SegmentType::Load {
             let segment = unsafe {
+                let page_index: Page<Virt> = Virt(h.vaddr as usize).into();
+                let nbr_pages: NbrPages = (h.memsz as usize).into();
+
                 KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc_on(
-                    Virt(h.vaddr as usize).into(),
-                    (h.memsz as usize).into(),
+                    page_index,
+                    nbr_pages,
                     AllocFlags::KERNEL_MEMORY,
                 )?;
+                // TODO: Make fallible
+                alloc_table.push(AllocEntry {
+                    page_index,
+                    nbr_pages,
+                });
                 slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
             };
             segment[0..h.filez as usize]
@@ -219,6 +257,7 @@ fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>)> {
             Some(elem) => Some(Box::try_new(elem)?),
             None => None,
         },
+        alloc_table,
     ))
 }
 
