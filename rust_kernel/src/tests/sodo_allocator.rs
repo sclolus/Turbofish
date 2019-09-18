@@ -106,5 +106,4 @@ pub extern "C" fn kmain(
             asm!("hlt");
         }
     }
-
 }

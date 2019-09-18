@@ -111,28 +111,25 @@ extern "C" {
     fn krealloc(addr: *mut u8, new_size: usize) -> *mut u8;
 }
 
-fn test() {
-    let path = "/turbofish/mod/dummy.mod"
-        .try_into()
-        .expect("The path of the module is not valid");
-    let content = get_file_content(&Path::try_from("/").unwrap(), &Credentials::ROOT, path)
-        .expect("Cannot load module");
+fn test() -> SysResult<()> {
+    let path = "/turbofish/mod/dummy.mod".try_into()?;
+    let content = get_file_content(
+        &Path::try_from("/").expect("no root"),
+        &Credentials::ROOT,
+        path,
+    )?;
 
     // Parse Elf and generate stuff
     let (eip, _symbol_table) = {
-        let elf = load_elf(&content).expect("WOOOT");
+        let elf = load_elf(&content)?;
         for h in &elf.program_header_table {
             if h.segment_type == SegmentType::Load {
                 let segment = unsafe {
-                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
-                        .as_mut()
-                        .unwrap()
-                        .alloc_on_from_raw_types(
-                            h.vaddr as *mut u8,
-                            h.memsz as usize,
-                            AllocFlags::KERNEL_MEMORY,
-                        )
-                        .expect("Alloc 1 failed");
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc_on(
+                        Virt(h.vaddr as usize).into(),
+                        (h.memsz as usize).into(),
+                        AllocFlags::KERNEL_MEMORY,
+                    )?;
                     slice::from_raw_parts_mut(h.vaddr as usize as *mut u8, h.memsz as usize)
                 };
                 segment[0..h.filez as usize].copy_from_slice(
@@ -158,15 +155,14 @@ fn test() {
                                     Into::<AllocFlags>::into(h.flags) | AllocFlags::KERNEL_MEMORY,
                                 )
                             },
-                        )
-                        .expect("page must have been alloc by alloc on");
+                        )?;
                 }
             }
         }
         (
             elf.header.entry_point as u32,
             match SymbolTable::try_new(&content).ok() {
-                Some(elem) => Some(Arc::try_new(elem).expect("Woot on SymTab")),
+                Some(elem) => Some(Arc::try_new(elem)?),
                 None => None,
             },
         )
@@ -195,6 +191,7 @@ fn test() {
     } else {
         println!("test failed !");
     }
+    Ok(())
 }
 
 // Create an ASM dummy process based on a simple function
@@ -204,7 +201,7 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     unsafe {
         cpu_isr::reassign_cpu_exceptions();
     }
-    test();
+    test().expect("WTF");
 
     // Initialize Syscall system
     syscall::init();

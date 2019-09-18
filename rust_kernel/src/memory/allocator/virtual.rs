@@ -222,22 +222,6 @@ impl VirtualPageAllocator {
         Ok(vaddr.into())
     }
 
-    pub fn alloc_on_from_raw_types(
-        &mut self,
-        vaddr: *mut u8,
-        size: usize,
-        flags: AllocFlags,
-    ) -> Result<*mut u8> {
-        let vaddr = Virt(vaddr as usize);
-        let size =
-            NbrPages::from((vaddr + size).align_next(PAGE_SIZE) - vaddr.align_prev(PAGE_SIZE));
-        let page = Page::from(vaddr);
-        Ok(self
-            .alloc_on(page, size, flags | AllocFlags::USER_MEMORY)?
-            .to_addr()
-            .0 as *mut u8)
-    }
-
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
