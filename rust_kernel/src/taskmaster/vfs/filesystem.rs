@@ -6,7 +6,6 @@ use super::{Driver, FileOperation, Inode, InodeData};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::fmt::Debug;
-use fallible_collections::FallibleBox;
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
 
 pub mod dead;

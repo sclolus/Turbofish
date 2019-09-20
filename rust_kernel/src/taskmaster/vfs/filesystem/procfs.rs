@@ -3,25 +3,18 @@ use super::{
     DirectoryEntry as VfsDirectoryEntry, DirectoryEntryId, Driver, FileOperation, FileSystem,
     FileSystemId, SysResult,
 };
-use super::{
-    DirectoryEntryBuilder, Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path,
-};
+use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId};
 
 use super::dead::DeadFileSystem;
 use super::{KeyGenerator, Mapper};
 use crate::taskmaster::drivers::DefaultDriver;
 use alloc::{boxed::Box, vec::Vec};
 use core::convert::{TryFrom, TryInto};
-use core::fmt::Debug;
 use core::ops::{Deref, DerefMut};
 use fallible_collections::{
-    arc::FallibleArc,
-    boxed::FallibleBox,
-    btree::BTreeMap,
-    vec::{FallibleVec, TryCollect},
-    TryClone,
+    arc::FallibleArc, boxed::FallibleBox, btree::BTreeMap, vec::TryCollect,
 };
-use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
+use libc_binding::{Errno, FileType};
 
 use alloc::sync::Arc;
 use core::default::Default;
@@ -107,7 +100,7 @@ impl ProcFs {
             .set_filename(Filename::try_from("ProcFsRoot").unwrap())
             .set_inode_id(root_inode_id);
 
-        let mut inode = VfsInode::root_inode()?;
+        let inode = VfsInode::root_inode()?;
         let inode_id = new.new_inode_id(inode.id.inode_number);
 
         let root_direntry = DirectoryEntry(root_direntry);
@@ -175,7 +168,7 @@ impl FileSystem for ProcFs {
             .direntries
             .get(&DirectoryEntryId::new(2))
             .expect("There should be a root direntry for procfs");
-        let mut inode = self
+        let inode = self
             .inodes
             .get(&direntry.inode_id)
             .expect("There should be a root inode for procfs");

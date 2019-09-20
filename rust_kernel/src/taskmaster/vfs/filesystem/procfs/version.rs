@@ -1,12 +1,7 @@
-use super::{
-    DirectoryEntry, Driver, FileOperation, FileSystem, FileSystemId, ProcFsDriver, SysResult,
-};
-use super::{DirectoryEntryBuilder, Filename, Inode, InodeId, Path, VfsInodeData};
-use super::{IpcResult, KeyGenerator, Mapper};
-use alloc::collections::btree_map::BTreeMap;
-use alloc::vec::Vec;
-use core::fmt::Debug;
-use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
+use super::IpcResult;
+use super::ProcFsDriver;
+use super::{FileOperation, SysResult};
+use libc_binding::Errno;
 
 #[derive(Debug, Clone)]
 pub struct VersionDriver;
@@ -49,8 +44,6 @@ impl FileOperation for VersionOperations {
                 }
             }
         }
-
-        log::warn!("Version read: ret = {}, buf.len() = {}", ret, buf.len());
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
     }

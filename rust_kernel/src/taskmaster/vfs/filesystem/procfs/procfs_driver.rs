@@ -1,17 +1,11 @@
-use super::{
-    DirectoryEntry, Driver, FileOperation, FileSystem, FileSystemId, IpcResult, SysResult,
-};
-use super::{DirectoryEntryBuilder, Filename, Inode, InodeId, Path, VfsInodeData};
-use super::{KeyGenerator, Mapper};
-use fallible_collections::btree::BTreeMap;
+use super::{Driver, FileOperation, IpcResult, SysResult};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 
-use alloc::vec::Vec;
 use core::fmt::Debug;
 
-use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType, OpenFlags};
+use libc_binding::OpenFlags;
 use sync::DeadMutex;
 
 pub trait ProcFsDriver: Clone {
