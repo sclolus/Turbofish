@@ -87,43 +87,44 @@ pub struct RTCConfig {
 pub struct KeyboardConfig {
     /// Give ability to redirect an IDT entry to a specific function or None to disable
     pub set_idt_entry: fn(usize, Option<unsafe extern "C" fn()>),
-    /// Keyboard callback given by the kernel
-    pub callback: CallbackKeyboard,
+    // /// Keyboard callback given by the kernel
+    // pub callback: CallbackKeyboard,
+}
+
+/// Standard mod return
+#[derive(Debug, Copy, Clone)]
+pub struct ModReturn {
+    /// Stop the module
+    pub stop: fn(),
+    /// Specific module return
+    pub spec: ModSpecificReturn,
 }
 
 /// This module describes function specifics that the kernel could call
 #[derive(Debug, Copy, Clone)]
-pub enum ModReturn {
+pub enum ModSpecificReturn {
     /// The kernel cannot ask the Dummy module
-    Dummy(DummyReturn),
+    DummyReturn,
     /// The RTC can be stopped and should give the time to the kernel
-    RTC(RTCReturn),
+    RTCReturn,
     /// The keyboard can be stopped but The kernel cannot ask it
-    Keyboard(KeyboardReturn),
+    KeyboardReturn,
 }
 
 /// Return parameters of the Dummy module
 #[derive(Debug, Copy, Clone)]
-pub struct DummyReturn {
-    /// Stop the Dummy module
-    pub stop: fn(),
-}
+pub struct DummyReturn {}
 
 /// Return parameters of the RTC module
 #[derive(Debug, Copy, Clone)]
 pub struct RTCReturn {
-    /// Stop the RTC module
-    pub stop: fn(),
     /// Ask for current time
     pub get_time: fn() -> u32,
 }
 
 /// Return parameters of the Keyboard module
 #[derive(Debug, Copy, Clone)]
-pub struct KeyboardReturn {
-    /// Stop the Keyboard module
-    pub stop: fn(),
-}
+pub struct KeyboardReturn {}
 
 /// The allocators methods are passed by the kernel while module is initialized
 #[derive(Copy, Clone)]

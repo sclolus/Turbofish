@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::boxed::FallibleBox;
 use kernel_modules::{
-    ForeignAllocMethods, ModConfig, ModResult, ModReturn, ModStatus, Status, SymbolList,
+    ForeignAllocMethods, KeyboardConfig, ModConfig, ModResult, ModReturn, RTCConfig, SymbolList,
 };
 use libc_binding::{c_char, Errno};
 
@@ -59,9 +59,9 @@ pub fn sys_rmmod(modname: *const c_char) -> SysResult<u32> {
 
 /// Main structure
 pub struct KernelModules {
-    /// this structure may be shared between modules to check dependencies
-    status: ModStatus,
     dummy: Option<Module>,
+    rtc: Option<Module>,
+    keyboard: Option<Module>,
 }
 
 /// Stored structure of a given module
@@ -76,8 +76,9 @@ struct Module {
 impl KernelModules {
     pub fn new() -> Self {
         Self {
-            status: ModStatus::default(),
             dummy: None,
+            rtc: None,
+            keyboard: None,
         }
     }
 }
@@ -85,86 +86,96 @@ impl KernelModules {
 impl Scheduler {
     /// Try to insert a Kernel Module
     fn insert_module(&mut self, modname: &str) -> SysResult<u32> {
-        match modname {
-            "dummy" => {
-                // Check if dummy module is already loaded
-                if Status::Active == self.kernel_modules.status.dummy {
-                    log::warn!("Dummy Module already active");
-                    return Ok(0);
-                }
-                // Generate content from disk
-                let content = get_module_raw_content("/turbofish/mod/dummy.mod")?;
-                // Try to parse ELF
-                let (eip, symbol_table, alloc_table) = load_module(&content)?;
-
-                let symbol_table = match symbol_table {
-                    Some(s) => s,
-                    None => {
-                        log::error!("No Symtab for Dummy Module");
-                        return Err(Errno::EINVAL);
-                    }
-                };
-
-                // Launch the module with his particulary context
-                let start_point: u32 = eip as u32;
-                let p: fn(SymbolList) -> ModResult = unsafe { core::mem::transmute(start_point) };
-
-                let mod_return = p(SymbolList {
-                    write,
-                    alloc_tools: ForeignAllocMethods {
-                        kmalloc,
-                        kcalloc,
-                        kfree,
-                        krealloc,
-                    },
-                    kernel_callback: ModConfig::Dummy,
-                })
-                .map_err(|_e| Errno::EINVAL)?;
-
-                self.kernel_modules.status.dummy = Status::Active;
-                self.kernel_modules.dummy = Some(Module {
-                    start_point,
-                    symbol_table,
-                    mod_return,
-                    alloc_table,
-                });
-                log::info!("Inserting Dummy Module");
+        let (module_opt, module_pathname, mod_config) = match modname {
+            "dummy" => (
+                &mut self.kernel_modules.dummy,
+                "/turbofish/mod/dummy.mod",
+                ModConfig::Dummy,
+            ),
+            "rtc" => (
+                &mut self.kernel_modules.rtc,
+                "/turbofish/mod/rtc.mod",
+                ModConfig::RTC(RTCConfig { set_idt_entry }),
+            ),
+            "keyboard" => (
+                &mut self.kernel_modules.keyboard,
+                "/turbofish/mod/keyboard.mod",
+                ModConfig::Keyboard(KeyboardConfig { set_idt_entry }),
+            ),
+            _ => {
+                log::warn!("Unknown module name");
+                return Ok(0);
             }
-            _ => unimplemented!(),
+        };
+
+        if let Some(_) = module_opt {
+            log::warn!("Module already active");
+            return Ok(0);
         }
+
+        // Generate content from disk
+        let content = get_module_raw_content(module_pathname)?;
+        // Try to parse ELF
+        let (eip, symbol_table, alloc_table) = load_module(&content)?;
+
+        let symbol_table = match symbol_table {
+            Some(s) => s,
+            None => {
+                log::error!("No Symtab for that Module");
+                return Err(Errno::EINVAL);
+            }
+        };
+
+        // Launch the module with his particulary context
+        let start_point: u32 = eip as u32;
+        let p: fn(SymbolList) -> ModResult = unsafe { core::mem::transmute(start_point) };
+
+        let mod_return = p(SymbolList {
+            write,
+            alloc_tools: ForeignAllocMethods {
+                kmalloc,
+                kcalloc,
+                kfree,
+                krealloc,
+            },
+            kernel_callback: mod_config,
+        })
+        .map_err(|_e| Errno::EINVAL)?;
+
+        *module_opt = Some(Module {
+            start_point,
+            symbol_table,
+            mod_return,
+            alloc_table,
+        });
+        log::info!("Inserting Module");
         Ok(0)
     }
 
     /// Try to remove a kernel module
     fn remove_module(&mut self, modname: &str) -> SysResult<u32> {
-        match modname {
-            "dummy" => {
-                // Check if dummy module is already unloaded
-                if Status::Inactive == self.kernel_modules.status.dummy {
-                    log::warn!("Dummy Module already inactive");
-                    return Ok(0);
-                }
-
-                match self.kernel_modules.dummy.as_ref() {
-                    None => panic!("module should be present"),
-                    Some(module) => {
-                        if let ModReturn::Dummy(dummy_return) = module.mod_return {
-                            // Invoque Stop fn
-                            (dummy_return.stop)();
-                        } else {
-                            panic!("incorrect modReturn");
-                        }
-                    }
-                }
-                self.kernel_modules.status.dummy = Status::Inactive;
-                self.kernel_modules.dummy = None;
-                log::info!("Removing Dummy Module");
+        let module_opt = match modname {
+            "dummy" => &mut self.kernel_modules.dummy,
+            "rtc" => &mut self.kernel_modules.rtc,
+            "keyboard" => &mut self.kernel_modules.keyboard,
+            _ => {
+                log::warn!("Unknown module name");
+                return Ok(0);
             }
-            _ => unimplemented!(),
+        };
+        match module_opt {
+            None => {
+                log::warn!("Module already inactive");
+                return Ok(0);
+            }
+            Some(module) => (module.mod_return.stop)(),
         }
+        *module_opt = None;
         Ok(0)
     }
 }
+
+fn set_idt_entry(_idt_gate: usize, _func: Option<unsafe extern "C" fn()>) {}
 
 /// Common Write method for modules
 fn write(s: &str) {
@@ -181,21 +192,6 @@ extern "C" {
 
 struct AllocTable(Vec<AllocEntry>);
 
-impl AllocTable {
-    fn free_memory(&self) -> SysResult<()> {
-        for elem in self.0.iter() {
-            elem.free_memory()?;
-        }
-        Ok(())
-    }
-}
-
-impl Drop for AllocTable {
-    fn drop(&mut self) {
-        self.free_memory().expect("Unexpected memory error");
-    }
-}
-
 struct AllocEntry {
     page_index: Page<Virt>,
     nbr_pages: NbrPages,
@@ -208,14 +204,16 @@ impl AllocEntry {
             nbr_pages,
         }
     }
+}
 
-    fn free_memory(&self) -> SysResult<()> {
+impl Drop for AllocEntry {
+    fn drop(&mut self) {
         unsafe {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
                 .dealloc_on(self.page_index, self.nbr_pages)
-                .map_err(|e| e.into())
+                .expect("Unexpected memory error");
         }
     }
 }

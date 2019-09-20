@@ -1,6 +1,8 @@
 //! This file contains the main function of the module
 
-use kernel_modules::{DummyReturn, ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER};
+use kernel_modules::{
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList, WRITER,
+};
 
 use alloc::boxed::Box;
 
@@ -57,7 +59,10 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
         unsafe {
             CTX = Some(Ctx::new());
         }
-        Ok(ModReturn::Dummy(DummyReturn { stop: drop_module }))
+        Ok(ModReturn {
+            stop: drop_module,
+            spec: ModSpecificReturn::DummyReturn {},
+        })
     } else {
         Err(ModError::BadIdentification)
     }

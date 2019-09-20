@@ -1,7 +1,7 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    KeyboardReturn, ModConfig, ModError, ModResult, ModReturn, SymbolList, WRITER,
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList, WRITER,
 };
 
 use keyboard::{init_keyboard_driver, KEYBOARD_DRIVER};
@@ -17,7 +17,10 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
         init_keyboard_driver();
         // Set IRQ/IDT
         // CallBack function
-        Ok(ModReturn::Keyboard(KeyboardReturn { stop: drop_module }))
+        Ok(ModReturn {
+            stop: drop_module,
+            spec: ModSpecificReturn::KeyboardReturn {},
+        })
     } else {
         Err(ModError::BadIdentification)
     }
