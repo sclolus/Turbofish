@@ -1,7 +1,12 @@
-use super::{DirectoryEntry, SysResult};
-use super::{DirectoryEntryBuilder, Filename, InodeData, InodeId, Path};
+use super::tools::{KeyGenerator, Mapper};
+use super::IpcResult;
+use super::{DirectoryEntry, DirectoryEntryId, SysResult};
+use super::{DirectoryEntryBuilder, Ext2DriverFile, Filename, InodeId, Path};
+use super::{Driver, FileOperation, Inode, InodeData};
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::fmt::Debug;
+use fallible_collections::FallibleBox;
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
 
 pub mod dead;
@@ -9,16 +14,22 @@ pub use dead::DeadFileSystem;
 pub mod ext2fs;
 pub use ext2fs::Ext2fs;
 
+pub mod procfs;
+pub use procfs::ProcFs;
+
 pub trait FileSystem: Send + Debug {
     // fn name(&self) -> &str;
     // fn load_inode(&self, inode_number: InodeNumber) -> SysResult<Inode>;
     /// return all the directory entry and inode present in the inode_nbr
-    fn lookup_directory(&mut self, _inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
+    fn lookup_directory(
+        &mut self,
+        _inode_nbr: u32,
+    ) -> SysResult<Vec<(DirectoryEntry, InodeData, Box<dyn Driver>)>> {
         Err(Errno::ENOSYS)
     }
 
     /// return the (possibly virtual) directory entry and inode of the root
-    fn root(&self) -> SysResult<(DirectoryEntry, InodeData)> {
+    fn root(&self) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         Err(Errno::ENOSYS)
     }
 
@@ -48,7 +59,7 @@ pub trait FileSystem: Send + Debug {
         _parent_inode_nbr: u32,
         _mode: FileType,
         (_owner, _group): (uid_t, gid_t),
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         Err(Errno::ENOSYS)
     }
 
@@ -71,7 +82,7 @@ pub trait FileSystem: Send + Debug {
         _filename: &str,
         _mode: FileType,
         (_owner, _group): (uid_t, gid_t),
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         Err(Errno::ENOSYS)
     }
 
@@ -84,7 +95,7 @@ pub trait FileSystem: Send + Debug {
         _parent_inode_nbr: u32,
         _target: &str,
         _filename: &str,
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         Err(Errno::ENOSYS)
     }
 

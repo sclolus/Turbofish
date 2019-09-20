@@ -223,7 +223,7 @@ impl Default for DirectoryEntry {
         }
     }
 }
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub struct DirectoryEntryId(usize);
 
 impl DirectoryEntryId {
@@ -234,6 +234,13 @@ impl DirectoryEntryId {
     pub fn next_id(&self) -> Option<DirectoryEntryId> {
         let id = self.0.checked_add(1)?;
         Some(Self::new(id))
+    }
+}
+
+impl core::ops::Add<usize> for DirectoryEntryId {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
     }
 }
 
@@ -262,6 +269,10 @@ impl EntryDirectory {
 
     pub fn is_mounted(&self) -> bool {
         self.mounted.is_some()
+    }
+
+    pub fn clear_entries(&mut self) {
+        self.entries.truncate(0);
     }
 
     pub fn get_mountpoint_entry(&self) -> Option<DirectoryEntryId> {
@@ -357,4 +368,48 @@ impl DirectoryEntryInner {
         self.get_directory_mut()?.set_mounted(on);
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod directory_entry_id_should {
+    use super::DirectoryEntryId;
+
+    // Really should make a crate for unit-tests macros.
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    make_test! {{
+        let make_id = |x| DirectoryEntryId::new(x);
+        let id = make_id(0);
+
+        assert_eq!(make_id(0) + 0, make_id(0));
+        assert_eq!(make_id(0) + 1, make_id(1));
+        assert_eq!(make_id(0) + 2, make_id(2));
+        assert_eq!(make_id(0) + 3, make_id(3));
+        assert_eq!(make_id(0) + 4, make_id(4));
+        assert_eq!(make_id(0) + 5, make_id(5));
+        assert_eq!(make_id(0) + 6, make_id(6));
+        assert_eq!(make_id(0) + 7, make_id(7));
+        assert_eq!(make_id(0) + 8, make_id(8));
+
+        let mut id = make_id(0);
+        for index in 0..128 {
+            assert_eq!(id, make_id(index));
+            id = id + 1;
+        }
+
+    }, add_to_usizes}
 }

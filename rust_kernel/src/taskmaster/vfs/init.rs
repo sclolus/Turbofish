@@ -5,12 +5,13 @@ use crate::taskmaster::drivers::{
 };
 use alloc::format;
 use alloc::sync::Arc;
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use fallible_collections::vec::FallibleVec;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
 
+use super::filesystem::procfs::ProcFs;
 use super::*;
 use crate::drivers::storage::{BlockIo, DiskDriverType, NbrSectors, Sector};
 use alloc::boxed::Box;
@@ -26,6 +27,7 @@ pub fn init() -> Vfs {
     let mut vfs = Vfs::new().expect("vfs initialisation failed");
     // we start by bootstraping ext2
     init_ext2(&mut vfs, DiskDriverType::Ide);
+    init_procfs(&mut vfs).expect("Failed to init /proc (procfs)");
     // then init tty on /dev/tty
     init_tty(&mut vfs);
     vfs
@@ -78,6 +80,50 @@ fn init_sda(vfs: &mut Vfs, sda_driver: Box<dyn Driver>, partition_drivers: Vec<B
             .expect("failed to add new driver sda1 to vfs");
     }
     log::info!("/dev/sda initialized");
+}
+
+// TODO: make a Initer abstraction that takes a &mut of Vfs.
+fn init_procfs(vfs: &mut Vfs) -> Result<(), Errno> {
+    const PROCFS_ROOT: &str = "/proc";
+
+    log::info!("Creating ProcFs");
+
+    let procfs_root = Path::try_from(PROCFS_ROOT)?;
+    let fs_id = vfs.gen();
+    let procfs = ProcFs::new(fs_id)?;
+
+    let root_creds = Credentials::ROOT;
+    let cwd = Path::try_from("/")?;
+
+    let ret = vfs.pathname_resolution(&cwd, &root_creds, &procfs_root);
+    let procfs_dir_perms = FileType::from_bits(0555).ok_or(Errno::EINVAL)?;
+
+    let proc_dir_directory_id = match ret {
+        Err(Errno::ENOENT) => {
+            vfs.mkdir(
+                &cwd,
+                &root_creds,
+                // Well, we need ownership here, we should decide what to do about this.
+                procfs_root.try_clone()?,
+                procfs_dir_perms,
+            )?;
+            vfs.pathname_resolution(&cwd, &root_creds, &procfs_root)?
+        }
+        Err(e) => return Err(e),
+        Ok(id) => id,
+    };
+
+    assert_eq!(
+        2,
+        vfs.opendir(&cwd, &root_creds, procfs_root.try_clone()?)?
+            .len()
+    );
+
+    vfs.mount_filesystem(
+        Arc::try_new(DeadMutex::new(procfs))?,
+        fs_id,
+        proc_dir_directory_id,
+    )
 }
 
 /// create device /dev/tty on the vfs, WARNING: must be call after

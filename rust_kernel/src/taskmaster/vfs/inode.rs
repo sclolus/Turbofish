@@ -18,7 +18,7 @@ use sync::DeadMutex;
 
 #[derive(Debug)]
 pub struct Inode {
-    inode_data: InodeData,
+    pub inode_data: InodeData,
     pub driver: Box<dyn Driver>,
     /// a reference counter of open file operation on this inode
     nbr_open_file_operation: usize,
@@ -148,7 +148,8 @@ impl Inode {
     }
 }
 
-#[derive(Default, Debug)]
+// I think this should Copy/Clone.
+#[derive(Default, Debug, Copy, Clone)]
 pub struct InodeData {
     /// This inode's id.
     pub id: InodeId,
@@ -289,6 +290,62 @@ impl InodeId {
             filesystem_id,
         }
     }
+}
+
+impl core::ops::Add<usize> for InodeId {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Self::Output {
+        Self {
+            // We need this because of the traits `KeyGenerator` and `Mapper`
+            // Todo: use abstract integer traits to refactor this.
+            inode_number: self.inode_number + rhs as u32,
+            filesystem_id: self.filesystem_id,
+        }
+    }
+}
+
+#[cfg(test)]
+mod inode_id_should {
+    use super::InodeId;
+
+    // Really should make a crate for unit-tests macros.
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    make_test! {{
+        let make_id = |x| InodeId::new(x, None);
+        let id = make_id(0);
+
+        assert_eq!(make_id(0) + 0, make_id(0));
+        assert_eq!(make_id(0) + 1, make_id(1));
+        assert_eq!(make_id(0) + 2, make_id(2));
+        assert_eq!(make_id(0) + 3, make_id(3));
+        assert_eq!(make_id(0) + 4, make_id(4));
+        assert_eq!(make_id(0) + 5, make_id(5));
+        assert_eq!(make_id(0) + 6, make_id(6));
+        assert_eq!(make_id(0) + 7, make_id(7));
+        assert_eq!(make_id(0) + 8, make_id(8));
+
+        let mut id = make_id(0);
+        for index in 0..128 {
+            assert_eq!(id, make_id(index));
+            id = id + 1;
+        }
+
+    }, add_to_usizes}
 }
 
 #[cfg(test)]
