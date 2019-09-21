@@ -1,16 +1,10 @@
 //! See [IDT](https://wiki.osdev.org/IDT)
 //! and [Interrupts](https://wiki.osdev.org/Interrupts)
-mod cpu_exceptions_isr;
-use cpu_exceptions_isr::*;
 
 use bit_field::BitField;
 use core::ffi::c_void;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::slice::SliceIndex;
-
-extern "C" {
-    fn _default_isr();
-}
 
 pub type InterruptHandler = extern "C" fn() -> !;
 
@@ -195,22 +189,14 @@ pub struct Idtr {
 /// Returns the default values for the Idtr.
 impl Default for Idtr {
     fn default() -> Self {
-        Idtr {
-            length: InterruptTable::DEFAULT_IDT_SIZE - 1,
-            idt_addr: InterruptTable::DEFAULT_IDT_ADDR,
-        }
+        Idtr { length: InterruptTable::DEFAULT_IDT_SIZE - 1, idt_addr: InterruptTable::DEFAULT_IDT_ADDR }
     }
 }
 
 impl Idtr {
     /// Consumes the Idtr, returning the corresponding InterruptTable.
     unsafe fn interrupt_table<'a>(self) -> InterruptTable<'a> {
-        InterruptTable {
-            entries: core::slice::from_raw_parts_mut(
-                self.idt_addr,
-                ((self.length + 1) / 8) as usize,
-            ),
-        }
+        InterruptTable { entries: core::slice::from_raw_parts_mut(self.idt_addr, ((self.length + 1) / 8) as usize) }
     }
 
     /// Returns the current Interrupt Descriptor Table Register
@@ -218,10 +204,7 @@ impl Idtr {
     #[inline(never)]
     unsafe extern "C" fn get_idtr() -> Idtr {
         // Temporary struct Idtr to be filled by the asm routine
-        let mut idtr = Idtr {
-            length: 0,
-            idt_addr: 1 as *mut _,
-        };
+        let mut idtr = Idtr { length: 0, idt_addr: 1 as *mut _ };
 
         asm!("sidt $0" : "=*m"(&mut idtr as *mut _) :: "memory" : "volatile");
         idtr
@@ -238,17 +221,18 @@ impl Idtr {
     /// It then creates an InterruptTable struct, consuming the Idtr struct (to prevent aliasing of the memory zone used by the InterruptTable),
     /// loads the default configuration of the InterruptTable,
     /// and finally, returns it.
-    pub unsafe fn init_idt<'a>(self) -> InterruptTable<'a> {
-        without_interrupts!({
-            self.load_idtr();
+    pub unsafe fn init_idt<'a>(
+        self,
+        exeptions: [(unsafe extern "C" fn() -> !, GateType); 32],
+        default_isr: unsafe extern "C" fn(),
+    ) -> InterruptTable<'a> {
+        self.load_idtr();
 
-            let mut idt = self.interrupt_table();
+        let mut idt = self.interrupt_table();
 
-            idt.init_default_exceptions();
-            idt.init_cpu_exceptions();
-            INITIALIZED = true;
-            idt
-        })
+        idt.init_default_exceptions(default_isr);
+        idt.init_cpu_exceptions(exeptions);
+        idt
     }
 }
 
@@ -317,8 +301,6 @@ impl DerefMut for InterruptTable<'_> {
     }
 }
 
-static mut INITIALIZED: bool = false;
-
 impl InterruptTable<'_> {
     /// This is the default size (in bytes) of the IDT, and also the maximum size of the IDT on x86.
     /// As an IdtGateEntry has a size of 8 bytes, there are 256 entries in the table.
@@ -327,47 +309,10 @@ impl InterruptTable<'_> {
     /// This is the default address of the IDT.
     const DEFAULT_IDT_ADDR: *mut IdtGateEntry = 0x1000 as *mut _;
 
-    /// The list of the default exception handlers.
-    /// They are loaded by the `init_cpu_exceptions` method.
-    const CPU_EXCEPTIONS: [(unsafe extern "C" fn() -> !, GateType); 32] = [
-        (_isr_divide_by_zero, InterruptGate32),
-        (_isr_debug, TrapGate32),
-        (_isr_non_maskable_interrupt, InterruptGate32),
-        (_isr_breakpoint, TrapGate32),
-        (_isr_overflow, TrapGate32),
-        (_isr_bound_range_exceeded, InterruptGate32),
-        (_isr_invalid_opcode, InterruptGate32),
-        (_isr_no_device, InterruptGate32),
-        (_isr_double_fault, InterruptGate32),
-        (_isr_fpu_seg_overrun, InterruptGate32),
-        (_isr_invalid_tss, InterruptGate32),
-        (_isr_seg_no_present, InterruptGate32),
-        (_isr_stack_seg_fault, InterruptGate32),
-        (_isr_general_protect_fault, InterruptGate32),
-        (_isr_page_fault, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (_isr_fpu_floating_point_exep, InterruptGate32),
-        (_isr_alignment_check, InterruptGate32),
-        (_isr_machine_check, InterruptGate32),
-        (_isr_simd_fpu_fp_exception, InterruptGate32),
-        (_isr_virtualize_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-        (_isr_security_exception, InterruptGate32),
-        (reserved_exception, InterruptGate32),
-    ];
-
     /// Set the CPYU exceptions vectors on the first 32 entries.
     /// # Panics
     /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
-    unsafe fn init_cpu_exceptions(&mut self) {
+    unsafe fn init_cpu_exceptions(&mut self, exeptions: [(unsafe extern "C" fn() -> !, GateType); 32]) {
         assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
 
         let mut gate_entry = *IdtGateEntry::new()
@@ -376,10 +321,8 @@ impl InterruptTable<'_> {
             .set_selector(1 << 3)
             .set_gate_type(InterruptGate32);
 
-        for (index, &(exception, gate_type)) in Self::CPU_EXCEPTIONS.iter().enumerate() {
-            gate_entry
-                .set_handler(exception as *const c_void as u32)
-                .set_gate_type(gate_type);
+        for (index, &(exception, gate_type)) in exeptions.iter().enumerate() {
+            gate_entry.set_handler(exception as *const c_void as u32).set_gate_type(gate_type);
 
             self[index] = gate_entry;
         }
@@ -388,7 +331,7 @@ impl InterruptTable<'_> {
     /// Set the basic defauly exception handler in all the IDT table
     /// # Panics
     /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
-    unsafe fn init_default_exceptions(&mut self) {
+    unsafe fn init_default_exceptions(&mut self, default_isr: unsafe extern "C" fn()) {
         assert!(super::get_interrupts_state() == false); // Should be turned in a debug_assert! eventually.
 
         let mut gate_entry = *IdtGateEntry::new()
@@ -398,16 +341,13 @@ impl InterruptTable<'_> {
             .set_gate_type(InterruptGate32);
 
         for entry in self.iter_mut() {
-            *entry = *gate_entry.set_handler(_default_isr as *const c_void as u32);
+            *entry = *gate_entry.set_handler(default_isr as *const c_void as u32);
         }
     }
 
     /// Gets the current InterruptTable as specified by the current IDTR.
     /// This method is basically just a shorthand.
-    pub unsafe fn current_interrupt_table<'a>() -> Option<InterruptTable<'a>> {
-        match INITIALIZED {
-            false => None,
-            true => Some(Idtr::get_idtr().interrupt_table()),
-        }
+    pub unsafe fn current_interrupt_table<'a>() -> InterruptTable<'a> {
+        Idtr::get_idtr().interrupt_table()
     }
 }

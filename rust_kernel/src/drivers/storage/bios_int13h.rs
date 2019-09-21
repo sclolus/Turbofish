@@ -7,11 +7,11 @@ use super::{DiskError, DiskResult};
 use super::{NbrSectors, Sector};
 
 use crate::system::i8086_payload;
-use crate::system::BaseRegisters;
 
 use bit_field::BitField;
 use bitflags::bitflags;
 use const_assert::const_assert;
+use i386::BaseRegisters;
 
 use core::convert::TryInto;
 use core::slice;

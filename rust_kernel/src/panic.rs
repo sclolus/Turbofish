@@ -1,7 +1,7 @@
 use crate::ffi::c_str;
-use crate::interrupts;
-use crate::system::ExtendedRegisters;
+
 use core::panic::PanicInfo;
+use i386::ExtendedRegisters;
 
 /*
 In a call scheme like that:

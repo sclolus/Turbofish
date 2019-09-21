@@ -8,7 +8,7 @@ edition = "2018"
 raw_data = { path = "../raw_data" }
 keyboard = { path = "../keyboard" }
 sync = { path = "../sync" }
-registers = { path = "../registers" }
+i386 = { path = "../i386" }
 io = { path = "../io" }
 bitflags = "1.0.4"
 log = "0.4.6"

@@ -2,7 +2,6 @@ use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{Acpi, ACPI, PCI, PIC_8259, PIT0};
 
 use crate::drivers::Rtc;
-use crate::interrupts;
 use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
@@ -29,7 +28,7 @@ pub extern "C" fn kmain(
      * Enable CPU_ISR and memory system
      */
     unsafe {
-        interrupts::init();
+        crate::system::init_idt();
         let device_map = get_device_map_slice(device_map_ptr);
         memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
             .expect("init memory system failed");

@@ -1,5 +1,4 @@
 use super::standard_sodomizer::make_somization;
-use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
 use crate::memory::ffi::{vfree, vmalloc, vsize};
@@ -18,7 +17,7 @@ pub extern "C" fn kmain(
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        interrupts::init();
+        crate::system::init_idt();
     }
     crate::watch_dog();
     unsafe {

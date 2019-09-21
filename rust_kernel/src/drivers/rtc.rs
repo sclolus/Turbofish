@@ -9,8 +9,6 @@ use core::{fmt, fmt::Display};
 use interrupts::{GateType, IdtGateEntry, InterruptTable};
 use io::{Io, Pio};
 
-use crate::interrupts;
-
 extern "C" {
     fn _isr_cmos();
 }
@@ -241,7 +239,7 @@ impl Rtc {
         rate &= 0x0F; // Ensure that rate is below 16.
         rate = max(3, rate); // Ensure that rate is above 2.
 
-        let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
+        let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table() };
 
         let gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)

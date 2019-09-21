@@ -1,8 +1,8 @@
-use crate::interrupts::idt::{IdtGateEntry, InterruptTable};
-use crate::memory::tools::sections::{__end_rodata, __end_text, __start_rodata, __start_text};
 #[allow(deprecated)]
 use core::hash::{Hash, Hasher, SipHasher};
+use interrupts::idt::{IdtGateEntry, InterruptTable};
 
+use crate::memory::tools::sections::{__end_rodata, __end_text, __start_rodata, __start_text};
 type IvtBios = [[u16; 2]; 256];
 
 struct WatchDog {
@@ -27,7 +27,7 @@ pub fn watch_dog() {
     let checksum_text = hash_section(symbol_addr!(__start_text), symbol_addr!(__end_text));
     let checksum_rodata = hash_section(symbol_addr!(__start_rodata), symbol_addr!(__end_rodata));
     unsafe {
-        let curr_idt = InterruptTable::current_interrupt_table().unwrap();
+        let curr_idt = InterruptTable::current_interrupt_table();
         let ivt_bios = *(0x0 as *const IvtBios);
         match &mut WATCH_DOG {
             None => {

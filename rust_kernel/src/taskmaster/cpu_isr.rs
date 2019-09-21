@@ -7,8 +7,8 @@ use libc_binding::Signum;
 
 use core::ffi::c_void;
 use elf_loader::SymbolTable;
+use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 
-use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use crate::memory::{AddressSpace, KERNEL_VIRTUAL_PAGE_ALLOCATOR};
 use crate::panic::{get_page_fault_origin, qemu_check, trace_back};
 
@@ -150,7 +150,7 @@ const CPU_EXCEPTIONS: [(unsafe extern "C" fn() -> !, &str, GateType); 32] = [
 /// # Panics
 /// Panics if the interruptions are not disabled when this is called, that is, if interrupts::get_interrupts_state() == true.
 pub unsafe fn reassign_cpu_exceptions() {
-    let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+    let mut interrupt_table = InterruptTable::current_interrupt_table();
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)

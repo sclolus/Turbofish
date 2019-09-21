@@ -1,4 +1,4 @@
-use super::BaseRegisters;
+use i386::BaseRegisters;
 
 /// Basics ACPI errors
 #[derive(Copy, Clone, Debug)]

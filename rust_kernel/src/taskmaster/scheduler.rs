@@ -18,15 +18,14 @@ use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use fallible_collections::btree::BTreeMap;
 use fallible_collections::FallibleVec;
+use i386::PrivilegeLevel;
+use interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
 use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
-use crate::interrupts;
-use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
-use crate::system::PrivilegeLevel;
 use crate::terminal::ansi_escape_code::Colored;
 
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
@@ -817,7 +816,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     interrupts::disable();
 
     // Register a new IDT entry in 81h for force preempting
-    let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+    let mut interrupt_table = InterruptTable::current_interrupt_table();
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)

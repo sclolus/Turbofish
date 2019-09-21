@@ -6,8 +6,6 @@ use crate::ffi::c_char;
 
 use crate::memory::ffi::{map, unmap};
 
-use crate::interrupts;
-
 use core::mem::size_of;
 
 use io::{Io, Pio};

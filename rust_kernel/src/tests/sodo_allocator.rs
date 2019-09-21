@@ -1,4 +1,3 @@
-use crate::interrupts;
 use crate::memory;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
@@ -15,7 +14,7 @@ pub extern "C" fn kmain(
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
     unsafe {
-        interrupts::init();
+        crate::system::init_idt();
     }
     crate::watch_dog();
     unsafe {

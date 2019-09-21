@@ -1,7 +1,6 @@
 use crate::drivers::pit_8253;
 use crate::drivers::{PCI, PIC_8259, PIT0};
 
-use crate::interrupts;
 use crate::math::random::{srand, srand_init};
 use crate::memory;
 use crate::memory::tools::DeviceMap;
@@ -31,7 +30,7 @@ pub extern "C" fn kmain(
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
 
     unsafe {
-        interrupts::init();
+        crate::system::init_idt();
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
 

@@ -17,6 +17,7 @@ use fallible_collections::FallibleArc;
 
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::{try_vec, FallibleBox};
+use i386::{BaseRegisters, Eflags, PrivilegeLevel};
 use libc_binding::{c_char, Errno};
 
 use crate::elf_loader::load_elf;
@@ -24,8 +25,6 @@ use crate::memory::mmu::{_enable_paging, _read_cr3};
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Phys, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 use crate::memory::{mmu::Entry, AddressSpace};
-use crate::registers::Eflags;
-use crate::system::{BaseRegisters, PrivilegeLevel};
 
 extern "C" {
     fn _start_process(kernel_esp: u32) -> !;

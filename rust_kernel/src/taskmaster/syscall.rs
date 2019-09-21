@@ -13,8 +13,6 @@ use super::thread_group;
 use super::vfs;
 use super::IpcResult;
 use super::{IntoRawResult, SysResult};
-use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::system::BaseRegisters;
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
@@ -27,6 +25,8 @@ use libc_binding::{
 };
 
 use core::ffi::c_void;
+use i386::BaseRegisters;
+use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::{
     c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, utimbuf, DIR,
@@ -429,7 +429,7 @@ extern "C" {
 
 /// Initialize all the syscall system by creation of a new IDT entry at 0x80
 pub fn init() {
-    let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
+    let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table() };
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)

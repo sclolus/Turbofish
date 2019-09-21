@@ -1,7 +1,6 @@
 //! This files contains the code related to the Programmable Interval Timer
 //! ([PIT](https://wiki.osdev.org/Programmable_Interval_Timer)) chip (also called an 8253/8254 chip)
 use super::{pic_8259, PIC_8259};
-use crate::interrupts;
 use crate::Spinlock;
 use bit_field::BitField;
 use core::time::Duration;

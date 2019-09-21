@@ -78,7 +78,7 @@ impl Pic8259 {
     /// Must be called when PIC is initialized
     /// The bios default IMR are stored when this function is called
     pub unsafe fn init(&mut self) {
-        let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+        let mut interrupt_table = InterruptTable::current_interrupt_table();
 
         self.bios_imr = Some(self.get_masks());
 
@@ -86,9 +86,9 @@ impl Pic8259 {
         self.initialize(default_conf);
         self.disable_all_irqs();
 
-        use crate::interrupts::idt::GateType::InterruptGate32;
-        use crate::interrupts::idt::*;
         use core::ffi::c_void;
+        use interrupts::idt::GateType::InterruptGate32;
+        use interrupts::idt::*;
 
         let mut gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)

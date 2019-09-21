@@ -1,7 +1,77 @@
-use crate::system::BaseRegisters;
-use bit_field::BitField;
-use core::{fmt, fmt::Display};
+#![cfg_attr(not(test), no_std)]
+#![feature(stdsimd)]
+#![feature(asm)]
 
+use bit_field::BitField;
+
+use core::fmt;
+use core::fmt::Display;
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+#[derive(Default)]
+pub struct BaseRegisters {
+    /*0        |*/ pub edi: u32,
+    /*4        |*/ pub esi: u32,
+    /*8        |*/ pub ebp: u32,
+    /*12       |*/ pub esp: u32,
+    /*16       |*/ pub ebx: u32,
+    /*20       |*/ pub edx: u32,
+    /*24       |*/ pub ecx: u32,
+    /*28       |*/ pub eax: u32,
+    /*32       |*/
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct ExtendedRegisters {
+    /*0       |*/ pub ds: u32,
+    /*4       |*/ pub es: u32,
+    /*8       |*/ pub fs: u32,
+    /*12      |*/ pub gs: u32,
+    /*16      |*/ pub ss: u32,
+    /*20      |*/ pub eip: u32,
+    /*24      |*/ pub cs: u32,
+    /*28      |*/ pub eflags: u32,
+    /*32      |*/ pub edi: u32,
+    /*36      |*/ pub esi: u32,
+    /*40      |*/ pub new_ebp: u32,
+    /*44      |*/ pub esp: u32,
+    /*48      |*/ pub ebx: u32,
+    /*52      |*/ pub edx: u32,
+    /*56      |*/ pub ecx: u32,
+    /*60      |*/ pub eax: u32,
+    /*64      |*/ pub old_ebp: u32,
+    /*68      |*/
+}
+
+impl core::fmt::Debug for ExtendedRegisters {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "cs: {:#X?}, ds: {:#X?}, es: {:#X?}, fs: {:#X?}, gs: {:#X?}, ss: {:#X?}\n\
+             esi: {:#010X?}, edi: {:#010X?}, ebp: {:#010X?}, esp: {:#010X?}\n\
+             eax: {:#010X?}, ebx: {:#010X?}, ecx: {:#010X?}, edx: {:#010X?}\n\
+             eip: {:#010X?}, eflags => {:#010X?}",
+            self.cs,
+            self.ds,
+            self.es,
+            self.fs,
+            self.gs,
+            self.ss,
+            self.esi,
+            self.edi,
+            self.new_ebp,
+            self.esp,
+            self.eax,
+            self.ebx,
+            self.ecx,
+            self.edx,
+            self.eip,
+            self.eflags
+        )
+    }
+}
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 #[repr(C)]
 /// The content of the EFLAGS register at the moment it was fetched.
@@ -175,60 +245,33 @@ has CPUID (ID): {}\n",
         )
     }
 }
+use core::convert::From;
 
-pub struct Cr3;
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum PrivilegeLevel {
+    // Most priviliged level, Most of the critical kernel code is expected to run at this level
+    Ring0 = 0b00,
 
-impl Cr3 {
-    pub unsafe fn write(value: usize) {
-        asm!("mov cr3, $0" :: "r"(value): "memory" : "volatile","intel")
-    }
+    // To be discussed.
+    Ring1 = 0b01,
 
-    pub unsafe fn read() -> usize {
-        #[allow(unused_mut)]
-        let mut value = 0;
-        asm!("mov $0, cr3" : "=*m"(value)  :: "memory" : "volatile");
+    // To be discussed.
+    Ring2 = 0b10,
 
-        value
-    }
+    // Normal user Privilege Level
+    Ring3 = 0b11,
 }
 
-pub struct Cr0;
+impl From<u8> for PrivilegeLevel {
+    fn from(from: u8) -> Self {
+        use PrivilegeLevel::*;
 
-#[no_mangle]
-extern "C" {
-    /// reg is the input parameter and the output
-    fn _int8086(reg: *mut BaseRegisters, bios_int: u16) -> u16;
-}
-
-/// This is a wrapper of the _real_mode_op fonction.
-/// It should be used instead of using _real_mode_op directly,
-/// as it disable the interrupts and resets the PICs to there default
-/// values before calling _real_mode_op.
-/// It then restores the interrupts state and the PICs to there old IMR and vector offsets.
-
-#[no_mangle]
-pub unsafe fn real_mode_op(reg: *mut BaseRegisters, bios_int: u16) -> u16 {
-    use crate::drivers::{pic_8259, Pic8259, PIC_8259};
-
-    without_interrupts!({
-        let ret;
-        // check if PIC is initialized
-        let mut pic_8259 = PIC_8259.lock();
-        match pic_8259.is_initialized() {
-            false => ret = _int8086(reg, bios_int),
-            true => {
-                let imrs = pic_8259.reset_to_default();
-
-                ret = _int8086(reg, bios_int);
-
-                let conf = Pic8259::basic_pic_configuration(
-                    pic_8259::KERNEL_PIC_MASTER_IDT_VECTOR,
-                    pic_8259::KERNEL_PIC_SLAVE_IDT_VECTOR,
-                );
-                pic_8259.initialize(conf);
-                pic_8259.set_masks(imrs);
-            }
+        match from {
+            0b00 => Ring0,
+            0b01 => Ring1,
+            0b10 => Ring2,
+            _ => Ring3,
         }
-        ret
-    })
+    }
 }

@@ -29,6 +29,9 @@ extern crate io;
 extern crate mbr;
 
 #[macro_use]
+extern crate interrupts;
+
+#[macro_use]
 extern crate lazy_static;
 
 #[macro_use]
@@ -44,9 +47,6 @@ pub mod debug;
 pub mod ffi;
 
 #[macro_use]
-pub mod interrupts;
-
-#[macro_use]
 pub mod system;
 pub mod taskmaster;
 #[macro_use]
@@ -55,7 +55,6 @@ pub mod math;
 pub mod memory;
 pub mod multiboot;
 pub mod panic;
-pub mod registers;
 #[cfg(not(feature = "test"))]
 pub mod rust_main;
 pub mod tests;

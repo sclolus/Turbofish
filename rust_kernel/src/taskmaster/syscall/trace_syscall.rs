@@ -7,8 +7,8 @@ use super::MmapProt;
 use super::SocketArgsPtr;
 use super::SysResult;
 use crate::memory::tools::address::Virt;
-use crate::system::BaseRegisters;
 use core::ffi::c_void;
+use i386::BaseRegisters;
 use libc_binding::{
     c_char, dev_t, gid_t, mode_t, off_t, stat, termios, timeval, timezone, uid_t, utimbuf,
     OpenFlags, Pid, DIR,

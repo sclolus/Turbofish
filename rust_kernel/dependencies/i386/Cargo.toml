@@ -1,7 +1,8 @@
 [package]
-name = "registers"
+name = "i386"
 version = "0.1.0"
 authors = ["vcombey <vcombey@student.42.fr>"]
 edition = "2018"
 
 [dependencies]
+bit_field = "0.10.0"

@@ -4,7 +4,7 @@
 #[macro_export]
 macro_rules! without_interrupts {
     ($code: block) => {{
-        use crate::interrupts::{disable, enable, get_interrupts_state};
+        use interrupts::{disable, enable, get_interrupts_state};
 
         let interrupts_state = get_interrupts_state();
         if interrupts_state == true {
@@ -25,7 +25,7 @@ macro_rules! without_interrupts {
 #[macro_export]
 macro_rules! preserve_interrupts {
     ($code: block) => {{
-        use crate::interrupts::{get_interrupts_state, restore_interrupts_state};
+        use interrupts::{get_interrupts_state, restore_interrupts_state};
 
         let interrupts_state = get_interrupts_state();
         let ret = { $code };
