@@ -9,3 +9,4 @@ documentation = "cargo doc --open"
 homepage = "index.html"
 
 [dependencies]
+io = { path = "../io" }

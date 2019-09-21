@@ -16,6 +16,3 @@ pub mod rtc;
 pub use rtc::Rtc;
 
 pub mod storage;
-
-pub mod nmi;
-pub use nmi::Nmi;

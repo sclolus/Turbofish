@@ -16,6 +16,9 @@ version = "0.1.0"
 [[package]]
 name = "irq"
 version = "0.1.0"
+dependencies = [
+ "io 0.1.0",
+]
 
 [[package]]
 name = "kernel_modules"

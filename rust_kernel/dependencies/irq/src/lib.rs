@@ -1,6 +1,8 @@
 //! This crate provide a small brief about IRQ
 #![cfg_attr(not(test), no_std)]
 
+pub mod nmi;
+
 #[derive(Debug, Copy, Clone)]
 pub enum Irq {
     /// The System timer, (PIT: Programmable Interval Timer) IRQ.

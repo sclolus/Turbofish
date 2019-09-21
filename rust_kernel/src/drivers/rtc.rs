@@ -1,6 +1,6 @@
 //! Get current Date using the
 //! [CMOS](https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC) ram on the RTC chip.
-use crate::drivers::{pic_8259, Nmi, PIC_8259};
+use crate::drivers::{pic_8259, PIC_8259};
 use bit_field::BitField;
 use core::cmp::max;
 use core::convert::{TryFrom, TryInto};
@@ -8,6 +8,7 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use core::{fmt, fmt::Display};
 use interrupts::{GateType, IdtGateEntry, InterruptTable};
 use io::{Io, Pio};
+use irq::nmi::Nmi;
 
 extern "C" {
     fn _isr_cmos();

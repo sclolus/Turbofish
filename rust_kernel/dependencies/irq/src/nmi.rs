@@ -10,9 +10,7 @@ impl Nmi {
     const CONTROL_PORT: u16 = 0x70;
     const NMI_DISABLE_BIT: u8 = 0x80;
     pub const fn new() -> Self {
-        Self {
-            command: Pio::new(Self::CONTROL_PORT),
-        }
+        Self { command: Pio::new(Self::CONTROL_PORT) }
     }
 
     /// Enables the NMI.
