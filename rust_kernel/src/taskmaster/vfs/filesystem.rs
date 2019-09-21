@@ -17,6 +17,13 @@ pub mod procfs;
 pub use procfs::ProcFs;
 
 pub trait FileSystem: Send + Debug {
+    /// Returns whether the filesystem is dynamic, that is,
+    /// if files can disappear from beneath the VFS,
+    /// independently from the VFS' actions.
+    fn is_dynamic(&self) -> bool {
+        false
+    }
+
     // fn name(&self) -> &str;
     // fn load_inode(&self, inode_number: InodeNumber) -> SysResult<Inode>;
     /// return all the directory entry and inode present in the inode_nbr

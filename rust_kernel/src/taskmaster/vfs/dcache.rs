@@ -2,6 +2,7 @@ use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
 use super::SysResult;
 use fallible_collections::btree::BTreeMap;
+use itertools::unfold;
 use libc_binding::Errno::*;
 
 pub struct Dcache {
@@ -136,6 +137,19 @@ impl Dcache {
             self.walk_tree(entry, callback)?;
         }
         Ok(())
+    }
+
+    pub fn children(
+        &self,
+        dir_id: DirectoryEntryId,
+    ) -> SysResult<impl Iterator<Item = (&DirectoryEntry)>> {
+        let dcache = self;
+        let mut children_iter = self.get_entry(&dir_id)?.get_directory()?.entries();
+
+        Ok(unfold((), move |_| match children_iter.next() {
+            None => None,
+            Some(id) => dcache.get_entry(&id).ok(),
+        }))
     }
 
     pub fn move_dentry(

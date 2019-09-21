@@ -9,7 +9,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::sync::atomic::Ordering;
-use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, TryCollect};
+use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, FallibleVec, TryCollect};
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
@@ -97,7 +97,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
+    fn get_filesystem(&self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
         self.mounted_filesystems.get(&inode_id.filesystem_id?)
     }
 
@@ -114,6 +114,14 @@ impl VirtualFileSystem {
         parent: Option<DirectoryEntryId>,
         (direntry, inode_data, driver): (DirectoryEntry, InodeData, Option<Box<dyn Driver>>),
     ) -> SysResult<DirectoryEntryId> {
+        if self
+            .dcache
+            .children(parent.unwrap_or(DirectoryEntryId::new(2)))?
+            .any(|entry| entry.filename == direntry.filename)
+        {
+            return Err(Errno::EEXIST);
+        }
+
         let direntry = self.dcache.add_entry(parent, direntry)?;
 
         let inode = Inode::new(
@@ -139,9 +147,33 @@ impl VirtualFileSystem {
         Ok(direntry)
     }
 
+    fn recursive_remove_dentries(&mut self, direntry_id: DirectoryEntryId) -> SysResult<()> {
+        let children: Vec<DirectoryEntryId> = self
+            .iter_directory_entries(direntry_id)?
+            .map(|entry| entry.id)
+            .try_collect()?;
+
+        Ok(for child in children {
+            let entry = self
+                .dcache
+                .get_entry(&child)
+                .expect("There should be a child here");
+
+            if entry.is_directory() {
+                self.recursive_remove_dentries(child)?;
+            }
+            self.dcache.remove_entry(child)?;
+        })
+    }
+
     /// construct the files in directory `direntry_id` in ram form the filesystem
+    /// Removes every files previously contained in it from the VFS.
     fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> SysResult<()> {
         // unimplemented!()
+        // removes entries already existing. (cause that can only (for now) happen in dynamic filesystems (aka. procfs)).
+        // TODO: remove the inodes also...
+        self.recursive_remove_dentries(direntry_id)?;
+
         let current_entry = self.dcache.get_entry(&direntry_id)?;
         // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
@@ -158,6 +190,14 @@ impl VirtualFileSystem {
         for (direntry, inode_data, driver) in iter {
             let fs_entry = (direntry, inode_data, Some(driver));
             self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
+                .or_else(|e| {
+                    if e == Errno::EEXIST {
+                        // well...
+                        Ok(DirectoryEntryId::new(0))
+                    } else {
+                        Err(e)
+                    }
+                })
                 .expect("add entry from filesystem failed");
         }
         Ok(())
@@ -268,7 +308,16 @@ impl VirtualFileSystem {
             } {
                 return Err(Errno::EACCES);
             }
-            if current_dir.entries().count() == 0 {
+            let should_lookup = {
+                current_dir.entries().count() == 0
+                    || self
+                        .get_filesystem(current_entry.inode_id)
+                        .expect("No corresonding filesystem for direntry")
+                        .lock()
+                        .is_dynamic()
+            };
+
+            if should_lookup {
                 self.lookup_directory(current_dir_id)?;
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
                 let current_dir = current_entry.get_directory()?;
@@ -624,7 +673,16 @@ impl VirtualFileSystem {
             entry_count
         );
 
-        if entry_count == 0 {
+        let should_lookup = {
+            entry_count == 0
+                || self
+                    .get_filesystem(entry.inode_id)
+                    .expect("No corresonding filesystem for direntry")
+                    .lock()
+                    .is_dynamic()
+        };
+
+        if should_lookup {
             self.lookup_directory(entry_id)?;
         }
 
