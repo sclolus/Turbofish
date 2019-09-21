@@ -166,9 +166,13 @@ impl Dcache {
                 .expect("No space left inside the dcache lool");
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DirectoryEntry> {
+        self.d_entries.iter().map(|(_, entry)| entry)
+    }
 }
 
-use core::fmt::{Display, Error, Formatter};
+use core::fmt::{Debug, Display, Error, Formatter};
 
 impl Display for Dcache {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
@@ -183,5 +187,11 @@ impl Display for Dcache {
         .unwrap();
 
         Ok(())
+    }
+}
+
+impl Debug for Dcache {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        <Self as Display>::fmt(self, f)
     }
 }

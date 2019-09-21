@@ -21,9 +21,13 @@
 
 extern crate itertools;
 
+#[macro_use]
 extern crate alloc;
 
 extern crate arrayvec;
+
+#[macro_use]
+extern crate derive_is_enum_variant;
 
 // Our Crates
 extern crate io;

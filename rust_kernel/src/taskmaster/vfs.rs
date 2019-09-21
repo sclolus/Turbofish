@@ -30,7 +30,7 @@ pub use direntry::{DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId};
 
 mod dcache;
 
-use dcache::Dcache;
+pub use dcache::Dcache;
 
 mod inode;
 pub use inode::InodeId;
