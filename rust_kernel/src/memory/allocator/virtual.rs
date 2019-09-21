@@ -36,10 +36,16 @@ impl VirtualPageAllocator {
         Self { virt, mmu }
     }
 
+    /// Just for the handled PageDirectory
+    pub unsafe fn fork_pd(&self) -> Result<Box<PageDirectory>> {
+        self.mmu.fork()
+    }
+
+    /// Fork the VirtualPageAllocator
     pub fn fork(&self) -> Result<Self> {
         let buddy = self.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
 
-        let pd = unsafe { self.mmu.fork()? };
+        let pd = unsafe { self.fork_pd()? };
 
         Ok(VirtualPageAllocator::new(buddy, pd))
     }

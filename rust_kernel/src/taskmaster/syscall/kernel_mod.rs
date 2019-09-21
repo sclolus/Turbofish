@@ -25,7 +25,7 @@ use crate::drivers::PIC_8259;
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
-use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+use crate::memory::HIGH_KERNEL_MEMORY;
 
 use super::message::push_message;
 
@@ -255,7 +255,7 @@ impl AllocEntry {
 impl Drop for AllocEntry {
     fn drop(&mut self) {
         unsafe {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            HIGH_KERNEL_MEMORY
                 .as_mut()
                 .unwrap()
                 .dealloc_on(self.page_index, self.nbr_pages)
@@ -275,7 +275,7 @@ fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, Allo
                 let page_index: Page<Virt> = Virt(h.vaddr as usize).into();
                 let nbr_pages: NbrPages = (h.memsz as usize).into();
                 alloc_table.0.try_reserve(1)?;
-                KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().alloc_on(
+                HIGH_KERNEL_MEMORY.as_mut().unwrap().alloc_on(
                     page_index,
                     nbr_pages,
                     AllocFlags::KERNEL_MEMORY,
@@ -291,7 +291,7 @@ fn load_module(content: &[u8]) -> SysResult<(u32, Option<Box<SymbolTable>>, Allo
                     .as_mut_ptr()
                     .write_bytes(0, h.memsz as usize - h.filez as usize);
                 // Modify the rights on pages by following the ELF specific restrictions
-                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                HIGH_KERNEL_MEMORY
                     .as_mut()
                     .unwrap()
                     .change_range_page_entry(
