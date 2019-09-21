@@ -1,6 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(alloc_error_handler)]
 #![feature(const_fn)]
+#![cfg_attr(test, allow(unused_imports))]
+#![cfg_attr(test, allow(dead_code))]
 
 extern crate alloc;
 

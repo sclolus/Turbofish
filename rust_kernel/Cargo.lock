@@ -84,6 +84,10 @@ name = "io"
 version = "0.1.0"
 
 [[package]]
+name = "irq"
+version = "0.1.0"
+
+[[package]]
 name = "itertools"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -95,7 +99,8 @@ dependencies = [
 name = "kernel_modules"
 version = "0.1.0"
 dependencies = [
- "keyboard 0.1.0",
+ "irq 0.1.0",
+ "messaging 0.1.0",
 ]
 
 [[package]]
@@ -416,9 +421,9 @@ dependencies = [
  "ext2 0.1.0",
  "fallible_collections 0.1.0",
  "io 0.1.0",
+ "irq 0.1.0",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel_modules 0.1.0",
- "keyboard 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc_binding 0.1.0",
  "lock_api 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",

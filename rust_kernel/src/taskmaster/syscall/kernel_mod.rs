@@ -10,18 +10,23 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::boxed::FallibleBox;
+use irq::Irq;
 use kernel_modules::{
-    ForeignAllocMethods, KeyboardConfig, ModConfig, ModResult, ModReturn, RTCConfig, SymbolList,
+    ForeignAllocMethods, KeyboardConfig, ModConfig, ModResult, ModReturn, ModSpecificReturn,
+    RTCConfig, SymbolList,
 };
 use libc_binding::{c_char, Errno};
 
 use core::convert::{TryFrom, TryInto};
 use core::slice;
 
+use crate::drivers::PIC_8259;
 use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
+
+use messaging::push_message;
 
 /// Insert a kernel module
 pub fn sys_insmod(modname: *const c_char) -> SysResult<u32> {
@@ -64,6 +69,7 @@ pub struct KernelModules {
     keyboard: Option<Module>,
 }
 
+#[allow(dead_code)]
 /// Stored structure of a given module
 struct Module {
     start_point: u32,
@@ -99,8 +105,11 @@ impl Scheduler {
             ),
             "keyboard" => (
                 &mut self.kernel_modules.keyboard,
-                "/turbofish/mod/keyboard.mod",
-                ModConfig::Keyboard(KeyboardConfig { set_idt_entry }),
+                "/turbofish/mod/key.mod",
+                ModConfig::Keyboard(KeyboardConfig {
+                    set_idt_entry,
+                    callback: push_message,
+                }),
             ),
             _ => {
                 log::warn!("Unknown module name");
@@ -148,7 +157,6 @@ impl Scheduler {
             mod_return,
             alloc_table,
         });
-        log::info!("Inserting Module");
         Ok(0)
     }
 
@@ -173,13 +181,43 @@ impl Scheduler {
         *module_opt = None;
         Ok(0)
     }
+
+    /// Keyboard driver method specific
+    pub fn reboot_computer(&self) {
+        if let Some(keyboard) = &self.kernel_modules.keyboard {
+            if let ModSpecificReturn::Keyboard(keyboard_return) = keyboard.mod_return.spec {
+                (keyboard_return.reboot_computer)();
+            } else {
+                panic!("Unexpected error");
+            }
+        } else {
+            log::error!("ps2_controler/Keyboard handler not loaded");
+        }
+    }
 }
 
-fn set_idt_entry(_idt_gate: usize, _func: Option<unsafe extern "C" fn()>) {}
+/// Set IDT ENTRY fn: Usable by modules
+fn set_idt_entry(idt_gate: Irq, func: Option<unsafe extern "C" fn()>) {
+    if let Some(_f) = func {
+        unsafe {
+            _pic_handlers_array[idt_gate as usize] = _f as u32;
+            PIC_8259.lock().enable_irq(idt_gate);
+        }
+    } else {
+        unsafe {
+            PIC_8259.lock().disable_irq(idt_gate);
+        }
+    }
+}
+
+/// PIC idt vectors
+extern "C" {
+    static mut _pic_handlers_array: [u32; 16];
+}
 
 /// Common Write method for modules
 fn write(s: &str) {
-    print!("{}", s);
+    log::info!("{}", s);
 }
 
 /// Common allocator methods for modules

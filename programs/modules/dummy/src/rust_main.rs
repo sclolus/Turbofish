@@ -9,53 +9,53 @@ use alloc::boxed::Box;
 static mut CTX: Option<Ctx> = None;
 
 struct Ctx {
-    b: Box<OutBox>,
+    _b: Box<OutBox>,
 }
 
 impl Ctx {
     fn new() -> Self {
-        println!("New Dummy Context created !");
+        print!("New Dummy Context created !");
         Self {
-            b: Box::new(OutBox::new(42)),
+            _b: Box::new(OutBox::new(42)),
         }
     }
 }
 
 impl Drop for Ctx {
     fn drop(&mut self) {
-        println!("Dummy Context droped !");
+        print!("Dummy Context droped !");
     }
 }
 
 struct OutBox {
-    value: u32,
+    _value: u32,
 }
 
 impl OutBox {
-    fn new(value: u32) -> Self {
-        println!("New OutBox created !");
-        Self { value }
+    fn new(_value: u32) -> Self {
+        print!("New OutBox created !");
+        Self { _value }
     }
 }
 
 impl Drop for OutBox {
     fn drop(&mut self) {
-        println!("Dummy OutBox droped !");
+        print!("Dummy OutBox droped !");
     }
 }
 
 /// Main function of the module
 pub fn rust_main(symtab_list: SymbolList) -> ModResult {
-    (symtab_list.write)("I've never install GNU/Linux.\n");
+    (symtab_list.write)("I've never install GNU/Linux.");
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
         #[cfg(not(test))]
         crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
     if let ModConfig::Dummy = symtab_list.kernel_callback {
-        let b = Box::new("Displaying allocated String !\n");
+        let b = Box::new("Displaying allocated String !");
         (symtab_list.write)(&b);
-        println!("Test println!");
+        print!("Test print!");
         unsafe {
             CTX = Some(Ctx::new());
         }

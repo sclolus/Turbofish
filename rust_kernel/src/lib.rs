@@ -26,7 +26,6 @@ extern crate arrayvec;
 
 // Our Crates
 extern crate io;
-extern crate keyboard;
 extern crate mbr;
 
 #[macro_use]

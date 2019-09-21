@@ -853,6 +853,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     };
 
     let mut scheduler = SCHEDULER.lock();
+
     scheduler.time_interval = t;
 
     // Initialise the idle process and get a reference on it

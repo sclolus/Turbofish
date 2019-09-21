@@ -19,9 +19,6 @@ pub struct Ps2Controler {
     current_scancode: Option<u32>,
 }
 
-/// Main PS/2 globale
-pub static mut PS2_CONTROLER: Ps2Controler = Ps2Controler::new();
-
 impl Ps2Controler {
     /// Instanciante an instance of PS/2 controler. (const fn power)
     pub const fn new() -> Self {
@@ -167,9 +164,6 @@ pub struct KeyboardDriver {
     pub keymap: KeyMap,
 }
 
-/// this globale can be used by consumer
-pub static mut KEYBOARD_DRIVER: Option<KeyboardDriver> = None;
-
 impl KeyboardDriver {
     /// default initialisation
     pub fn new(f: Option<CallbackKeyboard>) -> Self {
@@ -270,25 +264,5 @@ impl KeyboardDriver {
                 }
             }
         });
-    }
-}
-
-/// extern initialisation function of the keyboard driver with default parameters
-pub fn init_keyboard_driver() {
-    unsafe {
-        KEYBOARD_DRIVER = Some(KeyboardDriver::new(None));
-    }
-}
-
-#[no_mangle]
-extern "C" fn keyboard_interrupt_handler(_interrupt_name: *const u8) {
-    let scancode = unsafe { PS2_CONTROLER.read_scancode() };
-    if let Some(scancode) = scancode {
-        unsafe {
-            KEYBOARD_DRIVER
-                .as_mut()
-                .unwrap()
-                .interrupt_handler(scancode)
-        }
     }
 }

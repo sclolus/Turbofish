@@ -1,8 +1,7 @@
 //! sys_reboot and sys_shutdown implementations
 
-use super::SysResult;
+use super::{SysResult, SCHEDULER};
 
-use keyboard::PS2_CONTROLER;
 use libc_binding::Errno;
 
 use crate::drivers::ACPI;
@@ -18,12 +17,14 @@ pub fn sys_reboot() -> SysResult<u32> {
                         "ACPI reboot failure: {:?}. Trying with PS/2 controler ...",
                         e
                     );
-                    unsafe {
-                        PS2_CONTROLER.reboot_computer();
-                    }
+                    // Try to reboot with PS/2 controler
+                    SCHEDULER.lock().reboot_computer();
                 }
             },
-            None => unsafe { PS2_CONTROLER.reboot_computer() },
+            None => {
+                // Try to reboot with PS/2 controler
+                SCHEDULER.lock().reboot_computer();
+            }
         }
     });
     Err(Errno::EACCES)

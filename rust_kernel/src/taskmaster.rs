@@ -10,6 +10,7 @@ mod fd_interface;
 mod safe_ffi;
 mod signal_interface;
 mod syscall;
+
 mod tests;
 mod thread;
 mod thread_group;
@@ -51,7 +52,6 @@ use scheduler::SCHEDULER;
 use tests::*;
 
 use libc_binding::Errno;
-use messaging::MessageTo;
 
 /// SysResult is just made to handle module errors. Return optional return and errno
 pub type SysResult<T> = core::result::Result<T, Errno>;
@@ -75,17 +75,6 @@ pub enum TaskMode {
     Mono,
     /// MultiTasking mode, param: frequency
     Multi(f32),
-}
-
-use keyboard::keysymb::KeySymb;
-use keyboard::{CallbackKeyboard, KEYBOARD_DRIVER};
-
-/// we send a message
-pub fn handle_key_press(key_pressed: KeySymb) {
-    // in the keyboard interrupt handler, after reading the keysymb,
-    // we send a message to the tty which will be handled in the next
-    // schedule
-    messaging::push_message(MessageTo::Tty { key_pressed })
 }
 
 // Create an ASM dummy process based on a simple function
@@ -124,14 +113,6 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
             .expect("Unexpected error when parsing ELF file"),
         )
         .expect("Scheduler is bullshit");
-
-    // Register the keyboard callback
-    unsafe {
-        KEYBOARD_DRIVER
-            .as_mut()
-            .unwrap()
-            .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
-    }
 
     // Launch the scheduler
     unsafe { scheduler::start(TaskMode::Multi(1000.)) }

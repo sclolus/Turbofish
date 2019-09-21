@@ -6,7 +6,8 @@
 pub mod writer;
 pub use writer::WRITER;
 
-use keyboard::CallbackKeyboard;
+pub use irq::Irq;
+pub use messaging::MessageTo;
 
 /// This structure is passed zhen _start point of the module is invoqued
 #[derive(Copy, Clone)]
@@ -79,16 +80,16 @@ pub enum ModConfig {
 #[derive(Debug, Copy, Clone)]
 pub struct RTCConfig {
     /// Give ability to redirect an IDT entry to a specific function or None to disable
-    pub set_idt_entry: fn(usize, Option<unsafe extern "C" fn()>),
+    pub set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
 }
 
 /// Configuration parameters of the Keyboard module
 #[derive(Debug, Copy, Clone)]
 pub struct KeyboardConfig {
     /// Give ability to redirect an IDT entry to a specific function or None to disable
-    pub set_idt_entry: fn(usize, Option<unsafe extern "C" fn()>),
-    // /// Keyboard callback given by the kernel
-    // pub callback: CallbackKeyboard,
+    pub set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    /// Keyboard callback given by the kernel
+    pub callback: fn(MessageTo),
 }
 
 /// Standard mod return
@@ -108,7 +109,7 @@ pub enum ModSpecificReturn {
     /// The RTC can be stopped and should give the time to the kernel
     RTCReturn,
     /// The keyboard can be stopped but The kernel cannot ask it
-    KeyboardReturn,
+    Keyboard(KeyboardReturn),
 }
 
 /// Return parameters of the Dummy module
@@ -124,7 +125,10 @@ pub struct RTCReturn {
 
 /// Return parameters of the Keyboard module
 #[derive(Debug, Copy, Clone)]
-pub struct KeyboardReturn {}
+pub struct KeyboardReturn {
+    /// Ebable to reboot computer with the PS2 controler
+    pub reboot_computer: fn(),
+}
 
 /// The allocators methods are passed by the kernel while module is initialized
 #[derive(Copy, Clone)]
