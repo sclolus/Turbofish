@@ -174,9 +174,7 @@ name = "messaging"
 version = "0.1.0"
 dependencies = [
  "keyboard 0.1.0",
- "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc_binding 0.1.0",
- "sync 0.1.0",
 ]
 
 [[package]]

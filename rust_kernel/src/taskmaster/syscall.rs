@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::fd_interface::Fd;
+use super::message;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;

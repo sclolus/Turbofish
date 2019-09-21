@@ -11,6 +11,8 @@ mod safe_ffi;
 mod signal_interface;
 mod syscall;
 
+mod message;
+
 mod tests;
 mod thread;
 mod thread_group;

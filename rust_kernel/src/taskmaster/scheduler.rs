@@ -166,7 +166,7 @@ impl Scheduler {
     fn dispatch_messages(&mut self) {
         // get the keypress from the keybuffer
 
-        for message in messaging::drain_messages() {
+        for message in super::message::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
                 MessageTo::Tty { key_pressed } => unsafe {

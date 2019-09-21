@@ -26,7 +26,7 @@ use crate::memory::mmu::Entry;
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::KERNEL_VIRTUAL_PAGE_ALLOCATOR;
 
-use messaging::push_message;
+use super::message::push_message;
 
 /// Insert a kernel module
 pub fn sys_insmod(modname: *const c_char) -> SysResult<u32> {

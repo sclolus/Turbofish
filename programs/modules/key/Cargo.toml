@@ -21,10 +21,6 @@ kernel_modules = { path = "dependencies/kernel_modules" }
 keyboard = { path = "dependencies/keyboard" }
 messaging = { path = "dependencies/messaging" }
 
-[dependencies.lazy_static]
-version = "1.3.0"
-features = ["spin_no_std"]
-
 [workspace]
 members = [
 	"dependencies/kernel_modules",

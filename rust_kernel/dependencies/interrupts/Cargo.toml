@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["mordak <bmickael@student.42.fr>"]
 edition = "2018"
 license = "GPL3"
-description = "A small briefing about irq"
+description = "A smart toolkit about IDT"
 documentation = "cargo doc --open"
 homepage = "index.html"
 
