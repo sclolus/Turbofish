@@ -1,6 +1,6 @@
+use super::kernel_mod::CURRENT_UNIX_TIME;
 use super::scheduler::SCHEDULER;
 use super::SysResult;
-use crate::drivers::rtc::CURRENT_UNIX_TIME;
 use libc_binding::{timeval, timezone};
 
 use core::ptr;

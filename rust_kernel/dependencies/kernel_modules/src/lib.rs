@@ -9,6 +9,8 @@ pub use writer::WRITER;
 pub use irq::Irq;
 pub use messaging::MessageTo;
 
+use core::sync::atomic::AtomicU32;
+
 /// This structure is passed zhen _start point of the module is invoqued
 #[derive(Copy, Clone)]
 pub struct SymbolList {
@@ -81,6 +83,8 @@ pub enum ModConfig {
 pub struct RTCConfig {
     /// Give ability to redirect an IDT entry to a specific function or None to disable
     pub set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    /// reference of current_unix_time kernel globale
+    pub current_unix_time: &'static AtomicU32,
 }
 
 /// Configuration parameters of the Keyboard module
@@ -110,17 +114,6 @@ pub enum ModSpecificReturn {
     RTCReturn,
     /// The keyboard can be stopped but The kernel cannot ask it
     Keyboard(KeyboardReturn),
-}
-
-/// Return parameters of the Dummy module
-#[derive(Debug, Copy, Clone)]
-pub struct DummyReturn {}
-
-/// Return parameters of the RTC module
-#[derive(Debug, Copy, Clone)]
-pub struct RTCReturn {
-    /// Ask for current time
-    pub get_time: fn() -> u32,
 }
 
 /// Return parameters of the Keyboard module

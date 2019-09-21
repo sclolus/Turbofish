@@ -4,8 +4,6 @@
 ;; See https://wiki.osdev.org/ISR
 
 extern generic_interrupt_handler
-extern keyboard_interrupt_handler
-extern rtc_handler
 
 extern primary_hard_disk_interrupt_handler
 extern secondary_hard_disk_interrupt_handler
@@ -227,7 +225,7 @@ _pic_handlers_array: dd \
 	generic_interrupt_handler, \
 	generic_interrupt_handler, \
 	generic_interrupt_handler, \
-	rtc_handler, \
+	generic_interrupt_handler, \
 	generic_interrupt_handler, \
 	generic_interrupt_handler, \
 	generic_interrupt_handler, \

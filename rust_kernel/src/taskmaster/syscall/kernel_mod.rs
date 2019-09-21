@@ -19,6 +19,7 @@ use libc_binding::{c_char, Errno};
 
 use core::convert::{TryFrom, TryInto};
 use core::slice;
+use core::sync::atomic::AtomicU32;
 
 use crate::drivers::PIC_8259;
 use crate::elf_loader::load_elf;
@@ -101,7 +102,11 @@ impl Scheduler {
             "rtc" => (
                 &mut self.kernel_modules.rtc,
                 "/turbofish/mod/rtc.mod",
-                ModConfig::RTC(RTCConfig { set_idt_entry }),
+                ModConfig::RTC(RTCConfig {
+                    set_idt_entry,
+                    // May be set as volatile...
+                    current_unix_time: unsafe { &mut CURRENT_UNIX_TIME },
+                }),
             ),
             "keyboard" => (
                 &mut self.kernel_modules.keyboard,
@@ -195,6 +200,9 @@ impl Scheduler {
         }
     }
 }
+
+/// RTC driver specific globale
+pub static mut CURRENT_UNIX_TIME: AtomicU32 = AtomicU32::new(0);
 
 /// Set IDT ENTRY fn: Usable by modules
 fn set_idt_entry(idt_gate: Irq, func: Option<unsafe extern "C" fn()>) {

@@ -1,5 +1,4 @@
 use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::rtc::Rtc;
 use crate::drivers::{Acpi, ACPI, PCI, PIC_8259, PIT0};
 use crate::memory;
 use crate::memory::tools::device_map::get_device_map_slice;
@@ -66,11 +65,6 @@ pub extern "C" fn kmain(
     log::info!("PCI buses has been scanned");
 
     // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
-
-    let mut rtc = Rtc::new();
-    log::info!("RTC system seems to be working perfectly");
-    let date = rtc.read_date();
-    println!("{}", date);
 
     log::error!("this is an example of error");
 

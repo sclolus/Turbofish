@@ -6,8 +6,14 @@
 
 extern crate alloc;
 
+#[macro_use]
+extern crate interrupts;
+
 mod rust_main;
 use rust_main::rust_main;
+
+pub mod rtc;
+pub use rtc::Rtc;
 
 pub mod memory;
 #[cfg(not(test))]

@@ -1,22 +1,15 @@
 //! Get current Date using the
 //! [CMOS](https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC) ram on the RTC chip.
-use crate::drivers::{pic_8259, PIC_8259};
 use bit_field::BitField;
 use core::cmp::max;
 use core::convert::{TryFrom, TryInto};
-use core::sync::atomic::{AtomicU32, Ordering};
 use core::{fmt, fmt::Display};
-use interrupts::{GateType, IdtGateEntry, InterruptTable};
 use io::{Io, Pio};
 use irq::nmi::Nmi;
 
-extern "C" {
-    fn _isr_cmos();
-}
-
 #[derive(Debug, Copy, Clone)]
 #[allow(dead_code)]
-enum Month {
+pub enum Month {
     January = 1,
     February,
     March,
@@ -32,7 +25,7 @@ enum Month {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum RtcRegister {
+pub enum RtcRegister {
     /// Contains the current number of seconds of the RTC date. Ranges from 0 to 59.
     Seconds = 0x0,
 
@@ -96,12 +89,12 @@ impl TryFrom<u8> for Month {
 /// date with all field in binary
 #[derive(Debug, Copy, Clone)]
 pub struct Date {
-    sec: u8,
-    minutes: u8,
-    hours: u8,
-    month: Month,
-    day_of_month: u8,
-    year: u32,
+    pub sec: u8,
+    pub minutes: u8,
+    pub hours: u8,
+    pub month: Month,
+    pub day_of_month: u8,
+    pub year: u32,
 }
 
 impl Display for Date {
@@ -124,7 +117,7 @@ pub struct Rtc {
 
 /// Gets the day's day number for this year.
 /// I tried to make this a const fn, but currently conditionals are not allowed in const fns.
-fn get_day_number(month: Month, day: usize) -> usize {
+pub fn get_day_number(month: Month, day: usize) -> usize {
     const NUMBER_OF_DAYS: [usize; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     // assert!(day <= 31); // Can't do that in const fn, don't mess up!
@@ -135,55 +128,6 @@ fn get_day_number(month: Month, day: usize) -> usize {
         days += NUMBER_OF_DAYS[index];
     }
     days
-}
-
-pub static mut CURRENT_UNIX_TIME: AtomicU32 = AtomicU32::new(0);
-
-#[no_mangle]
-/// The interrupt handler of the RTC, updates the CURRENT_UNIX_TIME atomic variable
-/// with the updated value from the RTC.
-extern "C" fn rtc_handler(_interrupt_name: *const u8) {
-    let mut rtc = Rtc::new();
-
-    let status = rtc.read_register(RtcRegister::StatusC, false);
-
-    // The end-of-update interrupt is marked in the StatusC register by the 4 higher-bits being set to 0xd0.
-    if status.get_bits(4..8) == 0xd {
-        let date = rtc.read_date();
-        // Heuristical way to determine the current century.
-        // As we would need to check the ACPI tables to assert the existence of the Century register.
-
-        let tm_sec = date.sec as u32;
-        let tm_min = date.minutes as u32;
-        let tm_hour = date.hours as u32;
-        let tm_yday = get_day_number(date.month, date.day_of_month as usize) as u32;
-        let tm_year = date.year - 1900 as u32;
-
-        // The 19 January 2038, at 3am:14:08 UTC, the 2038 Bug will occurs.
-        // That is that value will overflow back to Unix epoch.
-        // Too bad.
-        // This is the posix formula for approximated Unix time.
-        let seconds_since_epoch = tm_sec
-            + tm_min * 60
-            + tm_hour * 3600
-            + tm_yday * 86400
-            + (tm_year - 70) * 31536000
-            // + ((tm_year - 69) / 4) * 86400
-            // - ((tm_year - 1) / 100) * 86400
-            // + ((tm_year + 299) / 400) * 86400 // How the fuck, does RTC count leapdays.
-            ;
-
-        unsafe {
-            let old = CURRENT_UNIX_TIME.load(Ordering::SeqCst);
-
-            assert!(
-                old < seconds_since_epoch,
-                "We want back in time, Congratulations!"
-            );
-
-            CURRENT_UNIX_TIME.store(seconds_since_epoch, Ordering::SeqCst);
-        }
-    }
 }
 
 impl Rtc {
@@ -215,7 +159,7 @@ impl Rtc {
     /// 0x09      Year
     /// 0x0B      Status Register B: bit 1 (is 24 hour format) bit 2 (is binary mode)
     /// `disable_nmi` lets you disable the nmi and read the register in one operation.
-    fn read_register(&mut self, selected_register: RtcRegister, disable_nmi: bool) -> u8 {
+    pub fn read_register(&mut self, selected_register: RtcRegister, disable_nmi: bool) -> u8 {
         self.set_register_index(selected_register, disable_nmi);
         self.data.read()
     }
@@ -223,14 +167,12 @@ impl Rtc {
     /// This function is unsafe, seriously, don't mess with it or you could fuck up your RTC permanently.
     #[allow(unused)]
     unsafe fn set_register(&mut self, value: u8, selected_register: RtcRegister) {
-        without_interrupts!({
-            Nmi::disable();
-            let index = selected_register as u8;
+        Nmi::disable();
+        let index = selected_register as u8;
 
-            self.register_selector.write(index);
-            self.data.write(value);
-            Nmi::enable();
-        })
+        self.register_selector.write(index);
+        self.data.write(value);
+        Nmi::enable();
     }
 
     /// Enables the periodic interrupts of the RTC at a given rate from 3 to 15 (15 is the lowest rate at 2Hz).
@@ -240,40 +182,23 @@ impl Rtc {
         rate &= 0x0F; // Ensure that rate is below 16.
         rate = max(3, rate); // Ensure that rate is above 2.
 
-        let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table() };
+        let previous_value = self.read_register(RtcRegister::StatusB, true);
+        self.set_register_index(RtcRegister::StatusB, true);
+        // The bit 6 of Status register B enables the periodic interrupts of the RTC.
+        self.data.write(previous_value | 0x40);
 
-        let gate_entry = *IdtGateEntry::new()
-            .set_storage_segment(false)
-            .set_privilege_level(0)
-            .set_selector(1 << 3)
-            .set_gate_type(GateType::InterruptGate32)
-            .set_handler(_isr_cmos as *const u8 as u32);
-        unsafe {
-            without_interrupts!({
-                // Sets handler into the InterruptTable.
-                interrupt_table[32 + 8] = gate_entry;
+        let previous_value = self.read_register(RtcRegister::StatusA, true);
+        self.set_register_index(RtcRegister::StatusA, true);
 
-                PIC_8259.lock().enable_irq(pic_8259::Irq::RealTimeClock); // enables the RTC irq.
+        // The 4 low bits of the Status Register A are the `divider setting`, that is, the rate selector, if you will.
+        self.data.write((previous_value & 0xF0) | rate);
 
-                let previous_value = self.read_register(RtcRegister::StatusB, true);
-                self.set_register_index(RtcRegister::StatusB, true);
-                // The bit 6 of Status register B enables the periodic interrupts of the RTC.
-                self.data.write(previous_value | 0x40);
-
-                let previous_value = self.read_register(RtcRegister::StatusA, true);
-                self.set_register_index(RtcRegister::StatusA, true);
-
-                // The 4 low bits of the Status Register A are the `divider setting`, that is, the rate selector, if you will.
-                self.data.write((previous_value & 0xF0) | rate);
-
-                // We need to reenable the NMI here.
-                // The NMI was disabled by the calls to `read_register` method.
-                // The thing is that if we don't explicitly set the high bit (0x80)
-                // on each Port I/O writes, the NMI would be incorrectly reenabled.
-                // The symmetry, in this case, really is not obtainable.
-                Nmi::enable();
-            });
-        }
+        // We need to reenable the NMI here.
+        // The NMI was disabled by the calls to `read_register` method.
+        // The thing is that if we don't explicitly set the high bit (0x80)
+        // on each Port I/O writes, the NMI would be incorrectly reenabled.
+        // The symmetry, in this case, really is not obtainable.
+        Nmi::enable();
     }
 
     pub fn read_date(&mut self) -> Date {
