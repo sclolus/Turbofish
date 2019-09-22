@@ -22,7 +22,7 @@ mod tools;
 use tools::KeyGenerator;
 
 mod path;
-mod posix_consts;
+pub mod posix_consts;
 use posix_consts::{NAME_MAX, SYMLOOP_MAX};
 
 pub use path::{Filename, Path};

@@ -9,12 +9,10 @@ use super::scheduler::{Scheduler, SCHEDULER};
 pub type SocketArgsPtr = *const u8;
 
 use super::thread::WaitingState;
-use super::vfs::{Path, VFS};
+use super::vfs::{posix_consts::PATH_MAX, Path, VFS};
 use core::mem::transmute;
 use libc_binding::c_char;
-use libc_binding::{Errno, PATH_MAX};
-
-const PATH_MAX_USIZE: usize = PATH_MAX as usize;
+use libc_binding::Errno;
 
 use sync::DeadMutexGuard;
 
@@ -144,7 +142,7 @@ safe_convertible_enum!(
 visible_byte_array!(
     /// Unix pathname
     #[derive(Copy, Clone)]
-    struct SockPathname([c_char; PATH_MAX_USIZE]);
+    struct SockPathname([c_char; PATH_MAX]);
 );
 
 impl SockPathname {
@@ -182,7 +180,7 @@ impl TryFrom<SockaddrUnix> for Path {
 impl TryInto<SockPathname> for Path {
     type Error = Errno;
     fn try_into(self) -> Result<SockPathname, Self::Error> {
-        let mut res = SockPathname([0; PATH_MAX_USIZE]);
+        let mut res = SockPathname([0; PATH_MAX]);
         self.write_path_in_buffer(&mut res.0[..])?;
         Ok(res)
     }
