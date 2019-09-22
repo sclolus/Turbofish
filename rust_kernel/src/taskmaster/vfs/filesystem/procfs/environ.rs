@@ -63,7 +63,8 @@ impl FileOperation for EnvironOperations {
         let environ = {
             match scheduler
                 .get_thread_group(self.pid)
-                .expect("EnvironOperations::read(): The Process should exist")
+                .ok_or(Errno::ESRCH)?
+                // .expect("EnvironOperations::read(): The Process should exist")
                 .environ
                 .as_ref()
             {

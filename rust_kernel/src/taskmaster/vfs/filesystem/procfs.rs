@@ -3,7 +3,7 @@ use super::{
     DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId, Driver, FileOperation, FileSystem,
     FileSystemId, SysResult,
 };
-use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId};
+use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
 
 use crate::taskmaster::SCHEDULER;
 
@@ -19,6 +19,7 @@ use fallible_collections::{
     boxed::FallibleBox,
     btree::{BTreeMap, BTreeSet},
     vec::TryCollect,
+    TryClone,
 };
 use libc_binding::{Errno, FileType, Pid};
 
@@ -139,7 +140,7 @@ impl ProcFs {
 
         let mut inode_id: InodeId = self.gen();
         inode_id.filesystem_id = Some(self.fs_id);
-        let access_mode = FileType::REGULAR_FILE | FileType::from_bits(0o777).unwrap();
+        let access_mode = FileType::REGULAR_FILE | FileType::from_bits(0o444).unwrap();
 
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
@@ -260,7 +261,6 @@ impl ProcFs {
         let mut direntry = DirectoryEntryBuilder::new();
         direntry
             .set_filename(filename)
-            .set_parent_id(parent)
             .set_inode_id(inode_id)
             .set_directory();
 
@@ -329,6 +329,43 @@ impl ProcFs {
         self.inodes.remove(&inode_id);
         Ok(())
     }
+
+    fn symlink(
+        &mut self,
+        parent: DirectoryEntryId,
+        link_name: Filename,
+        path: Path,
+    ) -> SysResult<DirectoryEntryId> {
+        let driver = Box::new(DefaultDriver);
+        let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
+
+        let inode_id: InodeId = self.gen();
+        let inode_id = self.new_inode_id(inode_id.inode_number);
+
+        let mut direntry = DirectoryEntryBuilder::new();
+        direntry
+            .set_symlink(path)
+            .set_filename(link_name)
+            .set_inode_id(inode_id);
+        let direntry = direntry.build();
+
+        let vfs_inode_data = *VfsInodeData::default()
+            .set_id(inode_id)
+            .set_access_mode(
+                FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU,
+            )
+            .set_uid(0)
+            .set_gid(0);
+
+        let inode = Inode(
+            VfsInode::new(filesystem, driver, vfs_inode_data),
+            Box::new(|| Box::new(DefaultDriver)),
+        );
+
+        let dir_id = self.dcache.add_entry(Some(parent), direntry)?;
+        self.inodes.try_insert(inode_id, inode)?; // TODO: cleanup direntry in failure condition
+        Ok(dir_id)
+    }
 }
 
 impl FileSystem for ProcFs {
@@ -387,6 +424,18 @@ impl FileSystem for ProcFs {
             self.pid_directories.remove(&(pid_directory, pid));
         }
 
+        let self_filename = Filename::try_from("self").expect("This filename should be valid");
+
+        let self_dir_id = self
+            .dcache
+            .children(root_dir_id)?
+            .find(|entry| entry.filename == self_filename)
+            .map(|entry| entry.id);
+        if self_dir_id.is_some() {
+            // refactor this, this is horrible.
+            self.dcache.remove_entry(self_dir_id.unwrap());
+        }
+
         // log::info!("Trying to lock scheduler");
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
@@ -425,11 +474,14 @@ impl FileSystem for ProcFs {
             )?;
 
             let cwd_filename = Filename::try_from("cwd").expect("This filename should be valid");
-            self.register_file(
-                dir_id,
-                cwd_filename,
-                Box::new(move || Box::new(CwdDriver::new(pid))),
-            )?;
+            let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
+
+            self.symlink(dir_id, cwd_filename, cwd)?;
+            // self.register_file(
+            //     dir_id,
+            //     cwd_filename,
+            //     Box::new(move || Box::new(CwdDriver::new(pid))),
+            // )?;
 
             let environ_filename =
                 Filename::try_from("environ").expect("This filename should be valid");
@@ -446,8 +498,18 @@ impl FileSystem for ProcFs {
                 cmdline_filename,
                 Box::new(move || Box::new(CmdlineDriver::new(pid))),
             )?;
-        }
 
+            let exe_filename = Filename::try_from("exe").expect("This filename should be valid");
+            if let Some(filename) = &thread_group.filename {
+                self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
+            }
+        }
+        let (current_pid, _) = scheduler.current_task_id();
+        let pid_path = Path::try_from(format!("/proc/{}", current_pid).as_str())?; // TODO: unfaillible context/hardcoded.
+
+        self.symlink(root_dir_id, self_filename, pid_path);
+
+        eprintln!("Looking up InodeId: {:?}", inode_id);
         let direntry = self
             .dcache
             .iter()
