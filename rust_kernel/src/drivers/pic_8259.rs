@@ -10,7 +10,7 @@ use itertools::unfold;
 use lazy_static::lazy_static;
 use pic_8259_isr::*;
 
-pub use irq::Irq;
+use irq::Irq;
 
 mod icws;
 use icws::{ICWs, ICW1, ICW2, ICW3, ICW4};

@@ -54,6 +54,7 @@ int insmod(const char *modname, char **envp) {
 int main(int argc, char **argv, char **envp)
 {
 	int _r = insmod("keyboard", envp);
+	_r = insmod("rtc", envp);
 	(void)_r;
 
 	pid_t pid = fork();
