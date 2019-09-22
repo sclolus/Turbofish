@@ -10,7 +10,7 @@ pub extern "C" fn kmain(
     init_kernel(multiboot_info, device_map_ptr);
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/shell"],
+        &["/bin/init", "/bin/session_manager", "/bin/dash"],
         &[],
     );
 }
