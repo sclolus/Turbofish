@@ -39,6 +39,12 @@ pub use stat::StatDriver;
 mod cwd;
 pub use cwd::CwdDriver;
 
+mod environ;
+pub use environ::EnvironDriver;
+
+mod cmdline;
+pub use cmdline::CmdlineDriver;
+
 use itertools::unfold;
 
 unsafe impl Send for ProcFs {}
@@ -381,7 +387,7 @@ impl FileSystem for ProcFs {
             self.pid_directories.remove(&(pid_directory, pid));
         }
 
-        log::info!("Trying to lock scheduler");
+        // log::info!("Trying to lock scheduler");
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
 
@@ -424,6 +430,22 @@ impl FileSystem for ProcFs {
                 cwd_filename,
                 Box::new(move || Box::new(CwdDriver::new(pid))),
             )?;
+
+            let environ_filename =
+                Filename::try_from("environ").expect("This filename should be valid");
+            self.register_file(
+                dir_id,
+                environ_filename,
+                Box::new(move || Box::new(EnvironDriver::new(pid))),
+            )?;
+
+            let cmdline_filename =
+                Filename::try_from("cmdline").expect("This filename should be valid");
+            self.register_file(
+                dir_id,
+                cmdline_filename,
+                Box::new(move || Box::new(CmdlineDriver::new(pid))),
+            )?;
         }
 
         let direntry = self
@@ -433,12 +455,12 @@ impl FileSystem for ProcFs {
             .find(|dir| dir.inode_id == inode_id)
             .expect("No corresponding directory for Inode");
 
-        eprintln!("Trying to access childs of {:?}", direntry.id);
+        // eprintln!("Trying to access childs of {:?}", direntry.id);
 
         let inodes = &mut self.inodes;
         let dcache = &self.dcache;
 
-        log::info!("Succesfully locked scheduler");
+        // log::info!("Succesfully locked scheduler");
         Ok(direntry
             .get_directory()
             .expect("Direntry was not a directory.")

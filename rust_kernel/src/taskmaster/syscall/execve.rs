@@ -140,7 +140,13 @@ pub fn sys_execve(
             owner = tmp_owner;
             group = tmp_group;
         }
-        let content = get_file_content(cwd, creds, pathname)?;
+        let content = get_file_content(cwd, creds, pathname.try_clone()?)?;
+
+        let tg = scheduler.current_thread_group_mut();
+
+        tg.environ = Some(envp_content.try_clone()?);
+        tg.argv = Some(argv_content.try_clone()?);
+        tg.filename = Some(pathname);
 
         let mut new_process = unsafe {
             UserProcess::new(
