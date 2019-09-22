@@ -1,9 +1,11 @@
 use super::tools::{KeyGenerator, Mapper};
+use super::DefaultDriver;
 use super::IpcResult;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::{DirectoryEntryBuilder, Ext2DriverFile, Filename, InodeId, Path};
 use super::{Driver, FileOperation, Inode, InodeData};
 use alloc::boxed::Box;
+use super::Incrementor;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
@@ -12,6 +14,8 @@ pub mod dead;
 pub use dead::DeadFileSystem;
 pub mod ext2fs;
 pub use ext2fs::Ext2fs;
+pub mod devfs;
+pub use devfs::Devfs;
 
 pub mod procfs;
 pub use procfs::ProcFs;
@@ -147,6 +151,12 @@ pub struct FileSystemId(pub usize);
 impl FileSystemId {
     pub fn new(id: usize) -> Self {
         Self(id)
+    }
+}
+
+impl Incrementor for FileSystemId {
+    fn incr(&mut self) {
+        *self = Self(self.0 + 1);
     }
 }
 

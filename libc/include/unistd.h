@@ -8,7 +8,7 @@
 
 #define _POSIX_VERSION 200809L
 
-
+#define _SC_CLK_TCK 2
 
 #define	F_OK	0
 //    Test for existence of file.

@@ -17,7 +17,7 @@ use fallible_collections::TryClone;
 use itertools::unfold;
 
 mod tools;
-use tools::KeyGenerator;
+use tools::{Incrementor, KeyGenerator};
 
 mod path;
 pub mod posix_consts;
@@ -353,11 +353,18 @@ impl VirtualFileSystem {
                 .ok_or(ENOENT)?;
 
             current_entry = self.dcache.get_entry(next_entry_id)?;
+            current_dir_id = *next_entry_id;
+            if let Ok(true) = current_entry.is_mounted() {
+                current_dir_id = current_entry
+                    .get_mountpoint_entry()
+                    .expect("mount point entry should be there");
+                current_entry = self.dcache.get_entry(&current_dir_id)?;
+            }
+
             if current_entry.is_symlink() {
                 was_symlink = true;
                 break;
             }
-            current_dir_id = *next_entry_id;
         }
         if was_symlink {
             if components.len() == 0 && !follow_last_symlink {

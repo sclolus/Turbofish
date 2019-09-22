@@ -1,5 +1,6 @@
 use super::inode::InodeId;
 use super::path::{Filename, Path};
+use super::Incrementor;
 use super::SysResult;
 use alloc::vec::Vec;
 use fallible_collections::FallibleVec;
@@ -65,6 +66,11 @@ impl DirectoryEntryBuilder {
 
     pub fn set_fifo(&mut self) -> &mut Self {
         self.inner = Some(DirectoryEntryInner::Fifo);
+        self
+    }
+
+    pub fn set_chardevice(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::CharDevice);
         self
     }
 
@@ -237,10 +243,9 @@ impl DirectoryEntryId {
     }
 }
 
-impl core::ops::Add<usize> for DirectoryEntryId {
-    type Output = Self;
-    fn add(self, rhs: usize) -> Self::Output {
-        Self(self.0 + rhs)
+impl Incrementor for DirectoryEntryId {
+    fn incr(&mut self) {
+        self.0 += 1;
     }
 }
 
@@ -300,6 +305,7 @@ pub enum DirectoryEntryInner {
     Symlink(Path),
     Fifo,
     Socket,
+    CharDevice,
 }
 
 use DirectoryEntryInner::*;

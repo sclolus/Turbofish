@@ -1,17 +1,17 @@
 use core::cmp::Ord;
-use core::ops::Add;
 
+use core::ops::Add;
 use fallible_collections::btree::BTreeMap;
 
 pub trait KeyGenerator<K>
 where
-    K: Ord + Add<usize, Output = K> + Default + Copy,
+    K: Ord + Incrementor + Default + Copy,
 {
     fn gen(&mut self) -> K {
         let mut cur = K::default();
 
         while !self.gen_filter(cur) {
-            cur = cur + 1
+            cur.incr()
         }
         cur
     }
@@ -34,7 +34,7 @@ pub type MapperResult<T> = Result<T, MapperError>;
 
 pub trait Mapper<K, V>: KeyGenerator<K>
 where
-    K: Ord + Add<usize, Output = K> + Default + Copy,
+    K: Ord + Incrementor + Default + Copy,
 {
     fn get_map(&mut self) -> &mut BTreeMap<K, V>;
 
@@ -70,4 +70,8 @@ where
             .remove(&key)
             .expect("Entry is unexpectedly not contained"))
     }
+}
+
+pub trait Incrementor {
+    fn incr(&mut self);
 }

@@ -37,6 +37,8 @@ impl From<ext2::Inode> for InodeData {
     fn from(inode_ext2: ext2::Inode) -> InodeData {
         InodeData {
             id: Default::default(),
+            major: 0,
+            minor: 0,
             link_number: inode_ext2.nbr_hard_links,
             access_mode: inode_ext2.type_and_perm,
             uid: inode_ext2.user_id,

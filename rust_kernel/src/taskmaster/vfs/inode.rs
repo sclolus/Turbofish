@@ -3,6 +3,7 @@ use super::DeadFileSystem;
 use super::DefaultDriver;
 use super::Driver;
 use super::FileSystem;
+use super::Incrementor;
 use super::{FileOperation, IpcResult, OpenFlags};
 use crate::taskmaster::SysResult;
 // use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
@@ -158,7 +159,9 @@ pub struct InodeData {
     pub link_number: nlink_t,
     pub access_mode: FileType,
 
-    //TODO: chnage this to (owner, group),
+    pub major: dev_t,
+    pub minor: dev_t,
+
     pub uid: uid_t,
     pub gid: gid_t,
 
@@ -177,13 +180,13 @@ impl InodeData {
 
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         *stat = stat {
-            st_dev: 42 as dev_t,                   // Device ID of device containing file.
-            st_ino: self.id.inode_number as ino_t, // File serial number.
+            st_dev: self.major,                         // Device ID of device containing file.
+            st_ino: self.id.inode_number as ino_t,      // File serial number.
             st_mode: self.access_mode.bits() as mode_t, // Mode of file (see below).
-            st_nlink: self.link_number,            // Number of hard links to the file.
-            st_uid: self.uid,                      // User ID of file.
-            st_gid: self.gid,                      // Group ID of file.
-            st_rdev: 0 as dev_t, //TODO // Device ID (if file is character or block special).
+            st_nlink: self.link_number,                 // Number of hard links to the file.
+            st_uid: self.uid,                           // User ID of file.
+            st_gid: self.gid,                           // Group ID of file.
+            st_rdev: self.minor, //TODO // Device ID (if file is character or block special).
             st_size: self.size as off_t, // For regular files, the file size in bytes.
             st_atim: timespec {
                 // Last data access timestamp.
@@ -242,6 +245,8 @@ impl InodeData {
             id: InodeId::new(2, None),
             link_number: 1,
             access_mode,
+            major: 0,
+            minor: 0,
             uid: 0,
             gid: 0,
             atime: 0,
@@ -292,18 +297,6 @@ impl InodeId {
     }
 }
 
-impl core::ops::Add<usize> for InodeId {
-    type Output = Self;
-    fn add(self, rhs: usize) -> Self::Output {
-        Self {
-            // We need this because of the traits `KeyGenerator` and `Mapper`
-            // Todo: use abstract integer traits to refactor this.
-            inode_number: self.inode_number + rhs as u32,
-            filesystem_id: self.filesystem_id,
-        }
-    }
-}
-
 #[cfg(test)]
 mod inode_id_should {
     use super::InodeId;
@@ -346,6 +339,18 @@ mod inode_id_should {
         }
 
     }, add_to_usizes}
+}
+
+impl Incrementor for InodeNumber {
+    fn incr(&mut self) {
+        *self += 1;
+    }
+}
+
+impl Incrementor for InodeId {
+    fn incr(&mut self) {
+        self.inode_number += 1;
+    }
 }
 
 #[cfg(test)]
