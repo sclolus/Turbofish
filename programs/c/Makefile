@@ -48,6 +48,7 @@ SRC_C += Clone \
 		gettimeofday \
 		time \
 		fork_bomb \
+		bullshit_return \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
