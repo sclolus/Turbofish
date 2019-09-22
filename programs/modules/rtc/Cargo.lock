@@ -46,6 +46,7 @@ version = "0.1.0"
 dependencies = [
  "irq 0.1.0",
  "messaging 0.1.0",
+ "time 0.1.0",
 ]
 
 [[package]]
@@ -80,7 +81,12 @@ dependencies = [
  "io 0.1.0",
  "irq 0.1.0",
  "kernel_modules 0.1.0",
+ "time 0.1.0",
 ]
+
+[[package]]
+name = "time"
+version = "0.1.0"
 
 [metadata]
 "checksum bit_field 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a165d606cf084741d4ac3a28fb6e9b1eb0bd31f6cd999098cfddb0b2ab381dc0"

@@ -37,6 +37,7 @@ libc_binding = { path = "dependencies/libc_binding" }
 kernel_modules = { path = "dependencies/kernel_modules" }
 irq = { path = "dependencies/irq" }
 interrupts = { path = "dependencies/interrupts" }
+time = { path = "dependencies/time" }
 
 [dependencies.itertools]
 version = "0.8.0"
@@ -91,5 +92,6 @@ members = [
 "dependencies/kernel_modules",
 "dependencies/irq",
 "dependencies/interrupts",
+"dependencies/time",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

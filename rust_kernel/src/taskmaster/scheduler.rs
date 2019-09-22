@@ -393,9 +393,10 @@ impl Scheduler {
     /// Start the exit() routine: Return informations about the process to destroy
     pub fn current_thread_group_exit(&mut self, status: Status) -> Option<(Pid, Status)> {
         log::info!(
-            "exit called for process with PID: {:?} STATUS: {:?}",
+            "{} exit called for process with PID: {:?} STATUS: {:?}",
+            self.read_date(),
             self.running_process[self.current_task_index],
-            status
+            status,
         );
 
         match status {

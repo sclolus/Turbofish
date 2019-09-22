@@ -119,6 +119,7 @@ version = "0.1.0"
 dependencies = [
  "irq 0.1.0",
  "messaging 0.1.0",
+ "time 0.1.0",
 ]
 
 [[package]]
@@ -412,6 +413,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "time"
+version = "0.1.0"
+
+[[package]]
 name = "try_clone_derive"
 version = "0.1.0"
 dependencies = [
@@ -447,6 +452,7 @@ dependencies = [
  "raw_data 0.1.0",
  "sync 0.1.0",
  "terminal 0.1.0",
+ "time 0.1.0",
  "try_clone_derive 0.1.0",
 ]
 

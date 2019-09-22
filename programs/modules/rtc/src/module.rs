@@ -1,7 +1,7 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList, WRITER,
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList, WRITER,
 };
 
 use bit_field::BitField;
@@ -9,7 +9,8 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use kernel_modules::Irq;
 
 mod rtc;
-use rtc::{get_day_number, Rtc, RtcRegister};
+use rtc::{Rtc, RtcRegister};
+use time::get_day_number;
 
 static mut CTX: Option<Ctx> = None;
 
@@ -73,7 +74,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
 
         Ok(ModReturn {
             stop: drop_module,
-            spec: ModSpecificReturn::RTCReturn,
+            spec: ModSpecificReturn::RTC(RTCReturn { read_date }),
         })
     } else {
         Err(ModError::BadIdentification)
@@ -88,6 +89,12 @@ fn drop_module() {
         });
         CTX = None;
     }
+}
+
+/// Get the current Date
+fn read_date() -> time::Date {
+    let mut rtc = Rtc::new();
+    rtc.read_date()
 }
 
 #[no_mangle]

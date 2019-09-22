@@ -8,6 +8,7 @@ pub use writer::WRITER;
 
 pub use irq::Irq;
 pub use messaging::MessageTo;
+pub use time::Date;
 
 use core::sync::atomic::AtomicU32;
 
@@ -115,15 +116,22 @@ pub enum ModSpecificReturn {
     /// The kernel cannot ask the Dummy module
     DummyReturn,
     /// The RTC can be stopped and should give the time to the kernel
-    RTCReturn,
+    RTC(RTCReturn),
     /// The keyboard can be stopped but The kernel cannot ask it
     Keyboard(KeyboardReturn),
+}
+
+/// Return parameters of the RTC module
+#[derive(Debug, Copy, Clone)]
+pub struct RTCReturn {
+    /// Get the date from the RTC module
+    pub read_date: fn() -> Date,
 }
 
 /// Return parameters of the Keyboard module
 #[derive(Debug, Copy, Clone)]
 pub struct KeyboardReturn {
-    /// Ebable to reboot computer with the PS2 controler
+    /// Enable to reboot computer with the PS2 controler
     pub reboot_computer: fn(),
 }
 

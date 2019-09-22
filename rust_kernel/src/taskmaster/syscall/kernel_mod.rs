@@ -16,6 +16,7 @@ use kernel_modules::{
     RTCConfig, SymbolList,
 };
 use libc_binding::{c_char, Errno};
+use time::Date;
 
 use core::convert::{TryFrom, TryInto};
 use core::slice;
@@ -199,6 +200,19 @@ impl Scheduler {
             }
         } else {
             log::error!("ps2_controler/Keyboard handler not loaded");
+        }
+    }
+
+    /// RTC driver method specific
+    pub fn read_date(&self) -> Date {
+        if let Some(rtc) = &self.kernel_modules.rtc {
+            if let ModSpecificReturn::RTC(rtc_return) = rtc.mod_return.spec {
+                (rtc_return.read_date)()
+            } else {
+                panic!("Unexpected error");
+            }
+        } else {
+            Date::default()
         }
     }
 }

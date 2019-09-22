@@ -22,6 +22,7 @@ kernel_modules = { path = "dependencies/kernel_modules" }
 interrupts = { path = "dependencies/interrupts" }
 irq = { path = "dependencies/irq" }
 io = { path = "dependencies/io" }
+time = { path = "dependencies/time" }
 
 [workspace]
 members = [
@@ -29,4 +30,5 @@ members = [
 	"dependencies/interrupts",
 	"dependencies/irq",
 	"dependencies/io",
+	"dependencies/time",
 ]
