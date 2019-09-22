@@ -12,6 +12,7 @@ void	fflush_buffer(t_status *op)
 		write(op->opt.fd.fd, g_buf, op->buff_len);
 		op->total_size += op->buff_len;
 	} else if (op->params == GivenString) {
+		op->total_size += (size_t)op->buff_len;
 		if (op->opt.given_string.max_size == 0) {
 			// Don't do anything if left size == 0
 		} else {
@@ -19,7 +20,6 @@ void	fflush_buffer(t_status *op)
 
 			ft_memcpy(op->opt.given_string.str, g_buf, copied_size);
 			op->opt.given_string.str += copied_size;
-			op->total_size += copied_size;
 			op->opt.given_string.max_size -= copied_size;
 		}
 	} else {
