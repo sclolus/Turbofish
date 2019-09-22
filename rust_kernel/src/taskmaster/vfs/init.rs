@@ -165,7 +165,7 @@ fn new_disk_drivers(
         let sda = Box::try_new(DiskDriver::new(disk, 0, disk_size))?;
         let mut drivers: Vec<Box<dyn Driver>> = Vec::new();
         for part in &mbr.parts {
-            if part.is_active() {
+            if part.is_used() {
                 drivers.try_push(Box::try_new(DiskDriver::new(
                     disk,
                     part.start as u64 * 512,

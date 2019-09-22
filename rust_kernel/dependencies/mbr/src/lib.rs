@@ -22,14 +22,18 @@ pub struct Partition {
 }
 
 impl Partition {
-    /// return if the partition is active
-    pub fn is_active(&self) -> bool {
-        // is that correct ?
+    /// return if the partition is bootable
+    pub fn is_bootable(&self) -> bool {
         (self.drive_attribute & (1 << 7)) != 0
+    }
+    pub fn is_used(&self) -> bool {
+        // A System ID byte value of 0 is the definitive indicator for
+        // an unused entry. from Osdev
+        (self.part_type != PartitionType::Empty)
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum PartitionType {
     LinuxExtendedPartition,
     Dos12bitsFat,
