@@ -81,8 +81,10 @@ pub enum ModConfig {
 /// Configuration parameters of the RTC module
 #[derive(Debug, Copy, Clone)]
 pub struct RTCConfig {
-    /// Give ability to redirect an IDT entry to a specific function or None to disable
-    pub set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    /// Give ability to redirect an IDT entry to a specific function
+    pub enable_irq: fn(Irq, unsafe extern "C" fn()),
+    /// Give ability to disable IDT entry
+    pub disable_irq: fn(Irq),
     /// reference of current_unix_time kernel globale
     pub current_unix_time: &'static AtomicU32,
 }
@@ -90,8 +92,10 @@ pub struct RTCConfig {
 /// Configuration parameters of the Keyboard module
 #[derive(Debug, Copy, Clone)]
 pub struct KeyboardConfig {
-    /// Give ability to redirect an IDT entry to a specific function or None to disable
-    pub set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    /// Give ability to redirect an IDT entry to a specific function
+    pub enable_irq: fn(Irq, unsafe extern "C" fn()),
+    /// Give ability to disable IDT entry
+    pub disable_irq: fn(Irq),
     /// Keyboard callback given by the kernel
     pub callback: fn(MessageTo),
 }

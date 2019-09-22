@@ -209,8 +209,12 @@ impl Pic8259 {
     /// Enabling the corresponding interrupt line.
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
-    pub unsafe fn enable_irq(&mut self, irq: Irq) {
+    pub unsafe fn enable_irq(&mut self, irq: Irq, func_opt: Option<unsafe extern "C" fn()>) {
         log::info!("Pic8259: Enable irq {:?}", irq);
+        if let Some(func) = func_opt {
+            log::info!("Pic8259: Assigning function at {:?}", func);
+            _pic_handlers_array[irq as usize] = func as u32;
+        }
 
         let mut nirq = irq as usize;
         assert!(nirq < 16);
@@ -537,4 +541,9 @@ impl PicConfiguration {
             .filter(|&c| c.pic_kind() == PICKind::Slave);
         unfold((), move |_| slaves.next())
     }
+}
+
+/// PIC idt vectors
+extern "C" {
+    static mut _pic_handlers_array: [u32; 16];
 }

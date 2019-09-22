@@ -16,19 +16,25 @@ static mut CTX: Option<Ctx> = None;
 struct Ctx {
     keyboard_driver: KeyboardDriver,
     ps2_controler: Ps2Controler,
-    set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    enable_irq: fn(Irq, unsafe extern "C" fn()),
+    disable_irq: fn(Irq),
     send_fn: fn(MessageTo),
 }
 
 /// Main Context implementation
 impl Ctx {
     /// New fn
-    fn new(set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>), send_fn: fn(MessageTo)) -> Self {
+    fn new(
+        enable_irq: fn(Irq, unsafe extern "C" fn()),
+        disable_irq: fn(Irq),
+        send_fn: fn(MessageTo),
+    ) -> Self {
         print!("New Keyboard Context created !");
         Self {
             keyboard_driver: KeyboardDriver::new(None),
             ps2_controler: Ps2Controler::new(),
-            set_idt_entry,
+            enable_irq,
+            disable_irq,
             send_fn,
         }
     }
@@ -51,7 +57,8 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
     if let ModConfig::Keyboard(keyboard_config) = symtab_list.kernel_callback {
         unsafe {
             CTX = Some(Ctx::new(
-                keyboard_config.set_idt_entry,
+                keyboard_config.enable_irq,
+                keyboard_config.disable_irq,
                 keyboard_config.callback,
             ));
         }
@@ -62,10 +69,12 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
                 .unwrap()
                 .keyboard_driver
                 .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
-            (CTX.as_ref().unwrap().set_idt_entry)(
-                Irq::KeyboardController,
-                Some(keyboard_interrupt_handler),
-            );
+            without_interrupts!({
+                (CTX.as_ref().unwrap().enable_irq)(
+                    Irq::KeyboardController,
+                    keyboard_interrupt_handler,
+                );
+            });
         }
 
         Ok(ModReturn {
@@ -87,7 +96,9 @@ fn reboot_computer() {
 /// Destructor
 fn drop_module() {
     unsafe {
-        (CTX.as_ref().unwrap().set_idt_entry)(Irq::KeyboardController, None);
+        without_interrupts!({
+            (CTX.as_ref().unwrap().disable_irq)(Irq::KeyboardController);
+        });
         CTX = None;
     }
 }

@@ -20,10 +20,12 @@ crate-type = ["staticlib"]
 kernel_modules = { path = "dependencies/kernel_modules" }
 keyboard = { path = "dependencies/keyboard" }
 messaging = { path = "dependencies/messaging" }
+interrupts = { path = "dependencies/interrupts" }
 
 [workspace]
 members = [
 	"dependencies/kernel_modules",
 	"dependencies/keyboard",
 	"dependencies/messaging",
+	"dependencies/interrupts",
 ]

@@ -5,9 +5,6 @@
 
 extern generic_interrupt_handler
 
-extern primary_hard_disk_interrupt_handler
-extern secondary_hard_disk_interrupt_handler
-
 segment .data
 
 _pit_time dd 0
@@ -216,20 +213,4 @@ CREATE_ISR SPURIOUS_IRQ15, secondary_hard_disk, "Secondary ATA hard disk", 15
 
 segment .data
 GLOBAL _pic_handlers_array
-_pic_handlers_array: dd \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	generic_interrupt_handler, \
-	primary_hard_disk_interrupt_handler, \
-	secondary_hard_disk_interrupt_handler, \
+_pic_handlers_array: times 16 dd generic_interrupt_handler

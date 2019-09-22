@@ -64,6 +64,10 @@ pub extern "C" fn kmain(
     PIT0.lock().start_at_frequency(1000.).unwrap();
     log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
+    unsafe {
+        PIC_8259.lock().enable_irq(irq::Irq::SystemTimer, None);
+    }
+
     match Acpi::init() {
         Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
             Ok(()) => log::info!("ACPI driver initialized"),

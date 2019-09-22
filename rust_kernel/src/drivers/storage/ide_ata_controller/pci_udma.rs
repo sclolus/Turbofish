@@ -175,8 +175,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 static mut CURRENT_BUS_MASTERED_REGISTER: u16 = 0;
 static TRIGGER: AtomicBool = AtomicBool::new(false);
 
-#[no_mangle]
-unsafe fn primary_hard_disk_interrupt_handler() -> u32 {
+pub unsafe extern "C" fn primary_hard_disk_interrupt_handler() {
     TRIGGER.store(true, Ordering::Relaxed);
 
     // It could be good to check here is the IRQ flag is set and unset IRQ bit ?
@@ -186,11 +185,9 @@ unsafe fn primary_hard_disk_interrupt_handler() -> u32 {
      */
     Pio::<u8>::new(CURRENT_BUS_MASTERED_REGISTER + Udma::DMA_COMMAND)
         .write(!DmaCommand::ONOFF.bits());
-    0
 }
 
-#[no_mangle]
-unsafe fn secondary_hard_disk_interrupt_handler() -> u32 {
+pub unsafe extern "C" fn secondary_hard_disk_interrupt_handler() {
     // TODO: For the moment. turbofish supports only one single disk operation at the same time
     primary_hard_disk_interrupt_handler()
 }

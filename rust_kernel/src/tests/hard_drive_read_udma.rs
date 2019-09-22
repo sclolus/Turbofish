@@ -1,4 +1,4 @@
-use crate::drivers::pit_8253;
+use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{PCI, PIC_8259, PIT0};
 
 use crate::math::random::{srand, srand_init};
@@ -34,9 +34,11 @@ pub extern "C" fn kmain(
         PIC_8259.lock().init();
         PIC_8259.lock().disable_all_irqs();
 
-        PIT0.lock()
-            .configure(pit_8253::OperatingMode::RateGenerator);
+        PIT0.lock().configure(OperatingMode::RateGenerator);
         PIT0.lock().start_at_frequency(1000.).unwrap();
+        log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
+
+        PIC_8259.lock().enable_irq(irq::Irq::SystemTimer, None);
 
         crate::watch_dog();
         interrupts::enable();

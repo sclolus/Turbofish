@@ -103,7 +103,8 @@ impl Scheduler {
                 &mut self.kernel_modules.rtc,
                 "/turbofish/mod/rtc.mod",
                 ModConfig::RTC(RTCConfig {
-                    set_idt_entry,
+                    enable_irq,
+                    disable_irq,
                     // May be set as volatile...
                     current_unix_time: unsafe { &mut CURRENT_UNIX_TIME },
                 }),
@@ -112,7 +113,8 @@ impl Scheduler {
                 &mut self.kernel_modules.keyboard,
                 "/turbofish/mod/key.mod",
                 ModConfig::Keyboard(KeyboardConfig {
-                    set_idt_entry,
+                    enable_irq,
+                    disable_irq,
                     callback: push_message,
                 }),
             ),
@@ -205,22 +207,17 @@ impl Scheduler {
 pub static mut CURRENT_UNIX_TIME: AtomicU32 = AtomicU32::new(0);
 
 /// Set IDT ENTRY fn: Usable by modules
-fn set_idt_entry(idt_gate: Irq, func: Option<unsafe extern "C" fn()>) {
-    if let Some(_f) = func {
-        unsafe {
-            _pic_handlers_array[idt_gate as usize] = _f as u32;
-            PIC_8259.lock().enable_irq(idt_gate);
-        }
-    } else {
-        unsafe {
-            PIC_8259.lock().disable_irq(idt_gate);
-        }
+fn enable_irq(idt_gate: Irq, func: unsafe extern "C" fn()) {
+    unsafe {
+        PIC_8259.lock().enable_irq(idt_gate, Some(func));
     }
 }
 
-/// PIC idt vectors
-extern "C" {
-    static mut _pic_handlers_array: [u32; 16];
+/// Unset IDT ENTRY fn: Usable by modules
+fn disable_irq(idt_gate: Irq) {
+    unsafe {
+        PIC_8259.lock().disable_irq(idt_gate);
+    }
 }
 
 /// Common Write method for modules

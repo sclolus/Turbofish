@@ -1,6 +1,5 @@
 //! This files contains the code related to the Programmable Interval Timer
 //! ([PIT](https://wiki.osdev.org/Programmable_Interval_Timer)) chip (also called an 8253/8254 chip)
-use super::{pic_8259, PIC_8259};
 use crate::Spinlock;
 use bit_field::BitField;
 use core::time::Duration;
@@ -128,12 +127,6 @@ impl Pit {
         if freq < 18.0 || freq > Self::BASE_FREQUENCY {
             return Err(PitError::BadFrequency);
         }
-        unsafe {
-            if PIC_8259.lock().is_initialized() == false {
-                return Err(PitError::PicNotInitialized);
-            }
-            PIC_8259.lock().disable_irq(pic_8259::Irq::SystemTimer);
-        }
         let mut divisor = (Self::BASE_FREQUENCY / freq) as u32;
         if divisor > core::u16::MAX as u32 {
             divisor = core::u16::MAX as u32;
@@ -143,9 +136,6 @@ impl Pit {
         self.period = Some(Self::PERIOD_MIN * divisor as f32);
         self.data.write(divisor.get_bits(0..8) as u8);
         self.data.write(divisor.get_bits(8..16) as u8);
-        unsafe {
-            PIC_8259.lock().enable_irq(pic_8259::Irq::SystemTimer);
-        }
         Ok(())
     }
 

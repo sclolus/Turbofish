@@ -6,6 +6,9 @@
 
 extern crate alloc;
 
+#[macro_use]
+extern crate interrupts;
+
 mod rust_main;
 use rust_main::rust_main;
 

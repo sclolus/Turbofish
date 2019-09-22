@@ -14,7 +14,8 @@ static mut CTX: Option<Ctx> = None;
 
 /// Main Context of the module
 struct Ctx {
-    set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+    enable_irq: fn(Irq, unsafe extern "C" fn()),
+    disable_irq: fn(Irq),
     current_unix_time: &'static AtomicU32,
 }
 
@@ -22,12 +23,14 @@ struct Ctx {
 impl Ctx {
     /// New fn
     fn new(
-        set_idt_entry: fn(Irq, Option<unsafe extern "C" fn()>),
+        enable_irq: fn(Irq, unsafe extern "C" fn()),
+        disable_irq: fn(Irq),
         current_unix_time: &'static AtomicU32,
     ) -> Self {
         print!("New RTC Context created !");
         Self {
-            set_idt_entry,
+            enable_irq,
+            disable_irq,
             current_unix_time,
         }
     }
@@ -50,7 +53,8 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
     if let ModConfig::RTC(rtc_config) = symtab_list.kernel_callback {
         unsafe {
             CTX = Some(Ctx::new(
-                rtc_config.set_idt_entry,
+                rtc_config.enable_irq,
+                rtc_config.disable_irq,
                 rtc_config.current_unix_time,
             ));
         }
@@ -62,10 +66,7 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
                 // let date = rtc.read_date();
                 rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz
                                                     // print!("RTC system seems to be working perfectly: {}", date);
-                (CTX.as_ref().unwrap().set_idt_entry)(
-                    Irq::RealTimeClock,
-                    Some(rtc_interrupt_handler),
-                );
+                (CTX.as_ref().unwrap().enable_irq)(Irq::RealTimeClock, rtc_interrupt_handler);
             });
         }
 
@@ -81,7 +82,9 @@ pub fn rust_main(symtab_list: SymbolList) -> ModResult {
 /// Destructor
 fn drop_module() {
     unsafe {
-        (CTX.as_ref().unwrap().set_idt_entry)(Irq::RealTimeClock, None);
+        without_interrupts!({
+            (CTX.as_ref().unwrap().disable_irq)(Irq::RealTimeClock);
+        });
         CTX = None;
     }
 }
