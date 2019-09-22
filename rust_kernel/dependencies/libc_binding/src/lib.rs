@@ -659,27 +659,27 @@ bitflags! {
 
 impl FileType {
     pub fn is_character_device(&self) -> bool {
-        self.contains(Self::CHARACTER_DEVICE)
+        *self & Self::S_IFMT == Self::CHARACTER_DEVICE
     }
 
     pub fn is_fifo(&self) -> bool {
-        self.contains(Self::FIFO)
+        *self & Self::S_IFMT == Self::FIFO
     }
 
     pub fn is_regular(&self) -> bool {
-        self.contains(Self::REGULAR_FILE)
+        *self & Self::S_IFMT == Self::REGULAR_FILE
     }
 
     pub fn is_directory(&self) -> bool {
-        self.contains(Self::DIRECTORY)
+        *self & Self::S_IFMT == Self::DIRECTORY
     }
 
     pub fn is_symlink(&self) -> bool {
-        self.contains(Self::SYMBOLIC_LINK)
+        *self & Self::S_IFMT == Self::SYMBOLIC_LINK
     }
 
     pub fn is_socket(&self) -> bool {
-        self.contains(Self::UNIX_SOCKET)
+        *self & Self::S_IFMT == Self::UNIX_SOCKET
     }
 
     /// retrurn the owner rights on the file, in a bitflags Amode

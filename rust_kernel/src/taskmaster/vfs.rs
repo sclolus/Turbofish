@@ -875,9 +875,7 @@ impl VirtualFileSystem {
         mut path: Path,
         mode: FileType,
     ) -> SysResult<InodeId> {
-        if mode & FileType::S_IFMT != FileType::FIFO
-            && mode & FileType::S_IFMT != FileType::UNIX_SOCKET
-        {
+        if !mode.is_fifo() && !mode.is_socket() {
             //TODO: remove that, and check create function filesystem
             unimplemented!()
         }
