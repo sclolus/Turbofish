@@ -48,7 +48,7 @@ impl Drop for Ctx {
 }
 
 /// Constructor
-pub fn rust_main(symtab_list: SymbolList) -> ModResult {
+pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
         #[cfg(not(test))]

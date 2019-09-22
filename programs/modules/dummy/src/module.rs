@@ -45,7 +45,7 @@ impl Drop for OutBox {
 }
 
 /// Main function of the module
-pub fn rust_main(symtab_list: SymbolList) -> ModResult {
+pub fn module_start(symtab_list: SymbolList) -> ModResult {
     (symtab_list.write)("I've never install GNU/Linux.");
     unsafe {
         WRITER.set_write_callback(symtab_list.write);

@@ -18,8 +18,10 @@ crate-type = ["staticlib"]
 
 [dependencies]
 kernel_modules = { path = "dependencies/kernel_modules" }
+interrupts = { path = "dependencies/interrupts" }
 
 [workspace]
 members = [
 	"dependencies/kernel_modules",
+	"dependencies/interrupts",
 ]

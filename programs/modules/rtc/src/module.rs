@@ -8,7 +8,8 @@ use bit_field::BitField;
 use core::sync::atomic::{AtomicU32, Ordering};
 use kernel_modules::Irq;
 
-use crate::rtc::{get_day_number, Rtc, RtcRegister};
+mod rtc;
+use rtc::{get_day_number, Rtc, RtcRegister};
 
 static mut CTX: Option<Ctx> = None;
 
@@ -44,7 +45,7 @@ impl Drop for Ctx {
 }
 
 /// Constructor
-pub fn rust_main(symtab_list: SymbolList) -> ModResult {
+pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
         #[cfg(not(test))]
