@@ -277,6 +277,9 @@ impl IdeAtaController {
 }
 
 impl BlockIo for IdeAtaController {
+    fn disk_size(&self) -> u64 {
+        unimplemented!()
+    }
     /// Read nbr_sectors after start_sector location and write it into the buf
     fn read(
         &mut self,

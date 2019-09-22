@@ -210,6 +210,9 @@ impl BiosInt13h {
 }
 
 impl BlockIo for BiosInt13h {
+    fn disk_size(&self) -> u64 {
+        self.nb_sector.0 as u64 * self.sector_size as u64
+    }
     /// Read nbr_sectors after start_sector location and write it into the buf
     fn read(
         &mut self,
