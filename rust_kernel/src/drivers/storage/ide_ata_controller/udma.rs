@@ -136,16 +136,18 @@ impl Udma {
 
         // Enable IRQ mask for a specific channel
         unsafe {
-            match channel {
-                Channel::Primary => PIC_8259.lock().enable_irq(
-                    irq::Irq::PrimaryATAChannel,
-                    Some(super::pci_udma::primary_hard_disk_interrupt_handler),
-                ),
-                Channel::Secondary => PIC_8259.lock().enable_irq(
-                    irq::Irq::SecondaryATAChannel,
-                    Some(super::pci_udma::secondary_hard_disk_interrupt_handler),
-                ),
-            }
+            without_interrupts!({
+                match channel {
+                    Channel::Primary => PIC_8259.lock().enable_irq(
+                        irq::Irq::PrimaryATAChannel,
+                        Some(super::pci_udma::primary_hard_disk_interrupt_handler),
+                    ),
+                    Channel::Secondary => PIC_8259.lock().enable_irq(
+                        irq::Irq::SecondaryATAChannel,
+                        Some(super::pci_udma::secondary_hard_disk_interrupt_handler),
+                    ),
+                }
+            });
         }
 
         Ok(Self {

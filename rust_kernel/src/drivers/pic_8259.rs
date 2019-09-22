@@ -209,6 +209,7 @@ impl Pic8259 {
     /// Enabling the corresponding interrupt line.
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
+    /// When used without function option. the default symbol in asm file is called
     pub unsafe fn enable_irq(&mut self, irq: Irq, func_opt: Option<unsafe extern "C" fn()>) {
         log::info!("Pic8259: Enable irq {:?}", irq);
         if let Some(func) = func_opt {

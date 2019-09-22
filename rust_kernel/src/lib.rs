@@ -55,7 +55,6 @@ pub mod math;
 pub mod memory;
 pub mod multiboot;
 pub mod panic;
-#[cfg(not(feature = "test"))]
 pub mod rust_main;
 pub mod tests;
 
