@@ -131,7 +131,7 @@ impl Credentials {
     /// `self` credentials.
     ///
     /// Checks using the `uid` and `gid` fields of the Credentials.
-    pub fn access(&self, filetype: FileType, access_type: Amode) -> bool {
+    pub fn access(&self, _filetype: FileType, _access_type: Amode) -> bool {
         unimplemented!()
     }
 

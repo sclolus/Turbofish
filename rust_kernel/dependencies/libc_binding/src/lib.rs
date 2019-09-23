@@ -745,7 +745,7 @@ bitflags! {
 /// We can creat an Amode from an Openflags that tells us the requested access permissions.
 impl From<OpenFlags> for Amode {
     fn from(flags: OpenFlags) -> Self {
-        let ASSOC: [(OpenFlags, Amode); 6] = [
+        let assoc: [(OpenFlags, Amode); 6] = [
             (OpenFlags::O_EXEC, Amode::EXECUTE),
             (OpenFlags::O_RDONLY, Amode::READ),
             (OpenFlags::O_WRONLY, Amode::WRITE),
@@ -753,7 +753,7 @@ impl From<OpenFlags> for Amode {
             (OpenFlags::O_SEARCH, Amode::SEARCH),
             (OpenFlags::O_TRUNC, Amode::WRITE),
         ];
-        ASSOC
+        assoc
             .iter()
             .fold(Amode::empty(), |mut amode, (corresponding, requested)| {
                 if flags.contains(*corresponding) {
@@ -772,6 +772,7 @@ pub enum PermissionClass {
     Other,
 }
 
+#[cfg(test)]
 mod amode_should {
     use super::{Amode, OpenFlags};
 
