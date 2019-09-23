@@ -2,6 +2,8 @@ use super::scheduler::{unpreemptible, SCHEDULER};
 use super::thread_group::Status;
 use super::SysResult;
 
+use libc_binding::EXITED_STATUS_BITS;
+
 /// [CX] [Option Start] Process termination caused by any reason shall
 /// have the following consequences: [Option End]
 ///
@@ -130,8 +132,9 @@ use super::SysResult;
 pub unsafe fn sys_exit(status: i32) -> SysResult<u32> {
     // Avoid preempting when we are on the exit routine
     unpreemptible();
+    // Status & EXITED_STATUS_BITS (0xff) to avoid negative bullshit status
     SCHEDULER
         .lock()
-        .current_thread_group_exit(Status::Exited(status));
+        .current_thread_group_exit(Status::Exited(status & EXITED_STATUS_BITS as i32));
     Ok(0)
 }
