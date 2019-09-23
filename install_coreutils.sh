@@ -13,7 +13,7 @@ cd coreutils-5.0
 cp ../../patch-coreutils-configure .
 mkdir build
 cd build
-CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --build="`gcc -dumpmachine`" --host=$TARGET
+CFLAGS="-O3 -Wl,--gc-sections -fno-omit-frame-pointer" ../configure --build="`gcc -dumpmachine`" --host=$TARGET
 cp ../../../patch-coreutils-config-h .
 make -C lib
 make -C src basename

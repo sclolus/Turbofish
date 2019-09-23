@@ -40,7 +40,7 @@ CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 all: .rust-toolchain .xbuild-toolchain build_rust $(TARGET)
 
 $(TARGET): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
-	$(CC) -o $(BUILD_DIR)/$@ $^ -z muldefs
+	$(CC) -Wl,--gc-sections -o $(BUILD_DIR)/$@ $^ -z muldefs
 	cp -v --parents $(BUILD_DIR)/$@ $(SYSTEM_ROOT)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)

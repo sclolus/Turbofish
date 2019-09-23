@@ -59,6 +59,12 @@ CC = gcc
 else
 endif
 
+ifeq ($(DEBUG),yes)
+	CFLAGS += -g -O0
+else ifeq ($(OPTIM),yes)
+	CFLAGS += -O3
+endif
+
 #ASFLAGS = -f elf
 
 ifeq ($(LDMAP),yes)
@@ -72,7 +78,7 @@ TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
 all: $(TARGET_C)
 
 $(BUILD_DIR)/%: %.c $(LIBC_AR) Makefile
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) -Wl,--gc-sections $(CFLAGS) -o $@ $<
 ifneq ($(GNU),yes)
 	cp -rv --parents $@ $(SYSTEM_ROOT)
 endif

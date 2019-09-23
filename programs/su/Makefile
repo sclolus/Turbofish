@@ -69,9 +69,8 @@ OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C))))
 
 all: $(TARGET) Makefile
 
-$(TARGET): $(OBJ_C) | Makefile
-	$(CC) -o $@ $(CFLAGS) $^
-
+$(TARGET): $(OBJ_C) $(LIBC_AR) | Makefile
+	$(CC) -Wl,--gc-sections -o $@ $(CFLAGS) $^
 	sudo cp -v --parents $@ $(SYSTEM_ROOT)
 	sudo cp -v --parents etc/* $(SYSTEM_ROOT)
 
