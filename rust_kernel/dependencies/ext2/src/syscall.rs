@@ -341,8 +341,9 @@ impl Ext2Filesystem {
         let direntry_type = DirectoryEntryType::SymbolicLink;
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        //TODO: rights and mode
-        let mut inode = Inode::new(FileType::SYMBOLIC_LINK);
+        let access_mode =
+            FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU;
+        let mut inode = Inode::new(access_mode);
         if target.len() <= Inode::FAST_SYMLINK_SIZE_MAX {
             // If target is a fast symlink write the target directly
             // on inode
