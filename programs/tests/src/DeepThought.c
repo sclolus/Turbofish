@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <tools/tools.h>
+#include <stdint.h>
 
 // Command Sequence Introducer
 #define CSI "\x1b["
@@ -33,10 +34,14 @@
 
 // Control if tests are launched one by one or not
 bool LINEAR = true;
+bool EXIT_ON_FAILURE = false;
+bool IMM_PRINT_FAILURE = true;
 
 struct deepthought_info {
 	char	*logging_dir;
 	char	*failing_dir;
+	uint8_t	exit_on_failure : 1,
+		print_failure_immediately : 1;
 };
 
 struct deepthought_info g_deepthought_info = {
@@ -45,10 +50,13 @@ struct deepthought_info g_deepthought_info = {
 };
 
 struct program_test {
-	char *path;
-	char *logging_dir;
-	char *basename;
-	pid_t pid;
+	char	*path;
+	char	*logging_dir;
+	char	*basename;
+	pid_t	pid;
+	int	status;
+	uint8_t	failed : 1;
+
 	/* char **argv; */
 };
 
@@ -187,28 +195,46 @@ void launch_test(size_t i) {
 	TEST_PROGRAMS[i].pid = pid;
 }
 
+static inline void  print_failed_test(size_t test_index)
+{
+	int status = TEST_PROGRAMS[test_index].status;
+
+	dprintf(2, RED "=== test: '%s' failed -> status '%d' ===\n" WHITE, TEST_PROGRAMS[test_index].path, status);
+}
+
 void wait_test() {
 	int status;
 	int ret = wait(&status);
+	size_t i = find_program(ret);
+
 	if (ret == -1) {
 		perror("Deepthought wait failed");
 		exit(1);
 	}
+	TEST_PROGRAMS[i].status = status;
+
 	if (status != 0) {
 		// qemu exit fail
-		size_t i = find_program(ret);
-		dprintf(2, RED "=== test: '%s' failed -> status '%d' ===\n" WHITE, TEST_PROGRAMS[i].path, status);
+		TEST_PROGRAMS[i].failed = true;
+
+		if (g_deepthought_info.print_failure_immediately) {
+			print_failed_test(i);
+		}
 
 		char	linkname[256 * 2];
+		char	target[256 * 2];
 
 		snprintf(linkname, sizeof(linkname), "%s/%s", g_deepthought_info.failing_dir, TEST_PROGRAMS[i].basename);
-		assert(0 == symlink(TEST_PROGRAMS[i].logging_dir, linkname));
-		if (!WIFEXITED(status)) {
+		snprintf(target, sizeof(target), "../%s", TEST_PROGRAMS[i].basename);
+		assert(0 == symlink(target, linkname));
+		if (!WIFEXITED(status) && g_deepthought_info.exit_on_failure) {
 			exit(1);
 		}
-		if (WEXITSTATUS(status) != 0) {
+		if (WEXITSTATUS(status) != 0 && g_deepthought_info.exit_on_failure) {
 			exit(1);
 		}
+	} else {
+		TEST_PROGRAMS[i].failed = false;
 	}
 }
 
@@ -224,7 +250,11 @@ static void	build_logging_directory(void)
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
 	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
 
-	assert(0 == symlink(dir_filename, LAST_LOGGING_DIR));
+	// Attempts to remove a possibly already existing LAST_LOGGING_DIR symlink
+	unlink(LAST_LOGGING_DIR);
+	if (0 != symlink(dir_filename, LAST_LOGGING_DIR)) {
+		err_errno("Failed to symlink %s -> %s", LAST_LOGGING_DIR, dir_filename);
+	}
 
 	g_deepthought_info.logging_dir = strdup(dir_filename);
 	assert(g_deepthought_info.logging_dir);
@@ -239,14 +269,16 @@ static void	build_logging_directory(void)
 	for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
 		char	*test_dir_name = basename(TEST_PROGRAMS[i].path);
 		assert(test_dir_name);
+		char	basename[256];
 
-		test_dir_name = strdup(test_dir_name);
+		// putting the test_number in because name duplications and I'm lazy
+		snprintf(basename, sizeof(basename), "%s_%lu", test_dir_name, i);
+		test_dir_name = strdup(basename);
 		assert(test_dir_name);
 		TEST_PROGRAMS[i].basename = test_dir_name;
 
 		char	filename[256 * 2];
-		// putting the test_number in because name duplications and I'm lazy
-		snprintf(filename, sizeof(filename), "%s/%s_%lu", dir_filename, test_dir_name, i);
+		snprintf(filename, sizeof(filename), "%s/%s", dir_filename, test_dir_name);
 		if (-1 == mkdir(filename, 0777)) {
 			err_errno("Failed to creat logging directory %s", filename)
 		}
@@ -259,6 +291,9 @@ static void	build_logging_directory(void)
 }
 
 int main() {
+	g_deepthought_info.exit_on_failure = EXIT_ON_FAILURE;
+	g_deepthought_info.print_failure_immediately = IMM_PRINT_FAILURE;
+
 	build_logging_directory();
 	for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
 		launch_test(i);
@@ -271,6 +306,17 @@ int main() {
 			wait_test();
 		}
 	}
-	printf(GREEN "All tests succesfull\n" WHITE);
+
+	bool	all_success = true;
+	for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
+		if (TEST_PROGRAMS[i].failed) {
+			all_success = false;
+			print_failed_test(i);
+		}
+	}
+
+	if (all_success) {
+		printf(GREEN "All tests succesfull\n" WHITE);
+	}
 	return 0;
 }
