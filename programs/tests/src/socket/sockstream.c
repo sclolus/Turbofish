@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <assert.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
@@ -17,9 +18,14 @@
 char SOCK_PATH[100];
 char CLIENT_PATH[100];
 
-#define DATA "Hello from server"
+#define DATA_CLIENT_TO_SERVER "Hello from client"
+#define DATA_SERVER_TO_CLIENT "Hello from server"
 
-int server(void){
+void usr1(int signum) {
+	(void)signum;
+}
+
+int server(pid_t child_pid){
 
     int server_sock, client_sock, rc;
 	socklen_t len;
@@ -54,6 +60,7 @@ int server(void){
     len = sizeof(server_sockaddr);
 
     unlink(SOCK_PATH);
+    printf("binding server\n");
     rc = bind(server_sock, (struct sockaddr *) &server_sockaddr, len);
     if (rc == -1){
 
@@ -65,14 +72,25 @@ int server(void){
     /*********************************/
     /* Listen for any client sockets */
     /*********************************/
+    printf("socket listening...\n");
     rc = listen(server_sock, backlog);
     if (rc == -1){
         perror("LISTEN ERROR");
         close(server_sock);
         exit(1);
     }
-    printf("socket listening...\n");
 
+    printf("sending signal \n");
+	/* 
+	 * if (kill(getpid(), SIGKILL) == -1) {
+	 * 	perror("kill");
+	 * }
+	 */
+	if (kill(child_pid, SIGUSR1) == -1) {
+		perror("kill");
+	}
+
+    printf("accepting connections\n");
     /*********************************/
     /* Accept an incoming connection */
     /*********************************/
@@ -99,14 +117,17 @@ int server(void){
         exit(1);
     }
     else {
-        printf("DATA RECEIVED = %s\n", buf);
+        printf("DATA RECEIVED FROM CLIENT = %s\n", buf);
     }
+
+	assert(bytes_rec == sizeof(DATA_CLIENT_TO_SERVER) - 1);
+	assert(strcmp(buf, DATA_CLIENT_TO_SERVER) == 0);
 
     /******************************************/
     /* Send data back to the connected socket */
     /******************************************/
     memset(buf, 0, 256);
-    strcpy(buf, DATA);
+    strcpy(buf, DATA_SERVER_TO_CLIENT);
     printf("Sending data...\n");
     rc = send(client_sock, buf, strlen(buf), 0);
     if (rc == -1) {
@@ -159,12 +180,14 @@ int client(void){
     len = sizeof(client_sockaddr);
 
     unlink(CLIENT_PATH);
+	printf("binding client\n");
     rc = bind(client_sock, (struct sockaddr *) &client_sockaddr, len);
     if (rc == -1){
         perror("BIND ERROR");
         close(client_sock);
         exit(1);
     }
+	assert(unlink(CLIENT_PATH) == 0);
 
     /***************************************/
     /* Set up the UNIX sockaddr structure  */
@@ -173,6 +196,11 @@ int client(void){
     /***************************************/
     server_sockaddr.sun_family = AF_UNIX;
     strcpy((char *)server_sockaddr.sun_path, SOCK_PATH);
+	
+	signal(SIGUSR1, &usr1);
+	pause();
+
+	printf("connecting client\n");
     rc = connect(client_sock, (struct sockaddr *) &server_sockaddr, len);
     if(rc == -1){
         perror("CONNECT ERROR");
@@ -184,7 +212,7 @@ int client(void){
     /* Copy the data to the buffer and  */
     /* send it to the server socket.    */
     /************************************/
-    strcpy(buf, DATA);
+    strcpy(buf, DATA_CLIENT_TO_SERVER);
     printf("Sending data...\n");
     rc = send(client_sock, buf, strlen(buf), 0);
     printf("end Sending data...\n");
@@ -210,8 +238,11 @@ int client(void){
         exit(1);
     }
     else {
-        printf("DATA RECEIVED = %s\n", buf);
+        printf("DATA RECEIVED FROM SERVER = %s\n", buf);
     }
+
+	assert(rc == sizeof(DATA_SERVER_TO_CLIENT) - 1);
+	assert(strcmp(buf, DATA_SERVER_TO_CLIENT) == 0);
 
     /******************************/
     /* Close the socket and exit. */
@@ -235,9 +266,12 @@ int main() {
 		client();
 		exit(0);
 	} else {
-		server();
+		printf("%d\n", child_pid);
+		sleep(1);
+		server(child_pid);
 		int status;
 		int ret = wait(&status);
+		assert(unlink(SOCK_PATH) == 0);
 		if (ret == -1) {
 			exit(1);
 		}

@@ -160,6 +160,10 @@ pub enum WaitingState {
     Write(usize),
     /// In Waiting to open
     Open(usize),
+    /// In waiting for a socket accepting connection
+    Connect(usize),
+    /// In waiting for a socket connection
+    Accept(usize),
 }
 
 #[derive(Debug)]

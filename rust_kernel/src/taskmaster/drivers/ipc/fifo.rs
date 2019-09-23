@@ -3,7 +3,7 @@
 use super::SysResult;
 
 use super::get_file_op_uid;
-use super::pipe::Buf;
+use super::Buf;
 use super::VFS;
 use super::{Driver, FileOperation, IpcResult};
 

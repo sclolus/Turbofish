@@ -72,6 +72,12 @@ pub enum MessageTo {
     Tty {
         key_pressed: KeySymb,
     },
+    Accepter {
+        uid_file_op: usize,
+    },
+    Connecter {
+        uid_file_op: usize,
+    },
 }
 
 #[derive(Debug)]

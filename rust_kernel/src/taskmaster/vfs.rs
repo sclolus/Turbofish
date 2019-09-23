@@ -1,7 +1,4 @@
-use super::drivers::{
-    ipc::{FifoDriver, SocketDriver},
-    DefaultDriver, Driver, Ext2DriverFile, FileOperation,
-};
+use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};

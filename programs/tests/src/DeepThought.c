@@ -15,6 +15,10 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/socket/sockstream"},
+	{.path = "/bin/socket/sockdgram"},
+	{.path = "/bin/socket/sockdgram_connect"},
+	{.path = "/bin/socket/sockdgram_recvfrom"},
 	{.path = "/bin/fifo/fifo"},
 	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},
