@@ -9,7 +9,7 @@ use super::Credentials;
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::{FifoDriver, FifoFileOperation, Pipe, Socket};
+pub use ipc::{FifoDriver, FifoFileOperation, Pipe, SocketDgram};
 
 pub mod tty;
 pub use tty::TtyDevice;

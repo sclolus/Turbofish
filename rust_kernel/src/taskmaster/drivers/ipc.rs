@@ -16,4 +16,4 @@ pub mod fifo;
 pub use fifo::{FifoDriver, FifoFileOperation};
 
 pub mod socket;
-pub use socket::{Socket, SocketDriver};
+pub use socket::{SocketDgram, SocketDriver, StreamSocket};

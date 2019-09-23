@@ -12,7 +12,7 @@ use core::convert::TryFrom;
 
 use libc_binding::{Errno, FileType, OpenFlags};
 
-use super::drivers::ipc::{Pipe, Socket};
+use super::drivers::ipc::{Pipe, SocketDgram};
 use alloc::sync::Arc;
 
 use fallible_collections::btree::BTreeMap;
@@ -184,7 +184,10 @@ impl FileDescriptorInterface {
         domain: socket::Domain,
         socket_type: socket::SocketType,
     ) -> SysResult<Fd> {
-        let file_operator = Arc::try_new(DeadMutex::new(Socket::new(domain, socket_type)?))?;
+        let file_operator = Arc::try_new(DeadMutex::new(match socket_type {
+            socket::SocketType::SockDgram => SocketDgram::new(domain, socket_type)?,
+            socket::SocketType::SockStream => unimplemented!(),
+        }))?;
         self.insert_user_fd(OpenFlags::O_RDWR, file_operator)
     }
 }
