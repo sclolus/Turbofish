@@ -317,6 +317,10 @@ int main() {
 
 	if (all_success) {
 		printf(GREEN "All tests succesfull\n" WHITE);
+		return EXIT_SUCCESS;
+	} else {
+		printf(RED "Some tests were unsuccesfull\n" WHITE);
+		return EXIT_FAILURE;
 	}
-	return 0;
+
 }
