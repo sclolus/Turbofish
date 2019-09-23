@@ -240,6 +240,13 @@ fn write(s: &str) {
     log::info!("{}", s);
 }
 
+/// Just used for a symbol list test
+#[no_mangle]
+#[link_section = ".kernel_exported_functions"]
+pub fn symbol_list_test() {
+    log::info!("symbol_list_test function sucessfully called by a module !");
+}
+
 /// Common allocator methods for modules
 extern "C" {
     fn kmalloc(len: usize) -> *mut u8;

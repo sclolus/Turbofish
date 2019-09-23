@@ -45,6 +45,7 @@ SECTIONS
 		__start_text = .;
 		*(.text)
 		*(.text.*)
+		KEEP(*(.kernel_exported_functions))
 		__end_text = .;
 	}
 

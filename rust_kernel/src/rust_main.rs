@@ -102,13 +102,5 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
      */
     crate::drivers::storage::init(&multiboot_info);
 
-    symbol_list_test();
     watch_dog();
-}
-
-/// Just used for a symbol list test
-#[no_mangle]
-#[inline(never)]
-pub fn symbol_list_test() {
-    log::info!("symbol_list_test function sucessfully called !");
 }
