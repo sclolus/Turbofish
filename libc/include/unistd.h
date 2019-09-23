@@ -161,6 +161,7 @@ int getpagesize(void);
 #define STDIN_FILENO 0
 
 
+#define _SC_NPROCESSORS_ONLN		1
 
 
 #ifdef __cplusplus

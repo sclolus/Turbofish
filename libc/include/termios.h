@@ -21,14 +21,21 @@ typedef unsigned int    tcflag_t;
 
 //    The <termios.h> header shall define the following symbolic constant:
 
+struct winsize {
+	unsigned short ws_row;
+	unsigned short ws_col;
+	unsigned short ws_xpixel;
+	unsigned short ws_ypixel;
+};
+
 #define    NCCS 11
 
 struct termios {
-    tcflag_t  c_iflag   ; //  Input modes. 
-    tcflag_t  c_oflag   ; //  Output modes. 
-    tcflag_t  c_cflag   ; //  Control modes. 
-    tcflag_t  c_lflag   ; //  Local modes. 
-    cc_t      c_cc[NCCS]; //  Control characters. 
+    tcflag_t  c_iflag   ; //  Input modes.
+    tcflag_t  c_oflag   ; //  Output modes.
+    tcflag_t  c_cflag   ; //  Control modes.
+    tcflag_t  c_lflag   ; //  Local modes.
+    cc_t      c_cc[NCCS]; //  Control characters.
 };
 
 //        Size of the array c_cc for control characters.
@@ -37,7 +44,7 @@ struct termios {
 
 //    Subscript Usage
 //The subscript values shall be suitable for use in #if preprocessing directives and shall be distinct, except that the VMIN and VTIME subscripts may have the same values as the VEOF and VEOL subscripts, respectively.
-/* 
+/*
  * ///Special character on input, which is recognized if the ICANON
  * /// flag is set. It is the line delimiter <newline>. It cannot be
  * /// changed.

@@ -5,12 +5,12 @@
 #include <sys/time.h>
 //The <sys/resource.h> header shall define the following symbolic constants as possible values of the which argument of getpriority() and setpriority():
 
-//PRIO_PROCESS
 //    Identifies the who argument as a process ID.
-//PRIO_PGRP
+#define PRIO_PROCESS 0
 //    Identifies the who argument as a process group ID.
-//PRIO_USER
+#define PRIO_PGRP 1
 //    Identifies the who argument as a user ID.
+#define PRIO_USER 2
 //
 //The <sys/resource.h> header shall define the following type through typedef:
 //
@@ -19,8 +19,8 @@ typedef int rlim_t;
 //
 //The <sys/resource.h> header shall define the following symbolic constants, which shall have values suitable for use in #if preprocessing directives:
 //
-//RLIM_INFINITY
 //    A value of rlim_t indicating no limit.
+#define RLIM_INFINITY (~0UL)
 //RLIM_SAVED_MAX
 //    A value of type rlim_t indicating an unrepresentable saved hard limit.
 //RLIM_SAVED_CUR
@@ -38,15 +38,15 @@ typedef int rlim_t;
 //The <sys/resource.h> header shall define the rlimit structure, which shall include at least the following members:
 //
 struct rlimit {
-	rlim_t rlim_cur; //The current (soft) limit. 
-	rlim_t rlim_max; //The hard limit. 
+	rlim_t rlim_cur; //The current (soft) limit.
+	rlim_t rlim_max; //The hard limit.
 };
 //
 //The <sys/resource.h> header shall define the rusage structure, which shall include at least the following members:
 //
 struct rusage {
-	struct timeval ru_utime; //  User time used. 
-	struct timeval ru_stime; //  System time used. 
+	struct timeval ru_utime; //  User time used.
+	struct timeval ru_stime; //  System time used.
 };
 //
 //The <sys/resource.h> header shall define the timeval structure as described in <sys/time.h>.
@@ -70,7 +70,7 @@ struct rusage {
 //
 //The following shall be declared as functions and may also be defined as macros. Function prototypes shall be provided.
 
-int getpriority(int, id_t);
+int getpriority(int which, id_t who);
 int getrlimit(int, struct rlimit *);
 int getrusage(int, struct rusage *);
 int setpriority(int, id_t, int);

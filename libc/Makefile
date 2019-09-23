@@ -117,7 +117,7 @@ VPATH += src/sys/time
 HEADERS += sys/time.h
 
 SRC_ASM += clone
-SRC_C += sched
+SRC_C += sched sched_setscheduler
 VPATH += src/sched
 HEADERS += sched.h
 
@@ -197,6 +197,7 @@ SRC_C += setmntent getmntent endmntent addmntent hasmntopt
 VPATH += src/mntent
 HEADERS += mntent.h
 
+
 SRC_C += is_ptr_valid
 VPATH += src/custom
 
@@ -204,9 +205,23 @@ SRC_C += rmmod insmod
 VPATH += src/mod
 HEADERS += mod.h
 
+SRC_C += setpriority getpriority
+VPATH += src/sys/resource
+HEADERS += sys/resource.h
+
+
+SRC_C += is_ptr_valid
+VPATH += src/custom
+
+HEADERS += bits/wordsize.h
+HEADERS += utmp.h # For procps package.
+HEADERS += paths.h
+HEADERS += sys/sysmacros.h
+
+
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
-# bullshit headers needed by coreutils and dash
-HEADERS += getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
+# bullshit headers needed by coreutils, dash, and procps
+HEADERS += getopt.h sys/ioctl.h sys/times.h libintl.h mntent.h netinet/in.h link.h elf.h
 
 HEADERS += ltrace/ltrace.h
 

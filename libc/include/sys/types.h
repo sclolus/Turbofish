@@ -78,4 +78,9 @@ typedef unsigned int time_t;
 typedef unsigned short uid_t;
 //    Used for user IDs.
 
+/* These were defined by ISO C without the first `_'.  */
+typedef	unsigned char u_int8_t;
+typedef	unsigned short int u_int16_t;
+typedef	unsigned int u_int32_t;
+
 #endif
