@@ -96,7 +96,6 @@ impl KernelModules {
 impl Scheduler {
     /// Try to insert a Kernel Module
     fn insert_module(&mut self, modname: &str) -> SysResult<u32> {
-        add_syslog_entry("banane\n").expect("WOOT");
         let (module_opt, module_pathname, mod_config) = match modname {
             "dummy" => (
                 &mut self.kernel_modules.dummy,

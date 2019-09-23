@@ -122,6 +122,7 @@ dependencies = [
  "interrupts 0.1.0",
  "kernel_modules 0.1.0",
  "keyboard 0.1.0",
+ "libc_binding 0.1.0",
  "messaging 0.1.0",
 ]
 

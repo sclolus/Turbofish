@@ -41,6 +41,7 @@ pub enum ModAddress {
 #[derive(Debug, Copy, Clone)]
 pub enum ModError {
     BadIdentification,
+    DependencyNotSatisfied,
 }
 
 /// Result of a _start request
