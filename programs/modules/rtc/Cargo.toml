@@ -4,31 +4,13 @@ version = "0.1.0"
 authors = ["mordak <bmickael@student.42.fr>"]
 edition = "2018"
 
-[profile.release]
-opt-level = 3
-debug = false
-panic = "abort"
-
-[profile.dev]
-panic = "abort"
-debug = true
-
 [lib]
 crate-type = ["staticlib"]
 
 [dependencies]
 bit_field = "0.10.0"
-kernel_modules = { path = "dependencies/kernel_modules" }
-interrupts = { path = "dependencies/interrupts" }
-irq = { path = "dependencies/irq" }
-io = { path = "dependencies/io" }
-time = { path = "dependencies/time" }
-
-[workspace]
-members = [
-	"dependencies/kernel_modules",
-	"dependencies/interrupts",
-	"dependencies/irq",
-	"dependencies/io",
-	"dependencies/time",
-]
+kernel_modules = { path = "../dependencies/kernel_modules" }
+interrupts = { path = "../dependencies/interrupts" }
+irq = { path = "../dependencies/irq" }
+io = { path = "../dependencies/io" }
+time = { path = "../dependencies/time" }

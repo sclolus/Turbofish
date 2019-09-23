@@ -4,24 +4,9 @@ version = "0.1.0"
 authors = ["mordak <bmickael@student.42.fr>"]
 edition = "2018"
 
-[profile.release]
-opt-level = 3
-debug = false
-panic = "abort"
-
-[profile.dev]
-panic = "abort"
-debug = true
-
 [lib]
 crate-type = ["staticlib"]
 
 [dependencies]
-kernel_modules = { path = "dependencies/kernel_modules" }
-interrupts = { path = "dependencies/interrupts" }
-
-[workspace]
-members = [
-	"dependencies/kernel_modules",
-	"dependencies/interrupts",
-]
+kernel_modules = { path = "../dependencies/kernel_modules" }
+interrupts = { path = "../dependencies/interrupts" }
