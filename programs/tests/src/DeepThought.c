@@ -34,9 +34,20 @@
 // Control if tests are launched one by one or not
 bool LINEAR = true;
 
+struct deepthought_info {
+	char	*logging_dir;
+	char	*failing_dir;
+};
+
+struct deepthought_info g_deepthought_info = {
+	.logging_dir = NULL,
+	.failing_dir = NULL,
+};
+
 struct program_test {
 	char *path;
 	char *logging_dir;
+	char *basename;
 	pid_t pid;
 	/* char **argv; */
 };
@@ -187,6 +198,11 @@ void wait_test() {
 		// qemu exit fail
 		size_t i = find_program(ret);
 		dprintf(2, RED "=== test: '%s' failed -> status '%d' ===\n" WHITE, TEST_PROGRAMS[i].path, status);
+
+		char	linkname[256 * 2];
+
+		snprintf(linkname, sizeof(linkname), "%s/%s", g_deepthought_info.failing_dir, TEST_PROGRAMS[i].basename);
+		assert(0 == symlink(TEST_PROGRAMS[i].logging_dir, linkname));
 		if (!WIFEXITED(status)) {
 			exit(1);
 		}
@@ -197,18 +213,36 @@ void wait_test() {
 }
 
 # define LOGGING_DIR "test_logs"
+# define LAST_LOGGING_DIR "last"
 
 static void	build_logging_directory(void)
 {
 	char	dir_filename[256];
+	char	failing_dir_filename[256 * 2];
 	pid_t	pid = getpid();
 
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
+	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
+
+	assert(0 == symlink(dir_filename, LAST_LOGGING_DIR));
+
+	g_deepthought_info.logging_dir = strdup(dir_filename);
+	assert(g_deepthought_info.logging_dir);
+
+	g_deepthought_info.failing_dir = strdup(failing_dir_filename);
+	assert(g_deepthought_info.failing_dir);
+
+
 	assert(-1 != mkdir(dir_filename, 0777));
+	assert(-1 != mkdir(failing_dir_filename, 0777));
 
 	for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
 		char	*test_dir_name = basename(TEST_PROGRAMS[i].path);
 		assert(test_dir_name);
+
+		test_dir_name = strdup(test_dir_name);
+		assert(test_dir_name);
+		TEST_PROGRAMS[i].basename = test_dir_name;
 
 		char	filename[256 * 2];
 		// putting the test_number in because name duplications and I'm lazy
