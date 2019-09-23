@@ -58,13 +58,17 @@ SRC_C += MasterDeepThought \
 		statvfs/statvfs \
 		fstatfs/fstatfs \
 		fstatvfs/fstatvfs \
+		chmod_tests/chmod_fails_if_not_owner \
 		chmod_tests/einval_mode \
 		chmod_tests/chmod_normal \
 		fchmod/einval_mode \
+		fchmod/fchmod_fails_if_not_owner \
 		fchmod/fchmod_normal \
 		utime/utime_basic \
 		chown_tests/chown_basic \
+		chown_tests/chown_fails_if_not_owner \
 		fchown/fchown_basic \
+		fchown/fchown_fails_if_not_owner \
 		execve/bad_elf \
 		fifo/fifo \
 		open/open_fails_with_eaccess_basic \

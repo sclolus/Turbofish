@@ -23,13 +23,21 @@ int main(void)
 	assert(0 == mkdir(dir_filename, 0777));
 
 
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	int fd = open(filename, O_CREAT | O_EXCL, 0666);
 	assert(fd != -1);
 	assert(close(fd) == 0);
+
+	assert(0 == setegid(0));
+	assert(0 == seteuid(0));
+
 	assert(0 == chmod(dir_filename, 0666));
+
+	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
+
 
 	// try to reopen it
 	fd = open(filename, O_RDONLY, 0666);

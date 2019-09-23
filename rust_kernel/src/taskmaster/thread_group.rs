@@ -123,7 +123,7 @@ impl Credentials {
     /// This checks for the `euid` and `eguid` flags.
     pub fn is_root(&self) -> bool {
         // not sure if the check on egid is valid though ?.
-        self.euid == Self::ROOT.uid && self.egid == Self::ROOT.gid
+        self.euid == Self::ROOT.uid // && self.egid == Self::ROOT.gid
     }
 
     /// Checks with the same semantics of `access(2)` whether access

@@ -22,8 +22,8 @@ int main(void)
 	assert(fd != -1);
 
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	assert(0 == close(fd));
 	fd = open(filename, O_WRONLY);
@@ -34,8 +34,14 @@ int main(void)
 	assert(errno == EACCESS);
 
 
+	assert(0 == seteuid(0));
+	assert(0 == setegid(0));
 	/// Remove read permissions , put write permissions.
 	assert(0 == chmod(filename, 0222));
+
+	assert(0 == setegid(1000));
+	assert(0 == seteuid(100));
+
 
 	fd = open(filename, O_RDONLY);
 	assert(fd == -1);

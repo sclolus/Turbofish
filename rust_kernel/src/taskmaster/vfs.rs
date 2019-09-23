@@ -839,7 +839,6 @@ impl VirtualFileSystem {
         path: Path,
         mut mode: FileType,
     ) -> SysResult<()> {
-        // TODO: handle permissions here pretty please.
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
 
@@ -847,13 +846,26 @@ impl VirtualFileSystem {
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        self.fchmod(inode_id, mode)
+        self.fchmod(creds, inode_id, mode)
     }
 
-    pub fn fchmod(&mut self, inode_id: InodeId, mut mode: FileType) -> SysResult<()> {
-        // TODO: handle permissions here pretty please.
+    pub fn fchmod(
+        &mut self,
+        creds: &Credentials,
+        inode_id: InodeId,
+        mut mode: FileType,
+    ) -> SysResult<()> {
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
+
+        let inode = self
+            .inodes
+            .get(&inode_id)
+            .expect("Fchmod was called on unknown inode");
+
+        if !creds.is_root() && creds.euid != inode.uid {
+            return Err(Errno::EPERM);
+        }
 
         self.get_filesystem(inode_id)
             .expect("No corresponding filesystem")
@@ -881,16 +893,29 @@ impl VirtualFileSystem {
         owner: uid_t,
         group: gid_t,
     ) -> SysResult<()> {
-        // TODO: handle permissions here pretty please.
         let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        self.fchown(inode_id, owner, group)
+        self.fchown(creds, inode_id, owner, group)
     }
 
-    pub fn fchown(&mut self, inode_id: InodeId, owner: uid_t, group: gid_t) -> SysResult<()> {
-        // TODO: handle permissions here please.
+    pub fn fchown(
+        &mut self,
+        creds: &Credentials,
+        inode_id: InodeId,
+        owner: uid_t,
+        group: gid_t,
+    ) -> SysResult<()> {
+        let inode = self
+            .inodes
+            .get(&inode_id)
+            .expect("Fchown was called on unknown inode");
+
+        if !creds.is_root() && creds.euid != inode.uid {
+            return Err(Errno::EPERM);
+        }
+
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock()
             .chown(inode_id.inode_number as u32, owner, group)?;

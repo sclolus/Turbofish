@@ -61,6 +61,10 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/fchown/fchown_fails_if_not_owner"},
+	{.path = "/bin/chown_tests/chown_fails_if_not_owner"},
+	{.path = "/bin/fchmod/fchmod_fails_if_not_owner"},
+	{.path = "/bin/chmod_tests/chmod_fails_if_not_owner"},
 	{.path = "/bin/fifo/fifo"},
 	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},
