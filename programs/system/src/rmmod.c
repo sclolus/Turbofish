@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 	if (argc != 2) {
-		dprintf(STDERR_FILENO, "usage: %s module_name", argv[0]);
+		dprintf(STDERR_FILENO, "usage: %s module_name\n", argv[0]);
 		exit(1);
 	}
 	return rmmod(argv[1]);
