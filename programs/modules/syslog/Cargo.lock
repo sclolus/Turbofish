@@ -2,11 +2,6 @@
 # It is not intended for manual editing.
 [[package]]
 name = "bit_field"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "bit_field"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
@@ -18,14 +13,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "const_assert"
 version = "0.1.0"
-
-[[package]]
-name = "dummy"
-version = "0.1.0"
-dependencies = [
- "interrupts 0.1.0",
- "kernel_modules 0.1.0",
-]
 
 [[package]]
 name = "i386"
@@ -97,39 +84,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtc"
-version = "0.1.0"
-dependencies = [
- "bit_field 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "interrupts 0.1.0",
- "io 0.1.0",
- "irq 0.1.0",
- "kernel_modules 0.1.0",
- "time 0.1.0",
-]
-
-[[package]]
-name = "shell"
-version = "0.1.0"
-dependencies = [
- "bit_field 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "syslog"
-version = "0.1.0"
-dependencies = [
- "interrupts 0.1.0",
- "kernel_modules 0.1.0",
- "keyboard 0.1.0",
- "messaging 0.1.0",
-]
-
-[[package]]
 name = "time"
 version = "0.1.0"
 
 [metadata]
 "checksum bit_field 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a165d606cf084741d4ac3a28fb6e9b1eb0bd31f6cd999098cfddb0b2ab381dc0"
-"checksum bit_field 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ed8765909f9009617974ab6b7d332625b320b33c326b1e9321382ef1999b5d56"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"

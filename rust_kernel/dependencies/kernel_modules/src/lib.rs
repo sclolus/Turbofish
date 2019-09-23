@@ -34,6 +34,7 @@ pub enum ModAddress {
     Dummy = 0xE0000000,
     Keyboard = 0xE1000000,
     RTC = 0xE2000000,
+    Syslog = 0xE3000000,
 }
 
 /// Errors on module
@@ -70,10 +71,12 @@ pub struct ModStatus {
     pub rtc: Status,
     /// Keyboard module status
     pub keybard: Status,
+    /// Syslog module status
+    pub syslog: Status,
 }
 
 /// This enum describes kernel functions specifics that the module could call
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub enum ModConfig {
     /// The dummy module need nothing !
     Dummy,
@@ -81,10 +84,12 @@ pub enum ModConfig {
     RTC(RTCConfig),
     /// The Keyboard module have to set an IDT entry and return kerboard activities with a kernel callback
     Keyboard(KeyboardConfig),
+    /// The syslog module need nothing !
+    Syslog,
 }
 
 /// Configuration parameters of the RTC module
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct RTCConfig {
     /// Give ability to redirect an IDT entry to a specific function
     pub enable_irq: fn(Irq, unsafe extern "C" fn()),
@@ -95,7 +100,7 @@ pub struct RTCConfig {
 }
 
 /// Configuration parameters of the Keyboard module
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct KeyboardConfig {
     /// Give ability to redirect an IDT entry to a specific function
     pub enable_irq: fn(Irq, unsafe extern "C" fn()),
@@ -106,7 +111,7 @@ pub struct KeyboardConfig {
 }
 
 /// Standard mod return
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ModReturn {
     /// Stop the module
     pub stop: fn(),
@@ -115,7 +120,7 @@ pub struct ModReturn {
 }
 
 /// This module describes function specifics that the kernel could call
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub enum ModSpecificReturn {
     /// The kernel cannot ask the Dummy module
     DummyReturn,
@@ -123,20 +128,29 @@ pub enum ModSpecificReturn {
     RTC(RTCReturn),
     /// The keyboard can be stopped but The kernel cannot ask it
     Keyboard(KeyboardReturn),
+    /// The Syslog can be stopped and should give his callback to the kernel
+    Syslog(SyslogReturn),
 }
 
 /// Return parameters of the RTC module
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct RTCReturn {
     /// Get the date from the RTC module
     pub read_date: fn() -> Date,
 }
 
 /// Return parameters of the Keyboard module
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct KeyboardReturn {
     /// Enable to reboot computer with the PS2 controler
     pub reboot_computer: fn(),
+}
+
+/// Return parameters of the RTC module
+#[derive(Copy, Clone)]
+pub struct SyslogReturn {
+    /// Give a syslog entry to the module
+    pub add_entry: fn(&str),
 }
 
 /// The allocators methods are passed by the kernel while module is initialized

@@ -31,6 +31,7 @@ build_rust:
 	make -C dummy
 	make -C rtc
 	make -C key
+	make -C syslog
 	make -C shell
 
 clean:
@@ -38,6 +39,7 @@ clean:
 	make -C dummy clean
 	make -C rtc clean
 	make -C key clean
+	make -C syslog clean
 	make -C shell clean
 
 fclean: clean

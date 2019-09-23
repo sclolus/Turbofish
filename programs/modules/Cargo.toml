@@ -12,5 +12,6 @@ members = [
 	"dummy",
 	"rtc",
 	"key",
+	"syslog",
 	"shell",
 ]

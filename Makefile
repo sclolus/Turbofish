@@ -42,6 +42,7 @@ system_root:
 	mkdir -pv $(SYSTEM_ROOT)/bin
 	mkdir -pv $(SYSTEM_ROOT)/dev
 	mkdir -pv $(SYSTEM_ROOT)/etc
+	mkdir -pv $(SYSTEM_ROOT)/var
 	mkdir -pv $(SYSTEM_ROOT)/grub
 	mkdir -pv $(SYSTEM_ROOT)/home
 	mkdir -pv $(SYSTEM_ROOT)/turbofish

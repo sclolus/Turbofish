@@ -3,8 +3,8 @@
 use super::process::get_file_content;
 use super::scheduler::{Scheduler, SCHEDULER};
 use super::thread_group::Credentials;
-use super::vfs::Path;
-use super::SysResult;
+use super::vfs::{Path, VFS};
+use super::{IpcResult, SysResult};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -15,7 +15,7 @@ use kernel_modules::{
     ForeignAllocMethods, KernelSymbolList, KeyboardConfig, ModConfig, ModResult, ModReturn,
     ModSpecificReturn, RTCConfig, SymbolList,
 };
-use libc_binding::{c_char, Errno};
+use libc_binding::{c_char, Errno, FileType, OpenFlags};
 use time::Date;
 
 use core::convert::{TryFrom, TryInto};
@@ -69,6 +69,7 @@ pub struct KernelModules {
     dummy: Option<Module>,
     rtc: Option<Module>,
     keyboard: Option<Module>,
+    syslog: Option<Module>,
 }
 
 #[allow(dead_code)]
@@ -87,6 +88,7 @@ impl KernelModules {
             dummy: None,
             rtc: None,
             keyboard: None,
+            syslog: None,
         }
     }
 }
@@ -94,6 +96,7 @@ impl KernelModules {
 impl Scheduler {
     /// Try to insert a Kernel Module
     fn insert_module(&mut self, modname: &str) -> SysResult<u32> {
+        add_syslog_entry("banane\n").expect("WOOT");
         let (module_opt, module_pathname, mod_config) = match modname {
             "dummy" => (
                 &mut self.kernel_modules.dummy,
@@ -118,6 +121,11 @@ impl Scheduler {
                     disable_irq,
                     callback: push_message,
                 }),
+            ),
+            "syslog" => (
+                &mut self.kernel_modules.syslog,
+                "/turbofish/mod/syslog.mod",
+                ModConfig::Syslog,
             ),
             _ => {
                 log::warn!("Unknown module name");
@@ -175,6 +183,7 @@ impl Scheduler {
             "dummy" => &mut self.kernel_modules.dummy,
             "rtc" => &mut self.kernel_modules.rtc,
             "keyboard" => &mut self.kernel_modules.keyboard,
+            "syslog" => &mut self.kernel_modules.syslog,
             _ => {
                 log::warn!("Unknown module name");
                 return Ok(0);
@@ -245,6 +254,24 @@ fn write(s: &str) {
 #[link_section = ".kernel_exported_functions"]
 pub fn symbol_list_test() {
     log::info!("symbol_list_test function sucessfully called by a module !");
+}
+
+#[no_mangle]
+#[link_section = ".kernel_exported_functions"]
+pub fn add_syslog_entry(entry: &str) -> Result<(), Errno> {
+    let cwd = Path::try_from("/")?;
+    let path = Path::try_from("/var/syslog")?;
+    let mode = FileType::from_bits(0o600).expect("Cannot set FileType");
+    let flags = OpenFlags::O_WRONLY | OpenFlags::O_CREAT | OpenFlags::O_APPEND;
+    let creds = &Credentials::ROOT;
+    VFS.force_unlock(); /* just in case of. This mutex could become very problematic */
+    let file_operator = match VFS.lock().open(&cwd, creds, path, flags, mode)? {
+        IpcResult::Done(file_operator) => file_operator,
+        IpcResult::Wait(file_operator, _) => file_operator,
+    };
+    let mut m = file_operator.lock();
+    m.write(unsafe { core::slice::from_raw_parts(entry as *const _ as *const u8, entry.len()) })?;
+    Ok(())
 }
 
 /// Common allocator methods for modules
