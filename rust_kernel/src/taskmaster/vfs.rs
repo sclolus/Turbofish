@@ -621,17 +621,6 @@ impl VirtualFileSystem {
             parent_id = entry.parent_id;
         }
 
-        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
-        self.dcache.remove_entry(entry_id)?;
-
-        // If the link number reach 0 and there is no open file
-        // operation, we unlink on the filesystem directly, else we
-        // will unlink when the last file operation is closed
-        let free_inode_data: bool = corresponding_inode.unlink();
-        // we remove the inode only if we free the inode data
-        if free_inode_data {
-            self.inodes.remove(&inode_id).ok_or(ENOENT)?;
-        }
         let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let parent_inode = self
             .inodes
@@ -646,6 +635,18 @@ impl VirtualFileSystem {
             return Err(Errno::EACCES);
         }
 
+        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
+
+        self.dcache.remove_entry(entry_id)?;
+
+        // If the link number reach 0 and there is no open file
+        // operation, we unlink on the filesystem directly, else we
+        // will unlink when the last file operation is closed
+        let free_inode_data: bool = corresponding_inode.unlink();
+        // we remove the inode only if we free the inode data
+        if free_inode_data {
+            self.inodes.remove(&inode_id).ok_or(ENOENT)?;
+        }
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
             parent_inode_id.inode_number as u32,

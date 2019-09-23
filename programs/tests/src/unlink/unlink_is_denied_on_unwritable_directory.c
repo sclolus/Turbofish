@@ -17,23 +17,35 @@ int main(void)
 	// drop umask
 	umask(0);
 
-	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
-	assert(0 == setegid(1000));
 
 	snprintf(dir_filename, sizeof(dir_filename), "dir_unlink_is_denied_for_unwritable_dir_%u", pid);
 	snprintf(filename, sizeof(filename), "%s/no_unlink_%u", dir_filename, pid);
 
 	// First creat directory with rights to write first.
 	assert(0 == mkdir(dir_filename, 0777));
+
+	// We want to test the normal behavior
+	assert(0 == seteuid(1000));
+	assert(0 == setegid(1000));
+
 	int fd = open(filename, O_CREAT | O_EXCL, 0666);
 	assert(fd != -1);
+
+	assert(0 == seteuid(0));
+	assert(0 == setegid(0));
+
 	// Now, removes write permissions on the parent directory
 	assert(0 == chmod(dir_filename, 0555));
+
+	assert(0 == seteuid(1000));
+	assert(0 == setegid(1000));
 
 	// try to unlink the file.
 	assert(-1 == unlink(filename));
 	assert(errno == EACCES);
+
+	assert(0 == seteuid(0));
+	assert(0 == setegid(0));
 
 	// undo all the stuff.
 	assert(0 == chmod(dir_filename, 0777));

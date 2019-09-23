@@ -16,13 +16,15 @@ int main(void)
 
 	// drop umask
 	umask(0);
-	assert(0 == seteuid(1000));
-	assert(0 == setegid(1000));
 
 	snprintf(dir_filename, sizeof(dir_filename), "dir_pathname_resolution_eaccess_basic_%u", pid);
 	snprintf(filename, sizeof(filename), "%s/test_pathname_resolution_eaccess_basic_%u", dir_filename, pid);
 	// First creat directory with rights to write to it.
 	assert(0 == mkdir(dir_filename, 0777));
+
+
+	assert(0 == seteuid(1000));
+	assert(0 == setegid(1000));
 
 	int fd = open(filename, O_CREAT | O_EXCL, 0666);
 	assert(fd != -1);
@@ -33,6 +35,9 @@ int main(void)
 	fd = open(filename, O_RDONLY, 0666);
 	assert(-1 == fd);
 	assert(errno == EACCES);
+
+	assert(0 == seteuid(0));
+	assert(0 == setegid(0));
 
 	// retake search permissions
 	assert(0 == chmod(dir_filename, 0777));

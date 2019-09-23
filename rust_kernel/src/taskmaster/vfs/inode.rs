@@ -183,6 +183,11 @@ impl InodeData {
         self
     }
 
+    pub fn set_link_number(&mut self, link_number: nlink_t) -> &mut Self {
+        self.link_number = link_number;
+        self
+    }
+
     // Builder Pattern end
 
     pub fn get_id(&self) -> InodeId {

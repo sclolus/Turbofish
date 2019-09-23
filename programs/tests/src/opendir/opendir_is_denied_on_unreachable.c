@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <dirent.h>
+#include <tools/tools.h>
 
 
 int main(void)
@@ -17,13 +18,15 @@ int main(void)
 	// drop umask
 	umask(0);
 
+	snprintf(dir_filename, sizeof(dir_filename), "dir_opendir_is_denied_for_unwritable_dir_%u", pid);
+	// First creat directory without rights to read to it.
+	if (0 != mkdir(dir_filename, 0333)) {
+		err_errno("Failed to mkdir %s", dir_filename);
+	}
 	// We want to test the normal behavior
 	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
 
-	snprintf(dir_filename, sizeof(dir_filename), "dir_opendir_is_denied_for_unwritable_dir_%u", pid);
-	// First creat directory without rights to read to it.
-	assert(0 == mkdir(dir_filename, 0333));
 
 	assert(NULL == opendir(dir_filename));
 	assert(errno == EACCES);
