@@ -7,10 +7,12 @@ pub mod writer;
 pub use writer::WRITER;
 
 pub use irq::Irq;
+pub use libc_binding::c_char;
 pub use messaging::MessageTo;
 pub use time::Date;
 
 use core::sync::atomic::AtomicU32;
+use core::{fmt, slice, str};
 
 /// This structure is passed zhen _start point of the module is invoqued
 #[derive(Copy, Clone)]
@@ -21,6 +23,8 @@ pub struct SymbolList {
     pub alloc_tools: ForeignAllocMethods,
     /// Specifics methods given by the kernel
     pub kernel_callback: ModConfig,
+    /// Kernel Symbol List
+    pub kernel_symbol_list: KernelSymbolList,
 }
 
 /// Fixed Virtual address of the modules
@@ -146,4 +150,74 @@ pub struct ForeignAllocMethods {
     pub kfree: unsafe extern "C" fn(*mut u8),
     /// Realloc in place if possible
     pub krealloc: unsafe extern "C" fn(*mut u8, usize) -> *mut u8,
+}
+
+/// This structure may contains all the kernel symbols list
+#[derive(Copy, Clone, Debug)]
+pub struct KernelSymbolList(pub &'static [KernelSymbol]);
+
+/// Main implementation
+impl KernelSymbolList {
+    // LINKER CANNOT SUPPORT UNDEFINED REFERENCE WHEN LINKING EVEN IF THE
+    // FUNCTION `get_primitive_kernel_symbol_list()` IS NOT USED
+    // USE `--gc-sections` OPTION TO AVOID THAT PROBLEM
+    /// Create a new Kernel symbol List in Rust style
+    pub fn new() -> Self {
+        let raw_symlist = unsafe { get_primitive_kernel_symbol_list() };
+        Self(unsafe { slice::from_raw_parts(raw_symlist.ptr, raw_symlist.len as usize) })
+    }
+
+    /// Get a associated address of an entry
+    pub fn get_entry(&self, s2: &str) -> Option<u32> {
+        for elem in self.0.iter() {
+            let s1: &str =
+                unsafe { str::from_utf8_unchecked(slice::from_raw_parts(elem.symname as *const u8, elem.len())) };
+            if s1 == s2 {
+                return Some(elem.address);
+            }
+        }
+        None
+    }
+}
+
+/// This C item represents a kernel symbol
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct KernelSymbol {
+    pub address: u32,
+    pub symtype: c_char,
+    pub symname: *const c_char,
+}
+
+/// Kernel Symbol Implementation
+impl KernelSymbol {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        let mut len = 0;
+        while unsafe { *self.symname.add(len) } != 0 {
+            len += 1;
+        }
+        len
+    }
+}
+
+/// Debug Boilerplate for a KernelSymbol
+impl fmt::Debug for KernelSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "addr: {:#X?}, {} {}", self.address, self.symtype as u8 as char, unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(self.symname as *const u8, self.len()))
+        })
+    }
+}
+
+/// This C item represents the entire Kernel Symbol List
+#[repr(C)]
+struct PrimitiveKernelSymbolList {
+    len: u32,
+    ptr: *const KernelSymbol,
+}
+
+/// Get the entire symbol List
+extern "C" {
+    fn get_primitive_kernel_symbol_list() -> PrimitiveKernelSymbolList;
 }

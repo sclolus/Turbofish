@@ -12,8 +12,8 @@ use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::boxed::FallibleBox;
 use irq::Irq;
 use kernel_modules::{
-    ForeignAllocMethods, KeyboardConfig, ModConfig, ModResult, ModReturn, ModSpecificReturn,
-    RTCConfig, SymbolList,
+    ForeignAllocMethods, KernelSymbolList, KeyboardConfig, ModConfig, ModResult, ModReturn,
+    ModSpecificReturn, RTCConfig, SymbolList,
 };
 use libc_binding::{c_char, Errno};
 use time::Date;
@@ -156,6 +156,7 @@ impl Scheduler {
                 krealloc,
             },
             kernel_callback: mod_config,
+            kernel_symbol_list: KernelSymbolList::new(),
         })
         .map_err(|_e| Errno::EINVAL)?;
 

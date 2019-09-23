@@ -37,5 +37,6 @@ fn _start(symtab_list: SymbolList) -> ModResult {
 #[panic_handler]
 #[no_mangle]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
+    print!("Module is on panic !");
     loop {}
 }

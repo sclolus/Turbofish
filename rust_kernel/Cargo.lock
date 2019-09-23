@@ -118,6 +118,7 @@ name = "kernel_modules"
 version = "0.1.0"
 dependencies = [
  "irq 0.1.0",
+ "libc_binding 0.1.0",
  "messaging 0.1.0",
  "time 0.1.0",
 ]

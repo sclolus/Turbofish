@@ -12,3 +12,4 @@ homepage = "index.html"
 messaging = { path = "../messaging" }
 irq = { path = "../irq" }
 time = { path = "../time" }
+libc_binding = { path = "../libc_binding" }

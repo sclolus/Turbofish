@@ -24,7 +24,7 @@ CARGO_XBUILD_VERSION := $(shell cat xbuild-toolchain)
 
 AS = i686-turbofish-as
 CC = i686-turbofish-gcc
-LD = i686-turbofish-ld
+LD = i686-turbofish-ld --gc-sections
 NASM = nasm
 
 ASFLAGS = -f elf

@@ -1,8 +1,8 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    KeyboardReturn, ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList,
-    WRITER,
+    KernelSymbolList, KeyboardReturn, ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn,
+    SymbolList, WRITER,
 };
 
 use keyboard::keysymb::KeySymb;
@@ -19,6 +19,7 @@ struct Ctx {
     enable_irq: fn(Irq, unsafe extern "C" fn()),
     disable_irq: fn(Irq),
     send_fn: fn(MessageTo),
+    kernel_symbol_list: KernelSymbolList,
 }
 
 /// Main Context implementation
@@ -28,6 +29,7 @@ impl Ctx {
         enable_irq: fn(Irq, unsafe extern "C" fn()),
         disable_irq: fn(Irq),
         send_fn: fn(MessageTo),
+        kernel_symbol_list: KernelSymbolList,
     ) -> Self {
         print!("New Keyboard Context created !");
         Self {
@@ -36,6 +38,7 @@ impl Ctx {
             enable_irq,
             disable_irq,
             send_fn,
+            kernel_symbol_list,
         }
     }
 }
@@ -60,6 +63,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
                 keyboard_config.enable_irq,
                 keyboard_config.disable_irq,
                 keyboard_config.callback,
+                symtab_list.kernel_symbol_list,
             ));
         }
 
@@ -74,6 +78,18 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
                     Irq::KeyboardController,
                     keyboard_interrupt_handler,
                 );
+                // Just do a test for kernel symbol list
+                let ksymbol_test = CTX
+                    .as_ref()
+                    .unwrap()
+                    .kernel_symbol_list
+                    .get_entry("symbol_list_test");
+                if let Some(addr) = ksymbol_test {
+                    let f: fn() = core::mem::transmute(addr);
+                    f();
+                } else {
+                    print!("Symbol Test Not Founded !");
+                }
             });
         }
 

@@ -14,6 +14,20 @@ struct symbol {
 	const char *name;
 };
 
+struct kernel_symbol_list {
+	u32 len;
+	struct symbol_entry *ptr;
+};
+
+struct kernel_symbol_list get_primitive_kernel_symbol_list()
+{
+	struct kernel_symbol_list ksym_list;
+
+	ksym_list.len = FN_DIR_LEN;
+	ksym_list.ptr = function_directory;
+	return ksym_list;
+}
+
 /*
  * Assuming that address of index entry are sorted
  */
