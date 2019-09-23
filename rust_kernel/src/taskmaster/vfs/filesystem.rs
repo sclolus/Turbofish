@@ -38,6 +38,10 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
+    fn truncate(&mut self, _inode_nbr: u32, _new_size: u64) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+
     fn create(
         &mut self,
         _filename: &str,

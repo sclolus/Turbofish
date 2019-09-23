@@ -47,6 +47,16 @@ impl Inode {
         &mut self,
         flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        if flags.contains(OpenFlags::O_TRUNC) {
+            if self
+                .filesystem
+                .lock()
+                .truncate(self.id.inode_number, 0)
+                .is_ok()
+            {
+                self.inode_data.set_size(0);
+            }
+        }
         let res = self.driver.open(flags)?;
         self.nbr_open_file_operation += 1;
         Ok(res)
@@ -77,6 +87,7 @@ impl Inode {
         self.inode_data.stat(stat)
     }
     pub fn write(&mut self, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
+        // TODO: update size in inode data
         Ok(self
             .filesystem
             .lock()
@@ -149,6 +160,10 @@ pub struct InodeData {
 }
 
 impl InodeData {
+    pub fn set_size(&mut self, size: u64) {
+        self.size = size;
+    }
+
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         *stat = stat {
             st_dev: 42 as dev_t,                   // Device ID of device containing file.

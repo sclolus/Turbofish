@@ -132,6 +132,10 @@ impl FileSystem for Ext2fs {
             .try_collect()?)
     }
 
+    fn truncate(&mut self, inode_nbr: u32, new_size: u64) -> SysResult<()> {
+        Ok(self.ext2.lock().truncate(inode_nbr, new_size)?)
+    }
+
     fn chmod(&self, inode_nbr: u32, mode: FileType) -> SysResult<()> {
         Ok(self.ext2.lock().chmod(inode_nbr, mode)?)
     }

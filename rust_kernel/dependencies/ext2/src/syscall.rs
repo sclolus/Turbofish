@@ -78,12 +78,12 @@ impl Ext2Filesystem {
 
     /// The Truncate() Function Shall cause the regular file named by
     /// path to have a size which shall be equal to length bytes.
-    pub fn truncate(&mut self, path: &str, length: u64) -> IoResult<()> {
-        let (mut inode, inode_addr) = self.find_inode(path)?;
+    pub fn truncate(&mut self, inode_nbr: u32, new_size: u64) -> IoResult<()> {
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         if !inode.is_a_regular_file() {
             return Err(Errno::EISDIR);
         }
-        self.truncate_inode((&mut inode, inode_addr), length)
+        self.truncate_inode((&mut inode, inode_addr), new_size)
     }
 
     pub fn create(
