@@ -17,10 +17,11 @@ use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
     GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
-    MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR,
-    RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
-    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR,
-    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UNLINK, UTIME, WAITPID, WRITE,
+    MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME,
+    RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
+    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK,
+    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAITPID,
+    WRITE,
 };
 
 #[allow(dead_code)]
@@ -32,7 +33,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
         edx,
         esi,
         edi,
-        // ebp,
+        ebp,
         ..
     } = unsafe { (*cpu_state).registers };
     unpreemptible_context!({
@@ -98,6 +99,14 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edi as u32,
             ),
             GETPID => log::info!("getpid()"),
+            MOUNT => log::info!(
+                "mount({:#?}, {:#?}, {:#?}, {:#?}, {:#?})",
+                ebx as *const c_char,
+                ecx as *const c_char,
+                edx as *const c_char,
+                edi as u32,
+                ebp as *const c_void,
+            ),
             SETUID => log::info!("setuid({:#?})", ebx as uid_t),
             GETUID => log::info!("getuid()"),
             PAUSE => log::info!("pause()"),
@@ -130,6 +139,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 edx as Fd
             ),
             GETEGID => log::info!("getegid()"),
+            UMOUNT => log::info!("umount({:#?})", ebx as *const c_char),
             SIGNAL => log::info!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => log::info!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => log::info!("getppid()"),
@@ -251,6 +261,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         STAT => "stat",
         LSEEK => "lseek",
         GETPID => "getpid",
+        MOUNT => "mount",
         SETUID => "setuid",
         GETUID => "getuid",
         PAUSE => "pause",
@@ -267,6 +278,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         GETEUID => "geteuid",
         FCNTL => "fcntl",
         GETEGID => "getegid",
+        UMOUNT => "umount",
         SIGNAL => "signal",
         SETPGID => "setpgid",
         GETPPID => "getppid",

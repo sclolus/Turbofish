@@ -55,6 +55,7 @@ $(IMG_DISK):
 	echo -e "n\np\n2\n\n\nw\n" | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mkfs.ext2 $(LOOP_DEVICE)p1
+	sudo mkfs.ext2 $(LOOP_DEVICE)p2
 	sudo mount $(LOOP_DEVICE)p1 /mnt
 	echo "(hd0) " $(LOOP_DEVICE) > loopdevice.map
 

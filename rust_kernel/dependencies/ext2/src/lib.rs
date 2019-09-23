@@ -111,7 +111,9 @@ impl Ext2Filesystem {
         let superblock: SuperBlock = disk.read_struct(superblock_addr)?;
 
         let signature = superblock.get_ext2_signature();
-        assert_eq!(signature, EXT2_SIGNATURE_MAGIC);
+        if signature != EXT2_SIGNATURE_MAGIC {
+            return Err(Errno::EINVAL);
+        }
 
         // consistency check
         let nbr_block_grp = superblock.get_nbr_block_grp();

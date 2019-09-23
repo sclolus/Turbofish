@@ -53,6 +53,8 @@ SRC_C += Clone \
 		bullshit_return \
 		mktime \
 		strftime \
+		mount \
+		umount \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
