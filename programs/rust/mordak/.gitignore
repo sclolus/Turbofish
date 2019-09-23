@@ -1,6 +1,0 @@
-!.gitignore
-mordak
-target
-*.orig
-!.xbuild-toolchain
-!.rust-toolchain

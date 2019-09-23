@@ -1,6 +1,0 @@
-!.gitignore
-fork_me_baby
-target
-*.orig
-!.xbuild-toolchain
-!.rust-toolchain

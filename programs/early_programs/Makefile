@@ -2,18 +2,12 @@
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
 all:
-	make -C c
-	make -C tests
-	make -C system
-	make -C su
-	make -C modules
+	make -C charles
+	make -C charly
 
 fclean:
-	make fclean -C c
-	make fclean -C tests
-	make fclean -C system
-	make fclean -C su
-	make fclean -C modules
+	make fclean -C charles
+	make fclean -C charly
 
 clean: fclean
 
