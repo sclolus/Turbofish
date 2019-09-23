@@ -917,6 +917,7 @@ impl VirtualFileSystem {
         path: Path,
         times: Option<&utimbuf>,
     ) -> SysResult<()> {
+        // Handle permissions here too.
         let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let inode_id = self.dcache.get_entry(&entry_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("No filesystem");
@@ -985,6 +986,11 @@ impl VirtualFileSystem {
             //TODO: remove that, and check create function filesystem
             unimplemented!()
         }
+
+        if mode & FileType::S_IFMT == FileType::FIFO && !creds.is_root() {
+            return Err(EPERM);
+        }
+
         if let Ok(_) = self.pathname_resolution(cwd, creds, &path) {
             return Err(EEXIST);
         }
@@ -996,6 +1002,13 @@ impl VirtualFileSystem {
         }
         let inode_id = entry.inode_id;
 
+        let inode = self
+            .get_inode(inode_id)
+            .expect("No corresponding Inode for Direntry");
+        if !creds.is_access_granted(inode.access_mode, Amode::WRITE, (inode.uid, inode.gid)) {
+            return Err(Errno::EACCES);
+        }
+
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
 
@@ -1006,6 +1019,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    // TODO: Sticky bit (EPERM condition in posix) is not implemented for now.
     pub fn rmdir(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
         let filename = path.filename().ok_or(EINVAL)?;
         if filename == &"." || filename == &".." {
@@ -1024,10 +1038,23 @@ impl VirtualFileSystem {
         let inode_id = entry.inode_id;
         let parent_id = entry.parent_id;
 
+        let parent_inode = self
+            .get_inode_from_direntry_id(parent_id)
+            .expect("No corresponding inode");
+        let parent_inode_id = parent_inode.id;
+
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         self.dcache.remove_entry(entry_id)?;
         self.inodes.remove(&inode_id).expect("inode should be here");
 
-        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().rmdir(
             parent_inode_id.inode_number as u32,
@@ -1206,6 +1233,7 @@ impl VirtualFileSystem {
         self.dentry_path(direntry_id)
     }
 
+    //TODO: permissions here not currently implemented.
     pub fn rename(
         &mut self,
         cwd: &Path,

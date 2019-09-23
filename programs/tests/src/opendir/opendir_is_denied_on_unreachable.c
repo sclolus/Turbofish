@@ -30,6 +30,11 @@ int main(void)
 
 	assert(NULL == opendir(dir_filename));
 	assert(errno == EACCES);
+
+	// Go back to root priviligies to cleanup.
+	assert(0 == seteuid(0));
+	assert(0 == setegid(0));
+
 	assert(rmdir(dir_filename) == 0);
 	return EXIT_SUCCESS;
 }
