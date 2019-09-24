@@ -12,10 +12,11 @@ use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::boxed::FallibleBox;
 use irq::Irq;
 use kernel_modules::{
-    ForeignAllocMethods, KernelSymbolList, KeyboardConfig, ModConfig, ModResult, ModReturn,
-    ModSpecificReturn, RTCConfig, SymbolList,
+    ForeignAllocMethods, KernelEvent, KernelSymbolList, KeyboardConfig, ModConfig, ModResult,
+    ModReturn, ModSpecificReturn, RTCConfig, SymbolList,
 };
 use libc_binding::{c_char, Errno, FileType, OpenFlags};
+use log::Record;
 use time::Date;
 
 use core::convert::{TryFrom, TryInto};
@@ -167,6 +168,20 @@ impl Scheduler {
         })
         .map_err(|_e| Errno::EINVAL)?;
 
+        if let Some(configurable_callback) = mod_return.configurable_callback {
+            match configurable_callback.when {
+                KernelEvent::Log => {
+                    // We assume that a function bindable to Log event has fn(&Record) prototype.
+                    // Yes, it is really really unsafe... But Louis is asking for that
+                    let p: fn(&Record) =
+                        unsafe { core::mem::transmute(configurable_callback.what) };
+                    unsafe {
+                        terminal::log::LOGGER.bind(p);
+                    }
+                }
+            }
+        }
+
         *module_opt = Some(Module {
             start_point,
             symbol_table,
@@ -193,7 +208,18 @@ impl Scheduler {
                 log::warn!("Module already inactive");
                 return Ok(0);
             }
-            Some(module) => (module.mod_return.stop)(),
+            Some(module) => {
+                // Disable callbacks
+                if let Some(configurable_callback) = module.mod_return.configurable_callback {
+                    match configurable_callback.when {
+                        KernelEvent::Log => unsafe {
+                            terminal::log::LOGGER.unbind();
+                        },
+                    }
+                }
+                // Halt the module
+                (module.mod_return.stop)();
+            }
         }
         *module_opt = None;
         Ok(0)

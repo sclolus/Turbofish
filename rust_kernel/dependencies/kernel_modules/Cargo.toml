@@ -9,6 +9,7 @@ documentation = "cargo doc --open"
 homepage = "index.html"
 
 [dependencies]
+log = "0.4.6"
 messaging = { path = "../messaging" }
 irq = { path = "../irq" }
 time = { path = "../time" }

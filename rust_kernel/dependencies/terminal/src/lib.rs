@@ -1,5 +1,6 @@
 //! Kernel tty manager
 #![cfg_attr(all(not(test), not(feature = "std-print")), no_std)]
+#![feature(const_fn)]
 
 extern crate alloc;
 
@@ -23,7 +24,7 @@ mod line_discipline;
 use line_discipline::LineDiscipline;
 pub use line_discipline::ReadResult;
 
-mod log;
+pub mod log;
 
 #[macro_use]
 pub mod uart_16550;

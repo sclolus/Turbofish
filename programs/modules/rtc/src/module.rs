@@ -74,6 +74,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
 
         Ok(ModReturn {
             stop: drop_module,
+            configurable_callback: None,
             spec: ModSpecificReturn::RTC(RTCReturn { read_date }),
         })
     } else {

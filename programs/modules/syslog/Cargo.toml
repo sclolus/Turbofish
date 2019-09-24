@@ -8,6 +8,7 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [dependencies]
+log = "0.4.6"
 kernel_modules = { path = "../dependencies/kernel_modules" }
 keyboard = { path = "../dependencies/keyboard" }
 messaging = { path = "../dependencies/messaging" }

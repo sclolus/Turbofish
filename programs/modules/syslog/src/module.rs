@@ -1,19 +1,23 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    KernelSymbolList, ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList,
-    SyslogReturn, WRITER,
+    ConfigurableCallback, KernelEvent, KernelSymbolList, ModConfig, ModError, ModResult, ModReturn,
+    ModSpecificReturn, SymbolList, WRITER,
 };
 
 static mut CTX: Option<Ctx> = None;
 
+use alloc::string::String;
+use alloc::vec::Vec;
 use libc_binding::Errno;
+use log::Record;
 
 #[allow(dead_code)]
 /// Main Context of the module
 struct Ctx {
     kernel_symbol_list: KernelSymbolList,
     write_syslog: fn(&str) -> Result<(), Errno>,
+    cache: Vec<String>,
 }
 
 /// Main Context implementation
@@ -27,6 +31,7 @@ impl Ctx {
         Self {
             kernel_symbol_list,
             write_syslog,
+            cache: Vec::new(),
         }
     }
 }
@@ -34,6 +39,10 @@ impl Ctx {
 /// Drop boilerplate implementation
 impl Drop for Ctx {
     fn drop(&mut self) {
+        // Fflush the cache into the syslog file
+        for item in self.cache.iter() {
+            (self.write_syslog)(item).expect("Woot ?");
+        }
         print!("Syslog Context droped !");
     }
 }
@@ -53,11 +62,13 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
                 Some(addr) => {
                     let write_syslog: fn(&str) -> Result<(), Errno> = core::mem::transmute(addr);
                     CTX = Some(Ctx::new(symtab_list.kernel_symbol_list, write_syslog));
-                    // Write something into the log to check if all is okay
-                    add_entry("Syslog launched\n");
                     Ok(ModReturn {
                         stop: drop_module,
-                        spec: ModSpecificReturn::Syslog(SyslogReturn { add_entry }),
+                        configurable_callback: Some(ConfigurableCallback {
+                            when: KernelEvent::Log,
+                            what: add_entry as u32,
+                        }),
+                        spec: ModSpecificReturn::Syslog,
                     })
                 }
             }
@@ -67,9 +78,14 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
     }
 }
 
-fn add_entry(entry: &str) {
+/// Store a log entry into the module memory
+fn add_entry(entry: &Record) {
     unsafe {
-        (CTX.as_ref().unwrap().write_syslog)(entry).expect("Woot ?");
+        // TODO: Make it faillible one day
+        CTX.as_mut()
+            .unwrap()
+            .cache
+            .push(alloc::fmt::format(format_args!("{:?}\n", entry)));
     }
 }
 

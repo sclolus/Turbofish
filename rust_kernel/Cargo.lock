@@ -119,6 +119,7 @@ version = "0.1.0"
 dependencies = [
  "irq 0.1.0",
  "libc_binding 0.1.0",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "messaging 0.1.0",
  "time 0.1.0",
 ]

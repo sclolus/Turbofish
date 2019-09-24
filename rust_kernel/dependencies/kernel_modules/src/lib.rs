@@ -8,6 +8,7 @@ pub use writer::WRITER;
 
 pub use irq::Irq;
 pub use libc_binding::c_char;
+pub use log::Record;
 pub use messaging::MessageTo;
 pub use time::Date;
 
@@ -116,6 +117,8 @@ pub struct KeyboardConfig {
 pub struct ModReturn {
     /// Stop the module
     pub stop: fn(),
+    /// Configurable callback
+    pub configurable_callback: Option<ConfigurableCallback>,
     /// Specific module return
     pub spec: ModSpecificReturn,
 }
@@ -129,8 +132,8 @@ pub enum ModSpecificReturn {
     RTC(RTCReturn),
     /// The keyboard can be stopped but The kernel cannot ask it
     Keyboard(KeyboardReturn),
-    /// The Syslog can be stopped and should give his callback to the kernel
-    Syslog(SyslogReturn),
+    /// The Syslog can be stopped
+    Syslog,
 }
 
 /// Return parameters of the RTC module
@@ -147,11 +150,19 @@ pub struct KeyboardReturn {
     pub reboot_computer: fn(),
 }
 
-/// Return parameters of the RTC module
 #[derive(Copy, Clone)]
-pub struct SyslogReturn {
-    /// Give a syslog entry to the module
-    pub add_entry: fn(&str),
+pub enum KernelEvent {
+    Log,
+}
+
+/// Unsafe configurable module callback
+/// The module asks the kernel to call this function when evt 'when' happened
+#[derive(Copy, Clone)]
+pub struct ConfigurableCallback {
+    /// Type of the Event
+    pub when: KernelEvent,
+    /// Generique function address
+    pub what: u32,
 }
 
 /// The allocators methods are passed by the kernel while module is initialized

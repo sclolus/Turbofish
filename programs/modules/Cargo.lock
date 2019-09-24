@@ -16,6 +16,11 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "cfg-if"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "const_assert"
 version = "0.1.0"
 
@@ -59,6 +64,7 @@ version = "0.1.0"
 dependencies = [
  "irq 0.1.0",
  "libc_binding 0.1.0",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "messaging 0.1.0",
  "time 0.1.0",
 ]
@@ -86,6 +92,14 @@ version = "0.1.0"
 dependencies = [
  "bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "const_assert 0.1.0",
+]
+
+[[package]]
+name = "log"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -123,6 +137,7 @@ dependencies = [
  "kernel_modules 0.1.0",
  "keyboard 0.1.0",
  "libc_binding 0.1.0",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "messaging 0.1.0",
 ]
 
@@ -134,3 +149,5 @@ version = "0.1.0"
 "checksum bit_field 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a165d606cf084741d4ac3a28fb6e9b1eb0bd31f6cd999098cfddb0b2ab381dc0"
 "checksum bit_field 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ed8765909f9009617974ab6b7d332625b320b33c326b1e9321382ef1999b5d56"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"
+"checksum cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "b486ce3ccf7ffd79fdeb678eac06a9e6c09fc88d33836340becb8fffe87c5e33"
+"checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
