@@ -30,6 +30,34 @@ impl TtyFileOperation {
     }
 }
 
+/// Taken directly from the rust std Utf8Error doc.
+fn from_utf8_lossy<F>(mut input: &[u8], mut push: F)
+where
+    F: FnMut(&str),
+{
+    loop {
+        match ::core::str::from_utf8(input) {
+            Ok(valid) => {
+                push(valid);
+                break;
+            }
+            Err(error) => {
+                let (valid, after_valid) = input.split_at(error.valid_up_to());
+                let to_push =
+                    ::core::str::from_utf8(valid).expect("Valid str from res should be valid...");
+                push(to_push);
+                // push("\u{FFFD}");
+
+                if let Some(invalid_sequence_length) = error.error_len() {
+                    input = &after_valid[invalid_sequence_length..]
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+}
+
 /// Main Trait implementation of TtyFileOperation
 impl FileOperation for TtyFileOperation {
     fn register(&mut self, _flags: OpenFlags) {}
@@ -49,8 +77,9 @@ impl FileOperation for TtyFileOperation {
         }
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        print_tty!(self.controlling_terminal, "{}", unsafe {
-            core::str::from_utf8_unchecked(buf)
+        // This skips invalid utf8 sequences.
+        from_utf8_lossy(buf, |to_print| {
+            print_tty!(self.controlling_terminal, "{}", to_print)
         });
         Ok(IpcResult::Done(buf.len() as _))
     }

@@ -136,15 +136,21 @@ pub extern "C" fn cpu_panic_handler(s: c_str, ext_reg: ExtendedRegisters) -> () 
     loop {}
 }
 
+static mut IN_PANIC: bool = false;
 #[allow(dead_code)]
 pub fn panic_sa_mere(info: &PanicInfo) {
     unsafe {
         interrupts::disable();
+        let was_in_panic = IN_PANIC;
+        IN_PANIC = true;
+        if !was_in_panic {
+            eprintln!(
+                "Rust is on panic but it is not a segmentation fault !\n{:?}",
+                info.message()
+            );
+        }
     }
-    eprintln!(
-        "Rust is on panic but it is not a segmentation fault !\n{}",
-        info
-    );
+
     let ebp: *const u32;
     unsafe {
         asm!("mov eax, ebp" : "={eax}"(ebp) : : : "intel");
