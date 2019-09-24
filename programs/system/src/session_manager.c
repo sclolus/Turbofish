@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 int open_tty_device(const char *tty_device)
 {
@@ -49,29 +50,40 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 	return pid;
 }
 
+#define MAX_TTY 4
+#define BUF_LEN 42
+
 int main(int argc, char **argv, char **envp)
 {
-	pid_t _p1 = init_forker("/dev/tty1", argc, argv, envp);
-	pid_t _p2 = init_forker("/dev/tty2", argc, argv, envp);
-	pid_t _p3 = init_forker("/dev/tty3", argc, argv, envp);
-	pid_t _p4 = init_forker("/dev/tty4", argc, argv, envp);
+	char buf[BUF_LEN];
+	pid_t p[MAX_TTY];
 
-	(void)_p1;
-	(void)_p2;
-	(void)_p3;
-	(void)_p4;
+	// Create all the process
+	for (int i = 0; i < MAX_TTY; i++) {
+		snprintf(buf, BUF_LEN, "/dev/tty%i", i + 1);
+		p[i] = init_forker(buf, argc, argv, envp);
+	}
 
 	int status;
 
-	for (int i = 0; i < 4; i++) {
+	// In case of child exit, resurect him
+	while (true) {
 		pid_t ret = wait(&status);
 		if (ret < 0) {
 			int _fd = open_tty_device("/dev/tty1");
 
 			(void)_fd;
-			perror("init wait failed");
+			perror("session manager wait failed");
 			exit(1);
 		}
+		for (int i = 0; i < MAX_TTY; i++) {
+			if (p[i] == ret) {
+				snprintf(buf, BUF_LEN, "/dev/tty%i", i + 1);
+				p[i] = init_forker(buf, argc, argv, envp);
+				break;
+			}
+		}
+
 	}
 	return 0;
 }
