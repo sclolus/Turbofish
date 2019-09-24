@@ -42,7 +42,7 @@ SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
 	strequ strnequ \
 	putendl putnbr putnbr_base \
 	aligned_memcpy aligned_bzero strdup \
-	strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
+	strcspn strpbrk strspn strtod strtok strtoll strtoul strtoull strchrnul strerror \
 	strcoll
 VPATH += src/string
 HEADERS += string.h
@@ -53,10 +53,15 @@ SRC_C += beacon op_main modifiers extract_args \
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
 	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
+	sscanf fread \
 
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
 PRIVATE_HEADERS += internal_printf.h
+
+SRC_C += fpending
+VPATH += src/stdio_ext/
+HEADERS += stdio_ext.h
 
 SRC_C += ctor mem_syscall \
 	size_fn \
@@ -80,15 +85,19 @@ VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
+SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
 
 VPATH += src/stdlib
 HEADERS += stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown fchown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink
+SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown fchown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink sysconf
 
 VPATH += src/unistd
 HEADERS += unistd.h
+
+SRC_C += getopt_long
+VPATH += src/getopt_ext
+HEADERS += getopt.h getopt_ext.h
 
 SRC_C += mmap munmap mprotect
 VPATH += src/sys/mman
@@ -98,7 +107,7 @@ SRC_C += stat lstat fstat mkfifo umask chmod fchmod mkdir mknod
 VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
-SRC_C += select
+SRC_C += select fd_clr fd_isset fd_set fd_zero
 VPATH += src/sys/select/
 VPATH += sys/select.h
 
@@ -121,7 +130,7 @@ SRC_C += sched sched_setscheduler
 VPATH += src/sched
 HEADERS += sched.h
 
-SRC_C += nanosleep localtime time gmtime ctime asctime
+SRC_C += nanosleep localtime time gmtime ctime asctime strftime
 VPATH += src/time
 HEADERS += time.h
 
@@ -189,7 +198,7 @@ SRC_C += getgrnam getgrgid
 VPATH += src/grp
 HEADERS += grp.h
 
-SRC_C += strcasecmp
+SRC_C += strcasecmp strncasecmp
 VPATH += src/strings
 HEADERS += strings.h
 
@@ -209,6 +218,10 @@ SRC_C += setpriority getpriority
 VPATH += src/sys/resource
 HEADERS += sys/resource.h
 
+SRC_C += ioctl
+VPATH += src/stropts
+HEADERS += stropts.h  sys/ioctl.h
+
 
 SRC_C += is_ptr_valid
 VPATH += src/custom
@@ -221,7 +234,7 @@ HEADERS += sys/sysmacros.h
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils, dash, and procps
-HEADERS += getopt.h sys/ioctl.h sys/times.h libintl.h mntent.h netinet/in.h link.h elf.h
+HEADERS += getopt_ext.h malloc.h getopt.h  sys/times.h libintl.h mntent.h netinet/in.h link.h elf.h sys/ioctl.h
 
 HEADERS += ltrace/ltrace.h
 

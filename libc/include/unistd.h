@@ -125,7 +125,7 @@ int          symlinkat(const char *, int, const char *);
 //[XSI][Option Start]
 void         sync(void);
 //[Option End]
-long         sysconf(int);
+long	     sysconf(int name);
 pid_t        tcgetpgrp(int);
 int          tcsetpgrp(int, pid_t);
 int          truncate(const char *, off_t);

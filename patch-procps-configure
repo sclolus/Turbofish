@@ -1,0 +1,25 @@
+--- procps-origin/configure	2018-05-19 23:38:08.236717088 +0200
++++ procps-ng-3.3.15/configure	2019-09-24 03:44:46.580851698 +0200
+@@ -14646,7 +14646,7 @@
+   $as_echo_n "(cached) " >&6
+ else
+   if test "$cross_compiling" = yes; then :
+-  ac_cv_func_malloc_0_nonnull=no
++  ac_cv_func_malloc_0_nonnull=yes
+ else
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -14953,7 +14953,7 @@
+   $as_echo_n "(cached) " >&6
+ else
+   if test "$cross_compiling" = yes; then :
+-  ac_cv_func_realloc_0_nonnull=no
++  ac_cv_func_realloc_0_nonnull=yes
+ else
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -20169,4 +20169,3 @@
+   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
+ $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
+ fi
+-

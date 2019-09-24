@@ -115,8 +115,8 @@ struct tm *localtime(const time_t *);
 //[CX][Option Start]
 int        nanosleep(const struct timespec *, struct timespec *);
 //[Option End]
-//size_t     strftime(char *restrict, size_t, const char *restrict,
-//           const struct tm *restrict);
+size_t strftime(char *restrict s, size_t maxsize,
+       const char *restrict format, const struct tm *restrict timeptr);
 //[CX][Option Start]
 //size_t     strftime_l(char *restrict, size_t, const char *restrict,
 //               const struct tm *restrict, locale_t);

@@ -127,4 +127,5 @@ bindgen:
 unix:
 	./install_dash.sh
 	./install_coreutils.sh
+	./install_procps.sh
 	make
