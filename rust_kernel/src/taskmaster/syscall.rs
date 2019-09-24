@@ -1,7 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::fd_interface::Fd;
-use super::message;
+use super::kmodules;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -250,8 +250,10 @@ use isatty::sys_isatty;
 /*
  * Module kernel management
  */
-pub mod kernel_mod;
-use kernel_mod::{sys_insmod, sys_rmmod};
+mod insmod;
+use insmod::sys_insmod;
+mod rmmod;
+use rmmod::sys_rmmod;
 
 mod trace_syscall;
 

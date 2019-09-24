@@ -11,6 +11,7 @@ mod safe_ffi;
 mod signal_interface;
 mod syscall;
 
+mod kmodules;
 mod message;
 
 mod tests;

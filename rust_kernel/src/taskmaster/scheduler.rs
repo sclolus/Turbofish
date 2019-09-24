@@ -1,9 +1,9 @@
 //! this file contains the scheduler description
+use super::kmodules::KernelModules;
 use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, UserProcess};
 use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
-use super::syscall::kernel_mod::KernelModules;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
 use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
 use super::{SysResult, TaskMode};

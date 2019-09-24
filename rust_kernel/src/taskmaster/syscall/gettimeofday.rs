@@ -1,4 +1,4 @@
-use super::kernel_mod::CURRENT_UNIX_TIME;
+use super::kmodules::CURRENT_UNIX_TIME;
 use super::scheduler::SCHEDULER;
 use super::SysResult;
 use libc_binding::{timeval, timezone};

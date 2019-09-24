@@ -1,6 +1,6 @@
 use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::kmodules::CURRENT_UNIX_TIME;
 use super::sync::SmartMutex;
-use super::syscall::kernel_mod::CURRENT_UNIX_TIME;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
 

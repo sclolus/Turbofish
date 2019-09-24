@@ -1,7 +1,7 @@
-//! sys_rmmod() && sys_insmod
-
+//! This file contains all the stuff needed by Kernel Modules
+use super::message::push_message;
 use super::process::get_file_content;
-use super::scheduler::{Scheduler, SCHEDULER};
+use super::scheduler::Scheduler;
 use super::thread_group::Credentials;
 use super::vfs::{Path, VFS};
 use super::{IpcResult, SysResult};
@@ -15,7 +15,7 @@ use kernel_modules::{
     ForeignAllocMethods, KernelEvent, KernelSymbolList, KeyboardConfig, ModConfig, ModResult,
     ModReturn, ModSpecificReturn, RTCConfig, SymbolList,
 };
-use libc_binding::{c_char, Errno, FileType, OpenFlags};
+use libc_binding::{Errno, FileType, OpenFlags};
 use log::Record;
 use time::Date;
 
@@ -28,42 +28,6 @@ use crate::elf_loader::load_elf;
 use crate::memory::mmu::Entry;
 use crate::memory::tools::{AllocFlags, NbrPages, Page, Virt};
 use crate::memory::HIGH_KERNEL_MEMORY;
-
-use super::message::push_message;
-
-/// Insert a kernel module
-pub fn sys_insmod(modname: *const c_char) -> SysResult<u32> {
-    unpreemptible_context!({
-        let mut scheduler = SCHEDULER.lock();
-
-        let safe_modname = {
-            let v = scheduler
-                .current_thread_mut()
-                .unwrap_process_mut()
-                .get_virtual_allocator();
-
-            v.make_checked_str(modname)?
-        };
-        scheduler.insert_module(safe_modname)
-    })
-}
-
-/// Remove a kernel module
-pub fn sys_rmmod(modname: *const c_char) -> SysResult<u32> {
-    unpreemptible_context!({
-        let mut scheduler = SCHEDULER.lock();
-
-        let safe_modname = {
-            let v = scheduler
-                .current_thread_mut()
-                .unwrap_process_mut()
-                .get_virtual_allocator();
-
-            v.make_checked_str(modname)?
-        };
-        scheduler.remove_module(safe_modname)
-    })
-}
 
 /// Main structure
 pub struct KernelModules {
@@ -96,7 +60,7 @@ impl KernelModules {
 
 impl Scheduler {
     /// Try to insert a Kernel Module
-    fn insert_module(&mut self, modname: &str) -> SysResult<u32> {
+    pub fn insert_module(&mut self, modname: &str) -> SysResult<u32> {
         let (module_opt, module_pathname, mod_config) = match modname {
             "dummy" => (
                 &mut self.kernel_modules.dummy,
@@ -192,7 +156,7 @@ impl Scheduler {
     }
 
     /// Try to remove a kernel module
-    fn remove_module(&mut self, modname: &str) -> SysResult<u32> {
+    pub fn remove_module(&mut self, modname: &str) -> SysResult<u32> {
         let module_opt = match modname {
             "dummy" => &mut self.kernel_modules.dummy,
             "rtc" => &mut self.kernel_modules.rtc,
