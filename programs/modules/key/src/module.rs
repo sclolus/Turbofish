@@ -95,7 +95,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
 
         Ok(ModReturn {
             stop: drop_module,
-            configurable_callback: None,
+            configurable_callbacks_opt: None,
             spec: ModSpecificReturn::Keyboard(KeyboardReturn { reboot_computer }),
         })
     } else {

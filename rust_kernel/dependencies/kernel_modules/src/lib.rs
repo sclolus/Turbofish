@@ -14,9 +14,10 @@ pub use time::Date;
 
 use core::sync::atomic::AtomicU32;
 use core::{fmt, slice, str};
+extern crate alloc;
+use alloc::vec::Vec;
 
 /// This structure is passed zhen _start point of the module is invoqued
-#[derive(Copy, Clone)]
 pub struct SymbolList {
     /// Allow to debug the module
     pub write: fn(&str),
@@ -43,6 +44,7 @@ pub enum ModAddress {
 pub enum ModError {
     BadIdentification,
     DependencyNotSatisfied,
+    OutOfMemory,
 }
 
 /// Result of a _start request
@@ -65,7 +67,6 @@ impl Default for Status {
 }
 
 /// Status of all modules
-#[derive(Debug, Default, Copy, Clone)]
 pub struct ModStatus {
     /// Dummy module status
     pub dummy: Status,
@@ -78,7 +79,6 @@ pub struct ModStatus {
 }
 
 /// This enum describes kernel functions specifics that the module could call
-#[derive(Copy, Clone)]
 pub enum ModConfig {
     /// The dummy module need nothing !
     Dummy,
@@ -91,7 +91,6 @@ pub enum ModConfig {
 }
 
 /// Configuration parameters of the RTC module
-#[derive(Copy, Clone)]
 pub struct RTCConfig {
     /// Give ability to redirect an IDT entry to a specific function
     pub enable_irq: fn(Irq, unsafe extern "C" fn()),
@@ -102,7 +101,6 @@ pub struct RTCConfig {
 }
 
 /// Configuration parameters of the Keyboard module
-#[derive(Copy, Clone)]
 pub struct KeyboardConfig {
     /// Give ability to redirect an IDT entry to a specific function
     pub enable_irq: fn(Irq, unsafe extern "C" fn()),
@@ -113,18 +111,16 @@ pub struct KeyboardConfig {
 }
 
 /// Standard mod return
-#[derive(Copy, Clone)]
 pub struct ModReturn {
     /// Stop the module
     pub stop: fn(),
     /// Configurable callback
-    pub configurable_callback: Option<ConfigurableCallback>,
+    pub configurable_callbacks_opt: Option<Vec<ConfigurableCallback>>,
     /// Specific module return
     pub spec: ModSpecificReturn,
 }
 
 /// This module describes function specifics that the kernel could call
-#[derive(Copy, Clone)]
 pub enum ModSpecificReturn {
     /// The kernel cannot ask the Dummy module
     DummyReturn,
@@ -137,14 +133,12 @@ pub enum ModSpecificReturn {
 }
 
 /// Return parameters of the RTC module
-#[derive(Copy, Clone)]
 pub struct RTCReturn {
     /// Get the date from the RTC module
     pub read_date: fn() -> Date,
 }
 
 /// Return parameters of the Keyboard module
-#[derive(Copy, Clone)]
 pub struct KeyboardReturn {
     /// Enable to reboot computer with the PS2 controler
     pub reboot_computer: fn(),
@@ -152,12 +146,14 @@ pub struct KeyboardReturn {
 
 #[derive(Copy, Clone)]
 pub enum KernelEvent {
+    /// When a log entry is writed: Expected function prototype is fn(&Record)
     Log,
+    /// Call me each second if you can. Expected function prototype is fn()
+    Second,
 }
 
 /// Unsafe configurable module callback
 /// The module asks the kernel to call this function when evt 'when' happened
-#[derive(Copy, Clone)]
 pub struct ConfigurableCallback {
     /// Type of the Event
     pub when: KernelEvent,
@@ -179,7 +175,7 @@ pub struct ForeignAllocMethods {
 }
 
 /// This structure may contains all the kernel symbols list
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct KernelSymbolList(pub &'static [KernelSymbol]);
 
 /// Main implementation
@@ -208,7 +204,6 @@ impl KernelSymbolList {
 
 /// This C item represents a kernel symbol
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct KernelSymbol {
     pub address: u32,
     pub symtype: c_char,

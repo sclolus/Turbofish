@@ -14,3 +14,4 @@ keyboard = { path = "../dependencies/keyboard" }
 messaging = { path = "../dependencies/messaging" }
 interrupts = { path = "../dependencies/interrupts" }
 libc_binding = { path = "../dependencies/libc_binding" }
+fallible_collections = { path = "../dependencies/fallible_collections" }

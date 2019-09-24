@@ -132,15 +132,19 @@ impl Scheduler {
         })
         .map_err(|_e| Errno::EINVAL)?;
 
-        if let Some(configurable_callback) = mod_return.configurable_callback {
-            match configurable_callback.when {
-                KernelEvent::Log => {
-                    // We assume that a function bindable to Log event has fn(&Record) prototype.
-                    // Yes, it is really really unsafe... But Louis is asking for that
-                    let p: fn(&Record) =
-                        unsafe { core::mem::transmute(configurable_callback.what) };
-                    unsafe {
-                        terminal::log::LOGGER.bind(p);
+        if let Some(configurable_callbacks) = &mod_return.configurable_callbacks_opt {
+            for elem in configurable_callbacks.iter() {
+                match elem.when {
+                    KernelEvent::Log => {
+                        // We assume that a function bindable to Log event has fn(&Record) prototype.
+                        // Yes, it is really really unsafe... But Louis is asking for that
+                        let p: fn(&Record) = unsafe { core::mem::transmute(elem.what) };
+                        unsafe {
+                            terminal::log::LOGGER.bind(p);
+                        }
+                    }
+                    KernelEvent::Second => {
+                        // TODO: Implements that one day
                     }
                 }
             }
@@ -174,11 +178,17 @@ impl Scheduler {
             }
             Some(module) => {
                 // Disable callbacks
-                if let Some(configurable_callback) = module.mod_return.configurable_callback {
-                    match configurable_callback.when {
-                        KernelEvent::Log => unsafe {
-                            terminal::log::LOGGER.unbind();
-                        },
+                if let Some(configurable_callbacks) = &module.mod_return.configurable_callbacks_opt
+                {
+                    for elem in configurable_callbacks.iter() {
+                        match elem.when {
+                            KernelEvent::Log => unsafe {
+                                terminal::log::LOGGER.unbind();
+                            },
+                            KernelEvent::Second => {
+                                // TODO: Implements that one day
+                            }
+                        }
                     }
                 }
                 // Halt the module
@@ -192,7 +202,7 @@ impl Scheduler {
     /// Keyboard driver method specific
     pub fn reboot_computer(&self) {
         if let Some(keyboard) = &self.kernel_modules.keyboard {
-            if let ModSpecificReturn::Keyboard(keyboard_return) = keyboard.mod_return.spec {
+            if let ModSpecificReturn::Keyboard(keyboard_return) = &keyboard.mod_return.spec {
                 (keyboard_return.reboot_computer)();
             } else {
                 panic!("Unexpected error");
@@ -205,7 +215,7 @@ impl Scheduler {
     /// RTC driver method specific
     pub fn read_date(&self) -> Date {
         if let Some(rtc) = &self.kernel_modules.rtc {
-            if let ModSpecificReturn::RTC(rtc_return) = rtc.mod_return.spec {
+            if let ModSpecificReturn::RTC(rtc_return) = &rtc.mod_return.spec {
                 (rtc_return.read_date)()
             } else {
                 panic!("Unexpected error");

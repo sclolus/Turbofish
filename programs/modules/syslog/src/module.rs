@@ -9,6 +9,7 @@ static mut CTX: Option<Ctx> = None;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use fallible_collections::{try_vec, vec::FallibleVec};
 use libc_binding::Errno;
 use log::Record;
 
@@ -34,15 +35,21 @@ impl Ctx {
             cache: Vec::new(),
         }
     }
+
+    /// Write stored log entry onto the syslog
+    fn write_to_syslog(&mut self) {
+        for item in self.cache.iter() {
+            (self.write_syslog)(item).expect("Woot ?");
+        }
+        self.cache.clear();
+    }
 }
 
 /// Drop boilerplate implementation
 impl Drop for Ctx {
     fn drop(&mut self) {
         // Fflush the cache into the syslog file
-        for item in self.cache.iter() {
-            (self.write_syslog)(item).expect("Woot ?");
-        }
+        self.write_to_syslog();
         print!("Syslog Context droped !");
     }
 }
@@ -60,14 +67,25 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
             match add_syslog_entry {
                 None => Err(ModError::DependencyNotSatisfied),
                 Some(addr) => {
+                    let configurable_callbacks_opt: Option<Vec<ConfigurableCallback>> = Some(
+                        try_vec!(
+                            ConfigurableCallback {
+                                when: KernelEvent::Log,
+                                what: add_entry as u32,
+                            },
+                            ConfigurableCallback {
+                                when: KernelEvent::Second,
+                                what: fflush_syslog as u32,
+                            }
+                        )
+                        .map_err(|_| ModError::OutOfMemory)?,
+                    );
+
                     let write_syslog: fn(&str) -> Result<(), Errno> = core::mem::transmute(addr);
                     CTX = Some(Ctx::new(symtab_list.kernel_symbol_list, write_syslog));
                     Ok(ModReturn {
                         stop: drop_module,
-                        configurable_callback: Some(ConfigurableCallback {
-                            when: KernelEvent::Log,
-                            what: add_entry as u32,
-                        }),
+                        configurable_callbacks_opt,
                         spec: ModSpecificReturn::Syslog,
                     })
                 }
@@ -81,11 +99,19 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
 /// Store a log entry into the module memory
 fn add_entry(entry: &Record) {
     unsafe {
-        // TODO: Make it faillible one day
-        CTX.as_mut()
+        // TODO: Make alloc::fmt::try_format for fallible context one day
+        let _r = CTX
+            .as_mut()
             .unwrap()
             .cache
-            .push(alloc::fmt::format(format_args!("{:?}\n", entry)));
+            .try_push(alloc::fmt::format(format_args!("{:?}\n", entry)));
+    }
+}
+
+/// Write the syslog cache into the file
+fn fflush_syslog() {
+    unsafe {
+        CTX.as_mut().unwrap().write_to_syslog();
     }
 }
 

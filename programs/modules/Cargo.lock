@@ -33,6 +33,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fallible_collections"
+version = "0.1.0"
+
+[[package]]
 name = "i386"
 version = "0.1.0"
 dependencies = [
@@ -133,6 +137,7 @@ dependencies = [
 name = "syslog"
 version = "0.1.0"
 dependencies = [
+ "fallible_collections 0.1.0",
  "interrupts 0.1.0",
  "kernel_modules 0.1.0",
  "keyboard 0.1.0",
