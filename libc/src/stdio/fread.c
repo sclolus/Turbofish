@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <ltrace.h>
 
 # warning MISSING TESTS for fread
 
 size_t fread(void *restrict ptr, size_t size, size_t nitems,
        FILE *restrict stream)
 {
+	TRACE
 	size_t	count = 0;
 	uint8_t	*buf;
 

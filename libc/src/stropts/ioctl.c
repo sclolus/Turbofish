@@ -1,3 +1,4 @@
+#include <ltrace.h>
 #include <stropts.h>
 #include <errno.h>
 
@@ -26,6 +27,7 @@
  * described below.  */
 int ioctl(int fildes, int request, ... /* arg */)
 {
+	TRACE
 	errno = ENOSYS;
 	return - 1;
 }

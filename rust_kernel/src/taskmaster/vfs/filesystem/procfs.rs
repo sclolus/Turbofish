@@ -46,6 +46,21 @@ pub use environ::EnvironDriver;
 mod cmdline;
 pub use cmdline::CmdlineDriver;
 
+mod proc_stat;
+pub use proc_stat::ProcStatDriver;
+
+mod uptime;
+pub use uptime::UptimeDriver;
+
+mod loadavg;
+pub use loadavg::LoadavgDriver;
+
+mod meminfo;
+pub use meminfo::MeminfoDriver;
+
+mod vmstat;
+pub use vmstat::VmstatDriver;
+
 use itertools::unfold;
 
 unsafe impl Send for ProcFs {}
@@ -191,7 +206,7 @@ impl ProcFs {
         let root_inode_id = new.new_inode_id(root_direntry.inode_id.inode_number);
         let root_direntry = new.dcache.get_entry_mut(&root_dir_id)?;
         root_direntry
-            .set_filename(Filename::try_from("ProcFsRoot").unwrap())
+            .set_filename(Filename::from_str_unwrap("ProcFsRoot"))
             .set_inode_id(root_inode_id);
 
         let inode = VfsInode::root_inode()?;
@@ -205,8 +220,14 @@ impl ProcFs {
         log::warn!("root_dir_id: {:?}", root_dir_id);
         new.inodes.try_insert(root_inode_id, inode)?;
 
-        let version_filename = Filename::try_from("version").unwrap();
-        let filesystems_filename = Filename::try_from("filesystems").unwrap();
+        let version_filename = Filename::from_str_unwrap("version");
+        let filesystems_filename = Filename::from_str_unwrap("filesystems");
+        let proc_stat_filename = Filename::from_str_unwrap("stat");
+        let uptime_filename = Filename::from_str_unwrap("uptime");
+        let loadavg_filename = Filename::from_str_unwrap("loadavg");
+        let meminfo_filename = Filename::from_str_unwrap("meminfo");
+        let vmstat_filename = Filename::from_str_unwrap("vmstat");
+
         new.register_file(
             root_dir_id,
             filesystems_filename,
@@ -216,6 +237,36 @@ impl ProcFs {
             root_dir_id,
             version_filename,
             Box::new(|| Box::new(version::VersionDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            proc_stat_filename,
+            Box::new(|| Box::new(proc_stat::ProcStatDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            uptime_filename,
+            Box::new(|| Box::new(uptime::UptimeDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            loadavg_filename,
+            Box::new(|| Box::new(loadavg::LoadavgDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            meminfo_filename,
+            Box::new(|| Box::new(meminfo::MeminfoDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            vmstat_filename,
+            Box::new(|| Box::new(vmstat::VmstatDriver)),
         )?;
 
         // Inserting divers basic procfs files.
@@ -424,7 +475,7 @@ impl FileSystem for ProcFs {
             self.pid_directories.remove(&(pid_directory, pid));
         }
 
-        let self_filename = Filename::try_from("self").expect("This filename should be valid");
+        let self_filename = Filename::from_str_unwrap("self");
 
         let self_dir_id = self
             .dcache
@@ -445,8 +496,7 @@ impl FileSystem for ProcFs {
         for thread_group in thread_groups {
             let pid = thread_group.pgid; // Is that so ?
             let pid_filename = format!("{}", pid); // unfaillible context
-            let pid_filename = Filename::try_from(pid_filename.as_str())
-                .expect("A Pid should a perfectly acceptable FileName");
+            let pid_filename = Filename::from_str_unwrap(pid_filename.as_str());
 
             if self
                 .children(root_dir_id)?
@@ -466,14 +516,14 @@ impl FileSystem for ProcFs {
             let dir_id = self.mkdir(root_dir_id, pid_filename, mode)?;
             self.pid_directories.try_insert((dir_id, pid))?;
 
-            let stat_filename = Filename::try_from("stat").expect("This filename should be valid");
+            let stat_filename = Filename::from_str_unwrap("stat");
             self.register_file(
                 dir_id,
                 stat_filename,
                 Box::new(move || Box::new(StatDriver::new(pid))),
             )?;
 
-            let cwd_filename = Filename::try_from("cwd").expect("This filename should be valid");
+            let cwd_filename = Filename::from_str_unwrap("cwd");
             let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
 
             self.symlink(dir_id, cwd_filename, cwd)?;
@@ -483,23 +533,21 @@ impl FileSystem for ProcFs {
             //     Box::new(move || Box::new(CwdDriver::new(pid))),
             // )?;
 
-            let environ_filename =
-                Filename::try_from("environ").expect("This filename should be valid");
+            let environ_filename = Filename::from_str_unwrap("environ");
             self.register_file(
                 dir_id,
                 environ_filename,
                 Box::new(move || Box::new(EnvironDriver::new(pid))),
             )?;
 
-            let cmdline_filename =
-                Filename::try_from("cmdline").expect("This filename should be valid");
+            let cmdline_filename = Filename::from_str_unwrap("cmdline");
             self.register_file(
                 dir_id,
                 cmdline_filename,
                 Box::new(move || Box::new(CmdlineDriver::new(pid))),
             )?;
 
-            let exe_filename = Filename::try_from("exe").expect("This filename should be valid");
+            let exe_filename = Filename::from_str_unwrap("exe");
             if let Some(filename) = &thread_group.filename {
                 self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
             }
@@ -516,6 +564,7 @@ impl FileSystem for ProcFs {
             // .map(|(_, dir)| dir)
             .find(|dir| dir.inode_id == inode_id)
             .expect("No corresponding directory for Inode");
+        eprintln!("Looking up Direntry: {}", direntry.filename);
 
         // eprintln!("Trying to access childs of {:?}", direntry.id);
 

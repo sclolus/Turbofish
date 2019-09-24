@@ -233,6 +233,18 @@ impl Filename {
             core::str::from_utf8_unchecked(slice)
         }
     }
+
+    /// Creates a new Filename instance from a &str that's guaranted to be a valid
+    /// filename.
+    ///
+    /// Panic:
+    /// - Panics if `s` is not a valid filename.
+    pub fn from_str_unwrap(s: &str) -> Self {
+        match Self::try_from(s) {
+            Err(e) => panic!("String slice: {} should be a valid Filename: {:?}", s, e),
+            Ok(filename) => filename,
+        }
+    }
 }
 
 impl Default for Filename {

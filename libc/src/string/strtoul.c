@@ -5,7 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-
+#include <ltrace.h>
 /*
  * Convert a string to an unsigned long integer.
  *
@@ -15,6 +15,7 @@
 
 unsigned long strtoul(const char *nptr, char **endptr, register int base)
 {
+	TRACE
 	register const char *s = nptr;
 	register unsigned long acc;
 	register int c;

@@ -1,6 +1,7 @@
 #include <ltrace.h>
 #include <strings.h>
 #include <ctype.h>
+#include <ltrace.h>
 
 int strncasecmp(const char *s1, const char *s2, size_t n)
 {

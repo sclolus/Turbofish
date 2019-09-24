@@ -6,13 +6,16 @@
 #include <ltrace.h>
 #include <custom.h>
 
+const static char   *C_LOCALE="C";
+const static char   *POSIX_LOCALE="POSIX";
+
 char *setlocale(int category, const char *locale)
 {
 	TRACE
 	DUMMY
 	(void)category;
 	(void)locale;
-	return NULL;
+	return C_LOCALE;
 }
 
 #warning BINDTEXTDOMAIN FUNCTION MUST BE DEFINED
