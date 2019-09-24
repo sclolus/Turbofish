@@ -16,6 +16,7 @@
 #![feature(try_trait)]
 #![feature(result_map_or_else)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 // #![deny(missing_docs)]
 
 extern crate itertools;

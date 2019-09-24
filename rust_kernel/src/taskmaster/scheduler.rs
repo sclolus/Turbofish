@@ -10,6 +10,8 @@ use super::{SysResult, TaskMode};
 
 mod dustman;
 use dustman::{dustman_handler, DUSTMAN_TRIGGER};
+mod second_callback;
+use second_callback::{second_callback_handler, SECOND_CALLBACK_TRIGGER};
 
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
@@ -89,12 +91,16 @@ pub struct Scheduler {
     current_task_id: (Pid, Tid),
     /// current process index in the running_process vector
     current_task_index: usize,
-    /// time interval in PIT tics between two schedules
-    time_interval: Option<u32>,
+    /// time interval in PIT tics between two schedules + microseconds between two PIT tics
+    time_interval: Option<(u32, u32)>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
     kernel_idle_process: Box<KernelProcess>,
     /// DustMan: The process Ripper
     dustman: Box<KernelProcess>,
+    /// Second Callback: Call modules each seconds
+    second_callback: Box<KernelProcess>,
+    /// Last PIT time when the second callback was launched
+    last_second_callback_pit_time: u32,
     /// Current mode of the scheduler
     mode: Mode,
     /// Indicate if scheduler is on exit routine
@@ -113,8 +119,22 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
 
-    // Switch to the next elligible process then return new kernel ESP
-    scheduler.load_next_process(1)
+    // TODO: It is just a POC of module callback called each seconds. Dont'y worry about the code
+    // In the future, it should be good to create real time structures for each events types
+    let pit_time = _get_pit_time();
+    if (pit_time - scheduler.last_second_callback_pit_time) * scheduler.time_interval.unwrap().1
+        >= 1000000
+    {
+        scheduler.last_second_callback_pit_time = pit_time;
+        // All the conditions are satisfied for the module callbaks call
+        SECOND_CALLBACK_TRIGGER.store(true, Ordering::Relaxed);
+        unpreemptible();
+        scheduler.mode = Mode::SecondCallback;
+        scheduler.second_callback.kernel_esp
+    } else {
+        // Switch to the next elligible process then return new kernel ESP
+        scheduler.load_next_process(1)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -122,6 +142,7 @@ enum Mode {
     Normal,
     Idle,
     DustMan,
+    SecondCallback,
 }
 
 /// Base Scheduler implementation
@@ -145,8 +166,13 @@ impl Scheduler {
             },
             dustman: unsafe {
                 KernelProcess::new(ProcessOrigin::KernelFunction(dustman_handler), None)
-                    .expect("Cannot assign Idle process to scheduler")
+                    .expect("Cannot assign DustMan to scheduler")
             },
+            second_callback: unsafe {
+                KernelProcess::new(ProcessOrigin::KernelFunction(second_callback_handler), None)
+                    .expect("Cannot assign Second Callback to scheduler")
+            },
+            last_second_callback_pit_time: unsafe { _get_pit_time() },
             mode: Mode::Normal,
             on_exit_routine: None,
         }
@@ -154,7 +180,7 @@ impl Scheduler {
 
     /// load the next process, returning the new_kernel_esp
     unsafe fn load_next_process(&mut self, next_process: usize) -> u32 {
-        _update_process_end_time(self.time_interval.unwrap());
+        _update_process_end_time(self.time_interval.unwrap().0);
 
         self.dispatch_messages();
         // Switch between processes
@@ -209,6 +235,9 @@ impl Scheduler {
             }
             DustMan => {
                 self.dustman.kernel_esp = kernel_esp;
+            }
+            SecondCallback => {
+                self.second_callback.kernel_esp = kernel_esp;
             }
         }
         self.mode = Normal;
@@ -280,6 +309,7 @@ impl Scheduler {
         use Mode::*;
         match self.mode {
             DustMan => self.dustman.kernel_esp,
+            SecondCallback => panic!("Cannot happen !"),
             Idle => self.kernel_idle_process.kernel_esp,
             Normal => {
                 let p = self.current_thread_mut();
@@ -834,21 +864,22 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             None
         }
         TaskMode::Multi(mut scheduler_frequency) => {
-            let mut period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
+            let pit0_frequency = PIT0.lock().get_frequency().unwrap();
+            let mut period = (pit0_frequency / scheduler_frequency) as u32;
             // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
             // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
             // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
             // this is a critical point. Never change that without a serious good reason.
             if period < 2 {
                 log::warn!("Too high frequency detected ! Setting period divisor to 2");
-                scheduler_frequency = PIT0.lock().get_frequency().unwrap() / 2.;
+                scheduler_frequency = pit0_frequency / 2.;
                 period = 2;
             }
             log::info!(
                 "Scheduler initialised at frequency: {:?} hz",
                 scheduler_frequency
             );
-            Some(period)
+            Some((period, (1000000. / pit0_frequency) as _))
         }
     };
 
@@ -867,7 +898,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     log::info!("Starting processes");
 
     match t {
-        Some(v) => _update_process_end_time(v),
+        Some(v) => _update_process_end_time(v.0),
         None => _update_process_end_time(-1 as i32 as u32),
     }
 

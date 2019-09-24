@@ -35,6 +35,7 @@ pub struct KernelModules {
     rtc: Option<Module>,
     keyboard: Option<Module>,
     syslog: Option<Module>,
+    pub second_cycle: Vec<fn()>,
 }
 
 #[allow(dead_code)]
@@ -54,6 +55,7 @@ impl KernelModules {
             rtc: None,
             keyboard: None,
             syslog: None,
+            second_cycle: Vec::new(),
         }
     }
 }
@@ -133,18 +135,35 @@ impl Scheduler {
         .map_err(|_e| Errno::EINVAL)?;
 
         if let Some(configurable_callbacks) = &mod_return.configurable_callbacks_opt {
+            // Ensure we have suffisant memory before binding something
+            let mut second_cycle_chunk_reserved = 0;
+            for elem in configurable_callbacks.iter() {
+                match elem.when {
+                    KernelEvent::Second => second_cycle_chunk_reserved += 1,
+                    _ => {}
+                }
+            }
+            self.kernel_modules
+                .second_cycle
+                .try_reserve(second_cycle_chunk_reserved)?;
+
+            // Bind callbacks
             for elem in configurable_callbacks.iter() {
                 match elem.when {
                     KernelEvent::Log => {
                         // We assume that a function bindable to Log event has fn(&Record) prototype.
                         // Yes, it is really really unsafe... But Louis is asking for that
+                        // LOGGER is on a direct binding. Not passing through Scheduler
                         let p: fn(&Record) = unsafe { core::mem::transmute(elem.what) };
                         unsafe {
+                            // It is a shame that only one module can be binded to the log !
                             terminal::log::LOGGER.bind(p);
                         }
                     }
                     KernelEvent::Second => {
-                        // TODO: Implements that one day
+                        // We assume that a function bindable to Log event has fn() prototype.
+                        let p: fn() = unsafe { core::mem::transmute(elem.what) };
+                        self.kernel_modules.second_cycle.push(p);
                     }
                 }
             }
@@ -186,7 +205,12 @@ impl Scheduler {
                                 terminal::log::LOGGER.unbind();
                             },
                             KernelEvent::Second => {
-                                // TODO: Implements that one day
+                                let p: fn() = unsafe { core::mem::transmute(elem.what) };
+                                let _r = self
+                                    .kernel_modules
+                                    .second_cycle
+                                    .drain_filter(|elem| *elem == p)
+                                    .collect::<Vec<_>>();
                             }
                         }
                     }
