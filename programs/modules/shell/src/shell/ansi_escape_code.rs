@@ -82,7 +82,7 @@ impl<'a> Iterator for IterEscaped<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ansi_escape_code::color::{AnsiColor, Colored};
+    use crate::shell::ansi_escape_code::color::{AnsiColor, Colored};
     #[test]
     fn test_iter_escape() {
         use EscapedItem::*;

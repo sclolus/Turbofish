@@ -93,7 +93,7 @@ mod test {
         // println!("{}", Forward(10));
 
         let cursors = [
-            Pos(crate::Pos {
+            Pos(crate::shell::ansi_escape_code::cursor::Pos {
                 line: 1,
                 column: 42,
             }),
