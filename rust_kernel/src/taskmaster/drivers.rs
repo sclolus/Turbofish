@@ -9,7 +9,7 @@ use super::Credentials;
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::{FifoDriver, FifoFileOperation, Pipe, Socket};
+pub use ipc::{socket::Whom, FifoDriver, FifoFileOperation, Pipe, SocketDgram, SocketStream};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -95,11 +95,16 @@ pub trait FileOperation: core::fmt::Debug + Send {
     }
 
     fn bind(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
-        Err(Errno::ENOSYS)
+        Err(Errno::ENOTSOCK)
     }
 
-    fn connect(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
-        Err(Errno::ENOSYS)
+    fn connect(
+        &mut self,
+        _cwd: &Path,
+        _creds: &Credentials,
+        _sockaddr: Path,
+    ) -> SysResult<IpcResult<()>> {
+        Err(Errno::ENOTSOCK)
     }
 
     fn send_to(
@@ -108,7 +113,7 @@ pub trait FileOperation: core::fmt::Debug + Send {
         _buf: &[u8],
         _flags: u32,
         _sockaddr_opt: Option<Path>,
-    ) -> SysResult<u32> {
+    ) -> SysResult<IpcResult<u32>> {
         Err(Errno::ENOSYS)
     }
 
@@ -117,7 +122,15 @@ pub trait FileOperation: core::fmt::Debug + Send {
         _buf: &mut [u8],
         _flags: u32,
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
-        Err(Errno::ENOSYS)
+        Err(Errno::ENOTSOCK)
+    }
+
+    fn listen(&mut self, _backlog: i32) -> SysResult<()> {
+        Err(Errno::ENOTSOCK)
+    }
+
+    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+        Err(Errno::ENOTSOCK)
     }
 }
 
@@ -140,15 +153,36 @@ pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self, flags: OpenFlags)
         -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
-    fn send_from(&mut self, _buf: &[u8], _flags: u32, _sender: Option<Path>) -> SysResult<u32> {
+
+    fn send_from(
+        &mut self,
+        _buf: &[u8],
+        _flags: u32,
+        _sender: Option<Path>,
+        _whom: Whom,
+    ) -> SysResult<IpcResult<u32>> {
         Err(Errno::ENOSYS)
     }
+
     fn recv_from(
         &mut self,
         _buf: &mut [u8],
         _flags: u32,
+        _whom: Whom,
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         Err(Errno::ENOSYS)
+    }
+
+    fn connect(&mut self, _addr: Option<Path>, _inode_id: InodeId) -> SysResult<IpcResult<()>> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn listen(&mut self, _backlog: i32) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+        Err(Errno::ENOTSOCK)
     }
 }
 

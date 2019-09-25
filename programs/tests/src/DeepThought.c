@@ -70,6 +70,10 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/socket/sockstream"},
+	{.path = "/bin/socket/sockdgram"},
+	{.path = "/bin/socket/sockdgram_connect"},
+	{.path = "/bin/socket/sockdgram_recvfrom"},
 	{.path = "/bin/fchown/fchown_fails_if_not_owner"},
 	{.path = "/bin/chown_tests/chown_fails_if_not_owner"},
 	{.path = "/bin/fchmod/fchmod_fails_if_not_owner"},

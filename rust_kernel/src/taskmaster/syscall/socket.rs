@@ -11,6 +11,7 @@ pub type SocketArgsPtr = *const u8;
 use super::thread::WaitingState;
 use super::vfs::{posix_consts::PATH_MAX, Path, VFS};
 use core::mem::transmute;
+use fallible_collections::TryClone;
 use libc_binding::c_char;
 use libc_binding::Errno;
 
@@ -239,7 +240,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         use CallType::*;
         match call {
             SysSocket => {
-                dbg!("socket");
                 v.check_user_ptr::<SocketArgs>(args as *const SocketArgs)?;
                 drop(v);
                 let SocketArgs {
@@ -255,7 +255,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysBind => {
-                dbg!("bind");
                 v.check_user_ptr::<BindArgs>(args as *const BindArgs)?;
                 let BindArgs {
                     socket_fd,
@@ -267,7 +266,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 bind(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysConnect => {
-                dbg!("connect");
                 v.check_user_ptr::<ConnectArgs>(args as *const ConnectArgs)?;
                 let ConnectArgs {
                     socket_fd,
@@ -276,34 +274,35 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 } = unsafe { *(args as *const ConnectArgs) };
                 let sockaddr = (&v, addr as *const u8, addr_len as usize).try_into()?;
                 drop(v);
-                connect(&mut scheduler, socket_fd as i32, sockaddr)
+                drop(scheduler);
+                connect(socket_fd as i32, sockaddr)
             }
             SysListen => {
-                dbg!("listen");
                 v.check_user_ptr::<ListenArgs>(args as *const ListenArgs)?;
                 drop(v);
                 let ListenArgs { socket_fd, backlog } = unsafe { *(args as *const ListenArgs) };
                 listen(&mut scheduler, socket_fd as i32, backlog as i32)
             }
             SysAccept => {
-                dbg!("accept");
                 v.check_user_ptr::<AcceptArgs>(args as *const AcceptArgs)?;
-                drop(v);
                 let AcceptArgs {
                     socket_fd,
                     addr,
                     addr_len,
                 } = unsafe { *(args as *const AcceptArgs) };
-                // UNSAFE pointers are passed to accept(). The syscall MUST check them before filling
-                accept(
-                    &mut scheduler,
-                    socket_fd as i32,
-                    addr as *mut u8,
-                    addr_len as *mut SockLen,
-                )
+                let addr = {
+                    let addr = addr as *mut SockaddrUnix;
+                    if addr.is_null() {
+                        None
+                    } else {
+                        Some(v.make_checked_ref_mut(addr)?)
+                    }
+                };
+                drop(v);
+                drop(scheduler);
+                accept(socket_fd as i32, addr, addr_len as *mut SockLen)
             }
             SysSend => {
-                dbg!("send");
                 v.check_user_ptr::<SendArgs>(args as *const SendArgs)?;
                 let SendArgs {
                     socket_fd,
@@ -313,10 +312,10 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 } = unsafe { *(args as *const SendArgs) };
                 let mem = v.make_checked_slice(buf as *const u8, len as usize)?;
                 drop(v);
-                send_to(&mut scheduler, socket_fd as i32, mem, flags, None)
+                drop(scheduler);
+                send_to(socket_fd as i32, mem, flags, None)
             }
             SysRecv => {
-                dbg!("recv");
                 v.check_user_ptr::<RecvArgs>(args as *const RecvArgs)?;
                 let RecvArgs {
                     socket_fd,
@@ -330,7 +329,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 recv_from(socket_fd as i32, mem, flags, None, core::ptr::null_mut())
             }
             SysSendTo => {
-                dbg!("sendto");
                 v.check_user_ptr::<SendToArgs>(args as *const SendToArgs)?;
                 let SendToArgs {
                     socket_fd,
@@ -347,10 +345,10 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                     None
                 };
                 drop(v);
-                send_to(&mut scheduler, socket_fd as i32, mem, flags, sockaddr_opt)
+                drop(scheduler);
+                send_to(socket_fd as i32, mem, flags, sockaddr_opt)
             }
             SysRecvFrom => {
-                dbg!("recvfrom");
                 v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
                 let RecvFromArgs {
                     socket_fd,
@@ -380,7 +378,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysShutdown => {
-                dbg!("shutdown");
                 v.check_user_ptr::<ShutdownArgs>(args as *const ShutdownArgs)?;
                 drop(v);
                 let ShutdownArgs { socket_fd, how } = unsafe { *(args as *const ShutdownArgs) };
@@ -409,6 +406,8 @@ safe_convertible_enum!(
         SockStream = 1,
         /// Connectionless, unreliable messages of a fixed maximum length
         SockDgram = 2,
+        /// Seqpacket
+        SockSeqPacket = 3,
     }
 );
 
@@ -432,15 +431,15 @@ fn socket(
     scheduler: &mut Scheduler,
     domain: Domain,
     socket_type: SocketType,
-    protocol: u32,
+    _protocol: u32,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        domain,
-        socket_type,
-        protocol
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?}",
+    //     function!(),
+    //     domain,
+    //     socket_type,
+    //     protocol
+    // );
     let tg = scheduler.current_thread_group_mut();
     let fd_interface = &mut tg
         .thread_group_state
@@ -464,7 +463,7 @@ raw_deferencing_struct!(
 );
 
 fn bind(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
 
     let tg = scheduler.current_thread_group_mut();
     let creds = &tg.credentials;
@@ -473,7 +472,7 @@ fn bind(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysRes
         .thread_group_state
         .unwrap_running_mut()
         .file_descriptor_interface;
-    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
     let path = sockaddr.try_into()?;
     file_operation.bind(&cwd, creds, path)
 }
@@ -492,18 +491,37 @@ raw_deferencing_struct!(
     }
 );
 
-fn connect(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
-    let tg = scheduler.current_thread_group_mut();
-    let creds = &tg.credentials;
-    let cwd = &tg.cwd;
-    let fd_interface = &mut tg
-        .thread_group_state
-        .unwrap_running_mut()
-        .file_descriptor_interface;
-    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
-    let path = sockaddr.try_into()?;
-    file_operation.connect(&cwd, creds, path)
+fn connect(socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
+    let path: Path = sockaddr.try_into()?;
+    unpreemptible_context!({
+        loop {
+            let mut scheduler = SCHEDULER.lock();
+
+            let tg = scheduler.current_thread_group_mut();
+            let creds = &tg.credentials;
+            let cwd = &tg.cwd;
+            let fd_interface = &mut tg
+                .thread_group_state
+                .unwrap_running_mut()
+                .file_descriptor_interface;
+            let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
+            let res = file_operation.connect(cwd, creds, path.try_clone()?)?;
+            drop(file_operation);
+            drop(tg);
+            match res {
+                IpcResult::Wait(_, file_op_uid) => {
+                    scheduler
+                        .current_thread_mut()
+                        .set_waiting(WaitingState::Connect(file_op_uid));
+                    let _ret = auto_preempt()?;
+                }
+                IpcResult::Done(_) => {
+                    return Ok(0);
+                }
+            }
+        }
+    })
 }
 
 raw_deferencing_struct!(
@@ -518,8 +536,14 @@ raw_deferencing_struct!(
     }
 );
 
-fn listen(_scheduler: &mut Scheduler, socket_fd: i32, backlog: i32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, backlog);
+fn listen(scheduler: &mut Scheduler, socket_fd: i32, backlog: i32) -> SysResult<u32> {
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, backlog);
+    let fd_interface = &mut scheduler
+        .current_thread_group_mut()
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
+    file_operation.listen(backlog)?;
     Ok(0)
 }
 
@@ -539,19 +563,47 @@ raw_deferencing_struct!(
 
 // This function cannot be completely safe by nature of theses functionalities.
 fn accept(
-    _scheduler: &mut Scheduler,
     socket_fd: i32,
-    sockaddr: *mut u8,
-    sockaddr_len: *mut SockLen,
+    sockaddr: Option<&mut SockaddrUnix>,
+    _sockaddr_len: *mut SockLen,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        sockaddr,
-        sockaddr_len
-    );
-    Ok(0)
+    // println!(
+    //     "{:?}: {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     sockaddr,
+    //     sockaddr_len
+    // );
+    loop {
+        unpreemptible_context!({
+            let mut scheduler = SCHEDULER.lock();
+            let fd_interface = &mut scheduler
+                .current_thread_group_mut()
+                .unwrap_running_mut()
+                .file_descriptor_interface;
+            let res = fd_interface.accept_socket(socket_fd as u32)?;
+            match res {
+                IpcResult::Wait(_res, file_op_uid) => {
+                    scheduler
+                        .current_thread_mut()
+                        .set_waiting(WaitingState::Accept(file_op_uid));
+                    let _ret = auto_preempt()?;
+                }
+                IpcResult::Done(res) => {
+                    let (fd, sender_path) = res;
+                    if let Some(sockaddr) = sockaddr {
+                        if let Some(sender_path) = sender_path {
+                            *sockaddr = SockaddrUnix {
+                                sun_family: SunFamily::AfUnix,
+                                sun_path: sender_path.try_into()?,
+                            }
+                        }
+                    }
+                    return Ok(fd);
+                }
+            }
+        })
+    }
 }
 
 raw_deferencing_struct!(
@@ -570,17 +622,6 @@ raw_deferencing_struct!(
     }
 );
 
-// fn send(_scheduler: &mut Scheduler, socket_fd: i32, buf: &[u8], flags: u32) -> SysResult<u32> {
-//     println!(
-//         "{:?}: {:?} {:?} {:?}",
-//         function!(),
-//         socket_fd,
-//         unsafe { core::str::from_utf8_unchecked(buf) },
-//         flags
-//     );
-//     Ok(0)
-// }
-
 raw_deferencing_struct!(
     /// Arguments for recv() function
     #[derive(Debug, Copy, Clone)]
@@ -596,17 +637,6 @@ raw_deferencing_struct!(
         flags: u32,
     }
 );
-
-// fn recv(_scheduler: &mut Scheduler, socket_fd: i32, buf: &mut [u8], flags: u32) -> SysResult<u32> {
-//     println!(
-//         "{:?}: {:?} {:?} {:?}",
-//         function!(),
-//         socket_fd,
-//         unsafe { core::str::from_utf8_unchecked(buf) },
-//         flags
-//     );
-//     Ok(0)
-// }
 
 raw_deferencing_struct!(
     /// Arguments for send_to() function
@@ -629,34 +659,54 @@ raw_deferencing_struct!(
 );
 
 fn send_to(
-    scheduler: &mut Scheduler,
     socket_fd: i32,
     buf: &[u8],
     flags: u32,
     sockaddr_opt: Option<Sockaddr>,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        unsafe { core::str::from_utf8_unchecked(buf) },
-        flags,
-        sockaddr_opt
-    );
-    let tg = scheduler.current_thread_group_mut();
-    let cwd = &tg.cwd;
-    let creds = &tg.credentials;
-    let fd_interface = &mut tg
-        .thread_group_state
-        .unwrap_running_mut()
-        .file_descriptor_interface;
-    let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
+    // println!(
+    //     "{:?}: {:?} {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     unsafe { core::str::from_utf8_unchecked(buf) },
+    //     flags,
+    //     sockaddr_opt
+    // );
     let path = match sockaddr_opt {
-        Some(sockaddr) => Some(VFS.lock().resolve_path(cwd, creds, &sockaddr.try_into()?)?),
+        Some(sockaddr) => Some(sockaddr.try_into()?),
         None => None,
     };
-    file_operation.send_to(creds, buf, flags, path)?;
-    Ok(0)
+    loop {
+        unpreemptible_context!({
+            let mut scheduler = SCHEDULER.lock();
+            let tg = scheduler.current_thread_group_mut();
+            let cwd = &tg.cwd;
+            let creds = &tg.credentials;
+            let fd_interface = &mut tg
+                .thread_group_state
+                .unwrap_running_mut()
+                .file_descriptor_interface;
+            let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
+            let resolved_path = match &path {
+                Some(path) => Some(VFS.lock().resolve_path(cwd, creds, path)?),
+                None => None,
+            };
+            let res = file_operation.send_to(creds, buf, flags, resolved_path)?;
+            drop(file_operation);
+            drop(tg);
+            match res {
+                IpcResult::Wait(_res, file_op_uid) => {
+                    scheduler
+                        .current_thread_mut()
+                        .set_waiting(WaitingState::Write(file_op_uid));
+                    let _ret = auto_preempt()?;
+                }
+                IpcResult::Done(writen_bytes) => {
+                    return Ok(writen_bytes);
+                }
+            }
+        })
+    }
 }
 
 raw_deferencing_struct!(
@@ -685,25 +735,24 @@ fn recv_from(
     buf: &mut [u8],
     flags: u32,
     src_addr: Option<&mut SockaddrUnix>,
-    addr_len: *mut SockLen,
+    _addr_len: *mut SockLen,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        buf,
-        flags,
-        src_addr,
-        addr_len
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     buf,
+    //     flags,
+    //     src_addr,
+    //     addr_len
+    // );
     loop {
         unpreemptible_context!({
             let mut scheduler = SCHEDULER.lock();
             let fd_interface = &mut scheduler
                 .current_thread_group_running_mut()
                 .file_descriptor_interface;
-            let res =
-                (&mut fd_interface.get_file_operation(socket_fd as u32)?).recv_from(buf, flags)?;
+            let res = (fd_interface.get_file_operation(socket_fd as u32)?).recv_from(buf, flags)?;
             match res {
                 IpcResult::Wait(_res, file_op_uid) => {
                     scheduler
@@ -739,7 +788,7 @@ raw_deferencing_struct!(
     }
 );
 
-fn shutdown(_scheduler: &mut Scheduler, socket_fd: i32, how: u32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
+fn shutdown(_scheduler: &mut Scheduler, _socket_fd: i32, _how: u32) -> SysResult<u32> {
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
     Ok(0)
 }

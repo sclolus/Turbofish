@@ -662,6 +662,26 @@ impl Scheduler {
                         thread.set_running();
                     });
             }
+            MessageTo::Accepter { uid_file_op } => {
+                self.iter_thread_mut()
+                    .find(|thread| {
+                        thread.get_waiting_state() == Some(&WaitingState::Accept(uid_file_op))
+                    })
+                    .map(|thread| {
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        thread.set_running();
+                    });
+            }
+            MessageTo::Connecter { uid_file_op } => {
+                self.iter_thread_mut()
+                    .find(|thread| {
+                        thread.get_waiting_state() == Some(&WaitingState::Connect(uid_file_op))
+                    })
+                    .map(|thread| {
+                        thread.set_return_value_autopreempt(Ok(AutoPreemptReturnValue::None));
+                        thread.set_running();
+                    });
+            }
             MessageTo::Writer { uid_file_op } => {
                 self.iter_thread_mut()
                     .find(|thread| {

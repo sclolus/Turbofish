@@ -12,7 +12,7 @@ use core::convert::TryFrom;
 
 use libc_binding::{Errno, FileType, OpenFlags};
 
-use super::drivers::ipc::{Pipe, Socket};
+use super::drivers::ipc::{Pipe, SocketDgram, SocketStream};
 use alloc::sync::Arc;
 
 use fallible_collections::btree::BTreeMap;
@@ -184,8 +184,34 @@ impl FileDescriptorInterface {
         domain: socket::Domain,
         socket_type: socket::SocketType,
     ) -> SysResult<Fd> {
-        let file_operator = Arc::try_new(DeadMutex::new(Socket::new(domain, socket_type)?))?;
+        let file_operator: Arc<DeadMutex<dyn FileOperation>> = match socket_type {
+            socket::SocketType::SockDgram => {
+                Arc::try_new(DeadMutex::new(SocketDgram::new(domain, socket_type)?))?
+            }
+            socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
+                Arc::try_new(DeadMutex::new(SocketStream::new(domain, socket_type)?))?
+            }
+        };
         self.insert_user_fd(OpenFlags::O_RDWR, file_operator)
+    }
+
+    pub fn accept_socket(&mut self, socket_fd: u32) -> SysResult<IpcResult<(u32, Option<Path>)>> {
+        let mut file_operation = self.get_file_operation(socket_fd)?;
+        let res = file_operation.accept()?;
+        drop(file_operation);
+
+        Ok(match res {
+            IpcResult::Wait(_res, file_op_uid) => IpcResult::Wait((0, None), file_op_uid),
+            IpcResult::Done(socket_stream) => {
+                let socket_stream = socket_stream.expect("socket stream should be there");
+                let sender_path = socket_stream.path.try_clone()?;
+                let new_fd = self.insert_user_fd(
+                    OpenFlags::O_RDWR,
+                    Arc::new(DeadMutex::new(socket_stream)) as Arc<DeadMutex<dyn FileOperation>>,
+                )?;
+                IpcResult::Done((new_fd, sender_path))
+            }
+        })
     }
 }
 

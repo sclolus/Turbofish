@@ -28,6 +28,7 @@
  */
 #define SOCK_STREAM 1 // Connection-oriented
 #define SOCK_DGRAM 2  // Connectionless
+#define SOCK_SEQPACKET 3  // Connection-oriented
 
 struct sockaddr;      // Opaque pointer to avoid compilation errors or warnings
 

@@ -18,7 +18,7 @@ use sync::DeadMutex;
 #[derive(Debug)]
 pub struct Inode {
     inode_data: InodeData,
-    driver: Box<dyn Driver>,
+    pub driver: Box<dyn Driver>,
     /// a reference counter of open file operation on this inode
     nbr_open_file_operation: usize,
     /// if true, the inode need to be unlink when
@@ -118,6 +118,10 @@ impl Inode {
 
     pub fn get_driver(&mut self) -> &mut dyn Driver {
         &mut *self.driver as &mut dyn Driver
+    }
+
+    pub fn set_driver(&mut self, new_driver: Box<dyn Driver>) {
+        self.driver = new_driver;
     }
 }
 

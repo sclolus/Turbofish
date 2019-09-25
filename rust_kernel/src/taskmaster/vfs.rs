@@ -1,7 +1,4 @@
-use super::drivers::{
-    ipc::{FifoDriver, SocketDriver},
-    DefaultDriver, Driver, Ext2DriverFile, FileOperation,
-};
+use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
@@ -123,7 +120,7 @@ impl VirtualFileSystem {
             if inode_data.is_fifo() {
                 Box::try_new(FifoDriver::try_new(inode_data.id)?)?
             } else if inode_data.is_socket() {
-                Box::try_new(SocketDriver::try_new()?)?
+                Box::try_new(DefaultDriver)?
             } else {
                 // TODO: handle others drivers
                 Box::try_new(Ext2DriverFile::new(inode_data.id))?
@@ -690,10 +687,11 @@ impl VirtualFileSystem {
         let inode_id = corresponding_inode.get_id();
         if corresponding_inode.close() {
             self.inodes.remove(&inode_id).expect("no such inode");
-            let fs = self.get_filesystem(inode_id).expect("no filesystem");
-            fs.lock()
-                .remove_inode(inode_id.inode_number)
-                .expect("remove inode failed");
+            if let Some(fs) = self.get_filesystem(inode_id) {
+                fs.lock()
+                    .remove_inode(inode_id.inode_number)
+                    .expect("remove inode failed");
+            }
         }
     }
 
@@ -1086,6 +1084,25 @@ impl VirtualFileSystem {
         let new_entry_id = self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         let new_entry = self.dcache.get_entry(&new_entry_id)?;
         Ok(new_entry.inode_id)
+    }
+
+    /// create an inode which contains the driver and is not connected by a direntry
+    pub fn add_orphan_driver(&mut self, driver: Box<dyn Driver>) -> SysResult<InodeId> {
+        let mut inode_data: InodeData = Default::default();
+        let new_inode_id = self.get_available_id(None);
+        inode_data.id = new_inode_id;
+        let new_inode = Inode::new(
+            Arc::try_new(DeadMutex::new(DeadFileSystem))?,
+            driver,
+            inode_data,
+        );
+        self.add_inode(new_inode)?;
+        Ok(new_inode_id)
+    }
+
+    pub fn remove_orphan_driver(&mut self, inode_id: InodeId) -> SysResult<Box<dyn Driver>> {
+        let inode = self.inodes.remove(&inode_id).ok_or(ENOENT)?;
+        Ok(inode.driver)
     }
 
     // TODO: Sticky bit (EPERM condition in posix) is not implemented for now.
