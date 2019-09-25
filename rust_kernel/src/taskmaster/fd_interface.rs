@@ -188,7 +188,7 @@ impl FileDescriptorInterface {
             socket::SocketType::SockDgram => {
                 Arc::try_new(DeadMutex::new(SocketDgram::new(domain, socket_type)?))?
             }
-            socket::SocketType::SockStream => {
+            socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
                 Arc::try_new(DeadMutex::new(SocketStream::new(domain, socket_type)?))?
             }
         };

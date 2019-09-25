@@ -13,8 +13,9 @@ use super::VFS;
 
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
+use alloc::vec::Vec;
 use core::cmp;
-use fallible_collections::{FallibleBox, TryClone};
+use fallible_collections::{FallibleBox, FallibleVec, TryClone};
 use libc_binding::{Errno, FileType, OpenFlags};
 use messaging::MessageTo;
 
@@ -35,28 +36,93 @@ pub enum Whom {
 
 use Whom::*;
 
+#[derive(Debug, Default)]
+struct StreamedMessaging {
+    buf: Buf,
+    index: usize,
+}
+
+impl StreamedMessaging {
+    fn new() -> Self {
+        Default::default()
+    }
+}
+
+#[derive(Debug)]
+pub struct Packet {
+    /// the data of the message
+    buf: Vec<u8>,
+    // /// the sender
+    // sender: Option<Path>,
+}
+
+impl Packet {
+    fn try_new(slice: &[u8]) -> SysResult<Self> {
+        let mut buf = Vec::new();
+        buf.try_extend_from_slice(slice)?;
+        Ok(Self { buf })
+    }
+}
+
+#[derive(Debug)]
+struct PacketedMessaging {
+    messages: VecDeque<Packet>,
+}
+
+impl PacketedMessaging {
+    fn new() -> Self {
+        Self {
+            messages: VecDeque::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Messaging {
+    Streamed(StreamedMessaging),
+    Packeted(PacketedMessaging),
+}
+
+use Messaging::*;
+
+impl Messaging {
+    fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
+        Ok(match socket_type {
+            socket::SocketType::SockStream => Self::Streamed(StreamedMessaging::new()),
+            socket::SocketType::SockSeqPacket => Self::Packeted(PacketedMessaging::new()),
+            _ => panic!("wrong socket type"),
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct SocketStreamDriver {
+    socket_type: socket::SocketType,
     listen_queue: Option<VecDeque<Connection>>,
     file_op_uid: usize,
-    buf_to_server: Buf,
-    to_server_index: usize,
-    buf_to_client: Buf,
-    to_client_index: usize,
+    messaging_to_server: Messaging,
+    messaging_to_client: Messaging,
+    // buf_to_server: Buf,
+    // to_server_index: usize,
+    // buf_to_client: Buf,
+    // to_client_index: usize,
 }
 
 impl SocketStreamDriver {
     const DEFAULT_LISTEN_QUEUE_CAPACITY: usize = 10;
 
-    pub fn try_new() -> SysResult<Self> {
+    pub fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
         let file_op_uid = get_file_op_uid();
         Ok(SocketStreamDriver {
+            socket_type,
             listen_queue: None,
             file_op_uid,
-            buf_to_server: Default::default(),
-            to_server_index: Default::default(),
-            buf_to_client: Default::default(),
-            to_client_index: Default::default(),
+            messaging_to_client: Messaging::try_new(socket_type)?,
+            messaging_to_server: Messaging::try_new(socket_type)?,
+            // buf_to_server: Default::default(),
+            // to_server_index: Default::default(),
+            // buf_to_client: Default::default(),
+            // to_client_index: Default::default(),
         })
     }
 
@@ -68,27 +134,58 @@ impl SocketStreamDriver {
         _sender: Option<Path>,
         whom: Whom,
     ) -> SysResult<IpcResult<u32>> {
-        let (self_buf, current_index) = match whom {
-            Client => (&mut self.buf_to_server, &mut self.to_server_index),
-            Server => (&mut self.buf_to_client, &mut self.to_client_index),
-        };
-        let min = cmp::min(buf.len(), Buf::BUF_SIZE - *current_index);
+        match self.socket_type {
+            socket::SocketType::SockStream => {
+                let (self_buf, current_index) = match whom {
+                    Client => match &mut self.messaging_to_server {
+                        Streamed(StreamedMessaging { buf, index }) => (buf, index),
+                        _ => panic!("wrong socket type"),
+                    },
+                    Server => match &mut self.messaging_to_client {
+                        Streamed(StreamedMessaging { buf, index }) => (buf, index),
+                        _ => panic!("wrong socket type"),
+                    },
+                };
+                let min = cmp::min(buf.len(), Buf::BUF_SIZE - *current_index);
 
-        self_buf[*current_index..*current_index + min].copy_from_slice(&buf[..min]);
-        *current_index += min;
+                self_buf[*current_index..*current_index + min].copy_from_slice(&buf[..min]);
+                *current_index += min;
 
-        // If the writer has writed something into the pipe...
-        if min > 0 {
-            unsafe {
-                messaging::send_message(MessageTo::Reader {
-                    uid_file_op: self.file_op_uid,
-                });
+                // If the writer has writed something into the pipe...
+                if min > 0 {
+                    unsafe {
+                        messaging::send_message(MessageTo::Reader {
+                            uid_file_op: self.file_op_uid,
+                        });
+                    }
+                }
+                if min == buf.len() {
+                    Ok(IpcResult::Done(min as _))
+                } else {
+                    Ok(IpcResult::Wait(min as _, self.file_op_uid))
+                }
             }
-        }
-        if min == buf.len() {
-            Ok(IpcResult::Done(min as _))
-        } else {
-            Ok(IpcResult::Wait(min as _, self.file_op_uid))
+            socket::SocketType::SockSeqPacket => {
+                let messages = match whom {
+                    Client => match &mut self.messaging_to_server {
+                        Packeted(PacketedMessaging { messages }) => messages,
+                        _ => panic!("wrong socket type"),
+                    },
+                    Server => match &mut self.messaging_to_client {
+                        Packeted(PacketedMessaging { messages }) => messages,
+                        _ => panic!("wrong socket type"),
+                    },
+                };
+                messages.try_reserve(1)?;
+                messages.push_back(Packet::try_new(buf)?);
+                unsafe {
+                    messaging::send_message(MessageTo::Reader {
+                        uid_file_op: self.file_op_uid,
+                    });
+                }
+                Ok(IpcResult::Done(buf.len() as u32))
+            }
+            _ => panic!("wrong socket type"),
         }
     }
 
@@ -98,36 +195,69 @@ impl SocketStreamDriver {
         _flags: u32,
         whom: Whom,
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
-        let (self_buf, current_index) = match whom {
-            Client => (&mut self.buf_to_client, &mut self.to_client_index),
-            Server => (&mut self.buf_to_server, &mut self.to_server_index),
-        };
+        match self.socket_type {
+            socket::SocketType::SockStream => {
+                let (self_buf, current_index) = match whom {
+                    Client => match &mut self.messaging_to_client {
+                        Streamed(StreamedMessaging { buf, index }) => (buf, index),
+                        _ => panic!("wrong socket type"),
+                    },
+                    Server => match &mut self.messaging_to_server {
+                        Streamed(StreamedMessaging { buf, index }) => (buf, index),
+                        _ => panic!("wrong socket type"),
+                    },
+                };
 
-        if *current_index == 0 {
-            // if self.output_ref == 0 {
-            //     // Writers are gone, returns immediatly
-            //     return Ok(IpcResult::Done(0));
-            // } else {
-            // Waiting for a writer
-            return Ok(IpcResult::Wait((0, None), self.file_op_uid));
-            // }
+                if *current_index == 0 {
+                    // if self.output_ref == 0 {
+                    //     // Writers are gone, returns immediatly
+                    //     return Ok(IpcResult::Done(0));
+                    // } else {
+                    // Waiting for a writer
+                    return Ok(IpcResult::Wait((0, None), self.file_op_uid));
+                    // }
+                }
+
+                let min = cmp::min(buf.len(), *current_index);
+
+                // memcpy(buf, self_buf, MIN(buf.len(), *current_index)
+                buf[..min].copy_from_slice(&self_buf[..min]);
+
+                // memcpy(self_buf, self_buf + MIN(buf.len(), *current_index), *current_index - MIN(buf.len(), *current_index))
+                self_buf.copy_within(min..*current_index, 0);
+                *current_index -= min;
+
+                unsafe {
+                    messaging::send_message(MessageTo::Writer {
+                        uid_file_op: self.file_op_uid,
+                    });
+                }
+                Ok(IpcResult::Done((min as _, None)))
+            }
+            socket::SocketType::SockSeqPacket => {
+                let messages = match whom {
+                    Client => match &mut self.messaging_to_client {
+                        Packeted(PacketedMessaging { messages }) => messages,
+                        _ => panic!("wrong socket type"),
+                    },
+                    Server => match &mut self.messaging_to_server {
+                        Packeted(PacketedMessaging { messages }) => messages,
+                        _ => panic!("wrong socket type"),
+                    },
+                };
+                let message = messages.pop_front();
+                Ok(match message {
+                    Some(message) => {
+                        let min = cmp::min(buf.len(), message.buf.len());
+                        buf[0..min].copy_from_slice(&message.buf[0..min]);
+                        IpcResult::Done((min as u32, None))
+                    }
+                    // fill the file_op_uid field of IpcResult::Wait
+                    None => IpcResult::Wait((0, None), self.file_op_uid),
+                })
+            }
+            _ => panic!("wrong socket type"),
         }
-
-        let min = cmp::min(buf.len(), *current_index);
-
-        // memcpy(buf, self_buf, MIN(buf.len(), *current_index)
-        buf[..min].copy_from_slice(&self_buf[..min]);
-
-        // memcpy(self_buf, self_buf + MIN(buf.len(), *current_index), *current_index - MIN(buf.len(), *current_index))
-        self_buf.copy_within(min..*current_index, 0);
-        *current_index -= min;
-
-        unsafe {
-            messaging::send_message(MessageTo::Writer {
-                uid_file_op: self.file_op_uid,
-            });
-        }
-        Ok(IpcResult::Done((min as _, None)))
     }
 
     pub(super) fn connect(
@@ -139,8 +269,8 @@ impl SocketStreamDriver {
         // O_NONBLOCK is not set for the file descriptor for the
         // socket, connect() shall block for up to an unspecified
         // timeout interval until the connection is established
-        let listen_queue = dbg!(self.listen_queue.as_mut()).ok_or(Errno::ECONNREFUSED)?;
-        if dbg!(listen_queue.len() == listen_queue.capacity()) {
+        let listen_queue = self.listen_queue.as_mut().ok_or(Errno::ECONNREFUSED)?;
+        if listen_queue.len() == listen_queue.capacity() {
             return Err(Errno::ECONNREFUSED);
         }
         listen_queue.push_back(Connection {
@@ -248,12 +378,20 @@ impl SocketStream {
 impl FileOperation for SocketStream {
     fn register(&mut self, _flags: OpenFlags) {}
     fn unregister(&mut self, _flags: OpenFlags) {}
-    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        unimplemented!();
+
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        Ok(match self.recv_from(buf, 0)? {
+            IpcResult::Done((readen_bytes, _path)) => IpcResult::Done(readen_bytes),
+            IpcResult::Wait((readen_bytes, _path), file_op_uid) => {
+                IpcResult::Wait(readen_bytes, file_op_uid)
+            }
+        })
     }
-    fn write(&mut self, _buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        unimplemented!();
+
+    fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
+        self.send_to(buf, 0, None)
     }
+
     fn bind(&mut self, cwd: &Path, creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
         let mut vfs = VFS.lock();
         let inode_id = vfs.mknod(cwd, creds, sockaddr.try_clone()?, FileType::UNIX_SOCKET)?;

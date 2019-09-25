@@ -240,7 +240,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
         use CallType::*;
         match call {
             SysSocket => {
-                dbg!("socket");
                 v.check_user_ptr::<SocketArgs>(args as *const SocketArgs)?;
                 drop(v);
                 let SocketArgs {
@@ -256,7 +255,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysBind => {
-                dbg!("bind");
                 v.check_user_ptr::<BindArgs>(args as *const BindArgs)?;
                 let BindArgs {
                     socket_fd,
@@ -268,7 +266,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 bind(&mut scheduler, socket_fd as i32, sockaddr)
             }
             SysConnect => {
-                dbg!("connect");
                 v.check_user_ptr::<ConnectArgs>(args as *const ConnectArgs)?;
                 let ConnectArgs {
                     socket_fd,
@@ -281,14 +278,12 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 connect(socket_fd as i32, sockaddr)
             }
             SysListen => {
-                dbg!("listen");
                 v.check_user_ptr::<ListenArgs>(args as *const ListenArgs)?;
                 drop(v);
                 let ListenArgs { socket_fd, backlog } = unsafe { *(args as *const ListenArgs) };
                 listen(&mut scheduler, socket_fd as i32, backlog as i32)
             }
             SysAccept => {
-                dbg!("accept");
                 v.check_user_ptr::<AcceptArgs>(args as *const AcceptArgs)?;
                 let AcceptArgs {
                     socket_fd,
@@ -308,7 +303,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 accept(socket_fd as i32, addr, addr_len as *mut SockLen)
             }
             SysSend => {
-                dbg!("send");
                 v.check_user_ptr::<SendArgs>(args as *const SendArgs)?;
                 let SendArgs {
                     socket_fd,
@@ -322,7 +316,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 send_to(socket_fd as i32, mem, flags, None)
             }
             SysRecv => {
-                dbg!("recv");
                 v.check_user_ptr::<RecvArgs>(args as *const RecvArgs)?;
                 let RecvArgs {
                     socket_fd,
@@ -336,7 +329,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 recv_from(socket_fd as i32, mem, flags, None, core::ptr::null_mut())
             }
             SysSendTo => {
-                dbg!("sendto");
                 v.check_user_ptr::<SendToArgs>(args as *const SendToArgs)?;
                 let SendToArgs {
                     socket_fd,
@@ -357,7 +349,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 send_to(socket_fd as i32, mem, flags, sockaddr_opt)
             }
             SysRecvFrom => {
-                dbg!("recvfrom");
                 v.check_user_ptr::<RecvFromArgs>(args as *const RecvFromArgs)?;
                 let RecvFromArgs {
                     socket_fd,
@@ -387,7 +378,6 @@ pub fn sys_socketcall(call_type: u32, args: SocketArgsPtr) -> SysResult<u32> {
                 )
             }
             SysShutdown => {
-                dbg!("shutdown");
                 v.check_user_ptr::<ShutdownArgs>(args as *const ShutdownArgs)?;
                 drop(v);
                 let ShutdownArgs { socket_fd, how } = unsafe { *(args as *const ShutdownArgs) };
@@ -416,6 +406,8 @@ safe_convertible_enum!(
         SockStream = 1,
         /// Connectionless, unreliable messages of a fixed maximum length
         SockDgram = 2,
+        /// Seqpacket
+        SockSeqPacket = 3,
     }
 );
 
@@ -441,13 +433,13 @@ fn socket(
     socket_type: SocketType,
     protocol: u32,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        domain,
-        socket_type,
-        protocol
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?}",
+    //     function!(),
+    //     domain,
+    //     socket_type,
+    //     protocol
+    // );
     let tg = scheduler.current_thread_group_mut();
     let fd_interface = &mut tg
         .thread_group_state
@@ -471,7 +463,7 @@ raw_deferencing_struct!(
 );
 
 fn bind(scheduler: &mut Scheduler, socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
 
     let tg = scheduler.current_thread_group_mut();
     let creds = &tg.credentials;
@@ -500,7 +492,7 @@ raw_deferencing_struct!(
 );
 
 fn connect(socket_fd: i32, sockaddr: Sockaddr) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, sockaddr);
     let path: Path = sockaddr.try_into()?;
     unpreemptible_context!({
         loop {
@@ -545,7 +537,7 @@ raw_deferencing_struct!(
 );
 
 fn listen(scheduler: &mut Scheduler, socket_fd: i32, backlog: i32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, backlog);
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, backlog);
     let fd_interface = &mut scheduler
         .current_thread_group_mut()
         .unwrap_running_mut()
@@ -575,13 +567,13 @@ fn accept(
     sockaddr: Option<&mut SockaddrUnix>,
     sockaddr_len: *mut SockLen,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        sockaddr,
-        sockaddr_len
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     sockaddr,
+    //     sockaddr_len
+    // );
     loop {
         unpreemptible_context!({
             let mut scheduler = SCHEDULER.lock();
@@ -672,14 +664,14 @@ fn send_to(
     flags: u32,
     sockaddr_opt: Option<Sockaddr>,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        unsafe { core::str::from_utf8_unchecked(buf) },
-        flags,
-        sockaddr_opt
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     unsafe { core::str::from_utf8_unchecked(buf) },
+    //     flags,
+    //     sockaddr_opt
+    // );
     let path = match sockaddr_opt {
         Some(sockaddr) => Some(sockaddr.try_into()?),
         None => None,
@@ -744,15 +736,15 @@ fn recv_from(
     src_addr: Option<&mut SockaddrUnix>,
     addr_len: *mut SockLen,
 ) -> SysResult<u32> {
-    println!(
-        "{:?}: {:?} {:?} {:?} {:?} {:?}",
-        function!(),
-        socket_fd,
-        buf,
-        flags,
-        src_addr,
-        addr_len
-    );
+    // println!(
+    //     "{:?}: {:?} {:?} {:?} {:?} {:?}",
+    //     function!(),
+    //     socket_fd,
+    //     buf,
+    //     flags,
+    //     src_addr,
+    //     addr_len
+    // );
     loop {
         unpreemptible_context!({
             let mut scheduler = SCHEDULER.lock();
@@ -796,6 +788,6 @@ raw_deferencing_struct!(
 );
 
 fn shutdown(_scheduler: &mut Scheduler, socket_fd: i32, how: u32) -> SysResult<u32> {
-    println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
+    // println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
     Ok(0)
 }

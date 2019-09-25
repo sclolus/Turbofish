@@ -34,7 +34,9 @@ pub enum SocketDriver {
 impl SocketDriver {
     pub fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
         Ok(match socket_type {
-            socket::SocketType::SockStream => Self::Stream(SocketStreamDriver::try_new()?),
+            socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
+                Self::Stream(SocketStreamDriver::try_new(socket_type)?)
+            }
             socket::SocketType::SockDgram => Self::Dgram(SocketDgramDriver::try_new()?),
         })
     }
