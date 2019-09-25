@@ -556,7 +556,10 @@ impl Process for KernelProcess {
     }
 
     unsafe fn context_switch(&self) {
-        // Context_switch is not necessary for a kernel process
+        KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            .as_ref()
+            .unwrap()
+            .context_switch();
     }
 }
 

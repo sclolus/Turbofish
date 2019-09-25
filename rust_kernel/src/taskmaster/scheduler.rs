@@ -477,6 +477,10 @@ impl Scheduler {
     /// Call the DustMan to trash a process
     pub fn set_dustman_mode(&mut self) -> u32 {
         self.mode = Mode::DustMan;
+        // Don't forget to switch on the DustMan CR3/PD Context
+        unsafe {
+            self.dustman.context_switch();
+        }
         self.dustman.kernel_esp
     }
 
@@ -747,6 +751,7 @@ impl Scheduler {
                             status: s,
                         }));
                     }
+
                     if finded && (s == Status::Stopped || s == Status::Continued) {
                         // consume the state, because at the return of
                         // auto_preempt after scheduling, the state
