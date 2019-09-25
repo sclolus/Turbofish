@@ -163,10 +163,7 @@ void	redirect_into_logging_file(int fd, char *into, size_t test_id)
 	int redirect_fd = open(filename, O_CREAT | O_EXCL | O_RDWR, 0777);
 	assert(redirect_fd != -1);
 	printf(GREEN "Created logging file for %s: %s\n" WHITE, into, filename);
-	// dup2 does not seems to work...
-	/* assert(redirect_fd == dup2(fd, redirect_fd)); */
-	close(fd);
-	assert(fd == dup(redirect_fd));
+	assert(fd == dup2(redirect_fd, fd));
 }
 
 void launch_test(size_t i) {
