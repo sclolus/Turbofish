@@ -57,7 +57,12 @@ impl Inode {
                 self.inode_data.set_size(0);
             }
         }
-        let res = self.driver.open(flags)?;
+        let mut res = self.driver.open(flags)?;
+        if flags.contains(OpenFlags::O_APPEND) {
+            if let IpcResult::Done(file_op) = &mut res {
+                file_op.lock().set_file_offset(self.inode_data.size);
+            }
+        }
         self.nbr_open_file_operation += 1;
         Ok(res)
     }
@@ -88,10 +93,12 @@ impl Inode {
     }
     pub fn write(&mut self, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
         // TODO: update size in inode data
-        Ok(self
-            .filesystem
-            .lock()
-            .write(self.id.inode_number, offset, buf)? as u32)
+        let (count, inode_data) =
+            self.filesystem
+                .lock()
+                .write(self.id.inode_number, offset, buf)?;
+        self.inode_data.size = inode_data.size;
+        Ok(count as u32)
     }
     pub fn read(&mut self, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
         if self.inode_data.is_directory() {

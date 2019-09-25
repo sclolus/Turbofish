@@ -80,6 +80,7 @@ SRC_C += MasterDeepThought \
 		open/open_o_creat_is_denied_for_unwritable_parent \
 		opendir/opendir_is_denied_on_unreachable \
 		open/o_trunc \
+		open/o_append \
 
 VPATH += src/open src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown fifo/fifo src/opendir src/link
 

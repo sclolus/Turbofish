@@ -44,6 +44,10 @@ impl Ext2FileOperation {
 }
 
 impl FileOperation for Ext2FileOperation {
+    fn set_file_offset(&mut self, offset: u64) {
+        self.offset = offset;
+    }
+
     fn get_inode_id(&self) -> SysResult<InodeId> {
         Ok(self.inode_id)
     }

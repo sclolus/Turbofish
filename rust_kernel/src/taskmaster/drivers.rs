@@ -40,6 +40,9 @@ pub trait FileOperation: core::fmt::Debug + Send {
 
     /// Invoqued quen a FD is droped
     fn unregister(&mut self, _flags: OpenFlags) {}
+
+    fn set_file_offset(&mut self, _offset: u64) {}
+
     fn lseek(&mut self, _offset: off_t, _whence: Whence) -> SysResult<off_t> {
         Err(Errno::EINVAL)
     }

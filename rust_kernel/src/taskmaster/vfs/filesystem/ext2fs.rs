@@ -171,8 +171,14 @@ impl FileSystem for Ext2fs {
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
 
-    fn write(&mut self, inode_number: u32, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
-        Ok(self.ext2.lock().write(inode_number, offset, buf)? as u32)
+    fn write(
+        &mut self,
+        inode_number: u32,
+        offset: &mut u64,
+        buf: &[u8],
+    ) -> SysResult<(u32, InodeData)> {
+        let (count, inode_data) = self.ext2.lock().write(inode_number, offset, buf)?;
+        Ok((count as u32, inode_data.into()))
     }
 
     fn read(&mut self, inode_number: u32, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
