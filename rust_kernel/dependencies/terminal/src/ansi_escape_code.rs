@@ -39,15 +39,8 @@ pub enum EscapedItem<'a> {
     Str(&'a str),
 }
 
-fn assert_str_is_valid(s: &str) {
-    assert!(s.is_char_boundary(0));
-    assert!(s.is_char_boundary(s.len()));
-    ::core::str::from_utf8(s.as_bytes()).expect("What the actual fuck...");
-}
-
 impl<'a> Iterator for IterEscaped<'a> {
     type Item = EscapedItem<'a>;
-    #[no_mangle]
     fn next(&mut self) -> Option<Self::Item> {
         use EscapedItem::*;
         if self.off >= self.s.len() {
