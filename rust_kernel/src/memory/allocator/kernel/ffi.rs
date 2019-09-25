@@ -1,4 +1,30 @@
 use super::*;
+/// FFI safe function: Allocate Kernel physical Memory
+/// kmalloc like a boss
+#[no_mangle]
+pub unsafe extern "C" fn kmalloc(size: usize) -> *mut u8 {
+    match Layout::from_size_align(size, 16) {
+        Err(_) => 0 as *mut u8,
+        Ok(layout) => match &mut KERNEL_ALLOCATOR {
+            KernelAllocator::Bootstrap(_) => {
+                panic!("Attempting to kmalloc while in bootstrap allocator")
+            }
+            KernelAllocator::Kernel(a) => {
+                if layout.size() <= PAGE_SIZE {
+                    a.alloc(layout).unwrap_or(Virt(0x0)).0 as *mut u8
+                } else {
+                    KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                        .as_mut()
+                        .unwrap()
+                        .alloc(layout.size().into(), AllocFlags::KERNEL_MEMORY)
+                        .unwrap_or(Page::containing(Virt(0x0)))
+                        .to_addr()
+                        .0 as *mut u8
+                }
+            }
+        },
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> *mut u8 {
@@ -6,7 +32,7 @@ pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> 
         KernelAllocator::Bootstrap(_) => {
             panic!("Attempting to kreserve while in bootstrap allocator")
         }
-        KernelAllocator::Kernel => {
+        KernelAllocator::Kernel(_) => {
             HIGH_KERNEL_MEMORY
                 .as_mut()
                 .unwrap()
@@ -23,11 +49,49 @@ pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> 
     }
 }
 
+/// FFI safe function: De-allocate Kernel physical Memory
+#[no_mangle]
+pub unsafe extern "C" fn kfree(addr: *mut u8) {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(a) => {
+            if let Err(_) = a.free(Virt(addr as usize)) {
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .free(Page::containing(Virt(addr as usize)))
+                    .expect("Pointer being free'd was not allocated");
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Attempting to free while in bootstrap allocator"),
+    }
+}
+
+/// FFI safe function: Get the internal size of a kmalloc allocation
+#[no_mangle]
+pub unsafe extern "C" fn ksize(addr: *mut u8) -> usize {
+    match &mut KERNEL_ALLOCATOR {
+        KernelAllocator::Kernel(a) => {
+            let res = a.ksize(Virt(addr as usize));
+            if let Err(_) = res {
+                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                    .as_mut()
+                    .unwrap()
+                    .ksize(Page::containing(Virt(addr as usize)))
+                    .map(|nbr_pages| nbr_pages.to_bytes())
+                    .expect("Cannot get ksize of pages chunk in VirtualPageAllocator")
+            } else {
+                res.expect("Cannot get ksize of pages chunk in Slab allocator")
+            }
+        }
+        KernelAllocator::Bootstrap(_) => panic!("Bootstrap allocator does not implement ksize()"),
+    }
+}
+
 /// FFI safe function: Allocate Kernel virtual Memory
 #[no_mangle]
 pub unsafe extern "C" fn vmalloc(size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel => {
+        KernelAllocator::Kernel(_) => {
             KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
@@ -44,7 +108,7 @@ pub unsafe extern "C" fn vmalloc(size: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn vfree(addr: *mut u8) {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+        KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
             .unwrap()
             .free(Page::containing(Virt(addr as usize)))
@@ -57,7 +121,7 @@ pub unsafe extern "C" fn vfree(addr: *mut u8) {
 #[no_mangle]
 pub unsafe extern "C" fn vsize(addr: *mut u8) -> usize {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+        KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
             .as_mut()
             .unwrap()
             .ksize(Page::containing(Virt(addr as usize)))
@@ -71,7 +135,7 @@ pub unsafe extern "C" fn vsize(addr: *mut u8) -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn map(phy_addr: *mut u8, size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel => {
+        KernelAllocator::Kernel(_) => {
             let addr = Phys(phy_addr as usize);
             match KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().map_addr(
                 addr.into(),
@@ -91,7 +155,7 @@ pub unsafe extern "C" fn map(phy_addr: *mut u8, size: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn unmap(virt_addr: *mut u8, size: usize) -> i32 {
     match &mut KERNEL_ALLOCATOR {
-        KernelAllocator::Kernel => {
+        KernelAllocator::Kernel(_) => {
             let addr = Virt(virt_addr as usize);
             match KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap().unmap_addr(
                 addr.into(),
@@ -112,7 +176,7 @@ pub unsafe extern "C" fn unmap(virt_addr: *mut u8, size: usize) -> i32 {
 pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
     unsafe {
         match &mut KERNEL_ALLOCATOR {
-            KernelAllocator::Kernel => KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            KernelAllocator::Kernel(_) => KERNEL_VIRTUAL_PAGE_ALLOCATOR
                 .as_mut()
                 .unwrap()
                 .get_physical_addr(addr),
@@ -121,28 +185,4 @@ pub extern "C" fn get_physical_addr(addr: Virt) -> Option<Phys> {
             }
         }
     }
-}
-
-/// Unsafe function. Usable by C allocator
-#[no_mangle]
-unsafe fn get_kernel_pages(len: usize) -> *mut u8 {
-    match KERNEL_VIRTUAL_PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .alloc(len.into(), AllocFlags::KERNEL_MEMORY)
-    {
-        Ok(addr) => addr.to_addr().0 as _,
-        Err(_) => -1 as _,
-    }
-}
-
-/// Unsafe function. Usable by C allocator
-#[no_mangle]
-unsafe fn free_kernel_pages(addr: *mut u8, _len: usize) -> i32 {
-    KERNEL_VIRTUAL_PAGE_ALLOCATOR
-        .as_mut()
-        .unwrap()
-        .free(Page::containing(Virt(addr as usize)))
-        .expect("Pointer being free'd was not allocated");
-    0
 }

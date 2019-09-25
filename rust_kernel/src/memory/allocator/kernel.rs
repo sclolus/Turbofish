@@ -1,4 +1,4 @@
-use super::{BuddyAllocator, VirtualPageAllocator};
+use super::{BuddyAllocator, SlabAllocator, VirtualPageAllocator};
 use crate::memory::mmu::{Entry, PageDirectory, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
@@ -31,7 +31,7 @@ const KERNEL_VIRTUAL_PAGE_ALLOCATOR_LEN: NbrPages = NbrPages::_512MB;
 
 pub enum KernelAllocator {
     Bootstrap(BootstrapKernelAllocator),
-    Kernel,
+    Kernel(SlabAllocator),
 }
 
 pub unsafe fn init_kernel_virtual_allocator() {
@@ -102,5 +102,5 @@ pub unsafe fn init_kernel_virtual_allocator() {
     KERNEL_VIRTUAL_PAGE_ALLOCATOR = Some(virt);
 
     // Switch to the end allocator
-    KERNEL_ALLOCATOR = KernelAllocator::Kernel;
+    KERNEL_ALLOCATOR = KernelAllocator::Kernel(SlabAllocator::new());
 }
