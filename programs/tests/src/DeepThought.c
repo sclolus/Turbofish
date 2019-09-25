@@ -324,19 +324,21 @@ static void	build_logging_directory(void)
 {
 	char	dir_filename[256];
 	char	failing_dir_filename[256 * 2];
+	char	last[256 * 2];
 	pid_t	pid = getpid();
 
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
-	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing_%u", dir_filename, pid);
+	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
+	snprintf(last, sizeof(last), "%s_%u", LAST_LOGGING_DIR, pid);
 
 	if (!g_deepthought_info.preserve_log_dir && 0 == access(dir_filename, F_OK)) {
 		recursive_unlink(dir_filename);
 		// Since the logging dir already exists, we need to delete it.
 
 	}
-	// Attempts to remove a possibly already existing LAST_LOGGING_DIR symlink
-	unlink(LAST_LOGGING_DIR);
-	if (0 != symlink(dir_filename, LAST_LOGGING_DIR)) {
+	// Attempts to remove a possibly already existing last symlink
+	unlink(last);
+	if (0 != symlink(dir_filename, last)) {
 		err_errno("Failed to symlink %s -> %s", LAST_LOGGING_DIR, dir_filename);
 	}
 
