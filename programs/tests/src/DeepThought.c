@@ -259,7 +259,7 @@ static void	build_logging_directory(void)
 	pid_t	pid = getpid();
 
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
-	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
+	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing_%u", dir_filename, pid);
 
 	// Attempts to remove a possibly already existing LAST_LOGGING_DIR symlink
 	unlink(LAST_LOGGING_DIR);
