@@ -9,6 +9,8 @@
 #include <string.h>
 #include <tools/tools.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 // Command Sequence Introducer
 #define CSI "\x1b["
@@ -33,15 +35,22 @@
 /* #define GREEN CSI SCI "1" CST */
 
 // Control if tests are launched one by one or not
+
+# define GETOPT_FLAGS "pneli"
 bool LINEAR = true;
 bool EXIT_ON_FAILURE = false;
 bool IMM_PRINT_FAILURE = true;
+bool NO_REDIRECT = false;
+bool PRESERVE_LOG_DIR = false;
 
 struct deepthought_info {
 	char	*logging_dir;
 	char	*failing_dir;
 	uint8_t	exit_on_failure : 1,
-		print_failure_immediately : 1;
+		print_failure_immediately : 1,
+		no_redirect : 1,
+		preserve_log_dir : 1,
+		linear : 1;
 };
 
 struct deepthought_info g_deepthought_info = {
@@ -178,12 +187,12 @@ void launch_test(size_t i) {
 			NULL,
 		};
 
-		// Redirect stdout and stderr into their respective logging files.
-		redirect_into_logging_file(STDERR_FILENO, "stderr", i);
-		redirect_into_logging_file(STDOUT_FILENO, "stdout", i);
+		if (g_deepthought_info.no_redirect == false) {
+			// Redirect stdout and stderr into their respective logging files.
+			redirect_into_logging_file(STDERR_FILENO, "stderr", i);
+			redirect_into_logging_file(STDOUT_FILENO, "stdout", i);
+		}
 
-		pid_t child_pid = getpid();
-		/* printf("child_pid: %d\n", child_pid); */
 		execve(TEST_PROGRAMS[i].path, args, env);
 		perror("execve failed");
 		for (int j = 0; j < 10; j++) {
@@ -241,6 +250,68 @@ void wait_test() {
 # define LOGGING_DIR "test_logs"
 # define LAST_LOGGING_DIR "last"
 
+/// Recursively removes the file hierarchy under `dirname`.
+/// Dirname must point to a directory.
+static void	recursive_unlink(char *dirname)
+{
+	DIR *dir = opendir(dirname);
+
+	if (!dir) {
+		err_errno("Failed to opendir: %s", dirname);
+	}
+
+	struct dirent	*current_entry = NULL;
+	char		*cwd = malloc(PATH_MAX);
+
+	if (!cwd) {
+		err_errno("Failed to allocated memory for cwd");
+	}
+
+	if (!getcwd(cwd, PATH_MAX)) {
+		err_errno("Failed to get cwd");
+	}
+
+	if (-1 == chdir(dirname)) {
+		err_errno("Failed to change cwd to: %s", dirname);
+	}
+
+	errno = 0;
+	while ((current_entry = readdir(dir))) {
+		if (errno != 0) {
+			err_errno("Error reading directory: %s", dirname);
+		}
+
+		char		*filename = current_entry->d_name;
+		struct stat	stat_buf;
+
+		if (!strcmp(filename, ".") || !strcmp(filename, "..")) {
+			continue ;
+		}
+
+		if (-1 == lstat(filename, &stat_buf)) {
+			err_errno("Failed to lstat: %s", filename);
+		}
+
+		if ((stat_buf.st_mode & S_IFMT) == S_IFDIR) {
+			recursive_unlink(filename);
+		} else if (-1 == unlink(filename)) {
+			err_errno("Failed to unlink: %s", filename);
+		}
+
+		errno = 0;
+	}
+
+
+	if (-1 == chdir(cwd)) {
+		err_errno("Failed to change cwd back to: %s", cwd);
+	}
+
+	if (-1 == rmdir(dirname)) {
+		err_errno("Failed to rmdir: %s", dirname);
+	}
+	free(cwd);
+}
+
 static void	build_logging_directory(void)
 {
 	char	dir_filename[256];
@@ -250,6 +321,11 @@ static void	build_logging_directory(void)
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
 	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
 
+	if (!g_deepthought_info.preserve_log_dir && 0 == access(dir_filename, F_OK)) {
+		recursive_unlink(dir_filename);
+		// Since the logging dir already exists, we need to delete it.
+
+	}
 	// Attempts to remove a possibly already existing LAST_LOGGING_DIR symlink
 	unlink(LAST_LOGGING_DIR);
 	if (0 != symlink(dir_filename, LAST_LOGGING_DIR)) {
@@ -290,18 +366,61 @@ static void	build_logging_directory(void)
 	}
 }
 
-int main() {
+void parse_cmdline(int argc, char **argv)
+{
+	int opt;
+
+	// This should be enforced by C. By you never know...
+	g_deepthought_info.no_redirect = false;
+	g_deepthought_info.preserve_log_dir = false;
+	while ((opt = getopt(argc, argv, GETOPT_FLAGS)) != -1) {
+		switch (opt) {
+		case 'n':
+			g_deepthought_info.no_redirect = true;
+			break;
+		case 'p':
+			g_deepthought_info.preserve_log_dir = true;
+			break;
+		case 'e':
+			g_deepthought_info.exit_on_failure = true;
+			// If we're gonna exit on failure, assure that we atleast
+			// print the failing test.
+			g_deepthought_info.print_failure_immediately = true;
+			break;
+		case 'l':
+			g_deepthought_info.linear = true;
+			break;
+		case 'i':
+			g_deepthought_info.print_failure_immediately = true;
+			break;
+		default:
+			err("Usage: %s [-f] [-n] [-i] [-e] [-l]\n", argv[0]);
+		}
+	}
+
+	if (optind != argc) {
+		err("%s: Too many arguments were provided", argv[0]);
+	}
+}
+
+
+int main(int argc, char **argv) {
+	memset(&g_deepthought_info, 0, sizeof(struct deepthought_info));
 	g_deepthought_info.exit_on_failure = EXIT_ON_FAILURE;
 	g_deepthought_info.print_failure_immediately = IMM_PRINT_FAILURE;
+	g_deepthought_info.no_redirect = NO_REDIRECT;
+	g_deepthought_info.preserve_log_dir = PRESERVE_LOG_DIR;
+
+	parse_cmdline(argc, argv);
 
 	build_logging_directory();
 	for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
 		launch_test(i);
-		if (LINEAR) {
+		if (g_deepthought_info.linear) {
 			wait_test();
 		}
 	}
-	if (!LINEAR) {
+	if (!g_deepthought_info.linear) {
 		for (size_t i = 0; i < TEST_PROGRAMS_LEN; i++) {
 			wait_test();
 		}
