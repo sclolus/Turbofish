@@ -153,13 +153,14 @@ impl FileSystem for Ext2fs {
         filename: &str,
         parent_inode_nbr: u32,
         mode: FileType,
+        (owner, group): (uid_t, gid_t),
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         // We probably should provide it as a parameter to this method.
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let (direntry, inode) =
             self.ext2
                 .lock()
-                .create(filename, parent_inode_nbr, timestamp, mode)?;
+                .create(filename, parent_inode_nbr, timestamp, mode, (owner, group))?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
 
@@ -176,11 +177,18 @@ impl FileSystem for Ext2fs {
         parent_inode_nbr: u32,
         filename: &str,
         mode: FileType,
+        (owner, group): (uid_t, gid_t),
     ) -> SysResult<(DirectoryEntry, InodeData)> {
-        let (direntry, inode) = self
-            .ext2
-            .lock()
-            .create_dir(parent_inode_nbr, filename, mode)?;
+        // We probably should provide it as a parameter to this method.
+        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
+
+        let (direntry, inode) = self.ext2.lock().create_dir(
+            parent_inode_nbr,
+            filename,
+            timestamp,
+            mode,
+            (owner, group),
+        )?;
         Ok(self.convert_entry_ext2_to_vfs(direntry, inode))
     }
 

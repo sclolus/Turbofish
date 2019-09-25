@@ -69,13 +69,17 @@ OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C))))
 
 all: $(TARGET) Makefile
 
-$(TARGET): $(OBJ_C) $(LIBC_AR)
+$(TARGET): $(OBJ_C) | Makefile
 	$(CC) -o $@ $(CFLAGS) $^
-	cp -v --parents $@ $(SYSTEM_ROOT)
-	cp -v --parents etc/* $(SYSTEM_ROOT)
 
-	# sudo chown root:root $(TARGET)
-	# sudo chmod u+s $(TARGET)
+	sudo cp -v --parents $@ $(SYSTEM_ROOT)
+	sudo cp -v --parents etc/* $(SYSTEM_ROOT)
+
+	@# Removing thoses lines _WILL_ make su not work properly for non-root users.
+	sudo chown root:root $(SYSTEM_ROOT)/$(TARGET)
+	sudo chmod u+s $(SYSTEM_ROOT)/$(TARGET)
+
+
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	@mkdir -pv $(OBJ_DIR)
