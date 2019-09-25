@@ -1027,14 +1027,13 @@ impl VirtualFileSystem {
             return Err(ENOENT);
         }
 
-        let inode_id = direntry.inode_id;
+        let parent_inode_id = direntry.inode_id;
 
-        let parent_inode_id = self.dcache.get_entry_mut(&direntry_id)?.inode_id;
         let fs_cloned = self
-            .get_filesystem(inode_id)
+            .get_filesystem(parent_inode_id)
             .expect("no filesystem")
             .clone();
-        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs = self.get_filesystem(parent_inode_id).expect("no filesystem");
         let fs_entry = fs.lock().symlink(
             parent_inode_id.inode_number as u32,
             target,
