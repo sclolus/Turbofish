@@ -415,7 +415,7 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         creds: &Credentials,
-        path: Path,
+        path: &Path,
     ) -> SysResult<FileType> {
         let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
         let inode_id = &self
@@ -428,6 +428,27 @@ impl VirtualFileSystem {
             .get(inode_id)
             .expect("Vfs Inodes are corrupted: Could not find expected inode")
             .access_mode)
+    }
+
+    /// Returns the owner (uid) and group (gid) of the file pointed by the Path `path`.
+    pub fn get_file_owner(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+    ) -> SysResult<(uid_t, gid_t)> {
+        let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
+        let inode_id = &self
+            .dcache
+            .get_entry(&direntry_id)
+            .expect("Dcache is corrupted: Could not find expected direntry")
+            .inode_id;
+        let inode = self
+            .inodes
+            .get(inode_id)
+            .expect("Vfs Inodes are corrupted: Could not find expected inode");
+
+        Ok((inode.uid, inode.gid))
     }
 
     // fn recursive_build_subtree(

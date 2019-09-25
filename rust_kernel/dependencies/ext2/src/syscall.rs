@@ -300,10 +300,12 @@ impl Ext2Filesystem {
                 } else {
                     start_data_address = Some(data_address);
                 }
-                let bytes = min(
+                let mut bytes = min(
                     self.block_size as u64 - (*file_offset & block_mask),
                     inode.get_size() - *file_offset,
                 );
+                bytes = min(bytes, buf.len() as u64 - bytes_to_read);
+
                 *file_offset += bytes;
                 bytes_to_read += bytes;
                 if bytes_to_read == buf.len() as u64 {
