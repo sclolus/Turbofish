@@ -120,10 +120,9 @@ impl Credentials {
 
     /// Checks if the `self` credentials evaluates to the root credentials,
     ///
-    /// This checks for the `euid` and `eguid` flags.
+    /// This checks for the `euid`.
     pub fn is_root(&self) -> bool {
-        // not sure if the check on egid is valid though ?.
-        self.euid == Self::ROOT.uid // && self.egid == Self::ROOT.gid
+        self.euid == Self::ROOT.uid
     }
 
     /// Checks with the same semantics of `access(2)` whether access
@@ -143,8 +142,8 @@ impl Credentials {
         match class {
             Owner => self.euid == uid,
             Group => {
-                !in_class(Owner) && self.egid == gid
-                    || self.groups.iter().any(|&supp_egid| supp_egid == gid)
+                !in_class(Owner)
+                    && (self.egid == gid || self.groups.iter().any(|&supp_egid| supp_egid == gid))
             }
             Other => !(in_class(Owner) || in_class(Group)),
         }

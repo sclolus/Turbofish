@@ -764,16 +764,9 @@ impl VirtualFileSystem {
                 let amode = Amode::from(flags);
                 let inode = self.get_inode_from_direntry_id(id)?;
 
-                log::warn!(
-                    "inode: {}, filetyp: {:?}, amode: {:?}",
-                    path,
-                    inode.access_mode,
-                    amode
-                );
                 if !creds.is_access_granted(inode.access_mode, amode, (inode.uid, inode.gid)) {
                     return Err(Errno::EACCES);
                 }
-                log::warn!("Access was granted");
 
                 entry_id = id;
             }
@@ -804,7 +797,6 @@ impl VirtualFileSystem {
                     FileType::REGULAR_FILE | mode,
                     (creds.euid, creds.egid),
                 )?;
-                log::error!("Created: {} with filetype {:?}", path, mode);
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
         }

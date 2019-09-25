@@ -12,7 +12,6 @@ use libc_binding::c_char;
 
 use core::convert::TryFrom;
 
-use fallible_collections::TryClone;
 use libc_binding::{Amode, Errno, FileType};
 
 use super::vfs::{Path, VFS};
