@@ -44,7 +44,7 @@ use libc_binding::dirent;
 use libc_binding::statfs;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
-use libc_binding::{gid_t, stat, uid_t, utimbuf, Errno};
+use libc_binding::{gid_t, stat, uid_t, utimbuf, Amode, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -170,15 +170,16 @@ impl VirtualFileSystem {
     pub fn pathname_resolution_no_follow_last_symlink(
         &mut self,
         cwd: &Path,
+        creds: &Credentials,
         pathname: &Path,
     ) -> SysResult<DirectoryEntryId> {
         let root = if pathname.is_absolute() {
             self.dcache.root_id
         } else {
             debug_assert!(cwd.is_absolute());
-            self._pathname_resolution(self.dcache.root_id, cwd, 0, true)?
+            self._pathname_resolution(self.dcache.root_id, creds, cwd, 0, true)?
         };
-        self._pathname_resolution(root, pathname, 0, false)
+        self._pathname_resolution(root, creds, pathname, 0, false)
     }
 
     /// resolve the path `pathname` from root `root`, return the
@@ -186,20 +187,22 @@ impl VirtualFileSystem {
     pub fn pathname_resolution(
         &mut self,
         cwd: &Path,
+        creds: &Credentials,
         pathname: &Path,
     ) -> SysResult<DirectoryEntryId> {
         let root = if pathname.is_absolute() {
             self.dcache.root_id
         } else {
             debug_assert!(cwd.is_absolute());
-            self._pathname_resolution(self.dcache.root_id, cwd, 0, true)?
+            self._pathname_resolution(self.dcache.root_id, creds, cwd, 0, true)?
         };
-        self._pathname_resolution(root, pathname, 0, true)
+        self._pathname_resolution(root, creds, pathname, 0, true)
     }
 
     fn _pathname_resolution(
         &mut self,
         mut root: DirectoryEntryId,
+        creds: &Credentials,
         pathname: &Path,
         recursion_level: usize,
         follow_last_symlink: bool,
@@ -243,6 +246,16 @@ impl VirtualFileSystem {
                 current_dir_id = current_entry.parent_id;
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
                 continue;
+            }
+
+            if {
+                let inode = self
+                    .inodes
+                    .get(&current_entry.inode_id)
+                    .expect("No corresponding inode fir direntry");
+                !creds.is_access_granted(inode.access_mode, Amode::SEARCH, (inode.uid, inode.gid))
+            } {
+                return Err(Errno::EACCES);
             }
             if current_dir.entries().count() == 0 {
                 self.lookup_directory(current_dir_id)?;
@@ -300,6 +313,7 @@ impl VirtualFileSystem {
 
             self._pathname_resolution(
                 current_dir_id,
+                creds,
                 &new_path,
                 recursion_level + 1,
                 follow_last_symlink,
@@ -335,7 +349,7 @@ impl VirtualFileSystem {
         // qu'il n'y ait pas de reference croisees (j'ai mis usize dans l'exemple)
 
         // let entry_id;
-        match self.pathname_resolution(cwd, &path) {
+        match self.pathname_resolution(cwd, creds, &path) {
             Ok(_id) => return Err(EEXIST),
             Err(_e) => {
                 //TODO: Option(FileSystemId)
@@ -357,7 +371,7 @@ impl VirtualFileSystem {
                 );
 
                 let mut new_direntry = DirectoryEntry::default();
-                let parent_id = self.pathname_resolution(cwd, &path.parent()?)?;
+                let parent_id = self.pathname_resolution(cwd, creds, &path.parent()?)?;
 
                 new_direntry
                     .set_filename(*path.filename().unwrap())
@@ -405,8 +419,13 @@ impl VirtualFileSystem {
     }
 
     /// Returns the FileType of the file pointed by the Path `path`.
-    pub fn file_type(&mut self, cwd: &Path, path: Path) -> SysResult<FileType> {
-        let direntry_id = self.pathname_resolution(cwd, &path)?;
+    pub fn file_type(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+    ) -> SysResult<FileType> {
+        let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
         let inode_id = &self
             .dcache
             .get_entry(&direntry_id)
@@ -417,6 +436,27 @@ impl VirtualFileSystem {
             .get(inode_id)
             .expect("Vfs Inodes are corrupted: Could not find expected inode")
             .access_mode)
+    }
+
+    /// Returns the owner (uid) and group (gid) of the file pointed by the Path `path`.
+    pub fn get_file_owner(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+    ) -> SysResult<(uid_t, gid_t)> {
+        let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
+        let inode_id = &self
+            .dcache
+            .get_entry(&direntry_id)
+            .expect("Dcache is corrupted: Could not find expected direntry")
+            .inode_id;
+        let inode = self
+            .inodes
+            .get(inode_id)
+            .expect("Vfs Inodes are corrupted: Could not find expected inode");
+
+        Ok((inode.uid, inode.gid))
     }
 
     // fn recursive_build_subtree(
@@ -524,7 +564,7 @@ impl VirtualFileSystem {
 
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
-        let mount_dir_id = self.pathname_resolution(cwd, &target)?;
+        let mount_dir_id = self.pathname_resolution(cwd, creds, &target)?;
         self.mount_filesystem(
             Arc::try_new(DeadMutex::new(filesystem))?,
             fs_id,
@@ -535,11 +575,24 @@ impl VirtualFileSystem {
     pub fn opendir(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
     ) -> SysResult<Vec<dirent>> {
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
+
+        let inode = self
+            .inodes
+            .get(&entry.inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            inode.access_mode,
+            Amode::READ,
+            (inode.uid, inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
 
         if entry.get_directory()?.entries().count() == 0 {
             self.lookup_directory(entry_id)?;
@@ -582,8 +635,8 @@ impl VirtualFileSystem {
             .try_collect()?)
     }
 
-    pub fn unlink(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
-        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
+    pub fn unlink(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &path)?;
         let inode_id;
         let parent_id;
 
@@ -597,7 +650,22 @@ impl VirtualFileSystem {
             parent_id = entry.parent_id;
         }
 
+        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
+        let parent_inode = self
+            .inodes
+            .get(&parent_inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
+
         self.dcache.remove_entry(entry_id)?;
 
         // If the link number reach 0 and there is no open file
@@ -608,7 +676,6 @@ impl VirtualFileSystem {
         if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
         }
-        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
             parent_inode_id.inode_number as u32,
@@ -642,6 +709,44 @@ impl VirtualFileSystem {
         }
     }
 
+    /// Gets the corresponding inode for a directory entry of id `direntry_id`.
+    /// This methods helps removing the currently popular boilerplate.
+    ///
+    /// Panic:
+    /// Panics if there is no corresponding inode for the given direntry_id.
+    fn get_inode_from_direntry_id(&self, direntry_id: DirectoryEntryId) -> SysResult<&Inode> {
+        let direntry = self.dcache.get_entry(&direntry_id)?;
+
+        // should we remove this panic
+        Ok(self
+            .inodes
+            .get(&direntry.inode_id)
+            .expect("No corresponding Inode for Directory"))
+    }
+
+    /// Checks if the given `amode` is permitted for the file pointed by `path`
+    pub fn is_access_granted(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+        amode: Amode,
+    ) -> bool {
+        let direntry_id = match self.pathname_resolution(cwd, creds, path) {
+            Err(_) => return false,
+            Ok(id) => id,
+        };
+
+        let inode = self.get_inode_from_direntry_id(direntry_id).unwrap();
+
+        // Ensure that non-regular files are not executables regardless of the file permissions.
+        if !inode.access_mode.is_regular() && amode.contains(Amode::EXECUTE) {
+            return false;
+        }
+
+        creds.is_access_granted(inode.access_mode, amode, (inode.uid, inode.gid))
+    }
+
     /// La fonction open() du vfs sera appelee par la fonction open()
     /// de l'ipc
     /// Elle doit logiquement renvoyer un FileOperation ou une erreur
@@ -653,24 +758,43 @@ impl VirtualFileSystem {
     pub fn open(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         flags: OpenFlags,
         mode: FileType,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
         let entry_id;
-        match self.pathname_resolution(cwd, &path) {
+        match self.pathname_resolution(cwd, creds, &path) {
             Ok(_id) if flags.contains(OpenFlags::O_CREAT | OpenFlags::O_EXCL) => {
                 return Err(Errno::EEXIST)
             }
-            Ok(id) => entry_id = id,
+            Ok(id) => {
+                let amode = Amode::from(flags);
+                let inode = self.get_inode_from_direntry_id(id)?;
+
+                if !creds.is_access_granted(inode.access_mode, amode, (inode.uid, inode.gid)) {
+                    return Err(Errno::EACCES);
+                }
+
+                entry_id = id;
+            }
             Err(e) if !flags.contains(OpenFlags::O_CREAT) => return Err(e.into()),
             _ => {
-                let parent_id = self.pathname_resolution(cwd, &path.parent()?)?;
+                let parent_id = self.pathname_resolution(cwd, creds, &path.parent()?)?;
                 let parent_entry = self.dcache.get_entry(&parent_id)?;
+                let parent_inode = self.get_inode_from_direntry_id(parent_id)?;
 
                 let inode_id = parent_entry.inode_id;
                 let inode_number = inode_id.inode_number as u32;
+
+                if !creds.is_access_granted(
+                    parent_inode.access_mode,
+                    Amode::WRITE,
+                    (parent_inode.uid, parent_inode.gid),
+                ) {
+                    return Err(Errno::EACCES);
+                }
+
                 let fs = self.get_filesystem_mut(inode_id).expect("no filesystem");
                 let fs_cloned = fs.clone();
 
@@ -679,6 +803,7 @@ impl VirtualFileSystem {
                     inode_number,
                     // Open creates regular files
                     FileType::REGULAR_FILE | mode,
+                    (creds.euid, creds.egid),
                 )?;
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
@@ -732,23 +857,37 @@ impl VirtualFileSystem {
     pub fn chmod(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         mut mode: FileType,
     ) -> SysResult<()> {
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
 
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        self.fchmod(inode_id, mode)
+        self.fchmod(creds, inode_id, mode)
     }
 
-    pub fn fchmod(&mut self, inode_id: InodeId, mut mode: FileType) -> SysResult<()> {
+    pub fn fchmod(
+        &mut self,
+        creds: &Credentials,
+        inode_id: InodeId,
+        mut mode: FileType,
+    ) -> SysResult<()> {
         let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
         mode &= mask;
+
+        let inode = self
+            .inodes
+            .get(&inode_id)
+            .expect("Fchmod was called on unknown inode");
+
+        if !creds.is_root() && creds.euid != inode.uid {
+            return Err(Errno::EPERM);
+        }
 
         self.get_filesystem(inode_id)
             .expect("No corresponding filesystem")
@@ -771,19 +910,34 @@ impl VirtualFileSystem {
     pub fn chown(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         owner: uid_t,
         group: gid_t,
     ) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode_id = entry.inode_id;
-        self.fchown(inode_id, owner, group)
+        self.fchown(creds, inode_id, owner, group)
     }
 
-    pub fn fchown(&mut self, inode_id: InodeId, owner: uid_t, group: gid_t) -> SysResult<()> {
+    pub fn fchown(
+        &mut self,
+        creds: &Credentials,
+        inode_id: InodeId,
+        owner: uid_t,
+        group: gid_t,
+    ) -> SysResult<()> {
+        let inode = self
+            .inodes
+            .get(&inode_id)
+            .expect("Fchown was called on unknown inode");
+
+        if !creds.is_root() && creds.euid != inode.uid {
+            return Err(Errno::EPERM);
+        }
+
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock()
             .chown(inode_id.inode_number as u32, owner, group)?;
@@ -806,11 +960,12 @@ impl VirtualFileSystem {
     pub fn utime(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         times: Option<&utimbuf>,
     ) -> SysResult<()> {
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        // Handle permissions here too.
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let inode_id = self.dcache.get_entry(&entry_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("No filesystem");
 
@@ -833,36 +988,53 @@ impl VirtualFileSystem {
     pub fn mkdir(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         mut path: Path,
         mode: FileType,
     ) -> SysResult<()> {
-        if let Ok(_) = self.pathname_resolution(cwd, &path) {
+        if let Ok(_) = self.pathname_resolution(cwd, creds, &path) {
             return Err(EEXIST);
         }
         let filename = path.pop().ok_or(EINVAL)?;
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
             return Err(ENOTDIR);
         }
+
+        let parent_inode = self.get_inode_from_direntry_id(entry_id)?;
+        if !creds.is_access_granted(
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let inode_id = entry.inode_id;
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
-        let fs_entry = fs
-            .lock()
-            .create_dir(inode_id.inode_number, filename.as_str(), mode)?;
+        let fs_entry = fs.lock().create_dir(
+            inode_id.inode_number,
+            filename.as_str(),
+            mode,
+            (creds.euid, creds.egid),
+        )?;
         self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
 
-    pub fn inode_id_from_absolute_path(&mut self, path: &Path) -> SysResult<InodeId> {
+    pub fn inode_id_from_absolute_path(
+        &mut self,
+        path: &Path,
+        creds: &Credentials,
+    ) -> SysResult<InodeId> {
         if !path.is_absolute() {
             panic!("path is not absolute");
         }
         let entry_id = self
-            .pathname_resolution(&Path::root(), path)
+            .pathname_resolution(&Path::root(), creds, path)
             .map_err(|_| ENOENT)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         Ok(entry.inode_id)
@@ -871,7 +1043,7 @@ impl VirtualFileSystem {
     pub fn mknod(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         mut path: Path,
         mode: FileType,
     ) -> SysResult<InodeId> {
@@ -879,35 +1051,51 @@ impl VirtualFileSystem {
             //TODO: remove that, and check create function filesystem
             unimplemented!()
         }
-        if let Ok(_) = self.pathname_resolution(cwd, &path) {
+
+        if mode & FileType::S_IFMT == FileType::FIFO && !creds.is_root() {
+            return Err(EPERM);
+        }
+
+        if let Ok(_) = self.pathname_resolution(cwd, creds, &path) {
             return Err(EEXIST);
         }
         let filename = path.pop().ok_or(EINVAL)?;
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         if !entry.is_directory() {
             return Err(ENOTDIR);
         }
         let inode_id = entry.inode_id;
 
+        let inode = self
+            .get_inode(inode_id)
+            .expect("No corresponding Inode for Direntry");
+        if !creds.is_access_granted(inode.access_mode, Amode::WRITE, (inode.uid, inode.gid)) {
+            return Err(Errno::EACCES);
+        }
+
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
 
-        let fs_entry = fs
-            .lock()
-            .create(filename.as_str(), inode_id.inode_number, mode)?;
+        let fs_entry = fs.lock().create(
+            filename.as_str(),
+            inode_id.inode_number,
+            mode,
+            (creds.euid, creds.egid),
+        )?;
         let new_entry_id = self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         let new_entry = self.dcache.get_entry(&new_entry_id)?;
         Ok(new_entry.inode_id)
     }
 
-    pub fn rmdir(&mut self, cwd: &Path, _creds: &Credentials, path: Path) -> SysResult<()> {
+    // TODO: Sticky bit (EPERM condition in posix) is not implemented for now.
+    pub fn rmdir(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
         let filename = path.filename().ok_or(EINVAL)?;
         if filename == &"." || filename == &".." {
             return Err(EINVAL);
         }
 
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
         if !entry.is_directory() {
@@ -919,10 +1107,23 @@ impl VirtualFileSystem {
         let inode_id = entry.inode_id;
         let parent_id = entry.parent_id;
 
+        let parent_inode = self
+            .get_inode_from_direntry_id(parent_id)
+            .expect("No corresponding inode");
+        let parent_inode_id = parent_inode.id;
+
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         self.dcache.remove_entry(entry_id)?;
         self.inodes.remove(&inode_id).expect("inode should be here");
 
-        let parent_inode_id = self.dcache.get_entry_mut(&parent_id)?.inode_id;
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().rmdir(
             parent_inode_id.inode_number as u32,
@@ -939,11 +1140,11 @@ impl VirtualFileSystem {
     pub fn link(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         oldpath: Path,
         newpath: Path,
     ) -> SysResult<()> {
-        let oldentry_id = self.pathname_resolution(cwd, &oldpath)?;
+        let oldentry_id = self.pathname_resolution(cwd, creds, &oldpath)?;
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
         if oldentry.is_directory() {
@@ -956,13 +1157,26 @@ impl VirtualFileSystem {
             return Err(EINVAL);
         }
 
-        if self.pathname_resolution(cwd, &newpath).is_ok() {
+        if self.pathname_resolution(cwd, creds, &newpath).is_ok() {
             return Err(EEXIST);
         }
 
-        let parent_new_id = self.pathname_resolution(cwd, &newpath.parent()?)?;
+        let parent_new_id = self.pathname_resolution(cwd, creds, &newpath.parent()?)?;
         let parent_inode_id = self.dcache.get_entry_mut(&parent_new_id)?.inode_id;
         let parent_inode_number = parent_inode_id.inode_number;
+
+        let parent_inode = self
+            .get_inode(parent_inode_id)
+            .expect("No corresponding inode");
+
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
 
         let oldentry = self.dcache.get_entry(&oldentry_id)?;
 
@@ -989,11 +1203,11 @@ impl VirtualFileSystem {
     pub fn stat(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         buf: &mut stat,
     ) -> SysResult<u32> {
-        let entry_id = self.pathname_resolution(cwd, &path)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         let inode_id = entry.inode_id;
         let inode = self.get_inode(inode_id)?;
@@ -1003,11 +1217,11 @@ impl VirtualFileSystem {
     pub fn lstat(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         buf: &mut stat,
     ) -> SysResult<u32> {
-        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
         let inode_id = entry.inode_id;
         let inode = self.get_inode(inode_id)?;
@@ -1017,11 +1231,11 @@ impl VirtualFileSystem {
     pub fn readlink(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         buf: &mut [c_char],
     ) -> SysResult<u32> {
-        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &path)?;
+        let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &path)?;
         let symbolic_content = self
             .dcache
             .get_entry(&entry_id)?
@@ -1034,28 +1248,41 @@ impl VirtualFileSystem {
     pub fn symlink(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         target: &str,
         mut linkname: Path,
     ) -> SysResult<()> {
-        if let Ok(_) = self.pathname_resolution(cwd, &linkname) {
+        if let Ok(_) = self.pathname_resolution(cwd, creds, &linkname) {
             return Err(EEXIST);
         }
         let filename = linkname.pop().expect("no filename");
-        let direntry_id = self.pathname_resolution(cwd, &linkname)?;
+        let direntry_id = self.pathname_resolution(cwd, creds, &linkname)?;
         let direntry = self.dcache.get_entry(&direntry_id)?;
         if !direntry.is_directory() {
             return Err(ENOENT);
         }
 
-        let inode_id = direntry.inode_id;
+        let parent_inode_id = direntry.inode_id;
 
-        let parent_inode_id = self.dcache.get_entry_mut(&direntry_id)?.inode_id;
+        // let's remove this code duplication with `get_inode_from_direntry_id` or something.
+        let parent_inode = self
+            .inodes
+            .get(&parent_inode_id)
+            .expect("No corresponding Inode for direntry");
+        if !creds.is_access_granted(
+            // check for write permission in the parent.
+            parent_inode.access_mode,
+            Amode::WRITE,
+            (parent_inode.uid, parent_inode.gid),
+        ) {
+            return Err(Errno::EACCES);
+        }
+
         let fs_cloned = self
-            .get_filesystem(inode_id)
+            .get_filesystem(parent_inode_id)
             .expect("no filesystem")
             .clone();
-        let fs = self.get_filesystem(inode_id).expect("no filesystem");
+        let fs = self.get_filesystem(parent_inode_id).expect("no filesystem");
         let fs_entry = fs.lock().symlink(
             parent_inode_id.inode_number as u32,
             target,
@@ -1066,11 +1293,17 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    pub fn resolve_path(&mut self, cwd: &Path, path: &Path) -> SysResult<Path> {
-        let direntry_id = self.pathname_resolution(cwd, &path)?;
+    pub fn resolve_path(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+    ) -> SysResult<Path> {
+        let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
         self.dentry_path(direntry_id)
     }
 
+    //TODO: permissions here not currently implemented.
     pub fn rename(
         &mut self,
         cwd: &Path,
@@ -1091,11 +1324,11 @@ impl VirtualFileSystem {
             return Err(Errno::EINVAL);
         }
 
-        let oldentry_id = self.pathname_resolution_no_follow_last_symlink(cwd, &oldpath)?;
+        let oldentry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &oldpath)?;
         // The old pathname shall not name an ancestor directory of
         // the new pathname.
-        let resolved_old_path = self.resolve_path(cwd, &oldpath)?;
-        let mut resolved_new_path = self.resolve_path(cwd, &newpath.parent()?)?;
+        let resolved_old_path = self.resolve_path(cwd, creds, &oldpath)?;
+        let mut resolved_new_path = self.resolve_path(cwd, creds, &newpath.parent()?)?;
         resolved_new_path.push(*new_filename)?;
         if resolved_new_path
             .ancestors()
@@ -1104,7 +1337,7 @@ impl VirtualFileSystem {
             return Err(Errno::EINVAL);
         }
 
-        match self.pathname_resolution_no_follow_last_symlink(cwd, &newpath) {
+        match self.pathname_resolution_no_follow_last_symlink(cwd, creds, &newpath) {
             Ok(new_entry_id) => {
                 let new_entry = self.dcache.get_entry(&new_entry_id)?;
 
@@ -1147,7 +1380,7 @@ impl VirtualFileSystem {
         let old_parent_inode_id = self.dcache.get_entry_mut(&old_parent_id)?.inode_id;
         let old_parent_inode_nbr = old_parent_inode_id.inode_number;
 
-        let new_parent_id = self.pathname_resolution(cwd, &newpath.parent()?)?;
+        let new_parent_id = self.pathname_resolution(cwd, creds, &newpath.parent()?)?;
         let new_parent_inode_id = self.dcache.get_entry_mut(&new_parent_id)?.inode_id;
         let new_parent_inode_nbr = new_parent_inode_id.inode_number;
 
@@ -1177,12 +1410,12 @@ impl VirtualFileSystem {
     pub fn statfs(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         path: Path,
         buf: &mut statfs,
     ) -> SysResult<()> {
         let direntry_id = self
-            .pathname_resolution(cwd, &path)
+            .pathname_resolution(cwd, creds, &path)
             .or(Err(Errno::ENOENT))?;
         let inode_id = {
             self.dcache

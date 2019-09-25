@@ -17,7 +17,7 @@ extern "C" {
 pub extern "C" fn kmain(
     multiboot_info: *const MultibootInfo,
     device_map_ptr: *const DeviceMap,
-) -> u32 {
+) -> ! {
     unsafe {
         UART_16550.init();
     }
@@ -53,5 +53,10 @@ pub extern "C" fn kmain(
     .expect("failed sodo 4");
 
     crate::watch_dog();
-    exit_qemu(0);
+    let _r = exit_qemu(0);
+    loop {
+        unsafe {
+            asm!("hlt");
+        }
+    }
 }

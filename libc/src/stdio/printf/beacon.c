@@ -105,28 +105,24 @@ int vsnprintf(char *str, size_t size, const char *format, va_list ap)
 	t_status	op;
 	int		ret;
 
-	if (size == 0) {
-		return 0;
-	} else if (size == 1) {
-		str[0] = '\0';
-		return 1;
-	}
-
 	ft_memset(&op, 0, sizeof(t_status));
 	op.s = format;
 	op.ap = ap;
 
 	op.opt.given_string.str = str;
 	// Keep one byte to write the '\0'
-	op.opt.given_string.max_size = size - 1;
+	op.opt.given_string.max_size = (size == 0 ) ? 0 : size - 1;
 	op.params = GivenString;
 
 	ret = new_chain(&op);
 	if (ret < 0)
 		return (ret);
 	fflush_buffer(&op);
-	// Write the terminated byte '\0' and return copied size + 1
-	*op.opt.given_string.str = '\0';
+
+	// Write the terminated byte '\0' and return total_size + 1
+	if (size != 0) {
+		*op.opt.given_string.str = '\0';
+	}
 	return (op.total_size + 1);
 }
 

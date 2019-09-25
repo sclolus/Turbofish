@@ -47,29 +47,34 @@ impl<'a> Iterator for IterEscaped<'a> {
             return None;
         }
         Some(if self.s[self.off..].starts_with(0x1b as char) {
-            let next_alpha = self.off
-                + self.s[self.off..]
-                    .find(|x: char| x.is_ascii_alphabetic())
-                    .unwrap_or(self.s[self.off..].len() - 1);
-            let ret = &self.s[self.off..=next_alpha];
-            self.off = next_alpha + 1;
-            if &self.s[next_alpha..next_alpha + 1] == "m" {
-                match AnsiColor::from_str(ret) {
-                    Ok(c) => Escaped(EscapedCode::Color(c)),
-                    Err(_) => Str(ret),
+            match self.s[self.off..].find(|x: char| x.is_ascii_alphabetic()) {
+                Some(alpha_index) => {
+                    let next_alpha = self.off + alpha_index;
+                    let ret = &self.s[self.off..=next_alpha];
+                    self.off = next_alpha + 1;
+
+                    if &self.s[next_alpha..next_alpha + 1] == "m" {
+                        match AnsiColor::from_str(ret) {
+                            Ok(c) => Escaped(EscapedCode::Color(c)),
+                            Err(_) => Str(ret),
+                        }
+                    } else {
+                        match CursorMove::from_str(ret) {
+                            Ok(c) => Escaped(EscapedCode::CursorMove(c)),
+                            Err(_) => Str(ret),
+                        }
+                    }
                 }
-            } else {
-                match CursorMove::from_str(ret) {
-                    Ok(c) => Escaped(EscapedCode::CursorMove(c)),
-                    Err(_) => Str(ret),
+                None => {
+                    self.off = self.s.len();
+                    Str(self.s)
                 }
             }
         } else {
             let next_escape = self.off
                 + self.s[self.off..]
-                    .find(0x1b as char)
+                    .find(|x: char| x == 0x1b as char)
                     .unwrap_or(self.s[self.off..].len());
-
             let ret = &self.s[self.off..next_escape];
             self.off = next_escape;
             Str(ret)

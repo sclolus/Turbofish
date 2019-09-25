@@ -66,74 +66,79 @@ int main(int argc, char **argv)
 		err("user %s does not exist", login);
 	}
 
-	char		*input_password = getpass("Password: ");
+	uid_t		uid = getuid();
 
-	if (!input_password) {
-		err("Failed to retrieve password");
-	}
-	size_t		pass_len = strlen(input_password);
+	// If the real user id is root, skip password checks.
+	if (uid != 0) {
+		char		*input_password = getpass("Password: ");
 
-	char	    *salt = NULL;
-	char	    *entry_passwd = NULL;
-
-
-	if (hashed_passwd_is_in_shadow(entry)) {
-		struct shadow_entry *sentry =
-			find_corresponding_shadow_entry(sentries, n_shadow_entries, entry);
-
-		if (!sentry) {
-			err("Unable to find hash in shadow file for user: %s", login);
+		if (!input_password) {
+			err("Failed to retrieve password");
 		}
-		if (-1 == parse_hashed_password(sentry->hashed_passwd,
-						&entry_passwd,
-						&salt)) {
+		size_t		pass_len = strlen(input_password);
+
+		char	    *salt = NULL;
+		char	    *entry_passwd = NULL;
+
+
+		if (hashed_passwd_is_in_shadow(entry)) {
+			struct shadow_entry *sentry =
+				find_corresponding_shadow_entry(sentries, n_shadow_entries, entry);
+
+			if (!sentry) {
+				err("Unable to find hash in shadow file for user: %s", login);
+			}
+			if (-1 == parse_hashed_password(sentry->hashed_passwd,
+							&entry_passwd,
+							&salt)) {
+				err("Failed to parse hashed password in shadow file");
+			}
+		} else if (-1 == parse_hashed_password(entry->hashed_passwd,
+						       &entry_passwd,
+						       &salt)) {
 			err("Failed to parse hashed password in shadow file");
 		}
-	} else if (-1 == parse_hashed_password(entry->hashed_passwd,
-					       &entry_passwd,
-					       &salt)) {
-		err("Failed to parse hashed password in shadow file");
+
+		size_t entry_passwd_len = strlen(entry_passwd);
+
+		// Bzero for security reasons.
+		memset(sentries, 0, sizeof(struct shadow_entry) * n_shadow_entries);
+		free(sentries);
+
+		char	    *hash = md5_hash(input_password, salt);
+
+		// Bzero for security reasons.
+		memset(input_password, 0, pass_len);
+		free(input_password);
+
+		if (!hash) {
+			err("Failed to hash password");
+		}
+
+		// decoded from base64.
+		char	*decoded_entry_passwd = (char*)decode_base64((uint8_t*)entry_passwd, entry_passwd_len);
+
+		// Bzero for security reasons.
+		memset(entry_passwd, 0, entry_passwd_len);
+		free(entry_passwd);
+
+		if (!decoded_entry_passwd) {
+			err("Failed to encode hash into base64");
+		}
+
+		if (memcmp(hash, decoded_entry_passwd, 16)) {
+			err("Authentification failure");
+		}
+
+		memset(decoded_entry_passwd, 0, 16);
+		free(decoded_entry_passwd);
+
+		// Bzero for security reasons.
+		memset(salt, 0, strlen(salt));
+		free(salt);
+		memset(hash, 0, 16);
+		free(hash);
 	}
-
-	size_t entry_passwd_len = strlen(entry_passwd);
-
-	// Bzero for security reasons.
-	memset(sentries, 0, sizeof(struct shadow_entry) * n_shadow_entries);
-	free(sentries);
-
-	char	    *hash = md5_hash(input_password, salt);
-
-	// Bzero for security reasons.
-	memset(input_password, 0, pass_len);
-	free(input_password);
-
-	if (!hash) {
-		err("Failed to hash password");
-	}
-
-	// decoded from base64.
-	char	*decoded_entry_passwd = (char*)decode_base64((uint8_t*)entry_passwd, entry_passwd_len);
-
-	// Bzero for security reasons.
-	memset(entry_passwd, 0, entry_passwd_len);
-	free(entry_passwd);
-
-	if (!decoded_entry_passwd) {
-		err("Failed to encode hash into base64");
-	}
-
-	if (memcmp(hash, decoded_entry_passwd, 16)) {
-		err("Authentification failure");
-	}
-
-	memset(decoded_entry_passwd, 0, 16);
-	free(decoded_entry_passwd);
-
-	// Bzero for security reasons.
-	memset(salt, 0, strlen(salt));
-	free(salt);
-	memset(hash, 0, 16);
-	free(hash);
 
 	if (-1 == setgid(entry->gid)) {
 		err_errno("Failed to setgid(%d (%s))", entry->gid, login);

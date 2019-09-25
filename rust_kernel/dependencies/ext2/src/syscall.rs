@@ -92,6 +92,7 @@ impl Ext2Filesystem {
         parent_inode_nbr: u32,
         timestamp: u32,
         file_type: FileType,
+        (owner, group): (uid_t, gid_t),
     ) -> IoResult<(DirectoryEntry, Inode)> {
         let direntry_type = DirectoryEntryType::try_from(file_type).expect("bad file type");
         //TODO: remove expect
@@ -100,6 +101,8 @@ impl Ext2Filesystem {
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new(file_type);
 
+        inode.set_owner(owner);
+        inode.set_group(group);
         inode.last_access_time = timestamp;
         inode.creation_time = timestamp;
         inode.last_modification_time = timestamp;
@@ -159,12 +162,20 @@ impl Ext2Filesystem {
         &mut self,
         parent_inode_nbr: u32,
         filename: &str,
+        timestamp: u32,
         mode: FileType,
+        (owner, group): (uid_t, gid_t),
     ) -> IoResult<(DirectoryEntry, Inode)> {
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new((mode & FileType::PERMISSIONS_MASK) | FileType::DIRECTORY);
         inode.nbr_hard_links = 2;
+        inode.set_owner(owner);
+        inode.set_group(group);
+        inode.last_access_time = timestamp;
+        inode.creation_time = timestamp;
+        inode.last_modification_time = timestamp;
+        inode.low_size = 1024 << self.superblock.get_log2_block_size();
 
         self.disk.write_struct(inode_addr, &inode)?;
         let mut new_entry =
@@ -302,10 +313,12 @@ impl Ext2Filesystem {
                 } else {
                     start_data_address = Some(data_address);
                 }
-                let bytes = min(
+                let mut bytes = min(
                     self.block_size as u64 - (*file_offset & block_mask),
                     inode.get_size() - *file_offset,
                 );
+                bytes = min(bytes, buf.len() as u64 - bytes_to_read);
+
                 *file_offset += bytes;
                 bytes_to_read += bytes;
                 if bytes_to_read == buf.len() as u64 {
@@ -343,8 +356,9 @@ impl Ext2Filesystem {
         let direntry_type = DirectoryEntryType::SymbolicLink;
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        //TODO: rights and mode
-        let mut inode = Inode::new(FileType::SYMBOLIC_LINK);
+        let access_mode =
+            FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU;
+        let mut inode = Inode::new(access_mode);
         if target.len() <= Inode::FAST_SYMLINK_SIZE_MAX {
             // If target is a fast symlink write the target directly
             // on inode

@@ -154,17 +154,23 @@ impl FileOperation for Socket {
         Ok(0)
     }
 
-    fn connect(&mut self, cwd: &Path, _creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
+    fn connect(&mut self, cwd: &Path, creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
         let mut vfs = VFS.lock();
-        let absolute_path = vfs.resolve_path(cwd, &sockaddr)?;
-        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path)?;
+        let absolute_path = vfs.resolve_path(cwd, creds, &sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path, creds)?;
         self.peer_address = Some(absolute_path);
         self.peer_inode_id = Some(inode_id);
         dbg!(&self.peer_address);
         Ok(0)
     }
 
-    fn send_to(&mut self, buf: &[u8], flags: u32, sockaddr_opt: Option<Path>) -> SysResult<u32> {
+    fn send_to(
+        &mut self,
+        creds: &Credentials,
+        buf: &[u8],
+        flags: u32,
+        sockaddr_opt: Option<Path>,
+    ) -> SysResult<u32> {
         let sockaddr = match sockaddr_opt {
             Some(sockaddr) => sockaddr,
             None => {
@@ -177,7 +183,7 @@ impl FileOperation for Socket {
             }
         };
         let mut vfs = VFS.lock();
-        let inode_id = vfs.inode_id_from_absolute_path(&sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&sockaddr, creds)?;
         let driver = vfs.get_driver(inode_id)?;
         driver.send_from(buf, flags, self.path.try_clone()?)
     }

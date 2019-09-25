@@ -20,7 +20,7 @@ const SECTOR_SIZE: usize = 512;
 pub extern "C" fn kmain(
     multiboot_info: *const MultibootInfo,
     device_map_ptr: *const DeviceMap,
-) -> u32 {
+) -> ! {
     #[cfg(feature = "serial-eprintln")]
     {
         unsafe { crate::terminal::UART_16550.init() };
@@ -88,5 +88,10 @@ pub extern "C" fn kmain(
         }
     }
     crate::watch_dog();
-    exit_qemu(0);
+    let _r = exit_qemu(0);
+    loop {
+        unsafe {
+            asm!("hlt");
+        }
+    }
 }

@@ -62,11 +62,11 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Ok(0)
     }
 
-    fn fchmod(&mut self, _mode: FileType) -> SysResult<u32> {
+    fn fchmod(&mut self, _creds: &Credentials, _mode: FileType) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
-    fn fchown(&mut self, _owner: uid_t, _group: gid_t) -> SysResult<u32> {
+    fn fchown(&mut self, _creds: &Credentials, _owner: uid_t, _group: gid_t) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
@@ -102,7 +102,13 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn send_to(&mut self, _buf: &[u8], _flags: u32, _sockaddr_opt: Option<Path>) -> SysResult<u32> {
+    fn send_to(
+        &mut self,
+        _creds: &Credentials,
+        _buf: &[u8],
+        _flags: u32,
+        _sockaddr_opt: Option<Path>,
+    ) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 

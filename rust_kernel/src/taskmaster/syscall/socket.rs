@@ -645,16 +645,17 @@ fn send_to(
     );
     let tg = scheduler.current_thread_group_mut();
     let cwd = &tg.cwd;
+    let creds = &tg.credentials;
     let fd_interface = &mut tg
         .thread_group_state
         .unwrap_running_mut()
         .file_descriptor_interface;
     let file_operation = &mut fd_interface.get_file_operation(socket_fd as u32)?;
     let path = match sockaddr_opt {
-        Some(sockaddr) => Some(VFS.lock().resolve_path(cwd, &sockaddr.try_into()?)?),
+        Some(sockaddr) => Some(VFS.lock().resolve_path(cwd, creds, &sockaddr.try_into()?)?),
         None => None,
     };
-    file_operation.send_to(buf, flags, path)?;
+    file_operation.send_to(creds, buf, flags, path)?;
     Ok(0)
 }
 
