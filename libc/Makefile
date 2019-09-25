@@ -26,208 +26,98 @@ endif
 # non-turbofish specific program. Use carefully
 NASM = nasm
 
-VPATH += src
-SRC_C += libc_ctor
-SRC_ASM += user_syscall
-PRIVATE_HEADERS += include/user_syscall.h
+SRC_DIR = src
+OBJ_DIR = obj
+SRC_C = $(shell find $(SRC_DIR) -type f -iname "*.c")
+SRC_ASM = $(shell find $(SRC_DIR) -type f -iname "*.s")
+SRC_NASM = $(shell find $(SRC_DIR) -type f -iname "*.asm")
+SRC_C_RUNTIME = $(SRC_DIR)/crt/crt0.s $(SRC_DIR)/crt/crti.s $(SRC_DIR)/crt/crtn.s $(SRC_DIR)/crt/crtbegin.s $(SRC_DIR)/crt/crtend.s
+
+PRIVATE_HEADERS += user_syscall.h
 
 TESTED_SRC_C = strsplit array getenv setenv unsetenv clearenv execl getmntent
-
-
-SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
-	strlen strcpy strncpy strcat strncat strlcat \
-	strchr strrchr strstr strnstr strcmp strncmp \
-	atoi toupper \
-	strclr striter striteri \
-	strequ strnequ \
-	putendl putnbr putnbr_base \
-	aligned_memcpy aligned_bzero strdup \
-	strcspn strpbrk strspn strtod strtok strtoll strtoull strchrnul strerror \
-	strcoll
-VPATH += src/string
 HEADERS += string.h
 
-SRC_C += beacon op_main modifiers extract_args \
-	s_string s_char s_numeric_u s_numeric_i \
-	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
-	cast buffer norme perror \
-	stdio _doprnt putchar puts getc fopen fclose \
-	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
-
-VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
 PRIVATE_HEADERS += internal_printf.h
 
-SRC_C += ctor mem_syscall \
-	size_fn \
-	index \
-	debug_show_alloc debug_display_nodes \
-	node_custom_allocator node_custom_deallocator \
-	cmp_range cmp_fixe \
-	free_record \
-	allocator \
-	reallocator \
-	deallocator \
-	main_prototypes \
-	trace \
-	sizeof_object \
-	alloc_btree_ctor alloc_btree_get_node alloc_btree_apply_infix alloc_btree_memory_move alloc_btree_atomics_op \
-	alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
-	alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
-	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
-	alloc_btree_get_neighbours
-VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
-SRC_C += exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
-
-VPATH += src/stdlib
 HEADERS += stdlib.h
 
-SRC_C += read write fork mmap munmap mprotect sleep getuid getpid close unlink pause reboot shutdown execve getpgid getpgrp setpgid getppid tcsetpgrp tcgetpgrp tcgetpgrp tcsetpgrp isatty getegid geteuid getgid chdir getcwd setegid seteuid setgid setgroups setuid seteuid setegid setgroups getgroups getopt getpass _exit lseek execl access chown fchown link rmdir getpagesize symlink dup dup2 pipe execvp sync readlink
-
-VPATH += src/unistd
 HEADERS += unistd.h
 
-SRC_C += mmap munmap mprotect
-VPATH += src/sys/mman
 HEADERS += sys/mman.h
 
-SRC_C += stat lstat fstat mkfifo umask chmod fchmod mkdir mknod
-VPATH += src/sys/stat
 HEADERS += sys/stat.h
 
-SRC_C += select
-VPATH += src/sys/select/
 VPATH += sys/select.h
 
-
-SRC_C += statfs fstatfs
-VPATH += src/sys/statfs
 HEADERS += sys/statfs.h
 
-SRC_C += statvfs fstatvfs
-VPATH += src/sys/statvfs
 HEADERS += sys/statvfs.h
 
-
-SRC_C += gettimeofday settimeofday
-VPATH += src/sys/time
 HEADERS += sys/time.h
 
-SRC_ASM += clone
-SRC_C += sched
-VPATH += src/sched
 HEADERS += sched.h
 
-SRC_C += nanosleep localtime time gmtime ctime asctime
-VPATH += src/time
 HEADERS += time.h
 
-SRC_C += signal sigaction kill raise killpg \
-		sigemptyset sigfillset sigaddset sigdelset \
-		strsignal \
-        sigprocmask sigsuspend sigismember
-
-VPATH += src/signal
 HEADERS += signal.h
 
-SRC_C += wait wait3 wait4
-VPATH += src/wait
 HEADERS += wait.h sys/wait.h
 
-SRC_C += socket bind connect listen accept send recv sendto recvfrom shutdown
-VPATH += src/socket
 HEADERS += sys/socket.h sys/un.h
 
-SRC_C += gettext locale
-VPATH += src/locale
 HEADERS += locale.h
 
-SRC_C += tcgetattr tcsetattr
-VPATH += src/termios
 HEADERS += termios.h
 
-SRC_C += opendir readdir closedir
-VPATH += src/dirent
 HEADERS += dirent.h
 
-SRC_C += fcntl open
-VPATH += src/fcntl
 HEADERS += fcntl.h
 
-SRC_C += isdigit isspace isblank iscntrl isgraph islower ispunct isupper isxdigit isalpha isalnum isascii isprint _tolower tolower
-VPATH += src/ctype
 HEADERS += ctype.h
 
-VPATH += src/math
-SRC_ASM += pow.c
 HEADERS += math.h
 
-VPATH += src/setjmp
-SRC_ASM += setjmp
 HEADERS += setjmp.h
 
-VPATH += src/math
-SRC_NASM += round __pow nanf
 HEADERS += math.h
 
-SRC_C += strsplit array parse_2d_file
-VPATH += src/tools
 HEADERS += tools/tools.h
 
-SRC_C += getpwnam getpwuid
-VPATH += src/pwd
 HEADERS += pwd.h
 
-SRC_C += utime
-VPATH += src/utime
 HEADERS += utime.h
 
-SRC_C += getgrnam getgrgid
-VPATH += src/grp
 HEADERS += grp.h
 
-SRC_C += strcasecmp
-VPATH += src/strings
 HEADERS += strings.h
 
-SRC_C += setmntent getmntent endmntent addmntent hasmntopt
-VPATH += src/mntent
 HEADERS += mntent.h
-
-
-SRC_C += is_ptr_valid
-VPATH += src/custom
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash
 HEADERS += getopt.h sys/resource.h sys/ioctl.h sys/times.h libintl.h mntent.h
 
 HEADERS += ltrace/ltrace.h
-
 CFLAGS += -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 ifeq ($(trace),yes)
 	CFLAGS += -D LTRACE
 endif
 
-OBJ_DIR = obj
-OBJ_ASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
-OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+OBJ_C_RUNTIME = $(SRC_C_RUNTIME:$(SRC_DIR)/crt/%.s=$(OBJ_DIR)/crt/%.o)
+OBJ_NASM = $(SRC_NASM:$(SRC_DIR)/%.asm=$(OBJ_DIR)/%.o)
+OBJ_ASM = $(SRC_ASM:$(SRC_DIR)/%.s=$(OBJ_DIR)/%.o)
+OBJ_C = $(SRC_C:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+
 TESTED_OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(TESTED_SRC_C)))))
-
-# non-turbofish specific
-OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NASM)))))
-
-SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
-OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
-
-HEADERS := $(addprefix include/, $(HEADERS))
-SYSROOT_HEADERS = $(addprefix $(TOOLCHAIN_SYSROOT)/usr/, $(HEADERS))
+SYSROOT_HEADERS = $(addprefix $(TOOLCHAIN_SYSROOT)/usr/include/, $(HEADERS))
+VPATH += include/:$(SRC_DIR)/stdio/printf:$(SRC_DIR)/stdlib/alloc:$(SRC_DIR)/stdlib/alloc/alloc_btree
 
 .PHONY = all clean fclean re exec
-
 all: $(TARGET) $(OBJ_C_RUNTIME) $(SYSROOT_HEADERS)
 
 $(TOOLCHAIN_SYSROOT)/usr/include/%: include/%
@@ -243,17 +133,20 @@ $(TARGET_LIBC): $(OBJ_C_RUNTIME) $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 $(TARGET_UNIT_TESTS): $(TESTED_OBJ_C)
 	$(CC) $(CFLAGS) -o $@ $^ -lcriterion
 
-$(OBJ_DIR)/%.o: %.c Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
-	$(CC) -c $(CFLAGS) -o $@ $<
-
-$(OBJ_DIR)/%.o: %.s Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
+$(OBJ_DIR)/crt/%.o: $(SRC_DIR)/crt/%.s
+	@mkdir -pv $(@D)
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: %.asm Makefile $(HEADERS) $(PRIVATE_HEADERS) include include/sys
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.asm Makefile $(HEADERS) $(PRIVATE_HEADERS)
+	@mkdir -pv $(@D)
 	$(NASM) -f elf -o $@ $<
 
-# Compile all the C runtime object files
-obj/crt/%.o: src/crt/%.s
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile $(HEADERS) $(PRIVATE_HEADERS)
+	@mkdir -pv $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.s Makefile $(HEADERS) $(PRIVATE_HEADERS)
+	@mkdir -pv $(@D)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 clean:
@@ -262,6 +155,7 @@ clean:
 fclean: clean
 	rm -fv $(TARGET_LIBC)
 	rm -fv $(TARGET_UNIT_TESTS)
+	find $(OBJ_DIR) -mindepth 1 -delete
 
 re: fclean all
 
