@@ -137,6 +137,8 @@ pub struct UserProcess {
     pub virtual_allocator: Arc<DeadMutex<AddressSpace>>,
     /// Symbol Table of a user process
     pub symbol_table: Option<Arc<SymbolTable>>,
+    /// User Stack location
+    pub user_stack_range: (u32, u32),
 }
 
 /// This structure represents an entire kernel process
@@ -233,6 +235,7 @@ impl UserProcess {
                 Arc::try_new(DeadMutex::new(self.virtual_allocator.lock().fork()?))?
             },
             symbol_table: self.symbol_table.as_ref().map(|elem| elem.clone()),
+            user_stack_range: self.user_stack_range,
         })?)
     }
     pub fn get_virtual_allocator(&self) -> DeadMutexGuard<AddressSpace> {
@@ -428,6 +431,10 @@ impl Process for UserProcess {
             kernel_esp,
             virtual_allocator: Arc::try_new(DeadMutex::new(virtual_allocator))?,
             symbol_table,
+            user_stack_range: (
+                stack_addr as u32,
+                stack_addr.add(Self::RING3_PROCESS_STACK_SIZE.into()) as u32,
+            ),
         })?)
     }
 
