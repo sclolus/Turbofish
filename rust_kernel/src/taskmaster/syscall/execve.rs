@@ -13,7 +13,7 @@ use libc_binding::c_char;
 use core::convert::TryFrom;
 
 use fallible_collections::TryClone;
-use libc_binding::{Amode, Errno};
+use libc_binding::{Amode, Errno, FileType};
 
 use super::vfs::{Path, VFS};
 
@@ -120,18 +120,27 @@ pub fn sys_execve(
         let envp_content: CStringArray = v.make_checked_cstring_array(envp)?;
         drop(v);
 
-        let tg = scheduler.current_thread_group();
+        let tg = scheduler.current_thread_group_mut();
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
-        // This seems unefficient since pathname resolution will be executed two times:
-        // here and in get_file_content. And pathname needs to be clone...
-        if !VFS
-            .lock()
-            .is_access_granted(cwd, creds, &pathname.try_clone()?, Amode::EXECUTE)
-        {
-            return Err(Errno::EACCESS);
-        }
+        // This seems unefficient since pathname resolution will be executed a lot of times:
+        // here and in get_file_content.
 
+        let filetype;
+        let owner;
+        let group;
+        {
+            let mut vfs = VFS.lock();
+            if !vfs.is_access_granted(cwd, creds, &pathname, Amode::EXECUTE) {
+                return Err(Errno::EACCESS);
+            }
+
+            filetype = vfs.file_type(cwd, creds, &pathname)?;
+            // (owner, group) = vfs.get_file_owner(cwd, creds, &pathname)?; this does not compile...
+            let (tmp_owner, tmp_group) = vfs.get_file_owner(cwd, creds, &pathname)?;
+            owner = tmp_owner;
+            group = tmp_group;
+        }
         let content = get_file_content(cwd, creds, pathname)?;
 
         let mut new_process = unsafe {
@@ -140,6 +149,19 @@ pub fn sys_execve(
                 Some(ProcessArguments::new(argv_content, envp_content)),
             )?
         };
+
+        // Save the euid/egid as POSIX specifies.
+        tg.credentials.suid = tg.credentials.euid;
+        tg.credentials.sgid = tg.credentials.egid;
+
+        // If SUID/GUID, become owner/group.
+        if filetype.contains(FileType::SET_USER_ID) {
+            tg.credentials.euid = owner;
+        }
+
+        if filetype.contains(FileType::SET_GROUP_ID) {
+            tg.credentials.egid = group;
+        }
 
         let old_process = scheduler.current_thread_mut().unwrap_process_mut();
         /*

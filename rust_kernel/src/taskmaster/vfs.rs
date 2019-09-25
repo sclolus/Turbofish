@@ -415,7 +415,7 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         creds: &Credentials,
-        path: Path,
+        path: &Path,
     ) -> SysResult<FileType> {
         let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
         let inode_id = &self
@@ -428,6 +428,27 @@ impl VirtualFileSystem {
             .get(inode_id)
             .expect("Vfs Inodes are corrupted: Could not find expected inode")
             .access_mode)
+    }
+
+    /// Returns the owner (uid) and group (gid) of the file pointed by the Path `path`.
+    pub fn get_file_owner(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: &Path,
+    ) -> SysResult<(uid_t, gid_t)> {
+        let direntry_id = self.pathname_resolution(cwd, creds, &path)?;
+        let inode_id = &self
+            .dcache
+            .get_entry(&direntry_id)
+            .expect("Dcache is corrupted: Could not find expected direntry")
+            .inode_id;
+        let inode = self
+            .inodes
+            .get(inode_id)
+            .expect("Vfs Inodes are corrupted: Could not find expected inode");
+
+        Ok((inode.uid, inode.gid))
     }
 
     // fn recursive_build_subtree(
@@ -781,6 +802,7 @@ impl VirtualFileSystem {
                     inode_number,
                     // Open creates regular files
                     FileType::REGULAR_FILE | mode,
+                    (creds.euid, creds.egid),
                 )?;
                 log::error!("Created: {} with filetype {:?}", path, mode);
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
@@ -993,9 +1015,12 @@ impl VirtualFileSystem {
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
-        let fs_entry = fs
-            .lock()
-            .create_dir(inode_id.inode_number, filename.as_str(), mode)?;
+        let fs_entry = fs.lock().create_dir(
+            inode_id.inode_number,
+            filename.as_str(),
+            mode,
+            (creds.euid, creds.egid),
+        )?;
         self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
@@ -1037,9 +1062,12 @@ impl VirtualFileSystem {
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
 
-        let fs_entry = fs
-            .lock()
-            .create(filename.as_str(), inode_id.inode_number, mode)?;
+        let fs_entry = fs.lock().create(
+            filename.as_str(),
+            inode_id.inode_number,
+            mode,
+            (creds.euid, creds.egid),
+        )?;
         self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }

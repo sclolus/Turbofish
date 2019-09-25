@@ -4,7 +4,7 @@ use super::Block;
 use crate::tools::IoResult;
 use bitflags::bitflags;
 use core::mem::size_of;
-use libc_binding::FileType;
+use libc_binding::{gid_t, uid_t, FileType};
 
 // Like blocks, each inode has a numerical address. It is extremely important to note that unlike block addresses, inode addresses start at 1.
 
@@ -93,8 +93,7 @@ impl Inode {
 
     pub fn new(type_and_perm: FileType) -> Self {
         Self {
-            //TODO: put the true time
-            creation_time: 42,
+            creation_time: 0,
             nbr_hard_links: 1,
             type_and_perm,
             ..Default::default()
@@ -131,6 +130,18 @@ impl Inode {
                 None
             }
         }
+    }
+
+    /// Set the owner (user id) of the inode.
+    pub fn set_owner(&mut self, owner: uid_t) -> &mut Self {
+        self.user_id = owner;
+        self
+    }
+
+    /// Set the group (user id) of the inode.
+    pub fn set_group(&mut self, group: gid_t) -> &mut Self {
+        self.group_id = group;
+        self
     }
 
     pub fn is_a_directory(&self) -> bool {
