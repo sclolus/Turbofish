@@ -5,7 +5,26 @@ pub mod cursor;
 pub use color::*;
 pub use cursor::*;
 
+use core::slice::SliceIndex;
 use core::str::FromStr;
+
+#[derive(Debug)]
+pub struct CharBoundaryError;
+
+pub trait GetSubStrWithError<I> {
+    fn get_substr(&self, i: I) -> Result<&<I as SliceIndex<str>>::Output, CharBoundaryError>
+    where
+        I: SliceIndex<str>;
+}
+
+impl<I> GetSubStrWithError<I> for &str {
+    fn get_substr(&self, i: I) -> Result<&<I as SliceIndex<str>>::Output, CharBoundaryError>
+    where
+        I: SliceIndex<str>,
+    {
+        self.get(i).ok_or(CharBoundaryError)
+    }
+}
 
 ///Definition of what produce a escape sequence
 #[derive(Copy, Clone, Debug, PartialEq)]
