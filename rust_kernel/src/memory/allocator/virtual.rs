@@ -1,5 +1,5 @@
 use super::{BuddyAllocator, PHYSICAL_ALLOCATOR};
-use crate::memory::mmu::{invalidate_page, invalidate_page_range, Entry, PageDirectory};
+use crate::memory::mmu::{_read_cr3, invalidate_page, invalidate_page_range, Entry, PageDirectory};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::convert::Into;
@@ -15,6 +15,19 @@ use core::{fmt, fmt::Debug};
 impl Debug for VirtualPageAllocator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Virtual allocator")
+    }
+}
+
+/// Drop protector
+impl Drop for VirtualPageAllocator {
+    fn drop(&mut self) {
+        if unsafe {
+            self.get_physical_addr(Virt(self.mmu.as_ref() as *const _ as usize))
+                .expect("Woot ?")
+                == _read_cr3()
+        } {
+            panic!("Page Directory Auto-Sodomization: Would you really trash your current CR3 ?");
+        }
     }
 }
 
