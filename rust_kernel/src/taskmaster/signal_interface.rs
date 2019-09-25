@@ -321,14 +321,24 @@ impl SignalInterface {
                     _ => {
                         let process_esp = unsafe { (*cpu_state).esp };
                         if process_esp >= user_stack_range.1 {
-                            log::error!("ESP range of the current process is bullshit: process_esp = {:#X?} > user_stack_end = {:#X?}", process_esp, user_stack_range.1);
+                            log::error!("ESP range of the current process is bullshit !");
+                            log::error!(
+                                "proc esp: {:#X?} > stack end: {:#X?}",
+                                process_esp,
+                                user_stack_range.1
+                            );
                             return Some(Signum::SIGKILL);
                         }
-                        // It There are not enough space in user stack ( < PAGE_SIZE)
+                        // It There are not enough space in user stack (neg | x < PAGE_SIZE)
                         else if process_esp < user_stack_range.0
                             || process_esp - user_stack_range.0 < 0x1000
                         {
-                            log::warn!("ESP range overflow detected: process_esp = {:#X?} user_stack_start = {:#X?}", process_esp, user_stack_range.0);
+                            log::warn!("ESP range underflow detected !");
+                            log::warn!(
+                                "proc esp: {:#X?}, stack start: {:#X?}",
+                                process_esp,
+                                user_stack_range.0
+                            );
                             return Some(Signum::SIGKILL);
                         }
                         if frame_build == 0 && in_blocked_syscall {
