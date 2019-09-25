@@ -93,5 +93,9 @@ pub extern "C" fn kmain(
     crate::drivers::storage::init(&multiboot_info);
 
     eprintln!("Launching Taskmaster:");
-    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/MasterDeepThought"], &[]);
+    crate::taskmaster::start(
+        "/bin/init",
+        &["/bin/init", "/bin/MasterDeepThought", "/bin/DeepThought"],
+        &[],
+    );
 }
