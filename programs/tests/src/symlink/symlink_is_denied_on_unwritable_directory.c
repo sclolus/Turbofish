@@ -24,16 +24,16 @@ int main(void)
 	assert(0 == mkdir(dir_filename, 0555));
 
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	int ret = symlink(dir_filename, filename);
 
 	assert(ret == -1);
 	assert(errno == EACCES);
 
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 	assert(rmdir(dir_filename) == 0);
 	return EXIT_SUCCESS;
 }

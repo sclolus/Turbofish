@@ -24,16 +24,16 @@ int main(void)
 		err_errno("Failed to mkdir %s", dir_filename);
 	}
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 
 	assert(NULL == opendir(dir_filename));
 	assert(errno == EACCES);
 
 	// Go back to root priviligies to cleanup.
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 
 	assert(rmdir(dir_filename) == 0);
 	return EXIT_SUCCESS;

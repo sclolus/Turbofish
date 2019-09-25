@@ -23,15 +23,15 @@ int main(void)
 	assert(0 == mkdir(dir_filename, 0555));
 
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 	int fd = open(filename, O_CREAT | O_EXCL, 0666);
 	assert(fd == -1);
 	assert(errno == EACCES);
 
 	// Go back to root credentials to cleanup.
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 
 	assert(rmdir(dir_filename) == 0);
 	return EXIT_SUCCESS;

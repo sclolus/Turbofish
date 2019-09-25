@@ -35,7 +35,7 @@ pub fn sys_setuid(uid: uid_t) -> SysResult<u32> {
             cred.euid = uid;
             cred.suid = uid;
             Ok(0)
-        } else if uid == cred.euid || uid == cred.suid {
+        } else if uid == cred.uid || uid == cred.suid {
             cred.euid = uid;
             Ok(0)
         } else {

@@ -25,27 +25,27 @@ int main(void)
 	assert(0 == mkdir(dir_filename, 0777));
 
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	int fd = open(filename, O_CREAT | O_EXCL, 0666);
 	assert(fd != -1);
 
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 
 	// Now, removes write permissions on the parent directory
 	assert(0 == chmod(dir_filename, 0555));
 
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	// try to unlink the file.
 	assert(-1 == unlink(filename));
 	assert(errno == EACCES);
 
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 
 	// undo all the stuff.
 	assert(0 == chmod(dir_filename, 0777));

@@ -29,16 +29,16 @@ int main(void)
 	assert(0 == chmod(dir_filename, 0555));
 
 	// We want to test the normal behavior
-	assert(0 == seteuid(1000));
 	assert(0 == setegid(1000));
+	assert(0 == seteuid(1000));
 
 	int ret = link(filename, newfilename);
 	assert(ret == -1);
 	assert(errno == EACCES);
 
 	// We need the root rights back.
-	assert(0 == seteuid(0));
-	assert(0 == setegid(0));
+	assert(0 == setuid(0));
+	assert(0 == setgid(0));
 
 	assert(0 == chmod(dir_filename, 0777));
 	assert(unlink(filename) == 0);
