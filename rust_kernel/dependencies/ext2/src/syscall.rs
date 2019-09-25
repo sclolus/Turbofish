@@ -300,10 +300,12 @@ impl Ext2Filesystem {
                 } else {
                     start_data_address = Some(data_address);
                 }
-                let bytes = min(
+                let mut bytes = min(
                     self.block_size as u64 - (*file_offset & block_mask),
                     inode.get_size() - *file_offset,
                 );
+                bytes = min(bytes, buf.len() as u64 - bytes_to_read);
+
                 *file_offset += bytes;
                 bytes_to_read += bytes;
                 if bytes_to_read == buf.len() as u64 {
@@ -341,8 +343,9 @@ impl Ext2Filesystem {
         let direntry_type = DirectoryEntryType::SymbolicLink;
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
-        //TODO: rights and mode
-        let mut inode = Inode::new(FileType::SYMBOLIC_LINK);
+        let access_mode =
+            FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU;
+        let mut inode = Inode::new(access_mode);
         if target.len() <= Inode::FAST_SYMLINK_SIZE_MAX {
             // If target is a fast symlink write the target directly
             // on inode
