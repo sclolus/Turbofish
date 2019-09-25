@@ -7,7 +7,7 @@ use super::IpcResult;
 
 use super::get_file_op_uid;
 
-use libc_binding::{Errno, OpenFlags};
+use libc_binding::{stat, Errno, OpenFlags};
 
 use core::cmp;
 
@@ -158,6 +158,11 @@ impl FileOperation for Pipe {
         } else {
             Ok(IpcResult::Wait(min as _, self.file_op_uid))
         }
+    }
+
+    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
+        // TODO: This is for ls | cat -e to works, because cat do a fstat(0)
+        Ok(0)
     }
 }
 

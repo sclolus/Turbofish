@@ -1,4 +1,5 @@
 use super::drivers::FileOperation;
+use super::syscall::socket;
 use super::thread_group::Credentials;
 use super::vfs::Path;
 use super::IpcResult;
@@ -177,15 +178,14 @@ impl FileDescriptorInterface {
         }
     }
 
-    // TODO: This function may be trashed in the future
     /// Open a Socket
-    /// The socket type must be pass as parameter
-    #[allow(dead_code)]
-    pub fn open_socket(&mut self, flags: OpenFlags) -> SysResult<Fd> {
-        let socket = Arc::try_new(DeadMutex::new(Socket::new()))?;
-        let fd = self.insert_user_fd(flags, socket)?;
-
-        Ok(fd)
+    pub fn open_socket(
+        &mut self,
+        domain: socket::Domain,
+        socket_type: socket::SocketType,
+    ) -> SysResult<Fd> {
+        let file_operator = Arc::try_new(DeadMutex::new(Socket::new(domain, socket_type)?))?;
+        self.insert_user_fd(OpenFlags::O_RDWR, file_operator)
     }
 }
 

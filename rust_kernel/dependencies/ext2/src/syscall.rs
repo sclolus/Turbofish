@@ -96,6 +96,7 @@ impl Ext2Filesystem {
     ) -> IoResult<(DirectoryEntry, Inode)> {
         let direntry_type = DirectoryEntryType::try_from(file_type).expect("bad file type");
         //TODO: remove expect
+        dbg!(file_type);
         let inode_nbr = self.alloc_inode().ok_or(Errno::ENOSPC)?;
         let (_, inode_addr) = self.get_inode(inode_nbr)?;
         let mut inode = Inode::new(file_type);
@@ -120,8 +121,9 @@ impl Ext2Filesystem {
         filename: &str,
         free_inode_data: bool,
     ) -> IoResult<()> {
+        dbg!(filename);
         let entry = self.find_entry_in_inode(parent_inode_nbr, filename)?;
-        self.unlink_inode(entry.0.get_inode(), free_inode_data)?;
+        self.unlink_inode(dbg!(entry.0.get_inode()), free_inode_data)?;
         self.delete_entry(parent_inode_nbr, entry.1).unwrap();
         Ok(())
     }

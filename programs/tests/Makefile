@@ -71,6 +71,10 @@ SRC_C += MasterDeepThought \
 		fchown/fchown_fails_if_not_owner \
 		execve/bad_elf \
 		fifo/fifo \
+		socket/sockdgram \
+		socket/sockdgram_connect \
+		socket/sockdgram_recvfrom \
+		socket/sockstream \
 		open/open_fails_with_eaccess_basic \
 		open/cannot_open_with_bad_perms \
 		open/open_o_creat_is_denied_for_unwritable_parent \

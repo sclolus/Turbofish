@@ -96,6 +96,12 @@ impl Inode {
         self.link_number == 0 && self.nbr_open_file_operation == 0
     }
 
+    /// increment artificialy open file operation field. Used for
+    /// binding a socket
+    pub unsafe fn incr_nbr_open_file_operation(&mut self) {
+        self.nbr_open_file_operation += 1;
+    }
+
     /// return if we can unlink directly or not
     pub fn unlink(&mut self) -> bool {
         assert!(self.link_number > 0);
@@ -108,6 +114,10 @@ impl Inode {
 
     pub fn get_id(&self) -> InodeId {
         self.inode_data.get_id()
+    }
+
+    pub fn get_driver(&mut self) -> &mut dyn Driver {
+        &mut *self.driver as &mut dyn Driver
     }
 }
 
@@ -129,8 +139,6 @@ pub struct InodeData {
     pub ctime: time_t,
 
     pub size: u64,
-    // pub status: InodeStatus,
-    // pub ref_count: AtomicU32,;
 }
 
 impl InodeData {

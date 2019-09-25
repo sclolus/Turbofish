@@ -64,6 +64,11 @@ impl BlockIo for BiosInt13hInstance {
         }
     }
 
+    /// return the size of the disk
+    fn disk_size(&self) -> u64 {
+        unsafe { BIOS_INT13H.as_ref().unwrap().disk_size() }
+    }
+
     fn write(
         &mut self,
         start_sector: Sector,
@@ -109,6 +114,11 @@ impl BlockIo for IdeAtaInstance {
                 .unwrap()
                 .write(start_sector, nbr_sectors, buf)
         }
+    }
+
+    /// return the size of the disk
+    fn disk_size(&self) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -270,6 +280,9 @@ impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
         self.offset = new_offset;
         Ok(self.offset as off_t)
     }
+    // fn get_inode_id(&self) -> InodeId {
+    //     self.inode_id
+    // }
 }
 
 use ext2::DiskIo;

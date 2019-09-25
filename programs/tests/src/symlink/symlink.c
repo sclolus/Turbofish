@@ -41,6 +41,7 @@ void test_symlink(char *salt) {
 		perror("readlink");
 	}
 
+	printf("'%s', '%s'", bufname, filename);
 	assert(strcmp(bufname, filename) == 0);
 
 	assert(stat(linkpath, &buf) == 0);

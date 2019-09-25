@@ -14,9 +14,19 @@ pub struct Mbr {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Partition {
+    /// Drive attributes (bit 7 set = active or bootable)
+    drive_attribute: u8,
     part_type: PartitionType,
     pub start: u32,
     pub size: u32,
+}
+
+impl Partition {
+    /// return if the partition is active
+    pub fn is_active(&self) -> bool {
+        // is that correct ?
+        (self.drive_attribute & (1 << 7)) != 0
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -97,6 +107,7 @@ impl Mbr {
                 part_type: PartitionType::from(physical_mbr.partitions[i].partition_type),
                 start: physical_mbr.partitions[i].lba_start,
                 size: physical_mbr.partitions[i].nb_sector,
+                drive_attribute: physical_mbr.partitions[i].drive_attribute,
             };
         }
         Self { physical_mbr, bootable, parts }

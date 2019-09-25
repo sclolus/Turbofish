@@ -72,6 +72,7 @@ pub trait BlockIo: Send {
         nbr_sectors: NbrSectors,
         buf: *const u8,
     ) -> DiskResult<NbrSectors>;
+    fn disk_size(&self) -> u64;
 }
 
 pub fn init(multiboot_info: &MultibootInfo) {

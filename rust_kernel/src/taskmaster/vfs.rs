@@ -1,4 +1,7 @@
-use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::drivers::{
+    ipc::{FifoDriver, SocketDriver},
+    DefaultDriver, Driver, Ext2DriverFile, FileOperation,
+};
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
@@ -19,7 +22,7 @@ mod tools;
 use tools::KeyGenerator;
 
 mod path;
-mod posix_consts;
+pub mod posix_consts;
 use posix_consts::{NAME_MAX, SYMLOOP_MAX};
 
 pub use path::{Filename, Path};
@@ -119,6 +122,8 @@ impl VirtualFileSystem {
             fs,
             if inode_data.is_fifo() {
                 Box::try_new(FifoDriver::try_new(inode_data.id)?)?
+            } else if inode_data.is_socket() {
+                Box::try_new(SocketDriver::try_new()?)?
             } else {
                 // TODO: handle others drivers
                 Box::try_new(Ext2DriverFile::new(inode_data.id))?
@@ -318,6 +323,9 @@ impl VirtualFileSystem {
         }
     }
 
+    pub fn get_driver(&mut self, inode_id: InodeId) -> SysResult<&mut dyn Driver> {
+        Ok(self.get_inode(inode_id).map_err(|_| ENOENT)?.get_driver())
+    }
     /// Ici j'enregistre un filename associe a son driver (que je
     /// provide depuis l'ipc)
     /// constrainte: Prototype, filename et Arc<DeadMutex<dyn Driver>>
@@ -1017,14 +1025,29 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn inode_id_from_absolute_path(
+        &mut self,
+        path: &Path,
+        creds: &Credentials,
+    ) -> SysResult<InodeId> {
+        if !path.is_absolute() {
+            panic!("path is not absolute");
+        }
+        let entry_id = self
+            .pathname_resolution(&Path::root(), creds, path)
+            .map_err(|_| ENOENT)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        Ok(entry.inode_id)
+    }
+
     pub fn mknod(
         &mut self,
         cwd: &Path,
         creds: &Credentials,
         mut path: Path,
         mode: FileType,
-    ) -> SysResult<()> {
-        if mode & FileType::S_IFMT != FileType::FIFO {
+    ) -> SysResult<InodeId> {
+        if !mode.is_fifo() && !mode.is_socket() {
             //TODO: remove that, and check create function filesystem
             unimplemented!()
         }
@@ -1060,8 +1083,9 @@ impl VirtualFileSystem {
             mode,
             (creds.euid, creds.egid),
         )?;
-        self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
-        Ok(())
+        let new_entry_id = self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
+        let new_entry = self.dcache.get_entry(&new_entry_id)?;
+        Ok(new_entry.inode_id)
     }
 
     // TODO: Sticky bit (EPERM condition in posix) is not implemented for now.
@@ -1176,6 +1200,20 @@ impl VirtualFileSystem {
         Ok(())
     }
 
+    pub fn stat(
+        &mut self,
+        cwd: &Path,
+        creds: &Credentials,
+        path: Path,
+        buf: &mut stat,
+    ) -> SysResult<u32> {
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
+        let inode_id = entry.inode_id;
+        let inode = self.get_inode(inode_id)?;
+        inode.stat(buf)
+    }
+
     pub fn lstat(
         &mut self,
         cwd: &Path,
@@ -1204,20 +1242,7 @@ impl VirtualFileSystem {
             .get_symbolic_content()
             .ok_or(EINVAL)?;
 
-        let size = buf.len();
-        let mut i = 0;
-        for b in symbolic_content.iter_bytes() {
-            // keep a place for the \0
-            if i >= size - 1 {
-                return Err(ERANGE);
-            }
-            buf[i] = *b;
-            i += 1;
-        }
-        if i > 0 {
-            buf[i - 1] = '\0' as c_char;
-        }
-        Ok(i as u32)
+        symbolic_content.write_path_in_buffer(buf)
     }
 
     pub fn symlink(

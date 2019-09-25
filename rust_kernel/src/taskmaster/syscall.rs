@@ -232,7 +232,7 @@ mod dup2;
 use dup2::sys_dup2;
 mod pipe;
 use pipe::sys_pipe;
-mod socket;
+pub mod socket;
 use socket::{sys_socketcall, SocketArgsPtr};
 mod read;
 use read::sys_read;

@@ -2,23 +2,14 @@ use super::SysResult;
 
 use super::scheduler::{Scheduler, SCHEDULER};
 use super::vfs::{Path, VFS};
-use super::IpcResult;
 use core::convert::TryFrom;
-use libc_binding::{c_char, stat, FileType, OpenFlags};
+use libc_binding::{c_char, stat};
 
 pub fn statfn(scheduler: &Scheduler, path: Path, buf: &mut stat) -> SysResult<u32> {
-    let mode = FileType::from_bits(0o777).expect("file permission creation failed");
-    let flags = OpenFlags::empty();
-
     let tg = scheduler.current_thread_group();
     let creds = &tg.credentials;
     let cwd = &tg.cwd;
-    let file_operator = match VFS.lock().open(cwd, creds, path, flags, mode)? {
-        IpcResult::Done(file_operator) => file_operator,
-        IpcResult::Wait(file_operator, _) => file_operator,
-    };
-    let mut m = file_operator.lock();
-    m.fstat(buf)
+    VFS.lock().stat(cwd, creds, path, buf)
 }
 
 pub fn sys_stat(filename: *const c_char, buf: *mut stat) -> SysResult<u32> {

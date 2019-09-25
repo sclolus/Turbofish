@@ -73,6 +73,11 @@ impl DirectoryEntryBuilder {
         self
     }
 
+    pub fn set_socket(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::Socket);
+        self
+    }
+
     pub fn build(self) -> DirectoryEntry {
         DirectoryEntry {
             filename: self.filename.expect("no filename given"),
@@ -283,6 +288,7 @@ pub enum DirectoryEntryInner {
     Directory(EntryDirectory),
     Symlink(Path),
     Fifo,
+    Socket,
 }
 
 use DirectoryEntryInner::*;

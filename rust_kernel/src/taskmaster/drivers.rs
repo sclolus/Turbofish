@@ -3,14 +3,13 @@
 use super::SysResult;
 
 use super::vfs;
+use super::vfs::Path;
 use super::vfs::{InodeId, VFS};
 use super::Credentials;
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::Pipe;
-pub use ipc::Socket;
-pub use ipc::{FifoDriver, FifoFileOperation};
+pub use ipc::{FifoDriver, FifoFileOperation, Pipe, Socket};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -32,6 +31,9 @@ use sync::dead_mutex::DeadMutex;
 /// This Trait represent a File Descriptor in Kernel
 /// It cas be shared between process (cf Fork()) and for two user fd (cf Pipe()) or one (cf Socket() or Fifo())
 pub trait FileOperation: core::fmt::Debug + Send {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Err(Errno::ENOSYS)
+    }
     /// Invoqued when a new FD is registered
     fn register(&mut self, _flags: OpenFlags) {}
 
@@ -51,8 +53,12 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
-        log::error!("UNIMPLEMENTED: fstat called on a non ext2 file");
+    fn fstat(&mut self, stat: &mut stat) -> SysResult<u32> {
+        let inode_id = self.get_inode_id()?;
+        VFS.lock()
+            .get_inode(inode_id)
+            .expect("no such inode")
+            .stat(stat)?;
         Ok(0)
     }
 
@@ -87,6 +93,32 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn fstatfs(&mut self, _buf: &mut statfs) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
+
+    fn bind(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn connect(&mut self, _cwd: &Path, _creds: &Credentials, _sockaddr: Path) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn send_to(
+        &mut self,
+        _creds: &Credentials,
+        _buf: &[u8],
+        _flags: u32,
+        _sockaddr_opt: Option<Path>,
+    ) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn recv_from(
+        &mut self,
+        _buf: &mut [u8],
+        _flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
+        Err(Errno::ENOSYS)
+    }
 }
 
 #[derive(Debug)]
@@ -108,6 +140,16 @@ pub trait Driver: core::fmt::Debug + Send {
     /// Open method of a file
     fn open(&mut self, flags: OpenFlags)
         -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
+    fn send_from(&mut self, _buf: &[u8], _flags: u32, _sender: Option<Path>) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+    fn recv_from(
+        &mut self,
+        _buf: &mut [u8],
+        _flags: u32,
+    ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
+        Err(Errno::ENOSYS)
+    }
 }
 
 #[derive(Debug)]
