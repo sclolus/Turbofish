@@ -24,27 +24,28 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 		int _fd = open_tty_device(tty_device);
 		(void)_fd;
 		perror("fork failed");
-		exit(1);
+		return -1;
 	} else if (pid == 0) {
 		int fd = open_tty_device(tty_device);
 
 		if (argc < 2) {
 			dprintf(2, "bad argument number %i: should be at least 2\n", argc);
-			exit(1);
+			return -1;
 		}
 		if (setpgid(0, 0) < 0) {
 			perror("setpgid failed");
-			exit(1);
+			return -1;
 		}
 		if (tcsetpgrp(fd, getpgid(0)) < 0) {
 			perror("tcsetpgrp failed");
-			exit(1);
+			return -1;
 		}
 		printf("argc: %i -> self: %s to_execve: %s to_tty: %s\n", argc, argv[0], argv[1], tty_device);
 		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
 			perror("execve failed");
-			exit(1);
+			dprintf(STDERR_FILENO, "seeking for '%s'\n", argv[1]);
+			return -1;
 		}
 	}
 	return pid;
@@ -62,6 +63,10 @@ int main(int argc, char **argv, char **envp)
 	for (int i = 0; i < MAX_TTY; i++) {
 		snprintf(buf, BUF_LEN, "/dev/tty%i", i + 1);
 		p[i] = init_forker(buf, argc, argv, envp);
+		if ((p[i]) < 0) {
+			dprintf(STDERR_FILENO, "CRITICAL ERROR DETECTED !\n");
+			while (1) {}
+		}
 	}
 
 	int status;
@@ -74,7 +79,7 @@ int main(int argc, char **argv, char **envp)
 
 			(void)_fd;
 			perror("session manager wait failed");
-			exit(1);
+			while (1) {}
 		}
 		for (int i = 0; i < MAX_TTY; i++) {
 			if (p[i] == ret) {
