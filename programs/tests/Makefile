@@ -40,12 +40,15 @@ SRC_C += MasterDeepThought \
 		unlink/unlink \
 		unlink/unlink_multiple \
 		unlink/unlink_orphan \
+		unlink/unlink_is_denied_on_unwritable_directory \
 		umask/umask \
 		dir/mkdir_exist \
 		dir/mkdir \
 		dir/rmdir_not_empty \
 		symlink/symlink \
+		symlink/symlink_is_denied_on_unwritable_directory \
 		link/link \
+		link/link_is_denied_on_unwritable_directory \
 		rename/rename \
 		rename/rename_dir \
 		rename/rename_dir_exist \
@@ -55,17 +58,25 @@ SRC_C += MasterDeepThought \
 		statvfs/statvfs \
 		fstatfs/fstatfs \
 		fstatvfs/fstatvfs \
+		chmod_tests/chmod_fails_if_not_owner \
 		chmod_tests/einval_mode \
 		chmod_tests/chmod_normal \
 		fchmod/einval_mode \
+		fchmod/fchmod_fails_if_not_owner \
 		fchmod/fchmod_normal \
 		utime/utime_basic \
 		chown_tests/chown_basic \
+		chown_tests/chown_fails_if_not_owner \
 		fchown/fchown_basic \
+		fchown/fchown_fails_if_not_owner \
 		execve/bad_elf \
 		fifo/fifo \
+		open/open_fails_with_eaccess_basic \
+		open/cannot_open_with_bad_perms \
+		open/open_o_creat_is_denied_for_unwritable_parent \
+		opendir/opendir_is_denied_on_unreachable
 
-VPATH += src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown
+VPATH += src/open src/signal src/execve src/sigprocmask src/wait src/munmap src/mprotect src/mmap src/isatty src/atexit src/pipe src/math src/execl src/umask src/statvfs src/statfs src/fstatfs src/fstatvfs src/rename src/unlink src/dir src/symlink src/chmod_tests src/fchmod src/utime src/fchown src/chown_tests src/fchown fifo/fifo src/opendir src/link
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(SRC_C)))

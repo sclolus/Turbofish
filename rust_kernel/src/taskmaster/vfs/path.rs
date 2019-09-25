@@ -836,7 +836,7 @@ mod test {
                 break
             }
             let test_path = paths.pop().unwrap_or(Path::null_path());
-            path = path.parent();
+            path = path.parent().unwrap();
 
             assert_eq!(path, test_path);
         }

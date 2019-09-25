@@ -70,22 +70,33 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/fchown/fchown_fails_if_not_owner"},
+	{.path = "/bin/chown_tests/chown_fails_if_not_owner"},
+	{.path = "/bin/fchmod/fchmod_fails_if_not_owner"},
+	{.path = "/bin/chmod_tests/chmod_fails_if_not_owner"},
 	{.path = "/bin/fifo/fifo"},
 	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},
+	{.path = "/bin/link/link"},
+	{.path = "/bin/link/link_is_denied_on_unwritable_directory"},
+	{.path = "/bin/opendir/opendir_is_denied_on_unreachable"},
+	{.path = "/bin/unlink/unlink_is_denied_on_unwritable_directory"},
+	{.path = "/bin/unlink/unlink_multiple"},
+	{.path = "/bin/unlink/unlink"},
+	{.path = "/bin/symlink/symlink_is_denied_on_unwritable_directory"},
+	{.path = "/bin/symlink/symlink"},
+	{.path = "/bin/open/open_o_creat_is_denied_for_unwritable_parent"},
+	{.path = "/bin/open/cannot_open_with_bad_perms"},
+	{.path = "/bin/open/open_fails_with_eaccess_basic"},
 	{.path = "/bin/rename/rename_dir_not_empty"},
 	{.path = "/bin/rename/rename_dir_exist"},
 	{.path = "/bin/rename/rename_file_exist"},
 	{.path = "/bin/rename/rename"},
 	{.path = "/bin/rename/rename_dir"},
-	{.path = "/bin/link/link"},
-	{.path = "/bin/symlink/symlink"},
 	{.path = "/bin/dir/mkdir"},
 	{.path = "/bin/dir/mkdir_exist"},
 	{.path = "/bin/dir/rmdir_not_empty"},
-	{.path = "/bin/unlink/unlink_multiple"},
 	{.path = "/bin/write/create_write_read"},
-	{.path = "/bin/unlink/unlink"},
 	{.path = "/bin/access/access"},
 	{.path = "/bin/signal/SignalSimple"},
 	{.path = "/bin/signal/SignalSimpleDuo"},
@@ -316,7 +327,7 @@ static void	build_logging_directory(void)
 	pid_t	pid = getpid();
 
 	snprintf(dir_filename, sizeof(dir_filename), LOGGING_DIR "_%u", pid);
-	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing", dir_filename);
+	snprintf(failing_dir_filename, sizeof(failing_dir_filename), "%s/failing_%u", dir_filename, pid);
 
 	if (!g_deepthought_info.preserve_log_dir && 0 == access(dir_filename, F_OK)) {
 		recursive_unlink(dir_filename);

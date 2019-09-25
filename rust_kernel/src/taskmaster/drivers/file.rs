@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, IpcResult, SysResult};
+use super::{Credentials, Driver, FileOperation, IpcResult, SysResult};
 use super::{InodeId, VFS};
 use alloc::sync::Arc;
 use libc_binding::{gid_t, off_t, stat, statfs, uid_t, Errno, FileType, OpenFlags, Whence};
@@ -108,13 +108,13 @@ impl FileOperation for Ext2FileOperation {
         Ok(self.offset as off_t)
     }
 
-    fn fchmod(&mut self, mode: FileType) -> SysResult<u32> {
-        VFS.lock().fchmod(self.inode_id, mode)?;
+    fn fchmod(&mut self, creds: &Credentials, mode: FileType) -> SysResult<u32> {
+        VFS.lock().fchmod(creds, self.inode_id, mode)?;
         Ok(0)
     }
 
-    fn fchown(&mut self, owner: uid_t, group: gid_t) -> SysResult<u32> {
-        VFS.lock().fchown(self.inode_id, owner, group)?;
+    fn fchown(&mut self, creds: &Credentials, owner: uid_t, group: gid_t) -> SysResult<u32> {
+        VFS.lock().fchown(creds, self.inode_id, owner, group)?;
         Ok(0)
     }
 }
