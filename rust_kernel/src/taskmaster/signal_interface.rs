@@ -16,6 +16,8 @@ use libc_binding::{
 };
 use libc_binding::{SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK};
 
+use crate::memory::tools::PAGE_SIZE;
+
 #[allow(non_camel_case_types)]
 pub type sigset_t = u32;
 
@@ -331,7 +333,7 @@ impl SignalInterface {
                         }
                         // It There are not enough space in user stack (neg | x < PAGE_SIZE)
                         else if process_esp < user_stack_range.0
-                            || process_esp - user_stack_range.0 < 0x1000
+                            || process_esp - user_stack_range.0 < PAGE_SIZE as u32
                         {
                             log::warn!("ESP range underflow detected !");
                             log::warn!(
