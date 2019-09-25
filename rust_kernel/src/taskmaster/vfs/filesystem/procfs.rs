@@ -61,6 +61,9 @@ pub use meminfo::MeminfoDriver;
 mod vmstat;
 pub use vmstat::VmstatDriver;
 
+mod mounts;
+pub use mounts::MountsDriver;
+
 use itertools::unfold;
 
 unsafe impl Send for ProcFs {}
@@ -216,8 +219,6 @@ impl ProcFs {
 
         let inode = Inode(inode, Box::new(|| Box::new(DefaultDriver)));
 
-        log::warn!("root_inode_id: {:?}", root_inode_id);
-        log::warn!("root_dir_id: {:?}", root_dir_id);
         new.inodes.try_insert(root_inode_id, inode)?;
 
         let version_filename = Filename::from_str_unwrap("version");
@@ -227,6 +228,7 @@ impl ProcFs {
         let loadavg_filename = Filename::from_str_unwrap("loadavg");
         let meminfo_filename = Filename::from_str_unwrap("meminfo");
         let vmstat_filename = Filename::from_str_unwrap("vmstat");
+        let mounts_filename = Filename::from_str_unwrap("mounts");
 
         new.register_file(
             root_dir_id,
@@ -267,6 +269,12 @@ impl ProcFs {
             root_dir_id,
             vmstat_filename,
             Box::new(|| Box::new(vmstat::VmstatDriver)),
+        )?;
+
+        new.register_file(
+            root_dir_id,
+            mounts_filename,
+            Box::new(|| Box::new(mounts::MountsDriver)),
         )?;
 
         // Inserting divers basic procfs files.
@@ -557,29 +565,21 @@ impl FileSystem for ProcFs {
 
         self.symlink(root_dir_id, self_filename, pid_path);
 
-        eprintln!("Looking up InodeId: {:?}", inode_id);
         let direntry = self
             .dcache
             .iter()
-            // .map(|(_, dir)| dir)
             .find(|dir| dir.inode_id == inode_id)
             .expect("No corresponding directory for Inode");
-        eprintln!("Looking up Direntry: {}", direntry.filename);
-
-        // eprintln!("Trying to access childs of {:?}", direntry.id);
 
         let inodes = &mut self.inodes;
         let dcache = &self.dcache;
 
-        // log::info!("Succesfully locked scheduler");
         Ok(direntry
             .get_directory()
             .expect("Direntry was not a directory.")
             .entries()
             .filter_map(|direntry_id| {
-                // eprintln!("Trying to access child: {:?}", direntry_id);
                 let direntry = dcache.get_entry(direntry_id).expect("WTF");
-                //remove this unwrap
                 let inode = inodes.get_mut(&direntry.inode_id);
                 if let (ent, Some(inode)) = (direntry, inode) {
                     let mut entry = ent.clone();

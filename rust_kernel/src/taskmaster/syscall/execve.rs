@@ -8,6 +8,7 @@ use super::process::{
 use super::safe_ffi::CStringArray;
 use super::scheduler::SCHEDULER;
 use super::thread::ProcessState;
+use fallible_collections::TryClone;
 use libc_binding::c_char;
 
 use core::convert::TryFrom;

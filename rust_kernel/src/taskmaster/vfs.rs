@@ -192,8 +192,7 @@ impl VirtualFileSystem {
             self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
                 .or_else(|e| {
                     if e == Errno::EEXIST {
-                        // well...
-                        Ok(DirectoryEntryId::new(0))
+                        panic!("lookup_directory: Tried to add entry on an existing one when none was expected to exist.");
                     } else {
                         Err(e)
                     }
@@ -284,11 +283,6 @@ impl VirtualFileSystem {
                     .expect("mount point entry should be there");
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
             }
-            log::warn!(
-                "Processing entries of {} for component: {}",
-                current_entry.filename,
-                component
-            );
             let current_dir = current_entry.get_directory()?;
 
             if component == &"." {
@@ -330,7 +324,6 @@ impl VirtualFileSystem {
                             .get_entry(x)
                             .expect("Invalid entry id in a directory entry that is a directory")
                             .filename;
-                        log::warn!("Processing filename {}", filename);
                         filename == component
                     })
                     .ok_or(ENOENT)?;
@@ -667,11 +660,6 @@ impl VirtualFileSystem {
         }
 
         let entry_count = entry.get_directory()?.entries().count();
-        log::warn!(
-            "Process opendir : {}, {} entries",
-            entry.filename,
-            entry_count
-        );
 
         let should_lookup = {
             entry_count == 0

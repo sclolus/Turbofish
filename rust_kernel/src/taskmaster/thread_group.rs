@@ -95,8 +95,13 @@ pub struct ThreadGroup {
     /// The umask of the process: The actived bits in it are disabled in all file creating operations.
     pub umask: mode_t,
 
+    /// Filled by execve, used by /proc/[pid]/environ in the procfs.
     pub environ: Option<CStringArray>,
+
+    /// Filled by execve, used by /proc/[pid]/cmdline in the procfs.
     pub argv: Option<CStringArray>,
+
+    /// Filled by execve, used by /proc/[pid]/exe in the procfs.
     pub filename: Option<Path>,
 }
 
