@@ -76,6 +76,7 @@ impl Driver for SocketDriver {
             Dgram(driver) => driver.recv_from(buf, flags),
         }
     }
+
     fn connect(&mut self, addr: Option<Path>, inode_id: InodeId) -> SysResult<IpcResult<()>> {
         use SocketDriver::*;
         match self {

@@ -50,6 +50,7 @@ SRC_C += Clone \
 		fork_bomb \
 		client_socket \
 		server_socket \
+		bullshit_return \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

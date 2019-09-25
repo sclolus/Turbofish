@@ -18,9 +18,9 @@ int main() {
 
 	printf("creating dir: %s\n", filename);
 
-	assert(mkdir(filename, 0644) == 0);
+	assert(mkdir(filename, 0744) == 0);
 
-	assert(mkdir(newname, 0644) == 0);
+	assert(mkdir(newname, 0744) == 0);
 
 	sprintf(file_in_newname, "%s/file", newname);
 	assert(-1 != open(file_in_newname, O_RDWR | O_CREAT, 0644));

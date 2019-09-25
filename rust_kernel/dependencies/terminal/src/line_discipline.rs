@@ -78,9 +78,12 @@ impl LineDiscipline {
     /// write in the read buffer the keysymb read from the keyboard
     /// Send a message if read is ready, depending of the lmode
     pub fn handle_key_pressed(&mut self, key: KeySymb) -> Result<(), CapacityError<u8>> {
-        let mut encode_buff = [0; 8];
-        // dbg!(key);
         if !self.handle_tty_control(key) {
+            // Check if tty is attached to a file operator
+            if self.tty.uid_file_op.is_none() {
+                return Ok(());
+            }
+            let mut encode_buff = [0; 8];
             // handle special keys in canonical mode
             if self.termios.c_lflag & ICANON != 0 {
                 // handle delete key

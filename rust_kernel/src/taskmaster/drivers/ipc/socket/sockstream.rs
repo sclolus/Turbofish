@@ -372,6 +372,12 @@ impl SocketStream {
             whom: Whom::Server,
         }
     }
+
+    fn send_to_without_creds(&mut self, buf: &[u8], flags: u32) -> SysResult<IpcResult<u32>> {
+        let mut vfs = VFS.lock();
+        let driver = vfs.get_driver(self.inode_id)?;
+        driver.send_from(buf, flags, self.path.try_clone()?, self.whom)
+    }
 }
 
 /// Main Trait implementation
@@ -389,7 +395,7 @@ impl FileOperation for SocketStream {
     }
 
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
-        self.send_to(buf, 0, None)
+        self.send_to_without_creds(buf, 0)
     }
 
     fn bind(&mut self, cwd: &Path, creds: &Credentials, sockaddr: Path) -> SysResult<u32> {
@@ -417,12 +423,12 @@ impl FileOperation for SocketStream {
     fn connect(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         sockaddr: Path,
     ) -> SysResult<IpcResult<()>> {
         let mut vfs = VFS.lock();
-        let absolute_path = vfs.resolve_path(cwd, &sockaddr)?;
-        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path)?;
+        let absolute_path = vfs.resolve_path(cwd, creds, &sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path, creds)?;
         // self.peer_address = Some(absolute_path);
         // self.peer_inode_id = Some(inode_id);
         let driver = vfs.get_driver(inode_id)?;
@@ -432,13 +438,12 @@ impl FileOperation for SocketStream {
 
     fn send_to(
         &mut self,
+        _creds: &Credentials,
         buf: &[u8],
         flags: u32,
         _sockaddr_opt: Option<Path>,
     ) -> SysResult<IpcResult<u32>> {
-        let mut vfs = VFS.lock();
-        let driver = vfs.get_driver(self.inode_id)?;
-        driver.send_from(buf, flags, self.path.try_clone()?, self.whom)
+        self.send_to_without_creds(buf, flags)
     }
 
     fn recv_from(

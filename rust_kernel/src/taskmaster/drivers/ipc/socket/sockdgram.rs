@@ -161,12 +161,12 @@ impl FileOperation for SocketDgram {
     fn connect(
         &mut self,
         cwd: &Path,
-        _creds: &Credentials,
+        creds: &Credentials,
         sockaddr: Path,
     ) -> SysResult<IpcResult<()>> {
         let mut vfs = VFS.lock();
-        let absolute_path = vfs.resolve_path(cwd, &sockaddr)?;
-        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path)?;
+        let absolute_path = vfs.resolve_path(cwd, creds, &sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&absolute_path, creds)?;
         self.peer_address = Some(absolute_path);
         self.peer_inode_id = Some(inode_id);
         Ok(IpcResult::Done(()))
@@ -174,6 +174,7 @@ impl FileOperation for SocketDgram {
 
     fn send_to(
         &mut self,
+        creds: &Credentials,
         buf: &[u8],
         flags: u32,
         sockaddr_opt: Option<Path>,
@@ -189,7 +190,7 @@ impl FileOperation for SocketDgram {
             }
         };
         let mut vfs = VFS.lock();
-        let inode_id = vfs.inode_id_from_absolute_path(&sockaddr)?;
+        let inode_id = vfs.inode_id_from_absolute_path(&sockaddr, creds)?;
         let driver = vfs.get_driver(inode_id)?;
         driver.send_from(buf, flags, self.path.try_clone()?, Whom::Client)
     }

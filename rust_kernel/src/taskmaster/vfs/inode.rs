@@ -134,6 +134,7 @@ pub struct InodeData {
     pub link_number: nlink_t,
     pub access_mode: FileType,
 
+    //TODO: chnage this to (owner, group),
     pub uid: uid_t,
     pub gid: gid_t,
 
@@ -191,6 +192,11 @@ impl InodeData {
 
     pub fn set_gid(&mut self, gid: gid_t) -> &mut Self {
         self.gid = gid;
+        self
+    }
+
+    pub fn set_link_number(&mut self, link_number: nlink_t) -> &mut Self {
+        self.link_number = link_number;
         self
     }
 

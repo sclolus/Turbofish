@@ -30,7 +30,7 @@ pub fn sys_setuid(uid: uid_t) -> SysResult<u32> {
         let mut scheduler = SCHEDULER.lock();
         let thread_group = scheduler.current_thread_group_mut();
         let cred = &mut thread_group.credentials;
-        if cred.uid == 0 {
+        if cred.euid == 0 {
             cred.uid = uid;
             cred.euid = uid;
             cred.suid = uid;

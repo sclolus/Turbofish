@@ -31,12 +31,12 @@ pub fn sys_setgid(gid: gid_t) -> SysResult<u32> {
         let mut scheduler = SCHEDULER.lock();
         let thread_group = scheduler.current_thread_group_mut();
         let cred = &mut thread_group.credentials;
-        if cred.uid == 0 {
+        if cred.euid == 0 {
             cred.gid = gid;
             cred.egid = gid;
             cred.sgid = gid;
             Ok(0)
-        } else if gid == cred.uid || gid == cred.sgid {
+        } else if gid == cred.gid || gid == cred.sgid {
             cred.egid = gid;
             Ok(0)
         } else {

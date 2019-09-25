@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 size_t NUMBER = 0;
 
@@ -50,6 +51,8 @@ int main() {
 		dprintf(2, "errno should be set to ENOTEMPTY: %s\n", dirname);
 		exit(1);
 	}
+
+	assert(0 == chmod(dirname, 0777));
 	ret = unlink(filename);
 	if (ret == -1) {
 		perror("unlink");

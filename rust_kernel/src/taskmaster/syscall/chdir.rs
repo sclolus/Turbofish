@@ -25,12 +25,12 @@ pub fn sys_chdir(buf: *const c_char) -> SysResult<u32> {
         };
 
         let tg = scheduler.current_thread_group_mut();
-        // let creds = &tg.credentials;
+        let creds = &tg.credentials;
         let cwd = &tg.cwd;
         let path = Path::try_from(safe_buf)?;
 
         let mut vfs = VFS.lock();
-        let direntry_id = vfs.pathname_resolution(cwd, &path)?;
+        let direntry_id = vfs.pathname_resolution(cwd, creds, &path)?;
 
         let posix_path = vfs.dentry_path(direntry_id)?;
         assert!(posix_path.is_absolute());

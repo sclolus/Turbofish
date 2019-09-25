@@ -43,6 +43,7 @@ pub trait FileSystem: Send + Debug {
         _filename: &str,
         _parent_inode_nbr: u32,
         _mode: FileType,
+        (_owner, _group): (uid_t, gid_t),
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }
@@ -60,6 +61,7 @@ pub trait FileSystem: Send + Debug {
         _parent_inode_nbr: u32,
         _filename: &str,
         _mode: FileType,
+        (_owner, _group): (uid_t, gid_t),
     ) -> SysResult<(DirectoryEntry, InodeData)> {
         Err(Errno::ENOSYS)
     }

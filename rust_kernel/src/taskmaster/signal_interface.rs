@@ -16,6 +16,8 @@ use libc_binding::{
 };
 use libc_binding::{SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK};
 
+use crate::memory::tools::PAGE_SIZE;
+
 #[allow(non_camel_case_types)]
 pub type sigset_t = u32;
 
@@ -301,6 +303,7 @@ impl SignalInterface {
     pub fn exec_signal_handler(
         &mut self,
         cpu_state: *mut CpuState,
+        user_stack_range: (u32, u32),
         in_blocked_syscall: bool,
     ) -> Option<Signum> {
         let mut i = 0;
@@ -318,6 +321,28 @@ impl SignalInterface {
                         _ => {}
                     },
                     _ => {
+                        let process_esp = unsafe { (*cpu_state).esp };
+                        if process_esp >= user_stack_range.1 {
+                            log::error!("ESP range of the current process is bullshit !");
+                            log::error!(
+                                "proc esp: {:#X?} > stack end: {:#X?}",
+                                process_esp,
+                                user_stack_range.1
+                            );
+                            return Some(Signum::SIGKILL);
+                        }
+                        // It There are not enough space in user stack (neg | x < PAGE_SIZE)
+                        else if process_esp < user_stack_range.0
+                            || process_esp - user_stack_range.0 < PAGE_SIZE as u32
+                        {
+                            log::warn!("ESP range underflow detected !");
+                            log::warn!(
+                                "proc esp: {:#X?}, stack start: {:#X?}",
+                                process_esp,
+                                user_stack_range.0
+                            );
+                            return Some(Signum::SIGKILL);
+                        }
                         if frame_build == 0 && in_blocked_syscall {
                             if sigaction.sa_flags.intersects(SaFlags::SA_RESTART) {
                                 // Back 2 instruction to reput eip on `int 80h` and restart the syscall

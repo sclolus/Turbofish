@@ -431,7 +431,7 @@ fn socket(
     scheduler: &mut Scheduler,
     domain: Domain,
     socket_type: SocketType,
-    protocol: u32,
+    _protocol: u32,
 ) -> SysResult<u32> {
     // println!(
     //     "{:?}: {:?} {:?} {:?}",
@@ -565,7 +565,7 @@ raw_deferencing_struct!(
 fn accept(
     socket_fd: i32,
     sockaddr: Option<&mut SockaddrUnix>,
-    sockaddr_len: *mut SockLen,
+    _sockaddr_len: *mut SockLen,
 ) -> SysResult<u32> {
     // println!(
     //     "{:?}: {:?} {:?} {:?}",
@@ -681,16 +681,17 @@ fn send_to(
             let mut scheduler = SCHEDULER.lock();
             let tg = scheduler.current_thread_group_mut();
             let cwd = &tg.cwd;
+            let creds = &tg.credentials;
             let fd_interface = &mut tg
                 .thread_group_state
                 .unwrap_running_mut()
                 .file_descriptor_interface;
             let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
-            let resolved_path = match path {
-                Some(ref path) => Some(VFS.lock().resolve_path(cwd, path)?),
+            let resolved_path = match &path {
+                Some(path) => Some(VFS.lock().resolve_path(cwd, creds, path)?),
                 None => None,
             };
-            let res = file_operation.send_to(buf, flags, resolved_path)?;
+            let res = file_operation.send_to(creds, buf, flags, resolved_path)?;
             drop(file_operation);
             drop(tg);
             match res {
@@ -734,7 +735,7 @@ fn recv_from(
     buf: &mut [u8],
     flags: u32,
     src_addr: Option<&mut SockaddrUnix>,
-    addr_len: *mut SockLen,
+    _addr_len: *mut SockLen,
 ) -> SysResult<u32> {
     // println!(
     //     "{:?}: {:?} {:?} {:?} {:?} {:?}",
@@ -787,7 +788,7 @@ raw_deferencing_struct!(
     }
 );
 
-fn shutdown(_scheduler: &mut Scheduler, socket_fd: i32, how: u32) -> SysResult<u32> {
+fn shutdown(_scheduler: &mut Scheduler, _socket_fd: i32, _how: u32) -> SysResult<u32> {
     // println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
     Ok(0)
 }

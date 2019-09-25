@@ -519,10 +519,13 @@ impl Scheduler {
             PrivilegeLevel::Ring3,
             "Cannot apply signal from ring0 process"
         );
-        let signum: Option<Signum> = self
-            .current_thread_mut()
-            .signal
-            .exec_signal_handler(cpu_state, in_blocked_syscall);
+        // Get the user_stack location to ensure that are large available space
+        let user_stack_range = self.current_thread().unwrap_process().user_stack_range;
+        let signum: Option<Signum> = self.current_thread_mut().signal.exec_signal_handler(
+            cpu_state,
+            user_stack_range,
+            in_blocked_syscall,
+        );
         if let Some(signum) = signum {
             self.current_thread_group_exit(Status::Signaled(signum))
         } else {
