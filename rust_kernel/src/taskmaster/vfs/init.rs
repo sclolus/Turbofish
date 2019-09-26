@@ -5,7 +5,7 @@ use crate::taskmaster::drivers::{
 };
 use alloc::format;
 use alloc::sync::Arc;
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use fallible_collections::vec::FallibleVec;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::OpenFlags;

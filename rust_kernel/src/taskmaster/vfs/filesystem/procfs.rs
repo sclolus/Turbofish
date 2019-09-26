@@ -37,9 +37,6 @@ pub use filesystems::FilesystemsDriver;
 mod stat;
 pub use stat::StatDriver;
 
-mod cwd;
-pub use cwd::CwdDriver;
-
 mod environ;
 pub use environ::EnvironDriver;
 
