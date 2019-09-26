@@ -10,6 +10,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	cast buffer norme \
 
 VPATH += src/stdio/printf src/stdio/
+HEADERS += libc.h
 PRIVATE_HEADERS += internal_printf.h
 
 CFLAGS += -m32 -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
@@ -28,7 +29,7 @@ $(TARGET): $(OBJ_C)
 	$(RANLIB) $@
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS) $(PRIVATE_HEADERS)
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -Iinclude -c -o $@ $<
 
 clean:
 	find $(OBJ_DIR) -type f -name '*.o' -exec rm -fv {} \;

@@ -19,7 +19,7 @@ $(TARGET): $(OBJ_C) libc/lib.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
-	$(CC) $(CFLAGS) -Iinclude -c -o $@ $<
+	$(CC) $(CFLAGS) -Iinclude -Ilibc/include -c -o $@ $<
 
 clean:
 	make -C libc clean

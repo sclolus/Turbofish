@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#define ft_memset(a,b,c) memset(a,b,c)
+#define ft_memcpy(a,b,c) memcpy(a,b,c)
+
 typedef __builtin_va_list	va_list;
 # define va_start(v,l)		__builtin_va_start(v,l)
 # define va_end(v)		__builtin_va_end(v)

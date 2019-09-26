@@ -1,23 +1,12 @@
 #include "internal_printf.h"
 
+#include "libc.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <limits.h>
 
-
 #define STDARG_BOILERPLATE(expr) va_list ap; va_start(ap, format); int n = expr; va_end(ap); return n;
-
-int xprintf(const char *format, ...);
-int xdprintf(int const fd, const char *format, ...);
-int xsprintf(char *str, const char *format, ...);
-int xsnprintf(char *str, size_t size, const char *format, ...);
-int xasprintf(char **strp, const char *format, ...);
-int xvprintf(const char* format, va_list ap);
-int xvdprintf(int fd, const char *format, va_list ap);
-int xvsprintf(char *str, const char *format, va_list ap);
-int xvsnprintf(char *str, size_t size, const char *format, va_list ap);
-int xvasprintf(char **strp, const char *format, va_list ap);
-int xeprintf(const char *format, ...);
 
 /*
  * Derive from stdio.h
