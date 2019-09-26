@@ -10,7 +10,7 @@ use crate::memory::tools::address::Virt;
 use core::ffi::c_void;
 use i386::BaseRegisters;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, timeval, timezone, uid_t, utimbuf,
+    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, timeval, timezone, tms, uid_t, utimbuf,
     OpenFlags, Pid, DIR,
 };
 use libc_binding::{
@@ -20,7 +20,7 @@ use libc_binding::{
     MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR,
     RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
     SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR,
-    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
+    TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UNLINK, UTIME, WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -118,6 +118,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             MKDIR => log::info!("mkdir({:#?}, {:#?})", ebx as *const c_char, ecx as mode_t),
             RMDIR => log::info!("rmdir({:#?})", ebx as *const c_char),
             PIPE => log::info!("pipe({:#?})", ebx as *const i32),
+            TIMES => log::info!("times({:#?})", ebx as *mut tms),
             DUP => log::info!("dup({:#?})", ebx as u32),
             SETGID => log::info!("setgid({:#?})", ebx as gid_t),
             GETGID => log::info!("getgid()"),
@@ -261,6 +262,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         MKDIR => "mkdir",
         RMDIR => "rmdir",
         PIPE => "pipe",
+        TIMES => "times",
         GETGID => "getgid",
         GETEUID => "geteuid",
         FCNTL => "fcntl",
