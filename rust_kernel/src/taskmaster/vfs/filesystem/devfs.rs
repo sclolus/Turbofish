@@ -10,7 +10,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::sync::atomic::Ordering;
-use fallible_collections::{btree::BTreeMap, FallibleBox, TryClone, TryCollect};
+use fallible_collections::{btree::BTreeMap, FallibleBox, TryCollect};
 use libc_binding::{statfs, FileType};
 
 #[derive(Debug)]

@@ -1,5 +1,6 @@
 //! This file contains all the stuff about TTY
 
+use super::InodeId;
 use super::IpcResult;
 use super::SysResult;
 
@@ -7,7 +8,7 @@ use super::{get_file_op_uid, Driver, FileOperation};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{stat, termios, OpenFlags, Pid};
+use libc_binding::{termios, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
@@ -17,15 +18,17 @@ use crate::terminal::{ReadResult, TERMINAL};
 pub struct TtyFileOperation {
     controlling_terminal: usize,
     file_op_uid: usize,
+    inode_id: InodeId,
 }
 
 /// Main implementation of TtyFileOperation
 impl TtyFileOperation {
-    pub fn new(controlling_terminal: usize) -> Self {
+    pub fn new(controlling_terminal: usize, inode_id: InodeId) -> Self {
         let file_op_uid = get_file_op_uid();
         Self {
             controlling_terminal,
             file_op_uid,
+            inode_id,
         }
     }
 }
@@ -62,6 +65,11 @@ where
 impl FileOperation for TtyFileOperation {
     fn register(&mut self, _flags: OpenFlags) {}
     fn unregister(&mut self, _flags: OpenFlags) {}
+
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let read_result = unsafe {
             TERMINAL
@@ -125,12 +133,6 @@ impl FileOperation for TtyFileOperation {
     fn isatty(&mut self) -> SysResult<u32> {
         return Ok(1);
     }
-
-    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
-        //TODO: this is a hack to make dash works, stock and use
-        // inodeid instead
-        Ok(0)
-    }
 }
 
 /// Drop boilerplate
@@ -149,9 +151,12 @@ pub struct TtyDevice {
 
 /// Main implementation of TtyDevice
 impl TtyDevice {
-    pub fn try_new(controlling_terminal: usize) -> SysResult<Self> {
+    pub fn try_new(controlling_terminal: usize, inode_id: InodeId) -> SysResult<Self> {
         let r = Ok(Self {
-            operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(controlling_terminal)))?,
+            operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(
+                controlling_terminal,
+                inode_id,
+            )))?,
         });
         log::info!("TTY {} created !", controlling_terminal);
         r

@@ -96,8 +96,6 @@ fn init_ext2(vfs: &mut Vfs, devfs: &mut Devfs, driver_type: DiskDriverType) {
     )
     .expect("mount filesystem failed");
 
-    let root_creds = Credentials::ROOT;
-
     init_sda(devfs, sda_driver, partition_drivers);
 }
 
@@ -182,14 +180,14 @@ fn init_procfs(vfs: &mut Vfs) -> Result<(), Errno> {
 /// ext2 is mounted on root
 fn init_tty(devfs: &mut Devfs) {
     for i in 1..=4 {
+        let inode_id = devfs.gen_inode_id();
         // C'est un exemple, le ou les FileOperation peuvent aussi etre alloues dans le new() ou via les open()
-        let driver = Box::try_new(TtyDevice::try_new(i).unwrap()).unwrap();
+        let driver = Box::try_new(TtyDevice::try_new(i, inode_id).unwrap()).unwrap();
         // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
         let filename =
             Filename::try_from(format!("tty{}", i).as_ref()).expect("path tty creation failed");
         let mode = FileType::from_bits(0o777).expect("file permission creation failed");
 
-        let inode_id = devfs.gen_inode_id();
         devfs
             .add_driver(filename, mode, driver, inode_id)
             .expect("failed to add new driver tty to vfs");

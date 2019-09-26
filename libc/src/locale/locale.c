@@ -12,7 +12,7 @@ const static char   *POSIX_LOCALE="POSIX";
 char *setlocale(int category, const char *locale)
 {
 	TRACE
-	DUMMY
+	/* DUMMY */
 	(void)category;
 	(void)locale;
 	return C_LOCALE;

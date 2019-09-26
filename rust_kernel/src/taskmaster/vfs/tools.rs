@@ -1,6 +1,5 @@
 use core::cmp::Ord;
 
-use core::ops::Add;
 use fallible_collections::btree::BTreeMap;
 
 pub trait KeyGenerator<K>
