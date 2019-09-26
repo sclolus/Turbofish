@@ -12,7 +12,7 @@ use super::{KeyGenerator, Mapper};
 use crate::taskmaster::drivers::DefaultDriver;
 use crate::taskmaster::vfs::Dcache;
 use alloc::{boxed::Box, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use core::ops::{Deref, DerefMut};
 use fallible_collections::{
     arc::FallibleArc,
@@ -113,7 +113,7 @@ impl KeyGenerator<DirectoryEntryId> for ProcFs {
 // }
 
 // #[derive(Debug)]
-struct Inode(VfsInode, Box<FnMut() -> Box<dyn Driver>>);
+struct Inode(VfsInode, Box<dyn FnMut() -> Box<dyn Driver>>);
 
 impl core::fmt::Debug for Inode {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
@@ -151,8 +151,8 @@ impl ProcFs {
         &mut self,
         parent: DirectoryEntryId,
         name: Filename,
-        gen_driver: Box<FnMut() -> Box<dyn Driver>>,
-    ) -> SysResult<()> {
+        gen_driver: Box<dyn FnMut() -> Box<dyn Driver>>,
+    ) -> SysResult<DirectoryEntryId> {
         let driver = Box::new(DefaultDriver);
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
@@ -178,7 +178,7 @@ impl ProcFs {
             .set_parent_id(parent)
             .set_regular();
 
-        let mut direntry = direntry.build();
+        let direntry = direntry.build();
         let dir_id = self
             .dcache
             .add_entry(Some(parent), direntry)
@@ -189,7 +189,7 @@ impl ProcFs {
             .try_insert(inode_id, inode)
             .or(Err(Errno::ENOMEM))?
             .is_none());
-        Ok(())
+        Ok(dir_id)
     }
 
     pub fn new(fs_id: FileSystemId) -> SysResult<Self> {
@@ -215,7 +215,6 @@ impl ProcFs {
         let inode = VfsInode::root_inode()?;
 
         new.root_inode_id = root_inode_id;
-        let driver = Box::new(DefaultDriver);
 
         let inode = Inode(inode, Box::new(|| Box::new(DefaultDriver)));
 
@@ -300,7 +299,7 @@ impl ProcFs {
         let driver = Box::new(DefaultDriver);
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
-        let parent_directory = parent_dir
+        parent_dir
             .get_directory_mut()
             .expect("Parent in Procfs::mkdir() should be a directory");
 
@@ -348,7 +347,7 @@ impl ProcFs {
             Some(id) => {
                 let entry = match dcache.get_entry(&id) {
                     Ok(entry) => entry,
-                    Err(e) => return None, // TODO: change this maybe
+                    Err(_) => return None, // TODO: change this maybe
                 };
                 let inode = inodes
                     .get(&entry.inode_id)
@@ -492,14 +491,16 @@ impl FileSystem for ProcFs {
             .map(|entry| entry.id);
         if self_dir_id.is_some() {
             // refactor this, this is horrible.
-            self.dcache.remove_entry(self_dir_id.unwrap());
+            self.dcache
+                .remove_entry(self_dir_id.unwrap())
+                .expect("Failed to removed the old /proc/self symlink");
         }
 
         // log::info!("Trying to lock scheduler");
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
 
-        let mut thread_groups = scheduler.iter_thread_groups();
+        let thread_groups = scheduler.iter_thread_groups();
 
         for thread_group in thread_groups {
             let pid = thread_group.pgid; // Is that so ?
@@ -535,11 +536,6 @@ impl FileSystem for ProcFs {
             let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
 
             self.symlink(dir_id, cwd_filename, cwd)?;
-            // self.register_file(
-            //     dir_id,
-            //     cwd_filename,
-            //     Box::new(move || Box::new(CwdDriver::new(pid))),
-            // )?;
 
             let environ_filename = Filename::from_str_unwrap("environ");
             self.register_file(
@@ -563,7 +559,8 @@ impl FileSystem for ProcFs {
         let (current_pid, _) = scheduler.current_task_id();
         let pid_path = Path::try_from(format!("/proc/{}", current_pid).as_str())?; // TODO: unfaillible context/hardcoded.
 
-        self.symlink(root_dir_id, self_filename, pid_path);
+        self.symlink(root_dir_id, self_filename, pid_path)
+            .expect("Failed to creat the /proc/self symlink");
 
         let direntry = self
             .dcache
@@ -585,6 +582,7 @@ impl FileSystem for ProcFs {
                     let mut entry = ent.clone();
 
                     if entry.is_directory() {
+                        // Cleanup the incompatible-with-vfs directoryEntryIds in the direntry.
                         entry.get_directory_mut().unwrap().clear_entries();
                     }
                     Some((entry, inode.inode_data.clone(), inode.1()))

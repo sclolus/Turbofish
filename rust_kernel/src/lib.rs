@@ -26,7 +26,7 @@ extern crate alloc;
 
 extern crate arrayvec;
 
-#[macro_use]
+// #[macro_use]
 extern crate derive_is_enum_variant;
 
 // Our Crates

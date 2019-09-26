@@ -1,10 +1,8 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
 
-use alloc::{boxed::Box, sync::Arc};
+use alloc::sync::Arc;
 
-use fallible_collections::{boxed::FallibleBox, FallibleArc};
-
-use core::fmt::Debug;
+use fallible_collections::FallibleArc;
 
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
@@ -19,11 +17,8 @@ pub struct ProcStatDriver;
 unsafe impl Send for ProcStatDriver {}
 
 impl Driver for ProcStatDriver {
-    fn open(
-        &mut self,
-        _flags: OpenFlags,
-    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(DeadMutex::new(ProcStatOperations { offset: 0 }))?;
+    fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
+        let res = Arc::try_new(Mutex::new(ProcStatOperations { offset: 0 }))?;
         Ok(IpcResult::Done(res))
     }
 }

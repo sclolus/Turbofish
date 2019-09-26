@@ -1,11 +1,9 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
 use crate::drivers::pit_8253::PIT0;
 
-use alloc::{boxed::Box, sync::Arc};
+use alloc::sync::Arc;
 
-use fallible_collections::{boxed::FallibleBox, FallibleArc};
-
-use core::fmt::Debug;
+use fallible_collections::FallibleArc;
 
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
@@ -20,11 +18,8 @@ pub struct UptimeDriver;
 unsafe impl Send for UptimeDriver {}
 
 impl Driver for UptimeDriver {
-    fn open(
-        &mut self,
-        _flags: OpenFlags,
-    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(DeadMutex::new(UptimeOperations { offset: 0 }))?;
+    fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
+        let res = Arc::try_new(Mutex::new(UptimeOperations { offset: 0 }))?;
         Ok(IpcResult::Done(res))
     }
 }
@@ -52,7 +47,7 @@ impl FileOperation for UptimeOperations {
         let frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
         let uptime = unsafe { _get_pit_time() as f32 * frequency } as usize;
         //TODO: calculate time spend in idle process.
-        let idle_process_time = 0;
+        let _idle_process_time = 0;
         //TODO: Unfailible context.
         let uptime_string = format!(
             "{}.00 1.00",

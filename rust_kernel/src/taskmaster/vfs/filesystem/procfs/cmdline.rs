@@ -1,12 +1,9 @@
 use super::{Driver, FileOperation, IpcResult, SysResult};
-use crate::taskmaster::vfs::Path;
 use crate::taskmaster::SCHEDULER;
 
-use alloc::{boxed::Box, sync::Arc};
+use alloc::sync::Arc;
 
-use fallible_collections::{boxed::FallibleBox, FallibleArc};
-
-use core::fmt::Debug;
+use fallible_collections::FallibleArc;
 
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
@@ -30,11 +27,8 @@ pub struct CmdlineOperations {
 }
 
 impl Driver for CmdlineDriver {
-    fn open(
-        &mut self,
-        _flags: OpenFlags,
-    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(DeadMutex::new(CmdlineOperations::new(self.pid, 0)))?;
+    fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
+        let res = Arc::try_new(Mutex::new(CmdlineOperations::new(self.pid, 0)))?;
         Ok(IpcResult::Done(res))
     }
 }

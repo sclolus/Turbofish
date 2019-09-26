@@ -9,7 +9,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::sync::atomic::Ordering;
-use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, FallibleVec, TryCollect};
+use fallible_collections::{btree::BTreeMap, FallibleArc, FallibleBox, TryCollect};
 use lazy_static::lazy_static;
 use sync::DeadMutex;
 
@@ -159,9 +159,12 @@ impl VirtualFileSystem {
                 .get_entry(&child)
                 .expect("There should be a child here");
 
+            let inode_id = entry.inode_id;
             if entry.is_directory() {
                 self.recursive_remove_dentries(child)?;
             }
+            // This means that dynamic filesystems shall not support multiple hardlinks for now.
+            self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
             self.dcache.remove_entry(child)?;
         })
     }
@@ -175,6 +178,7 @@ impl VirtualFileSystem {
         self.recursive_remove_dentries(direntry_id)?;
 
         let current_entry = self.dcache.get_entry(&direntry_id)?;
+
         // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
         let fs_cloned = self
