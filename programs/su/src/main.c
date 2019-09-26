@@ -69,7 +69,8 @@ int main(int argc, char **argv)
 	uid_t		uid = getuid();
 
 	// If the real user id is root, skip password checks.
-	if (uid != 0) {
+	// Except if we are in login shell mode.
+	if (uid != 0 || args.login_shell) {
 		char		*input_password = getpass("Password: ");
 
 		if (!input_password) {
@@ -140,11 +141,11 @@ int main(int argc, char **argv)
 		free(hash);
 	}
 
-	if (-1 == setegid(entry->gid)) {
+	if (-1 == setgid(entry->gid)) {
 		err_errno("Failed to setgid(%d (%s))", entry->gid, login);
 	}
 
-	if (-1 == seteuid(entry->uid)) {
+	if (-1 == setuid(entry->uid)) {
 		err_errno("Failed to setuid(%d (%s))", entry->uid, login);
 	}
 
