@@ -644,8 +644,8 @@ impl VirtualFileSystem {
         path: Path,
     ) -> SysResult<Vec<dirent>> {
         //TODO check this function
-        let mut entry_id = self.pathname_resolution(cwd, creds, &path)?;
-        let mut entry = self.dcache.get_entry(&entry_id)?;
+        let entry_id = self.pathname_resolution(cwd, creds, &path)?;
+        let entry = self.dcache.get_entry(&entry_id)?;
 
         let inode = self
             .inodes
@@ -658,16 +658,6 @@ impl VirtualFileSystem {
             (inode.uid, inode.gid),
         ) {
             return Err(Errno::EACCES);
-        }
-
-        if entry.is_mounted()? {
-            entry_id = entry
-                .get_mountpoint_entry()
-                .expect("Mount point entry should be there");
-            entry = self
-                .dcache
-                .get_entry(&entry_id)
-                .expect("Corresponding mounting direntry should be there");
         }
 
         let entry_count = entry.get_directory()?.entries().count();
