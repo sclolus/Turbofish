@@ -11,7 +11,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
-    dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
+    blkcnt_t, dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
 };
 use sync::DeadMutex;
 
@@ -164,6 +164,7 @@ pub struct InodeData {
     pub ctime: time_t,
 
     pub size: u64,
+    pub nbr_disk_sectors: blkcnt_t,
 }
 
 impl InodeData {
@@ -194,8 +195,8 @@ impl InodeData {
                 tv_sec: self.ctime as time_t,
                 tv_nsec: 0,
             }, // Last file status change timestamp.
-            st_blksize: 42, //self.ext2.lock().get_block_size() as blksize_t, // A file system-specific preferred I/O block size
-            st_blocks: 42, //self.nbr_disk_sectors as blkcnt_t, // Number of blocks allocated for this object.
+            st_blksize: 1024, //self.ext2.lock().get_block_size() as blksize_t, // A file system-specific preferred I/O block size
+            st_blocks: self.nbr_disk_sectors, //self.nbr_disk_sectors as blkcnt_t, // Number of blocks allocated for this object.
         };
         Ok(0)
     }
@@ -244,6 +245,7 @@ impl InodeData {
             ctime: 0,
             mtime: 0,
             size: 4096,
+            nbr_disk_sectors: 4,
         }
     }
 

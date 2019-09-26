@@ -1,9 +1,9 @@
 #ifndef _SYS_TYPES_H
 # define _SYS_TYPES_H
 
-typedef int blkcnt_t;
+typedef unsigned int blkcnt_t;
 //    Used for file block counts.
-typedef int blksize_t;
+typedef unsigned int blksize_t;
 //    Used for block sizes.
 #define clock_t int
 //    Used for system times in clock ticks or CLOCKS_PER_SEC; see <time.h>.

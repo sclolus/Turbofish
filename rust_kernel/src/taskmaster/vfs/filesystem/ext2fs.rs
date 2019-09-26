@@ -43,6 +43,7 @@ impl From<ext2::Inode> for InodeData {
             mtime: inode_ext2.last_modification_time,
             ctime: inode_ext2.last_access_time,
             size: inode_ext2.get_size(),
+            nbr_disk_sectors: inode_ext2.nbr_disk_sectors,
         }
     }
 }
