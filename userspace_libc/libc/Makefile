@@ -13,6 +13,11 @@ VPATH += src/stdio/printf src/stdio/
 HEADERS += libc.h
 PRIVATE_HEADERS += internal_printf.h
 
+SRC_C += ifc_entries
+
+VPATH += src/stdio/scanf src/stdio/
+PRIVATE_HEADERS += ifc.h
+
 CFLAGS += -m32 -O2 -Wall -Wextra -fno-omit-frame-pointer -masm=intel $(IFLAGS)
 
 OBJ_DIR = obj

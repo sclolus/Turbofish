@@ -16,4 +16,9 @@ int xvsnprintf(char *str, size_t size, const char *format, va_list ap);
 int xvasprintf(char **strp, const char *format, va_list ap);
 int xeprintf(const char *format, ...);
 
+int xscanf(const char *format, ...);
+int xsscanf(const char *str, const char *format, ...);
+int xvscanf(const char *format, va_list ap);
+int xvsscanf(const char *str, const char *format, va_list ap);
+
 #endif
