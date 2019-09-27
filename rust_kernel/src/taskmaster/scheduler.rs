@@ -234,11 +234,20 @@ impl Scheduler {
                 ProcessState::Running(_) => return action,
                 ProcessState::Waiting(_, waiting_state) => {
                     if action.intersects(JobAction::TERMINATE) {
-                        // Immediately resume blocking syscall if TERMINATE action
+                        // Immediately resume blocking syscall if TERMINATE action.
+                        // Ce n'est pas tout a fait logique mais on va faire la meme
+                        // chose que pour un signal tout con. Le fait de mettre Errno
+                        // a EINTR sert juste a retourner une erreur pour debloquer
+                        // auto-preempt(). Le deliver_pending_signal machin au fond de syscall
+                        // fera le reste du boulot pour achever le process.
+                        // Il y a toujours un truc qui me chaffouine profondement la-dedans...
+                        self.current_thread_mut().set_running();
+                        self.current_thread_mut()
+                            .set_return_value_autopreempt(Err(Errno::EINTR));
                         return action;
                     } else if action.intersects(JobAction::INTERRUPT) {
                         // Check if signal var contains something, set return value as
-                        // negative (rel to SIGNUM), set process as running then return
+                        // Err(Errno::EINTR), set process as running then return
                         self.current_thread_mut().set_running();
                         self.current_thread_mut()
                             .set_return_value_autopreempt(Err(Errno::EINTR));
