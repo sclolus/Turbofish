@@ -1,26 +1,13 @@
 
 #include "libc.h"
+#include "ifc.h"
 
-#include <unistd.h>
-
-#define STDARG_BOILERPLATE(expr) va_list ap; va_start(ap, format); int n = expr; va_end(ap); return n;
-
-enum Flavor {
-	FileDescriptor,
-	String,
-};
-
-union Input {
-	const char *str;
-	int fd;
-};
-
-struct Ctx {
-	enum Flavor flavor;
-	union Input input;
-	va_list ap;
-	int length;
-};
+#define STDARG_BOILERPLATE(expr) \
+	va_list ap; \
+	va_start(ap, format); \
+	int n = expr; \
+	va_end(ap); \
+	return n;
 
 int xscanf(const char *format, ...)
 {
@@ -32,24 +19,14 @@ int xsscanf(const char *str, const char *format, ...)
 	STDARG_BOILERPLATE(xvsscanf(str, format, ap));
 }
 
+int xfscanf(FILE *stream, const char *format, ...)
+{
+	STDARG_BOILERPLATE(xvfscanf(stream, format, ap));
+}
+
 int xvscanf(const char *format, va_list ap)
 {
-	struct Ctx ctx;
-
-	ctx.flavor = FileDescriptor;
-	ctx.input.fd = STDIN_FILENO;
-	ctx.ap = ap;
-	ctx.length = 0;
-
-	(void)format;
-	// int ret = new_chain(&ctx, format);
-	// if (ret < 0)
-	// 	return (ret);
-	
-	// fflush_buffer(&ctx);
-
-	return (ctx.length);
-
+	return xvfscanf(stdin, format, ap);
 }
 
 int xvsscanf(const char *str, const char *format, va_list ap)
@@ -59,15 +36,17 @@ int xvsscanf(const char *str, const char *format, va_list ap)
 	ctx.flavor = String;
 	ctx.input.str = str;
 	ctx.ap = ap;
-	ctx.length = 0;
 
-	(void)format;
-	// int ret = new_chain(&ctx, format);
-	// if (ret < 0)
-	// 	return (ret);
-	
-	// fflush_buffer(&ctx);
-
-	return (ctx.length);
+	return parse_chain(&ctx, format);
 }
 
+int xvfscanf(FILE *stream, const char *format, va_list ap)
+{
+	struct Ctx ctx;
+
+	ctx.flavor = Stream;
+	ctx.input.stream = stream;
+	ctx.ap = ap;
+
+	return parse_chain(&ctx, format);
+}

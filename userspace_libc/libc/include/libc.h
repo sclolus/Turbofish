@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 int xprintf(const char *format, ...);
 int xdprintf(int const fd, const char *format, ...);
@@ -18,7 +19,9 @@ int xeprintf(const char *format, ...);
 
 int xscanf(const char *format, ...);
 int xsscanf(const char *str, const char *format, ...);
+int xfscanf(FILE *stream, const char *format, ...);
 int xvscanf(const char *format, va_list ap);
 int xvsscanf(const char *str, const char *format, va_list ap);
+int xvfscanf(FILE *stream, const char *format, va_list ap);
 
 #endif

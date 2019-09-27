@@ -6,7 +6,7 @@ HEADERS += include/main.h
 
 CC = gcc
 
-CFLAGS += -m32 -Wall -Wextra
+CFLAGS += -m32 -g -O0 -fsanitize=address -Wall -Wextra
 
 OBJ_DIR = obj
 OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
