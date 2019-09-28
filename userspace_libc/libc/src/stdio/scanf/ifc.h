@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 enum Flavor {
 	Stream,

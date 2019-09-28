@@ -85,6 +85,7 @@ length_loop:
 	}
 
 	struct ConvertResult result;
+
 	result.args = args;
 	result.f = NULL;
 

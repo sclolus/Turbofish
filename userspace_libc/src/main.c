@@ -89,13 +89,10 @@ int main(void)
 	//int ret = xscanf("%s %s %f", nom, prenom, &f);
 	//printf("scanned buf: `%s %s %3f` ret = %i\n", nom, prenom, f, ret);
 
-	//printf("Entrez votre nom/prenom et deux flotants:\n");
-	//int ret = scanf("%s %s %2f %f", nom, prenom, &f, &g);
-	//printf("scanned buf: `%s %s %f %f` ret = %i\n", nom, prenom, f, g, ret);
-
 	printf("Entrez votre nom/prenom et deux flotants:\n");
-	int ret = xscanf("%s %s %2f %f", nom, prenom, &f, &g);
+	int ret = xscanf("%s %s %0f %f", nom, prenom, &f, &g);
 	printf("scanned buf: `%s %s %f %f` ret = %i\n", nom, prenom, f, g, ret);
+
 	//printf("Entrez votre nom/prenom:\n");
 	//xscanf("%s %s", nom, prenom);
 	//printf("scanned buf: `%s %s`\n", nom, prenom);
