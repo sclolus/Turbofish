@@ -2,12 +2,20 @@
 
 #include <stdio.h>
 
-int test(const char *s, const char *fmt) {
+int test(const char *s, const char *fmt, ...) {
 	int ret_turbofish_libc;
 	int ret_linux_libc;
 
-	ret_turbofish_libc = xsscanf(s, fmt);
-	ret_linux_libc = sscanf(s, fmt);
+	va_list ap1;
+	va_list ap2;
+
+	va_start(ap1, fmt);
+	va_start(ap2, fmt);
+
+	ret_linux_libc = vsscanf(s, fmt, ap2);
+	// it is so difficult to know if our functions modify the entries !
+	// We need to parse the format field and check each entries
+	ret_turbofish_libc = xvsscanf(s, fmt, ap1);
 
 	printf("turbofish: %i, linux: %i\n", ret_turbofish_libc, ret_linux_libc);
 	printf("%s\n", ret_turbofish_libc == ret_linux_libc ? "SUCCESS" : "FAIL");
@@ -15,6 +23,9 @@ int test(const char *s, const char *fmt) {
 	if (ret_turbofish_libc != ret_linux_libc) {
 		printf("input: '%s', fmt: '%s'\n", s, fmt);
 	}
+
+	va_end(ap1);
+	va_end(ap2);
 
 	return ret_turbofish_libc == ret_linux_libc;
 }
@@ -79,28 +90,35 @@ int main(void)
 	test(" dc   f  ", "  d c                ");
 	test(" d    c   f  ", "  d             f    ");
 	test(" d         ", "  dh");
+	test("                     h", "ban anes");
+	test("dc     ", "   dc                ");
+	test("  dc     ", "dc                ");
+	test("dc     ", "dc                ");
+	test("dc     ", "dc        f        ");
+	test("dc   f  ", "dc        f        ");
+	test(" dc   f  ", "  dc                ");
+	test(" dc   f  ", "  d c                ");
+	test(" d    c   f  ", "  d             f    ");
+	test(" d         ", "  dh");
+
+	char s1[512];
+	char s2[512];
+	test("        bananes cuites", "%s %s", s1, s2);
+	printf("'%s' '%s'\n", s1, s2);
 
 	char nom[512];
 	char prenom[512];
 	float f;
 	float g;
 
-	//printf("Entrez votre nom/prenom et un flotant:\n");
-	//int ret = xscanf("%s %s %f", nom, prenom, &f);
-	//printf("scanned buf: `%s %s %3f` ret = %i\n", nom, prenom, f, ret);
-
 	printf("Entrez votre nom/prenom et deux flotants:\n");
 	int ret = xscanf("%s %s %0f %f", nom, prenom, &f, &g);
 	printf("scanned buf: `%s %s %f %f` ret = %i\n", nom, prenom, f, g, ret);
 
-	//printf("Entrez votre nom/prenom:\n");
-	//xscanf("%s %s", nom, prenom);
-	//printf("scanned buf: `%s %s`\n", nom, prenom);
-
 
 	///char s[] = "bananes";
 	//xsscanf(s, "%s", buf);
-/* nmmmfcv
+/*
 	xprintf("Les %i carrotes sont cuites\n", 42);
 
 	int i;
