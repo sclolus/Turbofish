@@ -20,14 +20,10 @@ int get_content(struct Ctx *ctx)
 			buff = (int)readen_char;
 		}
 	} else {
-		char readen_char;
-
-		size_t ret = fread(&readen_char, 1, 1, ctx->input.stream);
+		buff = getc(ctx->input.stream);
 		// I don't know if i must consider the '\0' as an end of input
-		if (ret != 1 || readen_char == '\0') {
+		if (buff == (char)'\0') {
 			buff = EOF;
-		} else {
-			buff = (int)readen_char;
 		}
 	}
 	return buff;
@@ -115,7 +111,9 @@ int parse_chain(struct Ctx *ctx, const char *format)
 			 * input does not match the conversion specification,
 			 * the conversion fails—this is a matching failure.
 			 */
-			 if (convert(ctx, &format) < 0) {
+			 struct ConvertResult result = convert(&format);
+			 if (result.f == NULL
+					 || result.f(ctx, &result.args) < 0) {
 				conversion_failed = true;
 				break;
 			 }

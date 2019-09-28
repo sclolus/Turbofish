@@ -41,7 +41,7 @@ static struct SpecifierLengthRow g_length[LENGTH_TYPE_QUANTITY] = {
  * %[*][width][length]specifier
  */
 
-int convert(struct Ctx *ctx, const char **format)
+struct ConvertResult convert(const char **format)
 {
 	struct Arguments args;
 
@@ -84,12 +84,17 @@ length_loop:
 		goto length_loop;
 	}
 
+	struct ConvertResult result;
+	result.args = args;
+	result.f = NULL;
+
 	// Finally call the associated function
 	for (i = 0; i < SPECIFIERS_QUANTITY; i++) {
 		if (**format == g_sp_list[i].specifier) {
 			*format += 1;
-			return g_sp_list[i].f(ctx, &args);
+			result.f = g_sp_list[i].f;
+			break;
 		}
 	}
-	return -1;
+	return result;
 }

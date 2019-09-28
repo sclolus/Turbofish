@@ -86,6 +86,12 @@ int ifc_float(struct Ctx *ctx, struct Arguments *args)
 	if ((i = get_digits(ctx, args, buf, i)) < 0) {
 		return -1;
 	}
+
+	// No real parts was found
+	if (i == 0) {
+		return -1;
+	}
+
 	// Consider the exponent
 	ret = get_content(ctx);
 	if ((args->width == 0 || i < args->width)
@@ -117,7 +123,7 @@ int ifc_float(struct Ctx *ctx, struct Arguments *args)
 		if (args->length == SP_LENGTH_L) {
 			*real.d = strtod(buf, NULL);
 		} else if (args->length == SP_LENGTH_LONG_DOUBLE) {
-			*real.ld = (double)strtod(buf, NULL);
+			*real.ld = (long double)strtod(buf, NULL);
 		} else {
 			*real.f = (float)strtod(buf, NULL);
 		}

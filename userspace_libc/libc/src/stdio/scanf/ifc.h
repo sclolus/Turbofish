@@ -42,6 +42,11 @@ struct Arguments {
 	int length;
 };
 
+struct ConvertResult {
+	struct Arguments args;
+	int (*f)(struct Ctx *, struct Arguments *);
+};
+
 int ifc_numeric_i(struct Ctx *ctx, struct Arguments *args);
 int ifc_numeric_d(struct Ctx *ctx, struct Arguments *args);
 int ifc_numeric_u(struct Ctx *ctx, struct Arguments *args);
@@ -56,7 +61,7 @@ int get_content(struct Ctx *ctx);
 void consume_content(void);
 void trash_whitespaces_on_input(struct Ctx *ctx);
 int parse_chain(struct Ctx *ctx, const char *format);
-int convert(struct Ctx *ctx, const char **format);
+struct ConvertResult convert(const char **format);
 
 #define IS_SPACE(c) isspace(c) != 0 ? true : false
 
