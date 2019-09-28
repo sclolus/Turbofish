@@ -80,6 +80,18 @@ int main(void)
 	test(" d    c   f  ", "  d             f    ");
 	test(" d         ", "  dh");
 
+	char nom[512];
+	char prenom[512];
+
+	printf("Entrez votre nom/prenom:\n");
+	int ret = xscanf("%s %s", nom, prenom);
+	printf("scanned buf: `%s %s` ret = %i\n", nom, prenom, ret);
+
+	//printf("Entrez votre nom/prenom:\n");
+	//xscanf("%s %s", nom, prenom);
+	//printf("scanned buf: `%s %s`\n", nom, prenom);
+
+
 	///char s[] = "bananes";
 	//xsscanf(s, "%s", buf);
 /* nmmmfcv

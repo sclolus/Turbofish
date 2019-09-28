@@ -1,36 +1,68 @@
 #include "ifc.h"
 
-inline static int get_content(struct Ctx *ctx)
+static int buff = 0;
+
+/*
+ * Get the next character on Chain / Stream
+ */
+int get_content(struct Ctx *ctx)
 {
-	char readen_char;
+	// Get a new character only is buff is empty
+	if (buff != 0) {
+		return buff;
+	}
 
 	if (ctx->flavor == String) {
 		if (*ctx->input.str == '\0') {
-			return EOF;
+			buff = EOF;
+		} else {
+			char readen_char = *ctx->input.str++;
+			buff = (int)readen_char;
 		}
-		readen_char = *ctx->input.str++;
 	} else {
+		char readen_char;
+
 		size_t ret = fread(&readen_char, 1, 1, ctx->input.stream);
 		// I don't know if i must consider the '\0' as an end of input
 		if (ret != 1 || readen_char == '\0') {
-			return EOF;
+			buff = EOF;
+		} else {
+			buff = (int)readen_char;
 		}
 	}
-	return (int)readen_char;
+	return buff;
 }
 
-#define IS_SPACE(c) isspace(c) != 0 ? true : false
+/*
+ * The content has been utilized. Unload it
+ */
+void consume_content(void)
+{
+	buff = 0;
+}
+
+/*
+ * Trash all whitespace on the input Chain / Stream
+ */
+void trash_whitespaces_on_input(struct Ctx *ctx)
+{
+	int ret = get_content(ctx);
+	while (IS_SPACE((char)ret) && ret != EOF) {
+		consume_content();
+		ret = get_content(ctx);
+	}
+}
 
 int parse_chain(struct Ctx *ctx, const char *format)
 {
+	int ret;
 	int nb_conversion_done;
 	bool conversion_failed;
-	int ret;
 
 	conversion_failed = false;
 	nb_conversion_done = 0;
-	ret = 0;
 
+	buff = 0;
 	while (*format != '\0') {
 		bool on_whitespace_sequence = false;
 		/*
@@ -43,23 +75,15 @@ int parse_chain(struct Ctx *ctx, const char *format)
 			format++;
 		}
 		if (on_whitespace_sequence == true) {
-			if (ret == 0) {
-				// Get a new character only is buff is empty
-				ret = get_content(ctx);
-			}
-			while (IS_SPACE((char)ret) && ret != EOF) {
-				ret = get_content(ctx);
-			}
+			trash_whitespaces_on_input(ctx);
 			continue;
 		}
 
-		if (ret == 0) {
-			// Get a new character only is buff is empty
-			ret = get_content(ctx);
-		}
+		ret = get_content(ctx);
 		if (ret == EOF) {
 			break;
 		}
+
 		char readen_char = (char)ret;
 		if (*format != '%' || (*format == '%' && format[1] == '%')) {
 			/*
@@ -80,10 +104,8 @@ int parse_chain(struct Ctx *ctx, const char *format)
 					format += 1;
 				}
 			}
+			consume_content();
 		} else {
-			if (format[1] == '%') {
-
-			}
 			/*
 			 * 3: A conversion specification, which commences with a
 			 * '%' (percent) character.  A sequence of characters
@@ -99,7 +121,6 @@ int parse_chain(struct Ctx *ctx, const char *format)
 			 }
 			 nb_conversion_done += 1;
 		}
-		ret = 0;
 	}
 
 	if (ctx->flavor == Stream) {

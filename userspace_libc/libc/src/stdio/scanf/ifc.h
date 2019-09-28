@@ -50,7 +50,12 @@ int ifc_char(struct Ctx *ctx, struct Arguments *args);
 int ifc_string(struct Ctx *ctx, struct Arguments *args);
 int ifc_pointer(struct Ctx *ctx, struct Arguments *args);
 
+int get_content(struct Ctx *ctx);
+void consume_content(void);
+void trash_whitespaces_on_input(struct Ctx *ctx);
 int parse_chain(struct Ctx *ctx, const char *format);
 int convert(struct Ctx *ctx, const char **format);
+
+#define IS_SPACE(c) isspace(c) != 0 ? true : false
 
 #endif

@@ -61,7 +61,7 @@ int convert(struct Ctx *ctx, const char **format)
 	}
 
 	// extract length
-	args.length = 0;
+	args.length = SP_LENGTH_VOID;
 	int i;
 length_loop:
 	for (i = 0; i < LENGTH_TYPE_QUANTITY; i++) {
