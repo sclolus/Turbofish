@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdlib.h>
 
 enum Flavor {
 	Stream,
@@ -24,15 +25,16 @@ struct Ctx {
 	va_list ap;
 };
 
-#define SP_LENGTH_VOID   0x00
-#define SP_LENGTH_H      0x01
-#define SP_LENGTH_L      0x02
-#define SP_LENGTH_LEVEL1 0x03 // abstract
-#define SP_LENGTH_Z      0x04
-#define SP_LENGTH_J      0x08
-#define SP_LENGTH_MAJOR  0x80 // abstract
-#define SP_LENGTH_HH     0x81
-#define SP_LENGTH_LL     0x82
+#define SP_LENGTH_VOID        0x00
+#define SP_LENGTH_H           0x01
+#define SP_LENGTH_L           0x02
+#define SP_LENGTH_LEVEL1      0x03 // abstract
+#define SP_LENGTH_Z           0x04
+#define SP_LENGTH_J           0x08
+#define SP_LENGTH_MAJOR       0x80 // abstract
+#define SP_LENGTH_HH          0x81
+#define SP_LENGTH_LL          0x82
+#define SP_LENGTH_LONG_DOUBLE 0xC0
 
 struct Arguments {
 	bool to_ignore;

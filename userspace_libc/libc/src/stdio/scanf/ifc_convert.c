@@ -22,7 +22,7 @@ static struct SpecifierFunctionRow g_sp_list[SPECIFIERS_QUANTITY] = {
 	{ 'p', &ifc_pointer },
 };
 
-#define LENGTH_TYPE_QUANTITY 4
+#define LENGTH_TYPE_QUANTITY 5
 
 struct SpecifierLengthRow {
 	char sequence;
@@ -33,7 +33,8 @@ static struct SpecifierLengthRow g_length[LENGTH_TYPE_QUANTITY] = {
 	{ 'h', SP_LENGTH_H },
 	{ 'l', SP_LENGTH_L },
 	{ 'z', SP_LENGTH_Z },
-	{ 'j', SP_LENGTH_J }
+	{ 'j', SP_LENGTH_J },
+	{ 'L', SP_LENGTH_LONG_DOUBLE},
 };
 
 /*
