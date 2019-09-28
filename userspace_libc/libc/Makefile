@@ -13,7 +13,9 @@ VPATH += src/stdio/printf src/stdio/
 HEADERS += libc.h
 PRIVATE_HEADERS += internal_printf.h
 
-SRC_C += ifc_entries ifc_parse_chain ifc_convert
+SRC_C += ifc_entries ifc_parse_chain ifc_convert \
+ifc_float ifc_char ifc_string ifc_pointer ifc_logical_x ifc_logical_o \
+ifc_numeric_d ifc_numeric_i ifc_numeric_u
 
 VPATH += src/stdio/scanf src/stdio/
 PRIVATE_HEADERS += ifc.h
