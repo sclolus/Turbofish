@@ -13,7 +13,7 @@ use alloc::sync::Arc;
 use sync::DeadMutex;
 
 use fallible_collections::arc::FallibleArc;
-use libc_binding::{Errno, OpenFlags};
+use libc_binding::{stat, Errno, OpenFlags};
 
 use core::cmp;
 
@@ -177,6 +177,12 @@ impl FileOperation for FifoFileOperationData {
             panic!("Pipe invalid access mode");
         };
     }
+
+    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
+        // TODO: This is for cat my_fifo to works, because cat do a fstat(my_fifo)
+        Ok(0)
+    }
+
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if self.current_index == 0 {
             if self.output_ref == 0 {
