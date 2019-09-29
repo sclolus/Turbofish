@@ -1,5 +1,5 @@
 use super::filesystem::devfs::{
-    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, NullDevice, RandomDevice,
+    BiosInt13hInstance,TtyDevice, DiskDriver, DiskWrapper, FbDevice,IdeAtaInstance, NullDevice, RandomDevice,
     ZeroDevice,
 };
 use super::filesystem::{Devfs, Ext2fs, FileSystemSource, FileSystemType};
@@ -75,6 +75,17 @@ fn mount_devfs(vfs: &mut Vfs, mut devfs: Devfs, fs_id: FileSystemId) {
             inode_id,
         )
         .expect("failed to add new driver sda to devfs");
+
+    let inode_id = devfs.gen_inode_id();
+    devfs
+        .add_driver(
+            Filename::try_from("fb").expect("path random creation failed"),
+            mode,
+            Box::new(FbDevice::try_new(inode_id).expect("random device creation failed")),
+            inode_id,
+        )
+        .expect("failed to add new driver sda to devfs");
+
     let dev_id = vfs
         .pathname_resolution(&Path::root(), &root_creds, &Path::try_from("/dev").unwrap())
         .unwrap();
