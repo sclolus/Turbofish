@@ -1,6 +1,7 @@
 // use alloc::boxed::Box;
 use super::Driver;
 use super::FileOperation;
+use super::InodeId;
 use super::IpcResult;
 use super::SysResult;
 use crate::drivers::storage::{
@@ -19,6 +20,9 @@ pub struct DiskDriver<D: BlockIo + Clone + Debug + 'static> {
     disk: D,
     start_of_partition: u64,
     partition_size: u64,
+    /// this is an option for the bootstrap, when we create a
+    /// diskdriver wich is not mount on the devfs
+    inode_id: InodeId,
 }
 
 impl<D: BlockIo + Clone + Debug> DiskDriver<D> {
@@ -27,6 +31,7 @@ impl<D: BlockIo + Clone + Debug> DiskDriver<D> {
             disk,
             start_of_partition,
             partition_size,
+            inode_id: Default::default(),
         }
     }
 }
@@ -41,8 +46,13 @@ impl<D: BlockIo + Clone + Debug> Driver for DiskDriver<D> {
                 self.disk.clone(),
                 self.start_of_partition,
                 self.partition_size,
+                self.inode_id,
             ),
         ))))
+    }
+
+    fn set_inode_id(&mut self, inode_id: InodeId) {
+        self.inode_id = inode_id;
     }
 }
 
@@ -130,6 +140,7 @@ pub struct DiskFileOperation<D: BlockIo> {
     start_of_partition: u64,
     partition_size: u64,
     tmp_buf: [u8; SECTOR_SIZE],
+    inode_id: InodeId,
 }
 
 impl<D: BlockIo> Debug for DiskFileOperation<D> {
@@ -143,7 +154,7 @@ impl<D: BlockIo> Debug for DiskFileOperation<D> {
 }
 
 impl<D: BlockIo> DiskFileOperation<D> {
-    pub fn new(disk: D, start_of_partition: u64, partition_size: u64) -> Self {
+    pub fn new(disk: D, start_of_partition: u64, partition_size: u64, inode_id: InodeId) -> Self {
         Self {
             disk: disk,
             offset: 0,
@@ -151,11 +162,16 @@ impl<D: BlockIo> DiskFileOperation<D> {
             partition_size,
             // Hopefully. We got a temporary buf of SECTOR_SIZE for unaligned read/write !
             tmp_buf: [0; SECTOR_SIZE],
+            inode_id,
         }
     }
 }
 
 impl<D: BlockIo + Send> FileOperation for DiskFileOperation<D> {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
     fn write(&mut self, mut buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let len = buf.len();
         loop {

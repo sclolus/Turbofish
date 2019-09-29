@@ -115,13 +115,14 @@ fn init_ext2(vfs: &mut Vfs, devfs: &mut Devfs, driver_type: DiskDriverType) {
 /// mounted on root
 fn init_sda(
     devfs: &mut Devfs,
-    sda_driver: Box<dyn Driver>,
+    mut sda_driver: Box<dyn Driver>,
     partition_drivers: Vec<Box<dyn Driver>>,
 ) {
     // let path = Path::try_from(format!("/dev/sda").as_ref()).expect("path sda creation failed");
     let mode = FileType::from_bits(0o777).expect("file permission creation failed")
         | FileType::CHARACTER_DEVICE;
     let inode_id = devfs.gen_inode_id();
+    sda_driver.set_inode_id(inode_id);
     devfs
         .add_driver(
             Filename::try_from("sda").expect("path sda creation failed"),
@@ -130,12 +131,13 @@ fn init_sda(
             inode_id,
         )
         .expect("failed to add new driver sda to devfs");
-    for (i, d) in partition_drivers.into_iter().enumerate() {
+    for (i, mut d) in partition_drivers.into_iter().enumerate() {
         let filename = Filename::try_from(format!("sda{}", i + 1).as_ref())
             .expect("filename sda_i creation failed");
         let mode = FileType::from_bits(0o777).expect("file permission creation failed")
             | FileType::CHARACTER_DEVICE;
         let inode_id = devfs.gen_inode_id();
+        d.set_inode_id(inode_id);
         devfs
             .add_driver(filename, mode, d, inode_id)
             .expect("failed to add new driver sda1 to devfs");

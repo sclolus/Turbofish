@@ -27,6 +27,7 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn get_inode_id(&self) -> SysResult<InodeId> {
         Err(Errno::ENOSYS)
     }
+
     /// Invoqued when a new FD is registered
     fn register(&mut self, _flags: OpenFlags) {}
 
@@ -154,6 +155,11 @@ pub trait Driver: core::fmt::Debug + Send {
     fn open(&mut self, flags: OpenFlags)
         -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>>;
 
+    /// set the inode id of the driver afterwards, useful for
+    /// bootstrapping a driver
+    fn set_inode_id(&mut self, _inode_id: InodeId) {}
+
+    /* SOCKET METHODS */
     fn send_from(
         &mut self,
         _buf: &[u8],
@@ -188,6 +194,7 @@ pub trait Driver: core::fmt::Debug + Send {
     fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
+    /*  */
 }
 
 #[derive(Debug)]
