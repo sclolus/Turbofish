@@ -248,6 +248,27 @@ impl VirtualFileSystem {
         self._pathname_resolution(root, creds, pathname, 0, true)
     }
 
+    /// this method follow the mount point
+    /// if current_entry is mounted, it set current_entry and
+    /// current_dir_id to the direntry and direntry_id of the mount
+    /// point
+    fn handle_mount_point<'a>(
+        &'a self,
+        current_entry: &mut &'a DirectoryEntry,
+        current_dir_id: &mut DirectoryEntryId,
+    ) {
+        if let Ok(true) = current_entry.is_mounted() {
+            *current_dir_id = current_entry
+                .get_mountpoint_entry()
+                .expect("mount point entry should be there");
+            *current_entry// : &DirectoryEntry
+                = self
+                .dcache
+                .get_entry(current_dir_id)
+                .expect("mount point should be there");
+        }
+    }
+
     fn _pathname_resolution(
         &mut self,
         mut root: DirectoryEntryId,
@@ -273,20 +294,11 @@ impl VirtualFileSystem {
         let mut was_symlink = false;
         let mut current_entry = self.dcache.get_entry(&current_dir_id)?;
 
+        self.handle_mount_point(&mut current_entry, &mut current_dir_id);
         // quick fix, this handle / mount point
-        if current_entry.is_mounted()? {
-            current_dir_id = current_entry
-                .get_mountpoint_entry()
-                .expect("mount point entry should be there");
-            current_entry = self.dcache.get_entry(&current_dir_id)?;
-        }
         for component in components.by_ref() {
-            if current_entry.is_mounted()? {
-                current_dir_id = current_entry
-                    .get_mountpoint_entry()
-                    .expect("mount point entry should be there");
-                current_entry = self.dcache.get_entry(&current_dir_id)?;
-            }
+            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
+
             let current_dir = current_entry.get_directory()?;
 
             if component == &"." {
@@ -294,6 +306,7 @@ impl VirtualFileSystem {
             } else if component == &".." {
                 current_dir_id = current_entry.parent_id;
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
+                self.handle_mount_point(&mut current_entry, &mut current_dir_id);
                 continue;
             }
 
@@ -354,12 +367,7 @@ impl VirtualFileSystem {
 
             current_entry = self.dcache.get_entry(next_entry_id)?;
             current_dir_id = *next_entry_id;
-            if let Ok(true) = current_entry.is_mounted() {
-                current_dir_id = current_entry
-                    .get_mountpoint_entry()
-                    .expect("mount point entry should be there");
-                current_entry = self.dcache.get_entry(&current_dir_id)?;
-            }
+            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
 
             if current_entry.is_symlink() {
                 was_symlink = true;
