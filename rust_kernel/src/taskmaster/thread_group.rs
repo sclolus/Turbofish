@@ -180,7 +180,7 @@ impl Credentials {
         (owner, group): (uid_t, gid_t),
     ) -> bool {
         if self.is_root() {
-            if access_type.contains(Amode::EXECUTE) {
+            if !filetype.is_directory() && access_type.contains(Amode::EXECUTE) {
                 filetype.owner_access().contains(Amode::EXECUTE)
                     || filetype.group_access().contains(Amode::EXECUTE)
                     || filetype.other_access().contains(Amode::EXECUTE)
@@ -619,13 +619,14 @@ mod credentials_should {
         grant_write_access_to_root_for_no_rights_directory
     }
 
-    make_root_no_rights_test! {
-        failing,
-        Amode::EXECUTE,
-        FileType::DIRECTORY,
-        FileType::empty(),
-        grant_execute_access_to_root_for_no_rights_directory
-    }
+    //We can't check that as Amode::EXECUTE == Amode::SEARCH
+    // make_root_no_rights_test! {
+    //     failing,
+    //     Amode::EXECUTE,
+    //     FileType::DIRECTORY,
+    //     FileType::empty(),
+    //     grant_execute_access_to_root_for_no_rights_directory
+    // }
 
     make_root_no_rights_test! {
         Amode::SEARCH,
