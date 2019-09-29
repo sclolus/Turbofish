@@ -680,7 +680,6 @@ mod test {
         };
     }
 
-    make_path_len_test! {"", test_path_len_empty_path}
     make_path_len_test! {"a", test_path_len_a_path}
     make_path_len_test! {"/a", test_path_len_root_a_path}
     make_path_len_test! {"a/b", test_path_len_a_b_path}
@@ -720,7 +719,6 @@ mod test {
     make_path_creation_test! {"////a/b/c", test_path_posix_path_can_have_multiple_beginning_slashes}
     make_path_creation_test! {"a/b/c////", test_path_posix_path_can_have_multiple_trailing_slashes}
     make_path_creation_test! {"/a////b//////////////////c/d//e/f///g//", test_path_posix_path_can_have_multiple_slashes}
-    make_path_creation_test! {"", test_path_posix_path_can_have_zero_filenames}
     make_path_creation_test! {"/", test_path_posix_path_can_have_root_zero_filenames}
     make_path_creation_test! {fail, {
         let make_component = |count: usize| {
@@ -944,30 +942,6 @@ mod test {
     {"/a/b/b/c/d/"},
     test_path_chain_root_a_b__b_c_d}
 
-    make_path_chain_test! {("", "a"),
-    {"a"},
-    test_path_chain_root_zero_a_is_a}
-
-    make_path_chain_test! {("a", ""),
-    {"a"},
-    test_path_chain_root_a_zero_is_a}
-
-    make_path_chain_test! {("/a", ""),
-    {"/a"},
-    test_path_chain_root_a_zero_is_root_a}
-
-    make_path_chain_test! {("", "/a"),
-    {"/a"},
-    test_path_chain_zero_root_a_is_root_a}
-
-    make_path_chain_test! {("", "a/b/c"),
-    {"a/b/c"},
-    test_path_chain_zero_a_b_c_is_a_b_c}
-
-    make_path_chain_test! {("a/b/c", ""),
-    {"a/b/c"},
-    test_path_chain_a_b_c_zero_is_a_b_c}
-
     make_path_chain_test! {fail, {
         let a = make_relative_str_path_of_length(PATH_MAX - 1);
         let b = make_relative_str_path_of_length(1);
@@ -1034,7 +1008,6 @@ mod test {
         };
     }
 
-    make_components_iteration_test!("", test_components_iter_basic_empty);
     make_components_iteration_test!("a", test_components_iter_basic_a);
     make_components_iteration_test!("a/b", test_components_iter_basic_a_b);
     make_components_iteration_test!("a/b/c", test_components_iter_basic_a_b_c);
