@@ -1,4 +1,6 @@
 //! Contains initialisation colors
+use super::CharBoundaryError;
+use super::GetSubStrWithError;
 use super::CSI;
 use core::str::FromStr;
 use core::{fmt, fmt::Display};
@@ -98,6 +100,12 @@ impl Display for AnsiColor {
     }
 }
 
+impl From<CharBoundaryError> for ParseColorError {
+    fn from(_c: CharBoundaryError) -> Self {
+        Self
+    }
+}
+
 /// local error enum
 #[derive(Debug)]
 pub struct ParseColorError;
@@ -109,21 +117,24 @@ impl FromStr for AnsiColor {
         if s == "\x1b[0m" {
             return Ok(AnsiColor::WHITE);
         }
-        if &s[(s.len() - 1)..s.len()] != "m" {
+        if s.get_substr((s.len() - 1)..s.len())? != "m" {
             return Err(ParseColorError);
         }
-        if &s[0..=1] != CSI {
+        if s.get_substr(0..=1)? != CSI {
             return Err(ParseColorError);
         }
         // TODO: handle other color esape codes
-        if s.len() < 7 || &s[2..=6] != "38;5;" {
+        if s.len() < 7 || s.get_substr(2..=6)? != "38;5;" {
             return Err(ParseColorError);
         }
         if let Some(m_index) = s.find('m') {
             if s.len() <= 7 {
                 return Err(ParseColorError);
             }
-            let nb: u8 = s[7..m_index].parse().map_err(|_e| ParseColorError)?;
+            let nb: u8 = s
+                .get_substr(7..m_index)?
+                .parse()
+                .map_err(|_e| ParseColorError)?;
             return Ok(nb.into());
         }
         return Err(ParseColorError);

@@ -37,7 +37,11 @@ impl fmt::Debug for c_str {
             // Make slice of u8 (&[u8])
             let slice: &[u8] = core::slice::from_raw_parts(self.ptr as *const u8, strlen(self.ptr));
             // Make str slice (&[str]) with &[u8]
-            write!(f, "{}", core::str::from_utf8_unchecked(slice))
+            write!(
+                f,
+                "{}",
+                core::str::from_utf8(slice).expect("c_str is not utf8")
+            )
         }
     }
 }

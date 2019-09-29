@@ -1,4 +1,6 @@
 //! Ansi cursor move
+use super::CharBoundaryError;
+use super::GetSubStrWithError;
 use super::CSI;
 use crate::Pos;
 use core::str::FromStr;
@@ -37,6 +39,12 @@ impl Display for CursorMove {
     }
 }
 
+impl From<CharBoundaryError> for ParseCursorError {
+    fn from(_c: CharBoundaryError) -> Self {
+        Self
+    }
+}
+
 ///Local error enum
 #[derive(Debug)]
 pub struct ParseCursorError;
@@ -45,23 +53,30 @@ impl FromStr for CursorMove {
     type Err = ParseCursorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use CursorMove::*;
-        if s.len() < 4 || &s[0..=1] != CSI {
+        if s.len() < 4 || s.get_substr(0..=1)? != CSI {
             return Err(ParseCursorError);
         }
-        match &s[(s.len() - 1)..s.len()] {
+        match s.get_substr((s.len() - 1)..s.len())? {
             "H" => s.find(';').ok_or(ParseCursorError).and_then(|off| {
-                let line: usize = s[2..off].parse().map_err(|_e| ParseCursorError)?;
+                let line: usize = s
+                    .get_substr(2..off)?
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
                 if off + 1 >= s.len() {
                     return Err(ParseCursorError);
                 }
-                let column: usize = s[off + 1..s.len() - 1]
+                let column: usize = s
+                    .get_substr(off + 1..s.len() - 1)?
                     .parse()
                     .map_err(|_e| ParseCursorError)?;
                 Ok(Pos(crate::Pos { line, column }))
             }),
             _ => {
-                let nb: usize = s[2..s.len() - 1].parse().map_err(|_e| ParseCursorError)?;
-                Ok(match &s[(s.len() - 1)..s.len()] {
+                let nb: usize = s
+                    .get_substr(2..s.len() - 1)?
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
+                Ok(match s.get_substr((s.len() - 1)..s.len())? {
                     "A" => Up(nb),
                     "B" => Down(nb),
                     "C" => Forward(nb),
