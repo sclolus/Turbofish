@@ -42,7 +42,7 @@ pub fn init() -> Vfs {
 fn mount_devfs(vfs: &mut Vfs, mut devfs: Devfs, fs_id: FileSystemId) {
     let root_creds = Credentials::ROOT;
 
-    let mode = FileType::from_bits(0o777).expect("file permission creation failed")
+    let mode = FileType::from_bits(0o666).expect("file permission creation failed")
         | FileType::CHARACTER_DEVICE;
 
     let inode_id = devfs.gen_inode_id();
@@ -118,9 +118,9 @@ fn init_sda(
     mut sda_driver: Box<dyn Driver>,
     partition_drivers: Vec<Box<dyn Driver>>,
 ) {
-    // let path = Path::try_from(format!("/dev/sda").as_ref()).expect("path sda creation failed");
-    let mode = FileType::from_bits(0o777).expect("file permission creation failed")
+    let mode = FileType::from_bits(0o660).expect("file permission creation failed")
         | FileType::CHARACTER_DEVICE;
+
     let inode_id = devfs.gen_inode_id();
     sda_driver.set_inode_id(inode_id);
     devfs
@@ -134,8 +134,6 @@ fn init_sda(
     for (i, mut d) in partition_drivers.into_iter().enumerate() {
         let filename = Filename::try_from(format!("sda{}", i + 1).as_ref())
             .expect("filename sda_i creation failed");
-        let mode = FileType::from_bits(0o777).expect("file permission creation failed")
-            | FileType::CHARACTER_DEVICE;
         let inode_id = devfs.gen_inode_id();
         d.set_inode_id(inode_id);
         devfs
@@ -200,7 +198,9 @@ fn init_tty(devfs: &mut Devfs) {
         // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
         let filename =
             Filename::try_from(format!("tty{}", i).as_ref()).expect("path tty creation failed");
-        let mode = FileType::from_bits(0o777).expect("file permission creation failed");
+
+        let mode = FileType::from_bits(0o666).expect("file permission creation failed")
+            | FileType::CHARACTER_DEVICE;
 
         devfs
             .add_driver(filename, mode, driver, inode_id)
