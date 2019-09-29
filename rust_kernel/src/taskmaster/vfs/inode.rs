@@ -11,7 +11,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
-    dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, FileType,
+    dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
 };
 use sync::DeadMutex;
 
@@ -83,6 +83,9 @@ impl Inode {
             .write(self.id.inode_number, offset, buf)? as u32)
     }
     pub fn read(&mut self, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
+        if self.inode_data.is_directory() {
+            return Err(Errno::EISDIR);
+        }
         Ok(self
             .filesystem
             .lock()
