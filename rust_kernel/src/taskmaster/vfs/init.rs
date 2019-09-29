@@ -1,9 +1,9 @@
+use super::filesystem::devfs::{
+    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, NullDevice, TtyDevice, ZeroDevice,
+};
 use super::filesystem::{Devfs, Ext2fs};
 use super::SmartMutex;
-use crate::taskmaster::drivers::{
-    BiosInt13hInstance, DiskDriver, DiskWrapper, Driver, IdeAtaInstance, NullDevice, TtyDevice,
-    ZeroDevice,
-};
+use crate::taskmaster::drivers::Driver;
 use alloc::format;
 use alloc::sync::Arc;
 use core::convert::TryFrom;

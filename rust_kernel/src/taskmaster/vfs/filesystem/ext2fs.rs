@@ -1,5 +1,9 @@
+use super::Credentials;
+use super::FileOperation;
 use super::FileSystem;
-use super::{DirectoryEntry, Driver, Ext2DriverFile, FileSystemId, InodeData, Path};
+use super::IpcResult;
+use super::VFS;
+use super::{DirectoryEntry, Driver, FileSystemId, InodeData, Path};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
 
@@ -12,6 +16,9 @@ use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
 use fallible_collections::{FallibleBox, TryCollect};
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, FileType, EXT2_SUPER_MAGIC, NAME_MAX};
+
+pub mod file;
+pub use file::{Ext2DriverFile, Ext2FileOperation};
 
 use alloc::boxed::Box;
 

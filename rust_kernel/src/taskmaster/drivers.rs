@@ -11,20 +11,6 @@ use super::IpcResult;
 pub mod ipc;
 pub use ipc::{socket::Whom, ConnectedSocket, FifoDriver, FifoFileOperation, Pipe, SocketDgram};
 
-pub mod tty;
-pub use tty::TtyDevice;
-
-pub mod file;
-pub use file::{Ext2DriverFile, Ext2FileOperation};
-
-pub mod disk;
-pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
-
-pub mod dev_null;
-pub use dev_null::{DevNull, NullDevice};
-
-pub mod dev_zero;
-pub use dev_zero::{DevZero, ZeroDevice};
 // pub use disk::DiskDriver;
 
 use alloc::sync::Arc;

@@ -2,16 +2,30 @@ use super::super::inode::InodeNumber;
 use super::super::tools::KeyGenerator;
 use super::DefaultDriver;
 use super::Driver;
+use super::FileOperation;
 use super::FileSystem;
+use super::{get_file_op_uid, IpcResult};
 use super::{DirectoryEntry, FileSystemId, InodeData};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
-use crate::drivers::rtc::CURRENT_UNIX_TIME;
+use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, FallibleBox, TryCollect};
 use libc_binding::{statfs, FileType};
+
+pub mod tty;
+pub use tty::TtyDevice;
+
+pub mod null;
+pub use null::{DevNull, NullDevice};
+
+pub mod zero;
+pub use zero::{DevZero, ZeroDevice};
+
+pub mod sda;
+pub use sda::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
 
 #[derive(Debug)]
 pub struct Devfs {
@@ -67,6 +81,7 @@ impl Devfs {
             ctime: timestamp,
 
             size: 0,
+            nbr_disk_sectors: 0,
         };
         self.files
             .try_insert(filename, (inode_data, Some(driver)))?;
@@ -102,6 +117,7 @@ impl FileSystem for Devfs {
             ctime: 0,
 
             size: 0,
+            nbr_disk_sectors: 0,
         };
         Ok((direntry, inode_data, Box::try_new(DefaultDriver)?))
     }

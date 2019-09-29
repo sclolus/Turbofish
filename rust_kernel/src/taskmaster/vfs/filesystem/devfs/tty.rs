@@ -1,10 +1,8 @@
 //! This file contains all the stuff about TTY
 
 use super::InodeId;
-use super::IpcResult;
 use super::SysResult;
-
-use super::{get_file_op_uid, Driver, FileOperation};
+use super::{get_file_op_uid, Driver, FileOperation, IpcResult};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;

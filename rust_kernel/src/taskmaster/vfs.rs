@@ -1,4 +1,4 @@
-use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, FileOperation};
 use super::kmodules::CURRENT_UNIX_TIME;
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
@@ -611,8 +611,8 @@ impl VirtualFileSystem {
         source: Path,
         target: Path,
     ) -> SysResult<()> {
-        use crate::taskmaster::drivers::DiskWrapper;
         use ext2::Ext2Filesystem;
+        use filesystem::devfs::DiskWrapper;
         use filesystem::Ext2fs;
 
         let flags = libc_binding::OpenFlags::O_RDWR;
