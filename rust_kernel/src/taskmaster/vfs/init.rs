@@ -1,5 +1,6 @@
 use super::filesystem::devfs::{
-    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, NullDevice, TtyDevice, ZeroDevice,
+    BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, NullDevice, RandomDevice,
+    TtyDevice, ZeroDevice,
 };
 use super::filesystem::{Devfs, Ext2fs};
 use super::SmartMutex;
@@ -47,7 +48,7 @@ fn mount_devfs(vfs: &mut Vfs, mut devfs: Devfs, fs_id: FileSystemId) {
     let inode_id = devfs.gen_inode_id();
     devfs
         .add_driver(
-            Filename::try_from("null").expect("path sda creation failed"),
+            Filename::try_from("null").expect("path null creation failed"),
             mode,
             Box::new(NullDevice::try_new(inode_id).expect("null device creation failed")),
             inode_id,
@@ -57,9 +58,20 @@ fn mount_devfs(vfs: &mut Vfs, mut devfs: Devfs, fs_id: FileSystemId) {
     let inode_id = devfs.gen_inode_id();
     devfs
         .add_driver(
-            Filename::try_from("zero").expect("path sda creation failed"),
+            Filename::try_from("zero").expect("path zero creation failed"),
             mode,
             Box::new(ZeroDevice::try_new(inode_id).expect("zero device creation failed")),
+            inode_id,
+        )
+        .expect("failed to add new driver sda to devfs");
+
+    crate::math::random::srand_init(42).unwrap();
+    let inode_id = devfs.gen_inode_id();
+    devfs
+        .add_driver(
+            Filename::try_from("random").expect("path random creation failed"),
+            mode,
+            Box::new(RandomDevice::try_new(inode_id).expect("random device creation failed")),
             inode_id,
         )
         .expect("failed to add new driver sda to devfs");

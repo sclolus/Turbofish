@@ -24,6 +24,9 @@ pub use null::{DevNull, NullDevice};
 pub mod zero;
 pub use zero::{DevZero, ZeroDevice};
 
+pub mod random;
+pub use random::{DevRandom, RandomDevice};
+
 pub mod sda;
 pub use sda::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};
 
