@@ -77,7 +77,7 @@ impl<'a> Iterator for IterEscaped<'a> {
                     if &self.s[next_alpha..next_alpha + 1] == "m" {
                         match AnsiColor::from_str(ret) {
                             Ok(c) => Escaped(EscapedCode::Color(c)),
-                            Err(_) => Str(ret),
+                            Err(_) => Str(ret), //panic!("{:?}, {:?}", ret, e),
                         }
                     } else {
                         match CursorMove::from_str(ret) {

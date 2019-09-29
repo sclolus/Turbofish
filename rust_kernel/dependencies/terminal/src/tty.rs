@@ -497,7 +497,8 @@ impl Write for BufferedTty {
             }
         }
 
-        if let Some(begin_esc) = s.rfind(CSI) {
+        // we look for the first char of `CSI` (the escape sequence)
+        if let Some(begin_esc) = s.rfind(&CSI[0..1]) {
             if let None = s[begin_esc..].find(is_ascii_alphabetic) {
                 self.sequence_buffering(&s[begin_esc..], false)?;
                 s = &s[..begin_esc];

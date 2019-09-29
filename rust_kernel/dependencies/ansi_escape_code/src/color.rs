@@ -102,42 +102,74 @@ impl Display for AnsiColor {
 
 impl From<CharBoundaryError> for ParseColorError {
     fn from(_c: CharBoundaryError) -> Self {
-        Self
+        ParseColorError::CharBoundaryError
     }
 }
 
 /// local error enum
 #[derive(Debug)]
-pub struct ParseColorError;
+pub enum ParseColorError {
+    BadCsi,
+    BadlyTerminated,
+    ParseIntError,
+    Bad256ColorPrefix,
+    Other,
+    MissingSecondSeparator,
+    CharBoundaryError,
+}
 
 impl FromStr for AnsiColor {
     type Err = ParseColorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // eprintln!("{:?}", s);
-        if s == "\x1b[0m" {
+        if s == "\x1b[m" || s == "\x1b[0m" {
             return Ok(AnsiColor::WHITE);
         }
         if s.get_substr((s.len() - 1)..s.len())? != "m" {
-            return Err(ParseColorError);
+            return Err(ParseColorError::BadlyTerminated);
         }
         if s.get_substr(0..=1)? != CSI {
-            return Err(ParseColorError);
+            return Err(ParseColorError::BadCsi);
         }
         // TODO: handle other color esape codes
-        if s.len() < 7 || s.get_substr(2..=6)? != "38;5;" {
-            return Err(ParseColorError);
-        }
-        if let Some(m_index) = s.find('m') {
-            if s.len() <= 7 {
-                return Err(ParseColorError);
-            }
+        if let Some(sep_index) = s.find(';') {
             let nb: u8 = s
-                .get_substr(7..m_index)?
+                .get_substr(2..sep_index)?
                 .parse()
-                .map_err(|_e| ParseColorError)?;
-            return Ok(nb.into());
+                .map_err(|_e| ParseColorError::ParseIntError)?;
+            if nb == 38 {
+                if s.len() < 7 || s.get_substr(2..=6)? != "38;5;" {
+                    return Err(ParseColorError::Bad256ColorPrefix);
+                }
+                if let Some(m_index) = s.find('m') {
+                    if s.len() <= 7 {
+                        return Err(ParseColorError::Other);
+                    }
+                    let nb: u8 = s
+                        .get_substr(7..m_index)?
+                        .parse()
+                        .map_err(|_e| ParseColorError::ParseIntError)?;
+                    return Ok(nb.into());
+                }
+            } else if nb == 1 {
+                let m_index = s.find('m').ok_or(ParseColorError::BadlyTerminated)?;
+                let nb: u8 = s
+                    .get_substr(sep_index + 1..m_index)?
+                    .parse()
+                    .map_err(|_e| ParseColorError::ParseIntError)?;
+                if nb >= 30 && nb <= 37 {
+                    return Ok(AnsiColor::HighIntensity(nb - 30));
+                }
+            }
+        } else {
+            let nb: u8 = s
+                .get_substr(2..s.len() - 1)?
+                .parse()
+                .map_err(|_e| ParseColorError::ParseIntError)?;
+            if nb >= 30 && nb <= 37 {
+                return Ok((nb - 30).into());
+            }
         }
-        return Err(ParseColorError);
+        return Err(ParseColorError::Other);
     }
 }
 

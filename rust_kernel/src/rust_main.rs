@@ -117,7 +117,7 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
 
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/shell"],
-        &[],
+        &["/bin/init", "/bin/session_manager", "/bin/sh"],
+        &["ENV=/bin/init.sh"],
     );
 }
