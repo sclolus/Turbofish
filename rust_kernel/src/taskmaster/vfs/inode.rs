@@ -319,23 +319,16 @@ mod inode_id_should {
     }
 
     make_test! {{
+        use super::Incrementor;
         let make_id = |x| InodeId::new(x, None);
         let id = make_id(0);
 
-        assert_eq!(make_id(0) + 0, make_id(0));
-        assert_eq!(make_id(0) + 1, make_id(1));
-        assert_eq!(make_id(0) + 2, make_id(2));
-        assert_eq!(make_id(0) + 3, make_id(3));
-        assert_eq!(make_id(0) + 4, make_id(4));
-        assert_eq!(make_id(0) + 5, make_id(5));
-        assert_eq!(make_id(0) + 6, make_id(6));
-        assert_eq!(make_id(0) + 7, make_id(7));
-        assert_eq!(make_id(0) + 8, make_id(8));
+        assert_eq!({let mut id = make_id(0); id.incr(); id}, make_id(1));
 
         let mut id = make_id(0);
         for index in 0..128 {
             assert_eq!(id, make_id(index));
-            id = id + 1;
+            id.incr();
         }
 
     }, add_to_usizes}
