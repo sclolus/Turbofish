@@ -11,7 +11,7 @@ use alloc::sync::Arc;
 use core::cmp;
 use core::slice;
 use fallible_collections::FallibleArc;
-use libc_binding::OpenFlags;
+use libc_binding::{Errno, OpenFlags};
 use sync::dead_mutex::DeadMutex;
 
 /// This structure represents a FileOperation of type DevFb
@@ -29,33 +29,28 @@ impl DevFb {
 
 /// Main Trait implementation of DevFb
 impl FileOperation for DevFb {
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        for x in buf.iter_mut() {
-            *x = 0;
-        }
-        return Ok(IpcResult::Done(buf.len() as u32));
+    fn read(&mut self, _buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        return Err(Errno::ENOSYS);
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let mut screen = SCREEN_MONAD.lock();
+
+        let r = screen.query_graphic_infos();
+        let data_to_write = match r {
+            Ok((height, width, bpp)) => cmp::min(width * height * bpp / 8, buf.len()),
+            Err(e) => {
+                log::error!("{:?}", e);
+                return Err(Errno::EINVAL);
+            }
+        };
         screen
-            .draw_graphic_buffer(|ptr, width, height, bpp| {
-                let s = unsafe {
-                    slice::from_raw_parts_mut(ptr, cmp::min(width * height * bpp / 8, buf.len()))
-                };
-                // s.write(buf);
+            .draw_graphic_buffer(|ptr, _width, _height, _bpp| {
+                let s = unsafe { slice::from_raw_parts_mut(ptr, data_to_write) };
                 s.copy_from_slice(buf);
                 Ok(())
             })
             .expect("draw graphic buffer failed");
-        let r = screen.query_graphic_infos();
-        let data_writen = match r {
-            Ok((height, width, bpp)) => cmp::min(width * height * bpp / 8, buf.len()),
-            Err(e) => {
-                log::error!("{:?}", e);
-                0
-            }
-        };
-        Ok(IpcResult::Done(data_writen as u32))
+        Ok(IpcResult::Done(data_to_write as u32))
     }
     fn get_inode_id(&self) -> SysResult<InodeId> {
         Ok(self.inode_id)
@@ -83,6 +78,7 @@ impl Driver for FbDevice {
         &mut self,
         _flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        //TODO: We could clear the screen, put the terminal in echo of..
         Ok(IpcResult::Done(self.operation.clone()))
     }
 }
