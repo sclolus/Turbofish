@@ -97,7 +97,7 @@ impl Inode {
             self.filesystem
                 .lock()
                 .write(self.id.inode_number, offset, buf)?;
-        self.inode_data.size = inode_data.size;
+        self.inode_data = inode_data;
         Ok(count as u32)
     }
     pub fn read(&mut self, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
