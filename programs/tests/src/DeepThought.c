@@ -37,7 +37,7 @@
 // Control if tests are launched one by one or not
 
 # define GETOPT_FLAGS "pneli"
-bool LINEAR = true;
+bool LINEAR = false;
 bool EXIT_ON_FAILURE = false;
 bool IMM_PRINT_FAILURE = true;
 bool NO_REDIRECT = false;
@@ -304,7 +304,7 @@ static void	recursive_unlink(char *dirname)
 			err_errno("Failed to lstat: %s", filename);
 		}
 
-		if ((stat_buf.st_mode & S_IFMT) == S_IFDIR) {
+		if (S_ISDIR(stat_buf.st_mode)) {
 			recursive_unlink(filename);
 		} else if (-1 == unlink(filename)) {
 			err_errno("Failed to unlink: %s", filename);
@@ -408,7 +408,12 @@ void parse_cmdline(int argc, char **argv)
 			g_deepthought_info.print_failure_immediately = true;
 			break;
 		default:
-			err("Usage: %s [-f] [-n] [-i] [-e] [-l]\n", argv[0]);
+			// -p do not delete previous output,
+			// -n no redirect
+			// -i print failure immediately
+			// -e exit on failure
+			// -l linear
+			err("Usage: %s [-p] [-n] [-i] [-e] [-l]\n", argv[0]);
 		}
 	}
 
@@ -420,6 +425,7 @@ void parse_cmdline(int argc, char **argv)
 
 int main(int argc, char **argv) {
 	memset(&g_deepthought_info, 0, sizeof(struct deepthought_info));
+	g_deepthought_info.exit_on_failure = LINEAR;
 	g_deepthought_info.exit_on_failure = EXIT_ON_FAILURE;
 	g_deepthought_info.print_failure_immediately = IMM_PRINT_FAILURE;
 	g_deepthought_info.no_redirect = NO_REDIRECT;
