@@ -97,9 +97,11 @@ int main() {
 
 	pid_t pid = getpid();
 	sprintf(CLIENT_PATH, "./socket_file_%d", pid);
+	unlink(CLIENT_PATH);
 	fill_sockaddr(&addr);
 
 	sprintf(SENDER_PATH, "./socket_file_sender_%d", pid);
+	unlink(SENDER_PATH);
 	memset(&SENDER_ADDR, 0, sizeof(struct sockaddr_un));
 	SENDER_ADDR.sun_family = AF_UNIX;
 	strcpy((char *)SENDER_ADDR.sun_path, SENDER_PATH);
@@ -129,6 +131,7 @@ int main() {
 		if (ret == -1) {
 			exit(1);
 		}
+		assert(unlink(SENDER_PATH) == 0);
 		return 0;
 	}
 }
