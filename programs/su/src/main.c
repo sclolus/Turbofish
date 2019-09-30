@@ -69,7 +69,8 @@ int main(int argc, char **argv)
 	uid_t		uid = getuid();
 
 	// If the real user id is root, skip password checks.
-	if (uid != 0) {
+	// Except if we are in login shell mode.
+	if (uid != 0 || args.login_shell) {
 		char		*input_password = getpass("Password: ");
 
 		if (!input_password) {
@@ -189,11 +190,14 @@ int main(int argc, char **argv)
 
 		if (term) {
 			term = strdup(term);
+			if (!term) {
+				warn_errno("Failed to allocate memory for TERM environment variable");
+			}
 		}
 
 		clearenv();
 
-		if (-1 == setenv("TERM", term, true)) {
+		if (term && -1 == setenv("TERM", term, true)) {
 			err("Failed to setenv(TERM): %s", strerror(errno));
 		}
 

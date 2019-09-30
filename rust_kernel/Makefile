@@ -112,8 +112,14 @@ custom_target := $(arch).json
 # $ come from this output: rustc -Z unstable-options --print target-spec-json --target i686-unknown-linux-gnu
 # doc about this flags: https://github.com/rust-lang/rust/blob/256e497fe63bf4b13f7c0b58fa17360ca849c54d/src/librustc_back/target/mod.rs#L228-L409
 
+cargo_features := $(features)
+
 ifeq ($(serial-eprintln), yes)
-cargo_flags += --features serial-eprintln
+cargo_features += serial-eprintln
+endif
+
+ifeq ($(with-login), yes)
+cargo_features += with-login
 endif
 
 ifeq ($(DEBUG),yes)
@@ -122,6 +128,15 @@ else
 	cargo_flags += --release
 	rust_os := target/$(target)/release/lib$(name).a
 endif
+
+null :=
+space := $(null) #trick
+comma := ,
+
+# Make comma-separated list of features for cargo/rustc.
+rustc_features = $(subst $(space),$(comma),$(cargo_features))
+
+cargo_flags += $(addprefix --features=,$(rustc_features))
 
 .PHONY: all clean fclean common_clean re exec $(kernel)
 
@@ -197,7 +212,6 @@ build_libft:
 
 test: .
 	cargo test --all --target i686-unknown-linux-gnu --features std-print --exclude ext2
-
 test-all: .
 	cargo test --all --target i686-unknown-linux-gnu --features std-print --exclude ext2 --no-fail-fast
 

@@ -7,6 +7,7 @@ all:
 	make -C system
 	make -C su
 	make -C modules
+	make -C login
 
 fclean:
 	make fclean -C c
@@ -14,6 +15,7 @@ fclean:
 	make fclean -C system
 	make fclean -C su
 	make fclean -C modules
+	make fclean -C login
 
 clean: fclean
 

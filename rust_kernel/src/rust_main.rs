@@ -8,6 +8,13 @@ pub extern "C" fn kmain(
     device_map_ptr: *const DeviceMap,
 ) -> ! {
     init_kernel(multiboot_info, device_map_ptr);
+    #[cfg(feature = "with-login")]
+    crate::taskmaster::start(
+        "/bin/init",
+        &["/bin/init", "/bin/session_manager", "/bin/login"],
+        &[],
+    );
+    #[cfg(not(feature = "with-login"))]
     crate::taskmaster::start(
         "/bin/init",
         &["/bin/init", "/bin/session_manager", "/bin/dash"],

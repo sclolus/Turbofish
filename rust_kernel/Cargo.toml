@@ -73,6 +73,7 @@ native-test-hard-drive-write-bios = []
 native-test-libc = []
 test = []
 no-exit-qemu = []
+with-login = []
 
 [workspace]
 members = [
