@@ -70,6 +70,7 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/open/o_append"},
 	{.path = "/bin/socket/sockstream"},
 	{.path = "/bin/socket/sockdgram"},
 	{.path = "/bin/socket/sockdgram_connect"},
@@ -78,6 +79,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/chown_tests/chown_fails_if_not_owner"},
 	{.path = "/bin/fchmod/fchmod_fails_if_not_owner"},
 	{.path = "/bin/chmod_tests/chmod_fails_if_not_owner"},
+	{.path = "/bin/open/o_trunc"},
 	{.path = "/bin/fifo/fifo"},
 	{.path = "/bin/execve/bad_elf"},
 	{.path = "/bin/unlink/unlink_orphan"},

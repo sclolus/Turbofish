@@ -38,6 +38,10 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
+    fn truncate(&mut self, _inode_nbr: u32, _new_size: u64) -> SysResult<()> {
+        Err(Errno::ENOSYS)
+    }
+
     fn create(
         &mut self,
         _filename: &str,
@@ -48,7 +52,7 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
-    fn write(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &[u8]) -> SysResult<u32> {
+    fn write(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &[u8]) -> SysResult<(u32, InodeData)> {
         Err(Errno::ENOSYS)
     }
 

@@ -11,7 +11,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
-    dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
+    blkcnt_t, dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
 };
 use sync::DeadMutex;
 
@@ -47,7 +47,22 @@ impl Inode {
         &mut self,
         flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        let res = self.driver.open(flags)?;
+        if flags.contains(OpenFlags::O_TRUNC) {
+            if self
+                .filesystem
+                .lock()
+                .truncate(self.id.inode_number, 0)
+                .is_ok()
+            {
+                self.inode_data.set_size(0);
+            }
+        }
+        let mut res = self.driver.open(flags)?;
+        if flags.contains(OpenFlags::O_APPEND) {
+            if let IpcResult::Done(file_op) = &mut res {
+                file_op.lock().set_file_offset(self.inode_data.size);
+            }
+        }
         self.nbr_open_file_operation += 1;
         Ok(res)
     }
@@ -77,10 +92,14 @@ impl Inode {
         self.inode_data.stat(stat)
     }
     pub fn write(&mut self, offset: &mut u64, buf: &[u8]) -> SysResult<u32> {
-        Ok(self
-            .filesystem
-            .lock()
-            .write(self.id.inode_number, offset, buf)? as u32)
+        // TODO: update size in inode data
+        let (count, inode_data) =
+            self.filesystem
+                .lock()
+                .write(self.id.inode_number, offset, buf)?;
+        self.inode_data.size = inode_data.size;
+        self.inode_data.nbr_disk_sectors = inode_data.nbr_disk_sectors;
+        Ok(count as u32)
     }
     pub fn read(&mut self, offset: &mut u64, buf: &mut [u8]) -> SysResult<u32> {
         if self.inode_data.is_directory() {
@@ -146,9 +165,14 @@ pub struct InodeData {
     pub ctime: time_t,
 
     pub size: u64,
+    pub nbr_disk_sectors: blkcnt_t,
 }
 
 impl InodeData {
+    pub fn set_size(&mut self, size: u64) {
+        self.size = size;
+    }
+
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         *stat = stat {
             st_dev: 42 as dev_t,                   // Device ID of device containing file.
@@ -172,8 +196,8 @@ impl InodeData {
                 tv_sec: self.ctime as time_t,
                 tv_nsec: 0,
             }, // Last file status change timestamp.
-            st_blksize: 42, //self.ext2.lock().get_block_size() as blksize_t, // A file system-specific preferred I/O block size
-            st_blocks: 42, //self.nbr_disk_sectors as blkcnt_t, // Number of blocks allocated for this object.
+            st_blksize: 1024, //self.ext2.lock().get_block_size() as blksize_t, // A file system-specific preferred I/O block size
+            st_blocks: self.nbr_disk_sectors, //self.nbr_disk_sectors as blkcnt_t, // Number of blocks allocated for this object.
         };
         Ok(0)
     }
@@ -222,6 +246,7 @@ impl InodeData {
             ctime: 0,
             mtime: 0,
             size: 4096,
+            nbr_disk_sectors: 4,
         }
     }
 

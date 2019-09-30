@@ -78,12 +78,12 @@ impl Ext2Filesystem {
 
     /// The Truncate() Function Shall cause the regular file named by
     /// path to have a size which shall be equal to length bytes.
-    pub fn truncate(&mut self, path: &str, length: u64) -> IoResult<()> {
-        let (mut inode, inode_addr) = self.find_inode(path)?;
+    pub fn truncate(&mut self, inode_nbr: u32, new_size: u64) -> IoResult<()> {
+        let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         if !inode.is_a_regular_file() {
             return Err(Errno::EISDIR);
         }
-        self.truncate_inode((&mut inode, inode_addr), length)
+        self.truncate_inode((&mut inode, inode_addr), new_size)
     }
 
     pub fn create(
@@ -203,14 +203,19 @@ impl Ext2Filesystem {
     }
 
     /// for write syscall
-    pub fn write(&mut self, inode_nbr: u32, file_offset: &mut u64, buf: &[u8]) -> IoResult<u64> {
+    pub fn write(
+        &mut self,
+        inode_nbr: u32,
+        file_offset: &mut u64,
+        buf: &[u8],
+    ) -> IoResult<(u64, Inode)> {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         let file_curr_offset_start = *file_offset;
         if *file_offset > inode.get_size() {
             panic!("file_offset > inode.get_size()");
         }
         if buf.len() == 0 {
-            return Ok(0);
+            return Ok((0, inode));
         }
         let data_address = self.inode_data_alloc((&mut inode, inode_addr), *file_offset)?;
         let offset = min(
@@ -226,7 +231,7 @@ impl Ext2Filesystem {
             self.disk.write_struct(inode_addr, &inode)?;
         }
         if data_write < offset {
-            return Ok(*file_offset - file_curr_offset_start);
+            return Ok((*file_offset - file_curr_offset_start, inode));
         }
 
         for chunk in buf[offset as usize..].chunks(self.block_size as usize) {
@@ -238,10 +243,10 @@ impl Ext2Filesystem {
                 self.disk.write_struct(inode_addr, &inode)?;
             }
             if data_write < chunk.len() as u64 {
-                return Ok(*file_offset - file_curr_offset_start);
+                return Ok((*file_offset - file_curr_offset_start, inode));
             }
         }
-        Ok(*file_offset - file_curr_offset_start)
+        Ok((*file_offset - file_curr_offset_start, inode))
     }
 
     /// return all the (directory, inode) conainted in inode_nbr
