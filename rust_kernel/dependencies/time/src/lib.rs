@@ -38,9 +38,9 @@ impl TryFrom<u8> for Month {
             7 => Ok(July),
             8 => Ok(August),
             9 => Ok(September),
-            10 => Ok(October),
-            11 => Ok(November),
-            12 => Ok(December),
+            0x10 => Ok(October),
+            0x11 => Ok(November),
+            0x12 => Ok(December),
             _ => Err(InvalidMonth(())),
         }
     }
