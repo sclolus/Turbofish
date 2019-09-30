@@ -22,12 +22,12 @@ pub use sockdgram::SocketDgram;
 use sockdgram::SocketDgramDriver;
 
 mod sockstream;
-use sockstream::SocketStreamDriver;
-pub use sockstream::{SocketStream, Whom};
+use sockstream::ConnectedSocketDriver;
+pub use sockstream::{ConnectedSocket, Whom};
 
 #[derive(Debug)]
 pub enum SocketDriver {
-    Stream(SocketStreamDriver),
+    Stream(ConnectedSocketDriver),
     Dgram(SocketDgramDriver),
 }
 
@@ -35,7 +35,7 @@ impl SocketDriver {
     pub fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
         Ok(match socket_type {
             socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
-                Self::Stream(SocketStreamDriver::try_new(socket_type)?)
+                Self::Stream(ConnectedSocketDriver::try_new(socket_type)?)
             }
             socket::SocketType::SockDgram => Self::Dgram(SocketDgramDriver::try_new()?),
         })
@@ -99,7 +99,7 @@ impl Driver for SocketDriver {
         }
     }
 
-    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+    fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
         use SocketDriver::*;
         match self {
             Stream(driver) => driver.accept(),
