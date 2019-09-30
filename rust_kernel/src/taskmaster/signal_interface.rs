@@ -135,9 +135,9 @@ const SIG_IGN: usize = 1;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct StructSigaction {
+    /// is an union with
+    /// sa_sigaction: extern "C" fn(int, siginfo_t *, void *),
     pub sa_handler: usize,
-    // TODO: Must be an union with sa_handler
-    // sa_sigaction: extern "C" fn(int, siginfo_t *, void *),
     pub sa_mask: SaMask,
     pub sa_flags: SaFlags,
     pub sa_restorer: usize,
