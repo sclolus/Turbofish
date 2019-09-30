@@ -350,6 +350,9 @@ impl VirtualFileSystem {
                     was_symlink = true;
                     break;
                 }
+                // current_di_id is set after checking if we are on a
+                // symlink, as on a symlink current_dir_id must point
+                // to the directory, not the symlink
                 current_dir_id = *next_entry_id;
                 continue;
             }
@@ -366,13 +369,15 @@ impl VirtualFileSystem {
                 .ok_or(ENOENT)?;
 
             current_entry = self.dcache.get_entry(next_entry_id)?;
-            current_dir_id = *next_entry_id;
-            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
-
             if current_entry.is_symlink() {
                 was_symlink = true;
                 break;
             }
+            // current_di_id is set after checking if we are on a
+            // symlink, as on a symlink current_dir_id must point
+            // to the directory, not the symlink
+            current_dir_id = *next_entry_id;
+            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
         }
         if was_symlink {
             if components.len() == 0 && !follow_last_symlink {
