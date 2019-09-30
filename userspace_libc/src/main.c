@@ -111,35 +111,37 @@ int main(void)
 	float f;
 	float g;
 
-	printf("Entrez votre nom/prenom et deux flotants:\n");
-	int ret = xscanf("%s %s %0f %f", nom, prenom, &f, &g);
-	printf("scanned buf: `%s %s %f %f` ret = %i\n", nom, prenom, f, g, ret);
+	test_u_convert();
+	test_lu_convert();
+	/* printf("Entrez votre nom/prenom et deux flotants:\n"); */
+	/* int ret = xscanf("%s %s %0f %f", nom, prenom, &f, &g); */
+	/* printf("scanned buf: `%s %s %f %f` ret = %i\n", nom, prenom, f, g, ret); */
 
 
-	///char s[] = "bananes";
-	//xsscanf(s, "%s", buf);
+			 ///char s[] = "bananes";
+			 //xsscanf(s, "%s", buf);
 /*
-	xprintf("Les %i carrotes sont cuites\n", 42);
+  xprintf("Les %i carrotes sont cuites\n", 42);
 
-	int i;
-	int j;
-	int k;
-	char s[] = "bananes";
+  int i;
+  int j;
+  int k;
+  char s[] = "bananes";
 
-	char *fmt;
-	char buf_s[512];
-	char buf_p[512];	
+  char *fmt;
+  char buf_s[512];
+  char buf_p[512];
 
-	fmt = "%i    %i\t\t\t%i%3s";
-	int a = 42;
-	int b = 84;
-	int c = 168;
-	char s2[512];
-	sprintf(buf_p, fmt, a, b, c, s);
-	sscanf(buf_p, fmt, &i, &j, &k, s2);
-	sprintf(buf_s, fmt, i, j, k, s2);
-	printf("origin: '%s'\n", buf_p);
-	printf("final:  '%s'\n", buf_s);
+  fmt = "%i    %i\t\t\t%i%3s";
+  int a = 42;
+  int b = 84;
+  int c = 168;
+  char s2[512];
+  sprintf(buf_p, fmt, a, b, c, s);
+  sscanf(buf_p, fmt, &i, &j, &k, s2);
+  sprintf(buf_s, fmt, i, j, k, s2);
+  printf("origin: '%s'\n", buf_p);
+  printf("final:  '%s'\n", buf_s);
 */
-	return 0;
-}
+			 return 0;
+			 }

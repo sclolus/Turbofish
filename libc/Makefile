@@ -31,7 +31,7 @@ SRC_C += libc_ctor
 SRC_ASM += user_syscall
 PRIVATE_HEADERS += include/user_syscall.h
 
-TESTED_SRC_C = strsplit array getenv setenv unsetenv clearenv execl getmntent
+TESTED_SRC_C = ifc_entries strsplit array getenv setenv unsetenv clearenv execl getmntent
 
 
 SRC_C += memset bzero memcpy memccpy memmove memchr memcmp \
@@ -58,6 +58,21 @@ SRC_C += beacon op_main modifiers extract_args \
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
 PRIVATE_HEADERS += internal_printf.h
+
+VPATH += src/stdio/scanf/
+SRC_C += ifc_char \
+	ifc_convert \
+	ifc_entries \
+	ifc_float \
+	ifc_logical_o \
+	ifc_logical_x \
+	ifc_numeric_d \
+	ifc_numeric_i \
+	ifc_numeric_u \
+	ifc_parse_chain \
+	ifc_pointer \
+	ifc_string \
+
 
 SRC_C += fpending
 VPATH += src/stdio_ext/

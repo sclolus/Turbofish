@@ -1,6 +1,6 @@
 TARGET = program_test
 
-SRC_C += main
+SRC_C += main test_u_convert
 VPATH += src
 HEADERS += include/main.h
 
