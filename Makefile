@@ -49,7 +49,7 @@ system_root:
 	sudo mkdir -pv $(SYSTEM_ROOT)/turbofish/mod
 
 $(IMG_DISK):
-	dd if=/dev/zero of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)
+	dd if=/dev/urandom of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)
 	echo -e "o\nn\np\n1\n2048\n\na\nw\n" | sudo fdisk $(IMG_DISK)
 	sudo losetup -fP $(IMG_DISK)
 	sudo mkfs.ext2 $(LOOP_DEVICE)p1
