@@ -110,7 +110,7 @@ impl KeyGenerator<DirectoryEntryId> for ProcFs {
 // }
 
 // #[derive(Debug)]
-struct Inode(VfsInode, Box<dyn FnMut() -> Box<dyn Driver>>);
+struct Inode(VfsInode, Box<dyn FnMut(InodeId) -> Box<dyn Driver>>);
 
 impl core::fmt::Debug for Inode {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
@@ -148,7 +148,7 @@ impl ProcFs {
         &mut self,
         parent: DirectoryEntryId,
         name: Filename,
-        gen_driver: Box<dyn FnMut() -> Box<dyn Driver>>,
+        gen_driver: Box<dyn FnMut(InodeId) -> Box<dyn Driver>>,
     ) -> SysResult<DirectoryEntryId> {
         let driver = Box::new(DefaultDriver);
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
@@ -213,7 +213,7 @@ impl ProcFs {
 
         new.root_inode_id = root_inode_id;
 
-        let inode = Inode(inode, Box::new(|| Box::new(DefaultDriver)));
+        let inode = Inode(inode, Box::new(|_inode_id| Box::new(DefaultDriver)));
 
         new.inodes.try_insert(root_inode_id, inode)?;
 
@@ -229,48 +229,48 @@ impl ProcFs {
         new.register_file(
             root_dir_id,
             filesystems_filename,
-            Box::new(|| Box::new(filesystems::FilesystemsDriver)),
+            Box::new(|inode_id| Box::new(filesystems::FilesystemsDriver::new(inode_id))),
         )?;
         new.register_file(
             root_dir_id,
             version_filename,
-            Box::new(|| Box::new(version::VersionDriver)),
+            Box::new(|inode_id| Box::new(version::VersionDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             proc_stat_filename,
-            Box::new(|| Box::new(proc_stat::ProcStatDriver)),
+            Box::new(|inode_id| Box::new(proc_stat::ProcStatDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             uptime_filename,
-            Box::new(|| Box::new(uptime::UptimeDriver)),
+            Box::new(|inode_id| Box::new(uptime::UptimeDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             loadavg_filename,
-            Box::new(|| Box::new(loadavg::LoadavgDriver)),
+            Box::new(|inode_id| Box::new(loadavg::LoadavgDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             meminfo_filename,
-            Box::new(|| Box::new(meminfo::MeminfoDriver)),
+            Box::new(|inode_id| Box::new(meminfo::MeminfoDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             vmstat_filename,
-            Box::new(|| Box::new(vmstat::VmstatDriver)),
+            Box::new(|inode_id| Box::new(vmstat::VmstatDriver::new(inode_id))),
         )?;
 
         new.register_file(
             root_dir_id,
             mounts_filename,
-            Box::new(|| Box::new(mounts::MountsDriver)),
+            Box::new(|inode_id| Box::new(mounts::MountsDriver::new(inode_id))),
         )?;
 
         // Inserting divers basic procfs files.
@@ -310,7 +310,7 @@ impl ProcFs {
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
-            Box::new(|| Box::new(DefaultDriver)),
+            Box::new(|_inode_id| Box::new(DefaultDriver)),
         );
 
         let mut direntry = DirectoryEntryBuilder::new();
@@ -414,7 +414,7 @@ impl ProcFs {
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
-            Box::new(|| Box::new(DefaultDriver)),
+            Box::new(|_inode_id| Box::new(DefaultDriver)),
         );
 
         let dir_id = self.dcache.add_entry(Some(parent), direntry)?;
@@ -526,7 +526,7 @@ impl FileSystem for ProcFs {
             self.register_file(
                 dir_id,
                 stat_filename,
-                Box::new(move || Box::new(StatDriver::new(pid))),
+                Box::new(move |inode_id| Box::new(StatDriver::new(inode_id, pid))),
             )?;
 
             let cwd_filename = Filename::from_str_unwrap("cwd");
@@ -538,14 +538,14 @@ impl FileSystem for ProcFs {
             self.register_file(
                 dir_id,
                 environ_filename,
-                Box::new(move || Box::new(EnvironDriver::new(pid))),
+                Box::new(move |inode_id| Box::new(EnvironDriver::new(inode_id, pid))),
             )?;
 
             let cmdline_filename = Filename::from_str_unwrap("cmdline");
             self.register_file(
                 dir_id,
                 cmdline_filename,
-                Box::new(move || Box::new(CmdlineDriver::new(pid))),
+                Box::new(move |inode_id| Box::new(CmdlineDriver::new(inode_id, pid))),
             )?;
 
             let exe_filename = Filename::from_str_unwrap("exe");
@@ -576,13 +576,14 @@ impl FileSystem for ProcFs {
                 let direntry = dcache.get_entry(direntry_id).expect("WTF");
                 let inode = inodes.get_mut(&direntry.inode_id);
                 if let (ent, Some(inode)) = (direntry, inode) {
+                    let inode_id = inode.id;
                     let mut entry = ent.clone();
 
                     if entry.is_directory() {
                         // Cleanup the incompatible-with-vfs directoryEntryIds in the direntry.
                         entry.get_directory_mut().unwrap().clear_entries();
                     }
-                    Some((entry, inode.inode_data.clone(), inode.1()))
+                    Some((entry, inode.inode_data.clone(), inode.1(inode_id)))
                 } else {
                     None
                 }

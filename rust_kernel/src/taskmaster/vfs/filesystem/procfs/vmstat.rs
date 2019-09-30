@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
 
 use alloc::sync::Arc;
 
@@ -12,13 +12,24 @@ type Mutex<T> = DeadMutex<T>;
 use libc_binding::Errno;
 
 #[derive(Debug, Clone)]
-pub struct VmstatDriver;
+pub struct VmstatDriver {
+    inode_id: InodeId,
+}
+
+impl VmstatDriver {
+    pub fn new(inode_id: InodeId) -> Self {
+        Self { inode_id }
+    }
+}
 
 unsafe impl Send for VmstatDriver {}
 
 impl Driver for VmstatDriver {
     fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(Mutex::new(VmstatOperations { offset: 0 }))?;
+        let res = Arc::try_new(Mutex::new(VmstatOperations {
+            inode_id: self.inode_id,
+            offset: 0,
+        }))?;
         Ok(IpcResult::Done(res))
     }
 }
@@ -26,10 +37,15 @@ impl Driver for VmstatDriver {
 #[derive(Debug, Default)]
 pub struct VmstatOperations {
     // offset: u64,
+    inode_id: InodeId,
     offset: usize,
 }
 
 impl FileOperation for VmstatOperations {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if buf.len() > u32::max_value() as usize {
             return Err(Errno::EOVERFLOW);

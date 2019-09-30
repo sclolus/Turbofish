@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
 
 use alloc::sync::Arc;
 
@@ -13,37 +13,47 @@ use libc_binding::{Errno, Pid};
 
 #[derive(Debug, Clone)]
 pub struct StatDriver {
+    inode_id: InodeId,
     pid: Pid,
+}
+
+impl StatDriver {
+    pub fn new(inode_id: InodeId, pid: Pid) -> Self {
+        Self { inode_id, pid }
+    }
 }
 
 unsafe impl Send for StatDriver {}
 
 #[derive(Debug)]
 pub struct StatOperations {
+    inode_id: InodeId,
     pid: Pid,
     offset: usize,
 }
 
 impl Driver for StatDriver {
     fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(Mutex::new(StatOperations::new(self.pid, 0)))?;
+        let res = Arc::try_new(Mutex::new(StatOperations::new(self.inode_id, self.pid, 0)))?;
         Ok(IpcResult::Done(res))
     }
 }
 
-impl StatDriver {
-    pub fn new(pid: Pid) -> Self {
-        Self { pid }
-    }
-}
-
 impl StatOperations {
-    pub fn new(pid: Pid, offset: usize) -> Self {
-        Self { pid, offset }
+    pub fn new(inode_id: InodeId, pid: Pid, offset: usize) -> Self {
+        Self {
+            inode_id,
+            pid,
+            offset,
+        }
     }
 }
 
 impl FileOperation for StatOperations {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if buf.len() > u32::max_value() as usize {
             return Err(Errno::EOVERFLOW);
