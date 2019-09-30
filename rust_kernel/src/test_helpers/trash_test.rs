@@ -4,7 +4,7 @@ pub fn sa_va_castagner() {
     panic!("you failed");
 }
 
-// rust inline this fonction by default even with the --force frame pointer. TODO:To investigate
+// rust inline this fonction by default even with the --force frame pointer. To investigate
 #[inline(never)]
 pub fn kpanic() {
     unsafe {
