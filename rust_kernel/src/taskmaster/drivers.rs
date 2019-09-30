@@ -9,7 +9,7 @@ use super::Credentials;
 use super::IpcResult;
 
 pub mod ipc;
-pub use ipc::{socket::Whom, FifoDriver, FifoFileOperation, Pipe, SocketDgram, SocketStream};
+pub use ipc::{socket::Whom, ConnectedSocket, FifoDriver, FifoFileOperation, Pipe, SocketDgram};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -24,7 +24,8 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{
-    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, Whence,
+    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, ShutDownOption,
+    Whence,
 };
 use sync::dead_mutex::DeadMutex;
 
@@ -129,7 +130,11 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOTSOCK)
     }
 
-    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+    fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
+        Err(Errno::ENOTSOCK)
+    }
+
+    fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
 }
@@ -181,7 +186,11 @@ pub trait Driver: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+    fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
+        Err(Errno::ENOTSOCK)
+    }
+
+    fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
 }

@@ -12,7 +12,7 @@ use core::convert::TryFrom;
 
 use libc_binding::{Errno, FileType, OpenFlags};
 
-use super::drivers::ipc::{Pipe, SocketDgram, SocketStream};
+use super::drivers::ipc::{ConnectedSocket, Pipe, SocketDgram};
 use alloc::sync::Arc;
 
 use fallible_collections::btree::BTreeMap;
@@ -189,7 +189,7 @@ impl FileDescriptorInterface {
                 Arc::try_new(DeadMutex::new(SocketDgram::new(domain, socket_type)?))?
             }
             socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
-                Arc::try_new(DeadMutex::new(SocketStream::new(domain, socket_type)?))?
+                Arc::try_new(DeadMutex::new(ConnectedSocket::new(domain, socket_type)?))?
             }
         };
         self.insert_user_fd(OpenFlags::O_RDWR, file_operator)
@@ -261,19 +261,3 @@ impl Drop for FileDescriptor {
         self.file_operation.lock().unregister(self.flags);
     }
 }
-
-/*
-// TODO: This function may be trashed in the furure
-/// Open a Fifo. Block until the fifo is not open in two directions.
-#[allow(dead_code)]
-pub fn open_fifo(&mut self, access_mode: Mode) -> SysResult<IpcResult<Fd>> {
-    if access_mode == Mode::ReadWrite {
-        return Err(Errno::EACCES);
-    }
-
-    let fifo = Arc::try_new(DeadMutex::new(Fifo::new()))?;
-    let fd = self.insert_user_fd(access_mode, fifo)?;
-
-    Ok(IpcResult::Done(fd))
-}
-*/

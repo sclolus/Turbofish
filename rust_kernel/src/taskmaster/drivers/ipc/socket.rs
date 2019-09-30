@@ -14,20 +14,20 @@ use super::Path;
 use super::VFS;
 
 use alloc::sync::Arc;
-use libc_binding::{Errno, OpenFlags};
+use libc_binding::{Errno, OpenFlags, ShutDownOption};
 use sync::dead_mutex::DeadMutex;
 
 mod sockdgram;
 pub use sockdgram::SocketDgram;
 use sockdgram::SocketDgramDriver;
 
-mod sockstream;
-use sockstream::SocketStreamDriver;
-pub use sockstream::{SocketStream, Whom};
+mod sockconnected;
+use sockconnected::ConnectedSocketDriver;
+pub use sockconnected::{ConnectedSocket, Whom};
 
 #[derive(Debug)]
 pub enum SocketDriver {
-    Stream(SocketStreamDriver),
+    Connected(ConnectedSocketDriver),
     Dgram(SocketDgramDriver),
 }
 
@@ -35,7 +35,7 @@ impl SocketDriver {
     pub fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
         Ok(match socket_type {
             socket::SocketType::SockStream | socket::SocketType::SockSeqPacket => {
-                Self::Stream(SocketStreamDriver::try_new(socket_type)?)
+                Self::Connected(ConnectedSocketDriver::try_new(socket_type)?)
             }
             socket::SocketType::SockDgram => Self::Dgram(SocketDgramDriver::try_new()?),
         })
@@ -59,7 +59,7 @@ impl Driver for SocketDriver {
     ) -> SysResult<IpcResult<u32>> {
         use SocketDriver::*;
         match self {
-            Stream(driver) => driver.send_from(buf, flags, sender, whom),
+            Connected(driver) => driver.send_from(buf, flags, sender, whom),
             Dgram(driver) => driver.send_from(buf, flags, sender),
         }
     }
@@ -72,7 +72,7 @@ impl Driver for SocketDriver {
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
         use SocketDriver::*;
         match self {
-            Stream(driver) => driver.recv_from(buf, flags, whom),
+            Connected(driver) => driver.recv_from(buf, flags, whom),
             Dgram(driver) => driver.recv_from(buf, flags),
         }
     }
@@ -80,7 +80,7 @@ impl Driver for SocketDriver {
     fn connect(&mut self, addr: Option<Path>, inode_id: InodeId) -> SysResult<IpcResult<()>> {
         use SocketDriver::*;
         match self {
-            Stream(driver) => driver.connect(addr, inode_id),
+            Connected(driver) => driver.connect(addr, inode_id),
             Dgram(_driver) => {
                 // A Dgram Driver does not support connection
                 return Err(Errno::EINVAL);
@@ -91,7 +91,7 @@ impl Driver for SocketDriver {
     fn listen(&mut self, backlog: i32) -> SysResult<()> {
         use SocketDriver::*;
         match self {
-            Stream(driver) => driver.listen(backlog),
+            Connected(driver) => driver.listen(backlog),
             Dgram(_driver) => {
                 // A Dgram Driver does not support connection
                 return Err(Errno::EINVAL);
@@ -99,13 +99,24 @@ impl Driver for SocketDriver {
         }
     }
 
-    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+    fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
         use SocketDriver::*;
         match self {
-            Stream(driver) => driver.accept(),
+            Connected(driver) => driver.accept(),
             Dgram(_driver) => {
                 // A Dgram Driver does not support connection
                 return Err(Errno::EINVAL);
+            }
+        }
+    }
+
+    fn shutdown(&mut self, option: ShutDownOption) -> SysResult<()> {
+        use SocketDriver::*;
+        match self {
+            Connected(driver) => driver.shutdown(option),
+            Dgram(_driver) => {
+                // A Dgram Driver does not support connection
+                return Err(Errno::ENOTCONN);
             }
         }
     }

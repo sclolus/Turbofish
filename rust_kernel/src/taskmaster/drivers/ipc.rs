@@ -16,7 +16,7 @@ pub mod fifo;
 pub use fifo::{FifoDriver, FifoFileOperation};
 
 pub mod socket;
-pub use socket::{SocketDgram, SocketDriver, SocketStream};
+pub use socket::{ConnectedSocket, SocketDgram, SocketDriver};
 
 pub struct Buf([u8; Self::BUF_SIZE]);
 

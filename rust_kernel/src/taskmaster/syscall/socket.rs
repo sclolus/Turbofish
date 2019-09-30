@@ -12,8 +12,7 @@ use super::thread::WaitingState;
 use super::vfs::{posix_consts::PATH_MAX, Path, VFS};
 use core::mem::transmute;
 use fallible_collections::TryClone;
-use libc_binding::c_char;
-use libc_binding::Errno;
+use libc_binding::{c_char, Errno, ShutDownOption};
 
 use sync::DeadMutexGuard;
 
@@ -788,7 +787,13 @@ raw_deferencing_struct!(
     }
 );
 
-fn shutdown(_scheduler: &mut Scheduler, _socket_fd: i32, _how: u32) -> SysResult<u32> {
-    // println!("{:?}: {:?} {:?}", function!(), socket_fd, how);
+fn shutdown(scheduler: &mut Scheduler, socket_fd: i32, how: u32) -> SysResult<u32> {
+    let fd_interface = &mut scheduler
+        .current_thread_group_mut()
+        .unwrap_running_mut()
+        .file_descriptor_interface;
+    let mut file_operation = fd_interface.get_file_operation(socket_fd as u32)?;
+    let how = ShutDownOption::try_from(how)?;
+    file_operation.shutdown(how)?;
     Ok(0)
 }

@@ -23,6 +23,14 @@
  */
 #define AF_UNIX 1
 
+//Specifies the type of shutdown. The values are as follows:
+#define SHUT_RD 1
+//    Disables further receive operations.
+#define SHUT_WR 2
+//    Disables further send operations.
+#define SHUT_RDWR 3
+//    Disables further send and receive operations.
+
 /*
  * type
  */

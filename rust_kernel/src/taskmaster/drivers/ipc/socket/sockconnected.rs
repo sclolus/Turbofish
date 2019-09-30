@@ -16,7 +16,7 @@ use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::cmp;
 use fallible_collections::{FallibleBox, FallibleVec, TryClone};
-use libc_binding::{Errno, FileType, OpenFlags};
+use libc_binding::{Errno, FileType, OpenFlags, ShutDownOption};
 use messaging::MessageTo;
 
 #[derive(Debug)]
@@ -96,33 +96,27 @@ impl Messaging {
 }
 
 #[derive(Debug)]
-pub struct SocketStreamDriver {
+pub struct ConnectedSocketDriver {
     socket_type: socket::SocketType,
     listen_queue: Option<VecDeque<Connection>>,
     file_op_uid: usize,
     messaging_to_server: Messaging,
     messaging_to_client: Messaging,
-    // buf_to_server: Buf,
-    // to_server_index: usize,
-    // buf_to_client: Buf,
-    // to_client_index: usize,
+    shutdown: Option<ShutDownOption>,
 }
 
-impl SocketStreamDriver {
+impl ConnectedSocketDriver {
     const DEFAULT_LISTEN_QUEUE_CAPACITY: usize = 10;
 
     pub fn try_new(socket_type: socket::SocketType) -> SysResult<Self> {
         let file_op_uid = get_file_op_uid();
-        Ok(SocketStreamDriver {
+        Ok(ConnectedSocketDriver {
             socket_type,
             listen_queue: None,
             file_op_uid,
             messaging_to_client: Messaging::try_new(socket_type)?,
             messaging_to_server: Messaging::try_new(socket_type)?,
-            // buf_to_server: Default::default(),
-            // to_server_index: Default::default(),
-            // buf_to_client: Default::default(),
-            // to_client_index: Default::default(),
+            shutdown: None,
         })
     }
 
@@ -134,6 +128,11 @@ impl SocketStreamDriver {
         _sender: Option<Path>,
         whom: Whom,
     ) -> SysResult<IpcResult<u32>> {
+        if self.shutdown == Some(ShutDownOption::ShutWr)
+            || self.shutdown == Some(ShutDownOption::ShutRdwr)
+        {
+            return Err(Errno::ECONNRESET);
+        }
         match self.socket_type {
             socket::SocketType::SockStream => {
                 let (self_buf, current_index) = match whom {
@@ -195,6 +194,11 @@ impl SocketStreamDriver {
         _flags: u32,
         whom: Whom,
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
+        if self.shutdown == Some(ShutDownOption::ShutRd)
+            || self.shutdown == Some(ShutDownOption::ShutRdwr)
+        {
+            return Err(Errno::ECONNRESET);
+        }
         match self.socket_type {
             socket::SocketType::SockStream => {
                 let (self_buf, current_index) = match whom {
@@ -300,24 +304,32 @@ impl SocketStreamDriver {
         Ok(())
     }
 
-    pub(super) fn accept(&mut self) -> SysResult<IpcResult<(Option<SocketStream>)>> {
+    pub(super) fn accept(&mut self) -> SysResult<IpcResult<(Option<ConnectedSocket>)>> {
         // If the listen queue is empty of connection requests and
         // O_NONBLOCK is not set on the file descriptor for the socket,
         // accept() shall block until a connection is present.
         Ok(
             if let Some(conn) = self.listen_queue.as_mut().ok_or(Errno::EINVAL)?.pop_front() {
-                let socket_stream = SocketStream::from_driver(conn.inode_id, conn.path);
+                let socket_stream = ConnectedSocket::from_driver(conn.inode_id, conn.path);
                 IpcResult::Done(Some(socket_stream))
             } else {
                 IpcResult::Wait(None, self.file_op_uid)
             },
         )
     }
+
+    pub(super) fn shutdown(&mut self, option: ShutDownOption) -> SysResult<()> {
+        if self.listen_queue.is_none() {
+            return Err(Errno::ENOTCONN);
+        }
+        self.shutdown = Some(option);
+        Ok(())
+    }
 }
 
 /// This structure represents a FileOperation of type Socket
 #[derive(Debug)]
-pub struct SocketStream {
+pub struct ConnectedSocket {
     /// we only handle AF_UNIX domain
     domain: socket::Domain,
     /// the type of the socket(Dgram, Stream, SeqPacket)
@@ -334,7 +346,7 @@ pub struct SocketStream {
 }
 
 /// Main implementation for Socket
-impl SocketStream {
+impl ConnectedSocket {
     pub fn new(domain: socket::Domain, socket_type: socket::SocketType) -> SysResult<Self> {
         let mut vfs = VFS.lock();
         let inode_id = vfs.add_orphan_driver(Box::try_new(SocketDriver::try_new(socket_type)?)?)?;
@@ -381,7 +393,7 @@ impl SocketStream {
 }
 
 /// Main Trait implementation
-impl FileOperation for SocketStream {
+impl FileOperation for ConnectedSocket {
     fn register(&mut self, _flags: OpenFlags) {}
     fn unregister(&mut self, _flags: OpenFlags) {}
 
@@ -462,10 +474,16 @@ impl FileOperation for SocketStream {
         driver.listen(backlog)
     }
 
-    fn accept(&mut self) -> SysResult<IpcResult<Option<SocketStream>>> {
+    fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
         let mut vfs = VFS.lock();
         let driver = vfs.get_driver(self.inode_id)?;
         driver.accept()
+    }
+
+    fn shutdown(&mut self, option: ShutDownOption) -> SysResult<()> {
+        let mut vfs = VFS.lock();
+        let driver = vfs.get_driver(self.inode_id)?;
+        driver.shutdown(option)
     }
 
     fn get_inode_id(&self) -> SysResult<InodeId> {
@@ -474,7 +492,7 @@ impl FileOperation for SocketStream {
 }
 
 /// Some boilerplate to check if all is okay
-impl Drop for SocketStream {
+impl Drop for ConnectedSocket {
     fn drop(&mut self) {
         println!("Socket droped !");
         VFS.lock().close_file_operation(self.inode_id);
