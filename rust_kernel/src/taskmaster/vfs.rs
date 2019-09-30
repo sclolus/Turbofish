@@ -1,8 +1,9 @@
 use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::kmodules::CURRENT_UNIX_TIME;
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
 use super::{IpcResult, SysResult};
-use crate::drivers::rtc::CURRENT_UNIX_TIME;
+
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;

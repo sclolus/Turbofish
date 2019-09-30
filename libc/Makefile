@@ -197,9 +197,12 @@ SRC_C += setmntent getmntent endmntent addmntent hasmntopt
 VPATH += src/mntent
 HEADERS += mntent.h
 
-
 SRC_C += is_ptr_valid
 VPATH += src/custom
+
+SRC_C += rmmod insmod
+VPATH += src/mod
+HEADERS += mod.h
 
 HEADERS += sys/types.h errno.h stdint.h sys/param.h inttypes.h limits.h assert.h custom.h
 # bullshit headers needed by coreutils and dash

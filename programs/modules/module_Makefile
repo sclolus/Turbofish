@@ -1,0 +1,61 @@
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
+include module_name.mk
+
+arch := ivybridge-cpu
+target := $(arch)
+ifeq ($(DEBUG),yes)
+	rust_archive = ../target/$(target)/debug/lib$(LIBMOD).a
+else
+	rust_archive = ../target/$(target)/release/lib$(LIBMOD).a
+endif
+
+BUILD_DIR = mod
+
+MODULE = $(addprefix $(BUILD_DIR)/, $(addsuffix .mod, $(basename $(notdir $(LIBMOD)))))
+
+VPATH += src
+SRC_NASM +=
+SRC_AS +=
+SRC_C +=
+
+AS = i686-turbofish-as
+CC = i686-turbofish-gcc
+LD = i686-turbofish-ld --gc-sections
+NASM = nasm
+
+NASMFLAGS = -f elf
+LDFLAGS = -T linker.ld -m elf_i386
+ifeq ($(LDMAP),yes)
+    LDFLAGS += -M
+endif
+
+OBJ_DIR = obj
+OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NASM)))))
+OBJ_AS = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_AS)))))
+OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+
+.PHONY = all clean fclean re exec
+
+all: $(MODULE)
+
+$(MODULE): $(rust_archive)
+	$(LD) $(LDFLAGS) -o $@ $^
+	cp -rv --parents $@ $(SYSTEM_ROOT)/turbofish/
+
+$(OBJ_DIR)/%.o: %.asm Makefile
+	$(NASM) $(NASMFLAGS) -o $@ $<
+
+$(OBJ_DIR)/%.o: %.s Makefile
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(OBJ_DIR)/%.o: %.c Makefile
+	$(CC) $(CFLAGS) -o $@ $<
+
+clean:
+	find $(OBJ_DIR) -type f -name '*.o' -delete
+
+fclean: clean
+	rm -f $(MODULE)
+
+re: fclean all

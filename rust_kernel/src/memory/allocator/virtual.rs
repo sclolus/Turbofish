@@ -36,10 +36,16 @@ impl VirtualPageAllocator {
         Self { virt, mmu }
     }
 
+    /// Just for the handled PageDirectory
+    pub unsafe fn fork_pd(&self) -> Result<Box<PageDirectory>> {
+        self.mmu.fork()
+    }
+
+    /// Fork the VirtualPageAllocator
     pub fn fork(&self) -> Result<Self> {
         let buddy = self.virt.try_clone().map_err(|_| MemoryError::OutOfMem)?;
 
-        let pd = unsafe { self.mmu.fork()? };
+        let pd = unsafe { self.fork_pd()? };
 
         Ok(VirtualPageAllocator::new(buddy, pd))
     }
@@ -222,6 +228,27 @@ impl VirtualPageAllocator {
         Ok(vaddr.into())
     }
 
+    pub fn dealloc_on(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
+        let order = size.into();
+
+        let page_paddr = unsafe {
+            self.mmu
+                .physical_page(vaddr)
+                .ok_or(MemoryError::NotPhysicallyMapped)?
+        };
+        // release the chunk on kernel virtual buddy
+        self.virt.free_reserve(vaddr, order)?;
+
+        // Free the chunk on physical allocator
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
+        physical_allocator
+            .free(page_paddr.into())
+            .expect("never allocated");
+
+        // unmap this vitual chunk
+        unsafe { self.mmu.unmap_range_page(vaddr, order.into()) }
+    }
+
     pub fn alloc(&mut self, size: NbrPages, flags: AllocFlags) -> Result<Page<Virt>> {
         let order = size.into();
         let vaddr = self.virt.alloc(order)?;
@@ -290,7 +317,9 @@ impl VirtualPageAllocator {
         Ok(self.virt.ksize(vaddr)?.nbr_pages())
     }
 
+    // TODO: Fix that function !
     pub fn free(&mut self, vaddr: Page<Virt>) -> Result<()> {
+        // The NbrPages returned is wrong !
         let size = self.ksize(vaddr)?;
         let order = size.into();
         let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };

@@ -10,6 +10,8 @@ use itertools::unfold;
 use lazy_static::lazy_static;
 use pic_8259_isr::*;
 
+use irq::Irq;
+
 mod icws;
 use icws::{ICWs, ICW1, ICW2, ICW3, ICW4};
 
@@ -76,7 +78,7 @@ impl Pic8259 {
     /// Must be called when PIC is initialized
     /// The bios default IMR are stored when this function is called
     pub unsafe fn init(&mut self) {
-        let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+        let mut interrupt_table = InterruptTable::current_interrupt_table();
 
         self.bios_imr = Some(self.get_masks());
 
@@ -84,9 +86,9 @@ impl Pic8259 {
         self.initialize(default_conf);
         self.disable_all_irqs();
 
-        use crate::interrupts::idt::GateType::InterruptGate32;
-        use crate::interrupts::idt::*;
         use core::ffi::c_void;
+        use interrupts::idt::GateType::InterruptGate32;
+        use interrupts::idt::*;
 
         let mut gate_entry = *IdtGateEntry::new()
             .set_storage_segment(false)
@@ -207,8 +209,13 @@ impl Pic8259 {
     /// Enabling the corresponding interrupt line.
     /// if irq < 8, then the self.master mask is modified.
     /// if irq >= 8 then the self.slave and master mask is modified.
-    pub unsafe fn enable_irq(&mut self, irq: Irq) {
+    /// When used without function option. the default symbol in asm file is called
+    pub unsafe fn enable_irq(&mut self, irq: Irq, func_opt: Option<unsafe extern "C" fn()>) {
         log::info!("Pic8259: Enable irq {:?}", irq);
+        if let Some(func) = func_opt {
+            log::info!("Pic8259: Assigning function at {:?}", func);
+            _pic_handlers_array[irq as usize] = func as u32;
+        }
 
         let mut nirq = irq as usize;
         assert!(nirq < 16);
@@ -449,59 +456,6 @@ pub enum PICRegister {
     InService,
     InterruptMasks,
 }
-#[derive(Debug, Copy, Clone)]
-pub enum Irq {
-    /// The System timer, (PIT: Programmable Interval Timer) IRQ.
-    SystemTimer = 0,
-
-    /// The Keyboard Controller IRQ.
-    KeyboardController = 1,
-
-    /// IRQ 2 – cascaded signals from IRQs 8–15 (any devices configured to use IRQ 2 will actually be using IRQ 9)
-    SlaveCascadeIRQ = 2,
-
-    /// The Serial Port 2 IRQ (shared with the Serial Port 4, if it is present).
-    SerialPortController2 = 3,
-
-    /// The Serial Port 1 IRQ (shared with the Serial Port 3, if it is present).
-    SerialPortController1 = 4,
-
-    /// The IRQ for Parallel Ports 2 and 3, or the Sound card.
-    ParallelPort2And3 = 5, //  or  sound card
-
-    /// The IRQ for the FloppyDisk Controller.
-    FloppyDiskController = 6,
-
-    /// The IRQ for the Parallel Port 1.
-    /// Note: It is used for printers or for any parallel port if a printer is not present. It can also be potentially be shared with a secondary sound card with careful management of the port.
-    ParallelPort1 = 7,
-
-    /// The Real Time Clock (RTC) IRQ.
-    RealTimeClock = 8, // (RTC)
-
-    /// The IRQ for the Advanced Configuration and Power Interface (on Intel chips, mostly).
-    ACPI = 9,
-
-    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC).
-    Irq10 = 10,
-
-    /// The IRQ is left open for the use of peripherals (open interrupt/available, SCSI or NIC)
-    Irq11 = 11,
-
-    /// The IRQ for the mouse from the PS/2 Controller.
-    MouseOnPS2Controller = 12,
-
-    /// The IRQ for CPU co-processor or integrated floating point unit or inter-processor interrupt (use depends on OS).
-    Irq13 = 13,
-
-    /// The IRQ for the Primary ATA Channel.
-    /// (ATA interface usually serves hard disk drives and CD drives)
-    PrimaryATAChannel = 14,
-
-    /// The IRQ for the Secondary ATA Channel.
-    /// (ATA interface usually serves hard disk drives and CD drives)
-    SecondaryATAChannel = 15,
-}
 
 /// This data structure aggregates aggregations (the ICWs date structure) of ICWs,
 /// This describes a complete configuration for all the chips being configured.
@@ -588,4 +542,9 @@ impl PicConfiguration {
             .filter(|&c| c.pic_kind() == PICKind::Slave);
         unfold((), move |_| slaves.next())
     }
+}
+
+/// PIC idt vectors
+extern "C" {
+    static mut _pic_handlers_array: [u32; 16];
 }

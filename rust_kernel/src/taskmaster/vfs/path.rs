@@ -844,7 +844,7 @@ mod test {
 
         for alpha in 0..5 {
             let mut string = String::new();
-            let c = Some(((alpha + 'a' as u8) as char));
+            let c = Some((alpha + 'a' as u8) as char);
             string.extend(c.iter());
             let filename = Filename::try_from(string.as_str()).unwrap();
             path.push(filename).unwrap();
@@ -857,7 +857,7 @@ mod test {
                 break
             }
             let test_path = paths.pop().unwrap_or(Path::null_path());
-            path = path.parent().unwrap();
+            path = path.parent().expect("WOOT");
 
             assert_eq!(path, test_path);
         }
@@ -985,8 +985,8 @@ mod test {
             make_test! {pass, $test_name, {
                 let path = Path::try_from($path).unwrap();
                 let expected_filenames = $path.split('/').filter(|&x| x != "").collect::<Vec<&str>>();
-                let filenames = expected_filenames.iter().map(|&f| Filename::try_from(f).unwrap()).collect::<Vec<Filename>>();
-                let components = Components::from_path(&path);
+                let _filenames = expected_filenames.iter().map(|&f| Filename::try_from(f).unwrap()).collect::<Vec<Filename>>();
+                let _components = Components::from_path(&path);
 
             }
             }
@@ -1032,6 +1032,7 @@ mod test {
         test_components_iter_basic_a_b_c_d_e_f_g_h_i_k_8
     );
 
+    #[allow(unused_macros)]
     macro_rules! make_components_iteration_test {
         ($path: expr, $test_name: ident) => {
             make_test! {pass, $test_name, {

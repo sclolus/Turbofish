@@ -22,19 +22,22 @@ bitflags = "1.0.4"
 log = "0.4.6"
 lock_api = "0.1.5"
 io = { path = "dependencies/io" }
-keyboard = { path = "dependencies/keyboard" }
 mbr = { path = "dependencies/mbr" }
 raw_data = { path = "dependencies/raw_data" }
 const_assert = { path = "dependencies/const_assert" }
 ext2 = { path = "dependencies/ext2" }
 terminal = { path = "dependencies/terminal" }
-registers = { path = "dependencies/registers" }
+i386 = { path = "dependencies/i386" }
 sync = { path = "dependencies/sync" }
 elf_loader = { path = "dependencies/elf_loader" }
 try_clone_derive = { path = "dependencies/try_clone_derive" }
 fallible_collections = { path = "dependencies/fallible_collections" }
 messaging = { path = "dependencies/messaging" }
 libc_binding = { path = "dependencies/libc_binding" }
+kernel_modules = { path = "dependencies/kernel_modules" }
+irq = { path = "dependencies/irq" }
+interrupts = { path = "dependencies/interrupts" }
+time = { path = "dependencies/time" }
 
 [dependencies.itertools]
 version = "0.8.0"
@@ -79,12 +82,16 @@ members = [
 "dependencies/const_assert",
 "dependencies/ext2",
 "dependencies/terminal",
-"dependencies/registers",
+"dependencies/i386",
 "dependencies/sync",
 "dependencies/elf_loader",
 "dependencies/try_clone_derive",
 "dependencies/fallible_collections",
 "dependencies/messaging",
 "dependencies/libc_binding",
+"dependencies/kernel_modules",
+"dependencies/irq",
+"dependencies/interrupts",
+"dependencies/time",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]

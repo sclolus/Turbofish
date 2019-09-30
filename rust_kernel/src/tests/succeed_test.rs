@@ -7,11 +7,15 @@ use crate::terminal::UART_16550;
 use crate::tests::helpers::exit_qemu;
 
 #[no_mangle]
-pub extern "C" fn kmain(_multiboot_info: *const MultibootInfo) -> u32 {
+pub extern "C" fn kmain(_multiboot_info: *const MultibootInfo) -> ! {
     unsafe {
         UART_16550.init();
     }
     eprintln!("THIS IS A BASIC TEST");
-    exit_qemu(0);
-    0
+    let _r = exit_qemu(0);
+    loop {
+        unsafe {
+            asm!("hlt");
+        }
+    }
 }

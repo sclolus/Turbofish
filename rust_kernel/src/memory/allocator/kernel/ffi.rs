@@ -4,10 +4,10 @@ use super::*;
 pub unsafe extern "C" fn kreserve(virt: *mut u8, phys: *mut u8, size: usize) -> *mut u8 {
     match &mut KERNEL_ALLOCATOR {
         KernelAllocator::Bootstrap(_) => {
-            panic!("Attempting to kmalloc while in bootstrap allocator")
+            panic!("Attempting to kreserve while in bootstrap allocator")
         }
         KernelAllocator::Kernel => {
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            HIGH_KERNEL_MEMORY
                 .as_mut()
                 .unwrap()
                 .reserve(

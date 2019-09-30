@@ -1,0 +1,16 @@
+[package]
+name = "kernel_modules"
+version = "0.1.0"
+authors = ["mordak <bmickael@student.42.fr>"]
+edition = "2018"
+license = "GPL3"
+description = "A tiny kernel module toolkit for OS developement"
+documentation = "cargo doc --open"
+homepage = "index.html"
+
+[dependencies]
+log = "0.4.6"
+messaging = { path = "../messaging" }
+irq = { path = "../irq" }
+time = { path = "../time" }
+libc_binding = { path = "../libc_binding" }

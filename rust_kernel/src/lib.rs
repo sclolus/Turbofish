@@ -16,6 +16,7 @@
 #![feature(try_trait)]
 #![feature(result_map_or_else)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 // #![deny(missing_docs)]
 
 extern crate itertools;
@@ -26,8 +27,10 @@ extern crate arrayvec;
 
 // Our Crates
 extern crate io;
-extern crate keyboard;
 extern crate mbr;
+
+#[macro_use]
+extern crate interrupts;
 
 #[macro_use]
 extern crate lazy_static;
@@ -45,9 +48,6 @@ pub mod debug;
 pub mod ffi;
 
 #[macro_use]
-pub mod interrupts;
-
-#[macro_use]
 pub mod system;
 pub mod taskmaster;
 #[macro_use]
@@ -56,8 +56,6 @@ pub mod math;
 pub mod memory;
 pub mod multiboot;
 pub mod panic;
-pub mod registers;
-#[cfg(not(feature = "test"))]
 pub mod rust_main;
 pub mod tests;
 

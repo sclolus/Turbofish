@@ -1,7 +1,7 @@
 use super::VbeMode;
 
+use i386::BaseRegisters;
 use raw_data::define_raw_data;
-use registers::BaseRegisters;
 
 const TEMPORARY_PTR_LOCATION: *mut u8 = 0x2000 as *mut u8;
 

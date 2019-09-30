@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::fd_interface::Fd;
+use super::kmodules;
 use super::process;
 use super::process::CpuState;
 use super::safe_ffi;
@@ -13,19 +14,20 @@ use super::thread_group;
 use super::vfs;
 use super::IpcResult;
 use super::{IntoRawResult, SysResult};
-use crate::interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
-use crate::system::BaseRegisters;
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
-    GETPID, GETPPID, GETTIMEOFDAY, GETUID, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT, MKDIR,
-    MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT,
-    RENAME, RMDIR, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK,
-    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME, WAITPID, WRITE,
+    GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT,
+    MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK,
+    REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
+    STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME,
+    WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
+use i386::BaseRegisters;
+use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::{
     c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, utimbuf, DIR,
@@ -245,6 +247,14 @@ use close::sys_close;
 mod isatty;
 use isatty::sys_isatty;
 
+/*
+ * Module kernel management
+ */
+mod insmod;
+use insmod::sys_insmod;
+mod rmmod;
+use rmmod::sys_rmmod;
+
 mod trace_syscall;
 
 extern "C" {
@@ -372,6 +382,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         OPENDIR => sys_opendir(ebx as *const c_char, ecx as *mut DIR),
         IS_STR_VALID => sys_is_str_valid(ebx as *const c_char),
 
+        // Kernel module management
+        INSMOD => sys_insmod(ebx as *const c_char),
+        RMMOD => sys_rmmod(ebx as *const c_char),
+
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),
         sysnum => panic!("wrong syscall {}", sysnum),
@@ -418,7 +432,7 @@ extern "C" {
 
 /// Initialize all the syscall system by creation of a new IDT entry at 0x80
 pub fn init() {
-    let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table().unwrap() };
+    let mut interrupt_table = unsafe { InterruptTable::current_interrupt_table() };
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)

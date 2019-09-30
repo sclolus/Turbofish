@@ -1,27 +1,35 @@
-use crate::drivers::pit_8253::OperatingMode;
-use crate::drivers::{pic_8259, Acpi, ACPI, PCI, PIC_8259, PIT0};
-
-use crate::drivers::Rtc;
-use crate::interrupts;
-use crate::keyboard::init_keyboard_driver;
-use crate::memory;
-use crate::memory::tools::device_map::get_device_map_slice;
 use crate::memory::tools::DeviceMap;
 use crate::multiboot::MultibootInfo;
-use crate::terminal::ansi_escape_code::color::Colored;
-use crate::terminal::init_terminal;
-use crate::terminal::monitor::Drawer;
-use crate::terminal::monitor::SCREEN_MONAD;
-use crate::watch_dog;
 
+#[cfg(not(feature = "test"))]
 #[no_mangle]
 pub extern "C" fn kmain(
     multiboot_info: *const MultibootInfo,
     device_map_ptr: *const DeviceMap,
 ) -> ! {
+    init_kernel(multiboot_info, device_map_ptr);
+    crate::taskmaster::start(
+        "/bin/init",
+        &["/bin/init", "/bin/session_manager", "/bin/dash"],
+        &[],
+    );
+}
+
+use crate::drivers::pit_8253::OperatingMode;
+use crate::drivers::{Acpi, ACPI, PCI, PIC_8259, PIT0};
+use crate::memory::init_memory_system;
+use crate::memory::tools::device_map::get_device_map_slice;
+use crate::system::init_idt;
+use crate::terminal::ansi_escape_code::color::Colored;
+use crate::terminal::init_terminal;
+use crate::terminal::monitor::{Drawer, SCREEN_MONAD};
+use crate::watch_dog;
+
+/// Kernel Initialization
+pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const DeviceMap) {
     #[cfg(feature = "serial-eprintln")]
     {
-        unsafe { crate::terminal::UART_16550.init() };
+        unsafe { terminal::uart_16550::UART_16550.init() };
         eprintln!("you are in serial eprintln mode");
     }
     let multiboot_info: MultibootInfo = unsafe { *multiboot_info };
@@ -30,9 +38,11 @@ pub extern "C" fn kmain(
      * Enable CPU_ISR and memory system
      */
     unsafe {
-        interrupts::init();
+        interrupts::disable();
+        init_idt();
+
         let device_map = get_device_map_slice(device_map_ptr);
-        memory::init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
+        init_memory_system(multiboot_info.get_memory_amount_nb_pages(), device_map)
             .expect("init memory system failed");
     }
 
@@ -53,26 +63,24 @@ pub extern "C" fn kmain(
     );
 
     /*
-     * Initialize Pic8259 and base drivers
+     * Initialize Pic8259 and base PIT0 drivers
      */
     unsafe {
-        interrupts::disable();
         PIC_8259.lock().init();
 
-        init_keyboard_driver();
-        PIC_8259
-            .lock()
-            .enable_irq(pic_8259::Irq::KeyboardController);
-        log::info!("Keyboard has been initialized");
+        PIT0.lock().configure(OperatingMode::RateGenerator);
+        PIT0.lock().start_at_frequency(1000.).unwrap();
+        log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
+
+        PIC_8259.lock().enable_irq(irq::Irq::SystemTimer, None);
 
         watch_dog();
         interrupts::enable();
     }
 
-    PIT0.lock().configure(OperatingMode::RateGenerator);
-    PIT0.lock().start_at_frequency(1000.).unwrap();
-    log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
-
+    /*
+     * Initialize ACPI driver
+     */
     match Acpi::init() {
         Ok(()) => match ACPI.lock().expect("acpi init failed").enable() {
             Ok(()) => log::info!("ACPI driver initialized"),
@@ -81,21 +89,18 @@ pub extern "C" fn kmain(
         Err(e) => log::error!("Cannot initialize ACPI: {:?}", e),
     };
 
+    /*
+     * Initialize PCI driver
+     */
     log::info!("Scanning PCI buses ...");
     PCI.lock().scan_pci_buses();
     PCI.lock().list_pci_devices();
     log::info!("PCI buses has been scanned");
 
-    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
-
-    let mut rtc = Rtc::new();
-    let date = rtc.read_date();
-    rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz.
-    log::info!("RTC system seems to be working perfectly: {}", date);
-
-    watch_dog();
-
+    /*
+     * Initialize Storage driver
+     */
     crate::drivers::storage::init(&multiboot_info);
 
-    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/session_manager", "/bin/shell"], &[]);
+    watch_dog();
 }

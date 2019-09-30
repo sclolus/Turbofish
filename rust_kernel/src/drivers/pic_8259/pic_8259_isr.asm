@@ -4,11 +4,6 @@
 ;; See https://wiki.osdev.org/ISR
 
 extern generic_interrupt_handler
-extern keyboard_interrupt_handler
-extern rtc_handler
-
-extern primary_hard_disk_interrupt_handler
-extern secondary_hard_disk_interrupt_handler
 
 segment .data
 
@@ -169,7 +164,8 @@ _isr_%2:
 	mov ebp, esp
 	pushad
 	push isr_%2_str
-	call %4
+	mov eax, dword [_pic_handlers_array + %4 * 4]
+	call eax
 	add esp, 4 ; pop interrupt string
 	%1
 	popad
@@ -198,17 +194,23 @@ _isr_%2:
 %endmacro
 
 ; TIPS: use nasm -E file to view source file on stdout after macro expansion
-CREATE_ISR MASTER, keyboard, "Keyboard", keyboard_interrupt_handler
-CREATE_ISR MASTER, cascade, "cascade, never used", generic_interrupt_handler ; should never be raised
-CREATE_ISR MASTER, com2, "COM2", generic_interrupt_handler
-CREATE_ISR MASTER, com1, "COM1", generic_interrupt_handler
-CREATE_ISR MASTER, lpt2, "LPT2", generic_interrupt_handler
-CREATE_ISR MASTER, floppy_disk, "floppy_disk", generic_interrupt_handler
-CREATE_ISR SPURIOUS_IRQ7, lpt1, "lpt1", generic_interrupt_handler
+CREATE_ISR MASTER, keyboard, "Keyboard", 1
+CREATE_ISR MASTER, cascade, "cascade, never used", 2 ; should never be raised
+CREATE_ISR MASTER, com2, "COM2", 3
+CREATE_ISR MASTER, com1, "COM1", 4
+CREATE_ISR MASTER, lpt2, "LPT2", 5
+CREATE_ISR MASTER, floppy_disk, "floppy_disk", 6
+CREATE_ISR SPURIOUS_IRQ7, lpt1, "lpt1", 7
 
-CREATE_ISR SLAVE, cmos, "CMOS real-time clock", rtc_handler
-CREATE_ISR SLAVE, acpi, "ACPI", generic_interrupt_handler
-CREATE_ISR SLAVE, ps2_mouse, "PS/2 mouse", generic_interrupt_handler
-CREATE_ISR SLAVE, fpu_coproc, "FPU / Coproc / inter-processor", generic_interrupt_handler
-CREATE_ISR SLAVE, primary_hard_disk, "Primary ATA hard disk", primary_hard_disk_interrupt_handler
-CREATE_ISR SPURIOUS_IRQ15, secondary_hard_disk, "Secondary ATA hard disk", secondary_hard_disk_interrupt_handler
+CREATE_ISR SLAVE, cmos, "CMOS real-time clock", 8
+CREATE_ISR SLAVE, acpi, "ACPI", 9
+CREATE_ISR SLAVE, irq10, "irq10", 10
+CREATE_ISR SLAVE, irq11, "irq11", 11
+CREATE_ISR SLAVE, ps2_mouse, "PS/2 mouse", 12
+CREATE_ISR SLAVE, fpu_coproc, "FPU / Coproc / inter-processor", 13
+CREATE_ISR SLAVE, primary_hard_disk, "Primary ATA hard disk", 14
+CREATE_ISR SPURIOUS_IRQ15, secondary_hard_disk, "Secondary ATA hard disk", 15
+
+segment .data
+GLOBAL _pic_handlers_array
+_pic_handlers_array: times 16 dd generic_interrupt_handler

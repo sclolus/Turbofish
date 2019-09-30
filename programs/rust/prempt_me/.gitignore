@@ -1,6 +1,0 @@
-!.gitignore
-prempt_me
-target
-*.orig
-!.xbuild-toolchain
-!.rust-toolchain

@@ -1,0 +1,16 @@
+[package]
+name = "rtc"
+version = "0.1.0"
+authors = ["mordak <bmickael@student.42.fr>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+bit_field = "0.10.0"
+kernel_modules = { path = "../dependencies/kernel_modules" }
+interrupts = { path = "../dependencies/interrupts" }
+irq = { path = "../dependencies/irq" }
+io = { path = "../dependencies/io" }
+time = { path = "../dependencies/time" }

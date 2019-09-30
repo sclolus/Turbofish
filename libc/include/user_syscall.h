@@ -83,4 +83,10 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define OPENDIR         0x80000010
 #define IS_STR_VALID    0x80000011
 
+/*
+ * Module Kernel specific
+ */
+#define INSMOD          0xC0000000
+#define RMMOD           0xC0000001
+
 #endif

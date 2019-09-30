@@ -1,1 +1,1 @@
-../../linker.ld
+../linker.ld

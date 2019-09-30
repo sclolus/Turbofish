@@ -1,0 +1,17 @@
+[package]
+name = "syslog"
+version = "0.1.0"
+authors = ["mordak <bmickael@student.42.fr>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+log = "0.4.6"
+kernel_modules = { path = "../dependencies/kernel_modules" }
+keyboard = { path = "../dependencies/keyboard" }
+messaging = { path = "../dependencies/messaging" }
+interrupts = { path = "../dependencies/interrupts" }
+libc_binding = { path = "../dependencies/libc_binding" }
+fallible_collections = { path = "../dependencies/fallible_collections" }

@@ -3,7 +3,7 @@
 use super::_read_cr3;
 use super::page_table::PageTable;
 use super::{Entry, _enable_paging, BIOS_PAGE_TABLE, PAGE_TABLES};
-use crate::memory::allocator::{KERNEL_VIRTUAL_PAGE_ALLOCATOR, PHYSICAL_ALLOCATOR};
+use crate::memory::allocator::{HIGH_KERNEL_MEMORY, PHYSICAL_ALLOCATOR};
 use crate::memory::tools::*;
 use alloc::boxed::Box;
 use core::mem::size_of;
@@ -38,7 +38,7 @@ impl PageDirectory {
             // get the physical addr of the page directory for the tricks
             let phys_pd: Phys = {
                 let raw_pd = pd.as_mut() as *mut PageDirectory;
-                KERNEL_VIRTUAL_PAGE_ALLOCATOR
+                HIGH_KERNEL_MEMORY
                     .as_mut()
                     .unwrap()
                     .get_physical_addr(Virt(raw_pd as usize))
@@ -53,7 +53,7 @@ impl PageDirectory {
     pub unsafe fn context_switch(&self) {
         let phys_pd = {
             let raw_pd = self as *const Self;
-            KERNEL_VIRTUAL_PAGE_ALLOCATOR
+            HIGH_KERNEL_MEMORY
                 .as_mut()
                 .unwrap()
                 .get_physical_addr(Virt(raw_pd as usize))

@@ -1,4 +1,5 @@
 //! this file contains the scheduler description
+use super::kmodules::KernelModules;
 use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, UserProcess};
 use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
@@ -9,6 +10,8 @@ use super::{SysResult, TaskMode};
 
 mod dustman;
 use dustman::{dustman_handler, DUSTMAN_TRIGGER};
+mod second_callback;
+use second_callback::{second_callback_handler, SECOND_CALLBACK_TRIGGER};
 
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
@@ -17,15 +20,14 @@ use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use fallible_collections::btree::BTreeMap;
 use fallible_collections::FallibleVec;
+use i386::PrivilegeLevel;
+use interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::Signum;
 use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
 use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
-use crate::interrupts;
-use crate::interrupts::idt::{GateType::InterruptGate32, IdtGateEntry, InterruptTable};
-use crate::system::PrivilegeLevel;
 use crate::terminal::ansi_escape_code::Colored;
 
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
@@ -72,6 +74,8 @@ impl Debug for Scheduler {
 
 /// Scheduler structure
 pub struct Scheduler {
+    /// contains status of kernel modules
+    pub kernel_modules: KernelModules,
     /// contains a hashmap of pid, process
     all_process: BTreeMap<Pid, ThreadGroup>,
     /// contains pids of all runing process
@@ -87,12 +91,16 @@ pub struct Scheduler {
     current_task_id: (Pid, Tid),
     /// current process index in the running_process vector
     current_task_index: usize,
-    /// time interval in PIT tics between two schedules
-    time_interval: Option<u32>,
+    /// time interval in PIT tics between two schedules + microseconds between two PIT tics
+    time_interval: Option<(u32, u32)>,
     /// The scheduler must have an idle kernel proces if all the user process are waiting
     kernel_idle_process: Box<KernelProcess>,
     /// DustMan: The process Ripper
     dustman: Box<KernelProcess>,
+    /// Second Callback: Call modules each seconds
+    second_callback: Box<KernelProcess>,
+    /// Last PIT time when the second callback was launched
+    last_second_callback_pit_time: u32,
     /// Current mode of the scheduler
     mode: Mode,
     /// Indicate if scheduler is on exit routine
@@ -111,8 +119,22 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
 
-    // Switch to the next elligible process then return new kernel ESP
-    scheduler.load_next_process(1)
+    // TODO: It is just a POC of module callback called each seconds. Dont'y worry about the code
+    // In the future, it should be good to create real time structures for each events types
+    let pit_time = _get_pit_time();
+    if (pit_time - scheduler.last_second_callback_pit_time) * scheduler.time_interval.unwrap().1
+        >= 1000000
+    {
+        scheduler.last_second_callback_pit_time = pit_time;
+        // All the conditions are satisfied for the module callbaks call
+        SECOND_CALLBACK_TRIGGER.store(true, Ordering::Relaxed);
+        unpreemptible();
+        scheduler.mode = Mode::SecondCallback;
+        scheduler.second_callback.kernel_esp
+    } else {
+        // Switch to the next elligible process then return new kernel ESP
+        scheduler.load_next_process(1)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -120,6 +142,7 @@ enum Mode {
     Normal,
     Idle,
     DustMan,
+    SecondCallback,
 }
 
 /// Base Scheduler implementation
@@ -127,6 +150,7 @@ impl Scheduler {
     /// Create a new scheduler
     pub fn new() -> Self {
         Self {
+            kernel_modules: KernelModules::new(),
             running_process: Vec::new(),
             all_process: BTreeMap::new(),
             next_pid: AtomicI32::new(1),
@@ -142,8 +166,13 @@ impl Scheduler {
             },
             dustman: unsafe {
                 KernelProcess::new(ProcessOrigin::KernelFunction(dustman_handler), None)
-                    .expect("Cannot assign Idle process to scheduler")
+                    .expect("Cannot assign DustMan to scheduler")
             },
+            second_callback: unsafe {
+                KernelProcess::new(ProcessOrigin::KernelFunction(second_callback_handler), None)
+                    .expect("Cannot assign Second Callback to scheduler")
+            },
+            last_second_callback_pit_time: unsafe { _get_pit_time() },
             mode: Mode::Normal,
             on_exit_routine: None,
         }
@@ -151,7 +180,7 @@ impl Scheduler {
 
     /// load the next process, returning the new_kernel_esp
     unsafe fn load_next_process(&mut self, next_process: usize) -> u32 {
-        _update_process_end_time(self.time_interval.unwrap());
+        _update_process_end_time(self.time_interval.unwrap().0);
 
         self.dispatch_messages();
         // Switch between processes
@@ -163,7 +192,7 @@ impl Scheduler {
     fn dispatch_messages(&mut self) {
         // get the keypress from the keybuffer
 
-        for message in messaging::drain_messages() {
+        for message in super::message::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
                 MessageTo::Tty { key_pressed } => unsafe {
@@ -206,6 +235,9 @@ impl Scheduler {
             }
             DustMan => {
                 self.dustman.kernel_esp = kernel_esp;
+            }
+            SecondCallback => {
+                self.second_callback.kernel_esp = kernel_esp;
             }
         }
         self.mode = Normal;
@@ -277,6 +309,7 @@ impl Scheduler {
         use Mode::*;
         match self.mode {
             DustMan => self.dustman.kernel_esp,
+            SecondCallback => panic!("Cannot happen !"),
             Idle => self.kernel_idle_process.kernel_esp,
             Normal => {
                 let p = self.current_thread_mut();
@@ -390,9 +423,10 @@ impl Scheduler {
     /// Start the exit() routine: Return informations about the process to destroy
     pub fn current_thread_group_exit(&mut self, status: Status) -> Option<(Pid, Status)> {
         log::info!(
-            "exit called for process with PID: {:?} STATUS: {:?}",
+            "{} exit called for process with PID: {:?} STATUS: {:?}",
+            self.read_date(),
             self.running_process[self.current_task_index],
-            status
+            status,
         );
 
         match status {
@@ -813,7 +847,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     interrupts::disable();
 
     // Register a new IDT entry in 81h for force preempting
-    let mut interrupt_table = InterruptTable::current_interrupt_table().unwrap();
+    let mut interrupt_table = InterruptTable::current_interrupt_table();
 
     let mut gate_entry = *IdtGateEntry::new()
         .set_storage_segment(false)
@@ -830,25 +864,27 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
             None
         }
         TaskMode::Multi(mut scheduler_frequency) => {
-            let mut period = (PIT0.lock().get_frequency().unwrap() / scheduler_frequency) as u32;
+            let pit0_frequency = PIT0.lock().get_frequency().unwrap();
+            let mut period = (pit0_frequency / scheduler_frequency) as u32;
             // Be carefull, due to scheduler latency, the minimal period between two Schedule must be 2 tics
             // When we take a long time in a IRQ(x), the next IRQ(x) will be stacked and will be triggered immediatly,
             // That can reduce the time to live of a process to 0 ! (may inhibit auto-preempt mechanism and other things)
             // this is a critical point. Never change that without a serious good reason.
             if period < 2 {
                 log::warn!("Too high frequency detected ! Setting period divisor to 2");
-                scheduler_frequency = PIT0.lock().get_frequency().unwrap() / 2.;
+                scheduler_frequency = pit0_frequency / 2.;
                 period = 2;
             }
             log::info!(
                 "Scheduler initialised at frequency: {:?} hz",
                 scheduler_frequency
             );
-            Some(period)
+            Some((period, (1000000. / pit0_frequency) as _))
         }
     };
 
     let mut scheduler = SCHEDULER.lock();
+
     scheduler.time_interval = t;
 
     // Initialise the idle process and get a reference on it
@@ -862,7 +898,7 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
     log::info!("Starting processes");
 
     match t {
-        Some(v) => _update_process_end_time(v),
+        Some(v) => _update_process_end_time(v.0),
         None => _update_process_end_time(-1 as i32 as u32),
     }
 

@@ -9,6 +9,8 @@ CC = i686-turbofish-gcc
 
 SRC_C += init \
 		session_manager \
+		rmmod \
+		insmod \
 
 VPATH += src
 
@@ -25,6 +27,12 @@ LIB = -lm
 else
 endif
 
+ifeq ($(DEBUG),yes)
+	CFLAGS += -g -O0
+else ifeq ($(OPTIM),yes)
+	CFLAGS += -O3
+endif
+
 TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
 
 .PHONY = all clean fclean re
@@ -33,7 +41,7 @@ all: $(TARGET_C)
 
 $(BUILD_DIR)/%: $(OBJ_DIR)/%.o Makefile $(LIBC_AR)
 	@mkdir -pv ./$(dir $@)
-	$(CC) $(CFLAGS) -o $@ $< $(LIB)
+	$(CC) -Wl,--gc-sections $(CFLAGS) -o $@ $< $(LIB)
 ifneq ($(GNU),yes)
 	cp -rv --parents $@ $(SYSTEM_ROOT)
 endif

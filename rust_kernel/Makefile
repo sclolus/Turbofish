@@ -43,7 +43,7 @@ VPATH += src/boot
 
 SRC_C_KERNEL += vga_cpy
 SRC_ASM_KERNEL += vbe_font
-VPATH += src/terminal/src/monitor
+VPATH += dependencies/terminal/src/monitor
 
 SRC_C_KERNEL += panic
 
@@ -54,7 +54,7 @@ SRC_ASM_KERNEL += apm_shutdown
 VPATH += src/system/i8086_payloads
 
 SRC_ASM_KERNEL += cpu_exceptions_isr default_isr
-VPATH += src/interrupts/idt
+VPATH += src/system
 
 SRC_ASM_KERNEL += pic_8259_isr
 VPATH += src/drivers/pic_8259
