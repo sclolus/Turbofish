@@ -314,7 +314,6 @@ impl Scheduler {
         // Remove process from the running process list
         self.running_process.remove(self.current_task_index);
         // Check if there is altmost one process
-        //TODO: I think we should panic
         if self.running_process.len() == 0 {
             log::warn!("No more process");
             loop {}
@@ -326,7 +325,6 @@ impl Scheduler {
     fn remove_thread_group_running(&mut self, pid: Pid) {
         self.running_process
             .retain(|(running_pid, _)| *running_pid != pid);
-        //TODO: I think we should panic
         if self.running_process.len() == 0 {
             log::warn!("No more process");
             loop {}
@@ -454,8 +452,10 @@ impl Scheduler {
             .get_thread_mut((parent_pid, 0))
             .expect("WTF: Parent not alive");
 
-        //TODO: Announce memory error later.
-        let _ignored_result = parent.signal.generate_signal(Signum::SIGCHLD);
+        let res = parent.signal.generate_signal(Signum::SIGCHLD);
+        if let Err(e) = res {
+            log::error!("generate sigchidld failed {:?}", e);
+        }
 
         // Set the dead process as zombie
         let dead_process = self
@@ -779,10 +779,11 @@ impl Scheduler {
                 for thread_group in self.iter_thread_groups_mut().filter(|t| t.pgid == pgid) {
                     match content {
                         ProcessGroupMessage::Signal(signum) => {
-                            //TODO: Announce memory error later.
-
                             thread_group.get_first_thread().map(|thread| {
-                                let _ignored_result = thread.signal.generate_signal(signum);
+                                let res = thread.signal.generate_signal(signum);
+                                if let Err(e) = res {
+                                    log::error!("generate signal failed {:?}", e);
+                                }
                             });
                         }
                         _ => panic!("message not covered"),
@@ -893,8 +894,6 @@ pub fn unpreemptible() -> bool {
     unsafe { _unpreemptible() != 0 }
 }
 
-// TODO: If scheduler is disable, the kernel will crash
-// TODO: After Exit, the next process seems to be skiped !
 /// Allow scheduler to interrupt process execution
 #[inline(always)]
 pub fn preemptible() {
