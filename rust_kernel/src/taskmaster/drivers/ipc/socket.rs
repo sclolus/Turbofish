@@ -21,9 +21,9 @@ mod sockdgram;
 pub use sockdgram::SocketDgram;
 use sockdgram::SocketDgramDriver;
 
-mod sockstream;
-use sockstream::ConnectedSocketDriver;
-pub use sockstream::{ConnectedSocket, Whom};
+mod sockconnected;
+use sockconnected::ConnectedSocketDriver;
+pub use sockconnected::{ConnectedSocket, Whom};
 
 #[derive(Debug)]
 pub enum SocketDriver {
