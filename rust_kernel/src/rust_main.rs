@@ -17,8 +17,8 @@ pub extern "C" fn kmain(
     #[cfg(not(feature = "with-login"))]
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/dash"],
-        &[],
+        &["/bin/init", "/bin/session_manager", "/bin/sh"],
+        &["ENV=/bin/init.sh"],
     );
 }
 
@@ -114,10 +114,4 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
     watch_dog();
 
     crate::drivers::storage::init(&multiboot_info);
-
-    crate::taskmaster::start(
-        "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/sh"],
-        &["ENV=/bin/init.sh"],
-    );
 }
