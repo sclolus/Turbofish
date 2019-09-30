@@ -16,7 +16,7 @@ use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::cmp;
 use fallible_collections::{FallibleBox, FallibleVec, TryClone};
-use libc_binding::{Errno, FileType, OpenFlags};
+use libc_binding::{Errno, FileType, OpenFlags, ShutDownOption};
 use messaging::MessageTo;
 
 #[derive(Debug)]
@@ -102,10 +102,7 @@ pub struct ConnectedSocketDriver {
     file_op_uid: usize,
     messaging_to_server: Messaging,
     messaging_to_client: Messaging,
-    // buf_to_server: Buf,
-    // to_server_index: usize,
-    // buf_to_client: Buf,
-    // to_client_index: usize,
+    shutdown: Option<ShutDownOption>,
 }
 
 impl ConnectedSocketDriver {
@@ -119,10 +116,7 @@ impl ConnectedSocketDriver {
             file_op_uid,
             messaging_to_client: Messaging::try_new(socket_type)?,
             messaging_to_server: Messaging::try_new(socket_type)?,
-            // buf_to_server: Default::default(),
-            // to_server_index: Default::default(),
-            // buf_to_client: Default::default(),
-            // to_client_index: Default::default(),
+            shutdown: None,
         })
     }
 
@@ -134,6 +128,11 @@ impl ConnectedSocketDriver {
         _sender: Option<Path>,
         whom: Whom,
     ) -> SysResult<IpcResult<u32>> {
+        if self.shutdown == Some(ShutDownOption::ShutWr)
+            || self.shutdown == Some(ShutDownOption::ShutRdwr)
+        {
+            return Err(Errno::ECONNRESET);
+        }
         match self.socket_type {
             socket::SocketType::SockStream => {
                 let (self_buf, current_index) = match whom {
@@ -195,6 +194,11 @@ impl ConnectedSocketDriver {
         _flags: u32,
         whom: Whom,
     ) -> SysResult<IpcResult<(u32, Option<Path>)>> {
+        if self.shutdown == Some(ShutDownOption::ShutRd)
+            || self.shutdown == Some(ShutDownOption::ShutRdwr)
+        {
+            return Err(Errno::ECONNRESET);
+        }
         match self.socket_type {
             socket::SocketType::SockStream => {
                 let (self_buf, current_index) = match whom {
@@ -312,6 +316,14 @@ impl ConnectedSocketDriver {
                 IpcResult::Wait(None, self.file_op_uid)
             },
         )
+    }
+
+    pub(super) fn shutdown(&mut self, option: ShutDownOption) -> SysResult<()> {
+        if self.listen_queue.is_none() {
+            return Err(Errno::ENOTCONN);
+        }
+        self.shutdown = Some(option);
+        Ok(())
     }
 }
 
@@ -466,6 +478,12 @@ impl FileOperation for ConnectedSocket {
         let mut vfs = VFS.lock();
         let driver = vfs.get_driver(self.inode_id)?;
         driver.accept()
+    }
+
+    fn shutdown(&mut self, option: ShutDownOption) -> SysResult<()> {
+        let mut vfs = VFS.lock();
+        let driver = vfs.get_driver(self.inode_id)?;
+        driver.shutdown(option)
     }
 
     fn get_inode_id(&self) -> SysResult<InodeId> {

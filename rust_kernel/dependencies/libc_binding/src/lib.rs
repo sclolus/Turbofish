@@ -823,3 +823,28 @@ mod amode_should {
     }
 
 }
+
+#[repr(u32)]
+#[derive(Debug, PartialEq)]
+pub enum ShutDownOption {
+    ShutRd = SHUT_RD,
+    //    Disables further receive operations.
+    ShutWr = SHUT_WR,
+    //    Disables further send operations.
+    ShutRdwr = SHUT_RDWR,
+}
+
+impl TryFrom<u32> for ShutDownOption {
+    type Error = Errno;
+    fn try_from(n: u32) -> Result<Self, Self::Error> {
+        use ShutDownOption::*;
+        Ok(match n {
+            SHUT_RD => ShutRd,
+            //    Disables further receive operations.
+            SHUT_WR => ShutWr,
+            //    Disables further send operations.
+            SHUT_RDWR => ShutRdwr,
+            _ => Err(Errno::EINVAL)?,
+        })
+    }
+}

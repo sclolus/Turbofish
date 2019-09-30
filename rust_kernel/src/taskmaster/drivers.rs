@@ -24,7 +24,8 @@ pub use disk::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, I
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{
-    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, Whence,
+    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, ShutDownOption,
+    Whence,
 };
 use sync::dead_mutex::DeadMutex;
 
@@ -132,6 +133,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
     fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
         Err(Errno::ENOTSOCK)
     }
+
+    fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
+        Err(Errno::ENOTSOCK)
+    }
 }
 
 #[derive(Debug)]
@@ -182,6 +187,10 @@ pub trait Driver: core::fmt::Debug + Send {
     }
 
     fn accept(&mut self) -> SysResult<IpcResult<Option<ConnectedSocket>>> {
+        Err(Errno::ENOTSOCK)
+    }
+
+    fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
 }
