@@ -54,7 +54,7 @@ all: $(TARGET) Makefile
 $(TARGET): $(OBJ_C)
 	make -C ../su 		# well.
 	@mkdir -pv $(BUILD_DIR)
-	$(CC) -o $(BUILD_DIR)/$@ $(CFLAGS) $^
+	$(CC) -Wl,--gc-sections -o $(BUILD_DIR)/$@ $(CFLAGS) $^
 	sudo chown root:root $(BUILD_DIR)/$(TARGET)
 	cp -v --parents $(BUILD_DIR)/$@ $(SYSTEM_ROOT)
 
