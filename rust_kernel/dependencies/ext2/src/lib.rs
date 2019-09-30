@@ -508,6 +508,7 @@ impl Ext2Filesystem {
     fn alloc_block(&mut self) -> Option<Block> {
         for n in 0..self.nbr_block_grp {
             if let Some(addr) = self.alloc_block_on_grp(n) {
+                let _res = self.disk.write_buffer(self.to_addr(addr), &[0; 1024]);
                 return Some(addr);
             }
         }
