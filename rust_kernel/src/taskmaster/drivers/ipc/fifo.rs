@@ -178,9 +178,8 @@ impl FileOperation for FifoFileOperationData {
         };
     }
 
-    fn fstat(&mut self, _stat: &mut stat) -> SysResult<u32> {
-        // TODO: This is for cat my_fifo to works, because cat do a fstat(my_fifo)
-        Ok(0)
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
     }
 
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
