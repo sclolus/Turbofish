@@ -1,11 +1,10 @@
 use super::tools::{KeyGenerator, Mapper};
 use super::DefaultDriver;
-use super::VFS;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::Credentials;
-use super::{ DirectoryEntryBuilder, Filename, InodeId, Path};
+use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
 use crate::taskmaster::drivers::get_file_op_uid;
-use super::{Driver, FileOperation, Inode, InodeData, IpcResult};
+use super::{Driver, FileOperation, Inode, InodeData, VFS, IpcResult};
 use alloc::boxed::Box;
 use super::Incrementor;
 use alloc::vec::Vec;
@@ -55,7 +54,7 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
-    fn unlink(&self, _dir_inode_nbr: u32, _name: &str, _free_inode_data: bool) -> SysResult<()> {
+    fn unlink(&mut self, _dir_inode_nbr: u32, _name: &str, _free_inode_data: bool, _inode_nbr: u32) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
 

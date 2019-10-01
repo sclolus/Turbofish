@@ -676,6 +676,12 @@ impl Scheduler {
     }
 
     #[allow(dead_code)]
+    /// iter on all the thread group
+    pub fn iter_thread_groups_with_pid(&self) -> impl Iterator<Item = (&Pid, &ThreadGroup)> {
+        self.all_process.iter()
+    }
+
+    #[allow(dead_code)]
     /// iter on all the thread
     pub fn iter_thread(&self) -> impl Iterator<Item = &Thread> {
         self.iter_thread_groups()

@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -73,5 +73,12 @@ impl FileOperation for VersionOperations {
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for VersionOperations {
+    fn drop(&mut self) {
+        eprintln!("=======VERSION DROP: {:?}=======", self.inode_id);
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

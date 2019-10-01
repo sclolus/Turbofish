@@ -1,7 +1,7 @@
 use super::IpcResult;
 use super::{
     DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId, Driver, FileOperation, FileSystem,
-    FileSystemId, SysResult,
+    FileSystemId, SysResult, VFS,
 };
 use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
 
@@ -160,6 +160,7 @@ impl ProcFs {
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
             .set_access_mode(access_mode)
+            .set_link_number(1)
             .set_uid(0)
             .set_gid(0);
 
@@ -305,6 +306,7 @@ impl ProcFs {
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
             .set_access_mode(mode)
+            .set_link_number(1)
             .set_uid(0) //TODO change this.
             .set_gid(0);
 
@@ -346,10 +348,30 @@ impl ProcFs {
                     Ok(entry) => entry,
                     Err(_) => return None, // TODO: change this maybe
                 };
+                eprintln!("Searching {:?}", entry.inode_id);
                 let inode = inodes
                     .get(&entry.inode_id)
                     .expect("No corresponding inode for direntry");
                 Some((entry, inode))
+            }
+        }))
+    }
+
+    fn children_direntries(
+        &self,
+        dir_id: DirectoryEntryId,
+    ) -> SysResult<impl Iterator<Item = &DirectoryEntry>> {
+        let dcache = &self.dcache;
+        let mut children_iter = self.dcache.get_entry(&dir_id)?.get_directory()?.entries();
+
+        Ok(unfold((), move |_| match children_iter.next() {
+            None => None,
+            Some(id) => {
+                let entry = match dcache.get_entry(&id) {
+                    Ok(entry) => entry,
+                    Err(_) => return None, // TODO: change this maybe
+                };
+                Some(entry)
             }
         }))
     }
@@ -376,12 +398,12 @@ impl ProcFs {
             }
 
             self.dcache.remove_entry(child)?;
-            self.inodes.remove(&inode_id);
+            // self.inodes.remove(&inode_id);
         }
         let entry = self.dcache.get_entry(&dir_id)?;
         let inode_id = entry.inode_id;
         self.dcache.remove_entry(dir_id)?;
-        self.inodes.remove(&inode_id);
+        // self.inodes.remove(&inode_id);
         Ok(())
     }
 
@@ -406,6 +428,7 @@ impl ProcFs {
 
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
+            .set_link_number(1)
             .set_access_mode(
                 FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU,
             )
@@ -497,16 +520,15 @@ impl FileSystem for ProcFs {
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
 
-        let thread_groups = scheduler.iter_thread_groups();
+        let thread_groups = scheduler.iter_thread_groups_with_pid();
 
-        for thread_group in thread_groups {
-            let pid = thread_group.pgid; // Is that so ?
+        for (&pid, thread_group) in thread_groups {
             let pid_filename = format!("{}", pid); // unfaillible context
             let pid_filename = Filename::from_str_unwrap(pid_filename.as_str());
 
             if self
-                .children(root_dir_id)?
-                .any(|(entry, _)| entry.filename == pid_filename)
+                .children_direntries(root_dir_id)?
+                .any(|entry| entry.filename == pid_filename)
             {
                 continue;
             }
@@ -589,5 +611,32 @@ impl FileSystem for ProcFs {
                 }
             })
             .try_collect()?)
+    }
+
+    fn unlink(
+        &mut self,
+        _dir_inode_nbr: u32,
+        _name: &str,
+        free_inode_data: bool,
+        inode_nbr: u32,
+    ) -> SysResult<()> {
+        let inode_id = self.new_inode_id(inode_nbr);
+        eprintln!(
+            "Unlinking {:?}, freeing_inode: {}",
+            inode_id, free_inode_data
+        );
+        let inode = self.inodes.get_mut(&inode_id).ok_or(Errno::ENOENT)?;
+
+        // In our use case, we just wanna remove the orphan inodes,
+        // TODO: see how to handle normal unlinks.
+        if inode.link_number != 0 {
+            inode.link_number -= 1;
+        }
+
+        if free_inode_data {
+            self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
+        }
+
+        Ok(())
     }
 }

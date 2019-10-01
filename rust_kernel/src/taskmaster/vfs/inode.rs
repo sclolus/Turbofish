@@ -25,7 +25,7 @@ pub struct Inode {
     nbr_open_file_operation: usize,
     /// if true, the inode need to be unlink when
     /// nbr_open_file_operation reach to 0
-    lazy_unlink: bool,
+    pub lazy_unlink: bool,
     pub filesystem: Arc<DeadMutex<dyn FileSystem>>,
 }
 

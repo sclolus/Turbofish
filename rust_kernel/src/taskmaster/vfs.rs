@@ -87,7 +87,8 @@ impl VirtualFileSystem {
         if self.inodes.contains_key(&inode.get_id()) {
             // if it is not from an hard link we panic
             if inode.link_number == 1 {
-                panic!("inode already there {:?}", inode);
+                // panic!("inode already there {:?}", inode);
+                panic!("Inode already there");
             } else {
                 // else we already put the inode pointed by the hard link
                 return Ok(());
@@ -121,6 +122,10 @@ impl VirtualFileSystem {
         {
             return Err(Errno::EEXIST);
         }
+        eprintln!(
+            "Adding inode {:?} for direntry: {}",
+            inode_data.id, direntry.filename
+        );
 
         let direntry = self.dcache.add_entry(parent, direntry)?;
 
@@ -164,8 +169,9 @@ impl VirtualFileSystem {
                 self.recursive_remove_dentries(child)?;
             }
             // This means that dynamic filesystems shall not support multiple hardlinks for now.
-            self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
-            self.dcache.remove_entry(child)?;
+            // self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
+            self.funlink(child)?;
+            // self.dcache.remove_entry(child)?;
         })
     }
 
@@ -755,23 +761,52 @@ impl VirtualFileSystem {
             return Err(Errno::EACCES);
         }
 
-        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
+        Ok(self.funlink(entry_id)?)
+    }
 
-        self.dcache.remove_entry(entry_id)?;
+    pub fn funlink(&mut self, entry_id: DirectoryEntryId) -> SysResult<()> {
+        let entry = self.dcache.get_entry(&entry_id)?;
+        let filename = entry.filename.try_clone()?;
+        let parent_inode_number = self
+            .dcache
+            .get_entry(&entry.parent_id)
+            .expect("No corresponding parent direntry for direntry")
+            .inode_id
+            .inode_number;
+
+        let corresponding_inode = self
+            .inodes
+            .get_mut(&entry.inode_id)
+            .expect("No corresponding Inode for direntry");
+        let inode_id = corresponding_inode.id;
 
         // If the link number reach 0 and there is no open file
         // operation, we unlink on the filesystem directly, else we
         // will unlink when the last file operation is closed
         let free_inode_data: bool = corresponding_inode.unlink();
+        let filename = entry.filename.clone(); //TODO: remove this
+        self.dcache.remove_entry(entry_id)?;
+
         // we remove the inode only if we free the inode data
         if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
+        } else if corresponding_inode.lazy_unlink {
+            eprintln!(
+                "Lazy unlinking entry for {}, hardlinks: {}",
+                filename, corresponding_inode.link_number
+            );
+        } else {
+            eprintln!(
+                "There are still {} hardlinks for {}",
+                corresponding_inode.link_number, filename
+            );
         }
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
-            parent_inode_id.inode_number as u32,
-            path.filename().expect("no filename").as_str(),
+            parent_inode_number,
+            filename.as_str(),
             free_inode_data,
+            inode_id.inode_number,
         )?;
         Ok(())
     }
@@ -813,6 +848,24 @@ impl VirtualFileSystem {
         Ok(self
             .inodes
             .get(&direntry.inode_id)
+            .expect("No corresponding Inode for Directory"))
+    }
+
+    /// Gets the corresponding inode mutably for a directory entry of id `direntry_id`.
+    /// This methods helps removing the currently popular boilerplate.
+    ///
+    /// Panic:
+    /// Panics if there is no corresponding inode for the given direntry_id.
+    fn get_inode_from_direntry_id_mut(
+        &mut self,
+        direntry_id: DirectoryEntryId,
+    ) -> SysResult<&mut Inode> {
+        let direntry = self.dcache.get_entry(&direntry_id)?;
+
+        // should we remove this panic
+        Ok(self
+            .inodes
+            .get_mut(&direntry.inode_id)
             .expect("No corresponding Inode for Directory"))
     }
 
