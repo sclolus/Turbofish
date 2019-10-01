@@ -12,6 +12,7 @@ mod signal_interface;
 mod syscall;
 
 mod kmodules;
+use kmodules::CURRENT_UNIX_TIME;
 mod message;
 
 mod tests;
@@ -25,6 +26,9 @@ use thread_group::Credentials;
 use vfs::Path;
 
 mod sync;
+
+use core::sync::atomic::Ordering;
+use rtc_toolkit::Rtc;
 
 /// Describe what to do after an IPC request and result return
 #[derive(Debug)]
@@ -90,6 +94,14 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
 
     // Initialize Syscall system
     syscall::init();
+
+    // Early set the CURRENT_UNIX_TIME with an embedded dummy RTC nanodriver
+    let mut rtc = Rtc::new();
+    let date = rtc.read_date();
+    let seconds_since_epoch = date.into();
+    unsafe {
+        CURRENT_UNIX_TIME.store(seconds_since_epoch, Ordering::SeqCst);
+    }
 
     // Initialize VFS
     lazy_static::initialize(&VFS);

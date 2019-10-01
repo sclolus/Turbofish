@@ -112,7 +112,7 @@ unsafe extern "C" fn rtc_interrupt_handler() {
             let old = ctx.current_unix_time.load(Ordering::SeqCst);
 
             assert!(
-                old < seconds_since_epoch,
+                old <= seconds_since_epoch,
                 "We want back in time, Congratulations!"
             );
 
