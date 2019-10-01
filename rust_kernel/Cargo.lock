@@ -365,6 +365,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtc_toolkit"
+version = "0.1.0"
+dependencies = [
+ "bit_field 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "io 0.1.0",
+ "irq 0.1.0",
+ "time 0.1.0",
+]
+
+[[package]]
 name = "scopeguard"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -458,6 +468,7 @@ dependencies = [
  "mbr 0.1.0",
  "messaging 0.1.0",
  "raw_data 0.1.0",
+ "rtc_toolkit 0.1.0",
  "sync 0.1.0",
  "terminal 0.1.0",
  "time 0.1.0",

@@ -1,5 +1,8 @@
+//! This crate provide methods to use the RTC
 //! Get current Date using the
 //! [CMOS](https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC) ram on the RTC chip.
+#![cfg_attr(not(test), no_std)]
+
 use bit_field::BitField;
 use io::{Io, Pio};
 use irq::nmi::Nmi;
@@ -55,10 +58,7 @@ pub struct Rtc {
 
 impl Rtc {
     pub const fn new() -> Self {
-        Self {
-            register_selector: Pio::new(0x70),
-            data: Pio::new(0x71),
-        }
+        Self { register_selector: Pio::new(0x70), data: Pio::new(0x71) }
     }
 
     /// This sets the register index of the RTC/CMOS to the `selected_register`.
