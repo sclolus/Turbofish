@@ -6,7 +6,8 @@ use super::{Driver, FileOperation, IpcResult, SysResult, VFS};
 
 // use core::fmt::Debug;
 
-use libc_binding::Errno;
+use alloc::borrow::Cow;
+use libc_binding::{off_t, Errno, Whence};
 // use sync::DeadMutex;
 
 // type Mutex<T> = DeadMutex<T>;
@@ -54,11 +55,45 @@ use libc_binding::Errno;
 // }
 
 pub trait ProcFsOperations: FileOperation {
-    fn get_seq_string(&self) -> SysResult<&str> {
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
         Err(Errno::ENOSYS)
     }
 
     fn get_offset(&mut self) -> &mut usize;
+
+    fn proc_lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        let self_offset = *self.get_offset() as u64;
+        if offset == core::i64::MIN {
+            // volontary trash i64 min value to avoid -offset ==
+            // offset
+            return Err(Errno::EINVAL);
+        }
+        let new_offset = match whence {
+            Whence::SeekCur => {
+                if offset < 0 {
+                    self_offset
+                        .checked_sub((-offset) as u64)
+                        .ok_or(Errno::EINVAL)?
+                } else {
+                    self_offset
+                        .checked_add(offset as u64)
+                        .ok_or(Errno::EINVAL)?
+                }
+            }
+            Whence::SeekSet => {
+                if offset < 0 {
+                    return Err(Errno::EINVAL);
+                }
+                offset as u64
+            }
+            Whence::SeekEnd => unimplemented!(),
+        };
+        // if new_offset > self.partition_size {
+        //     return Err(Errno::EINVAL);
+        // }
+        *self.get_offset() = new_offset as usize;
+        Ok(new_offset as off_t)
+    }
 
     fn seq_read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if buf.len() > u32::max_value() as usize {

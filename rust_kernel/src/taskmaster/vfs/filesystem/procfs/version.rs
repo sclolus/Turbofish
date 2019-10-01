@@ -1,5 +1,6 @@
 use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
+use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
@@ -9,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::Errno;
+use libc_binding::{off_t, Errno, Whence};
 
 #[derive(Debug, Clone)]
 pub struct VersionDriver {
@@ -51,11 +52,15 @@ impl FileOperation for VersionOperations {
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         self.seq_read(buf)
     }
+
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
+    }
 }
 
 impl ProcFsOperations for VersionOperations {
-    fn get_seq_string(&self) -> SysResult<&str> {
-        Ok(KERNEL_VERSION)
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
+        Ok(Cow::from(KERNEL_VERSION))
     }
     fn get_offset(&mut self) -> &mut usize {
         &mut self.offset
