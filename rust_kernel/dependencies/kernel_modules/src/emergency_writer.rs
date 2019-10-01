@@ -1,6 +1,6 @@
 //! This module manage emergency_print! rust macros
 
-use core::fmt::Write;
+use core::fmt::{Result, Write};
 
 /// Main Writer structure
 pub struct EmergencyWriter {
@@ -10,7 +10,7 @@ pub struct EmergencyWriter {
 /// Main implementation
 impl EmergencyWriter {
     /// Void new declaration
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self { f: None }
     }
 
@@ -22,8 +22,12 @@ impl EmergencyWriter {
 
 /// Standard implementation trait
 impl Write for EmergencyWriter {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        (self.f.as_ref().expect("Cannot write"))(s);
+    fn write_str(&mut self, s: &str) -> Result {
+        let f_opt = self.f.as_ref();
+        // Protect against recursive loop on error
+        if let Some(f) = f_opt {
+            (f)(s);
+        }
         Ok(())
     }
 }

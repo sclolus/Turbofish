@@ -7,6 +7,8 @@ pub mod writer;
 pub use writer::WRITER;
 pub mod emergency_writer;
 pub use emergency_writer::EMERGENCY_WRITER;
+pub mod memory;
+pub use memory::RustGlobalAlloc;
 
 pub use irq::Irq;
 pub use libc_binding::c_char;
@@ -92,6 +94,14 @@ pub enum ModConfig {
     Keyboard(KeyboardConfig),
     /// The syslog module need nothing !
     Syslog,
+}
+
+/// Initialize basics tools of the module
+pub unsafe fn init_config(symtab_list: &SymbolList, global_alloc: &mut RustGlobalAlloc) {
+    WRITER.set_write_callback(symtab_list.write);
+    EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
+    #[cfg(not(test))]
+    global_alloc.set_methods(symtab_list.alloc_tools);
 }
 
 /// Configuration parameters of the RTC module

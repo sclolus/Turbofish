@@ -1,6 +1,6 @@
 //! This module manage println! and print! rust macros
 
-use core::fmt::Write;
+use core::fmt::{Result, Write};
 
 /// Main Writer structure
 pub struct Writer {
@@ -10,7 +10,7 @@ pub struct Writer {
 /// Main implementation
 impl Writer {
     /// Void new declaration
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self { f: None }
     }
 
@@ -22,7 +22,7 @@ impl Writer {
 
 /// Standard implementation trait
 impl Write for Writer {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+    fn write_str(&mut self, s: &str) -> Result {
         (self.f.as_ref().expect("Cannot write"))(s);
         Ok(())
     }

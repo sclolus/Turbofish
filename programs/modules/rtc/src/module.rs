@@ -2,7 +2,6 @@
 
 use kernel_modules::{
     ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList,
-    EMERGENCY_WRITER, WRITER,
 };
 
 use bit_field::BitField;
@@ -49,10 +48,7 @@ impl Drop for Ctx {
 /// Constructor
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
-        #[cfg(not(test))]
-        crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
+        kernel_modules::init_config(&symtab_list, &mut super::MEMORY_MANAGER);
     }
     if let ModConfig::RTC(rtc_config) = symtab_list.kernel_callback {
         unsafe {

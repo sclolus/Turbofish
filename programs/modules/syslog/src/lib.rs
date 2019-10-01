@@ -13,19 +13,10 @@ extern crate interrupts;
 mod module;
 use module::module_start;
 
-pub mod memory;
-#[cfg(not(test))]
-use crate::memory::RustGlobalAlloc;
-
-/// As a matter of fact, we can't declare the MemoryManager inside a submodule.
-#[cfg(not(test))]
-#[global_allocator]
-static mut MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc::new();
-
 #[macro_use]
 extern crate kernel_modules;
 
-use kernel_modules::{ModResult, SymbolList, EMERGENCY_WRITER, WRITER};
+use kernel_modules::{ModResult, RustGlobalAlloc, SymbolList, EMERGENCY_WRITER, WRITER};
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -40,3 +31,14 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     emergency_print!("Module is on panic ! {}\n", info);
     loop {}
 }
+
+#[alloc_error_handler]
+#[cfg(not(test))]
+fn out_of_memory(_: core::alloc::Layout) -> ! {
+    panic!("Out of memory: Failed to allocate a rust data structure");
+}
+
+/// As a matter of fact, we can't declare the MemoryManager inside a submodule.
+#[cfg(not(test))]
+#[global_allocator]
+pub static mut MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc::new();

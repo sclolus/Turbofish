@@ -2,7 +2,7 @@
 
 use kernel_modules::{
     KernelSymbolList, KeyboardReturn, ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn,
-    SymbolList, EMERGENCY_WRITER, WRITER,
+    SymbolList,
 };
 
 use keyboard::keysymb::KeySymb;
@@ -53,10 +53,7 @@ impl Drop for Ctx {
 /// Constructor
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
-        #[cfg(not(test))]
-        crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
+        kernel_modules::init_config(&symtab_list, &mut super::MEMORY_MANAGER);
     }
     if let ModConfig::Keyboard(keyboard_config) = symtab_list.kernel_callback {
         unsafe {

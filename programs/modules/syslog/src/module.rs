@@ -2,7 +2,7 @@
 
 use kernel_modules::{
     ConfigurableCallback, KernelEvent, KernelSymbolList, ModConfig, ModError, ModResult, ModReturn,
-    ModSpecificReturn, SymbolList, EMERGENCY_WRITER, WRITER,
+    ModSpecificReturn, SymbolList,
 };
 
 static mut CTX: Option<Ctx> = None;
@@ -58,39 +58,37 @@ impl Drop for Ctx {
 /// Constructor
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
-        #[cfg(not(test))]
-        crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
+        kernel_modules::init_config(&symtab_list, &mut super::MEMORY_MANAGER);
     }
     if let ModConfig::Syslog = symtab_list.kernel_callback {
-        unsafe {
-            let add_syslog_entry = symtab_list.kernel_symbol_list.get_entry("add_syslog_entry");
-            match add_syslog_entry {
-                None => Err(ModError::DependencyNotSatisfied),
-                Some(addr) => {
-                    let configurable_callbacks_opt: Option<Vec<ConfigurableCallback>> = Some(
-                        try_vec!(
-                            ConfigurableCallback {
-                                when: KernelEvent::Log,
-                                what: add_entry as u32,
-                            },
-                            ConfigurableCallback {
-                                when: KernelEvent::Second,
-                                what: fflush_syslog as u32,
-                            }
-                        )
-                        .map_err(|_| ModError::OutOfMemory)?,
-                    );
+        let add_syslog_entry = symtab_list.kernel_symbol_list.get_entry("add_syslog_entry");
+        match add_syslog_entry {
+            None => Err(ModError::DependencyNotSatisfied),
+            Some(addr) => {
+                let configurable_callbacks_opt: Option<Vec<ConfigurableCallback>> = Some(
+                    try_vec!(
+                        ConfigurableCallback {
+                            when: KernelEvent::Log,
+                            what: add_entry as u32,
+                        },
+                        ConfigurableCallback {
+                            when: KernelEvent::Second,
+                            what: fflush_syslog as u32,
+                        }
+                    )
+                    .map_err(|_| ModError::OutOfMemory)?,
+                );
 
-                    let write_syslog: fn(&str) -> Result<(), Errno> = core::mem::transmute(addr);
+                let write_syslog: fn(&str) -> Result<(), Errno> =
+                    unsafe { core::mem::transmute(addr) };
+                unsafe {
                     CTX = Some(Ctx::new(symtab_list.kernel_symbol_list, write_syslog));
-                    Ok(ModReturn {
-                        stop: drop_module,
-                        configurable_callbacks_opt,
-                        spec: ModSpecificReturn::Syslog,
-                    })
                 }
+                Ok(ModReturn {
+                    stop: drop_module,
+                    configurable_callbacks_opt,
+                    spec: ModSpecificReturn::Syslog,
+                })
             }
         }
     } else {
@@ -140,15 +138,15 @@ fn add_entry(record: &Record) {
             Ok(string) => {
                 let r = context.cache.try_push(string);
                 if let Err(_e) = r {
-                    print!("Cannot push entry into syslog cache");
+                    emergency_print!("Cannot push entry into syslog cache");
                 }
             }
             Err(_e) => {
-                print!("Cannot allocate enough memory to format syslog entry");
+                emergency_print!("Cannot allocate enough memory to format syslog entry");
             }
         }
     } else {
-        print!("Cannot allocate some stuff");
+        emergency_print!("Cannot allocate some stuff");
     }
 }
 

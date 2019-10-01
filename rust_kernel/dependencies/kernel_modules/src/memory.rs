@@ -1,6 +1,6 @@
 //! Rust Global Alloc stuff
 
-use kernel_modules::ForeignAllocMethods;
+use super::ForeignAllocMethods;
 
 use core::alloc::{GlobalAlloc, Layout};
 
@@ -39,10 +39,4 @@ unsafe impl GlobalAlloc for RustGlobalAlloc {
         assert!(layout.align() <= 16);
         (self.tools.as_ref().expect("no alloc set").krealloc)(ptr, new_size)
     }
-}
-
-#[alloc_error_handler]
-#[cfg(not(test))]
-fn out_of_memory(_: core::alloc::Layout) -> ! {
-    panic!("Out of memory: Failed to allocate a rust data structure");
 }
