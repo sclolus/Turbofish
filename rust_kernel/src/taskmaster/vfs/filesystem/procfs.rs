@@ -153,7 +153,7 @@ impl ProcFs {
         name: Filename,
         gen_driver: Box<dyn FnMut(InodeId) -> Box<dyn Driver>>,
     ) -> SysResult<DirectoryEntryId> {
-        let driver = Box::new(DefaultDriver);
+        let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
         let mut inode_id: InodeId = self.gen();
@@ -257,8 +257,12 @@ impl ProcFs {
 
     pub fn register_pid_directory(&mut self, pid: Pid) -> SysResult<()> {
         let (root_dir_id, _) = self.root_ids();
-        let pid_filename = format!("{}", pid); // unfaillible context
-        let pid_filename = Filename::from_str_unwrap(pid_filename.as_str());
+
+        let pid_filename = {
+            // 10 is len of Pid::max
+            let s = tryformat!(10, "{}", pid)?;
+            Filename::from_str_unwrap(s.as_str())
+        };
 
         if self
             .children_direntries(root_dir_id)?
@@ -307,7 +311,7 @@ impl ProcFs {
             Box::new(move |inode_id| Box::new(StatDriver::new(inode_id, pid))),
         )?;
 
-        let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
+        let cwd = thread_group.cwd.try_clone()?;
 
         self.symlink(dir_id, cwd_filename, cwd)?;
 
@@ -365,7 +369,7 @@ impl ProcFs {
         let scheduler = SCHEDULER.lock();
 
         let (current_pid, _) = scheduler.current_task_id();
-        let pid_path = Path::try_from(format!("/proc/{}", current_pid).as_str())?; // TODO: unfaillible context/hardcoded.
+        let pid_path = Path::try_from(tryformat!(16, "/proc/{}", current_pid)?.as_str())?;
 
         self.symlink(root_dir_id, self_filename, pid_path)
             .expect("Failed to creat the /proc/self symlink");
@@ -417,7 +421,7 @@ impl ProcFs {
         mode: FileType,
     ) -> SysResult<DirectoryEntryId> {
         let parent_dir = self.dcache.get_entry_mut(&parent)?;
-        let driver = Box::new(DefaultDriver);
+        let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
         parent_dir
@@ -536,7 +540,7 @@ impl ProcFs {
         link_name: Filename,
         path: Path,
     ) -> SysResult<DirectoryEntryId> {
-        let driver = Box::new(DefaultDriver);
+        let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
         let inode_id: InodeId = self.gen();
