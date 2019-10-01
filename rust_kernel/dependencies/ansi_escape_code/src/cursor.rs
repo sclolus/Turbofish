@@ -2,9 +2,17 @@
 use super::CharBoundaryError;
 use super::GetSubStrWithError;
 use super::CSI;
-use crate::Pos;
 use core::str::FromStr;
 use core::{fmt, fmt::Display};
+
+/// Usable to select write position for characters
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
+pub struct Pos {
+    /// Y coordinate
+    pub line: usize,
+    /// X coordinate
+    pub column: usize,
+}
 
 /// Cursor possible moves
 #[derive(Copy, Clone, Debug, PartialEq)]

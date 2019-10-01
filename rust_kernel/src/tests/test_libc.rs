@@ -7,5 +7,9 @@ pub extern "C" fn kmain(
     device_map_ptr: *const DeviceMap,
 ) -> ! {
     crate::rust_main::init_kernel(multiboot_info, device_map_ptr);
-    crate::taskmaster::start("/bin/init", &["/bin/init", "/bin/MasterDeepThought", "/bin/DeepThought"], &[]);
+    crate::taskmaster::start(
+        "/bin/init",
+        &["/bin/init", "/bin/MasterDeepThought", "/bin/DeepThought"],
+        &[],
+    );
 }

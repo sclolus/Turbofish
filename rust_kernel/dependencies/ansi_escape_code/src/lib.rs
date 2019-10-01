@@ -1,8 +1,10 @@
 //! [Ansi escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
-pub mod color;
-pub mod cursor;
+#![cfg_attr(not(test), no_std)]
 
+pub mod color;
 pub use color::*;
+
+pub mod cursor;
 pub use cursor::*;
 
 use core::slice::SliceIndex;
@@ -104,7 +106,7 @@ impl<'a> Iterator for IterEscaped<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ansi_escape_code::color::{AnsiColor, Colored};
+    use crate::color::{AnsiColor, Colored};
     #[test]
     fn test_iter_escape() {
         use EscapedItem::*;

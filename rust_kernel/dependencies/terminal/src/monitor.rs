@@ -4,7 +4,7 @@ pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
 use super::cursor::Pos;
-use crate::ansi_escape_code::AnsiColor;
+use ansi_escape_code::AnsiColor;
 
 use lazy_static::lazy_static;
 use sync::Spinlock;

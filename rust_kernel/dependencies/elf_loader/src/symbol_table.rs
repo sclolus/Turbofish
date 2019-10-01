@@ -167,7 +167,9 @@ impl SymbolTable {
                     .map_err(|_| ())?
                 };
                 let mut symbol_name: String = String::new();
-                symbol_name.try_reserve_exact(raw_symbol_name.len()).map_err(|_| ())?;
+                symbol_name
+                    .try_reserve_exact(raw_symbol_name.len())
+                    .map_err(|_| ())?;
                 symbol_name.insert_str(0, raw_symbol_name);
 
                 // Finally push a Rust SymbolEntry

@@ -1,0 +1,15 @@
+[package]
+name = "rtc_toolkit"
+version = "0.1.0"
+authors = ["mordak <bmickael@student.42.fr>"]
+edition = "2018"
+license = "GPL3"
+description = "A tiny RTC toolkit for OS developement"
+documentation = "cargo doc --open"
+homepage = "index.html"
+
+[dependencies]
+bit_field = "0.10.0"
+irq = { path = "../irq" }
+io = { path = "../io" }
+time = { path = "../time" }

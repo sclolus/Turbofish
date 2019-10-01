@@ -7,7 +7,7 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-pub mod ansi_escape_code;
+//pub mod ansi_escape_code;
 
 pub mod early_terminal;
 pub use early_terminal::EARLY_TERMINAL;

@@ -14,6 +14,7 @@ bitflags = "1.0.4"
 log = "0.4.6"
 messaging = { path = "../messaging" }
 libc_binding = { path = "../libc_binding" }
+ansi_escape_code = { path = "../ansi_escape_code" }
 
 [dependencies.arrayvec]
 version = "0.4.11"

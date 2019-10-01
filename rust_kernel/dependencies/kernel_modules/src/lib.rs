@@ -5,6 +5,10 @@
 #![macro_use]
 pub mod writer;
 pub use writer::WRITER;
+pub mod emergency_writer;
+pub use emergency_writer::EMERGENCY_WRITER;
+pub mod memory;
+pub use memory::RustGlobalAlloc;
 
 pub use irq::Irq;
 pub use libc_binding::c_char;
@@ -21,6 +25,8 @@ use alloc::vec::Vec;
 pub struct SymbolList {
     /// Allow to debug the module
     pub write: fn(&str),
+    /// Allow to display critical messages for the module
+    pub emergency_write: fn(&str),
     /// Allow modules to allocate or free memory
     pub alloc_tools: ForeignAllocMethods,
     /// Specifics methods given by the kernel
@@ -88,6 +94,14 @@ pub enum ModConfig {
     Keyboard(KeyboardConfig),
     /// The syslog module need nothing !
     Syslog,
+}
+
+/// Initialize basics tools of the module
+pub unsafe fn init_config(symtab_list: &SymbolList, global_alloc: &mut RustGlobalAlloc) {
+    WRITER.set_write_callback(symtab_list.write);
+    EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
+    #[cfg(not(test))]
+    global_alloc.set_methods(symtab_list.alloc_tools);
 }
 
 /// Configuration parameters of the RTC module
@@ -192,8 +206,12 @@ impl KernelSymbolList {
     /// Get a associated address of an entry
     pub fn get_entry(&self, s2: &str) -> Option<u32> {
         for elem in self.0.iter() {
-            let s1: &str =
-                unsafe { str::from_utf8_unchecked(slice::from_raw_parts(elem.symname as *const u8, elem.len())) };
+            let s1: &str = unsafe {
+                str::from_utf8_unchecked(slice::from_raw_parts(
+                    elem.symname as *const u8,
+                    elem.len(),
+                ))
+            };
             if s1 == s2 {
                 return Some(elem.address);
             }
@@ -225,9 +243,18 @@ impl KernelSymbol {
 /// Debug Boilerplate for a KernelSymbol
 impl fmt::Debug for KernelSymbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "addr: {:#X?}, {} {}", self.address, self.symtype as u8 as char, unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(self.symname as *const u8, self.len()))
-        })
+        write!(
+            f,
+            "addr: {:#X?}, {} {}",
+            self.address,
+            self.symtype as u8 as char,
+            unsafe {
+                str::from_utf8_unchecked(slice::from_raw_parts(
+                    self.symname as *const u8,
+                    self.len(),
+                ))
+            }
+        )
     }
 }
 

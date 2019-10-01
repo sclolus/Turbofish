@@ -1,5 +1,5 @@
 use crate::drivers::PIT0;
-use crate::terminal::ansi_escape_code::color::AnsiColor;
+use ansi_escape_code::color::AnsiColor;
 use core::time::Duration;
 
 pub fn really_lazy_hello_world(duration: Duration) {

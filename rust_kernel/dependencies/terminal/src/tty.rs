@@ -1,9 +1,9 @@
-use super::ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 use super::{Cursor, Pos};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
+use ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use arrayvec::ArrayString;
 use core::fmt::Write;
 
@@ -355,7 +355,7 @@ impl Write for Tty {
             self.print_screen(self.scroll_offset);
         }
 
-        use super::ansi_escape_code::*;
+        use ansi_escape_code::*;
         use EscapedItem::*;
         for e in iter_escaped(s) {
             match e {

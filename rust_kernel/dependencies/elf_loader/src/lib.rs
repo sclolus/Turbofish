@@ -286,8 +286,12 @@ impl TryFrom<&[u8]> for ElfHeader {
             endian: Endian::try_from(value[0x5])?,
             target_abi: Abi::try_from(value[0x7])?,
             abi_version: value[0x8],
-            object_type: ObjectType::try_from(u16::from_ne_bytes(TryFrom::try_from(&value[0x10..0x12])?))?,
-            machine: Architecture::try_from(u16::from_ne_bytes(TryFrom::try_from(&value[0x12..0x14])?))?,
+            object_type: ObjectType::try_from(u16::from_ne_bytes(TryFrom::try_from(
+                &value[0x10..0x12],
+            )?))?,
+            machine: Architecture::try_from(u16::from_ne_bytes(TryFrom::try_from(
+                &value[0x12..0x14],
+            )?))?,
             version: u32::from_ne_bytes(TryFrom::try_from(&value[0x14..0x18])?),
             entry_point: u32::from_ne_bytes(TryFrom::try_from(&value[0x18..0x1C])?),
             program_header_table_offset: u32::from_ne_bytes(TryFrom::try_from(&value[0x1C..0x20])?),
@@ -406,13 +410,17 @@ impl TryFrom<&[u8]> for ProgramHeader {
         }
 
         let new = Self {
-            segment_type: SegmentType::try_from(u32::from_ne_bytes(copy_to_array(&value[0x0..0x4])))?,
+            segment_type: SegmentType::try_from(u32::from_ne_bytes(copy_to_array(
+                &value[0x0..0x4],
+            )))?,
             offset: (u32::from_ne_bytes(copy_to_array(&value[0x4..0x8]))),
             vaddr: (u32::from_ne_bytes(copy_to_array(&value[0x8..0x0C]))),
             paddr: (u32::from_ne_bytes(copy_to_array(&value[0x0C..0x10]))),
             filez: (u32::from_ne_bytes(copy_to_array(&value[0x10..0x14]))),
             memsz: (u32::from_ne_bytes(copy_to_array(&value[0x14..0x18]))),
-            flags: (ProgramHeaderFlags::from(u32::from_ne_bytes(copy_to_array(&value[0x18..0x1C])))),
+            flags: (ProgramHeaderFlags::from(u32::from_ne_bytes(copy_to_array(
+                &value[0x18..0x1C],
+            )))),
             align: (u32::from_ne_bytes(copy_to_array(&value[0x1C..0x20]))),
         };
 

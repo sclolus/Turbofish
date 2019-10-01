@@ -1,16 +1,14 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList, WRITER,
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList,
 };
 
 use bit_field::BitField;
 use core::sync::atomic::{AtomicU32, Ordering};
 use kernel_modules::Irq;
 
-mod rtc;
-use rtc::{Rtc, RtcRegister};
-use time::get_day_number;
+use rtc_toolkit::{Rtc, RtcRegister};
 
 static mut CTX: Option<Ctx> = None;
 
@@ -48,9 +46,7 @@ impl Drop for Ctx {
 /// Constructor
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
-        WRITER.set_write_callback(symtab_list.write);
-        #[cfg(not(test))]
-        crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
+        kernel_modules::init_config(&symtab_list, &mut super::MEMORY_MANAGER);
     }
     if let ModConfig::RTC(rtc_config) = symtab_list.kernel_callback {
         unsafe {
@@ -110,33 +106,13 @@ unsafe extern "C" fn rtc_interrupt_handler() {
         // The end-of-update interrupt is marked in the StatusC register by the 4 higher-bits being set to 0xd0.
         if status.get_bits(4..8) == 0xd {
             let date = rtc.read_date();
-            // Heuristical way to determine the current century.
-            // As we would need to check the ACPI tables to assert the existence of the Century register.
 
-            let tm_sec = date.sec as u32;
-            let tm_min = date.minutes as u32;
-            let tm_hour = date.hours as u32;
-            let tm_yday = get_day_number(date.month, date.day_of_month as usize) as u32;
-            let tm_year = date.year - 1900 as u32;
-
-            // The 19 January 2038, at 3am:14:08 UTC, the 2038 Bug will occurs.
-            // That is that value will overflow back to Unix epoch.
-            // Too bad.
-            // This is the posix formula for approximated Unix time.
-            let seconds_since_epoch = tm_sec
-                + tm_min * 60
-                + tm_hour * 3600
-                + tm_yday * 86400
-                + (tm_year - 70) * 31536000
-            // + ((tm_year - 69) / 4) * 86400
-            // - ((tm_year - 1) / 100) * 86400
-            // + ((tm_year + 299) / 400) * 86400 // How the fuck, does RTC count leapdays.
-                ;
+            let seconds_since_epoch = date.into();
 
             let old = ctx.current_unix_time.load(Ordering::SeqCst);
 
             assert!(
-                old < seconds_since_epoch,
+                old <= seconds_since_epoch,
                 "We want back in time, Congratulations!"
             );
 

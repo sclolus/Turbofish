@@ -14,3 +14,4 @@ interrupts = { path = "../dependencies/interrupts" }
 irq = { path = "../dependencies/irq" }
 io = { path = "../dependencies/io" }
 time = { path = "../dependencies/time" }
+rtc_toolkit = { path = "../dependencies/rtc_toolkit" }

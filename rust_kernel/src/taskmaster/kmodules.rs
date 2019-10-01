@@ -123,6 +123,7 @@ impl Scheduler {
 
         let mod_return = p(SymbolList {
             write,
+            emergency_write,
             alloc_tools: ForeignAllocMethods {
                 kmalloc,
                 kcalloc,
@@ -270,6 +271,11 @@ fn disable_irq(idt_gate: Irq) {
 /// Common Write method for modules
 fn write(s: &str) {
     log::info!("{}", s);
+}
+
+/// Ermergency Write method for modules
+fn emergency_write(s: &str) {
+    eprint!("{}", s);
 }
 
 /// Just used for a symbol list test

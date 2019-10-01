@@ -11,7 +11,8 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use fallible_collections::{FallibleArc, FallibleBox};
 use libc_binding::{
-    blkcnt_t, dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno, FileType,
+    blkcnt_t, dev_t, gid_t, ino_t, mode_t, nlink_t, off_t, stat, time_t, timespec, uid_t, Errno,
+    FileType,
 };
 use sync::DeadMutex;
 
