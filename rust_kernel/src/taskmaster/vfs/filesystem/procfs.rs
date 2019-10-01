@@ -4,6 +4,7 @@ use super::{
     FileSystemId, SysResult, VFS,
 };
 use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
+use alloc::collections::CollectionAllocErr;
 
 use crate::taskmaster::SCHEDULER;
 
@@ -113,7 +114,10 @@ impl KeyGenerator<DirectoryEntryId> for ProcFs {
 // }
 
 // #[derive(Debug)]
-struct Inode(VfsInode, Box<dyn FnMut(InodeId) -> Box<dyn Driver>>);
+struct Inode(
+    VfsInode,
+    Box<dyn FnMut(InodeId) -> Result<Box<dyn Driver>, CollectionAllocErr>>,
+);
 
 impl core::fmt::Debug for Inode {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
@@ -151,7 +155,7 @@ impl ProcFs {
         &mut self,
         parent: DirectoryEntryId,
         name: Filename,
-        gen_driver: Box<dyn FnMut(InodeId) -> Box<dyn Driver>>,
+        gen_driver: Box<dyn FnMut(InodeId) -> Result<Box<dyn Driver>, CollectionAllocErr>>,
     ) -> SysResult<DirectoryEntryId> {
         let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
@@ -207,48 +211,64 @@ impl ProcFs {
         self.register_file(
             root_dir_id,
             filesystems_filename,
-            Box::new(|inode_id| Box::new(filesystems::FilesystemsDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(filesystems::FilesystemsDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
         self.register_file(
             root_dir_id,
             version_filename,
-            Box::new(|inode_id| Box::new(version::VersionDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(version::VersionDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             proc_stat_filename,
-            Box::new(|inode_id| Box::new(proc_stat::ProcStatDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(proc_stat::ProcStatDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             uptime_filename,
-            Box::new(|inode_id| Box::new(uptime::UptimeDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(uptime::UptimeDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             loadavg_filename,
-            Box::new(|inode_id| Box::new(loadavg::LoadavgDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(loadavg::LoadavgDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             meminfo_filename,
-            Box::new(|inode_id| Box::new(meminfo::MeminfoDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(meminfo::MeminfoDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             vmstat_filename,
-            Box::new(|inode_id| Box::new(vmstat::VmstatDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(vmstat::VmstatDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         self.register_file(
             root_dir_id,
             mounts_filename,
-            Box::new(|inode_id| Box::new(mounts::MountsDriver::new(inode_id))),
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(mounts::MountsDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
         )?;
 
         // Inserting divers basic procfs files.
@@ -304,11 +324,14 @@ impl ProcFs {
             .get_pid_directory(pid)
             .expect("Could not get the requested pid directory")
             .id;
-
         self.register_file(
             dir_id,
             stat_filename,
-            Box::new(move |inode_id| Box::new(StatDriver::new(inode_id, pid))),
+            Box::try_new(
+                move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                    Ok(Box::try_new(StatDriver::new(inode_id, pid))? as Box<dyn Driver>)
+                },
+            )?,
         )?;
 
         let cwd = thread_group.cwd.try_clone()?;
@@ -318,13 +341,21 @@ impl ProcFs {
         self.register_file(
             dir_id,
             environ_filename,
-            Box::new(move |inode_id| Box::new(EnvironDriver::new(inode_id, pid))),
+            Box::try_new(
+                move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                    Ok(Box::try_new(EnvironDriver::new(inode_id, pid))? as Box<dyn Driver>)
+                },
+            )?,
         )?;
 
         self.register_file(
             dir_id,
             cmdline_filename,
-            Box::new(move |inode_id| Box::new(CmdlineDriver::new(inode_id, pid))),
+            Box::try_new(
+                move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                    Ok(Box::try_new(CmdlineDriver::new(inode_id, pid))? as Box<dyn Driver>)
+                },
+            )?,
         )?;
 
         if let Some(filename) = &thread_group.filename {
@@ -398,7 +429,10 @@ impl ProcFs {
 
         new.root_inode_id = root_inode_id;
 
-        let inode = Inode(inode, Box::new(|_inode_id| Box::new(DefaultDriver)));
+        let inode = Inode(
+            inode,
+            Box::try_new(|_inode_id| Ok(Box::try_new(DefaultDriver)? as Box<dyn Driver>))?,
+        );
 
         new.inodes.try_insert(root_inode_id, inode)?;
 
@@ -439,7 +473,7 @@ impl ProcFs {
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
-            Box::new(|_inode_id| Box::new(DefaultDriver)),
+            Box::try_new(|_inode_id| Ok(Box::try_new(DefaultDriver)? as Box<dyn Driver>))?,
         );
 
         let mut direntry = DirectoryEntryBuilder::new();
@@ -564,7 +598,7 @@ impl ProcFs {
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
-            Box::new(|_inode_id| Box::new(DefaultDriver)),
+            Box::try_new(|_inode_id| Ok(Box::try_new(DefaultDriver)? as Box<dyn Driver>))?,
         );
 
         let dir_id = self.dcache.add_entry(Some(parent), direntry)?;
@@ -690,7 +724,7 @@ impl FileSystem for ProcFs {
                         // Cleanup the incompatible-with-vfs directoryEntryIds in the direntry.
                         entry.get_directory_mut().unwrap().clear_entries();
                     }
-                    Some((entry, inode.inode_data, inode.1(inode_id)))
+                    Some((entry, inode.inode_data, inode.1(inode_id).ok()?))
                 } else {
                     None
                 }
