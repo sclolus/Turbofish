@@ -1,5 +1,6 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
+use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
@@ -9,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::Errno;
+use libc_binding::{off_t, Errno, Whence};
 
 #[derive(Debug, Clone)]
 pub struct MeminfoDriver {
@@ -41,20 +42,9 @@ pub struct MeminfoOperations {
     offset: usize,
 }
 
-impl FileOperation for MeminfoOperations {
-    fn get_inode_id(&self) -> SysResult<InodeId> {
-        Ok(self.inode_id)
-    }
-
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
-
-        //TODO: Unfailible context.
-        //TODO: This is dummy.
-        let meminfo_string = format!(
-            "MemTotal:        0 kB
+impl ProcFsOperations for MeminfoOperations {
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
+        let meminfo_string = "MemTotal:        0 kB
 MemFree:          0 kB
 MemAvailable:    0 kB
 Buffers:          0 kB
@@ -101,29 +91,26 @@ Hugepagesize:       0 kB
 Hugetlb:               0 kB
 DirectMap4k:      0 kB
 DirectMap2M:     0 kB
-DirectMap1G:     0 kB"
-        );
+DirectMap1G:     0 kB";
 
-        if self.offset >= meminfo_string.len() {
-            return Ok(IpcResult::Done(0));
-        }
+        Ok(Cow::from(meminfo_string))
+    }
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
+    }
+}
 
-        let version = &meminfo_string[self.offset as usize..];
+impl FileOperation for MeminfoOperations {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
 
-        let mut bytes = version.bytes();
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        self.seq_read(buf)
+    }
 
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
     }
 }
 

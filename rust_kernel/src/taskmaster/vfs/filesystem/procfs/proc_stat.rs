@@ -69,8 +69,9 @@ impl ProcFsOperations for ProcStatOperations {
 
         let uptime = unsafe { (dbg!(_get_pit_time()) as f32 * frequency) * 100.0 } as usize; // TODO: USER_HZ
                                                                                              // This is dummy.
-        eprintln!("f: {}, uptime: {}", frequency, uptime);
-        let proc_stat_string = format!(
+                                                                                             // eprintln!("f: {}, uptime: {}", frequency, uptime);
+        let proc_stat_string = tryformat!(
+            4096,
             "cpu {} {} {} {} {} {} {} {} {} {}\n\
              cpu0 {} {} {} {} {} {} {} {} {} {}\n\
              page 42 42\n\
@@ -103,7 +104,7 @@ impl ProcFsOperations for ProcStatOperations {
             uptime,
             uptime,
             uptime,
-        ); //TODO: try_format.
+        )?;
 
         Ok(Cow::from(proc_stat_string))
     }

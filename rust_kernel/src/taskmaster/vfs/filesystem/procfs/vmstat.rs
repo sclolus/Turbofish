@@ -37,7 +37,6 @@ impl Driver for VmstatDriver {
 
 #[derive(Debug, Default)]
 pub struct VmstatOperations {
-    // offset: u64,
     inode_id: InodeId,
     offset: usize,
 }
@@ -48,9 +47,9 @@ impl ProcFsOperations for VmstatOperations {
     }
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        //TODO: Unfailible context.
         //TODO: This is dummy.
-        let vmstat_string = format!(
+        let vmstat_string = tryformat!(
+            4096,
             "nr_free_pages 0
 nr_zone_inactive_anon 0
 nr_zone_active_anon 0
@@ -185,7 +184,7 @@ balloon_migrate 0
 swap_ra 0
 swap_ra_hit 0
 "
-        );
+        )?;
         Ok(Cow::from(vmstat_string))
     }
 }

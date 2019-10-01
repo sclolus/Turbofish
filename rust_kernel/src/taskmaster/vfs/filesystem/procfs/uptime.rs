@@ -58,12 +58,12 @@ impl ProcFsOperations for UptimeOperations {
         let uptime = unsafe { _get_pit_time() as f32 * frequency } as usize;
         //TODO: calculate time spend in idle process.
         let _idle_process_time = 0;
-        //TODO: Unfailible context.
         eprintln!("uptime {}", uptime);
-        let uptime_string = format!(
+        let uptime_string = tryformat!(
+            128,
             "{}.00 1.00\n",
             uptime // , idle_process_time
-        );
+        )?;
         Ok(Cow::from(uptime_string))
     }
 }

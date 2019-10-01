@@ -6,7 +6,7 @@ use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use fallible_collections::FallibleArc;
+use fallible_collections::{FallibleArc, TryCollect};
 
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
@@ -85,9 +85,12 @@ impl ProcFsOperations for EnvironOperations {
             .strings()
             .flat_map(|s| s.iter().map(|b| *b as u8))
             .skip(self.offset)
-            .collect();
+            .try_collect()?;
 
-        Ok(Cow::from(String::from_utf8(bytes).unwrap()))
+        Ok(Cow::from(String::from_utf8(bytes).map_err(|_| {
+            log::error!("invalid utf8 in environ operation");
+            Errno::EINVAL
+        })?))
     }
 }
 

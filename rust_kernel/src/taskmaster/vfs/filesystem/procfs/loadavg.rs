@@ -37,7 +37,6 @@ impl Driver for LoadavgDriver {
 
 #[derive(Debug, Default)]
 pub struct LoadavgOperations {
-    // offset: u64,
     inode_id: InodeId,
     offset: usize,
 }
@@ -48,7 +47,7 @@ impl ProcFsOperations for LoadavgOperations {
     }
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let load_avg_string = format!("0.00 0.00 0.00 0/0 1");
+        let load_avg_string = "0.00 0.00 0.00 0/0 1";
         Ok(Cow::from(load_avg_string))
     }
 }

@@ -55,8 +55,7 @@ impl ProcFsOperations for StatOperations {
         &mut self.offset
     }
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        // TODO: This is dummy.
-        let stat_string = format!("{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
+        let stat_string = tryformat!(4096, "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
                                   0,
                                   // state
@@ -159,7 +158,7 @@ impl ProcFsOperations for StatOperations {
                                   0,
                                   // exit_code
                                   0,
-        );
+        )?;
         Ok(Cow::from(stat_string))
     }
 }

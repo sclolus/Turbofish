@@ -27,7 +27,6 @@ unsafe impl Send for FilesystemsDriver {}
 
 #[derive(Debug, Default)]
 pub struct FilesystemsOperations {
-    // offset: u64,
     inode_id: InodeId,
     offset: usize,
 }
