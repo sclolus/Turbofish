@@ -6,9 +6,9 @@ mod rgb;
 use rgb::RGB;
 
 use super::{AdvancedGraphic, Drawer, IoError, IoResult, Pos};
-use crate::ansi_escape_code::AnsiColor;
 use alloc::vec;
 use alloc::vec::Vec;
+use ansi_escape_code::AnsiColor;
 
 #[derive(Debug, Clone)]
 pub struct VbeMode {

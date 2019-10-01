@@ -1,5 +1,5 @@
 use super::{Drawer, IoResult, Pos};
-use crate::ansi_escape_code::{AnsiColor, StandardColor};
+use ansi_escape_code::{AnsiColor, StandardColor};
 use io::{Io, Pio};
 
 const HEIGHT: usize = 25;

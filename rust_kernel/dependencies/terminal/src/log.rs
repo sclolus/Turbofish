@@ -1,7 +1,7 @@
 use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 
-use super::ansi_escape_code::color::Colored;
+use ansi_escape_code::color::Colored;
 
 pub struct SimpleLogger {
     /// External function binding: Usefull if somebody else want the log !

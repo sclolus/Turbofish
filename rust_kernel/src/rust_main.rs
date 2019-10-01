@@ -22,12 +22,13 @@ pub extern "C" fn kmain(
     );
 }
 
+use ansi_escape_code::color::Colored;
+
 use crate::drivers::pit_8253::OperatingMode;
 use crate::drivers::{Acpi, ACPI, PCI, PIC_8259, PIT0};
 use crate::memory::init_memory_system;
 use crate::memory::tools::device_map::get_device_map_slice;
 use crate::system::init_idt;
-use crate::terminal::ansi_escape_code::color::Colored;
 use crate::terminal::init_terminal;
 use crate::terminal::monitor::{Drawer, SCREEN_MONAD};
 use crate::watch_dog;

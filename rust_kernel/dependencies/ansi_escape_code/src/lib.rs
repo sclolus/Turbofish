@@ -1,8 +1,10 @@
 //! [Ansi escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
-pub mod color;
-pub mod cursor;
+#![cfg_attr(not(test), no_std)]
 
+pub mod color;
 pub use color::*;
+
+pub mod cursor;
 pub use cursor::*;
 
 use core::slice::SliceIndex;
@@ -90,10 +92,8 @@ impl<'a> Iterator for IterEscaped<'a> {
                 }
             }
         } else {
-            let next_escape = self.off
-                + self.s[self.off..]
-                    .find(|x: char| x == 0x1b as char)
-                    .unwrap_or(self.s[self.off..].len());
+            let next_escape =
+                self.off + self.s[self.off..].find(|x: char| x == 0x1b as char).unwrap_or(self.s[self.off..].len());
             let ret = &self.s[self.off..next_escape];
             self.off = next_escape;
             Str(ret)
@@ -104,7 +104,7 @@ impl<'a> Iterator for IterEscaped<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ansi_escape_code::color::{AnsiColor, Colored};
+    use crate::color::{AnsiColor, Colored};
     #[test]
     fn test_iter_escape() {
         use EscapedItem::*;
@@ -113,15 +113,9 @@ mod test {
         assert_eq!(iterator.count(), 3);
 
         let mut iterator = iter_escaped(&s);
-        assert_eq!(
-            iterator.next().unwrap(),
-            Escaped(EscapedCode::Color(AnsiColor::BLACK))
-        );
+        assert_eq!(iterator.next().unwrap(), Escaped(EscapedCode::Color(AnsiColor::BLACK)));
         assert_eq!(iterator.next().unwrap(), Str("I AM BLACK"));
-        assert_eq!(
-            iterator.next().unwrap(),
-            Escaped(EscapedCode::Color(AnsiColor::default()))
-        );
+        assert_eq!(iterator.next().unwrap(), Escaped(EscapedCode::Color(AnsiColor::default())));
         // for s in iter_escaped(&format!("{}", "I AM BLACK".black())) {
         //     dbg!(s);
         // }
@@ -140,10 +134,7 @@ mod test {
         use EscapedItem::*;
         let s = format!("{}{}", AnsiColor::RED, "H");
         let mut iterator = iter_escaped(&s);
-        assert_eq!(
-            iterator.next().unwrap(),
-            Escaped(EscapedCode::Color(AnsiColor::RED))
-        );
+        assert_eq!(iterator.next().unwrap(), Escaped(EscapedCode::Color(AnsiColor::RED)));
         assert_eq!(iterator.next().unwrap(), Str("H"));
         assert_eq!(iterator.next(), None);
     }

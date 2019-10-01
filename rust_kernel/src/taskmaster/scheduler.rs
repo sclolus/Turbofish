@@ -16,6 +16,7 @@ use second_callback::{second_callback_handler, SECOND_CALLBACK_TRIGGER};
 use alloc::boxed::Box;
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
+use ansi_escape_code::Colored;
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicI32, Ordering};
 use fallible_collections::btree::BTreeMap;
@@ -28,7 +29,6 @@ use messaging::{MessageTo, ProcessGroupMessage, ProcessMessage};
 use terminal::TERMINAL;
 
 use crate::drivers::PIT0;
-use crate::terminal::ansi_escape_code::Colored;
 
 /// These extern functions are coded in low level assembly. They are 'arch specific i686'
 extern "C" {

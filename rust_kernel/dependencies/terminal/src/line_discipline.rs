@@ -1,5 +1,5 @@
-use super::ansi_escape_code::CursorMove;
 use super::tty::{BufferedTty, Scroll, Tty};
+use ansi_escape_code::CursorMove;
 use arrayvec::{ArrayVec, CapacityError};
 use core::cmp::min;
 use core::convert::TryFrom;

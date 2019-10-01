@@ -52,7 +52,12 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
-    fn write(&mut self, _inode_number: u32, _offset: &mut u64, _buf: &[u8]) -> SysResult<(u32, InodeData)> {
+    fn write(
+        &mut self,
+        _inode_number: u32,
+        _offset: &mut u64,
+        _buf: &[u8],
+    ) -> SysResult<(u32, InodeData)> {
         Err(Errno::ENOSYS)
     }
 
