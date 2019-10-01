@@ -7,6 +7,8 @@ use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Pat
 
 use crate::taskmaster::SCHEDULER;
 
+use crate::taskmaster::thread_group::ThreadGroup;
+
 use super::dead::DeadFileSystem;
 use super::{KeyGenerator, Mapper};
 use crate::taskmaster::drivers::DefaultDriver;
@@ -27,6 +29,7 @@ use alloc::sync::Arc;
 use core::default::Default;
 use sync::DeadMutex;
 mod procfs_driver;
+pub use procfs_driver::ProcFsOperations;
 
 mod version;
 pub use version::VersionDriver;
@@ -190,6 +193,185 @@ impl ProcFs {
         Ok(dir_id)
     }
 
+    pub fn register_base_drivers(&mut self) -> SysResult<()> {
+        let (root_dir_id, _) = self.root_ids();
+        let version_filename = Filename::from_str_unwrap("version");
+        let filesystems_filename = Filename::from_str_unwrap("filesystems");
+        let proc_stat_filename = Filename::from_str_unwrap("stat");
+        let uptime_filename = Filename::from_str_unwrap("uptime");
+        let loadavg_filename = Filename::from_str_unwrap("loadavg");
+        let meminfo_filename = Filename::from_str_unwrap("meminfo");
+        let vmstat_filename = Filename::from_str_unwrap("vmstat");
+        let mounts_filename = Filename::from_str_unwrap("mounts");
+
+        self.register_file(
+            root_dir_id,
+            filesystems_filename,
+            Box::new(|inode_id| Box::new(filesystems::FilesystemsDriver::new(inode_id))),
+        )?;
+        self.register_file(
+            root_dir_id,
+            version_filename,
+            Box::new(|inode_id| Box::new(version::VersionDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            proc_stat_filename,
+            Box::new(|inode_id| Box::new(proc_stat::ProcStatDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            uptime_filename,
+            Box::new(|inode_id| Box::new(uptime::UptimeDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            loadavg_filename,
+            Box::new(|inode_id| Box::new(loadavg::LoadavgDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            meminfo_filename,
+            Box::new(|inode_id| Box::new(meminfo::MeminfoDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            vmstat_filename,
+            Box::new(|inode_id| Box::new(vmstat::VmstatDriver::new(inode_id))),
+        )?;
+
+        self.register_file(
+            root_dir_id,
+            mounts_filename,
+            Box::new(|inode_id| Box::new(mounts::MountsDriver::new(inode_id))),
+        )?;
+
+        // Inserting divers basic procfs files.
+        Ok(())
+    }
+
+    pub fn register_pid_directory(&mut self, pid: Pid) -> SysResult<()> {
+        let (root_dir_id, _) = self.root_ids();
+        let pid_filename = format!("{}", pid); // unfaillible context
+        let pid_filename = Filename::from_str_unwrap(pid_filename.as_str());
+
+        if self
+            .children_direntries(root_dir_id)?
+            .any(|entry| entry.filename == pid_filename)
+        {
+            return Ok(());
+        }
+
+        let mode = FileType::DIRECTORY
+            | FileType::USER_READ_PERMISSION
+            | FileType::USER_EXECUTE_PERMISSION
+            | FileType::GROUP_READ_PERMISSION
+            | FileType::GROUP_EXECUTE_PERMISSION
+            | FileType::OTHER_READ_PERMISSION
+            | FileType::OTHER_EXECUTE_PERMISSION;
+
+        let dir_id = self.mkdir(root_dir_id, pid_filename, mode)?;
+        self.pid_directories.try_insert((dir_id, pid))?;
+
+        Ok(())
+    }
+
+    pub fn fill_pid_directory(&mut self, pid: Pid) -> SysResult<()> {
+        let cwd_filename = Filename::from_str_unwrap("cwd");
+        let stat_filename = Filename::from_str_unwrap("stat");
+        let environ_filename = Filename::from_str_unwrap("environ");
+        let cmdline_filename = Filename::from_str_unwrap("cmdline");
+        let exe_filename = Filename::from_str_unwrap("exe");
+        let self_filename = Filename::from_str_unwrap("self");
+
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let thread_group = scheduler
+            .get_thread_group(pid)
+            .expect("Could not find corresponding thread group for pid");
+
+        let dir_id = self
+            .get_pid_directory(pid)
+            .expect("Could not get the requested pid directory")
+            .id;
+
+        self.register_file(
+            dir_id,
+            stat_filename,
+            Box::new(move |inode_id| Box::new(StatDriver::new(inode_id, pid))),
+        )?;
+
+        let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
+
+        self.symlink(dir_id, cwd_filename, cwd)?;
+
+        self.register_file(
+            dir_id,
+            environ_filename,
+            Box::new(move |inode_id| Box::new(EnvironDriver::new(inode_id, pid))),
+        )?;
+
+        self.register_file(
+            dir_id,
+            cmdline_filename,
+            Box::new(move |inode_id| Box::new(CmdlineDriver::new(inode_id, pid))),
+        )?;
+
+        if let Some(filename) = &thread_group.filename {
+            self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn is_pid_directory(&self, direntry_id: DirectoryEntryId) -> bool {
+        self.pid_directories
+            .iter()
+            .any(|(id, _)| *id == direntry_id)
+    }
+
+    fn get_pid_directory(&self, pid: Pid) -> SysResult<&DirectoryEntry> {
+        let (direntry_id, _) = self
+            .pid_directories
+            .iter()
+            .find(|(_, entry_pid)| *entry_pid == pid)
+            .expect("No such pid file exists");
+
+        self.dcache.get_entry(direntry_id)
+    }
+
+    fn get_pid_directory_entry(
+        &self,
+        direntry_id: DirectoryEntryId,
+    ) -> SysResult<(DirectoryEntryId, Pid)> {
+        Ok(*self // TODO: think about actually returning a reference
+            .pid_directories
+            .iter()
+            .find(|(id, _)| *id == direntry_id)
+            .ok_or(Errno::ENOENT)?)
+    }
+
+    pub fn register_self_directory(&mut self) -> SysResult<()> {
+        let (root_dir_id, _) = self.root_ids();
+        let self_filename = Filename::from_str_unwrap("self");
+
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let (current_pid, _) = scheduler.current_task_id();
+        let pid_path = Path::try_from(format!("/proc/{}", current_pid).as_str())?; // TODO: unfaillible context/hardcoded.
+
+        self.symlink(root_dir_id, self_filename, pid_path)
+            .expect("Failed to creat the /proc/self symlink");
+        Ok(())
+    }
+
     pub fn new(fs_id: FileSystemId) -> SysResult<Self> {
         let mut new = Self {
             fs_id: fs_id,
@@ -206,9 +388,7 @@ impl ProcFs {
         let root_direntry = new.dcache.get_entry(&root_dir_id)?;
         let root_inode_id = new.new_inode_id(root_direntry.inode_id.inode_number);
         let root_direntry = new.dcache.get_entry_mut(&root_dir_id)?;
-        root_direntry
-            .set_filename(Filename::from_str_unwrap("ProcFsRoot"))
-            .set_inode_id(root_inode_id);
+        root_direntry.set_inode_id(root_inode_id);
 
         let inode = VfsInode::root_inode()?;
 
@@ -218,64 +398,7 @@ impl ProcFs {
 
         new.inodes.try_insert(root_inode_id, inode)?;
 
-        let version_filename = Filename::from_str_unwrap("version");
-        let filesystems_filename = Filename::from_str_unwrap("filesystems");
-        let proc_stat_filename = Filename::from_str_unwrap("stat");
-        let uptime_filename = Filename::from_str_unwrap("uptime");
-        let loadavg_filename = Filename::from_str_unwrap("loadavg");
-        let meminfo_filename = Filename::from_str_unwrap("meminfo");
-        let vmstat_filename = Filename::from_str_unwrap("vmstat");
-        let mounts_filename = Filename::from_str_unwrap("mounts");
-
-        new.register_file(
-            root_dir_id,
-            filesystems_filename,
-            Box::new(|inode_id| Box::new(filesystems::FilesystemsDriver::new(inode_id))),
-        )?;
-        new.register_file(
-            root_dir_id,
-            version_filename,
-            Box::new(|inode_id| Box::new(version::VersionDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            proc_stat_filename,
-            Box::new(|inode_id| Box::new(proc_stat::ProcStatDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            uptime_filename,
-            Box::new(|inode_id| Box::new(uptime::UptimeDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            loadavg_filename,
-            Box::new(|inode_id| Box::new(loadavg::LoadavgDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            meminfo_filename,
-            Box::new(|inode_id| Box::new(meminfo::MeminfoDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            vmstat_filename,
-            Box::new(|inode_id| Box::new(vmstat::VmstatDriver::new(inode_id))),
-        )?;
-
-        new.register_file(
-            root_dir_id,
-            mounts_filename,
-            Box::new(|inode_id| Box::new(mounts::MountsDriver::new(inode_id))),
-        )?;
-
-        // Inserting divers basic procfs files.
-
+        // new.register_base_drivers()?;
         Ok(new)
     }
 
@@ -348,7 +471,7 @@ impl ProcFs {
                     Ok(entry) => entry,
                     Err(_) => return None, // TODO: change this maybe
                 };
-                eprintln!("Searching {:?}", entry.inode_id);
+                // eprintln!("Searching {:?}", entry.inode_id);
                 let inode = inodes
                     .get(&entry.inode_id)
                     .expect("No corresponding inode for direntry");
@@ -463,7 +586,7 @@ impl FileSystem for ProcFs {
             .get(&root_inode_id)
             .expect("There should be a root inode for procfs");
 
-        let mut new_direntry = direntry.clone();
+        let mut new_direntry = direntry.clone(); //TODO: That's not faillible
 
         new_direntry.get_directory_mut().unwrap().clear_entries();
         Ok((new_direntry, inode.inode_data, Box::try_new(DefaultDriver)?))
@@ -484,109 +607,67 @@ impl FileSystem for ProcFs {
         // That's very dummy but hey, fuck this design.
         let (root_dir_id, _root_inode_id) = self.root_ids();
 
-        // Remove pid directories that points to PID that no longer exists.
-        let pid_directories_to_remove: Vec<(DirectoryEntryId, Pid)> = self
-            .pid_directories
-            .iter()
-            .filter_map(|(id, pid)| {
-                SCHEDULER.force_unlock();
-                if SCHEDULER.lock().get_thread_group(*pid).is_none() {
-                    Some((*id, *pid))
-                } else {
-                    None
-                }
-            })
-            .try_collect()?;
-        for (pid_directory, pid) in pid_directories_to_remove {
-            self.recursive_remove(pid_directory)?;
-            self.pid_directories.remove(&(pid_directory, pid));
-        }
+        // // Remove pid directories that points to PID that no longer exists.
+        // let pid_directories_to_remove: Vec<(DirectoryEntryId, Pid)> = self
+        //     .pid_directories
+        //     .iter()
+        //     .filter_map(|(id, pid)| {
+        //         SCHEDULER.force_unlock();
+        //         if SCHEDULER.lock().get_thread_group(*pid).is_none() {
+        //             Some((*id, *pid))
+        //         } else {
+        //             None
+        //         }
+        //     })
+        //     .try_collect()?;
+        // for (pid_directory, pid) in pid_directories_to_remove {
+        //     self.recursive_remove(pid_directory)?;
+        //     self.pid_directories.remove(&(pid_directory, pid));
+        // }
 
-        let self_filename = Filename::from_str_unwrap("self");
+        // let self_filename = Filename::from_str_unwrap("self");
 
-        let self_dir_id = self
-            .dcache
-            .children(root_dir_id)?
-            .find(|entry| entry.filename == self_filename)
-            .map(|entry| entry.id);
-        if self_dir_id.is_some() {
-            // refactor this, this is horrible.
-            self.dcache
-                .remove_entry(self_dir_id.unwrap())
-                .expect("Failed to removed the old /proc/self symlink");
-        }
+        // let self_dir_id = self
+        //     .dcache
+        //     .children(root_dir_id)?
+        //     .find(|entry| entry.filename == self_filename)
+        //     .map(|entry| entry.id);
+        // if self_dir_id.is_some() {
+        //     // refactor this, this is horrible.
+        //     self.dcache
+        //         .remove_entry(self_dir_id.unwrap())
+        //         .expect("Failed to removed the old /proc/self symlink");
+        // }
 
         // log::info!("Trying to lock scheduler");
-        SCHEDULER.force_unlock();
-        let scheduler = SCHEDULER.lock();
-
-        let thread_groups = scheduler.iter_thread_groups_with_pid();
-
-        for (&pid, thread_group) in thread_groups {
-            let pid_filename = format!("{}", pid); // unfaillible context
-            let pid_filename = Filename::from_str_unwrap(pid_filename.as_str());
-
-            if self
-                .children_direntries(root_dir_id)?
-                .any(|entry| entry.filename == pid_filename)
-            {
-                continue;
-            }
-
-            let mode = FileType::DIRECTORY
-                | FileType::USER_READ_PERMISSION
-                | FileType::USER_EXECUTE_PERMISSION
-                | FileType::GROUP_READ_PERMISSION
-                | FileType::GROUP_EXECUTE_PERMISSION
-                | FileType::OTHER_READ_PERMISSION
-                | FileType::OTHER_EXECUTE_PERMISSION;
-
-            let dir_id = self.mkdir(root_dir_id, pid_filename, mode)?;
-            self.pid_directories.try_insert((dir_id, pid))?;
-
-            let stat_filename = Filename::from_str_unwrap("stat");
-            self.register_file(
-                dir_id,
-                stat_filename,
-                Box::new(move |inode_id| Box::new(StatDriver::new(inode_id, pid))),
-            )?;
-
-            let cwd_filename = Filename::from_str_unwrap("cwd");
-            let cwd = thread_group.cwd.clone(); //TODO: unfaillible context right here
-
-            self.symlink(dir_id, cwd_filename, cwd)?;
-
-            let environ_filename = Filename::from_str_unwrap("environ");
-            self.register_file(
-                dir_id,
-                environ_filename,
-                Box::new(move |inode_id| Box::new(EnvironDriver::new(inode_id, pid))),
-            )?;
-
-            let cmdline_filename = Filename::from_str_unwrap("cmdline");
-            self.register_file(
-                dir_id,
-                cmdline_filename,
-                Box::new(move |inode_id| Box::new(CmdlineDriver::new(inode_id, pid))),
-            )?;
-
-            let exe_filename = Filename::from_str_unwrap("exe");
-            if let Some(filename) = &thread_group.filename {
-                self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
-            }
-        }
-        let (current_pid, _) = scheduler.current_task_id();
-        let pid_path = Path::try_from(format!("/proc/{}", current_pid).as_str())?; // TODO: unfaillible context/hardcoded.
-
-        self.symlink(root_dir_id, self_filename, pid_path)
-            .expect("Failed to creat the /proc/self symlink");
-
-        let direntry = self
+        let direntry_id = self
             .dcache
             .iter()
             .find(|dir| dir.inode_id == inode_id)
-            .expect("No corresponding directory for Inode");
+            .expect("No corresponding directory for Inode")
+            .id;
 
+        if direntry_id == root_dir_id {
+            SCHEDULER.force_unlock();
+            let scheduler = SCHEDULER.lock();
+
+            let thread_groups = scheduler.iter_thread_groups_with_pid();
+
+            for (&pid, _thread_group) in thread_groups {
+                self.register_pid_directory(pid)?;
+            }
+
+            self.register_self_directory()?;
+            self.register_base_drivers()?;
+        } else if self.is_pid_directory(direntry_id) {
+            let (_, pid) = self.get_pid_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
+            self.fill_pid_directory(pid)?;
+        }
+
+        let direntry = self
+            .dcache
+            .get_entry(&direntry_id)
+            .expect("looked up direntry is supposed to exists");
         let inodes = &mut self.inodes;
         let dcache = &self.dcache;
 
@@ -613,6 +694,13 @@ impl FileSystem for ProcFs {
             .try_collect()?)
     }
 
+    fn remove_inode(&mut self, inode_nbr: u32) -> SysResult<()> {
+        let inode_id = self.new_inode_id(inode_nbr);
+
+        self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
+        Ok(())
+    }
+
     fn unlink(
         &mut self,
         _dir_inode_nbr: u32,
@@ -621,10 +709,18 @@ impl FileSystem for ProcFs {
         inode_nbr: u32,
     ) -> SysResult<()> {
         let inode_id = self.new_inode_id(inode_nbr);
-        eprintln!(
-            "Unlinking {:?}, freeing_inode: {}",
-            inode_id, free_inode_data
-        );
+        let direntry_id = self
+            .dcache
+            .iter()
+            .find(|entry| entry.inode_id == inode_id)
+            .ok_or(Errno::ENOENT)?
+            .id;
+
+        // eprintln!(
+        //     "Unlinking {:?}, freeing_inode: {}",
+        //     inode_id, free_inode_data
+        // );
+
         let inode = self.inodes.get_mut(&inode_id).ok_or(Errno::ENOENT)?;
 
         // In our use case, we just wanna remove the orphan inodes,
@@ -633,10 +729,15 @@ impl FileSystem for ProcFs {
             inode.link_number -= 1;
         }
 
+        if self.is_pid_directory(direntry_id) {
+            let (_, pid) = self.get_pid_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
+            assert!(self.pid_directories.remove(&(direntry_id, pid)));
+        }
+        self.dcache.remove_entry(direntry_id)?;
+
         if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
         }
-
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 use crate::drivers::pit_8253::PIT0;
 
 use alloc::sync::Arc;
@@ -65,6 +65,7 @@ impl FileOperation for UptimeOperations {
         //TODO: calculate time spend in idle process.
         let _idle_process_time = 0;
         //TODO: Unfailible context.
+        eprintln!("uptime {}", uptime);
         let uptime_string = format!(
             "{}.00 1.00",
             uptime // , idle_process_time
@@ -90,5 +91,11 @@ impl FileOperation for UptimeOperations {
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for UptimeOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

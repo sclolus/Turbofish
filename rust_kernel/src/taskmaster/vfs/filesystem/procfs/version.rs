@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -49,36 +49,21 @@ impl FileOperation for VersionOperations {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
+        self.seq_read(buf)
+    }
+}
 
-        if self.offset >= KERNEL_VERSION.len() {
-            return Ok(IpcResult::Done(0));
-        }
-
-        let version = &KERNEL_VERSION[self.offset as usize..];
-
-        let mut bytes = version.bytes();
-
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+impl ProcFsOperations for VersionOperations {
+    fn get_seq_string(&self) -> SysResult<&str> {
+        Ok(KERNEL_VERSION)
+    }
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
     }
 }
 
 impl Drop for VersionOperations {
     fn drop(&mut self) {
-        eprintln!("=======VERSION DROP: {:?}=======", self.inode_id);
         VFS.lock().close_file_operation(self.inode_id);
     }
 }

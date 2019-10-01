@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 use crate::taskmaster::SCHEDULER;
 
 use alloc::sync::Arc;
@@ -99,5 +99,11 @@ impl FileOperation for CmdlineOperations {
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for CmdlineOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

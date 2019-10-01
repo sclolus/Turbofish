@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -124,5 +124,11 @@ DirectMap1G:     0 kB"
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for MeminfoOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

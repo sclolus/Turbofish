@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -210,5 +210,11 @@ swap_ra_hit 0
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for VmstatOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

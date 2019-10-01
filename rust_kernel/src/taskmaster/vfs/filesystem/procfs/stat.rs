@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -86,13 +86,13 @@ impl FileOperation for StatOperations {
                                   // cmajflt
                                   0,
                                   // utime
-                                  0,
+                                  42,
                                   // stime
-                                  0,
+                                  42,
                                   // cutime
-                                  0,
+                                  42,
                                   // cstime
-                                  0,
+                                  42,
                                   // priority
                                   0,
                                   // nice
@@ -184,5 +184,11 @@ impl FileOperation for StatOperations {
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for StatOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

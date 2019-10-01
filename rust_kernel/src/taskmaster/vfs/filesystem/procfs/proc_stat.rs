@@ -1,4 +1,5 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use crate::drivers::pit_8253::PIT0;
 
 use alloc::sync::Arc;
 
@@ -40,17 +41,22 @@ pub struct ProcStatOperations {
     offset: usize,
 }
 
-const PROC_STAT_HARDCODE: &'static str = "cpu 0 0 0 0 0 0 0 0 0 0\n\
-                                          cpu0 0 0 0 0 0 0 0 0 0 0\n\
-                                          page 0 0\n\
-                                          swap 1 0\n\
-                                          intr 0\n\
-                                          ctx 0\n\
-                                          btime\n\
-                                          processes\n\
-                                          procs_running 1\n\
-                                          procs_blocked 2\n\
-                                          softirq 0 0 0 0 0 0 0 0 0 0\n";
+const PROC_STAT_HARDCODE: &'static str = "cpu 42 42 42 42 42 42 42 42 42 42\n\
+                                          cpu0 42 42 42 42 42 42 42 42 42 42\n\
+                                          page 42 42\n\
+                                          swap 1 42\n\
+                                          intr 42\n\
+                                          ctx 42\n\
+                                          btime 1 1\n\
+                                          processes 42\n\
+                                          procs_running 42\n\
+                                          procs_blocked 42\n\
+                                          softirq 42 42 42 42 42 42 42 42 42 42\n";
+
+extern "C" {
+    /// Get the pit realtime.
+    fn _get_pit_time() -> u32;
+}
 
 impl FileOperation for ProcStatOperations {
     fn get_inode_id(&self) -> SysResult<InodeId> {
@@ -61,12 +67,51 @@ impl FileOperation for ProcStatOperations {
         if buf.len() > u32::max_value() as usize {
             return Err(Errno::EOVERFLOW);
         }
+        let frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
 
-        if self.offset >= PROC_STAT_HARDCODE.len() {
+        let uptime = unsafe { (dbg!(_get_pit_time()) as f32 * frequency) * 100.0 } as usize; // TODO: USER_HZ
+                                                                                             // This is dummy.
+        eprintln!("f: {}, uptime: {}", frequency, uptime);
+        let proc_stat_string = format!(
+            "cpu {} {} {} {} {} {} {} {} {} {}\n\
+             cpu0 {} {} {} {} {} {} {} {} {} {}\n\
+             page 42 42\n\
+             swap 1 42\n\
+             intr 42\n\
+             ctx 42\n\
+             btime {}\n\
+             processes 42\n\
+             procs_running 42\n\
+             procs_blocked 42\n\
+             softirq 42 42 42 42 42 42 42 42 42 42\n",
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+            uptime,
+        ); //TODO: try_format.
+
+        if self.offset >= proc_stat_string.len() {
             return Ok(IpcResult::Done(0));
         }
 
-        let version = &PROC_STAT_HARDCODE[self.offset as usize..];
+        let version = &proc_stat_string[self.offset as usize..];
 
         let mut bytes = version.bytes();
 
@@ -74,13 +119,17 @@ impl FileOperation for ProcStatOperations {
         for (index, to_fill) in buf.iter_mut().enumerate() {
             match bytes.next() {
                 Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
+                None => break,
             }
+            ret += 1;
         }
         self.offset += ret;
         Ok(IpcResult::Done(ret as u32))
+    }
+}
+
+impl Drop for ProcStatOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

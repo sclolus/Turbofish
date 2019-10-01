@@ -122,10 +122,10 @@ impl VirtualFileSystem {
         {
             return Err(Errno::EEXIST);
         }
-        eprintln!(
-            "Adding inode {:?} for direntry: {}",
-            inode_data.id, direntry.filename
-        );
+        // eprintln!(
+        //     "Adding inode {:?} for direntry: {}",
+        //     inode_data.id, direntry.filename
+        // );
 
         let direntry = self.dcache.add_entry(parent, direntry)?;
 
@@ -170,6 +170,7 @@ impl VirtualFileSystem {
             }
             // This means that dynamic filesystems shall not support multiple hardlinks for now.
             // self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
+            // eprintln!("Callling funlink.");
             self.funlink(child)?;
             // self.dcache.remove_entry(child)?;
         })
@@ -783,6 +784,10 @@ impl VirtualFileSystem {
         // If the link number reach 0 and there is no open file
         // operation, we unlink on the filesystem directly, else we
         // will unlink when the last file operation is closed
+        // eprintln!(
+        //     "Calling funlink on inode: {}({:?})",
+        //     entry.filename, entry.inode_id
+        // );
         let free_inode_data: bool = corresponding_inode.unlink();
         let filename = entry.filename.clone(); //TODO: remove this
         self.dcache.remove_entry(entry_id)?;
@@ -790,17 +795,17 @@ impl VirtualFileSystem {
         // we remove the inode only if we free the inode data
         if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
-        } else if corresponding_inode.lazy_unlink {
-            eprintln!(
-                "Lazy unlinking entry for {}, hardlinks: {}",
-                filename, corresponding_inode.link_number
-            );
-        } else {
-            eprintln!(
-                "There are still {} hardlinks for {}",
-                corresponding_inode.link_number, filename
-            );
-        }
+        } // else if corresponding_inode.lazy_unlink {
+          //     eprintln!(
+          //         "Lazy unlinking entry for {}, hardlinks: {}",
+          //         filename, corresponding_inode.link_number
+          //     );
+          // } else {
+          //     eprintln!(
+          //         "There are still {} hardlinks for {}",
+          //         corresponding_inode.link_number, filename
+          //     );
+          // }
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
             parent_inode_number,

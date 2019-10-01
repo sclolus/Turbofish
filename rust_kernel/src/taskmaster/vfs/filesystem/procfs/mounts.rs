@@ -1,5 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
-// use crate::taskmaster::vfs::VFS;
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -47,36 +46,23 @@ impl FileOperation for MountsOperations {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
+        self.seq_read(buf)
+    }
+}
 
-        // let vfs = VFS.force_unlock();
-
-        // vfs.mounted_filesystems.iter().map(|fs| fs.lock())
-
+impl ProcFsOperations for MountsOperations {
+    fn get_seq_string(&self) -> SysResult<&str> {
         let hardcoded_mounts_string = "/dev/sda1 / ext2 rw 0 0\n\
                                        proc /proc procfs ro 0 0\n";
-        let mounts_string = hardcoded_mounts_string;
-        if self.offset >= mounts_string.len() {
-            return Ok(IpcResult::Done(0));
-        }
+        Ok(hardcoded_mounts_string)
+    }
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
+    }
+}
 
-        let mounts_string = &mounts_string[self.offset as usize..];
-
-        let mut bytes = mounts_string.bytes();
-
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+impl Drop for MountsOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }

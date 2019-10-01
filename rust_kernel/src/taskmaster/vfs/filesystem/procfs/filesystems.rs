@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
 use alloc::sync::Arc;
 
@@ -50,30 +50,21 @@ impl FileOperation for FilesystemsOperations {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
+        self.seq_read(buf)
+    }
+}
 
-        let filesystems_string = FILESYSTEMS;
-        if self.offset >= FILESYSTEMS.len() {
-            return Ok(IpcResult::Done(0));
-        }
+impl ProcFsOperations for FilesystemsOperations {
+    fn get_seq_string(&self) -> SysResult<&str> {
+        Ok(FILESYSTEMS)
+    }
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
+    }
+}
 
-        let filesystems_string = &filesystems_string[self.offset as usize..];
-
-        let mut bytes = filesystems_string.bytes();
-
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+impl Drop for FilesystemsOperations {
+    fn drop(&mut self) {
+        VFS.lock().close_file_operation(self.inode_id);
     }
 }
