@@ -1,5 +1,6 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
+use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
@@ -9,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::{Errno, Pid};
+use libc_binding::{off_t, Errno, Pid, Whence};
 
 #[derive(Debug, Clone)]
 pub struct StatDriver {
@@ -49,16 +50,11 @@ impl StatOperations {
     }
 }
 
-impl FileOperation for StatOperations {
-    fn get_inode_id(&self) -> SysResult<InodeId> {
-        Ok(self.inode_id)
+impl ProcFsOperations for StatOperations {
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
     }
-
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
-
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
         // TODO: This is dummy.
         let stat_string = format!("{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
@@ -164,26 +160,21 @@ impl FileOperation for StatOperations {
                                   // exit_code
                                   0,
         );
-        if self.offset >= stat_string.len() {
-            return Ok(IpcResult::Done(0));
-        }
+        Ok(Cow::from(stat_string))
+    }
+}
 
-        let stat_string = &stat_string[self.offset as usize..];
+impl FileOperation for StatOperations {
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        self.seq_read(buf)
+    }
 
-        let mut bytes = stat_string.bytes();
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
 
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
     }
 }
 
