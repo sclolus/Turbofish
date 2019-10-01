@@ -194,6 +194,8 @@ impl TryClone for CStringArray {
             c_pointer.try_push(copied.as_ptr())?;
             owned_content.try_push(copied)?;
         }
+
+        c_pointer.try_push(0x0 as *const c_char)?;
         Ok(Self {
             c_pointer,
             owned_content,
