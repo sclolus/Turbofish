@@ -15,3 +15,4 @@ messaging = { path = "../dependencies/messaging" }
 interrupts = { path = "../dependencies/interrupts" }
 libc_binding = { path = "../dependencies/libc_binding" }
 fallible_collections = { path = "../dependencies/fallible_collections" }
+ansi_escape_code = { path = "../dependencies/ansi_escape_code" }

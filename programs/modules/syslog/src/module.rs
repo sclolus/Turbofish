@@ -9,9 +9,10 @@ static mut CTX: Option<Ctx> = None;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use ansi_escape_code::Colored;
 use fallible_collections::{try_vec, tryformat, vec::FallibleVec};
 use libc_binding::Errno;
-use log::Record;
+use log::{Level, Record};
 
 #[allow(dead_code)]
 /// Main Context of the module
@@ -99,18 +100,54 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
 const LOG_FORMAT_MAX_CAPACITY: usize = 4096;
 
 /// Store a log entry into the module memory
-fn add_entry(entry: &Record) {
+fn add_entry(record: &Record) {
     let context = unsafe { &mut CTX.as_mut().unwrap() };
-    match tryformat!(LOG_FORMAT_MAX_CAPACITY, "{:?}\n", entry) {
-        Ok(string) => {
-            let r = context.cache.try_push(string);
-            if let Err(_e) = r {
-                print!("Cannot push entry into syslog cache");
+
+    let level_str = match record.level() {
+        Level::Info => "INFO".green(),
+        Level::Trace => "TRACE".white(),
+        Level::Error => "ERROR".red(),
+        Level::Warn => "WARN".yellow(),
+        Level::Debug => "DEBUG".cyan(),
+    };
+
+    let file = match record.file() {
+        Some(file) => file,
+        None => "unknown",
+    };
+
+    let line = tryformat!(
+        LOG_FORMAT_MAX_CAPACITY,
+        "{}",
+        match record.line() {
+            Some(line_number) => line_number,
+            None => 0,
+        }
+    );
+
+    let msg = tryformat!(LOG_FORMAT_MAX_CAPACITY, "{}", record.args());
+
+    if let (Ok(line), Ok(msg)) = (line, msg) {
+        match tryformat!(
+            LOG_FORMAT_MAX_CAPACITY,
+            "{} msg: {} from: {} line: {}\n",
+            level_str,
+            msg.cyan(),
+            file.yellow(),
+            line.yellow()
+        ) {
+            Ok(string) => {
+                let r = context.cache.try_push(string);
+                if let Err(_e) = r {
+                    print!("Cannot push entry into syslog cache");
+                }
+            }
+            Err(_e) => {
+                print!("Cannot allocate enough memory to format syslog entry");
             }
         }
-        Err(_e) => {
-            print!("Cannot allocate enough memory to format syslog entry");
-        }
+    } else {
+        print!("Cannot allocate some stuff");
     }
 }
 
