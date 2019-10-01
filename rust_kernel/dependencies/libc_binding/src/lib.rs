@@ -714,6 +714,10 @@ impl FileType {
 
         excess_bits.is_empty()
     }
+    pub fn extract_pure_mode(self) -> Self {
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        self & mask
+    }
 }
 
 impl TryFrom<mode_t> for FileType {

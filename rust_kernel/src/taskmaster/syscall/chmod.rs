@@ -21,17 +21,12 @@ pub fn sys_chmod(path: *const c_char, mode: mode_t) -> SysResult<u32> {
         let creds = &tg.credentials;
         let cwd = &tg.cwd;
         let mode = FileType::try_from(mode)?;
-        if !mode.is_pure_mode() {
-            log::warn!(
-                "sys_chmod({}, {:#?}) was called, mode is invalid",
-                safe_path,
-                mode
-            );
-            return Err(Errno::EINVAL);
-        }
+
+        // this extract only permission and special bits from mode
+        let pure_mode = FileType::extract_pure_mode(mode);
         let path = Path::try_from(safe_path)?;
 
-        VFS.lock().chmod(cwd, creds, path, mode)?;
+        VFS.lock().chmod(cwd, creds, path, pure_mode)?;
         Ok(0)
     })
 }

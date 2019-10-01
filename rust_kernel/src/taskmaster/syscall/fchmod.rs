@@ -17,16 +17,11 @@ pub fn sys_fchmod(fd: Fd, mode: mode_t) -> SysResult<u32> {
             .file_descriptor_interface;
 
         let mode = FileType::try_from(mode)?;
-        if !mode.is_pure_mode() {
-            log::warn!(
-                "sys_fchmod({}, {:#?}) was called, mode is invalid",
-                fd,
-                mode
-            );
-            return Err(Errno::EINVAL);
-        }
+
+        // this extract only permission and special bits from mode
+        let pure_mode = FileType::extract_pure_mode(mode);
 
         let file_operation = &mut fd_interface.get_file_operation(fd)?;
-        file_operation.fchmod(creds, mode)
+        file_operation.fchmod(creds, pure_mode)
     })
 }
