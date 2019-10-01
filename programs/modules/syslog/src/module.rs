@@ -2,7 +2,7 @@
 
 use kernel_modules::{
     ConfigurableCallback, KernelEvent, KernelSymbolList, ModConfig, ModError, ModResult, ModReturn,
-    ModSpecificReturn, SymbolList, WRITER,
+    ModSpecificReturn, SymbolList, EMERGENCY_WRITER, WRITER,
 };
 
 static mut CTX: Option<Ctx> = None;
@@ -59,6 +59,7 @@ impl Drop for Ctx {
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
+        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
         #[cfg(not(test))]
         crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }

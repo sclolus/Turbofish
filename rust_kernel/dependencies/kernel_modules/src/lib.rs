@@ -5,6 +5,8 @@
 #![macro_use]
 pub mod writer;
 pub use writer::WRITER;
+pub mod emergency_writer;
+pub use emergency_writer::EMERGENCY_WRITER;
 
 pub use irq::Irq;
 pub use libc_binding::c_char;
@@ -21,6 +23,8 @@ use alloc::vec::Vec;
 pub struct SymbolList {
     /// Allow to debug the module
     pub write: fn(&str),
+    /// Allow to display critical messages for the module
+    pub emergency_write: fn(&str),
     /// Allow modules to allocate or free memory
     pub alloc_tools: ForeignAllocMethods,
     /// Specifics methods given by the kernel

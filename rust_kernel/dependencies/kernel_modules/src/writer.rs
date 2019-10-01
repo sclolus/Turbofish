@@ -48,15 +48,6 @@ macro_rules! print {
     })
 }
 
-/// common println method
-#[macro_export]
-#[cfg(not(test))]
-macro_rules! println {
-    () => (print!("\n"));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
-    ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
-}
-
 /// Returns a &str containing the full namespace specified name of the function
 /// This works by declaring a dummy function f() nested in the current function.
 /// Then by the type_name instrinsics, get the slice of the full specified name of the function f()

@@ -1,7 +1,8 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList, WRITER,
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, SymbolList, EMERGENCY_WRITER,
+    WRITER,
 };
 
 use alloc::boxed::Box;
@@ -49,6 +50,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
     (symtab_list.write)("I've never install GNU/Linux.");
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
+        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
         #[cfg(not(test))]
         crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }

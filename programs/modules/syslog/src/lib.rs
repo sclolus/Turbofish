@@ -25,7 +25,7 @@ static mut MEMORY_MANAGER: RustGlobalAlloc = RustGlobalAlloc::new();
 #[macro_use]
 extern crate kernel_modules;
 
-use kernel_modules::{ModResult, SymbolList, WRITER};
+use kernel_modules::{ModResult, SymbolList, EMERGENCY_WRITER, WRITER};
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -36,7 +36,7 @@ fn _start(symtab_list: SymbolList) -> ModResult {
 #[cfg(not(test))]
 #[panic_handler]
 #[no_mangle]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    print!("Module is on panic !");
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    emergency_print!("Module is on panic ! {}\n", info);
     loop {}
 }

@@ -1,7 +1,8 @@
 //! This file contains the main function of the module
 
 use kernel_modules::{
-    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList, WRITER,
+    ModConfig, ModError, ModResult, ModReturn, ModSpecificReturn, RTCReturn, SymbolList,
+    EMERGENCY_WRITER, WRITER,
 };
 
 use bit_field::BitField;
@@ -49,6 +50,7 @@ impl Drop for Ctx {
 pub fn module_start(symtab_list: SymbolList) -> ModResult {
     unsafe {
         WRITER.set_write_callback(symtab_list.write);
+        EMERGENCY_WRITER.set_write_callback(symtab_list.emergency_write);
         #[cfg(not(test))]
         crate::MEMORY_MANAGER.set_methods(symtab_list.alloc_tools);
     }
