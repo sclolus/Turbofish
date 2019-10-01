@@ -66,15 +66,24 @@ impl FromStr for CursorMove {
         }
         match s.get_substr((s.len() - 1)..s.len())? {
             "H" => s.find(';').ok_or(ParseCursorError).and_then(|off| {
-                let line: usize = s.get_substr(2..off)?.parse().map_err(|_e| ParseCursorError)?;
+                let line: usize = s
+                    .get_substr(2..off)?
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
                 if off + 1 >= s.len() {
                     return Err(ParseCursorError);
                 }
-                let column: usize = s.get_substr(off + 1..s.len() - 1)?.parse().map_err(|_e| ParseCursorError)?;
+                let column: usize = s
+                    .get_substr(off + 1..s.len() - 1)?
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
                 Ok(Pos(crate::Pos { line, column }))
             }),
             _ => {
-                let nb: usize = s.get_substr(2..s.len() - 1)?.parse().map_err(|_e| ParseCursorError)?;
+                let nb: usize = s
+                    .get_substr(2..s.len() - 1)?
+                    .parse()
+                    .map_err(|_e| ParseCursorError)?;
                 Ok(match s.get_substr((s.len() - 1)..s.len())? {
                     "A" => Up(nb),
                     "B" => Down(nb),
@@ -99,7 +108,10 @@ mod test {
         // println!("{}", Forward(10));
 
         let cursors = [
-            Pos(crate::Pos { line: 1, column: 42 }),
+            Pos(crate::Pos {
+                line: 1,
+                column: 42,
+            }),
             Up(10),
             Down(32),
             Forward(84),

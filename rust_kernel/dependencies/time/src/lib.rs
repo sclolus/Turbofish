@@ -82,7 +82,14 @@ impl From<Date> for u32 {
 /// Default boilerplate for Date
 impl Default for Date {
     fn default() -> Self {
-        Self { sec: 0, minutes: 0, hours: 0, month: Month::January, day_of_month: 1, year: 1664 }
+        Self {
+            sec: 0,
+            minutes: 0,
+            hours: 0,
+            month: Month::January,
+            day_of_month: 1,
+            year: 1664,
+        }
     }
 }
 

@@ -58,7 +58,10 @@ pub struct Rtc {
 
 impl Rtc {
     pub const fn new() -> Self {
-        Self { register_selector: Pio::new(0x70), data: Pio::new(0x71) }
+        Self {
+            register_selector: Pio::new(0x70),
+            data: Pio::new(0x71),
+        }
     }
 
     /// This sets the register index of the RTC/CMOS to the `selected_register`.

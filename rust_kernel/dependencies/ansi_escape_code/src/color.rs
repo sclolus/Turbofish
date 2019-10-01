@@ -84,7 +84,11 @@ impl From<u8> for AnsiColor {
         match c {
             0..=7 => Standard(unsafe { core::mem::transmute(c) }),
             8..=15 => HighIntensity(c - 8),
-            16..=231 => AnsiRGB(self::AnsiRGB { r: (c - 16) / (6 * 6), g: ((c - 16) / 6) % 6, b: (c - 16) % 6 }),
+            16..=231 => AnsiRGB(self::AnsiRGB {
+                r: (c - 16) / (6 * 6),
+                g: ((c - 16) / 6) % 6,
+                b: (c - 16) % 6,
+            }),
             232..=255 => Grey(c - 232),
         }
     }
@@ -127,7 +131,10 @@ impl FromStr for AnsiColor {
             if s.len() <= 7 {
                 return Err(ParseColorError);
             }
-            let nb: u8 = s.get_substr(7..m_index)?.parse().map_err(|_e| ParseColorError)?;
+            let nb: u8 = s
+                .get_substr(7..m_index)?
+                .parse()
+                .map_err(|_e| ParseColorError)?;
             return Ok(nb.into());
         }
         return Err(ParseColorError);
@@ -179,34 +186,64 @@ pub trait Colored {
 
 impl Colored for str {
     fn black<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::BLACK }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::BLACK,
+        }
     }
     fn red<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::RED }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::RED,
+        }
     }
     fn green<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::GREEN }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::GREEN,
+        }
     }
     fn yellow<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::YELLOW }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::YELLOW,
+        }
     }
     fn blue<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::BLUE }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::BLUE,
+        }
     }
     fn magenta<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::MAGENTA }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::MAGENTA,
+        }
     }
     fn cyan<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::CYAN }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::CYAN,
+        }
     }
     fn white<'a>(&'a self) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::WHITE }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::WHITE,
+        }
     }
     fn rgb<'a>(&'a self, r: u8, g: u8, b: u8) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::AnsiRGB(AnsiRGB { r, g, b }) }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::AnsiRGB(AnsiRGB { r, g, b }),
+        }
     }
     fn grey<'a>(&'a self, intensity: u8) -> AnsiStr<'a> {
-        AnsiStr { s: self, color: AnsiColor::Grey(intensity) }
+        AnsiStr {
+            s: self,
+            color: AnsiColor::Grey(intensity),
+        }
     }
 }
 
@@ -249,8 +286,10 @@ mod test {
             assert_eq!(Into::<u8>::into(color), i);
             let color_str = format!("{}", color);
             assert_eq!(
-                AnsiColor::from_str(&color_str)
-                    .expect(&format!("failed to parse colors_str: {} at it: {}", color_str, i)),
+                AnsiColor::from_str(&color_str).expect(&format!(
+                    "failed to parse colors_str: {} at it: {}",
+                    color_str, i
+                )),
                 color
             );
         }
