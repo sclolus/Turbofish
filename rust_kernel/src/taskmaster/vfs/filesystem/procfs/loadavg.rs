@@ -1,5 +1,6 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
+use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
@@ -9,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::Errno;
+use libc_binding::{off_t, Errno, Whence};
 
 #[derive(Debug, Clone)]
 pub struct LoadavgDriver {
@@ -41,40 +42,28 @@ pub struct LoadavgOperations {
     offset: usize,
 }
 
+impl ProcFsOperations for LoadavgOperations {
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
+    }
+
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
+        let load_avg_string = format!("0.00 0.00 0.00 0/0 1");
+        Ok(Cow::from(load_avg_string))
+    }
+}
+
 impl FileOperation for LoadavgOperations {
     fn get_inode_id(&self) -> SysResult<InodeId> {
         Ok(self.inode_id)
     }
 
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
+        self.seq_read(buf)
+    }
 
-        //TODO: Unfailible context.
-        //TODO: This is dummy.
-        let load_avg_string = format!("0.00 0.00 0.00 0/0 1");
-
-        if self.offset >= load_avg_string.len() {
-            return Ok(IpcResult::Done(0));
-        }
-
-        let version = &load_avg_string[self.offset as usize..];
-
-        let mut bytes = version.bytes();
-
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
     }
 }
 

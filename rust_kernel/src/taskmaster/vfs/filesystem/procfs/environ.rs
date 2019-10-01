@@ -1,7 +1,10 @@
 use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 use crate::taskmaster::SCHEDULER;
 
+use alloc::borrow::Cow;
+use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use fallible_collections::FallibleArc;
 
@@ -10,6 +13,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
+use libc_binding::{off_t, Whence};
 use libc_binding::{Errno, Pid};
 
 #[derive(Debug, Clone)]
@@ -55,16 +59,12 @@ impl EnvironOperations {
     }
 }
 
-impl FileOperation for EnvironOperations {
-    fn get_inode_id(&self) -> SysResult<InodeId> {
-        Ok(self.inode_id)
+impl ProcFsOperations for EnvironOperations {
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
     }
 
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
-
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
 
@@ -77,29 +77,31 @@ impl FileOperation for EnvironOperations {
                 .as_ref()
             {
                 Some(environ) => environ,
-                None => return Ok(IpcResult::Done(0)),
+                None => return Ok(Cow::from("")),
             }
         };
 
-        let mut bytes = environ
+        let mut bytes: Vec<u8> = environ
             .strings()
             .flat_map(|s| s.iter().map(|b| *b as u8))
-            .skip(self.offset);
+            .skip(self.offset)
+            .collect();
 
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => {
-                    ret = index + 1;
-                    *to_fill = byte
-                }
-                None => {
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+        Ok(Cow::from(String::from_utf8(bytes).unwrap()))
+    }
+}
+
+impl FileOperation for EnvironOperations {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        self.seq_read(buf)
+    }
+
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
     }
 }
 

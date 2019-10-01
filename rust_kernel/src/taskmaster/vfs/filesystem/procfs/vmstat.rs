@@ -1,5 +1,6 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, SysResult, VFS};
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 
+use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
@@ -9,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::Errno;
+use libc_binding::{off_t, Errno, Whence};
 
 #[derive(Debug, Clone)]
 pub struct VmstatDriver {
@@ -41,16 +42,12 @@ pub struct VmstatOperations {
     offset: usize,
 }
 
-impl FileOperation for VmstatOperations {
-    fn get_inode_id(&self) -> SysResult<InodeId> {
-        Ok(self.inode_id)
+impl ProcFsOperations for VmstatOperations {
+    fn get_offset(&mut self) -> &mut usize {
+        &mut self.offset
     }
 
-    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
-        if buf.len() > u32::max_value() as usize {
-            return Err(Errno::EOVERFLOW);
-        }
-
+    fn get_seq_string(&self) -> SysResult<Cow<str>> {
         //TODO: Unfailible context.
         //TODO: This is dummy.
         let vmstat_string = format!(
@@ -189,27 +186,21 @@ swap_ra 0
 swap_ra_hit 0
 "
         );
+        Ok(Cow::from(vmstat_string))
+    }
+}
 
-        if self.offset >= vmstat_string.len() {
-            return Ok(IpcResult::Done(0));
-        }
+impl FileOperation for VmstatOperations {
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
 
-        let version = &vmstat_string[self.offset as usize..];
+    fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
+        self.seq_read(buf)
+    }
 
-        let mut bytes = version.bytes();
-
-        let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
-            match bytes.next() {
-                Some(byte) => *to_fill = byte,
-                None => {
-                    ret = index + 1;
-                    break;
-                }
-            }
-        }
-        self.offset += ret;
-        Ok(IpcResult::Done(ret as u32))
+    fn lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        self.proc_lseek(offset, whence)
     }
 }
 

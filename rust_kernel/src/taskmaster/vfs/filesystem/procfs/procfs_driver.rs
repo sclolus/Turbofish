@@ -62,6 +62,8 @@ pub trait ProcFsOperations: FileOperation {
     fn get_offset(&mut self) -> &mut usize;
 
     fn proc_lseek(&mut self, offset: off_t, whence: Whence) -> SysResult<off_t> {
+        dbg!(offset);
+        dbg!(whence);
         let self_offset = *self.get_offset() as u64;
         if offset == core::i64::MIN {
             // volontary trash i64 min value to avoid -offset ==
