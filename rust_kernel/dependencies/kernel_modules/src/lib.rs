@@ -206,8 +206,12 @@ impl KernelSymbolList {
     /// Get a associated address of an entry
     pub fn get_entry(&self, s2: &str) -> Option<u32> {
         for elem in self.0.iter() {
-            let s1: &str =
-                unsafe { str::from_utf8_unchecked(slice::from_raw_parts(elem.symname as *const u8, elem.len())) };
+            let s1: &str = unsafe {
+                str::from_utf8_unchecked(slice::from_raw_parts(
+                    elem.symname as *const u8,
+                    elem.len(),
+                ))
+            };
             if s1 == s2 {
                 return Some(elem.address);
             }
@@ -239,9 +243,18 @@ impl KernelSymbol {
 /// Debug Boilerplate for a KernelSymbol
 impl fmt::Debug for KernelSymbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "addr: {:#X?}, {} {}", self.address, self.symtype as u8 as char, unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(self.symname as *const u8, self.len()))
-        })
+        write!(
+            f,
+            "addr: {:#X?}, {} {}",
+            self.address,
+            self.symtype as u8 as char,
+            unsafe {
+                str::from_utf8_unchecked(slice::from_raw_parts(
+                    self.symname as *const u8,
+                    self.len(),
+                ))
+            }
+        )
     }
 }
 

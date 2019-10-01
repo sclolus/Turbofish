@@ -100,7 +100,11 @@ impl Mbr {
     /// Create a new MBR object
     pub unsafe fn new(data: &[u8; 512]) -> Self {
         let physical_mbr: PhysicalMbr = mem::transmute_copy(data);
-        let bootable = if physical_mbr.magic == 0xAA55 { true } else { false };
+        let bootable = if physical_mbr.magic == 0xAA55 {
+            true
+        } else {
+            false
+        };
         let mut parts: [Partition; 4] = core::mem::uninitialized();
         for (i, elem) in parts.iter_mut().enumerate() {
             *elem = Partition {
@@ -110,7 +114,11 @@ impl Mbr {
                 drive_attribute: physical_mbr.partitions[i].drive_attribute,
             };
         }
-        Self { physical_mbr, bootable, parts }
+        Self {
+            physical_mbr,
+            bootable,
+            parts,
+        }
     }
 }
 
