@@ -21,7 +21,7 @@ use libc_binding::{
     MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK,
     REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
     SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
-    STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, UMASK, UNLINK, UTIME,
+    STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UNLINK, UTIME,
     WAITPID, WRITE,
 };
 
@@ -30,7 +30,7 @@ use i386::BaseRegisters;
 use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, uid_t, utimbuf, DIR,
+    c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, tms, uid_t, utimbuf, DIR,
 };
 
 mod mmap;
@@ -255,6 +255,9 @@ use insmod::sys_insmod;
 mod rmmod;
 use rmmod::sys_rmmod;
 
+mod times;
+use times::sys_times;
+
 mod trace_syscall;
 
 extern "C" {
@@ -322,6 +325,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         MKDIR => sys_mkdir(ebx as *const c_char, ecx as mode_t),
         RMDIR => sys_rmdir(ebx as *const c_char),
         PIPE => sys_pipe(core::slice::from_raw_parts_mut(ebx as *mut i32, 2)),
+        TIMES => sys_times(ebx as *mut tms),
         DUP => sys_dup(ebx as u32),
         SETGID => sys_setgid(ebx as gid_t),
         GETGID => sys_getgid(),

@@ -33,6 +33,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define RMDIR        40
 #define DUP          41
 #define PIPE         42
+#define TIMES	     43
 #define SETGID       46
 #define GETGID       47
 #define GETEUID      49
