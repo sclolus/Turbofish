@@ -1,6 +1,7 @@
 #include <ltrace.h>
 #include <stropts.h>
 #include <errno.h>
+#include <custom.h>
 
 #warning DUMMY IMPLEMENTATION of ioctl
 
@@ -28,6 +29,7 @@
 int ioctl(int fildes, int request, ... /* arg */)
 {
 	TRACE
+	DUMMY
 	errno = ENOSYS;
 	return - 1;
 }
