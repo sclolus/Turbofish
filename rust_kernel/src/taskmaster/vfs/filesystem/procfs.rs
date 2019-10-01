@@ -590,7 +590,7 @@ impl FileSystem for ProcFs {
             .get(&root_inode_id)
             .expect("There should be a root inode for procfs");
 
-        let mut new_direntry = direntry.clone(); //TODO: That's not faillible
+        let mut new_direntry = direntry.try_clone()?;
 
         new_direntry.get_directory_mut().unwrap().clear_entries();
         Ok((new_direntry, inode.inode_data, Box::try_new(DefaultDriver)?))
@@ -684,13 +684,13 @@ impl FileSystem for ProcFs {
                 let inode = inodes.get_mut(&direntry.inode_id);
                 if let (ent, Some(inode)) = (direntry, inode) {
                     let inode_id = inode.id;
-                    let mut entry = ent.clone();
+                    let mut entry = ent.try_clone().ok()?;
 
                     if entry.is_directory() {
                         // Cleanup the incompatible-with-vfs directoryEntryIds in the direntry.
                         entry.get_directory_mut().unwrap().clear_entries();
                     }
-                    Some((entry, inode.inode_data.clone(), inode.1(inode_id)))
+                    Some((entry, inode.inode_data, inode.1(inode_id)))
                 } else {
                     None
                 }

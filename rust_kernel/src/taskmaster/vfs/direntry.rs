@@ -5,8 +5,9 @@ use super::SysResult;
 use alloc::vec::Vec;
 use fallible_collections::FallibleVec;
 use libc_binding::{c_char, dirent, Errno::*};
+use try_clone_derive::TryClone;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub struct DirectoryEntry {
     pub filename: Filename,
     inner: DirectoryEntryInner,
@@ -229,7 +230,7 @@ impl Default for DirectoryEntry {
         }
     }
 }
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default, TryClone)]
 pub struct DirectoryEntryId(usize);
 
 impl DirectoryEntryId {
@@ -257,7 +258,7 @@ impl Display for DirectoryEntryId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub struct EntryDirectory {
     entries: Vec<DirectoryEntryId>,
     mounted: Option<DirectoryEntryId>,
@@ -298,7 +299,7 @@ impl Default for EntryDirectory {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub enum DirectoryEntryInner {
     Regular,
     Directory(EntryDirectory),

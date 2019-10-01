@@ -16,6 +16,7 @@ use libc_binding::{
     FileType,
 };
 use sync::DeadMutex;
+use try_clone_derive::TryClone;
 
 #[derive(Debug)]
 pub struct Inode {
@@ -282,7 +283,7 @@ impl InodeData {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TryClone)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
     pub filesystem_id: Option<FileSystemId>,

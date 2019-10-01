@@ -2,6 +2,7 @@ use super::tools::{KeyGenerator, Mapper};
 use super::DefaultDriver;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::Credentials;
+use try_clone_derive::TryClone;
 use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
 use crate::taskmaster::drivers::get_file_op_uid;
 use super::{Driver, FileOperation, Inode, InodeData, VFS, IpcResult};
@@ -148,7 +149,7 @@ pub trait FileSystem: Send + Debug {
     // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq, TryClone)]
 pub struct FileSystemId(pub usize);
 
 impl FileSystemId {
