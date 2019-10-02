@@ -9,5 +9,5 @@ size_t strftime(char *restrict s, size_t maxsize,
 	TRACE
 	DUMMY
 	errno = ENOSYS;
-	return 0;
+	return -1;
 }
