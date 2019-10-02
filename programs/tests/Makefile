@@ -59,9 +59,7 @@ SRC_C += MasterDeepThought \
 		fstatfs/fstatfs \
 		fstatvfs/fstatvfs \
 		chmod_tests/chmod_fails_if_not_owner \
-		chmod_tests/einval_mode \
 		chmod_tests/chmod_normal \
-		fchmod/einval_mode \
 		fchmod/fchmod_fails_if_not_owner \
 		fchmod/fchmod_normal \
 		utime/utime_basic \
