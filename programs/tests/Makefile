@@ -1,7 +1,7 @@
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
-BUILD_DIR = bin
+BUILD_DIR = bin/DeepTests
 VPATH += src
 
 AS = i686-turbofish-ld

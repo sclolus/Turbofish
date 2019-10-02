@@ -50,7 +50,7 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 			exit(1);
 		}
 		printf("argc: %i -> self: %s to_execve: %s to_tty: %s\n", argc, argv[0], argv[1], tty_device);
-		int ret = execve("/bin/DeepThought", argv + 1, envp);
+		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
 			perror("execve failed");
 			exit(1);
