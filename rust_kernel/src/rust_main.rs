@@ -67,7 +67,7 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
             column: size.column - 17
         },
         "{}",
-        "Turbo Fish v0.3".green()
+        "Turbo Fish v10.0".green()
     );
 
     /*

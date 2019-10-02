@@ -703,7 +703,7 @@ impl Scheduler {
 
     pub fn send_message(&mut self, message: MessageTo) {
         use super::syscall::WaitOption;
-        log::info!("{:?}", message);
+        // log::info!("{:?}", message);
         match message {
             MessageTo::Reader { uid_file_op } => {
                 self.iter_thread_mut()
