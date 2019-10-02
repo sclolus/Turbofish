@@ -136,7 +136,7 @@ VPATH += src/sys/statvfs
 HEADERS += sys/statvfs.h
 
 
-SRC_C += gettimeofday settimeofday
+SRC_C += gettimeofday settimeofday times
 VPATH += src/sys/time
 HEADERS += sys/time.h
 
