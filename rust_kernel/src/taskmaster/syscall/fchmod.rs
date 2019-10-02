@@ -3,7 +3,7 @@ use super::Fd;
 use super::SysResult;
 use core::convert::TryFrom;
 
-use libc_binding::{mode_t, Errno, FileType};
+use libc_binding::{mode_t, FileType};
 
 pub fn sys_fchmod(fd: Fd, mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({

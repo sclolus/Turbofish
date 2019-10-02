@@ -1,4 +1,4 @@
-use super::{Driver, FileOperation, IpcResult, SysResult, VFS};
+use super::{FileOperation, IpcResult, SysResult};
 
 // use alloc::{boxed::Box, sync::Arc};
 
@@ -111,7 +111,7 @@ pub trait ProcFsOperations: FileOperation {
         let mut bytes = seq_string.bytes();
 
         let mut ret = 0;
-        for (index, to_fill) in buf.iter_mut().enumerate() {
+        for (_index, to_fill) in buf.iter_mut().enumerate() {
             match bytes.next() {
                 Some(byte) => *to_fill = byte,
                 None => break,

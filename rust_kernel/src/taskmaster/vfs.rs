@@ -164,7 +164,7 @@ impl VirtualFileSystem {
                 .get_entry(&child)
                 .expect("There should be a child here");
 
-            let inode_id = entry.inode_id;
+            // let inode_id = entry.inode_id;
             if entry.is_directory() {
                 self.recursive_remove_dentries(child)?;
             }
@@ -735,7 +735,6 @@ impl VirtualFileSystem {
 
     pub fn unlink(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
         let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &path)?;
-        let inode_id;
         let parent_id;
 
         {
@@ -744,7 +743,6 @@ impl VirtualFileSystem {
                 // unlink on directory not supported
                 return Err(EISDIR);
             }
-            inode_id = entry.inode_id;
             parent_id = entry.parent_id;
         }
 
@@ -767,7 +765,6 @@ impl VirtualFileSystem {
 
     pub fn funlink(&mut self, entry_id: DirectoryEntryId) -> SysResult<()> {
         let entry = self.dcache.get_entry(&entry_id)?;
-        let filename = entry.filename.try_clone()?;
         let parent_inode_number = self
             .dcache
             .get_entry(&entry.parent_id)
@@ -856,23 +853,23 @@ impl VirtualFileSystem {
             .expect("No corresponding Inode for Directory"))
     }
 
-    /// Gets the corresponding inode mutably for a directory entry of id `direntry_id`.
-    /// This methods helps removing the currently popular boilerplate.
-    ///
-    /// Panic:
-    /// Panics if there is no corresponding inode for the given direntry_id.
-    fn get_inode_from_direntry_id_mut(
-        &mut self,
-        direntry_id: DirectoryEntryId,
-    ) -> SysResult<&mut Inode> {
-        let direntry = self.dcache.get_entry(&direntry_id)?;
+    // /// Gets the corresponding inode mutably for a directory entry of id `direntry_id`.
+    // /// This methods helps removing the currently popular boilerplate.
+    // ///
+    // /// Panic:
+    // /// Panics if there is no corresponding inode for the given direntry_id.
+    // fn get_inode_from_direntry_id_mut(
+    //     &mut self,
+    //     direntry_id: DirectoryEntryId,
+    // ) -> SysResult<&mut Inode> {
+    //     let direntry = self.dcache.get_entry(&direntry_id)?;
 
-        // should we remove this panic
-        Ok(self
-            .inodes
-            .get_mut(&direntry.inode_id)
-            .expect("No corresponding Inode for Directory"))
-    }
+    //     // should we remove this panic
+    //     Ok(self
+    //         .inodes
+    //         .get_mut(&direntry.inode_id)
+    //         .expect("No corresponding Inode for Directory"))
+    // }
 
     /// Checks if the given `amode` is permitted for the file pointed by `path`
     pub fn is_access_granted(

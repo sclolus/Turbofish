@@ -11,7 +11,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::{off_t, Errno, Whence};
+use libc_binding::{off_t, Whence};
 
 #[derive(Debug, Clone)]
 pub struct ProcStatDriver {
@@ -41,18 +41,6 @@ pub struct ProcStatOperations {
     inode_id: InodeId,
     offset: usize,
 }
-
-const PROC_STAT_HARDCODE: &'static str = "cpu 42 42 42 42 42 42 42 42 42 42\n\
-                                          cpu0 42 42 42 42 42 42 42 42 42 42\n\
-                                          page 42 42\n\
-                                          swap 1 42\n\
-                                          intr 42\n\
-                                          ctx 42\n\
-                                          btime 1 1\n\
-                                          processes 42\n\
-                                          procs_running 42\n\
-                                          procs_blocked 42\n\
-                                          softirq 42 42 42 42 42 42 42 42 42 42\n";
 
 extern "C" {
     /// Get the pit realtime.

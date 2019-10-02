@@ -81,7 +81,7 @@ impl ProcFsOperations for EnvironOperations {
             }
         };
 
-        let mut bytes: Vec<u8> = environ
+        let bytes: Vec<u8> = environ
             .strings()
             .flat_map(|s| s.iter().map(|b| *b as u8))
             .skip(self.offset)

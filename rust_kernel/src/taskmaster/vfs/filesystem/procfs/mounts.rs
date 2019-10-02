@@ -10,7 +10,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::{off_t, Errno, Whence};
+use libc_binding::{off_t, Whence};
 
 #[derive(Debug, Clone)]
 pub struct MountsDriver {

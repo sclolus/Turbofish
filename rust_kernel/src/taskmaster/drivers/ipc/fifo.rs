@@ -13,7 +13,7 @@ use alloc::sync::Arc;
 use sync::DeadMutex;
 
 use fallible_collections::arc::FallibleArc;
-use libc_binding::{stat, Errno, OpenFlags};
+use libc_binding::{Errno, OpenFlags};
 
 use core::cmp;
 

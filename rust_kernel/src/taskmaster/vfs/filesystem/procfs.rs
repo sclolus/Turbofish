@@ -8,8 +8,6 @@ use alloc::collections::CollectionAllocErr;
 
 use crate::taskmaster::SCHEDULER;
 
-use crate::taskmaster::thread_group::ThreadGroup;
-
 use super::dead::DeadFileSystem;
 use super::{KeyGenerator, Mapper};
 use crate::taskmaster::drivers::DefaultDriver;
@@ -311,7 +309,7 @@ impl ProcFs {
         let environ_filename = Filename::from_str_unwrap("environ");
         let cmdline_filename = Filename::from_str_unwrap("cmdline");
         let exe_filename = Filename::from_str_unwrap("exe");
-        let self_filename = Filename::from_str_unwrap("self");
+        // let self_filename = Filename::from_str_unwrap("self");
 
         SCHEDULER.force_unlock();
         let scheduler = SCHEDULER.lock();
@@ -494,29 +492,29 @@ impl ProcFs {
         }
     }
 
-    fn children(
-        &self,
-        dir_id: DirectoryEntryId,
-    ) -> SysResult<impl Iterator<Item = (&DirectoryEntry, &Inode)>> {
-        let dcache = &self.dcache;
-        let inodes = &self.inodes;
-        let mut children_iter = self.dcache.get_entry(&dir_id)?.get_directory()?.entries();
+    // fn children(
+    //     &self,
+    //     dir_id: DirectoryEntryId,
+    // ) -> SysResult<impl Iterator<Item = (&DirectoryEntry, &Inode)>> {
+    //     let dcache = &self.dcache;
+    //     let inodes = &self.inodes;
+    //     let mut children_iter = self.dcache.get_entry(&dir_id)?.get_directory()?.entries();
 
-        Ok(unfold((), move |_| match children_iter.next() {
-            None => None,
-            Some(id) => {
-                let entry = match dcache.get_entry(&id) {
-                    Ok(entry) => entry,
-                    Err(_) => return None, // TODO: change this maybe
-                };
-                // eprintln!("Searching {:?}", entry.inode_id);
-                let inode = inodes
-                    .get(&entry.inode_id)
-                    .expect("No corresponding inode for direntry");
-                Some((entry, inode))
-            }
-        }))
-    }
+    //     Ok(unfold((), move |_| match children_iter.next() {
+    //         None => None,
+    //         Some(id) => {
+    //             let entry = match dcache.get_entry(&id) {
+    //                 Ok(entry) => entry,
+    //                 Err(_) => return None, // TODO: change this maybe
+    //             };
+    //             // eprintln!("Searching {:?}", entry.inode_id);
+    //             let inode = inodes
+    //                 .get(&entry.inode_id)
+    //                 .expect("No corresponding inode for direntry");
+    //             Some((entry, inode))
+    //         }
+    //     }))
+    // }
 
     fn children_direntries(
         &self,
@@ -537,36 +535,36 @@ impl ProcFs {
         }))
     }
 
-    fn recursive_remove(&mut self, dir_id: DirectoryEntryId) -> SysResult<()> {
-        let children: Vec<DirectoryEntryId> = self
-            .dcache
-            .children(dir_id)?
-            .map(|entry| entry.id)
-            .try_collect()?;
+    // fn recursive_remove(&mut self, dir_id: DirectoryEntryId) -> SysResult<()> {
+    //     let children: Vec<DirectoryEntryId> = self
+    //         .dcache
+    //         .children(dir_id)?
+    //         .map(|entry| entry.id)
+    //         .try_collect()?;
 
-        for child in children {
-            let (inode_id, is_dir) = {
-                let entry = self
-                    .dcache
-                    .get_entry(&child)
-                    .expect("There should be a child here");
+    //     for child in children {
+    //         let (_inode_id, is_dir) = {
+    //             let entry = self
+    //                 .dcache
+    //                 .get_entry(&child)
+    //                 .expect("There should be a child here");
 
-                (entry.inode_id, entry.is_directory())
-            };
+    //             (entry.inode_id, entry.is_directory())
+    //         };
 
-            if is_dir {
-                self.recursive_remove(child)?;
-            }
+    //         if is_dir {
+    //             self.recursive_remove(child)?;
+    //         }
 
-            self.dcache.remove_entry(child)?;
-            // self.inodes.remove(&inode_id);
-        }
-        let entry = self.dcache.get_entry(&dir_id)?;
-        let inode_id = entry.inode_id;
-        self.dcache.remove_entry(dir_id)?;
-        // self.inodes.remove(&inode_id);
-        Ok(())
-    }
+    //         self.dcache.remove_entry(child)?;
+    //         // self.inodes.remove(&inode_id);
+    //     }
+    //     let entry = self.dcache.get_entry(&dir_id)?;
+    //     // let inode_id = entry.inode_id;
+    //     self.dcache.remove_entry(dir_id)?;
+    //     // self.inodes.remove(&inode_id);
+    //     Ok(())
+    // }
 
     fn symlink(
         &mut self,

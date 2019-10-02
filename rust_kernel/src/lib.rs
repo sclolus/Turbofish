@@ -21,7 +21,6 @@
 
 extern crate itertools;
 
-#[macro_use]
 extern crate alloc;
 
 extern crate arrayvec;

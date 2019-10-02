@@ -80,7 +80,7 @@ impl ProcFsOperations for CmdlineOperations {
             }
         };
 
-        let mut bytes: Vec<u8> = cmdline
+        let bytes: Vec<u8> = cmdline
             .strings()
             .flat_map(|s| s.iter().map(|b| *b as u8))
             .skip(self.offset)

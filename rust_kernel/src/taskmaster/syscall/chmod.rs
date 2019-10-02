@@ -3,7 +3,7 @@ use super::vfs::{Path, VFS};
 use super::SysResult;
 use core::convert::TryFrom;
 
-use libc_binding::{c_char, mode_t, Errno, FileType};
+use libc_binding::{c_char, mode_t, FileType};
 
 pub fn sys_chmod(path: *const c_char, mode: mode_t) -> SysResult<u32> {
     unpreemptible_context!({
