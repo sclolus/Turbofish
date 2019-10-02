@@ -88,6 +88,9 @@ impl FileDescriptorInterface {
     pub fn read(&mut self, fd: Fd, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
+        if !elem.flags.is_open_for_read() {
+            return Err(Errno::EBADF);
+        }
         elem.file_operation.lock().read(buf)
     }
 
@@ -97,6 +100,9 @@ impl FileDescriptorInterface {
     pub fn write(&mut self, fd: Fd, buf: &[u8]) -> SysResult<IpcResult<u32>> {
         let elem = self.user_fd_list.get(&fd).ok_or::<Errno>(Errno::EBADF)?;
 
+        if !elem.flags.is_open_for_write() {
+            return Err(Errno::EBADF);
+        }
         elem.file_operation.lock().write(buf)
     }
 

@@ -21,7 +21,7 @@ void _exit_qemu(int val)
 
 int open_tty_device(const char *tty_device)
 {
-	int fd = open(tty_device, 0);
+	int fd = open(tty_device, O_RDWR);
 	if (fd < 0) {
 		exit(1);
 	}
