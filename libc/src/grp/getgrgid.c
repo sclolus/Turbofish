@@ -74,7 +74,7 @@ struct group *getgr_common(void *cmp, int f_comp(struct group *ref, void *cmp))
 
 	bool founded = false;
 	for (int i = 0; a[i] != NULL; i++) {
-		print_group(a[i]);
+		/* print_group(a[i]); */
 		if (f_comp(a[i], cmp) == 0) {
 			if (static_area.gr_name != NULL) {
 				free_group(&static_area);
