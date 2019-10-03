@@ -41,13 +41,13 @@ all: $(TARGET_C) $(BUILD_DIR)/init.sh
 
 $(BUILD_DIR)/init.sh: init.sh
 	cp $< $@
-	cp -rv --parents $@ $(SYSTEM_ROOT)
+	sudo cp -rv --parents $@ $(SYSTEM_ROOT)
 
 $(BUILD_DIR)/%: $(OBJ_DIR)/%.o Makefile $(LIBC_AR)
 	@mkdir -pv ./$(dir $@)
 	$(CC) -Wl,--gc-sections $(CFLAGS) -o $@ $< $(LIB)
 ifneq ($(GNU),yes)
-	cp -rv --parents $@ $(SYSTEM_ROOT)
+	sudo cp -rv --parents $@ $(SYSTEM_ROOT)
 endif
 
 $(OBJ_DIR)/%.o: %.c Makefile

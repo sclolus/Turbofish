@@ -41,7 +41,7 @@ all: $(MODULE)
 
 $(MODULE): $(rust_archive)
 	$(LD) $(LDFLAGS) -o $@ $^
-	cp -rv --parents $@ $(SYSTEM_ROOT)/turbofish/
+	sudo cp -rv --parents $@ $(SYSTEM_ROOT)/turbofish/
 
 $(OBJ_DIR)/%.o: %.asm Makefile
 	$(NASM) $(NASMFLAGS) -o $@ $<

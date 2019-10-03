@@ -106,92 +106,92 @@ make -C src echo
 make -C src mkdir
 make -C src ln
 
-cp -v src/basename $TARGET_DIR
-cp -v src/chgrp $TARGET_DIR
-cp -v src/chroot $TARGET_DIR
-cp -v src/cksum $TARGET_DIR
-cp -v src/comm $TARGET_DIR
-cp -v src/csplit $TARGET_DIR
-cp -v src/cut $TARGET_DIR
-cp -v src/dir $TARGET_DIR
-cp -v src/dircolors $TARGET_DIR
-cp -v src/dirname $TARGET_DIR
-cp -v src/du $TARGET_DIR
-cp -v src/env $TARGET_DIR
-cp -v src/expand $TARGET_DIR
-cp -v src/expr $TARGET_DIR
-cp -v src/factor $TARGET_DIR
-cp -v src/false $TARGET_DIR
-cp -v src/fmt $TARGET_DIR
-cp -v src/fold $TARGET_DIR
-cp -v src/ginstall $TARGET_DIR
-cp -v src/groups $TARGET_DIR
-cp -v src/head $TARGET_DIR
-cp -v src/hostid $TARGET_DIR
-cp -v src/id $TARGET_DIR
-cp -v src/join $TARGET_DIR
-cp -v src/link $TARGET_DIR
-cp -v src/logname $TARGET_DIR
-cp -v src/md5sum $TARGET_DIR
-cp -v src/mkfifo $TARGET_DIR
-cp -v src/mknod $TARGET_DIR
-cp -v src/nice $TARGET_DIR
-cp -v src/nl $TARGET_DIR
-cp -v src/nohup $TARGET_DIR
-cp -v src/od $TARGET_DIR
-cp -v src/paste $TARGET_DIR
-cp -v src/pathchk $TARGET_DIR
-cp -v src/pinky $TARGET_DIR
-cp -v src/pr $TARGET_DIR
-cp -v src/printenv $TARGET_DIR
-cp -v src/printf $TARGET_DIR
-cp -v src/ptx $TARGET_DIR
-cp -v src/readlink $TARGET_DIR
-cp -v src/seq $TARGET_DIR
-cp -v src/sha1sum $TARGET_DIR
-cp -v src/shred $TARGET_DIR
-cp -v src/sort $TARGET_DIR
-cp -v src/split $TARGET_DIR
-cp -v src/stat $TARGET_DIR
-cp -v src/stty $TARGET_DIR
-cp -v src/su $TARGET_DIR
-cp -v src/sum $TARGET_DIR
-cp -v src/sync $TARGET_DIR
-cp -v src/tac $TARGET_DIR
-cp -v src/tail $TARGET_DIR
-cp -v src/tee $TARGET_DIR
-cp -v src/test $TARGET_DIR
-cp -v src/touch $TARGET_DIR
-cp -v src/tr $TARGET_DIR
-cp -v src/true $TARGET_DIR
-cp -v src/tsort $TARGET_DIR
-cp -v src/tty $TARGET_DIR
-cp -v src/uname $TARGET_DIR
-cp -v src/unexpand $TARGET_DIR
-cp -v src/uniq $TARGET_DIR
-cp -v src/unlink $TARGET_DIR
-cp -v src/uptime $TARGET_DIR
-cp -v src/users $TARGET_DIR
-cp -v src/vdir $TARGET_DIR
-cp -v src/wc $TARGET_DIR
-cp -v src/who $TARGET_DIR
-cp -v src/whoami $TARGET_DIR
-cp -v src/yes $TARGET_DIR
+sudo cp -v src/basename $TARGET_DIR
+sudo cp -v src/chgrp $TARGET_DIR
+sudo cp -v src/chroot $TARGET_DIR
+sudo cp -v src/cksum $TARGET_DIR
+sudo cp -v src/comm $TARGET_DIR
+sudo cp -v src/csplit $TARGET_DIR
+sudo cp -v src/cut $TARGET_DIR
+sudo cp -v src/dir $TARGET_DIR
+sudo cp -v src/dircolors $TARGET_DIR
+sudo cp -v src/dirname $TARGET_DIR
+sudo cp -v src/du $TARGET_DIR
+sudo cp -v src/env $TARGET_DIR
+sudo cp -v src/expand $TARGET_DIR
+sudo cp -v src/expr $TARGET_DIR
+sudo cp -v src/factor $TARGET_DIR
+sudo cp -v src/false $TARGET_DIR
+sudo cp -v src/fmt $TARGET_DIR
+sudo cp -v src/fold $TARGET_DIR
+sudo cp -v src/ginstall $TARGET_DIR
+sudo cp -v src/groups $TARGET_DIR
+sudo cp -v src/head $TARGET_DIR
+sudo cp -v src/hostid $TARGET_DIR
+sudo cp -v src/id $TARGET_DIR
+sudo cp -v src/join $TARGET_DIR
+sudo cp -v src/link $TARGET_DIR
+sudo cp -v src/logname $TARGET_DIR
+sudo cp -v src/md5sum $TARGET_DIR
+sudo cp -v src/mkfifo $TARGET_DIR
+sudo cp -v src/mknod $TARGET_DIR
+sudo cp -v src/nice $TARGET_DIR
+sudo cp -v src/nl $TARGET_DIR
+sudo cp -v src/nohup $TARGET_DIR
+sudo cp -v src/od $TARGET_DIR
+sudo cp -v src/paste $TARGET_DIR
+sudo cp -v src/pathchk $TARGET_DIR
+sudo cp -v src/pinky $TARGET_DIR
+sudo cp -v src/pr $TARGET_DIR
+sudo cp -v src/printenv $TARGET_DIR
+sudo cp -v src/printf $TARGET_DIR
+sudo cp -v src/ptx $TARGET_DIR
+sudo cp -v src/readlink $TARGET_DIR
+sudo cp -v src/seq $TARGET_DIR
+sudo cp -v src/sha1sum $TARGET_DIR
+sudo cp -v src/shred $TARGET_DIR
+sudo cp -v src/sort $TARGET_DIR
+sudo cp -v src/split $TARGET_DIR
+sudo cp -v src/stat $TARGET_DIR
+sudo cp -v src/stty $TARGET_DIR
+sudo cp -v src/su $TARGET_DIR
+sudo cp -v src/sum $TARGET_DIR
+sudo cp -v src/sync $TARGET_DIR
+sudo cp -v src/tac $TARGET_DIR
+sudo cp -v src/tail $TARGET_DIR
+sudo cp -v src/tee $TARGET_DIR
+sudo cp -v src/test $TARGET_DIR
+sudo cp -v src/touch $TARGET_DIR
+sudo cp -v src/tr $TARGET_DIR
+sudo cp -v src/true $TARGET_DIR
+sudo cp -v src/tsort $TARGET_DIR
+sudo cp -v src/tty $TARGET_DIR
+sudo cp -v src/uname $TARGET_DIR
+sudo cp -v src/unexpand $TARGET_DIR
+sudo cp -v src/uniq $TARGET_DIR
+sudo cp -v src/unlink $TARGET_DIR
+sudo cp -v src/uptime $TARGET_DIR
+sudo cp -v src/users $TARGET_DIR
+sudo cp -v src/vdir $TARGET_DIR
+sudo cp -v src/wc $TARGET_DIR
+sudo cp -v src/who $TARGET_DIR
+sudo cp -v src/whoami $TARGET_DIR
+sudo cp -v src/yes $TARGET_DIR
 # MANDATORY PART
-cp -v src/hostname $TARGET_DIR
-cp -v src/sleep $TARGET_DIR
-cp -v src/pwd $TARGET_DIR
-cp -v src/cat $TARGET_DIR
-cp -v src/chmod $TARGET_DIR
-cp -v src/chown $TARGET_DIR
-cp -v src/mv $TARGET_DIR
-cp -v src/ls $TARGET_DIR
-cp -v src/kill $TARGET_DIR
-cp -v src/date $TARGET_DIR
-cp -v src/df $TARGET_DIR
-cp -v src/dd $TARGET_DIR
-cp -v src/rm $TARGET_DIR
-cp -v src/rmdir $TARGET_DIR
-cp -v src/echo $TARGET_DIR
-cp -v src/mkdir $TARGET_DIR
-cp -v src/ln $TARGET_DIR
+sudo cp -v src/hostname $TARGET_DIR
+sudo cp -v src/sleep $TARGET_DIR
+sudo cp -v src/pwd $TARGET_DIR
+sudo cp -v src/cat $TARGET_DIR
+sudo cp -v src/chmod $TARGET_DIR
+sudo cp -v src/chown $TARGET_DIR
+sudo cp -v src/mv $TARGET_DIR
+sudo cp -v src/ls $TARGET_DIR
+sudo cp -v src/kill $TARGET_DIR
+sudo cp -v src/date $TARGET_DIR
+sudo cp -v src/df $TARGET_DIR
+sudo cp -v src/dd $TARGET_DIR
+sudo cp -v src/rm $TARGET_DIR
+sudo cp -v src/rmdir $TARGET_DIR
+sudo cp -v src/echo $TARGET_DIR
+sudo cp -v src/mkdir $TARGET_DIR
+sudo cp -v src/ln $TARGET_DIR
