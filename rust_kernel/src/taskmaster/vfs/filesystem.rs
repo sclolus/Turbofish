@@ -1,17 +1,17 @@
 use super::tools::{KeyGenerator, Mapper};
+use super::Credentials;
 use super::DefaultDriver;
 use super::MountedFileSystem;
-use super::{DirectoryEntry, DirectoryEntryId, SysResult};
-use super::Credentials;
-use try_clone_derive::TryClone;
-use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
-use crate::taskmaster::drivers::get_file_op_uid;
-use super::{Driver, FileOperation, Inode, InodeData, VFS, IpcResult};
-use alloc::boxed::Box;
 use super::Incrementor;
+use super::{DirectoryEntry, DirectoryEntryId, SysResult};
+use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
+use super::{Driver, FileOperation, Inode, InodeData, IpcResult, VFS};
+use crate::taskmaster::drivers::get_file_op_uid;
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::fmt::{Debug, self, Display};
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
+use try_clone_derive::TryClone;
 
 pub mod dead;
 pub use dead::DeadFileSystem;
@@ -56,7 +56,13 @@ pub trait FileSystem: Send + Debug {
         Err(Errno::ENOSYS)
     }
 
-    fn unlink(&mut self, _dir_inode_nbr: u32, _name: &str, _free_inode_data: bool, _inode_nbr: u32) -> SysResult<()> {
+    fn unlink(
+        &mut self,
+        _dir_inode_nbr: u32,
+        _name: &str,
+        _free_inode_data: bool,
+        _inode_nbr: u32,
+    ) -> SysResult<()> {
         Err(Errno::ENOSYS)
     }
 

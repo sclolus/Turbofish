@@ -1,4 +1,4 @@
-//! waitpid (wait) implementations
+//! wait4 (wait, waitpid, wait3) implementations
 
 use super::scheduler::{auto_preempt, unpreemptible};
 use super::scheduler::{Scheduler, SCHEDULER};
@@ -7,7 +7,7 @@ use super::thread_group::{JobState, Status};
 use super::SysResult;
 use bitflags::bitflags;
 
-use libc_binding::{Errno, Pid};
+use libc_binding::{rusage, Errno, Pid};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -195,7 +195,7 @@ use libc_binding::{Errno, Pid};
 ///     interrupted by a signal. The value of the location pointed to
 ///     by stat_loc is undefined.  [EINVAL] The options argument is
 ///     not valid.
-fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
+fn wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
     let wstatus = {
@@ -364,8 +364,12 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     }
 }
 
+pub fn sys_wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysResult<u32> {
+    unpreemptible_context!({ wait4(pid, wstatus, options, rusage) })
+}
+
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
-    unpreemptible_context!({ waitpid(pid, wstatus, options) })
+    unpreemptible_context!({ wait4(pid, wstatus, options, 0x0 as *mut rusage) })
 }
 
 bitflags! {
