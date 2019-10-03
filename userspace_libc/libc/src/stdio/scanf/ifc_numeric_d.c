@@ -1,8 +1,0 @@
-#include "ifc.h"
-
-int ifc_numeric_d(struct Ctx *ctx, struct Arguments *args)
-{
-	(void)ctx;
-	(void)args;
-	return 0;
-}
