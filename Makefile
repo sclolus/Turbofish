@@ -1,7 +1,7 @@
 export TURBOFISH_ROOT := $(shell pwd)
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
-RAM_AMOUNT = 256
+RAM_AMOUNT = 512
 IMG_DISK = image_disk.img
 IMAGE_SIZE = 131072
 FIRST_PART_SIZE = $$(($(IMAGE_SIZE) - 1024 * 10))
