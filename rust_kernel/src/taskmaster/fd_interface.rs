@@ -63,14 +63,17 @@ impl FileDescriptorInterface {
     ) -> SysResult<IpcResult<Fd>> {
         let path = super::vfs::Path::try_from(filename)?;
 
-        let file_operator = VFS.lock().open(cwd, creds, path, flags, mode)?;
+        let file_operator = VFS
+            .lock()
+            .open(cwd, creds, path.try_clone()?, flags, mode)?;
+        let path = VFS.lock().resolve_path(cwd, creds, &path)?;
         match file_operator {
             IpcResult::Done(file_operator) => {
-                let fd = self.insert_user_fd(flags, file_operator)?;
+                let fd = self.insert_user_fd(flags, file_operator, path)?;
                 Ok(IpcResult::Done(fd))
             }
             IpcResult::Wait(file_operator, file_op_uid) => {
-                let fd = self.insert_user_fd(flags, file_operator)?;
+                let fd = self.insert_user_fd(flags, file_operator, path)?;
                 Ok(IpcResult::Wait(fd, file_op_uid))
             }
         }
@@ -110,10 +113,11 @@ impl FileDescriptorInterface {
     pub fn new_pipe(&mut self) -> SysResult<(Fd, Fd)> {
         let pipe = Arc::try_new(DeadMutex::new(Pipe::new()))?;
         let cloned_pipe = pipe.clone();
+        let pipe_path = Path::try_from(":pipe")?;
 
-        let input_fd = self.insert_user_fd(OpenFlags::O_RDONLY, pipe)?;
+        let input_fd = self.insert_user_fd(OpenFlags::O_RDONLY, pipe, pipe_path.try_clone()?)?;
         let output_fd = self
-            .insert_user_fd(OpenFlags::O_WRONLY, cloned_pipe)
+            .insert_user_fd(OpenFlags::O_WRONLY, cloned_pipe, pipe_path)
             .map_err(|e| {
                 let _r = self.user_fd_list.remove(&input_fd);
                 e
@@ -159,10 +163,11 @@ impl FileDescriptorInterface {
         &mut self,
         flags: OpenFlags,
         file_operation: Arc<DeadMutex<dyn FileOperation>>,
+        path: Path,
     ) -> SysResult<Fd> {
         let user_fd = self.get_lower_fd_value(0).ok_or::<Errno>(Errno::EMFILE)?;
         self.user_fd_list
-            .try_insert(user_fd, FileDescriptor::new(flags, file_operation))?;
+            .try_insert(user_fd, FileDescriptor::new(flags, file_operation, path))?;
         Ok(user_fd)
     }
 
@@ -198,7 +203,9 @@ impl FileDescriptorInterface {
                 Arc::try_new(DeadMutex::new(ConnectedSocket::new(domain, socket_type)?))?
             }
         };
-        self.insert_user_fd(OpenFlags::O_RDWR, file_operator)
+        let socket_path = Path::try_from(":socket")?;
+
+        self.insert_user_fd(OpenFlags::O_RDWR, file_operator, socket_path)
     }
 
     pub fn accept_socket(&mut self, socket_fd: u32) -> SysResult<IpcResult<(u32, Option<Path>)>> {
@@ -211,13 +218,19 @@ impl FileDescriptorInterface {
             IpcResult::Done(socket_stream) => {
                 let socket_stream = socket_stream.expect("socket stream should be there");
                 let sender_path = socket_stream.path.try_clone()?;
+                let socket_path = Path::try_from(":socket")?;
                 let new_fd = self.insert_user_fd(
                     OpenFlags::O_RDWR,
                     Arc::new(DeadMutex::new(socket_stream)) as Arc<DeadMutex<dyn FileOperation>>,
+                    socket_path,
                 )?;
                 IpcResult::Done((new_fd, sender_path))
             }
         })
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Fd, &FileDescriptor)> {
+        self.user_fd_list.iter()
     }
 }
 
@@ -231,9 +244,12 @@ impl Drop for FileDescriptorInterface {
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
 #[derive(Debug)]
-struct FileDescriptor {
+pub struct FileDescriptor {
     flags: OpenFlags,
     file_operation: Arc<DeadMutex<dyn FileOperation>>,
+
+    /// The resolved open path of the corresponding file.
+    path: Path,
 }
 
 use alloc::collections::CollectionAllocErr;
@@ -245,6 +261,7 @@ impl TryClone for FileDescriptor {
         Ok(Self {
             flags: self.flags.clone(),
             file_operation: self.file_operation.clone(),
+            path: self.path.try_clone()?,
         })
     }
 }
@@ -252,12 +269,21 @@ impl TryClone for FileDescriptor {
 /// Standard implementation of an user File Descriptor
 impl FileDescriptor {
     /// When a new FileDescriptor is invoqued, Increment reference
-    fn new(flags: OpenFlags, file_operation: Arc<DeadMutex<dyn FileOperation>>) -> Self {
+    fn new(
+        flags: OpenFlags,
+        file_operation: Arc<DeadMutex<dyn FileOperation>>,
+        path: Path,
+    ) -> Self {
         file_operation.lock().register(flags);
         Self {
             flags,
             file_operation,
+            path,
         }
+    }
+
+    pub fn get_open_path(&self) -> &Path {
+        &self.path
     }
 }
 

@@ -54,4 +54,22 @@ void basic_destructor(void) {
 	/* puts("*** libc destructor called ***"); */
 }
 
+extern unsigned char __init_array_start;
+extern unsigned char __init_array_end;
+
+
+void	call_init_array_ctors(void)
+{
+	void   (**current_ctor)(void) = (void *)&__init_array_start;
+	void   (**current_ctor_end)(void) = (void *)&__init_array_end;
+
+	/// Probably no init_array.
+	if (!current_ctor) {
+		return ;
+	}
+	while (current_ctor < current_ctor_end) {
+		(*current_ctor)();
+		current_ctor++;
+	}
+}
 #undef array_size

@@ -5,7 +5,9 @@ use super::signal_interface::JobAction;
 use super::sync::SmartMutex;
 use super::syscall::clone::CloneFlags;
 use super::thread::{AutoPreemptReturnValue, ProcessState, Thread, WaitingState};
-use super::thread_group::{RunningThreadGroup, Status, ThreadGroup};
+pub use super::thread_group::{
+    Credentials, RunningThreadGroup, Status, ThreadGroup, ThreadGroupState,
+};
 use super::{SysResult, TaskMode};
 
 mod dustman;

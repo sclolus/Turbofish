@@ -8,6 +8,8 @@ use alloc::collections::CollectionAllocErr;
 
 use crate::taskmaster::SCHEDULER;
 
+use crate::taskmaster::thread_group::{ThreadGroup, ThreadGroupState};
+
 use super::dead::DeadFileSystem;
 use super::{KeyGenerator, Mapper};
 use crate::taskmaster::drivers::DefaultDriver;
@@ -63,6 +65,12 @@ pub use vmstat::VmstatDriver;
 mod mounts;
 pub use mounts::MountsDriver;
 
+mod comm;
+pub use comm::CommDriver;
+
+mod tty_drivers;
+pub use tty_drivers::TtyDriversDriver;
+
 use itertools::unfold;
 
 unsafe impl Send for ProcFs {}
@@ -75,6 +83,8 @@ pub struct ProcFs {
     root_inode_id: InodeId,
     dcache: Dcache,
     pid_directories: BTreeSet<(DirectoryEntryId, Pid)>,
+    tty_directory: Option<DirectoryEntryId>,
+    fd_directories: BTreeSet<(DirectoryEntryId, Pid)>,
 }
 
 impl KeyGenerator<InodeId> for ProcFs {
@@ -273,6 +283,99 @@ impl ProcFs {
         Ok(())
     }
 
+    pub fn fill_root_dir(&mut self) -> SysResult<()> {
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let thread_groups = scheduler.iter_thread_groups_with_pid();
+
+        for (&pid, _thread_group) in thread_groups {
+            self.register_pid_directory(pid)?;
+        }
+
+        self.register_self_directory()?;
+        self.register_base_drivers()?;
+        Ok(())
+    }
+
+    pub fn register_tty_directory(&mut self) -> SysResult<()> {
+        let (root_dir_id, _) = self.root_ids();
+        let tty_filename = Filename::from_str_unwrap("tty");
+
+        let mode = FileType::DIRECTORY
+            | FileType::USER_READ_PERMISSION
+            | FileType::USER_EXECUTE_PERMISSION
+            | FileType::GROUP_READ_PERMISSION
+            | FileType::GROUP_EXECUTE_PERMISSION
+            | FileType::OTHER_READ_PERMISSION
+            | FileType::OTHER_EXECUTE_PERMISSION;
+
+        let dir_id = self.mkdir(root_dir_id, tty_filename, mode)?;
+        self.tty_directory = Some(dir_id);
+        Ok(())
+    }
+
+    pub fn fill_tty_directory(&mut self) -> SysResult<()> {
+        let tty_dir_id = self.tty_directory.expect("No tty directory registered");
+        let drivers_filename = Filename::from_str_unwrap("drivers");
+
+        self.register_file(
+            tty_dir_id,
+            drivers_filename,
+            Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                Ok(Box::try_new(tty_drivers::TtyDriversDriver::new(inode_id))? as Box<dyn Driver>)
+            })?,
+        )?;
+        Ok(())
+    }
+
+    pub fn register_fd_directory(&mut self, pid: Pid) -> SysResult<()> {
+        let fd_filename = Filename::from_str_unwrap("fd");
+        let pid_dir_id = self
+            .get_pid_directory(pid)
+            .expect("Could not get the requested pid directory")
+            .id;
+
+        let mode = FileType::DIRECTORY
+            | FileType::USER_READ_PERMISSION
+            | FileType::USER_EXECUTE_PERMISSION
+            | FileType::GROUP_READ_PERMISSION
+            | FileType::GROUP_EXECUTE_PERMISSION
+            | FileType::OTHER_READ_PERMISSION
+            | FileType::OTHER_EXECUTE_PERMISSION;
+
+        let dir_id = self.mkdir(pid_dir_id, fd_filename, mode)?;
+        self.fd_directories.try_insert((dir_id, pid))?;
+        Ok(())
+    }
+
+    pub fn fill_fd_directory(&mut self, pid: Pid) -> SysResult<()> {
+        let fd_dir = self.get_fd_directory(pid)?;
+        let fd_dir_id = fd_dir.id;
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let thread_group = scheduler
+            .get_thread_group(pid)
+            .expect("Could not find corresponding thread group for pid");
+
+        let state = match &thread_group.thread_group_state {
+            ThreadGroupState::Running(running) => Some(&running.file_descriptor_interface),
+            _ => None,
+        };
+        let fds = state.iter().flat_map(|x| x.iter());
+
+        // VFS.force_unlock();
+        // let vfs = VFS.lock();
+        for (fd, descriptor) in fds {
+            let fd_string = tryformat!(32, "{}", fd)?;
+            let fd_filename = Filename::from_str_unwrap(&fd_string);
+            let path = descriptor.get_open_path().try_clone()?;
+            self.symlink(fd_dir_id, fd_filename, path)?;
+        }
+        Ok(())
+    }
+
     pub fn register_pid_directory(&mut self, pid: Pid) -> SysResult<()> {
         let (root_dir_id, _) = self.root_ids();
 
@@ -309,6 +412,7 @@ impl ProcFs {
         let environ_filename = Filename::from_str_unwrap("environ");
         let cmdline_filename = Filename::from_str_unwrap("cmdline");
         let exe_filename = Filename::from_str_unwrap("exe");
+        let comm_filename = Filename::from_str_unwrap("comm");
         // let self_filename = Filename::from_str_unwrap("self");
 
         SCHEDULER.force_unlock();
@@ -356,11 +460,47 @@ impl ProcFs {
             )?,
         )?;
 
+        self.register_file(
+            dir_id,
+            comm_filename,
+            Box::try_new(
+                move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                    Ok(Box::try_new(CommDriver::new(inode_id, pid))? as Box<dyn Driver>)
+                },
+            )?,
+        )?;
+
         if let Some(filename) = &thread_group.filename {
             self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
         }
 
+        self.register_fd_directory(pid)?;
         Ok(())
+    }
+
+    pub fn is_fd_directory(&self, direntry_id: DirectoryEntryId) -> bool {
+        self.fd_directories.iter().any(|(id, _)| *id == direntry_id)
+    }
+
+    fn get_fd_directory(&self, pid: Pid) -> SysResult<&DirectoryEntry> {
+        let (direntry_id, _) = self
+            .fd_directories
+            .iter()
+            .find(|(_, entry_pid)| *entry_pid == pid)
+            .expect("No such fd directory exists");
+
+        self.dcache.get_entry(direntry_id)
+    }
+
+    fn get_fd_directory_entry(
+        &self,
+        direntry_id: DirectoryEntryId,
+    ) -> SysResult<(DirectoryEntryId, Pid)> {
+        Ok(*self // TODO: think about actually returning a reference
+            .fd_directories
+            .iter()
+            .find(|(id, _)| *id == direntry_id)
+            .ok_or(Errno::ENOENT)?)
     }
 
     pub fn is_pid_directory(&self, direntry_id: DirectoryEntryId) -> bool {
@@ -413,6 +553,8 @@ impl ProcFs {
             pid_directories: BTreeSet::new(),
             root_direntry_id: DirectoryEntryId::new(0),
             root_inode_id: InodeId::new(0, Some(fs_id)),
+            tty_directory: None,
+            fd_directories: BTreeSet::new(),
         };
 
         new.root_direntry_id = new.dcache.root_id;
@@ -643,23 +785,26 @@ impl FileSystem for ProcFs {
         // That's very dummy but hey, fuck this design.
         let (root_dir_id, _root_inode_id) = self.root_ids();
 
-        // // Remove pid directories that points to PID that no longer exists.
-        // let pid_directories_to_remove: Vec<(DirectoryEntryId, Pid)> = self
-        //     .pid_directories
-        //     .iter()
-        //     .filter_map(|(id, pid)| {
-        //         SCHEDULER.force_unlock();
-        //         if SCHEDULER.lock().get_thread_group(*pid).is_none() {
-        //             Some((*id, *pid))
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .try_collect()?;
-        // for (pid_directory, pid) in pid_directories_to_remove {
-        //     self.recursive_remove(pid_directory)?;
-        //     self.pid_directories.remove(&(pid_directory, pid));
-        // }
+        // Remove pid directories that points to PID that no longer exists.
+        let pid_directories_to_remove: Vec<(DirectoryEntryId, Pid)> = self
+            .pid_directories
+            .iter()
+            .filter_map(|(id, pid)| {
+                SCHEDULER.force_unlock();
+                if SCHEDULER.lock().get_thread_group(*pid).is_none() {
+                    Some((*id, *pid))
+                } else {
+                    None
+                }
+            })
+            .try_collect()?;
+        for (pid_directory, pid) in pid_directories_to_remove {
+            self.recursive_remove(pid_directory)?;
+            self.pid_directories.remove(&(pid_directory, pid));
+            // if let Some((fd_dir_id, _)) = self.get_fd_directory_entry(pid) {
+            //     self.fd_directories.remove(&(fd_dir_id, pid));
+            // }
+        }
 
         // let self_filename = Filename::from_str_unwrap("self");
 
@@ -684,20 +829,16 @@ impl FileSystem for ProcFs {
             .id;
 
         if direntry_id == root_dir_id {
-            SCHEDULER.force_unlock();
-            let scheduler = SCHEDULER.lock();
-
-            let thread_groups = scheduler.iter_thread_groups_with_pid();
-
-            for (&pid, _thread_group) in thread_groups {
-                self.register_pid_directory(pid)?;
-            }
-
-            self.register_self_directory()?;
-            self.register_base_drivers()?;
+            self.fill_root_dir()?;
         } else if self.is_pid_directory(direntry_id) {
+            // self.fill_root_dir()?;
             let (_, pid) = self.get_pid_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
             self.fill_pid_directory(pid)?;
+        } else if self.is_fd_directory(direntry_id) {
+            // self.fill_root_dir()?;
+            let (_, pid) = self.get_fd_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
+                                                                              // self.fill_pid_directory(pid)?;
+            self.fill_fd_directory(pid)?;
         }
 
         let direntry = self
@@ -768,6 +909,11 @@ impl FileSystem for ProcFs {
         if self.is_pid_directory(direntry_id) {
             let (_, pid) = self.get_pid_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
             assert!(self.pid_directories.remove(&(direntry_id, pid)));
+        } else if self.is_fd_directory(direntry_id) {
+            // self.fill_root_dir()?;
+            let (_, pid) = self.get_fd_directory_entry(direntry_id).unwrap(); // TODO: change this to expect
+                                                                              // self.fill_pid_directory(pid)?;
+            assert!(self.fd_directories.remove(&(direntry_id, pid)));
         }
         self.dcache.remove_entry(direntry_id)?;
 

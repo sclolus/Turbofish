@@ -1,9 +1,14 @@
 use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
+use crate::taskmaster::SCHEDULER;
+
+use crate::taskmaster::scheduler::ThreadGroupState;
 
 use alloc::borrow::Cow;
+use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use fallible_collections::FallibleArc;
+use fallible_collections::{FallibleArc, TryCollect};
 
 use libc_binding::OpenFlags;
 use sync::DeadMutex;
@@ -55,17 +60,48 @@ impl ProcFsOperations for StatOperations {
         &mut self.offset
     }
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let stat_string = tryformat!(4096, "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock(); //code duplication with comm.rs
+        let thread_group = scheduler
+            .get_thread_group(self.pid)
+            .expect("CommOperations::read(): The Process should exist");
+
+        let comm = {
+            match thread_group.argv.as_ref() {
+                Some(comm) => comm,
+                None => return Ok(Cow::from("")),
+            }
+        };
+
+        let mut bytes: Vec<u8> = comm
+            .strings()
+            .next()
+            .iter()
+            .flat_map(|s| s.iter().map(|b| *b as u8))
+            .filter(|c| *c != '\0' as u8)
+            .try_collect()?;
+
+        let comm = String::from_utf8(bytes).map_err(|_| {
+            log::error!("invalid utf8 in environ operation");
+            Errno::EINVAL
+        })?;
+
+        let state = match thread_group.thread_group_state {
+            ThreadGroupState::Running(_) => "R",
+            ThreadGroupState::Zombie(_status) => "Z",
+        };
+
+        let stat_string = tryformat!(4096, "{} ({}) {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
-                                  0,
+                                  comm,
                                   // state
-                                  0,
+                                  state,
                                   // ppid
-                                  0,
+                                  thread_group.parent,
                                   // pgrp
-                                  0,
+                                  thread_group.pgid,
                                   // session
-                                  0,
+                                  42 << 8 | 42,
                                   // tty_nr
                                   0,
                                   // tpgid

@@ -269,7 +269,7 @@ TESTED_OBJ_C = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(TE
 # non-turbofish specific
 OBJ_NASM = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_NASM)))))
 
-SRC_C_RUNTIME = crt0.s crti.s crtn.s crtbegin.s crtend.s
+SRC_C_RUNTIME = crt0.s crti.s crtn.s
 OBJ_C_RUNTIME = $(addprefix $(OBJ_DIR)/crt/, $(addsuffix .o, $(basename $(notdir $(SRC_C_RUNTIME)))))
 
 HEADERS := $(addprefix include/, $(HEADERS))
@@ -277,13 +277,16 @@ SYSROOT_HEADERS = $(addprefix $(TOOLCHAIN_SYSROOT)/usr/, $(HEADERS))
 
 .PHONY = all clean fclean re exec
 
-all: $(TARGET) $(OBJ_C_RUNTIME) $(SYSROOT_HEADERS)
+# CRTBEGIN_OBJ:=$(shell $(CC) $(CFLAGS) -print-file-name=crtbegin.o)
+# CRTEND_OBJ:=$(shell $(CC) $(CFLAGS) -print-file-name=crtend.o)
+
+all: $(OBJ_C_RUNTIME) $(TARGET) $(SYSROOT_HEADERS)
 
 $(TOOLCHAIN_SYSROOT)/usr/include/%: include/%
 	@mkdir -pv $(dir $@)
 	@cp -v $< $@
 
-$(TARGET_LIBC): $(OBJ_C_RUNTIME) $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
+$(TARGET_LIBC): $(OBJ_NASM) $(OBJ_ASM) $(OBJ_C)
 	$(AR) rc $@ $^
 	$(RANLIB) $@
 	cp -v libc.a $(TOOLCHAIN_SYSROOT)/usr/lib/.

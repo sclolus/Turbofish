@@ -88,9 +88,7 @@ pub trait ProcFsOperations: FileOperation {
             }
             Whence::SeekEnd => unimplemented!(),
         };
-        // if new_offset > self.partition_size {
-        //     return Err(Errno::EINVAL);
-        // }
+
         *self.get_offset() = new_offset as usize;
         Ok(new_offset as off_t)
     }

@@ -70,6 +70,7 @@ struct program_test {
 };
 
 static struct program_test TEST_PROGRAMS[] = {
+	{.path = "/bin/DeepTests/constructors/constructor_works"},
 	{.path = "/bin/DeepTests/open/o_append"},
 	{.path = "/bin/DeepTests/socket/sockstream"},
 	{.path = "/bin/DeepTests/socket/sockdgram"},

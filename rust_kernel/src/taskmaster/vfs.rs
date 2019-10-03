@@ -944,7 +944,7 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         creds: &Credentials,
-        path: Path,
+        path: Path, // Could be a ref.
         flags: OpenFlags,
         mode: FileType,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
