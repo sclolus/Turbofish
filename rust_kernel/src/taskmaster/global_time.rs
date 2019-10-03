@@ -2,6 +2,7 @@
 
 use core::ops::AddAssign;
 use core::time::Duration;
+use libc_binding::{rusage, timeval};
 
 use crate::drivers::PIT0;
 
@@ -36,7 +37,7 @@ pub enum TimeSession {
     Idle,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 /// Each process got his user time and his system time
 pub struct ProcessDuration {
     user_time: Duration,
@@ -59,6 +60,22 @@ impl AddAssign for ProcessDuration {
         *self = Self {
             user_time: self.user_time + other.user_time,
             system_time: self.system_time + other.system_time,
+        }
+    }
+}
+
+/// From boilerplate from ProcessDuration to rusage
+impl From<ProcessDuration> for rusage {
+    fn from(process_duration: ProcessDuration) -> Self {
+        Self {
+            ru_utime: timeval {
+                tv_sec: process_duration.user_time.as_secs() as i32,
+                tv_usec: process_duration.user_time.subsec_micros(),
+            },
+            ru_stime: timeval {
+                tv_sec: process_duration.system_time.as_secs() as i32,
+                tv_usec: process_duration.system_time.subsec_micros(),
+            },
         }
     }
 }
