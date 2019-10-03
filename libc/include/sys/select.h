@@ -32,10 +32,10 @@ typedef struct _fd_set {
 //
 //The following shall be declared as functions, defined as macros, or both. If functions are declared, function prototypes shall be provided.
 //
-void FD_CLR(int, fd_set *);
-int  FD_ISSET(int, fd_set *);
-void FD_SET(int, fd_set *);
-void FD_ZERO(fd_set *);
+void FD_CLR(int fd, fd_set *fdset);
+int  FD_ISSET(int fd, fd_set *fdset);
+void FD_SET(int fd, fd_set *fdset);
+void FD_ZERO(fd_set *fdset);
 
 //If implemented as macros, these may evaluate their arguments more than once, so applications should ensure that the arguments they supply are never expressions with side-effects.
 

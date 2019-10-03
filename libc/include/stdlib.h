@@ -65,8 +65,11 @@ double        atof(const char *);
 int           atoi(const char *);
 long          atol(const char *);
 long long     atoll(const char *);
-void         *bsearch(const void *, const void *, size_t, size_t,
-                  int (*)(const void *, const void *));
+void	     *bsearch(const void *key,
+		      const void *base,
+		      size_t nel,
+		      size_t width,
+		      int (*compar)(const void *, const void *));
 void         *calloc(size_t, size_t);
 div_t         div(int, int);
 //[XSI][Option Start]

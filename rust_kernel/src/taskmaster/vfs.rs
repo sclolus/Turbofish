@@ -1,4 +1,4 @@
-use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, Ext2DriverFile, FileOperation};
+use super::drivers::{ipc::FifoDriver, DefaultDriver, Driver, FileOperation};
 use super::kmodules::CURRENT_UNIX_TIME;
 use super::sync::SmartMutex;
 use super::thread_group::Credentials;
@@ -17,7 +17,7 @@ use fallible_collections::TryClone;
 use itertools::unfold;
 
 mod tools;
-use tools::KeyGenerator;
+use tools::{Incrementor, KeyGenerator};
 
 mod path;
 pub mod posix_consts;
@@ -30,7 +30,7 @@ pub use direntry::{DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId};
 
 mod dcache;
 
-use dcache::Dcache;
+pub use dcache::Dcache;
 
 mod inode;
 pub use inode::InodeId;
@@ -42,7 +42,7 @@ use libc_binding::dirent;
 use libc_binding::statfs;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
-use libc_binding::{gid_t, stat, uid_t, utimbuf, Amode, Errno};
+use libc_binding::{gid_t, stat, time_t, uid_t, utimbuf, Amode, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -87,7 +87,8 @@ impl VirtualFileSystem {
         if self.inodes.contains_key(&inode.get_id()) {
             // if it is not from an hard link we panic
             if inode.link_number == 1 {
-                panic!("inode already there {:?}", inode);
+                // panic!("inode already there {:?}", inode);
+                panic!("Inode already there");
             } else {
                 // else we already put the inode pointed by the hard link
                 return Ok(());
@@ -97,7 +98,7 @@ impl VirtualFileSystem {
         Ok(())
     }
 
-    fn get_filesystem(&mut self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
+    fn get_filesystem(&self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
         self.mounted_filesystems.get(&inode_id.filesystem_id?)
     }
 
@@ -112,19 +113,38 @@ impl VirtualFileSystem {
         &mut self,
         fs: Arc<DeadMutex<dyn FileSystem>>,
         parent: Option<DirectoryEntryId>,
-        (direntry, inode_data): (DirectoryEntry, InodeData),
+        (direntry, inode_data, driver): (DirectoryEntry, InodeData, Option<Box<dyn Driver>>),
     ) -> SysResult<DirectoryEntryId> {
+        if self
+            .dcache
+            .children(parent.unwrap_or(DirectoryEntryId::new(2)))?
+            .any(|entry| entry.filename == direntry.filename)
+        {
+            return Err(Errno::EEXIST);
+        }
+        // eprintln!(
+        //     "Adding inode {:?} for direntry: {}",
+        //     inode_data.id, direntry.filename
+        // );
+
         let direntry = self.dcache.add_entry(parent, direntry)?;
 
         let inode = Inode::new(
             fs,
+            // For now, we're just gonna override the fifo filetype's drivers.
             if inode_data.is_fifo() {
                 Box::try_new(FifoDriver::try_new(inode_data.id)?)?
             } else if inode_data.is_socket() {
                 Box::try_new(DefaultDriver)?
             } else {
-                // TODO: handle others drivers
-                Box::try_new(Ext2DriverFile::new(inode_data.id))?
+                if let Some(driver) = driver {
+                    driver
+                } else {
+                    log::warn!("Default driver registered for id: {:?}", inode_data.id);
+                    Box::try_new(DefaultDriver)?
+                }
+                // // TODO: handle others drivers
+                // Box::try_new(Ext2DriverFile::new(inode_data.id))?
             },
             inode_data,
         );
@@ -132,10 +152,40 @@ impl VirtualFileSystem {
         Ok(direntry)
     }
 
+    fn recursive_remove_dentries(&mut self, direntry_id: DirectoryEntryId) -> SysResult<()> {
+        let children: Vec<DirectoryEntryId> = self
+            .iter_directory_entries(direntry_id)?
+            .map(|entry| entry.id)
+            .try_collect()?;
+
+        Ok(for child in children {
+            let entry = self
+                .dcache
+                .get_entry(&child)
+                .expect("There should be a child here");
+
+            // let inode_id = entry.inode_id;
+            if entry.is_directory() {
+                self.recursive_remove_dentries(child)?;
+            }
+            // This means that dynamic filesystems shall not support multiple hardlinks for now.
+            // self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
+            // eprintln!("Callling funlink.");
+            self.funlink(child)?;
+            // self.dcache.remove_entry(child)?;
+        })
+    }
+
     /// construct the files in directory `direntry_id` in ram form the filesystem
+    /// Removes every files previously contained in it from the VFS.
     fn lookup_directory(&mut self, direntry_id: DirectoryEntryId) -> SysResult<()> {
         // unimplemented!()
+        // removes entries already existing. (cause that can only (for now) happen in dynamic filesystems (aka. procfs)).
+        // TODO: remove the inodes also...
+        self.recursive_remove_dentries(direntry_id)?;
+
         let current_entry = self.dcache.get_entry(&direntry_id)?;
+
         // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
         let fs_cloned = self
@@ -148,8 +198,16 @@ impl VirtualFileSystem {
             .lock()
             .lookup_directory(inode_id.inode_number as u32)?;
 
-        for fs_entry in iter {
+        for (direntry, inode_data, driver) in iter {
+            let fs_entry = (direntry, inode_data, Some(driver));
             self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
+                .or_else(|e| {
+                    if e == Errno::EEXIST {
+                        panic!("lookup_directory: Tried to add entry on an existing one when none was expected to exist.");
+                    } else {
+                        Err(e)
+                    }
+                })
                 .expect("add entry from filesystem failed");
         }
         Ok(())
@@ -197,6 +255,27 @@ impl VirtualFileSystem {
         self._pathname_resolution(root, creds, pathname, 0, true)
     }
 
+    /// this method follow the mount point
+    /// if current_entry is mounted, it set current_entry and
+    /// current_dir_id to the direntry and direntry_id of the mount
+    /// point
+    fn handle_mount_point<'a>(
+        &'a self,
+        current_entry: &mut &'a DirectoryEntry,
+        current_dir_id: &mut DirectoryEntryId,
+    ) {
+        if let Ok(true) = current_entry.is_mounted() {
+            *current_dir_id = current_entry
+                .get_mountpoint_entry()
+                .expect("mount point entry should be there");
+            *current_entry// : &DirectoryEntry
+                = self
+                .dcache
+                .get_entry(current_dir_id)
+                .expect("mount point should be there");
+        }
+    }
+
     fn _pathname_resolution(
         &mut self,
         mut root: DirectoryEntryId,
@@ -222,20 +301,11 @@ impl VirtualFileSystem {
         let mut was_symlink = false;
         let mut current_entry = self.dcache.get_entry(&current_dir_id)?;
 
+        self.handle_mount_point(&mut current_entry, &mut current_dir_id);
         // quick fix, this handle / mount point
-        if current_entry.is_mounted()? {
-            current_dir_id = current_entry
-                .get_mountpoint_entry()
-                .expect("mount point entry should be there");
-            current_entry = self.dcache.get_entry(&current_dir_id)?;
-        }
         for component in components.by_ref() {
-            if current_entry.is_mounted()? {
-                current_dir_id = current_entry
-                    .get_mountpoint_entry()
-                    .expect("mount point entry should be there");
-                current_entry = self.dcache.get_entry(&current_dir_id)?;
-            }
+            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
+
             let current_dir = current_entry.get_directory()?;
 
             if component == &"." {
@@ -243,6 +313,7 @@ impl VirtualFileSystem {
             } else if component == &".." {
                 current_dir_id = current_entry.parent_id;
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
+                self.handle_mount_point(&mut current_entry, &mut current_dir_id);
                 continue;
             }
 
@@ -255,7 +326,16 @@ impl VirtualFileSystem {
             } {
                 return Err(Errno::EACCES);
             }
-            if current_dir.entries().count() == 0 {
+            let should_lookup = {
+                current_dir.entries().count() == 0
+                    || self
+                        .get_filesystem(current_entry.inode_id)
+                        .expect("No corresonding filesystem for direntry")
+                        .lock()
+                        .is_dynamic()
+            };
+
+            if should_lookup {
                 self.lookup_directory(current_dir_id)?;
                 current_entry = self.dcache.get_entry(&current_dir_id)?;
                 let current_dir = current_entry.get_directory()?;
@@ -277,6 +357,9 @@ impl VirtualFileSystem {
                     was_symlink = true;
                     break;
                 }
+                // current_di_id is set after checking if we are on a
+                // symlink, as on a symlink current_dir_id must point
+                // to the directory, not the symlink
                 current_dir_id = *next_entry_id;
                 continue;
             }
@@ -297,7 +380,11 @@ impl VirtualFileSystem {
                 was_symlink = true;
                 break;
             }
+            // current_di_id is set after checking if we are on a
+            // symlink, as on a symlink current_dir_id must point
+            // to the directory, not the symlink
             current_dir_id = *next_entry_id;
+            self.handle_mount_point(&mut current_entry, &mut current_dir_id);
         }
         if was_symlink {
             if components.len() == 0 && !follow_last_symlink {
@@ -511,7 +598,7 @@ impl VirtualFileSystem {
         if mount_dir.is_mounted()? {
             return Err(EBUSY);
         }
-        let (mut root_dentry, mut root_inode_data) = filesystem.lock().root()?;
+        let (mut root_dentry, mut root_inode_data, driver) = filesystem.lock().root()?;
 
         root_inode_data.id.filesystem_id = Some(fs_id);
         root_dentry.inode_id = root_inode_data.id;
@@ -519,7 +606,7 @@ impl VirtualFileSystem {
         let root_dentry_id = self.add_entry_from_filesystem(
             filesystem.clone(),
             Some(mount_dir_id),
-            (root_dentry, root_inode_data),
+            (root_dentry, root_inode_data, Some(driver)),
         )?;
 
         let mount_dir = self
@@ -544,8 +631,8 @@ impl VirtualFileSystem {
         source: Path,
         target: Path,
     ) -> SysResult<()> {
-        use crate::taskmaster::drivers::DiskWrapper;
         use ext2::Ext2Filesystem;
+        use filesystem::devfs::DiskWrapper;
         use filesystem::Ext2fs;
 
         let flags = libc_binding::OpenFlags::O_RDWR;
@@ -576,6 +663,7 @@ impl VirtualFileSystem {
         creds: &Credentials,
         path: Path,
     ) -> SysResult<Vec<dirent>> {
+        //TODO check this function
         let entry_id = self.pathname_resolution(cwd, creds, &path)?;
         let entry = self.dcache.get_entry(&entry_id)?;
 
@@ -592,9 +680,21 @@ impl VirtualFileSystem {
             return Err(Errno::EACCES);
         }
 
-        if entry.get_directory()?.entries().count() == 0 {
+        let entry_count = entry.get_directory()?.entries().count();
+
+        let should_lookup = {
+            entry_count == 0
+                || self
+                    .get_filesystem(entry.inode_id)
+                    .expect("No corresonding filesystem for direntry")
+                    .lock()
+                    .is_dynamic()
+        };
+
+        if should_lookup {
             self.lookup_directory(entry_id)?;
         }
+
         let direntry = self.dcache.get_entry(&entry_id)?;
         let dir = direntry.get_directory()?;
         Ok(dir
@@ -635,7 +735,6 @@ impl VirtualFileSystem {
 
     pub fn unlink(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
         let entry_id = self.pathname_resolution_no_follow_last_symlink(cwd, creds, &path)?;
-        let inode_id;
         let parent_id;
 
         {
@@ -644,7 +743,6 @@ impl VirtualFileSystem {
                 // unlink on directory not supported
                 return Err(EISDIR);
             }
-            inode_id = entry.inode_id;
             parent_id = entry.parent_id;
         }
 
@@ -662,23 +760,55 @@ impl VirtualFileSystem {
             return Err(Errno::EACCES);
         }
 
-        let corresponding_inode = self.inodes.get_mut(&inode_id).ok_or(ENOENT)?;
+        Ok(self.funlink(entry_id)?)
+    }
 
-        self.dcache.remove_entry(entry_id)?;
+    pub fn funlink(&mut self, entry_id: DirectoryEntryId) -> SysResult<()> {
+        let entry = self.dcache.get_entry(&entry_id)?;
+        let parent_inode_number = self
+            .dcache
+            .get_entry(&entry.parent_id)
+            .expect("No corresponding parent direntry for direntry")
+            .inode_id
+            .inode_number;
+
+        let corresponding_inode = self
+            .inodes
+            .get_mut(&entry.inode_id)
+            .expect("No corresponding Inode for direntry");
+        let inode_id = corresponding_inode.id;
 
         // If the link number reach 0 and there is no open file
         // operation, we unlink on the filesystem directly, else we
         // will unlink when the last file operation is closed
+        // eprintln!(
+        //     "Calling funlink on inode: {}({:?})",
+        //     entry.filename, entry.inode_id
+        // );
         let free_inode_data: bool = corresponding_inode.unlink();
+        let filename = entry.filename.clone(); //TODO: remove this
+        self.dcache.remove_entry(entry_id)?;
+
         // we remove the inode only if we free the inode data
         if free_inode_data {
             self.inodes.remove(&inode_id).ok_or(ENOENT)?;
-        }
+        } // else if corresponding_inode.lazy_unlink {
+          //     eprintln!(
+          //         "Lazy unlinking entry for {}, hardlinks: {}",
+          //         filename, corresponding_inode.link_number
+          //     );
+          // } else {
+          //     eprintln!(
+          //         "There are still {} hardlinks for {}",
+          //         corresponding_inode.link_number, filename
+          //     );
+          // }
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         fs.lock().unlink(
-            parent_inode_id.inode_number as u32,
-            path.filename().expect("no filename").as_str(),
+            parent_inode_number,
+            filename.as_str(),
             free_inode_data,
+            inode_id.inode_number,
         )?;
         Ok(())
     }
@@ -722,6 +852,24 @@ impl VirtualFileSystem {
             .get(&direntry.inode_id)
             .expect("No corresponding Inode for Directory"))
     }
+
+    // /// Gets the corresponding inode mutably for a directory entry of id `direntry_id`.
+    // /// This methods helps removing the currently popular boilerplate.
+    // ///
+    // /// Panic:
+    // /// Panics if there is no corresponding inode for the given direntry_id.
+    // fn get_inode_from_direntry_id_mut(
+    //     &mut self,
+    //     direntry_id: DirectoryEntryId,
+    // ) -> SysResult<&mut Inode> {
+    //     let direntry = self.dcache.get_entry(&direntry_id)?;
+
+    //     // should we remove this panic
+    //     Ok(self
+    //         .inodes
+    //         .get_mut(&direntry.inode_id)
+    //         .expect("No corresponding Inode for Directory"))
+    // }
 
     /// Checks if the given `amode` is permitted for the file pointed by `path`
     pub fn is_access_granted(
@@ -797,13 +945,14 @@ impl VirtualFileSystem {
                 let fs = self.get_filesystem_mut(inode_id).expect("no filesystem");
                 let fs_cloned = fs.clone();
 
-                let fs_entry = fs.lock().create(
+                let (direntry, inode_data, driver) = fs.lock().create(
                     path.filename().expect("no filename").as_str(),
                     inode_number,
                     // Open creates regular files
                     FileType::REGULAR_FILE | mode,
                     (creds.euid, creds.egid),
                 )?;
+                let fs_entry = (direntry, inode_data, Some(driver));
                 entry_id = self.add_entry_from_filesystem(fs_cloned, Some(parent_id), fs_entry)?;
             }
         }
@@ -978,8 +1127,8 @@ impl VirtualFileSystem {
         } else {
             let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
 
-            inode.atime = current_time;
-            inode.mtime = current_time;
+            inode.atime = current_time as time_t;
+            inode.mtime = current_time as time_t;
         }
         Ok(())
     }
@@ -1014,12 +1163,14 @@ impl VirtualFileSystem {
 
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
-        let fs_entry = fs.lock().create_dir(
+        let (direntry, inode_data, driver) = fs.lock().create_dir(
             inode_id.inode_number,
             filename.as_str(),
             mode,
             (creds.euid, creds.egid),
         )?;
+
+        let fs_entry = (direntry, inode_data, Some(driver));
         self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         Ok(())
     }
@@ -1076,12 +1227,13 @@ impl VirtualFileSystem {
         let fs = self.get_filesystem(inode_id).expect("no filesystem");
         let fs_cloned = fs.clone();
 
-        let fs_entry = fs.lock().create(
+        let (direntry, inode_data, driver) = fs.lock().create(
             filename.as_str(),
             inode_id.inode_number,
             mode,
             (creds.euid, creds.egid),
         )?;
+        let fs_entry = (direntry, inode_data, Some(driver));
         let new_entry_id = self.add_entry_from_filesystem(fs_cloned, Some(entry_id), fs_entry)?;
         let new_entry = self.dcache.get_entry(&new_entry_id)?;
         Ok(new_entry.inode_id)
@@ -1301,11 +1453,13 @@ impl VirtualFileSystem {
             .expect("no filesystem")
             .clone();
         let fs = self.get_filesystem(parent_inode_id).expect("no filesystem");
-        let fs_entry = fs.lock().symlink(
+        let (direntry, inode_data, driver) = fs.lock().symlink(
             parent_inode_id.inode_number as u32,
             target,
             filename.as_str(),
         )?;
+
+        let fs_entry = (direntry, inode_data, Some(driver));
         self.add_entry_from_filesystem(fs_cloned.clone(), Some(direntry_id), fs_entry)
             .expect("add entry from filesystem failed");
         Ok(())

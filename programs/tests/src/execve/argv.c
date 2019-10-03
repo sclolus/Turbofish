@@ -24,7 +24,7 @@ int main()
 		perror("fork failed");
 		exit(1);
 	} else if (pid == 0) {
-		int res = execve("/bin/execve/check_argv", ARGV, ENVP);
+		int res = execve("/bin/DeepTests/execve/check_argv", ARGV, ENVP);
 		if (res == -1) {
 			perror("execve failed");
 			exit(1);

@@ -37,7 +37,11 @@ TARGET_C = $(addprefix $(BUILD_DIR)/, $(SRC_C))
 
 .PHONY = all clean fclean re
 
-all: $(TARGET_C)
+all: $(TARGET_C) $(BUILD_DIR)/init.sh
+
+$(BUILD_DIR)/init.sh: init.sh
+	cp $< $@
+	cp -rv --parents $@ $(SYSTEM_ROOT)
 
 $(BUILD_DIR)/%: $(OBJ_DIR)/%.o Makefile $(LIBC_AR)
 	@mkdir -pv ./$(dir $@)

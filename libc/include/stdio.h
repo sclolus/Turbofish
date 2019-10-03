@@ -178,7 +178,7 @@ void     rewind(FILE *);
 int      scanf(const char *restrict, ...);
 void     setbuf(FILE *restrict, char *restrict);
 int      setvbuf(FILE *restrict, char *restrict, int, size_t);
-int      sscanf(const char *restrict, const char *restrict, ...);
+int      sscanf(const char *restrict s, const char *restrict format, ...);
 //[OB XSI][Option Start]
 char    *tempnam(const char *, const char *);
 //[Option End]

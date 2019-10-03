@@ -29,7 +29,6 @@ pub struct FifoDriver {
 /// Main implementation of FifoDriver
 impl FifoDriver {
     pub fn try_new(inode_id: InodeId) -> SysResult<Self> {
-        log::info!("Fifo Driver created !");
         Ok(Self {
             inode_id,
             operation: Arc::try_new(DeadMutex::new(FifoFileOperationData::new(inode_id)))?,
@@ -50,8 +49,6 @@ impl Driver for FifoDriver {
         &mut self,
         flags: OpenFlags,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-        log::info!("Opening fifo");
-
         if flags.contains(OpenFlags::O_RDONLY) {
             if self.operation.lock().output_ref == 0 {
                 Ok(IpcResult::Wait(
@@ -102,7 +99,6 @@ pub struct FifoFileOperationData {
 /// Main implementation for Fifo file operation
 impl FifoFileOperationData {
     pub fn new(inode_id: InodeId) -> Self {
-        log::info!("New fifo file operation registered");
         let mut fifo = FifoFileOperationData::default();
         fifo.file_op_uid = get_file_op_uid();
         fifo.inode_id = inode_id;
@@ -177,6 +173,11 @@ impl FileOperation for FifoFileOperationData {
             panic!("Pipe invalid access mode");
         };
     }
+
+    fn get_inode_id(&self) -> SysResult<InodeId> {
+        Ok(self.inode_id)
+    }
+
     fn read(&mut self, buf: &mut [u8]) -> SysResult<IpcResult<u32>> {
         if self.current_index == 0 {
             if self.output_ref == 0 {

@@ -676,6 +676,12 @@ impl Scheduler {
     }
 
     #[allow(dead_code)]
+    /// iter on all the thread group
+    pub fn iter_thread_groups_with_pid(&self) -> impl Iterator<Item = (&Pid, &ThreadGroup)> {
+        self.all_process.iter()
+    }
+
+    #[allow(dead_code)]
     /// iter on all the thread
     pub fn iter_thread(&self) -> impl Iterator<Item = &Thread> {
         self.iter_thread_groups()
@@ -697,7 +703,7 @@ impl Scheduler {
 
     pub fn send_message(&mut self, message: MessageTo) {
         use super::syscall::WaitOption;
-        log::info!("{:?}", message);
+        // log::info!("{:?}", message);
         match message {
             MessageTo::Reader { uid_file_op } => {
                 self.iter_thread_mut()

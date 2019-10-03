@@ -26,7 +26,7 @@ int main(int ac, char **av)
 	}
 	assert(setenv(key, value, 1) == 0);
 	printf("Set '%s' env variable to: '%s'\n", key, value);
-	int ret = execl("/bin/execl/execl", "a", "b", (char*)NULL);
+	int ret = execl("/bin/DeepTests/execl/execl", "a", "b", (char*)NULL);
 
 	assert(ret == -1);
 	perror("Execl failed with: ");

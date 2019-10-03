@@ -1,5 +1,6 @@
 #ifndef __STDINT_H__
 # define __STDINT_H__
+# include <bits/wordsize.h>
 
 //    [CX] [Option Start] Some of the functionality described on this reference page extends the ISO C standard. Applications shall define the appropriate feature test macro (see XSH The Compilation Environment ) to enable the visibility of these symbols in this header. [Option End]
 

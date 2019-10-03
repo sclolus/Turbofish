@@ -1,7 +1,7 @@
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
 
-BUILD_DIR = bin
+BUILD_DIR = bin/DeepTests
 VPATH += src
 
 AS = i686-turbofish-ld
@@ -59,9 +59,7 @@ SRC_C += MasterDeepThought \
 		fstatfs/fstatfs \
 		fstatvfs/fstatvfs \
 		chmod_tests/chmod_fails_if_not_owner \
-		chmod_tests/einval_mode \
 		chmod_tests/chmod_normal \
-		fchmod/einval_mode \
 		fchmod/fchmod_fails_if_not_owner \
 		fchmod/fchmod_normal \
 		utime/utime_basic \

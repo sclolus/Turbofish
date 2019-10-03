@@ -25,9 +25,15 @@ extern crate alloc;
 
 extern crate arrayvec;
 
+// #[macro_use]
+extern crate derive_is_enum_variant;
+
 // Our Crates
 extern crate io;
 extern crate mbr;
+
+#[macro_use]
+extern crate fallible_collections;
 
 #[macro_use]
 extern crate interrupts;

@@ -1,5 +1,9 @@
+use super::Credentials;
+use super::FileOperation;
 use super::FileSystem;
-use super::{DirectoryEntry, FileSystemId, InodeData, Path};
+use super::IpcResult;
+use super::VFS;
+use super::{DirectoryEntry, Driver, FileSystemId, InodeData, Path};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
 
@@ -10,8 +14,13 @@ use core::default::Default;
 use core::str;
 use core::sync::atomic::Ordering;
 use ext2::{DirectoryEntryType, Ext2Filesystem};
-use fallible_collections::TryCollect;
+use fallible_collections::{FallibleBox, TryCollect};
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, FileType, EXT2_SUPER_MAGIC, NAME_MAX};
+
+pub mod file;
+pub use file::{Ext2DriverFile, Ext2FileOperation};
+
+use alloc::boxed::Box;
 
 use sync::DeadMutex;
 
@@ -35,13 +44,15 @@ impl From<ext2::Inode> for InodeData {
     fn from(inode_ext2: ext2::Inode) -> InodeData {
         InodeData {
             id: Default::default(),
+            major: 0,
+            minor: 0,
             link_number: inode_ext2.nbr_hard_links,
             access_mode: inode_ext2.type_and_perm,
             uid: inode_ext2.user_id,
             gid: inode_ext2.group_id,
-            atime: inode_ext2.last_access_time,
-            mtime: inode_ext2.last_modification_time,
-            ctime: inode_ext2.last_access_time,
+            atime: inode_ext2.last_access_time as i32,
+            mtime: inode_ext2.last_modification_time as i32,
+            ctime: inode_ext2.last_access_time as i32,
             size: inode_ext2.get_size(),
             nbr_disk_sectors: inode_ext2.nbr_disk_sectors,
         }
@@ -53,7 +64,7 @@ impl Ext2fs {
         &mut self,
         direntry: ext2::DirectoryEntry,
         inode: ext2::Inode,
-    ) -> (DirectoryEntry, InodeData) {
+    ) -> (DirectoryEntry, InodeData, Box<dyn Driver>) {
         let inode_nbr = direntry.get_inode();
         let inode_id = InodeId::new(inode_nbr, Some(self.fs_id));
 
@@ -81,7 +92,13 @@ impl Ext2fs {
 
         let mut inode_data = InodeData::from(inode);
         inode_data.set_id(inode_id);
-        (direntry, inode_data)
+        //WARNING: infaillible context
+        //TODO: fix this
+        (
+            direntry,
+            inode_data,
+            Box::new(Ext2DriverFile::new(inode_data.id)),
+        )
     }
     fn read_symlink(&mut self, inode: &ext2::Inode, inode_number: u32) -> SysResult<Path> {
         // dbg!(inode);
@@ -100,7 +117,7 @@ impl Ext2fs {
 }
 
 impl FileSystem for Ext2fs {
-    fn root(&self) -> SysResult<(DirectoryEntry, InodeData)> {
+    fn root(&self) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         let root_inode = self.ext2.lock().root_inode()?;
 
         let inode_id = InodeId::new(2, Some(self.fs_id));
@@ -116,10 +133,17 @@ impl FileSystem for Ext2fs {
 
         let mut inode_data = InodeData::from(root_inode);
         inode_data.set_id(inode_id);
-        Ok((direntry, inode_data))
+        Ok((
+            direntry,
+            inode_data,
+            Box::try_new(Ext2DriverFile::new(inode_id))?,
+        ))
     }
 
-    fn lookup_directory(&mut self, inode_nbr: u32) -> SysResult<Vec<(DirectoryEntry, InodeData)>> {
+    fn lookup_directory(
+        &mut self,
+        inode_nbr: u32,
+    ) -> SysResult<Vec<(DirectoryEntry, InodeData, Box<dyn Driver>)>> {
         let res = self.ext2.lock().lookup_directory(inode_nbr)?;
         Ok(res
             .into_iter()
@@ -145,7 +169,13 @@ impl FileSystem for Ext2fs {
         Ok(self.ext2.lock().chown(inode_nbr, owner, group)?)
     }
 
-    fn unlink(&self, dir_inode_nbr: u32, name: &str, free_inode_data: bool) -> SysResult<()> {
+    fn unlink(
+        &mut self,
+        dir_inode_nbr: u32,
+        name: &str,
+        free_inode_data: bool,
+        _inode_nbr: u32,
+    ) -> SysResult<()> {
         Ok(self
             .ext2
             .lock()
@@ -162,7 +192,7 @@ impl FileSystem for Ext2fs {
         parent_inode_nbr: u32,
         mode: FileType,
         (owner, group): (uid_t, gid_t),
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         // We probably should provide it as a parameter to this method.
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let (direntry, inode) =
@@ -192,7 +222,7 @@ impl FileSystem for Ext2fs {
         filename: &str,
         mode: FileType,
         (owner, group): (uid_t, gid_t),
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         // We probably should provide it as a parameter to this method.
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
 
@@ -216,7 +246,7 @@ impl FileSystem for Ext2fs {
         parent_inode_nbr: u32,
         target: &str,
         filename: &str,
-    ) -> SysResult<(DirectoryEntry, InodeData)> {
+    ) -> SysResult<(DirectoryEntry, InodeData, Box<dyn Driver>)> {
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let (direntry, inode) =
             self.ext2

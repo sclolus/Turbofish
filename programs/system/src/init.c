@@ -6,7 +6,7 @@
 
 int open_tty_device(const char *tty_device)
 {
-	int fd = open(tty_device, 0);
+	int fd = open(tty_device, O_RDWR);
 	if (fd < 0) {
 		exit(1);
 	}
@@ -73,7 +73,7 @@ int main(int argc, char **argv, char **envp)
 		}
 		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
-			/* #[allow(unused)] */
+		/* #[allow(unused)] */
 			int _fd = open_tty_device("/dev/tty1");
 			(void)_fd;
 			perror("execve failed");

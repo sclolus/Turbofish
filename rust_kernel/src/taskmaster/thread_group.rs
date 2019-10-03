@@ -7,6 +7,8 @@ use libc_binding::{Amode, FileType, PermissionClass};
 
 use super::vfs::Path;
 
+use super::safe_ffi::CStringArray;
+
 use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
@@ -92,6 +94,15 @@ pub struct ThreadGroup {
 
     /// The umask of the process: The actived bits in it are disabled in all file creating operations.
     pub umask: mode_t,
+
+    /// Filled by execve, used by /proc/[pid]/environ in the procfs.
+    pub environ: Option<CStringArray>,
+
+    /// Filled by execve, used by /proc/[pid]/cmdline in the procfs.
+    pub argv: Option<CStringArray>,
+
+    /// Filled by execve, used by /proc/[pid]/exe in the procfs.
+    pub filename: Option<Path>,
 }
 
 #[derive(Debug, TryClone)]
@@ -212,6 +223,9 @@ impl ThreadGroup {
             pgid,
             job: Job::new(),
             umask: 0,
+            environ: None,
+            argv: None,
+            filename: None,
         })
     }
 
@@ -265,6 +279,9 @@ impl ThreadGroup {
             next_tid: 1,
             job: Job::new(),
             umask: 0,
+            environ: None,
+            argv: None,
+            filename: None,
         };
 
         self.unwrap_running_mut().child.push(child_pid);

@@ -598,6 +598,16 @@ bitflags! {
     }
 }
 
+impl OpenFlags {
+    pub fn is_open_for_read(&self) -> bool {
+        self.contains(OpenFlags::O_RDONLY) || self.contains(OpenFlags::O_RDWR)
+    }
+
+    pub fn is_open_for_write(&self) -> bool {
+        self.contains(OpenFlags::O_WRONLY) || self.contains(OpenFlags::O_RDWR)
+    }
+}
+
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Whence {
@@ -713,6 +723,10 @@ impl FileType {
         let excess_bits = *self & !mask;
 
         excess_bits.is_empty()
+    }
+    pub fn extract_pure_mode(self) -> Self {
+        let mask = FileType::SPECIAL_BITS | FileType::PERMISSIONS_MASK;
+        self & mask
     }
 }
 

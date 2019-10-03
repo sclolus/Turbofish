@@ -309,6 +309,10 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         _ => "unknown syscall",
     };
     unpreemptible_context!({
-        log::info!("{} result: {:#?}", sysname, result);
+        if result.is_err() {
+            log::error!("{} result: {:#?}", sysname, result);
+        } else {
+            log::info!("{} result: {:#?}", sysname, result);
+        }
     })
 }

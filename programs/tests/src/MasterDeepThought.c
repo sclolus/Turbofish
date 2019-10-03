@@ -21,7 +21,7 @@ void _exit_qemu(int val)
 
 int open_tty_device(const char *tty_device)
 {
-	int fd = open(tty_device, 0);
+	int fd = open(tty_device, O_RDWR);
 	if (fd < 0) {
 		exit(1);
 	}
@@ -50,7 +50,7 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 			exit(1);
 		}
 		printf("argc: %i -> self: %s to_execve: %s to_tty: %s\n", argc, argv[0], argv[1], tty_device);
-		int ret = execve("/bin/DeepThought", argv + 1, envp);
+		int ret = execve(argv[1], argv + 1, envp);
 		if (ret < 0) {
 			perror("execve failed");
 			exit(1);

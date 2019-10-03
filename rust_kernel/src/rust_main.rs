@@ -17,8 +17,8 @@ pub extern "C" fn kmain(
     #[cfg(not(feature = "with-login"))]
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/dash"],
-        &[],
+        &["/bin/init", "/bin/session_manager", "/bin/sh"],
+        &["ENV=/bin/init.sh"],
     );
 }
 
@@ -67,7 +67,7 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
             column: size.column - 17
         },
         "{}",
-        "Turbo Fish v0.3".green()
+        "Turbo Fish v10.0".green()
     );
 
     /*
@@ -105,10 +105,13 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
     PCI.lock().list_pci_devices();
     log::info!("PCI buses has been scanned");
 
-    /*
-     * Initialize Storage driver
-     */
-    crate::drivers::storage::init(&multiboot_info);
+    // crate::test_helpers::really_lazy_hello_world(Duration::from_millis(100));
 
+    // let mut rtc = Rtc::new();
+    // rtc.update_unix_time();
+    // let date = rtc.read_date();
+    // rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz.
     watch_dog();
+
+    crate::drivers::storage::init(&multiboot_info);
 }

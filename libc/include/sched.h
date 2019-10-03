@@ -28,7 +28,14 @@
 #define CLONE_NEWNET         0x40000000	/* New network namespace */
 #define CLONE_IO             0x80000000	/* Clone io context */
 
+struct sched_param
+{
+	int sched_priority;
+};
+
 int	clone(int (*fn)(void *), void *child_stack,
 		  int flags, void *arg/*, pid_t *ptid, void *newtls, pid_t *ctid*/);
 
+int	sched_setscheduler(pid_t pid, int policy,
+		       const struct sched_param *param);
 #endif

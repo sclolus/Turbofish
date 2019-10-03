@@ -8,7 +8,7 @@
 
 #define _POSIX_VERSION 200809L
 
-
+#define _SC_CLK_TCK 2
 
 #define	F_OK	0
 //    Test for existence of file.
@@ -125,7 +125,7 @@ int          symlinkat(const char *, int, const char *);
 //[XSI][Option Start]
 void         sync(void);
 //[Option End]
-long         sysconf(int);
+long	     sysconf(int name);
 pid_t        tcgetpgrp(int);
 int          tcsetpgrp(int, pid_t);
 int          truncate(const char *, off_t);
@@ -161,6 +161,7 @@ int getpagesize(void);
 #define STDIN_FILENO 0
 
 
+#define _SC_NPROCESSORS_ONLN		1
 
 
 #ifdef __cplusplus

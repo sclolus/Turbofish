@@ -63,7 +63,7 @@ typedef long int ssize_t;
 //    Used for a count of bytes or an error indication.
 typedef unsigned int suseconds_t;
 //    Used for time in microseconds.
-typedef unsigned int time_t;
+typedef signed int time_t;
 //    Used for time in seconds.
 #define timer_t int
 //    Used for timer ID returned by timer_create().
@@ -77,5 +77,10 @@ typedef unsigned int time_t;
 ////    [OB TRC] [Option Start] Used to identify a trace stream. [Option End]
 typedef unsigned short uid_t;
 //    Used for user IDs.
+
+/* These were defined by ISO C without the first `_'.  */
+typedef	unsigned char u_int8_t;
+typedef	unsigned short int u_int16_t;
+typedef	unsigned int u_int32_t;
 
 #endif

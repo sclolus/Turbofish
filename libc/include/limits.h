@@ -447,7 +447,7 @@
 	 * Minimum value for an object of type char.
      * Value: {SCHAR_MIN} or 0
 	 */
-#define INT_MAX ((int)(UINT_MAX >> 1))
+#define INT_MAX (UINT_MAX >> 1)
     /*
 	 * Maximum value for an object of type int.
      * [CX] [Option Start] Minimum Acceptable Value: 2 147 483 647 [Option End]
@@ -457,7 +457,7 @@
 	 * Minimum value for an object of type int.
      * [CX] [Option Start] Maximum Acceptable Value: -2 147 483 647 [Option End]
 	 */
-#define	LLONG_MAX	((long long)(ULLONG_MAX >> 1))
+#define	LLONG_MAX	(ULLONG_MAX >> 1)
     /*
 	 * Maximum value for an object of type long long.
      * Minimum Acceptable Value: +9223372036854775807
@@ -493,7 +493,7 @@
 	 * Maximum value for an object of type unsigned.
      * [CX] [Option Start] Minimum Acceptable Value: 4 294 967 295 [Option End]
 	 */
-#define	ULLONG_MAX	((unsigned long long)(~0L))
+#define	ULLONG_MAX	(~0L)
     /*
 	 * Maximum value for an object of type unsigned long long.
      * Minimum Acceptable Value: 18446744073709551615

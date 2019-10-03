@@ -2,6 +2,7 @@ use super::direntry::{DirectoryEntry, DirectoryEntryId};
 use super::path::Path;
 use super::SysResult;
 use fallible_collections::btree::BTreeMap;
+use itertools::unfold;
 use libc_binding::Errno::*;
 
 pub struct Dcache {
@@ -138,6 +139,19 @@ impl Dcache {
         Ok(())
     }
 
+    pub fn children(
+        &self,
+        dir_id: DirectoryEntryId,
+    ) -> SysResult<impl Iterator<Item = (&DirectoryEntry)>> {
+        let dcache = self;
+        let mut children_iter = self.get_entry(&dir_id)?.get_directory()?.entries();
+
+        Ok(unfold((), move |_| match children_iter.next() {
+            None => None,
+            Some(id) => dcache.get_entry(&id).ok(),
+        }))
+    }
+
     pub fn move_dentry(
         &mut self,
         id: DirectoryEntryId,
@@ -166,9 +180,13 @@ impl Dcache {
                 .expect("No space left inside the dcache lool");
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DirectoryEntry> {
+        self.d_entries.iter().map(|(_, entry)| entry)
+    }
 }
 
-use core::fmt::{Display, Error, Formatter};
+use core::fmt::{Debug, Display, Error, Formatter};
 
 impl Display for Dcache {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
@@ -183,5 +201,11 @@ impl Display for Dcache {
         .unwrap();
 
         Ok(())
+    }
+}
+
+impl Debug for Dcache {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        <Self as Display>::fmt(self, f)
     }
 }

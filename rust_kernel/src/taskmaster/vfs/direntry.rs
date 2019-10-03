@@ -1,11 +1,13 @@
 use super::inode::InodeId;
 use super::path::{Filename, Path};
+use super::Incrementor;
 use super::SysResult;
 use alloc::vec::Vec;
 use fallible_collections::FallibleVec;
 use libc_binding::{c_char, dirent, Errno::*};
+use try_clone_derive::TryClone;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub struct DirectoryEntry {
     pub filename: Filename,
     inner: DirectoryEntryInner,
@@ -65,6 +67,11 @@ impl DirectoryEntryBuilder {
 
     pub fn set_fifo(&mut self) -> &mut Self {
         self.inner = Some(DirectoryEntryInner::Fifo);
+        self
+    }
+
+    pub fn set_chardevice(&mut self) -> &mut Self {
+        self.inner = Some(DirectoryEntryInner::CharDevice);
         self
     }
 
@@ -223,7 +230,7 @@ impl Default for DirectoryEntry {
         }
     }
 }
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default, TryClone)]
 pub struct DirectoryEntryId(usize);
 
 impl DirectoryEntryId {
@@ -237,6 +244,12 @@ impl DirectoryEntryId {
     }
 }
 
+impl Incrementor for DirectoryEntryId {
+    fn incr(&mut self) {
+        self.0 += 1;
+    }
+}
+
 use core::convert::TryFrom;
 use core::fmt::{Display, Error, Formatter};
 impl Display for DirectoryEntryId {
@@ -245,7 +258,7 @@ impl Display for DirectoryEntryId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub struct EntryDirectory {
     entries: Vec<DirectoryEntryId>,
     mounted: Option<DirectoryEntryId>,
@@ -262,6 +275,10 @@ impl EntryDirectory {
 
     pub fn is_mounted(&self) -> bool {
         self.mounted.is_some()
+    }
+
+    pub fn clear_entries(&mut self) {
+        self.entries.truncate(0);
     }
 
     pub fn get_mountpoint_entry(&self) -> Option<DirectoryEntryId> {
@@ -282,13 +299,14 @@ impl Default for EntryDirectory {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryClone)]
 pub enum DirectoryEntryInner {
     Regular,
     Directory(EntryDirectory),
     Symlink(Path),
     Fifo,
     Socket,
+    CharDevice,
 }
 
 use DirectoryEntryInner::*;
@@ -357,4 +375,41 @@ impl DirectoryEntryInner {
         self.get_directory_mut()?.set_mounted(on);
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod directory_entry_id_should {
+    use super::DirectoryEntryId;
+
+    // Really should make a crate for unit-tests macros.
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    make_test! {{
+        use super::Incrementor;
+        let make_id = |x| DirectoryEntryId::new(x);
+        let id = make_id(0);
+
+        assert_eq!({let mut id = make_id(0); id.incr(); id}, make_id(1));
+
+        let mut id = make_id(0);
+        for index in 0..128 {
+            assert_eq!(id, make_id(index));
+            id.incr();
+        }
+
+    }, add_to_usizes}
 }

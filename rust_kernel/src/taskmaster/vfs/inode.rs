@@ -3,6 +3,7 @@ use super::DeadFileSystem;
 use super::DefaultDriver;
 use super::Driver;
 use super::FileSystem;
+use super::Incrementor;
 use super::{FileOperation, IpcResult, OpenFlags};
 use crate::taskmaster::SysResult;
 // use super::{FileSystemId, VfsError, VfsHandler, VfsHandlerKind, VfsHandlerParams, VfsResult};
@@ -15,16 +16,17 @@ use libc_binding::{
     FileType,
 };
 use sync::DeadMutex;
+use try_clone_derive::TryClone;
 
 #[derive(Debug)]
 pub struct Inode {
-    inode_data: InodeData,
+    pub inode_data: InodeData,
     pub driver: Box<dyn Driver>,
     /// a reference counter of open file operation on this inode
     nbr_open_file_operation: usize,
     /// if true, the inode need to be unlink when
     /// nbr_open_file_operation reach to 0
-    lazy_unlink: bool,
+    pub lazy_unlink: bool,
     pub filesystem: Arc<DeadMutex<dyn FileSystem>>,
 }
 
@@ -148,7 +150,8 @@ impl Inode {
     }
 }
 
-#[derive(Default, Debug)]
+// I think this should Copy/Clone.
+#[derive(Default, Debug, Copy, Clone)]
 pub struct InodeData {
     /// This inode's id.
     pub id: InodeId,
@@ -157,7 +160,9 @@ pub struct InodeData {
     pub link_number: nlink_t,
     pub access_mode: FileType,
 
-    //TODO: chnage this to (owner, group),
+    pub major: dev_t,
+    pub minor: dev_t,
+
     pub uid: uid_t,
     pub gid: gid_t,
 
@@ -176,13 +181,13 @@ impl InodeData {
 
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         *stat = stat {
-            st_dev: 42 as dev_t,                   // Device ID of device containing file.
-            st_ino: self.id.inode_number as ino_t, // File serial number.
+            st_dev: self.major,                         // Device ID of device containing file.
+            st_ino: self.id.inode_number as ino_t,      // File serial number.
             st_mode: self.access_mode.bits() as mode_t, // Mode of file (see below).
-            st_nlink: self.link_number,            // Number of hard links to the file.
-            st_uid: self.uid,                      // User ID of file.
-            st_gid: self.gid,                      // Group ID of file.
-            st_rdev: 0 as dev_t, //TODO // Device ID (if file is character or block special).
+            st_nlink: self.link_number,                 // Number of hard links to the file.
+            st_uid: self.uid,                           // User ID of file.
+            st_gid: self.gid,                           // Group ID of file.
+            st_rdev: self.minor, //TODO // Device ID (if file is character or block special).
             st_size: self.size as off_t, // For regular files, the file size in bytes.
             st_atim: timespec {
                 // Last data access timestamp.
@@ -241,6 +246,8 @@ impl InodeData {
             id: InodeId::new(2, None),
             link_number: 1,
             access_mode,
+            major: 0,
+            minor: 0,
             uid: 0,
             gid: 0,
             atime: 0,
@@ -276,7 +283,7 @@ impl InodeData {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TryClone)]
 pub struct InodeId {
     pub inode_number: InodeNumber,
     pub filesystem_id: Option<FileSystemId>,
@@ -288,6 +295,55 @@ impl InodeId {
             inode_number,
             filesystem_id,
         }
+    }
+}
+
+#[cfg(test)]
+mod inode_id_should {
+    use super::InodeId;
+
+    // Really should make a crate for unit-tests macros.
+    macro_rules! make_test {
+        ($body: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                $body
+            }
+        };
+        (failing, $body: expr, $name: ident) => {
+            #[test]
+            #[should_panic]
+            fn $name() {
+                $body
+            }
+        };
+    }
+
+    make_test! {{
+        use super::Incrementor;
+        let make_id = |x| InodeId::new(x, None);
+        let id = make_id(0);
+
+        assert_eq!({let mut id = make_id(0); id.incr(); id}, make_id(1));
+
+        let mut id = make_id(0);
+        for index in 0..128 {
+            assert_eq!(id, make_id(index));
+            id.incr();
+        }
+
+    }, add_to_usizes}
+}
+
+impl Incrementor for InodeNumber {
+    fn incr(&mut self) {
+        *self += 1;
+    }
+}
+
+impl Incrementor for InodeId {
+    fn incr(&mut self) {
+        self.inode_number += 1;
     }
 }
 

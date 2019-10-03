@@ -9,7 +9,11 @@ pub extern "C" fn kmain(
     crate::rust_main::init_kernel(multiboot_info, device_map_ptr);
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/MasterDeepThought", "/bin/DeepThought"],
+        &[
+            "/bin/init",
+            "/bin/DeepTests/MasterDeepThought",
+            "/bin/DeepTests/DeepThought",
+        ],
         &[],
     );
 }

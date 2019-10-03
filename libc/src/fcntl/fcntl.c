@@ -10,7 +10,6 @@
 int fcntl(int fildes, int cmd, ...)
 {
 	TRACE
-	DUMMY
 	va_list ap;
 	int arg = 0;
 

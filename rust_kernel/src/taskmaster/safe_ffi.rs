@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use core::convert;
 use core::convert::TryInto;
 use core::fmt;
-use fallible_collections::{try_vec, FallibleVec};
+use fallible_collections::{try_vec, FallibleVec, TryClone};
 
 /// Main structure of CString
 pub struct CString(pub Vec<c_char>);
@@ -56,6 +56,10 @@ impl CString {
             Some(aligned_ptr)
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &i8> {
+        self.0.iter()
+    }
 }
 
 /// Create a CString from a RUST str slice
@@ -96,6 +100,10 @@ impl fmt::Display for CString {
 }
 
 impl CStringArray {
+    pub fn strings(&self) -> impl Iterator<Item = &CString> {
+        self.owned_content.iter()
+    }
+
     /// Return a C char** from a RUST CStringArray
     pub fn as_ptr(&self) -> *const *const c_char {
         self.c_pointer.as_ptr()
@@ -165,6 +173,33 @@ impl CStringArray {
             }
             Some(origin_aligned_ptr)
         }
+    }
+}
+
+impl TryClone for CString {
+    fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
+        let inner = self.0.try_clone()?;
+
+        Ok(Self(inner))
+    }
+}
+
+impl TryClone for CStringArray {
+    fn try_clone(&self) -> Result<Self, CollectionAllocErr> {
+        let mut owned_content = Vec::try_with_capacity(self.len())?;
+        let mut c_pointer = Vec::try_with_capacity(self.len() + 1)?;
+
+        for string in self.owned_content.iter() {
+            let copied = string.try_clone()?;
+            c_pointer.try_push(copied.as_ptr())?;
+            owned_content.try_push(copied)?;
+        }
+
+        c_pointer.try_push(0x0 as *const c_char)?;
+        Ok(Self {
+            c_pointer,
+            owned_content,
+        })
     }
 }
 

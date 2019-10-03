@@ -3,6 +3,7 @@
 #include <sys/select.h>
 #include <time.h>
 #include <ltrace.h>
+#include <custom.h>
 
 #warning "dummy implementation: only timeout parameter is supported"
 int select(int nfds,
@@ -11,6 +12,7 @@ int select(int nfds,
 	   fd_set *restrict exceptfds,
 	   struct timeval *restrict timeout) {
 	TRACE
+	DUMMY
 	if (nfds != 0
 	    || readfds != NULL
 	    || writefds != NULL
