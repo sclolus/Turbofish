@@ -8,7 +8,7 @@ extern crate alloc;
 mod macros;
 
 pub mod early_terminal;
-pub use early_terminal::EARLY_TERMINAL;
+pub use early_terminal::EarlyTerminal;
 
 pub mod cursor;
 pub use cursor::Cursor;
@@ -43,14 +43,17 @@ lazy_static! {
     pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
 }
 
+/// Main EarlyTerminal Globale
+pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
+
+/// No initialized at the beginning
+pub static mut TERMINAL: Option<Terminal> = None;
+
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
     ttys: BTreeMap<usize, Box<LineDiscipline>>,
 }
-
-/// No initialized at the beginning
-pub static mut TERMINAL: Option<Terminal> = None;
 
 const MAX_SCREEN_BUFFER: usize = 10;
 
