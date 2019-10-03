@@ -149,6 +149,24 @@ pub trait FileSystem: Send + Debug {
     // fn rmdir: Option<fn(&mut Superblock)>,
 }
 
+#[derive(Debug)]
+/// the filesystem source,
+pub enum FileSystemSource {
+    /// is it mounted from  /dev/sda for exemple
+    File { source_path: Path },
+    /// or a procfs ?
+    Procfs,
+    /// or a devfs ?
+    Devfs,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum FileSystemType {
+    Ext2,
+    Procfs,
+    Devfs,
+}
+
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq, TryClone)]
 pub struct FileSystemId(pub usize);
 
