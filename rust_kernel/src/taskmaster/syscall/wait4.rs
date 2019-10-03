@@ -319,7 +319,11 @@ fn wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysR
             let status = match tg.get_death_status() {
                 Some(status) => {
                     if let Some(rusage) = rusage {
-                        *rusage = scheduler.current_thread_group_mut().process_duration.into();
+                        *rusage = scheduler
+                            .get_thread_group(dead_pid)
+                            .expect("Woot ?")
+                            .process_duration
+                            .into();
                     }
                     scheduler.current_thread_group_mut().remove_child(dead_pid);
                     scheduler.remove_thread_group(dead_pid);
@@ -354,7 +358,11 @@ fn wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysR
                     status,
                 } => {
                     if let Some(rusage) = rusage {
-                        *rusage = scheduler.current_thread_group_mut().process_duration.into();
+                        *rusage = scheduler
+                            .get_thread_group(dead_process_pid)
+                            .expect("Woot ?")
+                            .process_duration
+                            .into();
                     }
                     if status.is_terminated() {
                         let thread_group = scheduler.current_thread_group_mut();

@@ -456,7 +456,6 @@ impl Scheduler {
             self.running_process[self.current_task_index],
             status,
         );
-        eprintln!("{:?}", self.current_thread_group_mut().process_duration);
 
         match status {
             Status::Signaled(Signum::SIGSEGV) => println!("{}", "segmentation fault".red()),
