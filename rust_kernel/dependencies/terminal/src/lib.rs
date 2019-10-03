@@ -13,7 +13,7 @@ pub use early_terminal::EARLY_TERMINAL;
 pub mod cursor;
 pub use cursor::Cursor;
 
-use ansi_escape_code::Pos;
+use ansi_escape_code::{color::Colored, Pos};
 use screen::{bmp_loader, bmp_loader::BmpImage, AdvancedGraphic, Drawer, ScreenMonad};
 
 mod tty;
@@ -210,6 +210,8 @@ extern "C" {
 
 /// Extern function for initialisation
 pub fn init_terminal() {
+    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
+
     let mut term = Terminal::new();
     term.get_tty(SYSTEM_LOG_TTY_IDX).tty.cursor.visible = false;
 
@@ -242,5 +244,15 @@ pub fn init_terminal() {
         TERMINAL = Some(term);
     }
     self::log::init().unwrap();
+
+    let size = SCREEN_MONAD.lock().query_window_size();
+    printfixed!(
+        Pos {
+            line: 1,
+            column: size.column - 17
+        },
+        "{}",
+        "Turbo Fish v0.3".green()
+    );
     ::log::info!("Terminal has been initialized");
 }
