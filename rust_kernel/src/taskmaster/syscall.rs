@@ -418,7 +418,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         // Return value will be on EAX. Errno always represents the low 7 bits
         (*cpu_state).registers.eax = result.into_raw_result();
     }
-    exit_from_syscall(cpu_state, is_in_blocked_syscall)
+    let esp = exit_from_syscall(cpu_state, is_in_blocked_syscall);
+    esp
 }
 
 fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u32 {
