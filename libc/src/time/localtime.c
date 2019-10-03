@@ -63,7 +63,7 @@ static time_t	get_month_from_yday(time_t yday)
 {
 	TRACE
 	assert(yday < 367);
-	const uint32_t nbr_of_days[12] = {
+	const time_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 	};
 
@@ -80,7 +80,7 @@ static time_t	get_day_of_month_from_yday(time_t yday)
 {
 	TRACE
 	assert(yday < 367);
-	const uint32_t nbr_of_days[12] = {
+	const time_t nbr_of_days[12] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 	};
 

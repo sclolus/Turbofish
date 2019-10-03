@@ -1,7 +1,7 @@
 use super::kmodules::CURRENT_UNIX_TIME;
 use super::scheduler::SCHEDULER;
 use super::SysResult;
-use libc_binding::{timeval, timezone};
+use libc_binding::{time_t, timeval, timezone};
 
 use core::ptr;
 use core::sync::atomic::Ordering;
@@ -10,7 +10,7 @@ fn gettimeofday(timeval: Option<&mut timeval>, _timezone: Option<&mut timezone>)
     let current_unix_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Acquire) };
 
     if let Some(timeval) = timeval {
-        timeval.tv_sec = current_unix_time as u32;
+        timeval.tv_sec = current_unix_time as time_t;
         timeval.tv_usec = 0; // No fucks given.
     }
     Ok(0)

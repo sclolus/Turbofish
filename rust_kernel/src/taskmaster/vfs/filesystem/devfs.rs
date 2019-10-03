@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, FallibleBox, TryCollect};
-use libc_binding::{statfs, FileType};
+use libc_binding::{statfs, time_t, FileType};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -79,9 +79,9 @@ impl Devfs {
             uid: 0,
             gid: 0,
 
-            atime: timestamp,
-            mtime: timestamp,
-            ctime: timestamp,
+            atime: timestamp as time_t,
+            mtime: timestamp as time_t,
+            ctime: timestamp as time_t,
 
             size: 0,
             nbr_disk_sectors: 0,

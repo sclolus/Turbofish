@@ -42,7 +42,7 @@ use libc_binding::dirent;
 use libc_binding::statfs;
 use libc_binding::Errno::*;
 use libc_binding::FileType;
-use libc_binding::{gid_t, stat, uid_t, utimbuf, Amode, Errno};
+use libc_binding::{gid_t, stat, time_t, uid_t, utimbuf, Amode, Errno};
 
 pub mod init;
 pub use init::{init, VFS};
@@ -1127,8 +1127,8 @@ impl VirtualFileSystem {
         } else {
             let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
 
-            inode.atime = current_time;
-            inode.mtime = current_time;
+            inode.atime = current_time as time_t;
+            inode.mtime = current_time as time_t;
         }
         Ok(())
     }

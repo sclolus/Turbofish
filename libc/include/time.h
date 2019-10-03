@@ -107,11 +107,14 @@ char      *ctime(const time_t *);
 //[CX][Option Start]
 //struct tm *gmtime_r(const time_t *restrict, struct tm *restrict);
 //[Option End]
-struct tm *localtime(const time_t *);
-//[CX][Option Start]
-//struct tm *localtime_r(const time_t *restrict, struct tm *restrict);
-//[Option End]
-//time_t     mktime(struct tm *);
+
+struct tm *localtime(const time_t *timer);
+struct tm *localtime_r(const time_t *timer, struct tm *result);
+
+time_t     mktime(struct tm *);
+
+size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
+
 //[CX][Option Start]
 int        nanosleep(const struct timespec *, struct timespec *);
 //[Option End]
@@ -125,7 +128,9 @@ size_t strftime(char *restrict s, size_t maxsize,
 //char      *strptime(const char *restrict, const char *restrict,
 //               struct tm *restrict);
 //[Option End]
+
 time_t     time(time_t *);
+
 //[CX][Option Start]
 //int        timer_create(clockid_t, struct sigevent *restrict,
 //               timer_t *restrict);
@@ -134,7 +139,9 @@ time_t     time(time_t *);
 //int        timer_gettime(timer_t, struct itimerspec *);
 //int        timer_settime(timer_t, int, const struct itimerspec *restrict,
 //               struct itimerspec *restrict);
-//void       tzset(void);
+
+void       tzset(void);
+
 //[Option End]
 //
 //

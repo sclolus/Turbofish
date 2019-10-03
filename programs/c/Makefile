@@ -51,6 +51,8 @@ SRC_C += Clone \
 		client_socket \
 		server_socket \
 		bullshit_return \
+		mktime \
+		strftime \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
