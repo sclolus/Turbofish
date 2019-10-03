@@ -7,8 +7,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <dirent.h>
+#ifndef GNU
 #include <tools/tools.h>
-
+#endif
 
 int main(void)
 {
@@ -21,7 +22,9 @@ int main(void)
 	snprintf(dir_filename, sizeof(dir_filename), "dir_opendir_is_denied_for_unwritable_dir_%u", pid);
 	// First creat directory without rights to read to it.
 	if (0 != mkdir(dir_filename, 0333)) {
+#ifndef GNU
 		err_errno("Failed to mkdir %s", dir_filename);
+#endif
 	}
 	// We want to test the normal behavior
 	assert(0 == setegid(1000));

@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
@@ -7,10 +8,18 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <string.h>
-#include <tools/tools.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <dirent.h>
+
+#ifndef GNU
+#include <tools/tools.h>
+#else
+
+# define err(format, ...) {}
+# define err_errno(format, ...) {}
+
+#endif
 
 // Command Sequence Introducer
 #define CSI "\x1b["
@@ -370,7 +379,7 @@ static void	build_logging_directory(void)
 		char	filename[256 * 2];
 		snprintf(filename, sizeof(filename), "%s/%s", dir_filename, test_dir_name);
 		if (-1 == mkdir(filename, 0777)) {
-			err_errno("Failed to creat logging directory %s", filename)
+			err_errno("Failed to creat logging directory %s", filename);
 		}
 
 		char	*dup = strdup(filename);

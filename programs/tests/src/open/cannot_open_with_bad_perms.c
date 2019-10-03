@@ -28,10 +28,10 @@ int main(void)
 	assert(0 == close(fd));
 	fd = open(filename, O_WRONLY);
 	assert(fd == -1);
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 	fd = open(filename, O_RDWR);
 	assert(fd == -1);
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 
 
 	assert(0 == seteuid(0));
@@ -45,10 +45,10 @@ int main(void)
 
 	fd = open(filename, O_RDONLY);
 	assert(fd == -1);
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 
 	fd = open(filename, O_RDWR);
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 	assert(fd == -1);
 
 	assert(0 == seteuid(0));
