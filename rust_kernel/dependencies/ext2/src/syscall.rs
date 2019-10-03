@@ -25,8 +25,8 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(inode_number)?;
 
         if let Some(times) = times {
-            inode.last_access_time = times.actime;
-            inode.creation_time = times.modtime;
+            inode.last_access_time = times.actime as u32;
+            inode.creation_time = times.modtime as u32;
         } else {
             inode.last_access_time = current_time;
             inode.creation_time = current_time;

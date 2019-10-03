@@ -10,7 +10,7 @@ fn gettimeofday(timeval: Option<&mut timeval>, _timezone: Option<&mut timezone>)
     let current_unix_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Acquire) };
 
     if let Some(timeval) = timeval {
-        timeval.tv_sec = current_unix_time as u32;
+        timeval.tv_sec = current_unix_time as i32;
         timeval.tv_usec = 0; // No fucks given.
     }
     Ok(0)

@@ -978,8 +978,8 @@ impl VirtualFileSystem {
         } else {
             let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
 
-            inode.atime = current_time;
-            inode.mtime = current_time;
+            inode.atime = current_time as i32;
+            inode.mtime = current_time as i32;
         }
         Ok(())
     }
