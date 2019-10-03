@@ -647,8 +647,9 @@ impl VirtualFileSystem {
 
         let flags = libc_binding::OpenFlags::O_RDWR;
         let mode = FileType::from_bits(0o777).expect("file permission creation failed");
+        let source_path = self.resolve_path(cwd, creds, &source)?;
         let file_operation = self
-            .open(cwd, creds, source.try_clone()?, flags, mode)
+            .open(cwd, creds, source, flags, mode)
             .expect("open sda1 failed")
             .expect("disk driver open failed");
 
@@ -660,11 +661,10 @@ impl VirtualFileSystem {
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(cwd, creds, &target)?;
+        let target = self.resolve_path(cwd, creds, &target)?;
         self.mount_filesystem(
             MountedFileSystem {
-                source: FileSystemSource::File {
-                    source_path: source,
-                },
+                source: FileSystemSource::File { source_path },
                 // we only handle ext2
                 fs_type: FileSystemType::Ext2,
                 target,

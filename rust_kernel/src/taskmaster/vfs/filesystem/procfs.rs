@@ -1,7 +1,7 @@
 use super::IpcResult;
 use super::{
     DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId, Driver, FileOperation, FileSystem,
-    FileSystemId, SysResult, VFS,
+    FileSystemId, MountedFileSystem, SysResult, VFS,
 };
 use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
