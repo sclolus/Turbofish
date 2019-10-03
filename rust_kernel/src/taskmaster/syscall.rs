@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::fd_interface::Fd;
+use super::global_time::{TimeSession, GLOBAL_TIME};
 use super::kmodules;
 use super::process;
 use super::process::CpuState;
@@ -278,6 +279,11 @@ extern "C" {
 /// This function returns a pointer on a process stack to follow
 #[no_mangle]
 pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+    // This is valid since only ring3 processes can make syscalls
+    GLOBAL_TIME
+        .as_mut()
+        .unwrap()
+        .update_global_time(TimeSession::User);
     #[allow(unused_variables)]
     let BaseRegisters {
         eax,
@@ -419,6 +425,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         (*cpu_state).registers.eax = result.into_raw_result();
     }
     let esp = exit_from_syscall(cpu_state, is_in_blocked_syscall);
+    GLOBAL_TIME
+        .as_mut()
+        .unwrap()
+        .update_global_time(TimeSession::System);
     esp
 }
 

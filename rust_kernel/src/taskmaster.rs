@@ -87,20 +87,13 @@ pub enum TaskMode {
     Multi(f32),
 }
 
-use crate::drivers::PIT0;
 // Create an ASM dummy process based on a simple function
 /// Main function of taskMaster Initialisation
 pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     // Reassign all cpu exceptions for taskmaster
     unsafe {
         cpu_isr::reassign_cpu_exceptions();
-    }
-
-    unsafe {
         GLOBAL_TIME = Some(GlobalTime::new());
-        GLOBAL_TIME.as_mut().unwrap().init();
-        PIT0.lock().sleep(core::time::Duration::from_millis(100));
-        println!("{:?}", GLOBAL_TIME.as_mut().unwrap().get_time());
     }
 
     // Initialize Syscall system
@@ -141,5 +134,5 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
         .expect("Scheduler is bullshit");
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(100.)) }
+    unsafe { scheduler::start(TaskMode::Multi(1000.)) }
 }

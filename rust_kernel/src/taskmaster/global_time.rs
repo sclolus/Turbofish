@@ -1,5 +1,6 @@
 //! This crate provides a toolkit to measure time
 
+use core::ops::AddAssign;
 use core::time::Duration;
 
 use crate::drivers::PIT0;
@@ -20,6 +21,45 @@ fn get_cpu_time() -> u64 {
 pub struct GlobalTime {
     cpu_frequency: u64,
     last_mesured_time: Option<u64>,
+    global_user_time: Duration,
+    global_system_time: Duration,
+    global_idle_time: Duration,
+    process_user_time: Duration,
+    process_system_time: Duration,
+}
+
+/// Kind of Times
+pub enum TimeSession {
+    User,
+    System,
+    Idle,
+}
+
+#[derive(Debug)]
+/// Each process got his user time and his system time
+pub struct ProcessDuration {
+    user_time: Duration,
+    system_time: Duration,
+}
+
+/// Default boilerplate for ProcessDuration
+impl Default for ProcessDuration {
+    fn default() -> Self {
+        Self {
+            user_time: Duration::default(),
+            system_time: Duration::default(),
+        }
+    }
+}
+
+/// AddAssign boilerplate for ProcessDuration
+impl AddAssign for ProcessDuration {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            user_time: self.user_time + other.user_time,
+            system_time: self.system_time + other.system_time,
+        }
+    }
 }
 
 /// Main Global Time implementation
@@ -37,6 +77,11 @@ impl GlobalTime {
         Self {
             cpu_frequency,
             last_mesured_time: None,
+            global_user_time: Duration::default(),
+            global_system_time: Duration::default(),
+            global_idle_time: Duration::default(),
+            process_user_time: Duration::default(),
+            process_system_time: Duration::default(),
         }
     }
 
@@ -45,8 +90,36 @@ impl GlobalTime {
         self.last_mesured_time = Some(get_cpu_time());
     }
 
+    /// Update the system global time
+    pub fn update_global_time(&mut self, session: TimeSession) {
+        use TimeSession::*;
+        let duration = self.get_time().expect("Woot ?");
+        match session {
+            User => {
+                self.global_user_time += duration;
+                self.process_user_time += duration;
+            }
+            System => {
+                self.global_system_time += duration;
+                self.process_system_time += duration;
+            }
+            Idle => self.global_idle_time += duration,
+        }
+    }
+
+    /// Get the Time Summary for a process and reset it
+    pub fn get_process_time(&mut self) -> ProcessDuration {
+        let res: ProcessDuration = ProcessDuration {
+            user_time: self.process_user_time,
+            system_time: self.process_system_time,
+        };
+        self.process_user_time = Duration::default();
+        self.process_system_time = Duration::default();
+        res
+    }
+
     /// Set the new time and get the duration between the last call
-    pub fn get_time(&mut self) -> Option<Duration> {
+    fn get_time(&mut self) -> Option<Duration> {
         self.last_mesured_time.map(|old_cpu_time| {
             let new_cpu_time = get_cpu_time();
             self.last_mesured_time = Some(new_cpu_time);
