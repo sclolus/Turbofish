@@ -13,8 +13,3 @@ raw_data = { path = "../raw_data" }
 i386 = { path = "../i386" }
 ansi_escape_code = { path = "../ansi_escape_code" }
 io = { path = "../io" }
-sync = { path = "../sync" }
-
-[dependencies.lazy_static]
-version = "1.3.0"
-features = ["spin_no_std"]

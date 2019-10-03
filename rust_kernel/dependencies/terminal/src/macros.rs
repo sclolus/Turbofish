@@ -55,7 +55,7 @@ macro_rules! print_bypass_mutex {
             a => {
                 unsafe {
                     // For national security, force unlock this mutex
-                    screen::SCREEN_MONAD.force_unlock();
+                    $crate::SCREEN_MONAD.force_unlock();
 
                     match $crate::TERMINAL.as_mut() {
                         None => {

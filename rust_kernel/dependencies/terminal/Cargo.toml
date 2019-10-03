@@ -13,10 +13,15 @@ messaging = { path = "../messaging" }
 libc_binding = { path = "../libc_binding" }
 ansi_escape_code = { path = "../ansi_escape_code" }
 screen = { path = "../screen" }
+sync = { path = "../sync" }
 
 [dependencies.arrayvec]
 version = "0.4.11"
 default_features = false
+
+[dependencies.lazy_static]
+version = "1.3.0"
+features = ["spin_no_std"]
 
 [features]
 exit-on-panic = []

@@ -1,11 +1,11 @@
-use super::{Cursor, Pos};
+use super::{Cursor, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
 use ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use arrayvec::ArrayString;
 use core::fmt::Write;
-use screen::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use screen::{AdvancedGraphic, Drawer};
 
 /// Description of a TTY buffer
 #[derive(Debug, Clone)]

@@ -14,7 +14,7 @@ pub mod cursor;
 pub use cursor::Cursor;
 
 use ansi_escape_code::Pos;
-use screen::{bmp_loader, bmp_loader::BmpImage, AdvancedGraphic, Drawer, SCREEN_MONAD};
+use screen::{bmp_loader, bmp_loader::BmpImage, AdvancedGraphic, Drawer, ScreenMonad};
 
 mod tty;
 pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
@@ -34,6 +34,14 @@ use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
 use keyboard::keysymb::KeySymb;
+
+use lazy_static::lazy_static;
+use sync::Spinlock;
+
+lazy_static! {
+    /// Output monad
+    pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
+}
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]

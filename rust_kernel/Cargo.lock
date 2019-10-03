@@ -409,9 +409,7 @@ dependencies = [
  "ansi_escape_code 0.1.0",
  "i386 0.1.0",
  "io 0.1.0",
- "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "raw_data 0.1.0",
- "sync 0.1.0",
 ]
 
 [[package]]
@@ -473,10 +471,12 @@ dependencies = [
  "bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "io 0.1.0",
  "keyboard 0.1.0",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc_binding 0.1.0",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "messaging 0.1.0",
  "screen 0.1.0",
+ "sync 0.1.0",
 ]
 
 [[package]]

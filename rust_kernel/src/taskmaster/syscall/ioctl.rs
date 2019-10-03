@@ -2,7 +2,8 @@ use super::scheduler::SCHEDULER;
 use super::Fd;
 use super::SysResult;
 
-use screen::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use screen::{AdvancedGraphic, Drawer};
+use terminal::SCREEN_MONAD;
 use core::convert::TryFrom;
 use libc_binding::{winsize, IoctlCmd};
 

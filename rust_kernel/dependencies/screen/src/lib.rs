@@ -8,10 +8,8 @@ mod vbe_mode;
 mod vga_text_mode;
 use ansi_escape_code::{AnsiColor, Pos};
 
-use lazy_static::lazy_static;
-use sync::Spinlock;
-use vbe_mode::*;
-use vga_text_mode::*;
+use vbe_mode::{init_graphic_mode, VbeError, VbeMode};
+use vga_text_mode::VgaTextMode;
 
 /// IoResult is just made to handle module errors
 pub type IoResult = core::result::Result<(), IoError>;
@@ -62,19 +60,14 @@ pub struct ScreenMonad {
     size: Pos,
 }
 
-enum DrawingMode {
+pub enum DrawingMode {
     Vga(VgaTextMode),
     Vbe(VbeMode),
 }
 
-lazy_static! {
-    /// Output monad
-    pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
-}
-
 impl ScreenMonad {
     /// default is vga
-    fn new() -> Self {
+    pub fn new() -> Self {
         let vga = VgaTextMode::new();
         let size = vga.query_window_size();
         Self {

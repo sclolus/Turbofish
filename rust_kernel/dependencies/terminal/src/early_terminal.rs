@@ -1,11 +1,11 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
 //! It may be used on VBE with low feature in case of debuging request and panic displaying
 
-use screen::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use screen::{AdvancedGraphic, Drawer};
 
 use ansi_escape_code::{AnsiColor, Pos};
 
-use super::Cursor;
+use super::{Cursor, SCREEN_MONAD};
 
 /// Classic height of default VGA screen
 const HEIGHT: usize = 25;
