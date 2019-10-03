@@ -280,10 +280,12 @@ extern "C" {
 #[no_mangle]
 pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
     // This is valid since only ring3 processes can make syscalls
-    GLOBAL_TIME
-        .as_mut()
-        .unwrap()
-        .update_global_time(TimeSession::User);
+    unpreemptible_context!({
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::User);
+    });
     #[allow(unused_variables)]
     let BaseRegisters {
         eax,
@@ -424,19 +426,14 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         // Return value will be on EAX. Errno always represents the low 7 bits
         (*cpu_state).registers.eax = result.into_raw_result();
     }
-    let esp = exit_from_syscall(cpu_state, is_in_blocked_syscall);
-    GLOBAL_TIME
-        .as_mut()
-        .unwrap()
-        .update_global_time(TimeSession::System);
-    esp
+    exit_from_syscall(cpu_state, is_in_blocked_syscall)
 }
 
 fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u32 {
     let mut preemption_guard = PreemptionGuard::new();
     let mut scheduler = SCHEDULER.lock();
     // An exit() routine may be engaged by the exit() syscall - An exit() routine is already on execution
-    if let Some(_) = scheduler.on_exit_routine {
+    let esp = if let Some(_) = scheduler.on_exit_routine {
         scheduler.set_dustman_mode()
     } else {
         // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
@@ -450,7 +447,14 @@ fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u
         } else {
             cpu_state as u32
         }
+    };
+    unsafe {
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::System);
     }
+    esp
 }
 
 extern "C" {

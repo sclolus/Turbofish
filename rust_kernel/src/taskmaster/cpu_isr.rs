@@ -301,6 +301,10 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
             // An exit() routine may be engaged after handling a deadly signal
             scheduler.set_dustman_mode()
         } else {
+            GLOBAL_TIME
+                .as_mut()
+                .unwrap()
+                .update_global_time(TimeSession::System);
             cpu_state as u32
         }
     // Unknown ring
