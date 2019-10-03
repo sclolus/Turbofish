@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, FallibleBox, TryCollect};
-use libc_binding::{statfs, time_t, FileType};
+use libc_binding::{statfs, time_t, FileType, NAME_MAX};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -148,23 +148,19 @@ impl FileSystem for Devfs {
             .try_collect()?)
     }
 
-    fn statfs(&self, _buf: &mut statfs) -> SysResult<()> {
-        unimplemented!()
-        // let fs = self.ext2.lock();
-        // let superblock = fs.get_superblock();
-
-        // Ok(*buf = statfs {
-        //     f_type: EXT2_SUPER_MAGIC,
-        //     f_bsize: fs.get_block_size(), // Actually Depends on underlying implementation of Disk I/O.
-        //     f_blocks: superblock.nbr_blocks,
-        //     f_bfree: superblock.nbr_free_blocks,
-        //     f_bavail: superblock.nbr_free_blocks, // is nbr_blocks_reserved counted in this or not?
-        //     f_files: superblock.nbr_inode,
-        //     f_ffree: superblock.nbr_free_inodes,
-        //     f_fsid: self.fs_id.0 as u32, // consider method/Into<u32> implementation.
-        //     f_namelen: NAME_MAX - 1,
-        //     f_frsize: 1024 << superblock.log2_fragment_size,
-        //     f_flags: 0, // TODO: For now this does not seem implementable.
-        // })
+    fn statfs(&self, buf: &mut statfs) -> SysResult<()> {
+        Ok(*buf = statfs {
+            f_type: 42, // TODO: DEVFS_SUPER_MAGIC ??
+            f_bsize: 0,
+            f_blocks: 0,
+            f_bfree: 0,
+            f_bavail: 0,
+            f_files: 0,
+            f_ffree: 0,
+            f_fsid: 0,
+            f_namelen: NAME_MAX - 1,
+            f_frsize: 0,
+            f_flags: 0,
+        })
     }
 }
