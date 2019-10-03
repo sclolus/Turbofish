@@ -135,10 +135,13 @@ SRC_C += statvfs fstatvfs
 VPATH += src/sys/statvfs
 HEADERS += sys/statvfs.h
 
-
 SRC_C += gettimeofday settimeofday times
 VPATH += src/sys/time
 HEADERS += sys/time.h
+
+SRC_C += mount umount
+VPATH += src/sys/mount
+HEADERS += sys/mount.h
 
 SRC_ASM += clone
 SRC_C += sched sched_setscheduler

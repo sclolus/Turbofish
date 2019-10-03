@@ -185,8 +185,6 @@ impl VirtualFileSystem {
         self.recursive_remove_dentries(direntry_id)?;
 
         let current_entry = self.dcache.get_entry(&direntry_id)?;
-
-        // dbg!(&current_entry);
         let inode_id = current_entry.inode_id;
         let fs_cloned = self
             .get_filesystem(inode_id)
@@ -655,6 +653,46 @@ impl VirtualFileSystem {
             fs_id,
             mount_dir_id,
         )
+    }
+
+    fn recursive_trash(&mut self, root_dentry_id: DirectoryEntryId) {
+        let direntry = self.dcache.d_entries.remove(&root_dentry_id);
+        if let Some(direntry) = direntry {
+            self.inodes.remove(&direntry.inode_id);
+            if let Ok(directory) = direntry.get_directory() {
+                for child in directory.entries() {
+                    self.recursive_trash(*child);
+                }
+            }
+        }
+    }
+
+    pub fn umount(&mut self, cwd: &Path, creds: &Credentials, path: Path) -> SysResult<()> {
+        let mut mount_dir_id = self.pathname_resolution(cwd, creds, &path)?;
+        let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
+        // get the parent to have the mount point as pathname
+        // resolution follow mount points
+        mount_dir_id = mount_dir.parent_id;
+        let mount_dir = self.dcache.get_entry_mut(&mount_dir_id)?;
+
+        if !mount_dir.is_mounted()? {
+            return Err(EINVAL);
+        }
+
+        let root_dentry_id = mount_dir.get_mountpoint_entry().ok_or(EINVAL)?;
+
+        // this set the mount_dir as unmouted
+        mount_dir.unset_mounted()?;
+        mount_dir.remove_entry(root_dentry_id)?;
+
+        let mounted_dir = self.dcache.get_entry_mut(&root_dentry_id)?;
+        let fs_id = mounted_dir.inode_id.filesystem_id.ok_or(EINVAL)?;
+
+        self.recursive_trash(root_dentry_id);
+
+        self.mounted_filesystems.remove(&fs_id);
+
+        Ok(())
     }
 
     pub fn opendir(

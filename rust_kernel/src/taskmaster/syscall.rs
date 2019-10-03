@@ -18,11 +18,11 @@ use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
     GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT,
-    MKDIR, MKNOD, MMAP, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK,
-    REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
-    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
-    STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UNLINK, UTIME,
-    WAITPID, WRITE,
+    MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ,
+    READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
+    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
+    STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT,
+    UNLINK, UTIME, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -246,6 +246,10 @@ mod close;
 use close::sys_close;
 mod isatty;
 use isatty::sys_isatty;
+mod umount;
+use umount::sys_umount;
+mod mount;
+use mount::sys_mount;
 
 /*
  * Module kernel management
@@ -314,12 +318,19 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
             edi as u32,
         ),
         GETPID => sys_getpid(),
+        MOUNT => sys_mount(
+            ebx as *const c_char,
+            ecx as *const c_char,
+            edx as *const c_char,
+            edi as u32,
+            ebp as *const c_void,
+        ),
         SETUID => sys_setuid(ebx as uid_t),
         GETUID => sys_getuid(),
         PAUSE => sys_pause(),
         FSTAT => sys_fstat(ebx as Fd, ecx as *mut libc_binding::stat),
         ACCESS => sys_access(ebx as *const c_char, ecx as u32),
-        UTIME => sys_utime(ebx as *const libc_binding::c_char, ecx as *const utimbuf),
+        UTIME => sys_utime(ebx as *const c_char, ecx as *const utimbuf),
         KILL => sys_kill(ebx as i32, ecx as u32),
         RENAME => sys_rename(ebx as *const c_char, ecx as *const c_char),
         MKDIR => sys_mkdir(ebx as *const c_char, ecx as mode_t),
@@ -332,6 +343,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         GETEUID => sys_geteuid(),
         FCNTL => sys_fcntl(ebx as Fd, ecx as u32, edx as Fd),
         GETEGID => sys_getegid(),
+        UMOUNT => sys_umount(ebx as *const c_char),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
         DUP2 => sys_dup2(ebx as u32, ecx as u32),
@@ -361,10 +373,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         ),
         SIGPROCMASK => sys_sigprocmask(ebx as u32, ecx as *const sigset_t, edx as *mut sigset_t),
         GETPGID => sys_getpgid(ebx as Pid),
-        STATFS => sys_statfs(
-            ebx as *const libc_binding::c_char,
-            ecx as *mut libc_binding::statfs,
-        ),
+        STATFS => sys_statfs(ebx as *const c_char, ecx as *mut libc_binding::statfs),
         FSTATFS => sys_fstatfs(ebx as Fd, ecx as *mut libc_binding::statfs),
         NANOSLEEP => sys_nanosleep(ebx as *const TimeSpec, ecx as *mut TimeSpec),
         CHOWN => sys_chown(ebx as *const c_char, ecx as uid_t, edx as gid_t),

@@ -21,6 +21,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define STAT         18
 #define LSEEK        19
 #define GETPID       20
+#define MOUNT        21
 #define SETUID       23
 #define GETUID       24
 #define PAUSE        29
@@ -38,6 +39,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETGID       47
 #define GETEUID      49
 #define GETEGID      50
+#define UMOUNT       52
 #define FCNTL        55
 #define SIGNAL       48
 #define SETPGID      57

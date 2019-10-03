@@ -152,6 +152,10 @@ impl DirectoryEntry {
         self.inner.set_mounted(on)
     }
 
+    pub fn unset_mounted(&mut self) -> SysResult<()> {
+        self.inner.unset_mounted()
+    }
+
     pub fn root_entry() -> Self {
         let mut root_entry = DirectoryEntry::default();
         root_entry
@@ -285,6 +289,10 @@ impl EntryDirectory {
         self.mounted
     }
 
+    pub fn unset_mounted(&mut self) {
+        self.mounted = None
+    }
+
     pub fn set_mounted(&mut self, on: DirectoryEntryId) {
         self.mounted = Some(on)
     }
@@ -373,6 +381,11 @@ impl DirectoryEntryInner {
 
     pub fn set_mounted(&mut self, on: DirectoryEntryId) -> SysResult<()> {
         self.get_directory_mut()?.set_mounted(on);
+        Ok(())
+    }
+
+    pub fn unset_mounted(&mut self) -> SysResult<()> {
+        self.get_directory_mut()?.unset_mounted();
         Ok(())
     }
 }
