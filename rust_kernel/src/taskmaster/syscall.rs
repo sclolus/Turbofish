@@ -17,12 +17,12 @@ use super::{IntoRawResult, SysResult};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
-    GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK, LSTAT,
-    MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ,
-    READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID,
-    SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW,
-    STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT,
-    UNLINK, UTIME, WAITPID, WRITE,
+    GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK,
+    LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE,
+    READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
+    SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
+    STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES,
+    UMASK, UMOUNT, UNLINK, UTIME, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -246,6 +246,8 @@ mod close;
 use close::sys_close;
 mod isatty;
 use isatty::sys_isatty;
+mod ioctl;
+use ioctl::sys_ioctl;
 mod umount;
 use umount::sys_umount;
 mod mount;
@@ -344,6 +346,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         FCNTL => sys_fcntl(ebx as Fd, ecx as u32, edx as Fd),
         GETEGID => sys_getegid(),
         UMOUNT => sys_umount(ebx as *const c_char),
+        IOCTL => sys_ioctl(ebx as Fd, ecx as u32, edx as u32),
         SIGNAL => sys_signal(ebx as u32, ecx as usize),
         SETPGID => sys_setpgid(ebx as Pid, ecx as Pid),
         DUP2 => sys_dup2(ebx as u32, ecx as u32),
