@@ -7,15 +7,14 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-//pub mod ansi_escape_code;
-
 pub mod early_terminal;
 pub use early_terminal::EARLY_TERMINAL;
 
 pub mod cursor;
-pub use cursor::{Cursor, Pos};
+pub use cursor::Cursor;
 
-pub mod monitor;
+use ansi_escape_code::Pos;
+use screen::{bmp_loader, bmp_loader::BmpImage, AdvancedGraphic, Drawer, SCREEN_MONAD};
 
 mod tty;
 pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
@@ -30,10 +29,6 @@ pub mod log;
 pub mod uart_16550;
 pub use uart_16550::UART_16550;
 
-use self::monitor::SCREEN_MONAD;
-use self::monitor::{bmp_loader, bmp_loader::BmpImage};
-
-use crate::monitor::{AdvancedGraphic, Drawer};
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;

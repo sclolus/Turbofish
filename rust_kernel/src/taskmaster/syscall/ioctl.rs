@@ -1,11 +1,10 @@
 use super::scheduler::SCHEDULER;
 use super::Fd;
 use super::SysResult;
-use crate::terminal::monitor::AdvancedGraphic;
-use crate::terminal::monitor::Drawer;
+
+use screen::{AdvancedGraphic, Drawer, SCREEN_MONAD};
 use core::convert::TryFrom;
 use libc_binding::{winsize, IoctlCmd};
-use terminal::monitor::SCREEN_MONAD;
 
 pub fn sys_ioctl(_fildes: Fd, cmd: u32, arg: u32) -> SysResult<u32> {
     unpreemptible_context!({

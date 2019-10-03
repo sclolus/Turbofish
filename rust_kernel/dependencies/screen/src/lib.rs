@@ -1,10 +1,12 @@
 //! Handle the monitor with different graphic modes
+#![cfg_attr(not(test), no_std)]
+
+extern crate alloc;
 
 pub mod bmp_loader;
 mod vbe_mode;
 mod vga_text_mode;
-use super::cursor::Pos;
-use ansi_escape_code::AnsiColor;
+use ansi_escape_code::{AnsiColor, Pos};
 
 use lazy_static::lazy_static;
 use sync::Spinlock;
