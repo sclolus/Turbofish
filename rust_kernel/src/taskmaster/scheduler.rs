@@ -339,6 +339,7 @@ impl Scheduler {
                 unsafe {
                     let global_time_ref = &mut GLOBAL_TIME.as_mut().unwrap();
                     global_time_ref.update_global_time(TimeSession::System);
+                    // Just reset the new pending process time
                     let _r = global_time_ref.get_process_time();
                 }
                 let p = self.current_thread_mut();
@@ -455,6 +456,7 @@ impl Scheduler {
             self.running_process[self.current_task_index],
             status,
         );
+        eprintln!("{:?}", self.current_thread_group_mut().process_duration);
 
         match status {
             Status::Signaled(Signum::SIGSEGV) => println!("{}", "segmentation fault".red()),

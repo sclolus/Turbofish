@@ -17,6 +17,7 @@ fn get_cpu_time() -> u64 {
     ((edx as u64) << 32) + eax as u64
 }
 
+#[derive(Debug)]
 /// Main Global Time structure
 pub struct GlobalTime {
     cpu_frequency: u64,
