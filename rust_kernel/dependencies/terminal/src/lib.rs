@@ -255,7 +255,7 @@ pub fn init_terminal() {
             column: size.column - 17
         },
         "{}",
-        "Turbo Fish v0.3".green()
+        "Turbo Fish v10.0".green()
     );
     ::log::info!("Terminal has been initialized");
 }
