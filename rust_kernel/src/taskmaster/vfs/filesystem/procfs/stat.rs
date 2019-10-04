@@ -1,4 +1,6 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
+use super::{
+    Driver, FileOperation, InodeId, IpcResult, Path, ProcFsOperations, SysResult, PATH_MAX, VFS,
+};
 use crate::taskmaster::SCHEDULER;
 
 use crate::taskmaster::scheduler::ThreadGroupState;
@@ -7,6 +9,8 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+
+use core::convert::TryFrom;
 
 use fallible_collections::{FallibleArc, TryCollect};
 
@@ -66,25 +70,17 @@ impl ProcFsOperations for StatOperations {
             .get_thread_group(self.pid)
             .expect("CommOperations::read(): The Process should exist");
 
-        let comm = {
-            match thread_group.argv.as_ref() {
-                Some(comm) => comm,
-                None => return Ok(Cow::from("")),
-            }
-        };
-
-        let mut bytes: Vec<u8> = comm
-            .strings()
-            .next()
-            .iter()
-            .flat_map(|s| s.iter().map(|b| *b as u8))
-            .filter(|c| *c != '\0' as u8)
-            .try_collect()?;
-
-        let comm = String::from_utf8(bytes).map_err(|_| {
-            log::error!("invalid utf8 in environ operation");
-            Errno::EINVAL
-        })?;
+        let default_name = Path::try_from("-")?;
+        let comm = tryformat!(
+            PATH_MAX,
+            "{}",
+            thread_group
+                .filename
+                .as_ref()
+                .unwrap_or(&default_name)
+                .filename()
+                .unwrap()
+        )?;
 
         let state = match thread_group.thread_group_state {
             ThreadGroupState::Running(_) => "R",

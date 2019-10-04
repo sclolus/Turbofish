@@ -21,7 +21,7 @@ use tools::{Incrementor, KeyGenerator};
 
 mod path;
 pub mod posix_consts;
-use posix_consts::{NAME_MAX, SYMLOOP_MAX};
+pub use posix_consts::{NAME_MAX, PATH_MAX, SYMLOOP_MAX};
 
 pub use path::{Filename, Path};
 

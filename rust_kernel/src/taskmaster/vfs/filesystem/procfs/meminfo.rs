@@ -44,54 +44,54 @@ pub struct MeminfoOperations {
 
 impl ProcFsOperations for MeminfoOperations {
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let meminfo_string = "MemTotal:        0 kB
-MemFree:          0 kB
-MemAvailable:    0 kB
-Buffers:          0 kB
-Cached:          0 kB
-SwapCached:         0 kB
-Active:          0 kB
-Inactive:        0 kB
-Active(anon):    0 kB
-Inactive(anon):   0 kB
-Active(file):    0 kB
-Inactive(file):   0 kB
-Unevictable:         0 kB
-Mlocked:             0 kB
-SwapTotal:       0 kB
-SwapFree:        0 kB
-Dirty:               0 kB
-Writeback:             0 kB
-AnonPages:       0 kB
-Mapped:           0 kB
-Shmem:            0 kB
-Slab:             0 kB
-SReclaimable:     0 kB
-SUnreclaim:       0 kB
-KernelStack:       0 kB
-PageTables:        0 kB
-NFS_Unstable:          0 kB
-Bounce:                0 kB
-WritebackTmp:          0 kB
-CommitLimit:     0 kB
-Committed_AS:   0 kB
-VmallocTotal:   0 kB
-VmallocUsed:           0 kB
-VmallocChunk:          0 kB
-Percpu:             0 kB
-HardwareCorrupted:     0 kB
-AnonHugePages:    0 kB
-ShmemHugePages:        0 kB
-ShmemPmdMapped:        0 kB
-HugePages_Total:       0
-HugePages_Free:        0
-HugePages_Rsvd:        0
-HugePages_Surp:        0
-Hugepagesize:       0 kB
-Hugetlb:               0 kB
-DirectMap4k:      0 kB
-DirectMap2M:     0 kB
-DirectMap1G:     0 kB";
+        let meminfo_string = "MemTotal:        42 kB
+MemFree:          42 kB
+MemAvailable:    42 kB
+Buffers:          42 kB
+Cached:          42 kB
+SwapCached:         42 kB
+Active:          42 kB
+Inactive:        42 kB
+Active(anon):    42 kB
+Inactive(anon):   42 kB
+Active(file):    42 kB
+Inactive(file):   42 kB
+Unevictable:         42 kB
+Mlocked:             42 kB
+SwapTotal:       42 kB
+SwapFree:        42 kB
+Dirty:               42 kB
+Writeback:             42 kB
+AnonPages:       42 kB
+Mapped:           42 kB
+Shmem:            42 kB
+Slab:             42 kB
+SReclaimable:     42 kB
+SUnreclaim:       42 kB
+KernelStack:       42 kB
+PageTables:        42 kB
+NFS_Unstable:          42 kB
+Bounce:                42 kB
+WritebackTmp:          42 kB
+CommitLimit:     42 kB
+Committed_AS:   42 kB
+VmallocTotal:   42 kB
+VmallocUsed:           42 kB
+VmallocChunk:          42 kB
+Percpu:             42 kB
+HardwareCorrupted:     42 kB
+AnonHugePages:    42 kB
+ShmemHugePages:        42 kB
+ShmemPmdMapped:        42 kB
+HugePages_Total:       42
+HugePages_Free:        42
+HugePages_Rsvd:        42
+HugePages_Surp:        42
+Hugepagesize:       42 kB
+Hugetlb:               42 kB
+DirectMap4k:      42 kB
+DirectMap2M:     42 kB
+DirectMap1G:     42 kB";
 
         Ok(Cow::from(meminfo_string))
     }

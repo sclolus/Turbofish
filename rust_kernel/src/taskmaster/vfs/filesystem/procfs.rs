@@ -1,7 +1,7 @@
 use super::IpcResult;
 use super::{
     DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId, Driver, FileOperation, FileSystem,
-    FileSystemId, MountedFileSystem, SysResult, VFS,
+    FileSystemId, MountedFileSystem, SysResult, PATH_MAX, VFS,
 };
 use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
@@ -72,6 +72,9 @@ pub use comm::CommDriver;
 
 mod tty_drivers;
 pub use tty_drivers::TtyDriversDriver;
+
+mod status;
+pub use status::StatusDriver;
 
 use itertools::unfold;
 
@@ -416,6 +419,7 @@ impl ProcFs {
         let cmdline_filename = Filename::from_str_unwrap("cmdline");
         let exe_filename = Filename::from_str_unwrap("exe");
         let comm_filename = Filename::from_str_unwrap("comm");
+        let status_filename = Filename::from_str_unwrap("status");
         // let self_filename = Filename::from_str_unwrap("self");
 
         SCHEDULER.force_unlock();
@@ -469,6 +473,16 @@ impl ProcFs {
             Box::try_new(
                 move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                     Ok(Box::try_new(CommDriver::new(inode_id, pid))? as Box<dyn Driver>)
+                },
+            )?,
+        )?;
+
+        self.register_file(
+            dir_id,
+            status_filename,
+            Box::try_new(
+                move |inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
+                    Ok(Box::try_new(StatusDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
         )?;

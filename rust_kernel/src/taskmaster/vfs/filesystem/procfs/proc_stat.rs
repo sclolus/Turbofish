@@ -59,7 +59,7 @@ impl ProcFsOperations for ProcStatOperations {
 
         let pit_frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
 
-        let uptime = unsafe { (dbg!(_get_pit_time()) as f32 * pit_frequency) * 100.0 } as usize; // TODO: USER_HZ
+        let uptime = unsafe { (_get_pit_time() as f32 * pit_frequency) * 100.0 } as usize; // TODO: USER_HZ
 
         let hertz = HZ as u64;
         let user = global_time.global_user_time().as_secs() * hertz;
