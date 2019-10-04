@@ -16,12 +16,12 @@ use libc_binding::{
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
-    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
-    MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME,
-    RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK,
-    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAITPID,
-    WRITE,
+    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD,
+    MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT,
+    RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
+    SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME,
+    WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -140,6 +140,12 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             ),
             GETEGID => log::info!("getegid()"),
             UMOUNT => log::info!("umount({:#?})", ebx as *const c_char),
+            IOCTL => log::info!(
+                "ioctl({:#?}, {:#?}, {:#?})",
+                ebx as Fd,
+                ecx as u32,
+                edx as u32
+            ),
             SIGNAL => log::info!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => log::info!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => log::info!("getppid()"),
@@ -279,6 +285,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         FCNTL => "fcntl",
         GETEGID => "getegid",
         UMOUNT => "umount",
+        IOCTL => "ioctl",
         SIGNAL => "signal",
         SETPGID => "setpgid",
         GETPPID => "getppid",
