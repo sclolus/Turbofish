@@ -53,7 +53,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
 	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
-	sscanf fread \
+	sscanf fread rewind \
 
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
