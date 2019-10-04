@@ -872,3 +872,19 @@ impl TryFrom<u32> for ShutDownOption {
         })
     }
 }
+
+#[repr(u32)]
+#[derive(Debug, PartialEq)]
+pub enum IoctlCmd {
+    TIOCGWINSZ = TIOCGWINSZ,
+}
+
+impl TryFrom<u32> for IoctlCmd {
+    type Error = Errno;
+    fn try_from(n: u32) -> Result<Self, Self::Error> {
+        Ok(match n {
+            TIOCGWINSZ => IoctlCmd::TIOCGWINSZ,
+            _ => Err(Errno::EINVAL)?,
+        })
+    }
+}

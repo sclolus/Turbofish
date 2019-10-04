@@ -85,7 +85,7 @@ $(BUILD_DIR)/%: %.c $(LIBC_AR) Makefile
 	@mkdir -pv ./$(dir $@)
 	$(CC) -Wl,--gc-sections $(CFLAGS) -o $@ $<
 ifneq ($(GNU),yes)
-	cp -rv --parents $@ $(SYSTEM_ROOT)
+	sudo cp -rv --parents $@ $(SYSTEM_ROOT)
 endif
 
 clean:

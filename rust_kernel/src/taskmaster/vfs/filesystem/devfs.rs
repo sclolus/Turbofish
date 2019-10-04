@@ -114,9 +114,9 @@ impl Devfs {
             uid: owner,
             gid: group,
 
-            atime: timestamp,
-            mtime: timestamp,
-            ctime: timestamp,
+            atime: timestamp as time_t,
+            mtime: timestamp as time_t,
+            ctime: timestamp as time_t,
 
             size: 0,
             nbr_disk_sectors: 0,

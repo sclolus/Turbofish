@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 
 use fallible_collections::{FallibleArc, TryCollect};
 
-use libc_binding::OpenFlags;
+use libc_binding::{Errno, OpenFlags};
 use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;

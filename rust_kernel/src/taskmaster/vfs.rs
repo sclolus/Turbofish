@@ -48,14 +48,21 @@ pub mod init;
 pub use init::{init, VFS};
 
 mod filesystem;
-use filesystem::{DeadFileSystem, FileSystem, FileSystemId};
+use filesystem::{DeadFileSystem, FileSystem, FileSystemId, FileSystemSource, FileSystemType};
 
 pub struct VirtualFileSystem {
-    mounted_filesystems: BTreeMap<FileSystemId, Arc<DeadMutex<dyn FileSystem>>>,
+    mounted_filesystems: BTreeMap<FileSystemId, MountedFileSystem>,
 
     // superblocks: Vec<Superblock>,
     inodes: BTreeMap<InodeId, Inode>,
     dcache: Dcache,
+}
+
+pub struct MountedFileSystem {
+    source: FileSystemSource,
+    fs_type: FileSystemType,
+    target: Path,
+    fs: Arc<DeadMutex<dyn FileSystem>>,
 }
 
 use core::fmt::{self, Debug};
@@ -99,14 +106,19 @@ impl VirtualFileSystem {
     }
 
     fn get_filesystem(&self, inode_id: InodeId) -> Option<&Arc<DeadMutex<dyn FileSystem>>> {
-        self.mounted_filesystems.get(&inode_id.filesystem_id?)
+        Some(&self.mounted_filesystems.get(&inode_id.filesystem_id?)?.fs)
     }
 
     fn get_filesystem_mut(
         &mut self,
         inode_id: InodeId,
     ) -> Option<&mut Arc<DeadMutex<dyn FileSystem>>> {
-        self.mounted_filesystems.get_mut(&inode_id.filesystem_id?)
+        Some(
+            &mut self
+                .mounted_filesystems
+                .get_mut(&inode_id.filesystem_id?)?
+                .fs,
+        )
     }
 
     fn add_entry_from_filesystem(
@@ -584,7 +596,7 @@ impl VirtualFileSystem {
     /// on mount dir `mount_dir_id`
     pub fn mount_filesystem(
         &mut self,
-        filesystem: Arc<DeadMutex<dyn FileSystem>>,
+        filesystem: MountedFileSystem,
         fs_id: FileSystemId,
         mount_dir_id: DirectoryEntryId,
     ) -> SysResult<()> {
@@ -596,13 +608,13 @@ impl VirtualFileSystem {
         if mount_dir.is_mounted()? {
             return Err(EBUSY);
         }
-        let (mut root_dentry, mut root_inode_data, driver) = filesystem.lock().root()?;
+        let (mut root_dentry, mut root_inode_data, driver) = filesystem.fs.lock().root()?;
 
         root_inode_data.id.filesystem_id = Some(fs_id);
         root_dentry.inode_id = root_inode_data.id;
 
         let root_dentry_id = self.add_entry_from_filesystem(
-            filesystem.clone(),
+            filesystem.fs.clone(),
             Some(mount_dir_id),
             (root_dentry, root_inode_data, Some(driver)),
         )?;
@@ -635,6 +647,7 @@ impl VirtualFileSystem {
 
         let flags = libc_binding::OpenFlags::O_RDWR;
         let mode = FileType::from_bits(0o777).expect("file permission creation failed");
+        let source_path = self.resolve_path(cwd, creds, &source)?;
         let file_operation = self
             .open(cwd, creds, source, flags, mode)
             .expect("open sda1 failed")
@@ -648,8 +661,15 @@ impl VirtualFileSystem {
         // we handle only ext2 fs right now
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(cwd, creds, &target)?;
+        let target = self.resolve_path(cwd, creds, &target)?;
         self.mount_filesystem(
-            Arc::try_new(DeadMutex::new(filesystem))?,
+            MountedFileSystem {
+                source: FileSystemSource::File { source_path },
+                // we only handle ext2
+                fs_type: FileSystemType::Ext2,
+                target,
+                fs: Arc::try_new(DeadMutex::new(filesystem))?,
+            },
             fs_id,
             mount_dir_id,
         )
@@ -1638,10 +1658,9 @@ impl VirtualFileSystem {
     }
 
     pub fn fstatfs(&self, inode_id: InodeId, buf: &mut statfs) -> SysResult<()> {
-        let fs_id = &inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
+        inode_id.filesystem_id.ok_or(Errno::ENOSYS)?; // really not sure about that.
         let fs = self
-            .mounted_filesystems
-            .get(fs_id)
+            .get_filesystem(inode_id)
             .expect("No filesystem match the filesystem_id from an InodeId");
 
         fs.lock().statfs(buf)

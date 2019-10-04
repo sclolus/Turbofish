@@ -1,7 +1,9 @@
 #include <ltrace.h>
 #include <stropts.h>
 #include <errno.h>
+#include <stdio.h>
 #include <custom.h>
+#include <user_syscall.h>
 
 #warning DUMMY IMPLEMENTATION of ioctl
 
@@ -29,7 +31,18 @@
 int ioctl(int fildes, int request, ... /* arg */)
 {
 	TRACE
+	va_list ap;
+	void *arg = 0;
+
+	TRACE
 	DUMMY
-	errno = ENOSYS;
-	return - 1;
+	va_start(ap, request);
+	switch (request) {
+		case TIOCGWINSZ:
+			arg = va_arg(ap, struct winsize*);
+			break;
+	}
+	int ret = _user_syscall(IOCTL, 3, fildes, request, arg);
+	va_end(ap);
+	set_errno_and_return(ret);
 }

@@ -1,4 +1,5 @@
 use super::fd_interface::FileDescriptorInterface;
+use super::global_time::ProcessDuration;
 use super::scheduler::{Pid, Tid};
 use super::syscall::clone::CloneFlags;
 use super::thread::Thread;
@@ -91,7 +92,8 @@ pub struct ThreadGroup {
     next_tid: Tid,
     /// Current job status of a process
     pub job: Job,
-
+    /// Time the process has spend is user space and in kernel space
+    pub process_duration: ProcessDuration,
     /// The umask of the process: The actived bits in it are disabled in all file creating operations.
     pub umask: mode_t,
 
@@ -222,6 +224,7 @@ impl ThreadGroup {
             next_tid: 1,
             pgid,
             job: Job::new(),
+            process_duration: ProcessDuration::default(),
             umask: 0,
             environ: None,
             argv: None,
@@ -278,6 +281,7 @@ impl ThreadGroup {
             pgid: self.pgid,
             next_tid: 1,
             job: Job::new(),
+            process_duration: ProcessDuration::default(),
             umask: 0,
             environ: None,
             argv: None,

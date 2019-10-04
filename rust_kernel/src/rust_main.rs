@@ -17,8 +17,8 @@ pub extern "C" fn kmain(
     #[cfg(not(feature = "with-login"))]
     crate::taskmaster::start(
         "/bin/init",
-        &["/bin/init", "/bin/session_manager", "/bin/sh"],
-        &["ENV=/bin/init.sh"],
+        &["/bin/init", "/bin/session_manager", "-"],
+        &["HOME=/root", "SHELL=/bin/sh"],
     );
 }
 

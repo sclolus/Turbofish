@@ -1,10 +1,12 @@
 use super::IpcResult;
 use super::{
     DirectoryEntry, DirectoryEntryBuilder, DirectoryEntryId, Driver, FileOperation, FileSystem,
-    FileSystemId, SysResult, VFS,
+    FileSystemId, MountedFileSystem, SysResult, VFS,
 };
 use super::{Filename, Inode as VfsInode, InodeData as VfsInodeData, InodeId, Path};
+use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
 use alloc::collections::CollectionAllocErr;
+use core::sync::atomic::Ordering;
 
 use crate::taskmaster::SCHEDULER;
 
@@ -24,7 +26,7 @@ use fallible_collections::{
     vec::TryCollect,
     TryClone,
 };
-use libc_binding::{Errno, FileType, Pid};
+use libc_binding::{time_t, Errno, FileType, Pid};
 
 use alloc::sync::Arc;
 use core::default::Default;
@@ -174,6 +176,7 @@ impl ProcFs {
 
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
+            .set_alltime(unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t)
             .set_access_mode(access_mode)
             .set_link_number(1)
             .set_uid(0)
@@ -606,6 +609,7 @@ impl ProcFs {
         let inode_id = self.new_inode_id(inode_id.inode_number);
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
+            .set_alltime(unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t)
             .set_access_mode(mode)
             .set_link_number(1)
             .set_uid(0) //TODO change this.
@@ -677,36 +681,36 @@ impl ProcFs {
         }))
     }
 
-    // fn recursive_remove(&mut self, dir_id: DirectoryEntryId) -> SysResult<()> {
-    //     let children: Vec<DirectoryEntryId> = self
-    //         .dcache
-    //         .children(dir_id)?
-    //         .map(|entry| entry.id)
-    //         .try_collect()?;
+    fn recursive_remove(&mut self, dir_id: DirectoryEntryId) -> SysResult<()> {
+        let children: Vec<DirectoryEntryId> = self
+            .dcache
+            .children(dir_id)?
+            .map(|entry| entry.id)
+            .try_collect()?;
 
-    //     for child in children {
-    //         let (_inode_id, is_dir) = {
-    //             let entry = self
-    //                 .dcache
-    //                 .get_entry(&child)
-    //                 .expect("There should be a child here");
+        for child in children {
+            let (_inode_id, is_dir) = {
+                let entry = self
+                    .dcache
+                    .get_entry(&child)
+                    .expect("There should be a child here");
 
-    //             (entry.inode_id, entry.is_directory())
-    //         };
+                (entry.inode_id, entry.is_directory())
+            };
 
-    //         if is_dir {
-    //             self.recursive_remove(child)?;
-    //         }
+            if is_dir {
+                self.recursive_remove(child)?;
+            }
 
-    //         self.dcache.remove_entry(child)?;
-    //         // self.inodes.remove(&inode_id);
-    //     }
-    //     let entry = self.dcache.get_entry(&dir_id)?;
-    //     // let inode_id = entry.inode_id;
-    //     self.dcache.remove_entry(dir_id)?;
-    //     // self.inodes.remove(&inode_id);
-    //     Ok(())
-    // }
+            self.dcache.remove_entry(child)?;
+            // self.inodes.remove(&inode_id);
+        }
+        let entry = self.dcache.get_entry(&dir_id)?;
+        // let inode_id = entry.inode_id;
+        self.dcache.remove_entry(dir_id)?;
+        // self.inodes.remove(&inode_id);
+        Ok(())
+    }
 
     fn symlink(
         &mut self,
@@ -729,6 +733,7 @@ impl ProcFs {
 
         let vfs_inode_data = *VfsInodeData::default()
             .set_id(inode_id)
+            .set_alltime(unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t)
             .set_link_number(1)
             .set_access_mode(
                 FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU,

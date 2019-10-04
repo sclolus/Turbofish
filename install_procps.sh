@@ -16,5 +16,5 @@ mkdir -pv build
 cd build
 CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --without-ncurses --disable-modern-top  --disable-pidof --disable-kill   --disable-nls --disable-rpath --disable-numa --build="`gcc -dumpmachine`" --host=$TARGET
 make
-cp -v ps/pscommand $TARGET_DIR/ps
-cp -v free $TARGET_DIR/free
+sudo cp -v ps/pscommand $TARGET_DIR/ps
+sudo cp -v free $TARGET_DIR/free

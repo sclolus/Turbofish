@@ -73,6 +73,7 @@ $(TARGET): $(OBJ_C) $(LIBC_AR) | Makefile
 	$(CC) -Wl,--gc-sections -o $@ $(CFLAGS) $^
 	sudo cp -v --parents $@ $(SYSTEM_ROOT)
 	sudo cp -v --parents etc/* $(SYSTEM_ROOT)
+	sudo ln -sf /proc/mounts $(SYSTEM_ROOT)/etc/mtab
 
 	@# Removing thoses lines _WILL_ make su not work properly for non-root users.
 	sudo chown root:root $(SYSTEM_ROOT)/$(TARGET)

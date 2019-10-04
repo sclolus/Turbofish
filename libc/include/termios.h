@@ -26,6 +26,7 @@ struct winsize {
 	unsigned short ws_col;
 	unsigned short ws_xpixel;
 	unsigned short ws_ypixel;
+	unsigned short bpp;
 };
 
 #define    NCCS 11

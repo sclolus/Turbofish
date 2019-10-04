@@ -10,18 +10,18 @@ use crate::memory::tools::address::Virt;
 use core::ffi::c_void;
 use i386::BaseRegisters;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, stat, termios, timeval, timezone, tms, uid_t, utimbuf,
-    OpenFlags, Pid, DIR,
+    c_char, dev_t, gid_t, mode_t, off_t, rusage, stat, termios, timeval, timezone, tms, uid_t,
+    utimbuf, OpenFlags, Pid, DIR,
 };
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
-    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD, MMAP,
-    MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME,
-    RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN, SIGACTION,
-    SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK,
-    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAITPID,
-    WRITE,
+    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD,
+    MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT,
+    RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
+    SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME,
+    WAIT4, WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -140,6 +140,12 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             ),
             GETEGID => log::info!("getegid()"),
             UMOUNT => log::info!("umount({:#?})", ebx as *const c_char),
+            IOCTL => log::info!(
+                "ioctl({:#?}, {:#?}, {:#?})",
+                ebx as Fd,
+                ecx as u32,
+                edx as u32
+            ),
             SIGNAL => log::info!("signal({:#?}, {:#?})", ebx as u32, ecx as usize),
             SETPGID => log::info!("setpgid({:#?}, {:#?})", ebx as Pid, ecx as Pid),
             GETPPID => log::info!("getppid()"),
@@ -176,6 +182,13 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ecx as *mut timezone
             ),
             SOCKETCALL => log::info!("socketcall({:#?}, {:#?})", ebx as u32, ecx as SocketArgsPtr),
+            WAIT4 => log::info!(
+                "wait4({:#?}, {:#?}, {:#?}, {:#?})",
+                ebx as i32,
+                ecx as *mut i32,
+                edx as i32,
+                esi as *mut rusage,
+            ),
             CLONE => log::info!(
                 "clone({:#?}, {:#?}, {:#?})",
                 cpu_state as u32,
@@ -279,6 +292,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         FCNTL => "fcntl",
         GETEGID => "getegid",
         UMOUNT => "umount",
+        IOCTL => "ioctl",
         SIGNAL => "signal",
         SETPGID => "setpgid",
         GETPPID => "getppid",
@@ -295,6 +309,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         UMASK => "umask",
         GETTIMEOFDAY => "gettimeofday",
         SOCKETCALL => "socketcall",
+        WAIT4 => "wait4",
         CLONE => "clone",
         MPROTECT => "mprotect",
         SIGPROCMASK => "sigprocmask",
