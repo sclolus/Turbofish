@@ -41,7 +41,13 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 			return -1;
 		}
 		printf("argc: %i -> self: %s to_execve: %s to_tty: %s\n", argc, argv[0], argv[1], tty_device);
-		int ret = execve(argv[1], argv + 1, envp);
+		char *shell = getenv("SHELL");
+		int ret;
+		if (shell != NULL) {
+		 ret = execve(shell, argv + 1, envp);
+		} else {
+			ret = execve(argv[1], argv + 1, envp);
+		}
 		if (ret < 0) {
 			perror("execve failed");
 			dprintf(STDERR_FILENO, "seeking for '%s'\n", argv[1]);

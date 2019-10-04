@@ -15,7 +15,6 @@ all: system_root $(IMG_DISK)
 	make -C libc
 
 	make -C programs
-	cp pulp_fiction.txt $(SYSTEM_ROOT)/home
 
 # This below sub-make should be integrated
 #	make -C dash
@@ -23,7 +22,7 @@ all: system_root $(IMG_DISK)
 
 # it could be interesting to find a way for preventing kernel relinking (or shell rust program)
 	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
-	cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf $(SYSTEM_ROOT)/turbofish
+	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf $(SYSTEM_ROOT)/turbofish
 
 	sudo losetup -fP $(IMG_DISK)
 	sudo mount $(LOOP_DEVICE)p1 /mnt
@@ -46,8 +45,15 @@ system_root:
 	sudo mkdir -pv $(SYSTEM_ROOT)/var
 	sudo mkdir -pv $(SYSTEM_ROOT)/grub
 	sudo mkdir -pv $(SYSTEM_ROOT)/home
+	sudo mkdir -pv $(SYSTEM_ROOT)/home/$(STANDARD_USER)
+	sudo cp files/shinit -pv $(SYSTEM_ROOT)/home/$(STANDARD_USER)/.shinit
+	sudo cp files/pulp_fiction.txt $(SYSTEM_ROOT)/home/$(STANDARD_USER)
+	sudo chown -R 1000:1000 $(SYSTEM_ROOT)/home/$(STANDARD_USER)
 	sudo mkdir -pv $(SYSTEM_ROOT)/turbofish
 	sudo mkdir -pv $(SYSTEM_ROOT)/turbofish/mod
+	sudo mkdir -pv $(SYSTEM_ROOT)/root
+	sudo cp files/shinit -v $(SYSTEM_ROOT)/root/.shinit
+	sudo chmod 0700 $(SYSTEM_ROOT)/root
 
 $(IMG_DISK):
 	dd if=/dev/urandom of=$(IMG_DISK) bs=1024 count=$(IMAGE_SIZE)

@@ -12,5 +12,5 @@ mkdir build
 cd build
 CFLAGS="-O3 -fno-omit-frame-pointer -Wl,--gc-sections" ../configure --build=`gcc -dumpmachine` --host=$TARGET
 make
-cp -v src/dash $TARGET_DIR
-ln -s -v --force /bin/dash $TARGET_DIR/sh
+sudo cp -v src/dash $TARGET_DIR
+sudo ln -s -v --force /bin/dash $TARGET_DIR/sh

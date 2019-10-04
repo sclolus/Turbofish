@@ -30,7 +30,7 @@ all: $(OUTPUT)
 
 $(OUTPUT): $(OBJ_ASM) $(OBJ_C) $(rust_archive)
 	$(CC) -Wl,--gc-sections -o $@ $^ -z muldefs
-	cp -rv --parents $@ $(SYSTEM_ROOT)
+	sudo cp -rv --parents $@ $(SYSTEM_ROOT)
 
 $(OBJ_DIR)/%.o: %.c Makefile $(HEADERS)
 	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
