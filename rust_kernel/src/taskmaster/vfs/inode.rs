@@ -228,6 +228,13 @@ impl InodeData {
         self
     }
 
+    pub fn set_alltime(&mut self, time: time_t) -> &mut Self {
+        self.atime = time;
+        self.mtime = time;
+        self.ctime = time;
+        self
+    }
+
     pub fn set_link_number(&mut self, link_number: nlink_t) -> &mut Self {
         self.link_number = link_number;
         self
