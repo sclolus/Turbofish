@@ -1,13 +1,11 @@
-use super::{
-    Driver, FileOperation, Filename, InodeId, IpcResult, ProcFsOperations, SysResult, VFS,
-};
-use crate::taskmaster::scheduler::Credentials;
-use crate::taskmaster::SCHEDULER;
+use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
+// use crate::taskmaster::scheduler::Credentials;
+// use crate::taskmaster::SCHEDULER;
 
 use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
+// use alloc::vec::Vec;
 
 use fallible_collections::{FallibleArc, TryCollect};
 
@@ -41,6 +39,7 @@ impl Driver for TtyDriversDriver {
 }
 
 impl TtyDriversDriver {
+    #[allow(unused)]
     pub fn new(inode_id: InodeId) -> Self {
         Self { inode_id }
     }

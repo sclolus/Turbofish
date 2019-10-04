@@ -6,14 +6,14 @@ use crate::taskmaster::SCHEDULER;
 use crate::taskmaster::scheduler::ThreadGroupState;
 
 use alloc::borrow::Cow;
-use alloc::string::String;
+// use alloc::string::String;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
+// use alloc::vec::Vec;
 use core::convert::TryFrom;
 
-use fallible_collections::{FallibleArc, TryCollect};
+use fallible_collections::FallibleArc;
 
-use libc_binding::{Errno, OpenFlags};
+use libc_binding::OpenFlags;
 use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;

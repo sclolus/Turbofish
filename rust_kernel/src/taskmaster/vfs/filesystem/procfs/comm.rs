@@ -76,7 +76,7 @@ impl ProcFsOperations for CommOperations {
             }
         };
 
-        let mut bytes: Vec<u8> = comm
+        let bytes: Vec<u8> = comm
             .strings()
             .next()
             .iter()

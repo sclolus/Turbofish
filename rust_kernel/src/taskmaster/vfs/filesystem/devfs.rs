@@ -81,7 +81,7 @@ impl Devfs {
     /// Tries to register a tty with a specific `minor`.
     pub fn register_specific_tty(
         &mut self,
-        mut permissions: FileType,
+        permissions: FileType,
         (owner, group): (uid_t, gid_t),
         minor: dev_t,
     ) -> SysResult<InodeId> {
@@ -142,9 +142,10 @@ impl Devfs {
         Ok(inode_id)
     }
 
+    #[allow(unused)]
     pub fn register_tty(
         &mut self,
-        mut permissions: FileType,
+        permissions: FileType,
         (owner, group): (uid_t, gid_t),
     ) -> SysResult<InodeId> {
         let new_minor: dev_t = self.gen();

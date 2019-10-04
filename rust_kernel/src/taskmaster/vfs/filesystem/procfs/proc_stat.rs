@@ -55,7 +55,7 @@ impl ProcFsOperations for ProcStatOperations {
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
         let global_time = unsafe { GLOBAL_TIME.as_ref().unwrap() };
-        let frequency = global_time.cpu_frequency();
+        // let frequency = global_time.cpu_frequency(); // use this
 
         let pit_frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
 

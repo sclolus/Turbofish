@@ -167,6 +167,7 @@ impl GlobalTime {
         self.global_idle_time
     }
 
+    #[allow(unused)]
     pub fn cpu_frequency(&self) -> u64 {
         self.cpu_frequency
     }

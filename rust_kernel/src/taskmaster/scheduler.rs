@@ -466,8 +466,6 @@ impl Scheduler {
         }
 
         while let Some(child_pid) = self.current_thread_group_running_mut().child.pop() {
-            use super::thread_group::ThreadGroupState;
-
             let thread_group = self
                 .get_thread_group_mut(child_pid)
                 .expect("Hashmap corrupted");

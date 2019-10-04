@@ -10,7 +10,7 @@ use core::sync::atomic::Ordering;
 
 use crate::taskmaster::SCHEDULER;
 
-use crate::taskmaster::thread_group::{ThreadGroup, ThreadGroupState};
+use crate::taskmaster::thread_group::ThreadGroupState;
 
 use super::dead::DeadFileSystem;
 use super::{KeyGenerator, Mapper};
@@ -304,6 +304,7 @@ impl ProcFs {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn register_tty_directory(&mut self) -> SysResult<()> {
         let (root_dir_id, _) = self.root_ids();
         let tty_filename = Filename::from_str_unwrap("tty");
@@ -321,6 +322,7 @@ impl ProcFs {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn fill_tty_directory(&mut self) -> SysResult<()> {
         let tty_dir_id = self.tty_directory.expect("No tty directory registered");
         let drivers_filename = Filename::from_str_unwrap("drivers");
@@ -719,7 +721,8 @@ impl ProcFs {
             self.dcache.remove_entry(child)?;
             // self.inodes.remove(&inode_id);
         }
-        let entry = self.dcache.get_entry(&dir_id)?;
+        // let entry =
+        self.dcache.get_entry(&dir_id)?;
         // let inode_id = entry.inode_id;
         self.dcache.remove_entry(dir_id)?;
         // self.inodes.remove(&inode_id);

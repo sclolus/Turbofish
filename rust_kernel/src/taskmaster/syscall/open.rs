@@ -27,7 +27,7 @@ pub fn sys_open(filename: *const c_char, flags: u32, mut mode: mode_t) -> SysRes
             let creds;
             let cwd;
             let fd_interface;
-            let mut umask;
+            let umask;
             {
                 let tg = scheduler.current_thread_group_mut();
 
