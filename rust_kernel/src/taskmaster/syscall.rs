@@ -1,6 +1,7 @@
 //! all kernel syscall start by sys_ and userspace syscall (which will be in libc anyway) start by user_
 
 use super::fd_interface::Fd;
+use super::global_time::{TimeSession, GLOBAL_TIME};
 use super::kmodules;
 use super::process;
 use super::process::CpuState;
@@ -22,7 +23,7 @@ use libc_binding::{
     READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID,
     SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
     STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES,
-    UMASK, UMOUNT, UNLINK, UTIME, WAITPID, WRITE,
+    UMASK, UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -30,7 +31,8 @@ use i386::BaseRegisters;
 use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, termios, timeval, timezone, tms, uid_t, utimbuf, DIR,
+    c_char, dev_t, gid_t, mode_t, off_t, rusage, termios, timeval, timezone, tms, uid_t, utimbuf,
+    DIR,
 };
 
 mod mmap;
@@ -42,9 +44,9 @@ use nanosleep::{sys_nanosleep, TimeSpec};
 mod gettimeofday;
 use gettimeofday::sys_gettimeofday;
 
-mod waitpid;
-use waitpid::sys_waitpid;
-pub use waitpid::WaitOption;
+mod wait4;
+pub use wait4::WaitOption;
+use wait4::{sys_wait4, sys_waitpid};
 
 mod unlink;
 use unlink::sys_unlink;
@@ -278,6 +280,13 @@ extern "C" {
 /// This function returns a pointer on a process stack to follow
 #[no_mangle]
 pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> u32 {
+    // This is valid since only ring3 processes can make syscalls
+    unpreemptible_context!({
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::User);
+    });
     #[allow(unused_variables)]
     let BaseRegisters {
         eax,
@@ -368,6 +377,7 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         MUNMAP => sys_munmap(ebx as *mut u8, ecx as usize),
         UMASK => sys_umask(ebx as mode_t),
         SOCKETCALL => sys_socketcall(ebx as u32, ecx as SocketArgsPtr),
+        WAIT4 => sys_wait4(ebx as i32, ecx as *mut i32, edx as u32, esi as *mut rusage),
         CLONE => sys_clone(cpu_state as u32, ebx as *const c_void, ecx as u32),
         MPROTECT => sys_mprotect(
             ebx as *mut u8,
@@ -425,7 +435,7 @@ fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u
     let mut preemption_guard = PreemptionGuard::new();
     let mut scheduler = SCHEDULER.lock();
     // An exit() routine may be engaged by the exit() syscall - An exit() routine is already on execution
-    if let Some(_) = scheduler.on_exit_routine {
+    let esp = if let Some(_) = scheduler.on_exit_routine {
         scheduler.set_dustman_mode()
     } else {
         // If ring3 process -> Mark process on signal execution state, modify CPU state, prepare a signal frame. UNLOCK interruptible().
@@ -439,7 +449,14 @@ fn exit_from_syscall(cpu_state: *mut CpuState, is_in_blocked_syscall: bool) -> u
         } else {
             cpu_state as u32
         }
+    };
+    unsafe {
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::System);
     }
+    esp
 }
 
 extern "C" {

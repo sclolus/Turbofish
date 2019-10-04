@@ -21,6 +21,9 @@ mod thread_group;
 pub mod vfs;
 pub use vfs::VFS;
 
+mod global_time;
+use global_time::{GlobalTime, GLOBAL_TIME};
+
 use core::convert::{TryFrom, TryInto};
 use thread_group::Credentials;
 use vfs::Path;
@@ -90,6 +93,7 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
     // Reassign all cpu exceptions for taskmaster
     unsafe {
         cpu_isr::reassign_cpu_exceptions();
+        GLOBAL_TIME = Some(GlobalTime::new());
     }
 
     // Initialize Syscall system

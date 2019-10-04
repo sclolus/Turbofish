@@ -62,6 +62,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define FCHOWN	     95
 #define GETTIMEOFDAY 96
 #define SOCKETCALL  102
+#define WAIT4       114
 #define CLONE       120
 #define MPROTECT    125
 #define SIGPROCMASK 126

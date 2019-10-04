@@ -1,5 +1,6 @@
 //! this file countains code about cpu exception reassignement and use
 
+use super::global_time::{TimeSession, GLOBAL_TIME};
 use super::process::CpuState;
 use super::scheduler::{Scheduler, SCHEDULER};
 use super::syscall::sys_kill;
@@ -214,6 +215,10 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
     let cs = (*cpu_state).cs;
     // Error from ring 0
     if cs & 0b11 == 0 {
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::System);
         // Handle kernel page fault
         if (*cpu_state).cpu_isr_reserved == 14 {
             let virtual_page_allocator = KERNEL_VIRTUAL_PAGE_ALLOCATOR.as_mut().unwrap();
@@ -235,6 +240,10 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
         loop {}
     // Error from ring 3
     } else if cs & 0b11 == 0b11 {
+        GLOBAL_TIME
+            .as_mut()
+            .unwrap()
+            .update_global_time(TimeSession::User);
         // Temporaly display a debug
         let page_fault_cause = get_page_fault_origin((*cpu_state).err_code_reserved);
         log::warn!("{}     address: {:#X?}", page_fault_cause, _read_cr2());
@@ -292,6 +301,10 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
             // An exit() routine may be engaged after handling a deadly signal
             scheduler.set_dustman_mode()
         } else {
+            GLOBAL_TIME
+                .as_mut()
+                .unwrap()
+                .update_global_time(TimeSession::System);
             cpu_state as u32
         }
     // Unknown ring

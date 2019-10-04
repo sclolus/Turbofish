@@ -1,4 +1,4 @@
-//! waitpid (wait) implementations
+//! wait4 (wait, waitpid, wait3) implementations
 
 use super::scheduler::{auto_preempt, unpreemptible};
 use super::scheduler::{Scheduler, SCHEDULER};
@@ -7,7 +7,7 @@ use super::thread_group::{JobState, Status};
 use super::SysResult;
 use bitflags::bitflags;
 
-use libc_binding::{Errno, Pid};
+use libc_binding::{rusage, Errno, Pid};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -195,10 +195,11 @@ use libc_binding::{Errno, Pid};
 ///     interrupted by a signal. The value of the location pointed to
 ///     by stat_loc is undefined.  [EINVAL] The options argument is
 ///     not valid.
-fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
+fn wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysResult<u32> {
     let mut scheduler = SCHEDULER.lock();
 
-    let wstatus = {
+    // WARNING: In a multithread context. The pointers must be verified just before writing on it !
+    let (wstatus, rusage) = {
         let v = scheduler
             .current_thread_mut()
             .unwrap_process_mut()
@@ -206,11 +207,17 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
         // If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points.
         // If the given pointer is a bullshit pointer, wait() and waitpid() return EFAULT
-        if wstatus.is_null() {
+        let safe_wstatus = if wstatus.is_null() {
             None
         } else {
             Some(v.make_checked_ref_mut::<i32>(wstatus)?)
-        }
+        };
+        let safe_rusage = if rusage.is_null() {
+            None
+        } else {
+            Some(v.make_checked_ref_mut::<rusage>(rusage)?)
+        };
+        (safe_wstatus, safe_rusage)
     };
 
     // WIFEXITED(wstatus)
@@ -311,18 +318,22 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
 
             let status = match tg.get_death_status() {
                 Some(status) => {
+                    if let Some(rusage) = rusage {
+                        *rusage = scheduler
+                            .get_thread_group(dead_pid)
+                            .expect("Woot ?")
+                            .process_duration
+                            .into();
+                    }
                     scheduler.current_thread_group_mut().remove_child(dead_pid);
                     scheduler.remove_thread_group(dead_pid);
                     status
                 }
                 None => Status::from(tg.job.consume_last_event().expect("no status")),
             };
-            // TODO: Manage terminated value with signal
             if let Some(wstatus) = wstatus {
                 *wstatus = status.into()
             }
-            // fflush zombie
-            // Return immediatly
             Ok(dead_pid as u32)
         }
         None if options.contains(WaitOption::WNOHANG) => {
@@ -346,6 +357,13 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
                     dead_process_pid,
                     status,
                 } => {
+                    if let Some(rusage) = rusage {
+                        *rusage = scheduler
+                            .get_thread_group(dead_process_pid)
+                            .expect("Woot ?")
+                            .process_duration
+                            .into();
+                    }
                     if status.is_terminated() {
                         let thread_group = scheduler.current_thread_group_mut();
                         thread_group.remove_child(dead_process_pid);
@@ -364,8 +382,12 @@ fn waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
     }
 }
 
+pub fn sys_wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysResult<u32> {
+    unpreemptible_context!({ wait4(pid, wstatus, options, rusage) })
+}
+
 pub fn sys_waitpid(pid: i32, wstatus: *mut i32, options: u32) -> SysResult<u32> {
-    unpreemptible_context!({ waitpid(pid, wstatus, options) })
+    unpreemptible_context!({ wait4(pid, wstatus, options, 0x0 as *mut rusage) })
 }
 
 bitflags! {

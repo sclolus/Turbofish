@@ -1,4 +1,5 @@
 //! this file contains the scheduler description
+use super::global_time::{TimeSession, GLOBAL_TIME};
 use super::kmodules::KernelModules;
 use super::process::{get_ring, CpuState, KernelProcess, Process, ProcessOrigin, UserProcess};
 use super::signal_interface::JobAction;
@@ -112,6 +113,21 @@ pub struct Scheduler {
 unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     let mut scheduler = SCHEDULER.lock();
 
+    GLOBAL_TIME
+        .as_mut()
+        .unwrap()
+        .update_global_time(match get_ring(kernel_esp) {
+            PrivilegeLevel::Ring0 => {
+                if scheduler.mode == Mode::Idle {
+                    TimeSession::Idle
+                } else {
+                    TimeSession::System
+                }
+            }
+            PrivilegeLevel::Ring3 => TimeSession::User,
+            _ => panic!("Unexpected ring !"),
+        });
+
     if let Some(_) = scheduler.on_exit_routine {
         scheduler.on_exit_routine = None;
     }
@@ -122,7 +138,8 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // TODO: It is just a POC of module callback called each seconds. Dont'y worry about the code
     // In the future, it should be good to create real time structures for each events types
     let pit_time = _get_pit_time();
-    if (pit_time - scheduler.last_second_callback_pit_time) * scheduler.time_interval.unwrap().1
+    let esp = if (pit_time - scheduler.last_second_callback_pit_time)
+        * scheduler.time_interval.unwrap().1
         >= 1000000
     {
         scheduler.last_second_callback_pit_time = pit_time;
@@ -134,10 +151,15 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     } else {
         // Switch to the next elligible process then return new kernel ESP
         scheduler.load_next_process(1)
-    }
+    };
+    GLOBAL_TIME
+        .as_mut()
+        .unwrap()
+        .update_global_time(TimeSession::System);
+    esp
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum Mode {
     Normal,
     Idle,
@@ -228,6 +250,8 @@ impl Scheduler {
         use Mode::*;
         match self.mode {
             Normal => {
+                self.current_thread_group_mut().process_duration +=
+                    unsafe { GLOBAL_TIME.as_mut().unwrap().get_process_time() };
                 self.current_thread_mut().unwrap_process_mut().kernel_esp = kernel_esp;
             }
             Idle => {
@@ -312,6 +336,12 @@ impl Scheduler {
             SecondCallback => panic!("Cannot happen !"),
             Idle => self.kernel_idle_process.kernel_esp,
             Normal => {
+                unsafe {
+                    let global_time_ref = &mut GLOBAL_TIME.as_mut().unwrap();
+                    global_time_ref.update_global_time(TimeSession::System);
+                    // Just reset the new pending process time
+                    let _r = global_time_ref.get_process_time();
+                }
                 let p = self.current_thread_mut();
 
                 let process = p.unwrap_process();
@@ -908,6 +938,9 @@ pub unsafe fn start(task_mode: TaskMode) -> ! {
         Some(v) => _update_process_end_time(v.0),
         None => _update_process_end_time(-1 as i32 as u32),
     }
+
+    // Initialize global timer
+    GLOBAL_TIME.as_mut().unwrap().init();
 
     // After futur IRET for final process creation, interrupt must be re-enabled
     p.start()
