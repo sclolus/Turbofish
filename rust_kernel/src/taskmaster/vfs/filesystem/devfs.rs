@@ -1,5 +1,5 @@
 use super::super::inode::InodeNumber;
-use super::super::tools::KeyGenerator;
+use super::super::tools::{Incrementor, KeyGenerator};
 use super::DefaultDriver;
 use super::Driver;
 use super::FileOperation;
@@ -10,10 +10,10 @@ use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use core::sync::atomic::Ordering;
-use fallible_collections::{btree::BTreeMap, FallibleBox, TryCollect};
-use libc_binding::{statfs, time_t, FileType, NAME_MAX};
+use fallible_collections::{btree::BTreeMap, btree::BTreeSet, FallibleBox, TryCollect};
+use libc_binding::{dev_t, gid_t, statfs, time_t, uid_t, FileType, NAME_MAX};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -34,9 +34,11 @@ pub use sda::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, Id
 pub struct Devfs {
     fs_id: FileSystemId,
     files: BTreeMap<Filename, (InodeData, Option<Box<dyn Driver>>)>,
+    tty_minors: BTreeSet<dev_t>,
 }
 
 const ROOT_ID: InodeNumber = 2;
+const TTY_MAJOR: dev_t = 4;
 
 impl KeyGenerator<InodeNumber> for Devfs {
     fn gen_filter(&self, id: InodeNumber) -> bool {
@@ -48,17 +50,81 @@ impl KeyGenerator<InodeNumber> for Devfs {
     }
 }
 
+impl Incrementor for dev_t {
+    fn incr(&mut self) {
+        *self += 1;
+    }
+}
+
+impl KeyGenerator<dev_t> for Devfs {
+    fn gen_filter(&self, minor: dev_t) -> bool {
+        !self.tty_minors.contains(&minor) && i32::try_from(minor).is_ok()
+    }
+}
+
 /// the ext2 wrapper which implement filesystem
 impl Devfs {
     pub fn new(fs_id: FileSystemId) -> Self {
         Self {
             fs_id,
             files: BTreeMap::new(),
+            tty_minors: BTreeSet::new(),
         }
     }
 
     pub fn gen_inode_id(&mut self) -> InodeId {
         InodeId::new(self.gen(), Some(self.fs_id))
+    }
+
+    pub fn register_tty(
+        &mut self,
+        mut permissions: FileType,
+        (owner, group): (uid_t, gid_t),
+    ) -> SysResult<InodeId> {
+        assert!(
+            !permissions.is_typed(),
+            "The permissions of a tty should be purely permissions bits"
+        );
+
+        permissions |= FileType::CHARACTER_DEVICE;
+
+        // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
+
+        let new_minor: dev_t = self.gen();
+        let inode_id = self.gen_inode_id();
+
+        let driver = Box::try_new(TtyDevice::try_new(
+            new_minor
+                .try_into()
+                .expect("Should have generated a valid minor"),
+            inode_id,
+        )?)?;
+
+        let filename =
+            Filename::from_str_unwrap(tryformat!(48, "tty{}", new_minor as usize)?.as_str());
+
+        let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
+        let inode_data = InodeData {
+            id: inode_id,
+            major: TTY_MAJOR,
+            minor: new_minor,
+            link_number: 1,
+            access_mode: permissions,
+
+            uid: owner,
+            gid: group,
+
+            atime: timestamp,
+            mtime: timestamp,
+            ctime: timestamp,
+
+            size: 0,
+            nbr_disk_sectors: 0,
+        };
+        self.files
+            .try_insert(filename, (inode_data, Some(driver)))?;
+        self.tty_minors.try_insert(new_minor)?;
+        Ok(inode_id)
     }
 
     pub fn add_driver(

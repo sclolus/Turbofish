@@ -668,6 +668,16 @@ bitflags! {
 }
 
 impl FileType {
+    pub fn extract_type(self) -> Self {
+        let mask = Self::S_IFMT;
+
+        self & mask
+    }
+
+    pub fn is_typed(&self) -> bool {
+        self.extract_type() != FileType::empty()
+    }
+
     pub fn is_character_device(&self) -> bool {
         *self & Self::S_IFMT == Self::CHARACTER_DEVICE
     }
