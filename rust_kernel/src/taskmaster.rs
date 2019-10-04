@@ -101,8 +101,7 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
 
     // Early set the CURRENT_UNIX_TIME with an embedded dummy RTC nanodriver
     let mut rtc = Rtc::new();
-    let date = rtc.read_date();
-    let seconds_since_epoch = date.into();
+    let seconds_since_epoch = rtc.read_date().map(|date| date.into()).unwrap_or(0);
     unsafe {
         CURRENT_UNIX_TIME.store(seconds_since_epoch, Ordering::SeqCst);
     }
