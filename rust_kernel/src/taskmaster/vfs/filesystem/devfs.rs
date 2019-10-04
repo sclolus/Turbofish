@@ -13,7 +13,9 @@ use alloc::vec::Vec;
 use core::convert::{TryFrom, TryInto};
 use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, btree::BTreeSet, FallibleBox, TryCollect};
-use libc_binding::{dev_t, gid_t, statfs, time_t, uid_t, Errno, FileType, NAME_MAX};
+use libc_binding::{
+    dev_t, gid_t, statfs, time_t, uid_t, Errno, FileType, DEVFS_SUPER_MAGIC, NAME_MAX, PAGE_SIZE,
+};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -239,14 +241,14 @@ impl FileSystem for Devfs {
 
     fn statfs(&self, buf: &mut statfs) -> SysResult<()> {
         Ok(*buf = statfs {
-            f_type: 42, // TODO: DEVFS_SUPER_MAGIC ??
-            f_bsize: 0,
+            f_type: DEVFS_SUPER_MAGIC,
+            f_bsize: PAGE_SIZE,
             f_blocks: 0,
             f_bfree: 0,
             f_bavail: 0,
             f_files: 0,
             f_ffree: 0,
-            f_fsid: 0,
+            f_fsid: self.fs_id.0 as u32,
             f_namelen: NAME_MAX - 1,
             f_frsize: 0,
             f_flags: 0,

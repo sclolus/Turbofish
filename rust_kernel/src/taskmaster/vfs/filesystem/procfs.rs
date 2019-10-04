@@ -26,7 +26,7 @@ use fallible_collections::{
     vec::TryCollect,
     TryClone,
 };
-use libc_binding::{time_t, Errno, FileType, Pid};
+use libc_binding::{statfs, time_t, Errno, FileType, Pid, NAME_MAX, PAGE_SIZE, PROC_SUPER_MAGIC};
 
 use alloc::sync::Arc;
 use core::default::Default;
@@ -926,5 +926,21 @@ impl FileSystem for ProcFs {
             self.inodes.remove(&inode_id).ok_or(Errno::ENOENT)?;
         }
         Ok(())
+    }
+
+    fn statfs(&self, buf: &mut statfs) -> SysResult<()> {
+        Ok(*buf = statfs {
+            f_type: PROC_SUPER_MAGIC,
+            f_bsize: PAGE_SIZE,
+            f_blocks: 0,
+            f_bfree: 0,
+            f_bavail: 0,
+            f_files: 0,
+            f_ffree: 0,
+            f_fsid: self.fs_id.0 as u32,
+            f_namelen: NAME_MAX - 1,
+            f_frsize: 0,
+            f_flags: 0,
+        })
     }
 }

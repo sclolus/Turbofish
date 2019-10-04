@@ -55,8 +55,11 @@ impl ProcFsOperations for ProcStatOperations {
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
         let global_time = unsafe { GLOBAL_TIME.as_ref().unwrap() };
-        let frequency = // unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
-            global_time.cpu_frequency();
+        let frequency = global_time.cpu_frequency();
+
+        let pit_frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
+
+        let uptime = unsafe { (dbg!(_get_pit_time()) as f32 * pit_frequency) * 100.0 } as usize; // TODO: USER_HZ
 
         let hertz = HZ as u64;
         let user = global_time.global_user_time().as_secs() * hertz;
@@ -101,7 +104,7 @@ impl ProcFsOperations for ProcStatOperations {
             boiler,
             boiler,
             boiler,
-            boiler,
+            uptime,
         )?;
 
         Ok(Cow::from(proc_stat_string))
