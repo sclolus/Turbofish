@@ -101,21 +101,21 @@ impl ProcFsOperations for StatOperations {
                                   // pgrp
                                   thread_group.pgid,
                                   // session
-                                  42 << 8 | 42,
+                                  1,
                                   // tty_nr
-                                  0,
+                                  4 << 8 | 1, // TODO: get the real controlling terminal.
                                   // tpgid
-                                  0,
+                                  1,
                                   // flags
-                                  0,
+                                  1,
                                   // minflt
-                                  0,
+                                  1,
                                   // cminflt
-                                  0,
+                                  1,
                                   // majflt
-                                  0,
+                                  1,
                                   // cmajflt
-                                  0,
+                                  1,
                                   // utime
                                   42,
                                   // stime

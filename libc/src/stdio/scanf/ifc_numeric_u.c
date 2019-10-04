@@ -1,9 +1,8 @@
 #include "ifc.h"
 
-const char  *decimal_base = "0123456789";
-
 int ifc_numeric_u(struct Ctx *ctx, struct Arguments *args)
 {
+	const char  *decimal_base = "0123456789";
 	int		ret;
 	unsigned int	*nbr;
 
