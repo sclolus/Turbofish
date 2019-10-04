@@ -44,6 +44,16 @@ pub struct ProcessDuration {
     system_time: Duration,
 }
 
+impl ProcessDuration {
+    pub fn user_time(&self) -> Duration {
+        self.user_time
+    }
+
+    pub fn system_time(&self) -> Duration {
+        self.system_time
+    }
+}
+
 /// Default boilerplate for ProcessDuration
 impl Default for ProcessDuration {
     fn default() -> Self {
@@ -143,6 +153,22 @@ impl GlobalTime {
             self.last_mesured_time = Some(new_cpu_time);
             Duration::from_micros((new_cpu_time - old_cpu_time) * 1000000 / self.cpu_frequency)
         })
+    }
+
+    pub fn global_user_time(&self) -> Duration {
+        self.global_user_time
+    }
+
+    pub fn global_system_time(&self) -> Duration {
+        self.global_system_time
+    }
+
+    pub fn global_idle_time(&self) -> Duration {
+        self.global_idle_time
+    }
+
+    pub fn cpu_frequency(&self) -> u64 {
+        self.cpu_frequency
     }
 }
 

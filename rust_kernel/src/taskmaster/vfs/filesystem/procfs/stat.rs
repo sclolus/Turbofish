@@ -91,6 +91,9 @@ impl ProcFsOperations for StatOperations {
             ThreadGroupState::Zombie(_status) => "Z",
         };
 
+        let utime = thread_group.process_duration.user_time().as_secs(); // convert to clock tick count.
+        let stime = thread_group.process_duration.system_time().as_secs();
+
         let stat_string = tryformat!(4096, "{} ({}) {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
                                   comm,
@@ -117,9 +120,9 @@ impl ProcFsOperations for StatOperations {
                                   // cmajflt
                                   1,
                                   // utime
-                                  42,
+                                  utime,
                                   // stime
-                                  42,
+                                  stime,
                                   // cutime
                                   42,
                                   // cstime
