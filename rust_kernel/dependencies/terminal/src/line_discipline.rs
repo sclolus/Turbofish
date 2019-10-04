@@ -334,7 +334,19 @@ pub fn encode_utf8(keysymb: KeySymb, dst: &mut [u8]) -> &[u8] {
         }
         _ => {
             let c = char::try_from(keysymb as u32).unwrap();
-            c.encode_utf8(dst).as_bytes()
+            // GAFFE: Je fix vite fait les problemes de carateres fantomes et bullshit !
+            // Mais en considerant les caracteres de plus de 2 bytes comme de simples espaces,
+            // j'inhibe toutes possibilite de faire fonctionner l'UTF8.
+            // Si on voulait qu'il soit correctement gere, Le read_buffer devrait etre une
+            // 'string' de capacite finie et des caracteres par defaut devrait s'afficher a la place de tout UTF8
+            // dont on aurait pas la police.
+            // Des modifications dans les buffers de terminal devraient etre operees aussi.
+            if c.len_utf8() == 1 {
+                c.encode_utf8(dst).as_bytes()
+            } else {
+                dst[0] = ' ' as u8;
+                return &dst[0..1];
+            }
         }
     }
 }
