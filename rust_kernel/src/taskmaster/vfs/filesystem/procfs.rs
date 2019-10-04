@@ -26,7 +26,9 @@ use fallible_collections::{
     vec::TryCollect,
     TryClone,
 };
-use libc_binding::{statfs, time_t, Errno, FileType, Pid, NAME_MAX, PAGE_SIZE, PROC_SUPER_MAGIC};
+use libc_binding::{
+    gid_t, statfs, time_t, uid_t, Errno, FileType, Pid, NAME_MAX, PAGE_SIZE, PROC_SUPER_MAGIC,
+};
 
 use alloc::sync::Arc;
 use core::default::Default;
@@ -169,6 +171,7 @@ impl ProcFs {
         parent: DirectoryEntryId,
         name: Filename,
         gen_driver: Box<dyn FnMut(InodeId) -> Result<Box<dyn Driver>, CollectionAllocErr>>,
+        (owner, group): (uid_t, gid_t),
     ) -> SysResult<DirectoryEntryId> {
         let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
@@ -182,8 +185,8 @@ impl ProcFs {
             .set_alltime(unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t)
             .set_access_mode(access_mode)
             .set_link_number(1)
-            .set_uid(0)
-            .set_gid(0);
+            .set_uid(owner)
+            .set_gid(group);
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
@@ -221,6 +224,7 @@ impl ProcFs {
         let meminfo_filename = Filename::from_str_unwrap("meminfo");
         let vmstat_filename = Filename::from_str_unwrap("vmstat");
         let mounts_filename = Filename::from_str_unwrap("mounts");
+        let owning = (0, 0);
 
         self.register_file(
             root_dir_id,
@@ -228,6 +232,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(filesystems::FilesystemsDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
         self.register_file(
             root_dir_id,
@@ -235,6 +240,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(version::VersionDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -243,6 +249,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(proc_stat::ProcStatDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -251,6 +258,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(uptime::UptimeDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -259,6 +267,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(loadavg::LoadavgDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -267,6 +276,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(meminfo::MeminfoDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -275,6 +285,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(vmstat::VmstatDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         self.register_file(
@@ -283,6 +294,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(mounts::MountsDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
 
         // Inserting divers basic procfs files.
@@ -317,7 +329,7 @@ impl ProcFs {
             | FileType::OTHER_READ_PERMISSION
             | FileType::OTHER_EXECUTE_PERMISSION;
 
-        let dir_id = self.mkdir(root_dir_id, tty_filename, mode)?;
+        let dir_id = self.mkdir(root_dir_id, tty_filename, mode, (0, 5))?;
         self.tty_directory = Some(dir_id);
         Ok(())
     }
@@ -326,6 +338,7 @@ impl ProcFs {
     pub fn fill_tty_directory(&mut self) -> SysResult<()> {
         let tty_dir_id = self.tty_directory.expect("No tty directory registered");
         let drivers_filename = Filename::from_str_unwrap("drivers");
+        let owning = (0, 5);
 
         self.register_file(
             tty_dir_id,
@@ -333,6 +346,7 @@ impl ProcFs {
             Box::try_new(|inode_id| -> Result<Box<dyn Driver>, CollectionAllocErr> {
                 Ok(Box::try_new(tty_drivers::TtyDriversDriver::new(inode_id))? as Box<dyn Driver>)
             })?,
+            owning,
         )?;
         Ok(())
     }
@@ -344,6 +358,15 @@ impl ProcFs {
             .expect("Could not get the requested pid directory")
             .id;
 
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let thread_group = scheduler
+            .get_thread_group(pid)
+            .expect("Could not find corresponding thread group for pid");
+
+        let owning = (thread_group.credentials.euid, thread_group.credentials.egid);
+
         let mode = FileType::DIRECTORY
             | FileType::USER_READ_PERMISSION
             | FileType::USER_EXECUTE_PERMISSION
@@ -352,7 +375,7 @@ impl ProcFs {
             | FileType::OTHER_READ_PERMISSION
             | FileType::OTHER_EXECUTE_PERMISSION;
 
-        let dir_id = self.mkdir(pid_dir_id, fd_filename, mode)?;
+        let dir_id = self.mkdir(pid_dir_id, fd_filename, mode, owning)?;
         self.fd_directories.try_insert((dir_id, pid))?;
         Ok(())
     }
@@ -367,6 +390,7 @@ impl ProcFs {
             .get_thread_group(pid)
             .expect("Could not find corresponding thread group for pid");
 
+        let owning = (thread_group.credentials.euid, thread_group.credentials.egid);
         let state = match &thread_group.thread_group_state {
             ThreadGroupState::Running(running) => Some(&running.file_descriptor_interface),
             _ => None,
@@ -379,7 +403,7 @@ impl ProcFs {
             let fd_string = tryformat!(32, "{}", fd)?;
             let fd_filename = Filename::from_str_unwrap(&fd_string);
             let path = descriptor.get_open_path().try_clone()?;
-            self.symlink(fd_dir_id, fd_filename, path)?;
+            self.symlink(fd_dir_id, fd_filename, path, Some(owning))?;
         }
         Ok(())
     }
@@ -400,6 +424,15 @@ impl ProcFs {
             return Ok(());
         }
 
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock();
+
+        let thread_group = scheduler
+            .get_thread_group(pid)
+            .expect("Could not find corresponding thread group for pid");
+
+        let owning = (thread_group.credentials.euid, thread_group.credentials.egid);
+
         let mode = FileType::DIRECTORY
             | FileType::USER_READ_PERMISSION
             | FileType::USER_EXECUTE_PERMISSION
@@ -408,7 +441,7 @@ impl ProcFs {
             | FileType::OTHER_READ_PERMISSION
             | FileType::OTHER_EXECUTE_PERMISSION;
 
-        let dir_id = self.mkdir(root_dir_id, pid_filename, mode)?;
+        let dir_id = self.mkdir(root_dir_id, pid_filename, mode, owning)?;
         self.pid_directories.try_insert((dir_id, pid))?;
 
         Ok(())
@@ -431,6 +464,7 @@ impl ProcFs {
             .get_thread_group(pid)
             .expect("Could not find corresponding thread group for pid");
 
+        let owning = (thread_group.credentials.euid, thread_group.credentials.egid);
         let dir_id = self
             .get_pid_directory(pid)
             .expect("Could not get the requested pid directory")
@@ -443,11 +477,12 @@ impl ProcFs {
                     Ok(Box::try_new(StatDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
+            owning,
         )?;
 
         let cwd = thread_group.cwd.try_clone()?;
 
-        self.symlink(dir_id, cwd_filename, cwd)?;
+        self.symlink(dir_id, cwd_filename, cwd, Some(owning))?;
 
         self.register_file(
             dir_id,
@@ -457,6 +492,7 @@ impl ProcFs {
                     Ok(Box::try_new(EnvironDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
+            owning,
         )?;
 
         self.register_file(
@@ -467,6 +503,7 @@ impl ProcFs {
                     Ok(Box::try_new(CmdlineDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
+            owning,
         )?;
 
         self.register_file(
@@ -477,6 +514,7 @@ impl ProcFs {
                     Ok(Box::try_new(CommDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
+            owning,
         )?;
 
         self.register_file(
@@ -487,10 +525,11 @@ impl ProcFs {
                     Ok(Box::try_new(StatusDriver::new(inode_id, pid))? as Box<dyn Driver>)
                 },
             )?,
+            owning,
         )?;
 
         if let Some(filename) = &thread_group.filename {
-            self.symlink(dir_id, exe_filename, filename.try_clone()?)?;
+            self.symlink(dir_id, exe_filename, filename.try_clone()?, Some(owning))?;
         }
 
         self.register_fd_directory(pid)?;
@@ -559,7 +598,7 @@ impl ProcFs {
         let (current_pid, _) = scheduler.current_task_id();
         let pid_path = Path::try_from(tryformat!(16, "/proc/{}", current_pid)?.as_str())?;
 
-        self.symlink(root_dir_id, self_filename, pid_path)
+        self.symlink(root_dir_id, self_filename, pid_path, None)
             .expect("Failed to creat the /proc/self symlink");
         Ok(())
     }
@@ -584,7 +623,16 @@ impl ProcFs {
         let root_direntry = new.dcache.get_entry_mut(&root_dir_id)?;
         root_direntry.set_inode_id(root_inode_id);
 
-        let inode = VfsInode::root_inode()?;
+        let mut inode = VfsInode::root_inode()?;
+        inode.set_access_mode(
+            FileType::DIRECTORY
+                | FileType::USER_READ_PERMISSION
+                | FileType::USER_EXECUTE_PERMISSION
+                | FileType::GROUP_READ_PERMISSION
+                | FileType::GROUP_EXECUTE_PERMISSION
+                | FileType::OTHER_READ_PERMISSION
+                | FileType::OTHER_EXECUTE_PERMISSION,
+        );
 
         new.root_inode_id = root_inode_id;
 
@@ -612,6 +660,7 @@ impl ProcFs {
         parent: DirectoryEntryId,
         filename: Filename,
         mode: FileType,
+        (owner, group): (uid_t, gid_t),
     ) -> SysResult<DirectoryEntryId> {
         let parent_dir = self.dcache.get_entry_mut(&parent)?;
         let driver = Box::try_new(DefaultDriver)?;
@@ -628,8 +677,8 @@ impl ProcFs {
             .set_alltime(unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t)
             .set_access_mode(mode)
             .set_link_number(1)
-            .set_uid(0) //TODO change this.
-            .set_gid(0);
+            .set_uid(owner)
+            .set_gid(group);
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),
@@ -734,12 +783,14 @@ impl ProcFs {
         parent: DirectoryEntryId,
         link_name: Filename,
         path: Path,
+        owning: Option<(uid_t, gid_t)>,
     ) -> SysResult<DirectoryEntryId> {
         let driver = Box::try_new(DefaultDriver)?;
         let filesystem = Arc::try_new(DeadMutex::new(DeadFileSystem))?;
 
         let inode_id: InodeId = self.gen();
         let inode_id = self.new_inode_id(inode_id.inode_number);
+        let (owner, group) = owning.unwrap_or((0, 0));
 
         let mut direntry = DirectoryEntryBuilder::new();
         direntry
@@ -755,8 +806,8 @@ impl ProcFs {
             .set_access_mode(
                 FileType::SYMBOLIC_LINK | FileType::S_IRWXO | FileType::S_IRWXG | FileType::S_IRWXU,
             )
-            .set_uid(0)
-            .set_gid(0);
+            .set_uid(owner)
+            .set_gid(group);
 
         let inode = Inode(
             VfsInode::new(filesystem, driver, vfs_inode_data),

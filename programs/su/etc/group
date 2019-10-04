@@ -61,7 +61,7 @@ pulse:x:122:
 pulse-access:x:123:
 rtkit:x:124:
 saned:x:125:
-miniske:x:1000:
+boilerman:x:1000:
 adb:x:127:
 Debian-gdm:x:126:
 systemd-coredump:x:998:
