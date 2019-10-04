@@ -1020,6 +1020,7 @@ impl VirtualFileSystem {
         if flags.contains(OpenFlags::O_DIRECTORY) && !entry.is_directory() {
             return Err(Errno::ENOTDIR);
         }
+
         self.inodes
             .get_mut(&entry_inode_id)
             .ok_or(ENOENT)?

@@ -14,7 +14,7 @@ use alloc::collections::CollectionAllocErr;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use fallible_collections::{btree::BTreeMap, TryClone};
-use libc_binding::{gid_t, mode_t, uid_t, Signum};
+use libc_binding::{dev_t, gid_t, mode_t, uid_t, Signum};
 use try_clone_derive::TryClone;
 
 #[derive(Debug)]
@@ -96,6 +96,9 @@ pub struct ThreadGroup {
     pub process_duration: ProcessDuration,
     /// The umask of the process: The actived bits in it are disabled in all file creating operations.
     pub umask: mode_t,
+
+    /// The minor of the controlling terminal of the process.
+    pub controlling_terminal: Option<dev_t>,
 
     /// Filled by execve, used by /proc/[pid]/environ in the procfs.
     pub environ: Option<CStringArray>,
@@ -226,6 +229,7 @@ impl ThreadGroup {
             job: Job::new(),
             process_duration: ProcessDuration::default(),
             umask: 0,
+            controlling_terminal: None, // hum...
             environ: None,
             argv: None,
             filename: None,
@@ -283,6 +287,7 @@ impl ThreadGroup {
             job: Job::new(),
             process_duration: ProcessDuration::default(),
             umask: 0,
+            controlling_terminal: self.controlling_terminal,
             environ: None,
             argv: None,
             filename: None,

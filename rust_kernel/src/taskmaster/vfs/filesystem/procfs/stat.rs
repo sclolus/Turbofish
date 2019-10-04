@@ -19,7 +19,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::{off_t, Pid, Whence};
+use libc_binding::{dev_t, off_t, Pid, Whence};
 
 #[derive(Debug, Clone)]
 pub struct StatDriver {
@@ -90,6 +90,8 @@ impl ProcFsOperations for StatOperations {
         let utime = thread_group.process_duration.user_time().as_secs(); // convert to clock tick count.
         let stime = thread_group.process_duration.system_time().as_secs();
 
+        let ctty = thread_group.controlling_terminal.unwrap_or(0 as dev_t);
+
         let stat_string = tryformat!(4096, "{} ({}) {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
                                   comm,
@@ -102,7 +104,7 @@ impl ProcFsOperations for StatOperations {
                                   // session
                                   1,
                                   // tty_nr
-                                  4 << 8 | 1, // TODO: get the real controlling terminal.
+                                  4 << 8 | ctty, // TODO: make the major not hardcoded.
                                   // tpgid
                                   1,
                                   // flags
