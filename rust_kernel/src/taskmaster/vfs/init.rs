@@ -2,7 +2,7 @@ use super::filesystem::devfs::{
     BiosInt13hInstance, DiskDriver, DiskWrapper, IdeAtaInstance, NullDevice, RandomDevice,
     TtyDevice, ZeroDevice,
 };
-use super::filesystem::{Devfs, Ext2fs};
+use super::filesystem::{Devfs, Ext2fs, FileSystemSource, FileSystemType};
 use super::SmartMutex;
 use crate::taskmaster::drivers::Driver;
 use alloc::format;
@@ -79,7 +79,12 @@ fn mount_devfs(vfs: &mut Vfs, mut devfs: Devfs, fs_id: FileSystemId) {
         .pathname_resolution(&Path::root(), &root_creds, &Path::try_from("/dev").unwrap())
         .unwrap();
     vfs.mount_filesystem(
-        Arc::try_new(DeadMutex::new(devfs)).expect("arc new ext2fs failed"),
+        MountedFileSystem {
+            source: FileSystemSource::Devfs,
+            fs_type: FileSystemType::Devfs,
+            target: Path::try_from("/dev").expect("/dev path creation failed"),
+            fs: Arc::try_new(DeadMutex::new(devfs)).expect("arc new devfs failed"),
+        },
         fs_id,
         dev_id,
     )
@@ -102,7 +107,14 @@ fn init_ext2(vfs: &mut Vfs, devfs: &mut Devfs, driver_type: DiskDriverType) {
     let fs_id = FileSystemId(0);
     let ext2fs = Ext2fs::new(ext2, fs_id);
     vfs.mount_filesystem(
-        Arc::try_new(DeadMutex::new(ext2fs)).expect("arc new ext2fs failed"),
+        MountedFileSystem {
+            source: FileSystemSource::File {
+                source_path: Path::try_from("/dev/sda1").expect("enomem to create path /dev/sda1"),
+            },
+            fs_type: FileSystemType::Ext2,
+            target: Path::try_from("/").expect("enomem to create path /"),
+            fs: Arc::try_new(DeadMutex::new(ext2fs)).expect("arc new ext2fs failed"),
+        },
         fs_id,
         DirectoryEntryId::new(2),
     )
@@ -182,7 +194,12 @@ fn init_procfs(vfs: &mut Vfs) -> Result<(), Errno> {
     );
 
     vfs.mount_filesystem(
-        Arc::try_new(DeadMutex::new(procfs))?,
+        MountedFileSystem {
+            source: FileSystemSource::Procfs,
+            fs_type: FileSystemType::Procfs,
+            target: Path::try_from("/proc")?,
+            fs: Arc::try_new(DeadMutex::new(procfs))?,
+        },
         fs_id,
         proc_dir_directory_id,
     )

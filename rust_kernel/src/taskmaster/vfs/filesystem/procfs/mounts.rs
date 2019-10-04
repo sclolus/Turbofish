@@ -1,11 +1,15 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
-
-use alloc::sync::Arc;
+use super::{
+    Driver, FileOperation, InodeId, IpcResult, MountedFileSystem, ProcFsOperations, SysResult, VFS,
+};
 
 use alloc::borrow::Cow;
-use fallible_collections::FallibleArc;
+use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use libc_binding::OpenFlags;
+use fallible_collections::{FallibleArc, TryCollect};
+
+use libc_binding::{Errno, OpenFlags};
 use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
@@ -57,9 +61,34 @@ impl FileOperation for MountsOperations {
 
 impl ProcFsOperations for MountsOperations {
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let hardcoded_mounts_string = "/dev/sda1 / ext2 rw 0 0\n\
-                                       proc /proc procfs ro 0 0\n";
-        Ok(Cow::from(hardcoded_mounts_string))
+        VFS.force_unlock();
+        let vfs = VFS.lock();
+        let mounts_bytes: Vec<u8> = vfs
+            .mounted_filesystems
+            .values()
+            .filter_map(
+                |MountedFileSystem {
+                     ref source,
+                     ref target,
+                     ref fs_type,
+                     ..
+                 }| {
+                    Some(
+                        tryformat!(128, "{} {} {} rw 0 0\n", source, target, fs_type)
+                            .ok()?
+                            .into_bytes(),
+                    )
+                },
+            )
+            .flatten()
+            .try_collect()?;
+
+        Ok(Cow::from(String::from_utf8(mounts_bytes).map_err(
+            |_| {
+                log::error!("invalid utf8 in environ operation");
+                Errno::EINVAL
+            },
+        )?))
     }
     fn get_offset(&mut self) -> &mut usize {
         &mut self.offset

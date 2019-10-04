@@ -1,5 +1,6 @@
 use super::tools::{KeyGenerator, Mapper};
 use super::DefaultDriver;
+use super::MountedFileSystem;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::Credentials;
 use try_clone_derive::TryClone;
@@ -9,7 +10,7 @@ use super::{Driver, FileOperation, Inode, InodeData, VFS, IpcResult};
 use alloc::boxed::Box;
 use super::Incrementor;
 use alloc::vec::Vec;
-use core::fmt::Debug;
+use core::fmt::{Debug, self, Display};
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
 
 pub mod dead;
@@ -147,6 +148,44 @@ pub trait FileSystem: Send + Debug {
     // fn statfs: Option<fn(&mut Superblock)>,
     // fn mkdir: Option<fn(&mut Superblock)>,
     // fn rmdir: Option<fn(&mut Superblock)>,
+}
+
+#[derive(Debug)]
+/// the filesystem source,
+pub enum FileSystemSource {
+    /// is it mounted from  /dev/sda for exemple
+    File { source_path: Path },
+    /// or a procfs ?
+    Procfs,
+    /// or a devfs ?
+    Devfs,
+}
+
+impl Display for FileSystemSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::File { source_path} => write!(f, "{}", source_path),
+            Self::Procfs => write!(f, "proc"),
+            Self::Devfs => write!(f, "dev"),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum FileSystemType {
+    Ext2,
+    Procfs,
+    Devfs,
+}
+
+impl Display for FileSystemType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Ext2 => write!(f, "ext2"),
+            Self::Procfs => write!(f, "proc"),
+            Self::Devfs => write!(f, "dev"),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Default, Eq, PartialEq, TryClone)]
