@@ -414,7 +414,10 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),
-        sysnum => panic!("wrong syscall {}", sysnum),
+        sysnum => {
+            log::warn!("Wrong syscall was called: {}", sysnum);
+            Err(Errno::ENOSYS)
+        }
     };
 
     if eax != READ && eax != WRITE {

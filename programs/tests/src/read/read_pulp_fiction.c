@@ -14,14 +14,14 @@ size_t QUOTE_LEN = sizeof(PULP_FICTION_QUOTE);
 
 int main() {
 	char buf[QUOTE_LEN];
-	int fd = open("/home/pulp_fiction.txt", O_RDONLY);
+	int fd = open("/home/boilerman/pulp_fiction.txt", O_RDONLY);
 	if (fd == -1) {
 		perror("open");
 		exit(1);
 	}
 	int ret = read(fd, buf, QUOTE_LEN - 1);
 	dprintf(2, "bytes readen %d, quote len %lu\n", ret, QUOTE_LEN);
-	
+
 	if (ret != (int)QUOTE_LEN - 1) {
 		dprintf(2, "bytes readen %d\n", ret);
 		exit(1);
