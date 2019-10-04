@@ -34,11 +34,7 @@ pub struct CommOperations {
 
 impl Driver for CommDriver {
     fn open(&mut self, _flags: OpenFlags) -> SysResult<IpcResult<Arc<Mutex<dyn FileOperation>>>> {
-        let res = Arc::try_new(Mutex::new(CommOperations::new(
-            self.inode_id,
-            self.pid,
-            0,
-        )))?;
+        let res = Arc::try_new(Mutex::new(CommOperations::new(self.inode_id, self.pid, 0)))?;
         Ok(IpcResult::Done(res))
     }
 }
@@ -82,8 +78,12 @@ impl ProcFsOperations for CommOperations {
 
         let mut bytes: Vec<u8> = comm
             .strings()
+            .next()
+            .iter()
             .flat_map(|s| s.iter().map(|b| *b as u8))
+            .filter(|c| *c != '\0' as u8)
             .skip(self.offset)
+            .chain("\n".bytes())
             .try_collect()?;
 
         Ok(Cow::from(String::from_utf8(bytes).map_err(|_| {

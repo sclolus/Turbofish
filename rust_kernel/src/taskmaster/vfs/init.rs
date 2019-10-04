@@ -10,7 +10,7 @@ use alloc::sync::Arc;
 use core::convert::TryFrom;
 use fallible_collections::vec::FallibleVec;
 use fallible_collections::{FallibleArc, FallibleBox};
-use libc_binding::OpenFlags;
+use libc_binding::{dev_t, OpenFlags};
 use sync::DeadMutex;
 
 use super::filesystem::procfs::ProcFs;
@@ -214,7 +214,7 @@ fn init_tty(devfs: &mut Devfs) {
         let mode = FileType::from_bits(0o666).expect("file permission creation failed");
 
         devfs
-            .register_tty(mode, (0, 5)) // hardcoded owner/group for root:tty
+            .register_specific_tty(mode, (0, 5), i as dev_t) // hardcoded owner/group for root:tty
             .expect("failed to add new driver tty to vfs");
 
         // vfs.new_driver(&Path::root(), &Credentials::ROOT, path, mode, driver)

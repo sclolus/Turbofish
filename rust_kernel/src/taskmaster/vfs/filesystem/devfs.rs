@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::convert::{TryFrom, TryInto};
 use core::sync::atomic::Ordering;
 use fallible_collections::{btree::BTreeMap, btree::BTreeSet, FallibleBox, TryCollect};
-use libc_binding::{dev_t, gid_t, statfs, time_t, uid_t, FileType, NAME_MAX};
+use libc_binding::{dev_t, gid_t, statfs, time_t, uid_t, Errno, FileType, NAME_MAX};
 
 pub mod tty;
 pub use tty::TtyDevice;
@@ -76,10 +76,25 @@ impl Devfs {
         InodeId::new(self.gen(), Some(self.fs_id))
     }
 
-    pub fn register_tty(
+    /// Tries to register a tty with a specific `minor`.
+    pub fn register_specific_tty(
         &mut self,
         mut permissions: FileType,
         (owner, group): (uid_t, gid_t),
+        minor: dev_t,
+    ) -> SysResult<InodeId> {
+        if self.tty_minors.contains(&minor) {
+            return Err(Errno::EEXIST);
+        }
+
+        self._register_tty(permissions, (owner, group), minor)
+    }
+
+    fn _register_tty(
+        &mut self,
+        mut permissions: FileType,
+        (owner, group): (uid_t, gid_t),
+        minor: dev_t,
     ) -> SysResult<InodeId> {
         assert!(
             !permissions.is_typed(),
@@ -90,24 +105,22 @@ impl Devfs {
 
         // L'essentiel pour le vfs c'est que j'y inscrive un driver attache a un pathname
 
-        let new_minor: dev_t = self.gen();
         let inode_id = self.gen_inode_id();
 
         let driver = Box::try_new(TtyDevice::try_new(
-            new_minor
+            minor
                 .try_into()
                 .expect("Should have generated a valid minor"),
             inode_id,
         )?)?;
 
-        let filename =
-            Filename::from_str_unwrap(tryformat!(48, "tty{}", new_minor as usize)?.as_str());
+        let filename = Filename::from_str_unwrap(tryformat!(48, "tty{}", minor as usize)?.as_str());
 
         let timestamp = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) };
         let inode_data = InodeData {
             id: inode_id,
             major: TTY_MAJOR,
-            minor: new_minor,
+            minor: minor,
             link_number: 1,
             access_mode: permissions,
 
@@ -123,8 +136,18 @@ impl Devfs {
         };
         self.files
             .try_insert(filename, (inode_data, Some(driver)))?;
-        self.tty_minors.try_insert(new_minor)?;
+        self.tty_minors.try_insert(minor)?;
         Ok(inode_id)
+    }
+
+    pub fn register_tty(
+        &mut self,
+        mut permissions: FileType,
+        (owner, group): (uid_t, gid_t),
+    ) -> SysResult<InodeId> {
+        let new_minor: dev_t = self.gen();
+
+        self._register_tty(permissions, (owner, group), new_minor)
     }
 
     pub fn add_driver(
