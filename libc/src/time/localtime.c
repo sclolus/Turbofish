@@ -150,7 +150,7 @@ struct tm *localtime(const time_t *timer)
 	time_t mins  = (t / 60) % 60;
 	time_t hours = (t / 3600) % 24;
 	time_t years = (t - leap_days_in_seconds) / (SECSPERYEAR);
-	time_t yday  = ((t - (years) * SECSPERYEAR - leap_days_in_seconds) / SECSPERDAY) % 365;
+	time_t yday  = ((t - (years) * SECSPERYEAR - leap_days_in_seconds) / SECSPERDAY) % 365 + 1;
 
 	time_t month = get_month_from_yday(yday);
 	time_t day_of_month = get_day_of_month_from_yday(yday);
