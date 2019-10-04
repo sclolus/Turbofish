@@ -17,11 +17,11 @@ int main(void)
 
 
 	assert(-1 == execve(filename, (char *[]){filename, NULL}, environ));
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 
 	snprintf(filename, sizeof(filename), "cannot_exec_dir_%u/", pid);
 	assert(-1 == execve(filename, (char *[]){filename, NULL}, environ));
-	assert(errno == EACCESS);
+	assert(errno == EACCES);
 	assert(-1 != rmdir(filename));
 	return EXIT_SUCCESS;
 }

@@ -20,7 +20,9 @@ int main(void)
 	assert(buf.f_bavail != 0); // That probably should be true.
 	assert(buf.f_files != 0);
 	assert(buf.f_ffree != 0);
+#ifndef GNU
 	assert(buf.f_type == EXT2_SUPER_MAGIC); // Assumes that the root filesytem is ext2.
+#endif
 	assert(buf.f_namelen == NAME_MAX - 1);
 	return EXIT_SUCCESS;
 }
