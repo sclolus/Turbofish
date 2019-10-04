@@ -352,7 +352,7 @@ impl<'a> Iterator for Components<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let current = self.current.as_ref().unwrap_or(&(0..0));
         let start = current.start;
-        let end = current.end;
+        let end = current.end + 1;
         let len = end.checked_sub(start).unwrap_or(0);
         (len, Some(len))
     }
