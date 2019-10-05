@@ -225,7 +225,7 @@ impl FileSystem for Devfs {
         Ok(self
             .files
             .iter_mut()
-            .map(|(filename, (inode_data, driver))| {
+            .filter_map(|(filename, (inode_data, driver))| {
                 let inode_id = inode_data.id;
                 let direntry = {
                     let mut builder = DirectoryEntryBuilder::new();
@@ -234,8 +234,8 @@ impl FileSystem for Devfs {
                     builder.build()
                 };
 
-                let driver: Box<dyn Driver> = driver.take().unwrap();
-                (direntry, *inode_data, driver)
+                let driver: Box<dyn Driver> = driver.take()?;
+                Some((direntry, *inode_data, driver))
             })
             .try_collect()?)
     }

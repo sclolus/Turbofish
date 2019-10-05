@@ -951,6 +951,35 @@ impl FileSystem for ProcFs {
         Ok(())
     }
 
+    fn rmdir(&mut self, parent_inode_nbr: u32, filename: &str) -> SysResult<()> {
+        let filename = Filename::try_from(filename)?;
+        let parent_inode_id = self.new_inode_id(parent_inode_nbr);
+        let parent_dir_id = self
+            .dcache
+            .iter()
+            .find(|entry| entry.inode_id == parent_inode_id)
+            .ok_or(Errno::ENOENT)?
+            .id;
+
+        let to_remove = self
+            .children_direntries(parent_dir_id)?
+            .find(|entry| entry.filename == filename)
+            .ok_or(Errno::ENOENT)?;
+
+        if !to_remove.is_directory() {
+            return Err(Errno::ENOTDIR);
+        }
+
+        let to_remove_id = to_remove.id;
+        let to_remove_inode_id = to_remove.inode_id;
+
+        self.dcache.remove_entry(to_remove_id)?;
+        self.inodes
+            .remove(&to_remove_inode_id)
+            .ok_or(Errno::ENOENT)?;
+        Ok(())
+    }
+
     fn unlink(
         &mut self,
         _dir_inode_nbr: u32,
