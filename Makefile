@@ -101,6 +101,7 @@ fclean:
 	sudo rm -rvf system
 	rm -rvf build_coreutils
 	rm -rvf build_dash
+	rm -rvf build_procps
 	rm -vf loopdevice.map
 	rm -vf $(IMG_DISK)
 
