@@ -228,7 +228,7 @@ HEADERS += mntent.h
 SRC_C += is_ptr_valid
 VPATH += src/custom
 
-SRC_C += rmmod insmod
+SRC_C += rmmod insmod lsmod
 VPATH += src/mod
 HEADERS += mod.h
 
