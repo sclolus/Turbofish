@@ -76,7 +76,8 @@ long         gethostid(void);
 //[Option End]
 /* int          gethostname(char *, size_t); */
 //TODO:Check non posix
-int          gethostname(char *, int);
+int          gethostname(char *name, size_t namelen);
+int          sethostname(const char *name, size_t namelen);
 char        *getlogin(void);
 int          getlogin_r(char *, size_t);
 char	     *getpass(const char *const); // feature test macro for this ?

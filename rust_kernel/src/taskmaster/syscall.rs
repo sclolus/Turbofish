@@ -17,13 +17,13 @@ use super::IpcResult;
 use super::{IntoRawResult, SysResult};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
-    FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP,
-    GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, IS_STR_VALID, KILL, LINK, LSEEK,
-    LSMOD, LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE,
-    PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES,
-    UMASK, UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
+    FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETHOSTNAME, GETPGID,
+    GETPGRP, GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, IS_STR_VALID, KILL,
+    LINK, LSEEK, LSMOD, LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
+    OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID,
+    SETGROUPS, SETHOSTNAME, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR,
+    TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -268,6 +268,12 @@ use lsmod::sys_lsmod;
 mod times;
 use times::sys_times;
 
+mod gethostname;
+use gethostname::{sys_gethostname, HOSTNAME};
+
+mod sethostname;
+use sethostname::sys_sethostname;
+
 mod trace_syscall;
 
 extern "C" {
@@ -409,6 +415,8 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         ISATTY => sys_isatty(ebx as u32),
         OPENDIR => sys_opendir(ebx as *const c_char, ecx as *mut DIR),
         IS_STR_VALID => sys_is_str_valid(ebx as *const c_char),
+        GETHOSTNAME => sys_gethostname(ebx as *mut c_char, ecx as usize),
+        SETHOSTNAME => sys_sethostname(ebx as *const c_char, ecx as usize),
 
         // Kernel module management
         INSMOD => sys_insmod(ebx as *const c_char),

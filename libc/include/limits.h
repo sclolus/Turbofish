@@ -50,8 +50,14 @@
  * {DELAYTIMER_MAX}
  *     Maximum number of timer expiration overruns.
  *     Minimum Acceptable Value: {_POSIX_DELAYTIMER_MAX}
- * {HOST_NAME_MAX}
- *     Maximum length of a host name (not including the terminating null) as returned from the gethostname() function.
+ */
+
+ /* * {HOST_NAME_MAX} */
+ /* *     Maximum length of a host name (not including the terminating null) as returned from the gethostname() function. */
+
+# define HOST_NAME_MAX 255
+
+ /*
  *     Minimum Acceptable Value: {_POSIX_HOST_NAME_MAX}
  * {IOV_MAX}
  *     [XSI] [Option Start]
