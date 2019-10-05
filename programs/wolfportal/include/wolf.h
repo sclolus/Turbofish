@@ -118,13 +118,13 @@ typedef struct		s_key
 # define KEY_DOWN 125
 # define KEY_RIGHT 124
 # define KEY_UP 126
-# define KEY_B 11
+# define KEY_B 48
 # define KEY_PAD_SUB 78
 # define KEY_PAD_ADD 69
-# define KEY_R 15
-# define KEY_Z 6
-# define KEY_H 4
-# define KEY_S 1
+# define KEY_R 19
+# define KEY_Z 44
+# define KEY_H 35
+# define KEY_S 31
 
 void				ft_parse_input(char *name);
 void				add_start_position(int i, int j);

@@ -60,8 +60,8 @@ pub enum MessageTo {
     },
     Tty {
         scancode: ScanCode,
-        keycode: KeyCode,
-        keysymb: KeySymb,
+        keycode: Option<KeyCode>,
+        keysymb: Option<KeySymb>,
     },
     Accepter {
         uid_file_op: usize,

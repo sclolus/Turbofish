@@ -161,19 +161,31 @@ impl Terminal {
     }
 
     /// Handle the ketPressed for special TTY changes. Report a foreground TTY modification
-    pub fn handle_key_pressed(&mut self, scancode: ScanCode, keycode: KeyCode, keysymb: KeySymb) -> Option<usize> {
+    pub fn handle_key_pressed(&mut self, scancode: ScanCode, keycode: Option<KeyCode>, keysymb: Option<KeySymb>) -> Option<usize> {
         use TtyControlOutput::*;
 
-        match self.handle_tty_control(keysymb) {
-            SwitchSuccess(tty_index) => Some(tty_index),
-            SwitchError => None,
-            NoControlInput => {
-                self.get_foreground_tty()
-                    .handle_key_pressed(scancode, keycode, keysymb)
-                    .expect("write input failed");
-                None
-            }
-        }
+		if let Some(keysymb) = keysymb {
+			match self.handle_tty_control(keysymb) {
+				SwitchSuccess(tty_index) => Some(tty_index),
+				SwitchError => None,
+				NoControlInput => {
+					let tty = self.get_foreground_tty();
+
+					if tty.is_raw_mode() {
+						tty.handle_scancode(scancode).expect("write input failed");
+					} else {
+						tty.handle_key_pressed(keysymb).expect("write input failed");
+					}
+					None
+				}
+			}
+		}
+		else {
+			self.get_foreground_tty()
+				.handle_scancode(scancode)
+				.expect("write input failed");
+			None
+		}
     }
 
     /// Provide a tiny interface to control some features on the tty

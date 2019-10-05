@@ -16,11 +16,11 @@ use keyboard::{KeySymb, KeyCode, ScanCode};
 
 #[derive(Debug, Clone)]
 pub struct LineDiscipline {
-    pub tty: BufferedTty,
-    termios: termios,
-    read_buffer: ArrayVec<[u8; 4096]>,
-    foreground_process_group: Pid,
-    end_of_file_set: bool,
+	pub tty: BufferedTty,
+	termios: termios,
+	read_buffer: ArrayVec<[u8; 4096]>,
+	foreground_process_group: Pid,
+	end_of_file_set: bool,
 	/// raw mode doesn't transform scancode in utf8
 	is_raw_mode: bool,
 }
@@ -28,170 +28,172 @@ pub struct LineDiscipline {
 /// represent a result of the read function to handle the blocking
 /// case
 pub enum ReadResult {
-    /// the syscall will be blocking
-    Blocking,
-    /// the syscall is non blocking even if the return is 0
-    NonBlocking(usize),
+	/// the syscall will be blocking
+	Blocking,
+	/// the syscall is non blocking even if the return is 0
+	NonBlocking(usize),
 }
 
 impl LineDiscipline {
-    pub fn new(tty: BufferedTty) -> Self {
-        Self {
-            termios: termios {
-                c_iflag: 0,
-                c_oflag: 0,
-                c_cflag: 0,
-                c_lflag: (ECHO | ICANON | ISIG | TOSTOP),
-                c_cc: [
-                    /*VEOF  */ KeySymb::Control_d as u32,
-                    /*VEOL  */ KeySymb::Return as u32,
-                    /*VERASE*/ KeySymb::Delete as u32,
-                    /*VINTR */ KeySymb::Control_c as u32,
-                    /*VKILL */ KeySymb::Control_u as u32,
-                    /*VMIN  */ KeySymb::Linefeed as u32,
-                    /*VQUIT */ KeySymb::Control_backslash as u32,
-                    /*VSUSP */ KeySymb::Control_z as u32,
-                    /*VTIME */ KeySymb::nul as u32,
-                    /*VSTART*/ KeySymb::nul as u32,
-                    /*VSTOP */ KeySymb::nul as u32,
-                ],
-            },
-            tty,
-            read_buffer: ArrayVec::new(),
-            foreground_process_group: 0,
-            end_of_file_set: false,
+	pub fn new(tty: BufferedTty) -> Self {
+		Self {
+			termios: termios {
+				c_iflag: 0,
+				c_oflag: 0,
+				c_cflag: 0,
+				c_lflag: (ECHO | ICANON | ISIG | TOSTOP),
+				c_cc: [
+					/*VEOF  */ KeySymb::Control_d as u32,
+					/*VEOL  */ KeySymb::Return as u32,
+					/*VERASE*/ KeySymb::Delete as u32,
+					/*VINTR */ KeySymb::Control_c as u32,
+					/*VKILL */ KeySymb::Control_u as u32,
+					/*VMIN  */ KeySymb::Linefeed as u32,
+					/*VQUIT */ KeySymb::Control_backslash as u32,
+					/*VSUSP */ KeySymb::Control_z as u32,
+					/*VTIME */ KeySymb::nul as u32,
+					/*VSTART*/ KeySymb::nul as u32,
+					/*VSTOP */ KeySymb::nul as u32,
+				],
+			},
+			tty,
+			read_buffer: ArrayVec::new(),
+			foreground_process_group: 0,
+			end_of_file_set: false,
 			is_raw_mode: false,
-        }
-    }
+		}
+	}
 
-    /// handle directly some keysymb to control the terminal
-    pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
-        match keysymb {
-            KeySymb::Control_p => self.tty.as_mut().scroll(Scroll::Up),
-            KeySymb::Control_n => self.tty.as_mut().scroll(Scroll::Down),
-            KeySymb::Control_b => self.tty.as_mut().scroll(Scroll::HalfScreenUp),
-            KeySymb::Control_v => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
-            _ => {
-                return false;
-            }
-        };
-        true
-    }
+	/// handle directly some keysymb to control the terminal
+	pub fn handle_tty_control(&mut self, keysymb: KeySymb) -> bool {
+		match keysymb {
+			KeySymb::Control_p => self.tty.as_mut().scroll(Scroll::Up),
+			KeySymb::Control_n => self.tty.as_mut().scroll(Scroll::Down),
+			KeySymb::Control_b => self.tty.as_mut().scroll(Scroll::HalfScreenUp),
+			KeySymb::Control_v => self.tty.as_mut().scroll(Scroll::HalfScreenDown),
+			_ => {
+				return false;
+			}
+		};
+		true
+	}
 
-    /// write in the read buffer the keysymb read from the keyboard
-    /// Send a message if read is ready, depending of the lmode
-    pub fn handle_key_pressed(&mut self, scancode: ScanCode, _keycode: KeyCode, keysymb: KeySymb) -> Result<(), CapacityError<u8>> {
+	pub fn handle_scancode(&mut self, scancode: ScanCode) -> Result<(), CapacityError<u8>> {
 		if self.is_raw_mode {
+			// let keycode = KeyCode::from_scancode(scancode);
+			// dbg!(keycode);
 			self.read_buffer.try_push((scancode & 0xff) as u8)?;
-			self.read_buffer.try_push((scancode & 0xff00) as u8)?;
-			Ok(())
-		} else {
-			let key = keysymb;
-			if !self.handle_tty_control(key) {
-				// Check if tty is attached to a file operator
-				if self.tty.uid_file_op.is_none() {
-					return Ok(());
-				}
-				let mut encode_buff = [0; 8];
-				// handle special keys in canonical mode
-				if self.termios.c_lflag & ICANON != 0 {
-					// handle delete key
-					if key as u32 == self.termios.c_cc[VERASE as usize] {
-						if self.read_buffer.pop().is_some() {
-							self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-							self.tty.write_char(' ').unwrap();
-							self.tty.as_mut().move_cursor(CursorMove::Backward(1));
-						}
-						return Ok(());;
+			self.read_buffer.try_push(((scancode & 0xff00) >> 8) as u8 )?;
+		} 
+		Ok(())
+	}
+	/// write in the read buffer the keysymb read from the keyboard
+	/// Send a message if read is ready, depending of the lmode
+	pub fn handle_key_pressed(&mut self, key: KeySymb) -> Result<(), CapacityError<u8>> {
+		if !self.handle_tty_control(key) {
+			// Check if tty is attached to a file operator
+			if self.tty.uid_file_op.is_none() {
+				return Ok(());
+			}
+			let mut encode_buff = [0; 8];
+			// handle special keys in canonical mode
+			if self.termios.c_lflag & ICANON != 0 {
+				// handle delete key
+				if key as u32 == self.termios.c_cc[VERASE as usize] {
+					if self.read_buffer.pop().is_some() {
+						self.tty.as_mut().move_cursor(CursorMove::Backward(1));
+						self.tty.write_char(' ').unwrap();
+						self.tty.as_mut().move_cursor(CursorMove::Backward(1));
 					}
-					// dbg!(key);
-					// handle kill key
-					if key as u32 == self.termios.c_cc[VKILL as usize] {
+					return Ok(());;
+				}
+				// dbg!(key);
+				// handle kill key
+				if key as u32 == self.termios.c_cc[VKILL as usize] {
+					self.tty
+						.as_mut()
+						.move_cursor(CursorMove::HorizontalAbsolute(0));
+					if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
+						self.read_buffer.truncate(index);
+					} else {
+						self.read_buffer.clear();
+					}
+
+					for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
 						self.tty
 							.as_mut()
-							.move_cursor(CursorMove::HorizontalAbsolute(0));
-						if let Some(index) = self.read_buffer.iter().position(|c| *c == '\n' as u8) {
-							self.read_buffer.truncate(index);
-						} else {
-							self.read_buffer.clear();
-						}
+							.write_char(' ')
+							.expect("failed to write \0");
+					}
+					self.tty
+						.as_mut()
+						.move_cursor(CursorMove::HorizontalAbsolute(0));
 
-						for _ in 0..self.tty.as_mut().cursor.nb_columns - 1 {
-							self.tty
-								.as_mut()
-								.write_char(' ')
-								.expect("failed to write \0");
-						}
-						self.tty
-							.as_mut()
-							.move_cursor(CursorMove::HorizontalAbsolute(0));
-
-						return Ok(());;
-					}
-					if key as u32 == self.termios.c_cc[VEOF as usize] {
-						self.end_of_file_set = true;
-						unsafe {
-							messaging::send_message(MessageTo::Reader {
-								uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
-							});;
-						}
-						return Ok(());;
-					}
+					return Ok(());;
 				}
-				if self.termios.c_lflag & ISIG != 0 {
-					// handle control_c
-					if key as u32 == self.termios.c_cc[VINTR as usize] {
-						unsafe {
-							messaging::send_message(MessageTo::ProcessGroup {
-								pgid: self.foreground_process_group,
-								content: ProcessGroupMessage::Signal(Signum::SIGINT),
-							});
-						}
-						return Ok(());;
-					}
-					if key as u32 == self.termios.c_cc[VSUSP as usize] {
-						unsafe {
-							messaging::send_message(MessageTo::ProcessGroup {
-								pgid: self.foreground_process_group,
-								content: ProcessGroupMessage::Signal(Signum::SIGTSTP),
-							});
-						}
-						return Ok(());;
-					}
-					if key as u32 == self.termios.c_cc[VQUIT as usize] {
-						unsafe {
-							messaging::send_message(MessageTo::ProcessGroup {
-								pgid: self.foreground_process_group,
-								content: ProcessGroupMessage::Signal(Signum::SIGQUIT),
-							});
-						}
-						return Ok(());;
-					}
-				}
-				/* PUSH THE KEY */
-				let b = encode_utf8(key, &mut encode_buff);
-				// dbg!((key as i32 & 0xff00) >> 8);
-				// dbg!(key as i32 & 0xff);
-				// dbg!(&b);
-				for elem in b {
-					// dbg!(&b);
-					self.read_buffer.try_push(*elem)?;
-				}
-				if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
-					|| !self.termios.c_lflag & ICANON != 0
-				{
+				if key as u32 == self.termios.c_cc[VEOF as usize] {
+					self.end_of_file_set = true;
 					unsafe {
 						messaging::send_message(MessageTo::Reader {
 							uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
 						});;
 					}
-				}
-				if self.termios.c_lflag & ECHO != 0 {
-					self.write(b);
+					return Ok(());;
 				}
 			}
-			Ok(())
+			if self.termios.c_lflag & ISIG != 0 {
+				// handle control_c
+				if key as u32 == self.termios.c_cc[VINTR as usize] {
+					unsafe {
+						messaging::send_message(MessageTo::ProcessGroup {
+							pgid: self.foreground_process_group,
+							content: ProcessGroupMessage::Signal(Signum::SIGINT),
+						});
+					}
+					return Ok(());;
+				}
+				if key as u32 == self.termios.c_cc[VSUSP as usize] {
+					unsafe {
+						messaging::send_message(MessageTo::ProcessGroup {
+							pgid: self.foreground_process_group,
+							content: ProcessGroupMessage::Signal(Signum::SIGTSTP),
+						});
+					}
+					return Ok(());;
+				}
+				if key as u32 == self.termios.c_cc[VQUIT as usize] {
+					unsafe {
+						messaging::send_message(MessageTo::ProcessGroup {
+							pgid: self.foreground_process_group,
+							content: ProcessGroupMessage::Signal(Signum::SIGQUIT),
+						});
+					}
+					return Ok(());;
+				}
+			}
+			/* PUSH THE KEY */
+			let b = encode_utf8(key, &mut encode_buff);
+			// dbg!((key as i32 & 0xff00) >> 8);
+			// dbg!(key as i32 & 0xff);
+			// dbg!(&b);
+			for elem in b {
+				// dbg!(&b);
+				self.read_buffer.try_push(*elem)?;
+			}
+			if (self.termios.c_lflag & ICANON != 0 && key == KeySymb::Return)
+				|| !self.termios.c_lflag & ICANON != 0
+			{
+				unsafe {
+					messaging::send_message(MessageTo::Reader {
+						uid_file_op: self.tty.uid_file_op.expect("no FileOperation registered"),
+					});;
+				}
+			}
+			if self.termios.c_lflag & ECHO != 0 {
+				self.write(b);
+			}
 		}
+		Ok(())
 	}
 
 	/// read maximum `max_len_data_to_read` on the read_buffer
@@ -285,6 +287,11 @@ impl LineDiscipline {
 	pub fn set_raw_mode(&mut self, val: bool) {
 		self.is_raw_mode = val;
 	}
+
+	pub fn is_raw_mode(&self) -> bool{
+		self.is_raw_mode
+	}
+
 	pub fn get_tty(&self) -> &Tty {
 		&self.tty.tty
 	}

@@ -2,6 +2,7 @@
 # define __STROPTS_H__
 
 # define TIOCGWINSZ   0x5413
+# define RAW_SCANCODE_MODE   0x1
 
 int ioctl(int fildes, int request, ... /* arg */);
 

@@ -2,11 +2,43 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <fcntl.h>
 #include "libft.h"
 #include <mlx.h>
 #include "wolf.h"
 #include <math.h>
+
+
+void set_raw_mode(int fd) {
+	struct termios termios_p;
+	int ret = tcgetattr(fd, &termios_p);
+	if(ret == -1) {
+		perror("tcgetattr failed");
+	}
+
+	termios_p.c_lflag &= (~(ICANON | ECHO | TOSTOP));
+	ret = tcsetattr(fd, TCSANOW, &termios_p);
+	if( ret == -1) {
+		perror("tcsetattr failed");
+	}
+	ioctl(fd, RAW_SCANCODE_MODE);
+}
+
+void set_cooked_mode(void) {
+	struct termios termios_p;
+	int ret =  tcgetattr(0, &termios_p);
+	if(ret == -1) {
+		perror("tcgetattr failed");
+	}
+
+	termios_p.c_lflag |= (ICANON | ECHO | TOSTOP);
+	ret = tcsetattr(0, TCSANOW, &termios_p);
+	if( ret == -1) {
+		perror("tcsetattr failed");
+	}
+}
 
 #define NBR_HOOK_MAX 10
 
@@ -46,15 +78,63 @@ void	*mlx_init() {
 		exit(1);
 	}
 	MLX_CTX.key_fd = fd;
+
+	set_raw_mode(fd);
+
 	return &MLX_CTX;
+}
+
+int handle_escape_scancode(int scancode) {
+	switch (scancode) {
+		case 0x38:
+			return 100;
+		case 0x48:
+			return KEY_UP;
+		case 0x4b:
+			return KEY_LEFT;
+		case 0x4d:
+			return KEY_RIGHT;
+		case 0x50:
+			return KEY_DOWN;
+		default:
+			return -1;
+	}
 }
 
 int	mlx_loop (void *mlx_ptr) {
 	while (42) {
-		int buf;
-		int len_readen = read(MLX_CTX.key_fd, &buf, 2);
-		if (len_readen == 2) {
-			printf("key readen: %d", buf);
+		/* printf("loop"); */
+		int scancode = 0;
+		int len_readen = read(MLX_CTX.key_fd, &scancode, 2);
+		if (len_readen > 0) {
+			printf("key: %d\n", scancode);
+			// Pressed
+			if (scancode >= 0x1 && scancode <= 0x58) {
+				if (MLX_CTX.key_pressed_hook != NULL) {
+					MLX_CTX.key_pressed_hook(scancode, NULL);
+				}
+			}
+			// Released
+			if (scancode >= 0x81 && scancode <= 0xd8) {
+				if (MLX_CTX.key_release_hook != NULL) {
+					MLX_CTX.key_release_hook(scancode - 0x80, NULL);
+				}
+			}
+			if (scancode >= 0xe010 && scancode <= 0xe06d) {
+				int escaped_scancode = handle_escape_scancode(scancode & 0xFF);
+				if (MLX_CTX.key_pressed_hook != NULL) {
+					MLX_CTX.key_pressed_hook(escaped_scancode, NULL);
+				}
+			}
+			if (scancode >= 0xe090 && scancode <= 0xe0ed) {
+				int escaped_scancode = handle_escape_scancode((scancode & 0xFF) - 0x80);
+				if (MLX_CTX.key_release_hook != NULL) {
+					MLX_CTX.key_release_hook(escaped_scancode, NULL);
+				}
+			}
+		}
+		else if (len_readen == -1) {
+			perror("read");
 		}
 	}
 	// call the loop_hook

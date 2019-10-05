@@ -17,7 +17,7 @@ use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{
     gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, ShutDownOption,
-    Whence,
+    Whence, IoctlCmd
 };
 use sync::dead_mutex::DeadMutex;
 
@@ -88,6 +88,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
     }
 
     fn fstatfs(&mut self, _buf: &mut statfs) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn ioctl(&mut self, _cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
