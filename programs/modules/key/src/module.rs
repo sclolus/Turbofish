@@ -5,7 +5,7 @@ use kernel_modules::{
     SymbolList,
 };
 
-use keyboard::keysymb::KeySymb;
+use keyboard::{KeySymb, KeyCode, ScanCode};
 use keyboard::{CallbackKeyboard, KeyboardDriver, Ps2Controler};
 
 use kernel_modules::{Irq, MessageTo};
@@ -70,7 +70,7 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
             CTX.as_mut()
                 .unwrap()
                 .keyboard_driver
-                .bind(CallbackKeyboard::RequestKeySymb(handle_key_press));
+                .bind(CallbackKeyboard::RequestAll(handle_key_press));
             without_interrupts!({
                 (CTX.as_ref().unwrap().enable_irq)(
                     Irq::KeyboardController,
@@ -130,11 +130,11 @@ unsafe extern "C" fn keyboard_interrupt_handler() {
 }
 
 /// we send a message
-pub fn handle_key_press(key_pressed: KeySymb) {
+pub fn handle_key_press(scancode: u32, keycode: KeyCode, keysymb: KeySymb) {
     // in the keyboard interrupt handler, after reading the keysymb,
     // we send a message to the tty which will be handled in the next
     // schedule
-    unsafe { (CTX.as_ref().unwrap().send_fn)(MessageTo::Tty { key_pressed }) }
+    unsafe { (CTX.as_ref().unwrap().send_fn)(MessageTo::Tty { scancode, keycode, keysymb}) }
 }
 
 #[cfg(test)]

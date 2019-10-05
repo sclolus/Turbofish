@@ -7,9 +7,10 @@ use io::{Io, Pio};
 
 /// this module contains all the keySymbols for multiple layouts
 pub mod keysymb;
+pub use keysymb::KeySymb;
 use keysymb::KEYCODE_TO_KEYSYMB_AZERTY as KEYMAP_AZERTY;
 use keysymb::KEYCODE_TO_KEYSYMB_QWERTY as KEYMAP_QWERTY;
-use keysymb::{CapsLockSensitive, KeyMapArray, KeySymb};
+use keysymb::{CapsLockSensitive, KeyMapArray};
 
 /// This structure describe PS/2 interface
 #[derive(Debug)]
@@ -130,7 +131,8 @@ enum EscapeKeyMask {
     Alt = 8,
 }
 
-type ScanCode = u32;
+/// a raw scancode
+pub type ScanCode = u32;
 
 /// callback consumer may get three types of keyboard data depending of their implementations
 #[derive(Copy, Clone, Debug)]
@@ -141,6 +143,8 @@ pub enum CallbackKeyboard {
     RequestKeyCode(fn(KeyCode)),
     /// consumer want a very complex keysymbol, ideal for a shell
     RequestKeySymb(fn(KeySymb)),
+	/// request all the type of keycode
+	RequestAll(fn(ScanCode, KeyCode, KeySymb))
 }
 
 /// exported enum for user, allow to select a specific layout
@@ -262,6 +266,11 @@ impl KeyboardDriver {
                     KeyCode::from_scancode(scancode)
                         .map(|s| self.keycode_to_keysymb(s).map(|s| u(s)));
                 }
+                RequestAll(u) => {
+                    KeyCode::from_scancode(scancode)
+						.map(|keycode| self.keycode_to_keysymb(keycode).map(|keysymb| 
+							u(scancode, keycode, keysymb)));
+				},
             }
         });
     }

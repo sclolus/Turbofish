@@ -33,7 +33,7 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
-use keyboard::keysymb::KeySymb;
+use keyboard::{KeySymb, KeyCode, ScanCode};
 
 use lazy_static::lazy_static;
 use sync::Spinlock;
@@ -161,15 +161,15 @@ impl Terminal {
     }
 
     /// Handle the ketPressed for special TTY changes. Report a foreground TTY modification
-    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb) -> Option<usize> {
+    pub fn handle_key_pressed(&mut self, scancode: ScanCode, keycode: KeyCode, keysymb: KeySymb) -> Option<usize> {
         use TtyControlOutput::*;
 
-        match self.handle_tty_control(key_pressed) {
+        match self.handle_tty_control(keysymb) {
             SwitchSuccess(tty_index) => Some(tty_index),
             SwitchError => None,
             NoControlInput => {
                 self.get_foreground_tty()
-                    .handle_key_pressed(key_pressed)
+                    .handle_key_pressed(scancode, keycode, keysymb)
                     .expect("write input failed");
                 None
             }

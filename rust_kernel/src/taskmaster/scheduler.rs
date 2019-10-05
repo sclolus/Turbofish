@@ -219,8 +219,8 @@ impl Scheduler {
         for message in super::message::drain_messages() {
             // eprintln!("{:#?}", message);
             match message {
-                MessageTo::Tty { key_pressed } => unsafe {
-                    let _r = TERMINAL.as_mut().unwrap().handle_key_pressed(key_pressed);
+                MessageTo::Tty {scancode, keycode, keysymb} => unsafe {
+                    let _r = TERMINAL.as_mut().unwrap().handle_key_pressed(scancode, keycode, keysymb);
                 },
                 _ => panic!("message not covered"),
             }

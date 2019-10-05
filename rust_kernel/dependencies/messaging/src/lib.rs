@@ -2,7 +2,7 @@
 extern crate alloc;
 
 use alloc::collections::vec_deque::VecDeque;
-use keyboard::keysymb::KeySymb;
+use keyboard::{KeySymb, KeyCode, ScanCode};
 use libc_binding::{Pid, Signum};
 
 /// message for the scheduler
@@ -59,7 +59,9 @@ pub enum MessageTo {
         content: SchedulerMessage,
     },
     Tty {
-        key_pressed: KeySymb,
+        scancode: ScanCode,
+        keycode: KeyCode,
+        keysymb: KeySymb,
     },
     Accepter {
         uid_file_op: usize,
