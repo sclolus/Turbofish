@@ -5,27 +5,29 @@
 
 # warning MISSING TESTS for fread
 
-size_t fread(void *restrict ptr, size_t size, size_t nitems,
-       FILE *restrict stream)
+/*
+ * binary stream input/output
+ */
+size_t fread(void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream)
 {
 	TRACE
-	size_t	count = 0;
-	uint8_t	*buf;
+	uint8_t	*buf = (uint8_t *)ptr;
 
-	while (count < nitems) {
-		size_t bytes = 0;
-		int    read;
-
-		while (bytes < size) {
+	for (size_t count = 0; count < nitems; count++) {
+		for (size_t bytes = 0; bytes < size; bytes++) {
+			int read;
 			if (EOF == (read = fgetc(stream))) {
 				return count;
 			}
-
 			buf[bytes] = (uint8_t)read;
-			bytes++;
 		}
 		buf += size;
-		count++;
 	}
-	return count;
+	/*
+	 * On success, fread() return the number of items read or
+	 * written. This number equals the number of bytes transferred only when
+	 * size  is 1. If an error occurs, or the end of the file is reached, the
+	 * return value is a short item count (or zero)
+	 */
+	return nitems;
 }

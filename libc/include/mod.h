@@ -4,5 +4,6 @@
 
 int insmod(const char *modname);
 int rmmod(const char *modname);
+int lsmod();
 
 #endif
