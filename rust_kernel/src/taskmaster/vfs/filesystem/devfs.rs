@@ -197,7 +197,7 @@ impl FileSystem for Devfs {
             builder.build()
         };
 
-        let inode_data = InodeData {
+        let mut inode_data = InodeData {
             id: inode_id,
             major: 0,
             minor: 0,
@@ -211,9 +211,13 @@ impl FileSystem for Devfs {
             mtime: 0,
             ctime: 0,
 
-            size: 0,
+            size: PAGE_SIZE as u64,
             nbr_disk_sectors: 0,
         };
+
+        let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t;
+
+        inode_data.set_alltime(current_time);
         Ok((direntry, inode_data, Box::try_new(DefaultDriver)?))
     }
 

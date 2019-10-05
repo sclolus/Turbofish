@@ -42,7 +42,7 @@ pub struct VersionOperations {
     offset: usize,
 }
 
-const KERNEL_VERSION: &'static str = "Turbofish v?.?.?\n";
+const KERNEL_VERSION: &'static str = "Turbofish v10.0.0\n";
 
 impl FileOperation for VersionOperations {
     fn get_inode_id(&self) -> SysResult<InodeId> {
