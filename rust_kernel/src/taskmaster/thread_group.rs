@@ -347,8 +347,8 @@ impl ThreadGroup {
 pub enum Status {
     Exited(i32),
     Signaled(Signum),
-    Stopped,
-    Continued,
+    Stopped(Signum),
+    Continued(Signum),
 }
 
 impl Status {
@@ -372,11 +372,11 @@ impl Status {
     }
 }
 
-impl From<JobState> for Status {
-    fn from(job_state: JobState) -> Self {
-        match job_state {
-            JobState::Continued => Self::Continued,
-            JobState::Stopped => Self::Stopped,
+impl From<(JobState, Option<Signum>)> for Status {
+    fn from(state: (JobState, Option<Signum>)) -> Self {
+        match state.0 {
+            JobState::Continued => Self::Continued(Signum::SIGCONT),
+            JobState::Stopped => Self::Stopped(state.1.expect("Woot ?")),
         }
     }
 }
@@ -393,8 +393,8 @@ impl From<Status> for i32 {
         match status {
             Exited(v) => v,
             Signaled(signum) => (signum as i32) << SIGNALED_STATUS_SHIFT as i32,
-            Stopped => STOPPED_STATUS_BIT as _,
-            Continued => CONTINUED_STATUS_BIT as _,
+            Stopped(signum) => STOPPED_STATUS_BIT as i32 + ((signum as i32) << SIGNALED_STATUS_SHIFT as i32),
+            Continued(signum) => CONTINUED_STATUS_BIT as i32 + ((signum as i32) << SIGNALED_STATUS_SHIFT as i32),
         }
     }
 }
@@ -405,16 +405,16 @@ impl From<i32> for Status {
         use Status::*;
         if status & !EXITED_STATUS_BITS as i32 == 0 {
             Exited(status)
+        } else if status & STOPPED_STATUS_BIT as i32 == STOPPED_STATUS_BIT as i32 {
+            Stopped(unsafe { core::mem::transmute((status & 0x1f00) >> SIGNALED_STATUS_SHIFT) })
+        } else if status & CONTINUED_STATUS_BIT as i32 == CONTINUED_STATUS_BIT as i32 {
+            Continued(unsafe { core::mem::transmute((status & 0x1f00) >> SIGNALED_STATUS_SHIFT) })
         } else if status & EXITED_STATUS_BITS as i32 == 0
             && status & !SIGNALED_STATUS_BITS as i32 == 0
         {
-            Signaled(unsafe { core::mem::transmute(status >> SIGNALED_STATUS_SHIFT) })
-        } else if status & !STOPPED_STATUS_BIT as i32 == 0 {
-            Stopped
-        } else if status & !CONTINUED_STATUS_BIT as i32 == 0 {
-            Continued
+            Signaled(unsafe { core::mem::transmute((status & 0x1f00) >> SIGNALED_STATUS_SHIFT) })
         } else {
-            panic!("Status is Bullshit !");
+            panic!("Status is Bullshit ! got {:#X?}", status);
         }
     }
 }
@@ -431,6 +431,8 @@ pub enum JobState {
 pub struct Job {
     /// Current JobState
     state: JobState,
+    /// Signum that provocated the state
+    signum: Option<Signum>,
     /// Last change state (this event may be consumed by waitpid)
     last_event: Option<JobState>,
 }
@@ -440,6 +442,7 @@ impl Job {
     const fn new() -> Self {
         Self {
             state: JobState::Continued,
+            signum: None,
             last_event: None,
         }
     }
@@ -447,6 +450,7 @@ impl Job {
     pub fn try_set_continued(&mut self) -> bool {
         if self.state == JobState::Stopped {
             self.state = JobState::Continued;
+            self.signum = None;
             self.last_event = Some(JobState::Continued);
             true
         } else {
@@ -454,9 +458,10 @@ impl Job {
         }
     }
     /// Try to set as stoped, return TRUE is state is changing
-    pub fn try_set_stoped(&mut self) -> bool {
+    pub fn try_set_stoped(&mut self, signum: Signum) -> bool {
         if self.state == JobState::Continued {
             self.state = JobState::Stopped;
+            self.signum = Some(signum);
             self.last_event = Some(JobState::Stopped);
             true
         } else {
@@ -464,13 +469,13 @@ impl Job {
         }
     }
     /// Usable method for waitpid for exemple
-    pub fn consume_last_event(&mut self) -> Option<JobState> {
-        self.last_event.take()
+    pub fn consume_last_event(&mut self) -> Option<(JobState, Option<Signum>)> {
+        self.last_event.take().map(|last_event| (last_event, self.signum))
     }
 
     /// get the last event
-    pub fn get_last_event(&self) -> Option<JobState> {
-        self.last_event
+    pub fn get_last_event(&self) -> Option<(JobState, Option<Signum>)> {
+        self.last_event.map(|last_event| (last_event, self.signum))
     }
 }
 

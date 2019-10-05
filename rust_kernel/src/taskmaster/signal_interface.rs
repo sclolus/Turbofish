@@ -271,10 +271,11 @@ impl SignalInterface {
 
     /// Get a Job action(s) relative to signal_queue content
     /// This function is pure
-    pub fn get_job_action(&self) -> JobAction {
+    pub fn get_job_action(&self) -> (JobAction, Option<Signum>) {
         let mut action: JobAction = JobAction::default();
         let mut sa_mask = self.current_sa_mask;
 
+        let mut returned_signum: Option<Signum> = None;
         for &signum in self.signal_queue.iter() {
             if sa_mask.is_masked(signum) {
                 continue;
@@ -286,7 +287,13 @@ impl SignalInterface {
                     use DefaultAction::*;
                     match signum.into() {
                         Abort | Terminate => JobAction::TERMINATE,
-                        Stop => JobAction::STOP,
+                        Stop => {
+                            // Note the signum when stop action requested 
+                            if returned_signum.is_none() {
+                                returned_signum = Some(signum);
+                            }
+                            JobAction::STOP
+                        },
                         _ => JobAction::default(),
                     }
                 }
@@ -296,7 +303,7 @@ impl SignalInterface {
                 }
             };
         }
-        action
+        (action, returned_signum)
     }
 
     /// Create handler contexts and pop the signal queue. Return Some(signum) in case of Deadly signal

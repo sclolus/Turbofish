@@ -7,7 +7,7 @@ use super::thread_group::{JobState, Status};
 use super::SysResult;
 use bitflags::bitflags;
 
-use libc_binding::{rusage, Errno, Pid};
+use libc_binding::{rusage, Errno, Pid, Signum};
 
 /// The wait() and waitpid() functions shall obtain status information
 /// (see Status Information) pertaining to one of the caller's child
@@ -372,6 +372,7 @@ fn wait4(pid: i32, wstatus: *mut i32, options: u32, rusage: *mut rusage) -> SysR
                     // Set wstatus pointer is not null by reading y
                     if let Some(wstatus) = wstatus {
                         *wstatus = status.into();
+                        eprintln!("{} {:?}", *wstatus, status);
                     }
                     dead_process_pid
                 }
@@ -403,8 +404,8 @@ impl Scheduler {
         let thread_group = self.get_thread_group(pid).expect("Pid must be here");
         thread_group.is_zombie()
             || (options.contains(WaitOption::WUNTRACED)
-                && thread_group.job.get_last_event() == Some(JobState::Stopped))
+                && thread_group.job.get_last_event() == Some((JobState::Stopped, _)))
             || (options.contains(WaitOption::WUNTRACED)
-                && thread_group.job.get_last_event() == Some(JobState::Continued))
+                && thread_group.job.get_last_event() == Some((JobState::Continued, None)))
     }
 }

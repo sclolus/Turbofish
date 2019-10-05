@@ -135,6 +135,6 @@ pub unsafe fn sys_exit(status: i32) -> SysResult<u32> {
     // Status & EXITED_STATUS_BITS (0xff) to avoid negative bullshit status
     SCHEDULER
         .lock()
-        .current_thread_group_exit(Status::Exited(status & EXITED_STATUS_BITS as i32));
+       	.current_thread_group_exit(Status::Exited(status & EXITED_STATUS_BITS as i32));
     Ok(0)
 }

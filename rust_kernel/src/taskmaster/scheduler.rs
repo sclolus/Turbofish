@@ -614,19 +614,19 @@ impl Scheduler {
     pub fn current_thread_get_job_action(&mut self) -> JobAction {
         let pid = self.current_task_id.0;
         let current = self.current_thread();
-        let action = current.signal.get_job_action();
+        let (action, signum_opt) = current.signal.get_job_action();
         let current_thread_group = self.current_thread_group_mut();
         let pgid = current_thread_group.pgid;
         let parent_pid = current_thread_group.parent;
         if action != JobAction::TERMINATE {
             if action == JobAction::STOP {
-                if current_thread_group.job.try_set_stoped() {
+                if current_thread_group.job.try_set_stoped(signum_opt.expect("Woot ?")) {
                     self.send_message(MessageTo::Process {
                         pid: parent_pid,
                         content: ProcessMessage::ProcessUpdated {
                             pid: pid,
                             pgid: pgid,
-                            status: Status::Stopped.into(),
+                            status: Status::Stopped(signum_opt.expect("Woot ?")).into(),
                         },
                     });
                 }
@@ -637,7 +637,8 @@ impl Scheduler {
                         content: ProcessMessage::ProcessUpdated {
                             pid: pid,
                             pgid: pgid,
-                            status: Status::Continued.into(),
+                            // The signum associated to Continued is always sigcont
+                            status: Status::Continued(Signum::SIGCONT).into(),
                         },
                     });
                 }
@@ -808,9 +809,9 @@ impl Scheduler {
                                 options,
                             }) = thread.get_waiting_state()
                             {
-                                ((options.contains(WaitOption::WUNTRACED) && s == Status::Stopped)
+                                ((options.contains(WaitOption::WUNTRACED) && s == (Status::Stopped, _))
                                     || (options.contains(WaitOption::WCONTINUED)
-                                        && s == Status::Continued)
+                                        && s == Status::Continued(Signum::SIGCONT))
                                     || s.is_exited()
                                     || s.is_signaled())
                                     && (*wake_pid == -1
@@ -831,7 +832,7 @@ impl Scheduler {
                         }));
                     }
 
-                    if finded && (s == Status::Stopped || s == Status::Continued) {
+                    if finded && (s == Status::Stopped(Signum::SIGTSTP) || s == Status::Continued(Signum::SIGCONT)) {
                         // consume the state, because at the return of
                         // auto_preempt after scheduling, the state
                         // can change and it maybe too late to consume
