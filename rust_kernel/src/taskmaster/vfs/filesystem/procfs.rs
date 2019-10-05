@@ -624,6 +624,8 @@ impl ProcFs {
         root_direntry.set_inode_id(root_inode_id);
 
         let mut inode = VfsInode::root_inode()?;
+        let current_time = unsafe { CURRENT_UNIX_TIME.load(Ordering::Relaxed) } as time_t;
+
         inode.set_access_mode(
             FileType::DIRECTORY
                 | FileType::USER_READ_PERMISSION
@@ -633,6 +635,8 @@ impl ProcFs {
                 | FileType::OTHER_READ_PERMISSION
                 | FileType::OTHER_EXECUTE_PERMISSION,
         );
+
+        inode.set_alltime(current_time);
 
         new.root_inode_id = root_inode_id;
 
