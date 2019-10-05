@@ -33,6 +33,8 @@ impl FileOperation for DevFb {
         return Err(Errno::ENOSYS);
     }
     fn write(&mut self, buf: &[u8]) -> SysResult<IpcResult<u32>> {
+		dbg!("write");
+		dbg!(buf.len());
         let mut screen = SCREEN_MONAD.lock();
 
         let r = screen.query_graphic_infos();
