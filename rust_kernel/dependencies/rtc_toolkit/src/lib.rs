@@ -127,7 +127,7 @@ impl Rtc {
         Nmi::enable();
     }
 
-    pub fn read_date(&mut self) -> Date {
+    pub fn read_date(&mut self) -> Result<Date, ()> {
         let format = self.read_register(RtcRegister::StatusB, false);
         let is_24hour_format = format.get_bit(1);
         let is_binary_format = format.get_bit(2);
@@ -155,12 +155,15 @@ impl Rtc {
         };
 
         use RtcRegister::*;
-        Date {
+        Ok(Date {
             sec: convert_to_binary(self.read_register(Seconds, false)),
             minutes: convert_to_binary(self.read_register(Minutes, false)),
             hours: convert_to_binary_24hour(self.read_register(Hours, false)),
             day_of_month: convert_to_binary(self.read_register(DayOfMonth, false)),
-            month: self.read_register(Month, false).try_into().unwrap(),
+            month: self
+                .read_register(Month, false)
+                .try_into()
+                .map_err(|_| ())?,
             year: {
                 let year: u32 = convert_to_binary(self.read_register(Year, false)) as u32;
 
@@ -172,6 +175,6 @@ impl Rtc {
                     2000 + year
                 }
             },
-        }
+        })
     }
 }

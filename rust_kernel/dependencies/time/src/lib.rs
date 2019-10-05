@@ -72,10 +72,14 @@ impl From<Date> for u32 {
         // That is that value will overflow back to Unix epoch.
         // Too bad.
         // This is the posix formula for approximated Unix time.
-        tm_sec + tm_min * 60 + tm_hour * 3600 + tm_yday * 86400 + (tm_year - 70) * 31536000
-        // + ((tm_year - 69) / 4) * 86400
-        // - ((tm_year - 1) / 100) * 86400
-        // + ((tm_year + 299) / 400) * 86400 // How the fuck, does RTC count leapdays.
+        tm_sec
+            + tm_min * 60
+            + tm_hour * 3600
+            + (tm_yday - 1) * 86400
+            + (tm_year - 70) * 31536000
+            + ((tm_year - 69) / 4) * 86400
+            - ((tm_year - 1) / 100) * 86400
+            + ((tm_year + 299) / 400) * 86400 // How the fuck, does RTC count leapdays.
     }
 }
 
@@ -88,7 +92,7 @@ impl Default for Date {
             hours: 0,
             month: Month::January,
             day_of_month: 1,
-            year: 1664,
+            year: 1970,
         }
     }
 }

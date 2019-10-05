@@ -9,14 +9,23 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use kernel_modules::Irq;
 
 use rtc_toolkit::{Rtc, RtcRegister};
+use time::Date;
 
 static mut CTX: Option<Ctx> = None;
+
+enum Status {
+    Clear,
+    MonthIsBullshit,
+    WantBackInTime,
+}
 
 /// Main Context of the module
 struct Ctx {
     enable_irq: fn(Irq, unsafe extern "C" fn()),
     disable_irq: fn(Irq),
     current_unix_time: &'static AtomicU32,
+    current_date: Date,
+    status: Status,
 }
 
 /// Main Context implementation
@@ -32,6 +41,8 @@ impl Ctx {
             enable_irq,
             disable_irq,
             current_unix_time,
+            current_date: Date::default(),
+            status: Status::Clear,
         }
     }
 }
@@ -61,7 +72,6 @@ pub fn module_start(symtab_list: SymbolList) -> ModResult {
         unsafe {
             without_interrupts!({
                 let mut rtc = Rtc::new();
-                // let date = rtc.read_date();
                 rtc.enable_periodic_interrupts(15); // lowest possible frequency for RTC = 2 Hz
                                                     // print!("RTC system seems to be working perfectly: {}", date);
                 (CTX.as_ref().unwrap().enable_irq)(Irq::RealTimeClock, rtc_interrupt_handler);
@@ -89,9 +99,12 @@ fn drop_module() {
 }
 
 /// Get the current Date
-fn read_date() -> time::Date {
-    let mut rtc = Rtc::new();
-    rtc.read_date()
+fn read_date() -> Date {
+    if let Some(ctx) = unsafe { CTX.as_ref() } {
+        ctx.current_date
+    } else {
+        Date::default()
+    }
 }
 
 #[no_mangle]
@@ -105,19 +118,26 @@ unsafe extern "C" fn rtc_interrupt_handler() {
 
         // The end-of-update interrupt is marked in the StatusC register by the 4 higher-bits being set to 0xd0.
         if status.get_bits(4..8) == 0xd {
-            let date = rtc.read_date();
+            match rtc.read_date() {
+                Ok(date) => {
+                    let seconds_since_epoch = date.into();
+                    let old = ctx.current_unix_time.load(Ordering::SeqCst);
 
-            let seconds_since_epoch = date.into();
+                    if old > seconds_since_epoch {
+                        // We want back in time, Congratulations!
+                        ctx.status = Status::WantBackInTime;
+                        return;
+                    }
 
-            let old = ctx.current_unix_time.load(Ordering::SeqCst);
-
-            assert!(
-                old <= seconds_since_epoch,
-                "We want back in time, Congratulations!"
-            );
-
-            ctx.current_unix_time
-                .store(seconds_since_epoch, Ordering::SeqCst);
+                    ctx.current_date = date;
+                    ctx.current_unix_time
+                        .store(seconds_since_epoch, Ordering::SeqCst);
+                }
+                Err(_) => {
+                    // Protect code about month format bullshit
+                    ctx.status = Status::MonthIsBullshit;
+                }
+            }
         }
     }
 }
