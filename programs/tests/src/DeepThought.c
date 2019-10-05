@@ -149,7 +149,7 @@ static struct program_test TEST_PROGRAMS[] = {
 	{.path = "/bin/DeepTests/utime/utime_basic"},
 	{.path = "/bin/DeepTests/chown_tests/chown_basic"},
 	{.path = "/bin/DeepTests/fchown/fchown_basic"},
-	//	{.path = "/bin/DeepTests/syscalls/wrong_syscall"},
+	{.path = "/bin/DeepTests/syscalls/wrong_syscall"},
 };
 
 #define TEST_PROGRAMS_LEN sizeof(TEST_PROGRAMS) / sizeof(struct program_test)
