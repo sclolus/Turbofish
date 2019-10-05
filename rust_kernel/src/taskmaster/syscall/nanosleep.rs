@@ -59,7 +59,12 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
         .get_virtual_allocator();
 
     let req = v.make_checked_ref(req)?;
-    let rem = v.make_checked_ref_mut(rem)?;
+    let safe_rem = if rem.is_null() {
+        None
+    } else {
+        Some(v.make_checked_ref_mut(rem)?)
+    };
+
     // drop the mutex
     drop(v);
 
@@ -84,8 +89,11 @@ fn nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult<u32> {
             let now = unsafe { _get_pit_time() };
             if now < next_wake {
                 let remaining_time = (next_wake - now) as f32 * pit_period;
-                rem.tv_sec = remaining_time.trunc() as u32;
-                rem.tv_nsec = ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
+
+                if let Some(rem) = safe_rem {
+                    rem.tv_sec = remaining_time.trunc() as u32;
+                    rem.tv_nsec = ((remaining_time * 1000.).trunc() as u32 % 1000 * 1000000) as i32;
+                }
             }
             Err(Errno::EINTR)
         }
