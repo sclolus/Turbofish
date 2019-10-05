@@ -11,6 +11,7 @@ SRC_C += init \
 		session_manager \
 		rmmod \
 		insmod \
+		lsmod \
 
 VPATH += src
 

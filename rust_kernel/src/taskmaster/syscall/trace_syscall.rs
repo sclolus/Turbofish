@@ -16,9 +16,9 @@ use libc_binding::{
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETPGID, GETPGRP, GETPID,
-    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, KILL, LINK, LSEEK, LSTAT, MKDIR, MKNOD,
-    MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT,
-    RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
+    GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, KILL, LINK, LSEEK, LSMOD, LSTAT, MKDIR,
+    MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK,
+    REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETPGID, SETUID, SHUTDOWN,
     SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT,
     SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME,
     WAIT4, WAITPID, WRITE,
@@ -248,6 +248,7 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
             OPENDIR => log::info!("opendir({:#?}, {:#?})", ebx as *const u8, ecx as *mut DIR),
             INSMOD => log::info!("insmod({:#?})", ebx as *const c_char),
             RMMOD => log::info!("rmmod({:#?})", ebx as *const c_char),
+            LSMOD => log::info!("lsmod"),
             unknown => log::info!("unknown syscall: {}", unknown),
         }
     })
@@ -333,6 +334,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         OPENDIR => "opendir",
         INSMOD => "insmod",
         RMMOD => "rmmod",
+        LSMOD => "lsmod",
         _ => "unknown syscall",
     };
     unpreemptible_context!({

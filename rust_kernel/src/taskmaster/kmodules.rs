@@ -8,6 +8,7 @@ use super::{IpcResult, SysResult};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use ansi_escape_code::Colored;
 use elf_loader::{SegmentType, SymbolTable};
 use fallible_collections::boxed::FallibleBox;
 use irq::Irq;
@@ -221,6 +222,23 @@ impl Scheduler {
             }
         }
         *module_opt = None;
+        Ok(0)
+    }
+
+    /// List all loaded modules
+    pub fn list_modules(&self) -> SysResult<u32> {
+        if self.kernel_modules.dummy.is_some() {
+            println!("- module loaded: {}", "DUMMY".yellow());
+        }
+        if self.kernel_modules.keyboard.is_some() {
+            println!("- module loaded: {}", "KEYBOARD".yellow());
+        }
+        if self.kernel_modules.rtc.is_some() {
+            println!("- module loaded: {}", "RTC".yellow());
+        }
+        if self.kernel_modules.syslog.is_some() {
+            println!("- module loaded: {}", "SYSLOG".yellow());
+        }
         Ok(0)
     }
 

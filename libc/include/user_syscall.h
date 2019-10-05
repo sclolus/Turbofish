@@ -93,5 +93,6 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
  */
 #define INSMOD          0xC0000000
 #define RMMOD           0xC0000001
+#define LSMOD           0xC0000002
 
 #endif
