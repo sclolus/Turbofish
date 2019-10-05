@@ -350,10 +350,20 @@ impl<'a> Iterator for Components<'a> {
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let current = self.current.as_ref().unwrap_or(&(0..0));
+        if self.current.is_none() {
+            return (0, Some(0));
+        }
+        let current = self.current.as_ref().unwrap();
+
         let start = current.start;
         let end = current.end;
-        let len = end.checked_sub(start).unwrap_or(0);
+
+        if start > end {
+            return (0, Some(0));
+        }
+
+        // end + 1 as current is an inclusive range
+        let len = end + 1 - start;
         (len, Some(len))
     }
 }
