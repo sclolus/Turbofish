@@ -133,13 +133,6 @@ impl FileOperation for TtyFileOperation {
     }
 }
 
-/// Drop boilerplate
-impl Drop for TtyFileOperation {
-    fn drop(&mut self) {
-        log::info!("TTY {} file operation droped !", self.controlling_terminal);
-    }
-}
-
 /// Stucture of TtyDevice
 #[derive(Debug)]
 pub struct TtyDevice {

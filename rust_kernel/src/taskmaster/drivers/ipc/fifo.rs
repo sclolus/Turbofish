@@ -235,7 +235,6 @@ impl FileOperation for FifoFileOperationData {
 /// Some boilerplate to check if all is okay
 impl Drop for FifoFileOperation {
     fn drop(&mut self) {
-        eprintln!("Fifo droped !");
         VFS.lock().close_file_operation(self.data.lock().inode_id);
     }
 }
