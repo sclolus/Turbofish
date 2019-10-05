@@ -194,7 +194,6 @@ fn trace_process(
         let symbol = symbol_table.get_symbol(s.0);
         match symbol {
             Some(sym) => log::info!("{:#X?} on ({:#X?} {:?})", s.0, sym.1, sym.0),
-            // TODO: Stop considering as bullshit if there are no symbol name
             None => {
                 log::info!("{:#X?} Unexpected Symbol", s.0);
                 break;
@@ -280,7 +279,6 @@ unsafe extern "C" fn cpu_isr_interrupt_handler(cpu_state: *mut CpuState) -> u32 
         // Send a kill signum to the current process: kernel-sodo mode
         let current_thread_pid = SCHEDULER.lock().current_task_id().0;
         let _res = match (*cpu_state).cpu_isr_reserved {
-            //TODO: add Signum field into assoc tab of cpu_isrs.
             0 => sys_kill(current_thread_pid as i32, Signum::SIGFPE as u32),
             14 => sys_kill(current_thread_pid as i32, Signum::SIGSEGV as u32),
             _ => {

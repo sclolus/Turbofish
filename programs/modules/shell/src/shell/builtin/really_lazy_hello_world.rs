@@ -1,4 +1,4 @@
-use super::ansi_escape_code::color::AnsiColor;
+use ansi_escape_code::color::AnsiColor;
 
 pub fn really_lazy_hello_world() {
     let hello_world = [

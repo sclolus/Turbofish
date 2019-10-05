@@ -42,7 +42,7 @@ typedef signed int		bool;
 # define MODIFIER_QUANTITY 	13
 # define FLAGS_QUANTITY 	5
 # define LENGTH_TYPE_QUANTITY	4
-# define SPECIFIERS_QUANTITY 	16
+# define SPECIFIERS_QUANTITY 	17
 # define UTF8_MAX_SIZE		4
 
 typedef enum e_params {
@@ -146,6 +146,7 @@ int	s_numeric_u(t_args *args, t_status *op);
 int	s_numeric_i(t_args *args, t_status *op);
 int	s_string(t_args *args, t_status *op);
 int	s_char(t_args *args, t_status *op);
+int	s_float(t_args *args, t_status *op);
 
 int	get_size_for_string(wchar_t c);
 

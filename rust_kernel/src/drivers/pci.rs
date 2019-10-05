@@ -185,7 +185,7 @@ struct PciDeviceType1 {
 }
 
 /// This table is applicable if the Header Type is 02h (PCI-to-CardBus bridge)
-/// TODO Be carefull, there is a mistake in documentation. offset exceed 0x40
+/// IMPORTANT: Be carefull, there is a mistake in documentation. offset exceed 0x40
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 struct PciDeviceType2 {

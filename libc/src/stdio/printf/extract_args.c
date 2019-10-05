@@ -31,7 +31,8 @@ static t_specifier g_sp_list[SPECIFIERS_QUANTITY] = {
 	{ 's', 0x00, &s_string },
 	{ 'S', 0x02, &s_string },
 	{ 'c', 0x00, &s_char },
-	{ 'C', 0x02, &s_char }
+	{ 'C', 0x02, &s_char },
+	{ 'f', 0x00, &s_float },
 };
 
 static int		p_extract_length(const char *restrict s, t_args *args)

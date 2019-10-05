@@ -9,3 +9,4 @@ crate-type = ["staticlib"]
 
 [dependencies]
 bit_field = "0.9.0"
+ansi_escape_code = { path = "../dependencies/ansi_escape_code" }
