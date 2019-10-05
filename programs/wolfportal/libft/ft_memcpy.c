@@ -1,27 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_putstr.c                                        :+:      :+:    :+:   */
+/*   ft_memcpy.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: vcombey <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/11/10 03:17:53 by vcombey           #+#    #+#             */
-/*   Updated: 2016/11/10 03:17:55 by vcombey          ###   ########.fr       */
+/*   Created: 2016/11/09 16:03:27 by vcombey           #+#    #+#             */
+/*   Updated: 2016/11/15 03:28:12 by vcombey          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-void	ft_putstr(char const *s)
+void	*ft_memcpy2(void *dest, const void *src, size_t n)
 {
-	int i;
+	unsigned int i;
 
 	i = 0;
-	if (!s)
-		return ;
-	while (s[i])
+	while (i < n)
 	{
-		ft_putchar(s[i]);
+		((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
 		i++;
 	}
+	return (dest);
 }

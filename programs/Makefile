@@ -8,6 +8,7 @@ all:
 	make -C su
 	make -C modules
 	make -C login
+	make -C wolfportal
 
 fclean:
 	make fclean -C c
@@ -16,6 +17,7 @@ fclean:
 	make fclean -C su
 	make fclean -C modules
 	make fclean -C login
+	make fclean -C wolfportal
 
 clean: fclean
 

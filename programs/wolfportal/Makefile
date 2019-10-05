@@ -1,3 +1,5 @@
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
 # **************************************************************************** #
 #                                                                              #
 #                                                         :::      ::::::::    #
@@ -11,7 +13,8 @@
 # **************************************************************************** #
 
 PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
-CC = gcc 
+# CC = gcc 
+CC = i686-turbofish-gcc 
 
 NAME =	wolf3d
 
@@ -40,18 +43,21 @@ SRC =	main.c			\
 		tourelle.c		\
 		trace_line.c	\
 		floor_casting.c	\
+		mlx.c	\
 
 INCLUDE = -I ./libft -I ./include -I ./minilibx_macos/
 
 
 OBJS = $(addprefix objs/, $(SRC:.c=.o))
 
-CFLAGS += -Wall -g -o2 -flto -Wextra -Werror
+CFLAGS += -g -o2 -flto
 all: $(NAME)
 
 $(NAME): dis $(OBJS)
 	make -C ./libft/
-	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
+	# $(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
+	$(CC) -g $(OBJS) -L libft -lft -o2 -flto -o $(NAME)
+	cp -v $(NAME) $(SYSTEM_ROOT)/
 
 clean:
 	make clean -C ./libft/
@@ -65,6 +71,7 @@ re: fclean all
 
 objs/%.o : src/%.c
 	@/bin/mkdir -p objs
+	echo "compiling" $<
 	$(CC) $(INCLUDE) $(CFLAGS) -c -o $@ $<
 
 dis:
