@@ -50,6 +50,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define GETPGRP      65
 #define SIGACTION    67
 #define SIGSUSPEND   72
+#define SETHOSTNAME  74
 #define GETGROUPS    80
 #define SETGROUPS    81
 #define SYMLINK      83
@@ -87,6 +88,7 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define ISATTY          0x80000009
 #define OPENDIR         0x80000010
 #define IS_STR_VALID    0x80000011
+#define GETHOSTNAME	0x80000012
 
 /*
  * Module Kernel specific
