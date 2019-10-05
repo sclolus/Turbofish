@@ -16,8 +16,8 @@ pub use ipc::{socket::Whom, ConnectedSocket, FifoDriver, FifoFileOperation, Pipe
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{
-    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, ShutDownOption,
-    Whence, IoctlCmd
+    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, IoctlCmd, OpenFlags, Pid,
+    ShutDownOption, Whence,
 };
 use sync::dead_mutex::DeadMutex;
 

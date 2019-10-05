@@ -6,7 +6,7 @@ use super::{get_file_op_uid, Driver, FileOperation, IpcResult};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, OpenFlags, Pid, IoctlCmd, Errno};
+use libc_binding::{termios, Errno, IoctlCmd, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
 
 use crate::terminal::{ReadResult, TERMINAL};
@@ -132,68 +132,67 @@ impl FileOperation for TtyFileOperation {
         return Ok(1);
     }
 
-	fn ioctl(&mut self, cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
-		match cmd {
-			IoctlCmd::RAW_SCANCODE_MODE => {
-        unsafe {
-				TERMINAL.as_mut()
-					.unwrap()
-					.get_line_discipline(self.controlling_terminal)
-					.set_raw_mode(true);
-				Ok(0)
-		}
-			}
-			_ => Err(Errno::EINVAL),
-		}
-	}
+    fn ioctl(&mut self, cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
+        match cmd {
+            IoctlCmd::RAW_SCANCODE_MODE => unsafe {
+                TERMINAL
+                    .as_mut()
+                    .unwrap()
+                    .get_line_discipline(self.controlling_terminal)
+                    .set_raw_mode(true);
+                Ok(0)
+            },
+            _ => Err(Errno::EINVAL),
+        }
+    }
 }
 
 /// Stucture of TtyDevice
 #[derive(Debug)]
 pub struct TtyDevice {
-	/// A Tty got just one FileOperation structure which share with all
-	operation: Arc<DeadMutex<TtyFileOperation>>,
+    /// A Tty got just one FileOperation structure which share with all
+    operation: Arc<DeadMutex<TtyFileOperation>>,
 }
 
 /// Main implementation of TtyDevice
 impl TtyDevice {
-	pub fn try_new(controlling_terminal: usize, inode_id: InodeId) -> SysResult<Self> {
-		let r = Ok(Self {
-			operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(
-				controlling_terminal,
-				inode_id,
-			)))?,
-		});
-		log::info!("TTY {} created !", controlling_terminal);
-		r
-	}
+    pub fn try_new(controlling_terminal: usize, inode_id: InodeId) -> SysResult<Self> {
+        let r = Ok(Self {
+            operation: Arc::try_new(DeadMutex::new(TtyFileOperation::new(
+                controlling_terminal,
+                inode_id,
+            )))?,
+        });
+        log::info!("TTY {} created !", controlling_terminal);
+        r
+    }
 }
 
 /// Driver trait implementation of TtyDevice
 impl Driver for TtyDevice {
-	fn open(
-		&mut self,
-		_flags: OpenFlags,
-	) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
-		let controlling_terminal = self.operation.lock().controlling_terminal;
-		let file_op_uid = self.operation.lock().file_op_uid;
-		unsafe {
-			TERMINAL
-				.as_mut()
-				.unwrap()
-				.open(controlling_terminal, file_op_uid);
-		}
-		log::info!("TTY {} opened !", controlling_terminal);
-		Ok(IpcResult::Done(self.operation.clone()))
-	}
+    fn open(
+        &mut self,
+        _flags: OpenFlags,
+    ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
+        let controlling_terminal = self.operation.lock().controlling_terminal;
+        let file_op_uid = self.operation.lock().file_op_uid;
+        unsafe {
+            TERMINAL
+                .as_mut()
+                .unwrap()
+                .open(controlling_terminal, file_op_uid);
+        }
+        log::info!("TTY {} opened !", controlling_terminal);
+        Ok(IpcResult::Done(self.operation.clone()))
+    }
 }
 
 /// Drop boilerplate
 impl Drop for TtyDevice {
-	fn drop(&mut self) {
-		log::info!(
-			"TTY {} droped !",
-			self.operation.lock().controlling_terminal
-		);
-	}
+    fn drop(&mut self) {
+        log::info!(
+            "TTY {} droped !",
+            self.operation.lock().controlling_terminal
+        );
+    }
 }

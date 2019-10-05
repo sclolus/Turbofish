@@ -33,7 +33,7 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
-use keyboard::{KeySymb, KeyCode, ScanCode};
+use keyboard::{KeyCode, KeySymb, ScanCode};
 
 use lazy_static::lazy_static;
 use sync::Spinlock;
@@ -161,31 +161,35 @@ impl Terminal {
     }
 
     /// Handle the ketPressed for special TTY changes. Report a foreground TTY modification
-    pub fn handle_key_pressed(&mut self, scancode: ScanCode, keycode: Option<KeyCode>, keysymb: Option<KeySymb>) -> Option<usize> {
+    pub fn handle_key_pressed(
+        &mut self,
+        scancode: ScanCode,
+        keycode: Option<KeyCode>,
+        keysymb: Option<KeySymb>,
+    ) -> Option<usize> {
         use TtyControlOutput::*;
 
-		if let Some(keysymb) = keysymb {
-			match self.handle_tty_control(keysymb) {
-				SwitchSuccess(tty_index) => Some(tty_index),
-				SwitchError => None,
-				NoControlInput => {
-					let tty = self.get_foreground_tty();
+        if let Some(keysymb) = keysymb {
+            match self.handle_tty_control(keysymb) {
+                SwitchSuccess(tty_index) => Some(tty_index),
+                SwitchError => None,
+                NoControlInput => {
+                    let tty = self.get_foreground_tty();
 
-					if tty.is_raw_mode() {
-						tty.handle_scancode(scancode).expect("write input failed");
-					} else {
-						tty.handle_key_pressed(keysymb).expect("write input failed");
-					}
-					None
-				}
-			}
-		}
-		else {
-			self.get_foreground_tty()
-				.handle_scancode(scancode)
-				.expect("write input failed");
-			None
-		}
+                    if tty.is_raw_mode() {
+                        tty.handle_scancode(scancode).expect("write input failed");
+                    } else {
+                        tty.handle_key_pressed(keysymb).expect("write input failed");
+                    }
+                    None
+                }
+            }
+        } else {
+            self.get_foreground_tty()
+                .handle_scancode(scancode)
+                .expect("write input failed");
+            None
+        }
     }
 
     /// Provide a tiny interface to control some features on the tty

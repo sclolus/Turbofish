@@ -143,8 +143,8 @@ pub enum CallbackKeyboard {
     RequestKeyCode(fn(KeyCode)),
     /// consumer want a very complex keysymbol, ideal for a shell
     RequestKeySymb(fn(KeySymb)),
-	/// request all the type of keycode
-	RequestAll(fn(ScanCode, Option<KeyCode>, Option<KeySymb>))
+    /// request all the type of keycode
+    RequestAll(fn(ScanCode, Option<KeyCode>, Option<KeySymb>)),
 }
 
 /// exported enum for user, allow to select a specific layout
@@ -267,16 +267,16 @@ impl KeyboardDriver {
                         .map(|s| self.keycode_to_keysymb(s).map(|s| u(s)));
                 }
                 RequestAll(u) => {
-					let mut keycode: Option<KeyCode> = None;
-					let mut keysymb: Option<KeySymb> = None;
+                    let mut keycode: Option<KeyCode> = None;
+                    let mut keysymb: Option<KeySymb> = None;
                     if let Some(k) = KeyCode::from_scancode(scancode) {
-						keycode = Some(k);
-						if let Some(k2) = self.keycode_to_keysymb(k) {
-							keysymb = Some(k2);
-						}
-					}
-					u(scancode, keycode, keysymb)
-				},
+                        keycode = Some(k);
+                        if let Some(k2) = self.keycode_to_keysymb(k) {
+                            keysymb = Some(k2);
+                        }
+                    }
+                    u(scancode, keycode, keysymb)
+                }
             }
         });
     }

@@ -95,12 +95,12 @@ impl FileDescriptorInterface {
             return Err(Errno::EBADF);
         }
         let res = elem.file_operation.lock().read(buf);
-		if elem.flags.contains(OpenFlags::O_NONBLOCK) {
-			if let Ok(IpcResult::Wait(r,_)) = res {
-				return Ok(IpcResult::Done(r))
-			}
-		}
-		res
+        if elem.flags.contains(OpenFlags::O_NONBLOCK) {
+            if let Ok(IpcResult::Wait(r, _)) = res {
+                return Ok(IpcResult::Done(r));
+            }
+        }
+        res
     }
 
     /// Write something into the File Descriptor: Can block

@@ -1,15 +1,15 @@
 use super::tools::{KeyGenerator, Mapper};
 use super::Credentials;
 use super::DefaultDriver;
-use super::MountedFileSystem;
 use super::Incrementor;
+use super::MountedFileSystem;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
-use super::{Driver, FileOperation, Inode, InodeData, IpcResult, VFS, PATH_MAX};
+use super::{Driver, FileOperation, Inode, InodeData, IpcResult, PATH_MAX, VFS};
 use crate::taskmaster::drivers::get_file_op_uid;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::fmt::{Debug, self, Display};
+use core::fmt::{self, Debug, Display};
 use libc_binding::{gid_t, statfs, uid_t, utimbuf, Errno, FileType};
 use try_clone_derive::TryClone;
 
@@ -170,7 +170,7 @@ pub enum FileSystemSource {
 impl Display for FileSystemSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::File { source_path} => write!(f, "{}", source_path),
+            Self::File { source_path } => write!(f, "{}", source_path),
             Self::Procfs => write!(f, "proc"),
             Self::Devfs => write!(f, "dev"),
         }

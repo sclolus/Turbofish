@@ -2,7 +2,7 @@
 extern crate alloc;
 
 use alloc::collections::vec_deque::VecDeque;
-use keyboard::{KeySymb, KeyCode, ScanCode};
+use keyboard::{KeyCode, KeySymb, ScanCode};
 use libc_binding::{Pid, Signum};
 
 /// message for the scheduler
