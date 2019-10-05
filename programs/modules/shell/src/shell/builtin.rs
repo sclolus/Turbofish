@@ -1,7 +1,5 @@
 //! Dome builtins
 
-use super::ansi_escape_code;
-
 mod fish;
 
 mod really_lazy_hello_world;

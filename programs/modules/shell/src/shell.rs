@@ -1,6 +1,5 @@
 //! Shell is a blocked function, it display prompt and wait for a command
 
-mod ansi_escape_code;
 use ansi_escape_code::CursorMove;
 
 mod builtin;
