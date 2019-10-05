@@ -21,7 +21,7 @@ use tools::{Incrementor, KeyGenerator};
 
 mod path;
 pub mod posix_consts;
-use posix_consts::{NAME_MAX, SYMLOOP_MAX};
+pub use posix_consts::{NAME_MAX, PATH_MAX, SYMLOOP_MAX};
 
 pub use path::{Filename, Path};
 
@@ -964,7 +964,7 @@ impl VirtualFileSystem {
         &mut self,
         cwd: &Path,
         creds: &Credentials,
-        path: Path,
+        path: Path, // Could be a ref.
         flags: OpenFlags,
         mode: FileType,
     ) -> SysResult<IpcResult<Arc<DeadMutex<dyn FileOperation>>>> {
@@ -1020,6 +1020,7 @@ impl VirtualFileSystem {
         if flags.contains(OpenFlags::O_DIRECTORY) && !entry.is_directory() {
             return Err(Errno::ENOTDIR);
         }
+
         self.inodes
             .get_mut(&entry_inode_id)
             .ok_or(ENOENT)?

@@ -5,7 +5,7 @@ use super::MountedFileSystem;
 use super::Incrementor;
 use super::{DirectoryEntry, DirectoryEntryId, SysResult};
 use super::{DirectoryEntryBuilder, Filename, InodeId, Path};
-use super::{Driver, FileOperation, Inode, InodeData, IpcResult, VFS};
+use super::{Driver, FileOperation, Inode, InodeData, IpcResult, VFS, PATH_MAX};
 use crate::taskmaster::drivers::get_file_op_uid;
 use alloc::boxed::Box;
 use alloc::vec::Vec;

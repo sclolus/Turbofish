@@ -8,6 +8,10 @@ long sysconf(int name)
 {
 	TRACE
 	DUMMY
+		if (name == _SC_CLK_TCK) {
+			return HZ;
+		}
+
 	errno = ENOSYS;
 	return -1L;
 }

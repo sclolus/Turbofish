@@ -11,6 +11,7 @@ tar -xf 'procps-ng-3.3.15.tar.xz'
 patch -p0 < patch-procps-configure
 patch -p0 < patch-procps-config-sub
 cd procps-ng-3.3.15
+rm -rf build
 mkdir -pv build
 cd build
 CFLAGS="-g -O0 -fno-omit-frame-pointer" ../configure --without-ncurses --disable-modern-top  --disable-pidof --disable-kill   --disable-nls --disable-rpath --disable-numa --build="`gcc -dumpmachine`" --host=$TARGET

@@ -9,6 +9,10 @@
 #define _POSIX_VERSION 200809L
 
 #define _SC_CLK_TCK 2
+/// This define is not where it should be, this is an hardfix for ps
+/// This is a dummy way to provide it to userspace
+# define HZ 1000
+
 
 #define	F_OK	0
 //    Test for existence of file.

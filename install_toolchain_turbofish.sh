@@ -43,15 +43,15 @@ patch -p0 < patch-gcc
 cd 'gcc-9.1.0'
 mkdir -p build
 cd build
-../configure --build=$HOST_TRIPLET --host=$HOST_TRIPLET --target=$TARGET --prefix=$CROSS --with-sysroot=$TOOLCHAIN_SYSROOT --enable-languages=c,c++
+../configure --build=$HOST_TRIPLET --host=$HOST_TRIPLET --target=$TARGET --prefix=$CROSS --with-sysroot=$TOOLCHAIN_SYSROOT --enable-languages=c,c++ --enable-initfini-array
 make -j8 all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
 
 rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crti.o
 rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtn.o
-rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtbegin.o
-rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtend.o
+# rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtbegin.o
+# rm -vf /toolchain_turbofish/cross/lib/gcc/i686-turbofish/9.1.0/crtend.o
 
-# DASH
-# URL: http://gondor.apana.org.au/~herbert/dash/files/
-# take version 0.5.10.2
+# # DASH
+# # URL: http://gondor.apana.org.au/~herbert/dash/files/
+# # take version 0.5.10.2

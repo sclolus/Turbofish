@@ -181,14 +181,14 @@ impl InodeData {
 
     pub fn stat(&self, stat: &mut stat) -> SysResult<u32> {
         *stat = stat {
-            st_dev: self.major,                         // Device ID of device containing file.
-            st_ino: self.id.inode_number as ino_t,      // File serial number.
+            st_dev: self.major << 8 | self.minor, // Device ID of device containing file.
+            st_ino: self.id.inode_number as ino_t, // File serial number.
             st_mode: self.access_mode.bits() as mode_t, // Mode of file (see below).
-            st_nlink: self.link_number,                 // Number of hard links to the file.
-            st_uid: self.uid,                           // User ID of file.
-            st_gid: self.gid,                           // Group ID of file.
-            st_rdev: self.minor, //TODO // Device ID (if file is character or block special).
-            st_size: self.size as off_t, // For regular files, the file size in bytes.
+            st_nlink: self.link_number,           // Number of hard links to the file.
+            st_uid: self.uid,                     // User ID of file.
+            st_gid: self.gid,                     // Group ID of file.
+            st_rdev: self.major << 8 | self.minor, //TODO // Device ID (if file is character or block special).
+            st_size: self.size as off_t,           // For regular files, the file size in bytes.
             st_atim: timespec {
                 // Last data access timestamp.
                 tv_sec: self.atime as time_t,

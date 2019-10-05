@@ -1,7 +1,14 @@
-use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
+use super::{
+    Driver, FileOperation, InodeId, IpcResult, Path, ProcFsOperations, SysResult, PATH_MAX, VFS,
+};
+use crate::taskmaster::SCHEDULER;
+
+use crate::taskmaster::scheduler::ThreadGroupState;
 
 use alloc::borrow::Cow;
 use alloc::sync::Arc;
+
+use core::convert::TryFrom;
 
 use fallible_collections::FallibleArc;
 
@@ -10,7 +17,7 @@ use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
 
-use libc_binding::{off_t, Pid, Whence};
+use libc_binding::{dev_t, off_t, Pid, Whence};
 
 #[derive(Debug, Clone)]
 pub struct StatDriver {
@@ -55,107 +62,135 @@ impl ProcFsOperations for StatOperations {
         &mut self.offset
     }
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let stat_string = tryformat!(4096, "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
+        SCHEDULER.force_unlock();
+        let scheduler = SCHEDULER.lock(); //code duplication with comm.rs
+        let thread_group = scheduler
+            .get_thread_group(self.pid)
+            .expect("CommOperations::read(): The Process should exist");
+
+        let default_name = Path::try_from("-")?;
+        let comm = tryformat!(
+            PATH_MAX,
+            "{}",
+            thread_group
+                .filename
+                .as_ref()
+                .unwrap_or(&default_name)
+                .filename()
+                .unwrap()
+        )?;
+
+        let state = match thread_group.thread_group_state {
+            ThreadGroupState::Running(_) => "R",
+            ThreadGroupState::Zombie(_status) => "Z",
+        };
+
+        let utime = thread_group.process_duration.user_time().as_secs(); // convert to clock tick count.
+        let stime = thread_group.process_duration.system_time().as_secs();
+
+        let ctty = thread_group.controlling_terminal.unwrap_or(0 as dev_t);
+
+        let stat_string = tryformat!(4096, "{} ({}) {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n", self.pid,
                                   // comm
-                                  0,
+                                  comm,
                                   // state
-                                  0,
+                                  state,
                                   // ppid
-                                  0,
+                                  thread_group.parent,
                                   // pgrp
-                                  0,
+                                  thread_group.pgid,
                                   // session
-                                  0,
+                                  1,
                                   // tty_nr
-                                  0,
+                                  4 << 8 | ctty, // TODO: make the major not hardcoded.
                                   // tpgid
-                                  0,
+                                  1,
                                   // flags
-                                  0,
+                                  1,
                                   // minflt
-                                  0,
+                                  1,
                                   // cminflt
-                                  0,
+                                  1,
                                   // majflt
-                                  0,
+                                  1,
                                   // cmajflt
-                                  0,
+                                  1,
                                   // utime
-                                  42,
+                                  utime,
                                   // stime
-                                  42,
+                                  stime,
                                   // cutime
                                   42,
                                   // cstime
                                   42,
                                   // priority
-                                  0,
+                                  1,
                                   // nice
-                                  0,
+                                  1,
                                   // num_threads
-                                  0,
+                                  1,
                                   // itrealvalue
-                                  0,
+                                  1,
                                   // starttime
-                                  0,
+                                  1,
                                   // vsize
-                                  0,
+                                  1,
                                   // rss
-                                  0,
+                                  1,
                                   // rsslim
-                                  0,
+                                  1,
                                   // startcode
-                                  0,
+                                  1,
                                   // endcode
-                                  0,
+                                  1,
                                   // startstack
-                                  0,
+                                  1,
                                   // kstkesp
-                                  0,
+                                  1,
                                   // kstkeip
-                                  0,
+                                  1,
                                   // signal
-                                  0,
+                                  1,
                                   // blocked
-                                  0,
+                                  1,
                                   // sigignore
-                                  0,
+                                  1,
                                   // sigcatch
-                                  0,
+                                  1,
                                   // wchan
-                                  0,
+                                  1,
                                   // nswap
-                                  0,
+                                  1,
                                   // cnswap
-                                  0,
+                                  1,
                                   // exit_signal
-                                  0,
+                                  1,
                                   // processor
-                                  0,
+                                  1,
                                   // rt_priority
-                                  0,
+                                  1,
                                   // policy
-                                  0,
+                                  1,
                                   // delayacct_blkio_ticks
-                                  0,
+                                  1,
                                   // guest_time
-                                  0,
+                                  1,
                                   // cguest_time
-                                  0,
+                                  1,
                                   // start_data
-                                  0,
+                                  1,
                                   // end_data
-                                  0,
+                                  1,
                                   // start_brk
-                                  0,
+                                  1,
                                   // arg_start
-                                  0,
+                                  1,
                                   // arg_end
-                                  0,
+                                  1,
                                   // env_start
-                                  0,
+                                  1,
                                   // env_end
-                                  0,
+                                  1,
                                   // exit_code
                                   0,
         )?;

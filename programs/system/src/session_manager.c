@@ -29,7 +29,7 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 		int fd = open_tty_device(tty_device);
 
 		if (argc < 2) {
-			dprintf(2, "bad argument number %i: should be at least 2\n", argc);
+			dprintf(fd, "bad argument number %i: should be at least 2\n", argc);
 			return -1;
 		}
 		if (setpgid(0, 0) < 0) {
@@ -53,6 +53,7 @@ pid_t init_forker(const char *tty_device, int argc, char *argv[], char *envp[])
 			dprintf(STDERR_FILENO, "seeking for '%s'\n", argv[1]);
 			return -1;
 		}
+		exit(1); // Make sure the child exits.
 	}
 	return pid;
 }
@@ -80,6 +81,7 @@ int main(int argc, char **argv, char **envp)
 	// In case of child exit, resurect him
 	while (true) {
 		pid_t ret = wait(&status);
+
 		if (ret < 0) {
 			int _fd = open_tty_device("/dev/tty1");
 

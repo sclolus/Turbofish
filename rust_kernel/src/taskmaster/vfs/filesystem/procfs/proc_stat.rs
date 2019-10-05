@@ -1,12 +1,13 @@
 use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 use crate::drivers::pit_8253::PIT0;
+use crate::taskmaster::global_time::GLOBAL_TIME;
 
 use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use fallible_collections::FallibleArc;
 
-use libc_binding::OpenFlags;
+use libc_binding::{OpenFlags, HZ};
 use sync::DeadMutex;
 
 type Mutex<T> = DeadMutex<T>;
@@ -53,11 +54,23 @@ impl ProcFsOperations for ProcStatOperations {
     }
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
-        let frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
+        let global_time = unsafe { GLOBAL_TIME.as_ref().unwrap() };
+        // let frequency = global_time.cpu_frequency(); // use this
 
-        let uptime = unsafe { (dbg!(_get_pit_time()) as f32 * frequency) * 100.0 } as usize; // TODO: USER_HZ
-                                                                                             // This is dummy.
-                                                                                             // eprintln!("f: {}, uptime: {}", frequency, uptime);
+        let pit_frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
+
+        let uptime = unsafe { (_get_pit_time() as f32 * pit_frequency) * 100.0 } as usize; // TODO: USER_HZ
+
+        let hertz = HZ as u64;
+        let user = global_time.global_user_time().as_secs() * hertz;
+        let nice = 0 * hertz;
+        let system = global_time.global_system_time().as_secs() * hertz;
+        let idle = global_time.global_idle_time().as_secs() * hertz;
+
+        let boiler = 42;
+
+        // This is dummy.
+        // eprintln!("f: {}, uptime: {}", frequency, uptime);
         let proc_stat_string = tryformat!(
             4096,
             "cpu {} {} {} {} {} {} {} {} {} {}\n\
@@ -71,26 +84,26 @@ impl ProcFsOperations for ProcStatOperations {
              procs_running 42\n\
              procs_blocked 42\n\
              softirq 42 42 42 42 42 42 42 42 42 42\n",
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
-            uptime,
+            user,
+            nice,
+            system,
+            idle,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
+            user,
+            nice,
+            system,
+            idle,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
+            boiler,
             uptime,
         )?;
 

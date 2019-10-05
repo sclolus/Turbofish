@@ -55,13 +55,12 @@ impl ProcFsOperations for UptimeOperations {
 
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
         let frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
-        let uptime = unsafe { _get_pit_time() as f32 * frequency } as usize;
+        let uptime = unsafe { _get_pit_time() as f32 * frequency };
         //TODO: calculate time spend in idle process.
         let _idle_process_time = 0;
-        eprintln!("uptime {}", uptime);
         let uptime_string = tryformat!(
             128,
-            "{}.00 1.00\n",
+            "{:.2} 1.00\n",
             uptime // , idle_process_time
         )?;
         Ok(Cow::from(uptime_string))
