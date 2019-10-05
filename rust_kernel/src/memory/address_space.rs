@@ -250,7 +250,7 @@ impl AddressSpace {
         nbr_pages: NbrPages,
         flags: AllocFlags,
     ) {
-        //TODO: check range in user_memory
+        // URGENT TODO: check if range is in user_memory
         self.0.change_flags_range_page_entry(
             start_page,
             nbr_pages,
@@ -260,7 +260,7 @@ impl AddressSpace {
 
     #[inline(always)]
     pub fn change_flags_page_entry(&mut self, page: Page<Virt>, flags: AllocFlags) {
-        //TODO: check range in user_memory
+        // URGENT TODO: check if range is in user_memory
         self.0
             .change_flags_page_entry(page, flags | AllocFlags::USER_MEMORY);
     }

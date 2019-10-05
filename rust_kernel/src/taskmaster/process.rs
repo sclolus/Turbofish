@@ -417,7 +417,7 @@ impl Process for UserProcess {
             err_code_reserved: 0,
             eip,
             cs: Self::RING3_CODE_SEGMENT + Self::RING3_DPL,
-            eflags: Eflags::get_eflags().set_interrupt_flag(true), // TODO: Change that get_eflags is for sure an error
+            eflags: Eflags::get_eflags().set_interrupt_flag(true),
             esp,
             ss: Self::RING3_STACK_SEGMENT + Self::RING3_DPL,
         };

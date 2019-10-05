@@ -211,7 +211,7 @@ impl IdeAtaController {
             };
 
         // Sum DMA capability and set default Operating Mode
-        // TODO: We assume that if IDE board is UDMA capable, the connected device is too
+        // IMPORTANT: We assume that if IDE board is UDMA capable, the connected device is too
         let (udma_capable, operating_mode) = if udma_primary.is_some() || udma_secondary.is_some() {
             (true, OperatingMode::UdmaTransfert)
         } else {

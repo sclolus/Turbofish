@@ -15,7 +15,8 @@
 	push dword [ebp + 12] ; cs
 	push dword [ebp + 8]  ; eip
 
-	; TODO seems to work correctly only from ring 3 mode
+	; SS and ESP are present only when we came from a greater ring level
+	; Don't trust them in others cases
 	mov ax, [ebp + 24]    ; ss
 	and eax, 0xffff
 	push eax
@@ -43,7 +44,8 @@
 	push dword [ebp + 8]  ; cs
 	push dword [ebp + 4]  ; eip
 
-	; TODO seems to work correctly only from ring 3 mode
+	; SS and ESP are present only when we came from a greater ring level
+	; Don't trust them in others cases
 	mov ax, [ebp + 20]    ; ss
 	and eax, 0xffff
 	push eax

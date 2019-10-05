@@ -83,7 +83,7 @@ pub struct Scheduler {
     running_process: Vec<(Pid, Tid)>,
 
     /// The next pid to be considered by the scheduler
-    /// TODO: think about PID Reuse when SMP will be added,
+    /// FUTURE: think about PID Reuse when SMP will be added,
     /// as current PID attribution depends on the existence of a pid in the
     /// `all_process` HashMap.
     next_pid: AtomicI32,
@@ -135,7 +135,7 @@ unsafe extern "C" fn scheduler_interrupt_handler(kernel_esp: u32) -> u32 {
     // Store the current kernel stack pointer
     scheduler.store_kernel_esp(kernel_esp);
 
-    // TODO: It is just a POC of module callback called each seconds. Dont'y worry about the code
+    // FUTURE: It is just a POC of module callback called each seconds. Dont'y worry about the code
     // In the future, it should be good to create real time structures for each events types
     let pit_time = _get_pit_time();
     let esp = if (pit_time - scheduler.last_second_callback_pit_time)
