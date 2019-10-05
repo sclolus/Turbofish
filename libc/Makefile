@@ -49,7 +49,7 @@ HEADERS += string.h
 
 SRC_C += beacon op_main modifiers extract_args \
 	s_string s_char s_numeric_u s_numeric_i \
-	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	\
+	s_pointer s_logical_b s_logical_o s_logical_xmin s_logical_xmaj	s_float \
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
 	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
