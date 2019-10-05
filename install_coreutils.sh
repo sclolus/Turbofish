@@ -18,6 +18,7 @@ make -C lib
 make -C src basename
 make -C src chgrp
 make -C src chroot
+make -C src chown
 make -C src cksum
 make -C src comm
 make -C src cp
@@ -88,26 +89,32 @@ make -C src who
 make -C src whoami
 make -C src yes
 # MANDATORY PART
-make -C src hostname
-make -C src sleep
-make -C src pwd
+echo "**************************************"
+echo "* Compiling some mandatory executables *"
+echo "**************************************"
 make -C src cat
 make -C src chmod
-make -C src chown
-make -C src mv
-make -C src ls
-make -C src kill
+make -C src cp
 make -C src date
-make -C src df
 make -C src dd
+make -C src df
+make -C src echo
+make -C src hostname
+make -C src kill
+make -C src ln
+make -C src ls
+make -C src mkdir
+make -C src mv
+# (ps is not in coreutils)
+make -C src pwd
 make -C src rm
 make -C src rmdir
-make -C src echo
-make -C src mkdir
-make -C src ln
+make -C src sleep
+echo "**************************************"
 
 sudo cp -v src/basename $TARGET_DIR
 sudo cp -v src/chgrp $TARGET_DIR
+sudo cp -v src/chown $TARGET_DIR
 sudo cp -v src/chroot $TARGET_DIR
 sudo cp -v src/cksum $TARGET_DIR
 sudo cp -v src/comm $TARGET_DIR
@@ -178,20 +185,25 @@ sudo cp -v src/who $TARGET_DIR
 sudo cp -v src/whoami $TARGET_DIR
 sudo cp -v src/yes $TARGET_DIR
 # MANDATORY PART
-sudo cp -v src/hostname $TARGET_DIR
-sudo cp -v src/sleep $TARGET_DIR
-sudo cp -v src/pwd $TARGET_DIR
+echo "**************************************"
+echo "* Copying some mandatory executables *"
+echo "**************************************"
 sudo cp -v src/cat $TARGET_DIR
 sudo cp -v src/chmod $TARGET_DIR
-sudo cp -v src/chown $TARGET_DIR
-sudo cp -v src/mv $TARGET_DIR
-sudo cp -v src/ls $TARGET_DIR
-sudo cp -v src/kill $TARGET_DIR
+sudo cp -v src/cp $TARGET_DIR
 sudo cp -v src/date $TARGET_DIR
-sudo cp -v src/df $TARGET_DIR
 sudo cp -v src/dd $TARGET_DIR
+sudo cp -v src/df $TARGET_DIR
+sudo cp -v src/echo $TARGET_DIR
+sudo cp -v src/hostname $TARGET_DIR
+sudo cp -v src/kill $TARGET_DIR
+sudo cp -v src/ln $TARGET_DIR
+sudo cp -v src/ls $TARGET_DIR
+sudo cp -v src/mkdir $TARGET_DIR
+sudo cp -v src/mv $TARGET_DIR
+# (ps is not in coreutils)
+sudo cp -v src/pwd $TARGET_DIR
 sudo cp -v src/rm $TARGET_DIR
 sudo cp -v src/rmdir $TARGET_DIR
-sudo cp -v src/echo $TARGET_DIR
-sudo cp -v src/mkdir $TARGET_DIR
-sudo cp -v src/ln $TARGET_DIR
+sudo cp -v src/sleep $TARGET_DIR
+echo "**************************************"
