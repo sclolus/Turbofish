@@ -1,0 +1,6 @@
+/*.a
+/*.o
+/*.gen
+/test/Makefile.gen
+/test/*.o
+/test/mlx-test

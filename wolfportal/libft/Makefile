@@ -15,7 +15,7 @@ PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
 INCLUDE = ./
 
 NAME = libft.a
-CC = i686-turbofish-gcc 
+CC = gcc
 
 SRC = ft_dtoa.c \
 	ft_abs.c \

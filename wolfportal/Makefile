@@ -11,7 +11,7 @@
 # **************************************************************************** #
 
 PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
-CC = i686-turbofish-gcc 
+CC = gcc 
 
 NAME =	wolf3d
 
@@ -51,7 +51,7 @@ all: $(NAME)
 
 $(NAME): dis $(OBJS)
 	make -C ./libft/
-	$(CC) -g $(OBJS) -L libft -lft -o2 -flto -o $(NAME)
+	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
 
 clean:
 	make clean -C ./libft/
