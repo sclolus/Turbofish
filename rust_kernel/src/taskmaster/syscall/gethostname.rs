@@ -2,7 +2,7 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 
-use libc_binding::{c_char, Errno, HOST_NAME_MAX};
+use libc_binding::{c_char, HOST_NAME_MAX};
 
 use core::cmp::min;
 use sync::DeadMutex;

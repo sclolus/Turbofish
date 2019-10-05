@@ -4,8 +4,6 @@ use super::scheduler::SCHEDULER;
 
 use libc_binding::{c_char, Errno, HOST_NAME_MAX};
 
-use core::cmp::min;
-
 use super::HOSTNAME;
 
 fn sethostname(name: &[u8]) -> SysResult<u32> {
