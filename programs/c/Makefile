@@ -56,6 +56,8 @@ SRC_C += Clone \
 		mount \
 		umount \
 		bmploader \
+		drawer \
+		bmp_load \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

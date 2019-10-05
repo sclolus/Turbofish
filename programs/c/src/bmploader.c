@@ -94,7 +94,7 @@ int		draw_image(
 #define BUFFER_SIZE  (4096 * 10)
 
 uint8_t *read_to_end(int fd) {
-	uint8_t tmp_buffer[BUFFER_SIZE];
+	uint8_t *tmp_buffer = malloc(BUFFER_SIZE);
 	uint8_t *buffer = malloc(BUFFER_SIZE);
 	size_t	size = 0;
 	int len_readen;
@@ -111,7 +111,10 @@ uint8_t *read_to_end(int fd) {
 		memcpy(buffer + size, tmp_buffer, len_readen);
 		size += len_readen;
 	}
-	
+	if (len_readen == -1) {
+		perror("read");
+		exit(1);
+	}
 	return buffer;
 }
 
