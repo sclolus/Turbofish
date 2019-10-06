@@ -213,7 +213,6 @@ impl FileOperation for SocketDgram {
 /// Some boilerplate to check if all is okay
 impl Drop for SocketDgram {
     fn drop(&mut self) {
-        println!("Socket droped !");
         VFS.lock().close_file_operation(self.inode_id);
     }
 }

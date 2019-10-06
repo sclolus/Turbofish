@@ -234,13 +234,6 @@ impl FileDescriptorInterface {
     }
 }
 
-/// Some boilerplate to check if all is okay
-impl Drop for FileDescriptorInterface {
-    fn drop(&mut self) {
-        //         println!("FD interface droped");
-    }
-}
-
 /// This structure design a User File Descriptor
 /// We can normally clone the Arc
 #[derive(Debug)]

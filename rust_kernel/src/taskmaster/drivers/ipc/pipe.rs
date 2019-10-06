@@ -127,8 +127,3 @@ impl FileOperation for Pipe {
         Ok(0)
     }
 }
-
-/// Some boilerplate to check if all is okay
-impl Drop for Pipe {
-    fn drop(&mut self) {}
-}
