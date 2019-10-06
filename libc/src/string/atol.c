@@ -2,11 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-int	atoi(const char *str)
+long	atol(const char *str)
 {
 	TRACE
-	int result;
-	int sign;
+	long result;
+	long sign;
 
 	result = 0;
 	sign = 1;

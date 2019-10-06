@@ -113,7 +113,7 @@ int      fgetc(FILE *);
 int      fgetpos(FILE *restrict, fpos_t *restrict);
 char    *fgets(char *restrict, int, FILE *restrict);
 //[CX][Option Start]
-int      fileno(FILE *);
+int      fileno(FILE *stream);
 void     flockfile(FILE *);
 FILE    *fmemopen(void *restrict, size_t, const char *restrict);
 //[Option End]
@@ -186,7 +186,7 @@ FILE    *tmpfile(void);
 //[OB][Option Start]
 char    *tmpnam(char *);
 //[Option End]
-int      ungetc(int, FILE *);
+int      ungetc(int c, FILE *stream);
 int      vfscanf(FILE *restrict, const char *restrict, va_list);
 int      vscanf(const char *restrict, va_list);
 int      vsscanf(const char *restrict, const char *restrict, va_list);

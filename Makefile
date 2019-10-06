@@ -3,7 +3,7 @@ include $(TURBOFISH_ROOT)/boilerplates.mk
 
 RAM_AMOUNT = 512
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 131072
+IMAGE_SIZE = 524288
 FIRST_PART_SIZE = $$(($(IMAGE_SIZE) - 1024 * 10))
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel

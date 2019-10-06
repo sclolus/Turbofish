@@ -53,7 +53,7 @@ SRC_C += beacon op_main modifiers extract_args \
 	cast buffer norme perror \
 	stdio _doprnt putchar puts getc fopen fclose \
 	getline getdelim getchar getchar_unlocked fgets fgetc rename getc_unlocked \
-	sscanf fread rewind \
+	sscanf fread rewind fseek ftell fileno ungetc clearerr fscanf \
 
 VPATH += src/stdio/printf src/stdio/
 HEADERS += stdio.h
@@ -95,12 +95,13 @@ SRC_C += ctor mem_syscall \
 	alloc_btree_insert_rnb_node alloc_btree_delete_rnb_node alloc_btree_insert_strategy alloc_btree_rotation_node \
 	alloc_btree_try_to_insert alloc_btree_family_node alloc_btree_get_last_valid alloc_btree_delete_node \
 	alloc_btree_insert_node alloc_btree_swap_content alloc_btree_limit_items alloc_btree_delete_strategy \
-	alloc_btree_get_neighbours
+	alloc_btree_get_neighbours \
+
 VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
-SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
+SRC_C += mbstowcs bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort atol mktemp atof  _Exit
 
 VPATH += src/stdlib
 HEADERS += stdlib.h
@@ -194,6 +195,7 @@ HEADERS += math.h
 
 VPATH += src/setjmp
 SRC_ASM += setjmp
+SRC_C += sigsetjmp
 HEADERS += setjmp.h
 
 VPATH += src/math
@@ -243,6 +245,10 @@ HEADERS += sys/resource.h
 SRC_C += ioctl
 VPATH += src/stropts
 HEADERS += stropts.h  sys/ioctl.h
+
+SRC_C += mbrtowc
+VPATH += src/wchar
+HEADERS += wchar.h
 
 
 SRC_C += is_ptr_valid

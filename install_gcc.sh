@@ -6,6 +6,7 @@ export CROSS="$ROOT_TOOLCHAIN/cross"
 export LIBC_DIR="libc"
 export HOST_TRIPLET="`gcc -dumpmachine`"
 export PATH="$CROSS/bin:$PATH"
+export TARGET_DIR="`pwd`/system_disk"
 
 mkdir -pv build_gcc
 cp patch-binutils patch-gcc build_gcc
@@ -19,24 +20,26 @@ pushd ld
 automake-1.15
 popd
 # Create a build directory in binutils
+rm -rf build
 mkdir -p build
 pushd build
-../configure --build=$HOST_TRIPLET --host=$TARGET --target=$TARGET --prefix=$TOOLCHAIN_SYSROOT --with-sysroot=$TOOLCHAIN_SYSROOT
+../configure --build=$HOST_TRIPLET --host=$TARGET --target=$TARGET --prefix=$TARGET_DIR --with-sysroot=$TOOLCHAIN_SYSROOT
 make -j8
-make install
+sudo --preserve-env=PATH make install
+sudo rm -rf $TARGET_DIR/share
 popd
 popd
-echo 'WARNING: you must make install on libc to install the headers before compiling gcc'
-wget -c 'https://ftp.gnu.org/gnu/gcc/gcc-9.1.0/gcc-9.1.0.tar.xz'
-tar -xf 'gcc-9.1.0.tar.xz'
-patch -p0 < patch-gcc
-pushd "gcc-9.1.0"
-mkdir -pv build
-pushd build
-../configure --build=$HOST_TRIPLET --host=$TARGET --target=$TARGET --prefix=$TOOLCHAIN_SYSROOT --with-sysroot=$TOOLCHAIN_SYSROOT --enable-languages=c,c++
-make -j8 all-gcc all-target-libgcc
-make install-gcc install-target-libgcc
+# echo 'WARNING: you must make install on libc to install the headers before compiling gcc'
+# wget -c 'https://ftp.gnu.org/gnu/gcc/gcc-9.1.0/gcc-9.1.0.tar.xz'
+# tar -xf 'gcc-9.1.0.tar.xz'
+# patch -p0 < patch-gcc
+# pushd "gcc-9.1.0"
+# mkdir -pv build
+# pushd build
+# ../configure --build=$HOST_TRIPLET --host=$TARGET --target=$TARGET --prefix=$TOOLCHAIN_SYSROOT --with-sysroot=$TOOLCHAIN_SYSROOT --enable-languages=c,c++
+# make -j8 all-gcc all-target-libgcc
+# make install-gcc install-target-libgcc
 
-popd
-popd
-popd
+# popd
+# popd
+# popd

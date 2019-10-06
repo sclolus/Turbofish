@@ -61,9 +61,9 @@ int           atexit(void (*)(void));
 /*SHOULD BE PRIVATE */
 void          execute_atexit_handlers();
 /**/
-double        atof(const char *);
-int           atoi(const char *);
-long          atol(const char *);
+double        atof(const char *nptr);
+int           atoi(const char *str);
+long          atol(const char *str);
 long long     atoll(const char *);
 void	     *bsearch(const void *key,
 		      const void *base,
@@ -100,9 +100,11 @@ long          lrand48(void);
 //[Option End]
 void         *malloc(size_t);
 int           mblen(const char *, size_t);
-size_t        mbstowcs(wchar_t *restrict, const char *restrict, size_t);
-int           mbtowc(wchar_t *restrict, const char *restrict, size_t);
+/* size_t        mbstowcs(wchar_t *restrict, const char *restrict, size_t); */
+/* int           mbtowc(wchar_t *restrict, const char *restrict, size_t); */
 //[CX][Option Start]
+
+	char *mktemp(char *template);
 char         *mkdtemp(char *);
 int           mkstemp(char *);
 //[Option End]
