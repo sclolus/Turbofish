@@ -5,8 +5,6 @@
 #include <custom.h>
 #include <user_syscall.h>
 
-#warning DUMMY IMPLEMENTATION of ioctl
-
 /* DESCRIPTION */
 /* The ioctl() function shall perform a variety of control functions
  * on STREAMS devices. For non-STREAMS devices, the functions

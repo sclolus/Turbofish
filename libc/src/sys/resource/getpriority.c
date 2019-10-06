@@ -3,8 +3,6 @@
 #include <ltrace.h>
 #include <custom.h>
 
-#warning DUMMY IMPLEMENTATION
-
 int getpriority(int which, id_t who)
 {
 	TRACE

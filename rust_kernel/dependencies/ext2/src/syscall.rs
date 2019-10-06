@@ -212,7 +212,8 @@ impl Ext2Filesystem {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
         let file_curr_offset_start = *file_offset;
         if *file_offset > inode.get_size() {
-            panic!("file_offset > inode.get_size()");
+            // panic!("file_offset > inode.get_size()");
+            return Ok((0, inode));
         }
         if buf.len() == 0 {
             return Ok((0, inode));
@@ -282,12 +283,8 @@ impl Ext2Filesystem {
     ) -> IoResult<u64> {
         let (mut inode, inode_addr) = self.get_inode(inode_nbr)?;
 
-        if *file_offset > inode.get_size() {
-            panic!("file_offset > inode.get_size()");
-        }
-
         // EOF
-        if *file_offset == inode.get_size() {
+        if *file_offset >= inode.get_size() {
             return Ok(0);
         }
 

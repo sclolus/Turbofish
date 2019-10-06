@@ -1,5 +1,6 @@
 use super::{Driver, FileOperation, InodeId, IpcResult, ProcFsOperations, SysResult, VFS};
 use crate::drivers::pit_8253::PIT0;
+use crate::taskmaster::global_time::GLOBAL_TIME;
 
 use alloc::borrow::Cow;
 use alloc::sync::Arc;
@@ -56,13 +57,10 @@ impl ProcFsOperations for UptimeOperations {
     fn get_seq_string(&self) -> SysResult<Cow<str>> {
         let frequency = unpreemptible_context!({ PIT0.lock().period.unwrap_or(0.0) });
         let uptime = unsafe { _get_pit_time() as f32 * frequency };
-        //TODO: calculate time spend in idle process.
-        let _idle_process_time = 0;
-        let uptime_string = tryformat!(
-            128,
-            "{:.2} 1.00\n",
-            uptime // , idle_process_time
-        )?;
+        let global_time = unsafe { GLOBAL_TIME.as_ref().unwrap() };
+        let idle_process_time = global_time.global_idle_time().as_secs();
+        let uptime_string = tryformat!(128, "{:.2} {}.00\n", uptime, idle_process_time)?;
+
         Ok(Cow::from(uptime_string))
     }
 }
