@@ -43,22 +43,17 @@ void set_cooked_mode(void) {
 #define NBR_HOOK_MAX 10
 
 typedef int		(*hook_t)(int keycode, void *param);
+typedef int		(*loop_hook_t)(void *);
 
 struct mlx_ctx {
 	hook_t	key_release_hook;
 	hook_t	key_pressed_hook;
+	loop_hook_t	loop_hook;
 	// the fd in which to read the keys
 	int		key_fd;
 };
 
 struct mlx_ctx MLX_CTX;
-
-unsigned int	mlx_get_color_value(void *mlx_ptr, int color) {
-}
-
-char	*mlx_get_data_addr(void *img_ptr, int *bits_per_pixel,
-						   int *size_line, int *endian) {
-}
 
 int	mlx_hook(void *win_ptr, int x_event, int x_mask,
 			 int (*funct)(), void *param) {
@@ -136,11 +131,16 @@ int	mlx_loop (void *mlx_ptr) {
 		else if (len_readen == -1) {
 			perror("read");
 		}
+		if (MLX_CTX.loop_hook != NULL) {
+			MLX_CTX.loop_hook(NULL);
+		}
 	}
 	// call the loop_hook
 }
 
-int	mlx_loop_hook (void *mlx_ptr, int (*funct_ptr)(), void *param) {
+int	mlx_loop_hook (void *mlx_ptr, int (*funct_ptr)(void *), void *param) {
+	MLX_CTX.loop_hook = funct_ptr;
+	return 0;
 }
 
 void	*mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title) {
@@ -158,4 +158,11 @@ double sqrt(double x) {
 
 void	*mlx_xpm_file_to_image(void *mlx_ptr, char *filename,
 							   int *width, int *height) {
+}
+
+unsigned int	mlx_get_color_value(void *mlx_ptr, int color) {
+}
+
+char	*mlx_get_data_addr(void *img_ptr, int *bits_per_pixel,
+						   int *size_line, int *endian) {
 }
