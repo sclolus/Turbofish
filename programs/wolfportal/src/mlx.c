@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <assert.h>
 #include "libft.h"
 #include <mlx.h>
 #include "wolf.h"
@@ -45,12 +46,20 @@ void set_cooked_mode(void) {
 typedef int		(*hook_t)(int keycode, void *param);
 typedef int		(*loop_hook_t)(void *);
 
+
+struct window {
+	int 	size_x;
+	int 	size_y;
+};
+
 struct mlx_ctx {
 	hook_t	key_release_hook;
 	hook_t	key_pressed_hook;
 	loop_hook_t	loop_hook;
 	// the fd in which to read the keys
 	int		key_fd;
+	int		fb;
+	struct window win;
 };
 
 struct mlx_ctx MLX_CTX;
@@ -67,6 +76,7 @@ int	mlx_hook(void *win_ptr, int x_event, int x_mask,
 void	*mlx_init() {
 	MLX_CTX.key_release_hook = NULL;
 	MLX_CTX.key_pressed_hook = NULL;
+	MLX_CTX.loop_hook = NULL;
 	int fd = open("/proc/self/fd/0", O_RDWR | O_NONBLOCK);
 	if (fd == -1) {
 		perror("open failed");
@@ -144,6 +154,20 @@ int	mlx_loop_hook (void *mlx_ptr, int (*funct_ptr)(void *), void *param) {
 }
 
 void	*mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title) {
+	(void)title;
+
+	int fb = open("/dev/fb", O_WRONLY);
+	if (fb == -1) {
+		perror("open");
+		exit(1);
+	}
+	MLX_CTX.fb = fb;
+	
+	struct window *win = malloc(sizeof(struct window));
+	win->size_x = size_x;
+	win->size_y = size_y;
+
+	return win;
 }
 
 void	*mlx_new_image(void *mlx_ptr,int width,int height) {
@@ -151,6 +175,15 @@ void	*mlx_new_image(void *mlx_ptr,int width,int height) {
 
 int	mlx_put_image_to_window(void *mlx_ptr, void *win_ptr, void *img_ptr,
 							int x, int y) {
+	assert(x == 0);
+	assert(y == 0);
+	struct window *win = (struct window *)win_ptr;
+	int written = write(MLX_CTX.fb, img_ptr, win->size_x * win->size_y * 3);
+	if (written == -1) {
+		perror("write");
+		exit(1);
+	}
+	ioctl(MLX_CTX.fb, REFRESH_SCREEN);
 }
 
 double sqrt(double x) {
