@@ -39,6 +39,9 @@ int ioctl(int fildes, int request, ... /* arg */)
 		case TIOCGWINSZ:
 			arg = va_arg(ap, struct winsize*);
 			break;
+		case RAW_SCANCODE_MODE:
+			arg = va_arg(ap, int);
+			break;
 	}
 	int ret = _user_syscall(IOCTL, 3, fildes, request, arg);
 	va_end(ap);
