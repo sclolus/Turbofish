@@ -38,7 +38,6 @@ extern crate fallible_collections;
 #[macro_use]
 extern crate interrupts;
 
-#[macro_use]
 extern crate lazy_static;
 
 #[macro_use]

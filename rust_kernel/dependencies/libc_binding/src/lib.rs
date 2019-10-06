@@ -877,6 +877,9 @@ impl TryFrom<u32> for ShutDownOption {
 #[derive(Debug, PartialEq)]
 pub enum IoctlCmd {
     TIOCGWINSZ = TIOCGWINSZ,
+    RAW_SCANCODE_MODE = RAW_SCANCODE_MODE,
+    REFRESH_SCREEN = REFRESH_SCREEN,
+    GET_FRAME_BUFFER_PTR = GET_FRAME_BUFFER_PTR,
 }
 
 impl TryFrom<u32> for IoctlCmd {
@@ -884,6 +887,9 @@ impl TryFrom<u32> for IoctlCmd {
     fn try_from(n: u32) -> Result<Self, Self::Error> {
         Ok(match n {
             TIOCGWINSZ => IoctlCmd::TIOCGWINSZ,
+            RAW_SCANCODE_MODE => IoctlCmd::RAW_SCANCODE_MODE,
+            REFRESH_SCREEN => IoctlCmd::REFRESH_SCREEN,
+            GET_FRAME_BUFFER_PTR => IoctlCmd::GET_FRAME_BUFFER_PTR,
             _ => Err(Errno::EINVAL)?,
         })
     }

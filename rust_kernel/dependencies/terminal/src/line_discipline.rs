@@ -4,7 +4,7 @@ use arrayvec::{ArrayVec, CapacityError};
 use core::cmp::min;
 use core::convert::TryFrom;
 use core::fmt::Write;
-use keyboard::keysymb::KeySymb;
+use keyboard::{KeySymb, ScanCode};
 use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG, TOSTOP};
 use libc_binding::{VEOF, VERASE, VINTR, VKILL, VQUIT, VSUSP};
 use messaging::{MessageTo, ProcessGroupMessage};
@@ -21,6 +21,8 @@ pub struct LineDiscipline {
     read_buffer: ArrayVec<[u8; 4096]>,
     foreground_process_group: Pid,
     end_of_file_set: bool,
+    /// raw mode doesn't transform scancode in utf8
+    is_raw_mode: bool,
 }
 
 /// represent a result of the read function to handle the blocking
@@ -58,6 +60,7 @@ impl LineDiscipline {
             read_buffer: ArrayVec::new(),
             foreground_process_group: 0,
             end_of_file_set: false,
+            is_raw_mode: false,
         }
     }
 
@@ -75,6 +78,16 @@ impl LineDiscipline {
         true
     }
 
+    pub fn handle_scancode(&mut self, scancode: ScanCode) -> Result<(), CapacityError<u8>> {
+        if self.is_raw_mode {
+            // let keycode = KeyCode::from_scancode(scancode);
+            // dbg!(keycode);
+            self.read_buffer.try_push((scancode & 0xff) as u8)?;
+            self.read_buffer
+                .try_push(((scancode & 0xff00) >> 8) as u8)?;
+        }
+        Ok(())
+    }
     /// write in the read buffer the keysymb read from the keyboard
     /// Send a message if read is ready, depending of the lmode
     pub fn handle_key_pressed(&mut self, key: KeySymb) -> Result<(), CapacityError<u8>> {
@@ -272,6 +285,14 @@ impl LineDiscipline {
         self.tty.write_str(s).expect("write failed");
         s.len()
     }
+    pub fn set_raw_mode(&mut self, val: bool) {
+        self.is_raw_mode = val;
+    }
+
+    pub fn is_raw_mode(&self) -> bool {
+        self.is_raw_mode
+    }
+
     pub fn get_tty(&self) -> &Tty {
         &self.tty.tty
     }

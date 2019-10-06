@@ -4,7 +4,7 @@ use super::DefaultDriver;
 use super::Driver;
 use super::FileOperation;
 use super::FileSystem;
-use super::{get_file_op_uid, IpcResult};
+use super::IpcResult;
 use super::{DirectoryEntry, FileSystemId, InodeData};
 use super::{DirectoryEntryBuilder, Filename, InodeId, SysResult};
 use crate::taskmaster::kmodules::CURRENT_UNIX_TIME;
@@ -28,6 +28,9 @@ pub use zero::{DevZero, ZeroDevice};
 
 pub mod random;
 pub use random::{DevRandom, RandomDevice};
+
+pub mod fb;
+pub use fb::{DevFb, FbDevice};
 
 pub mod sda;
 pub use sda::{BiosInt13hInstance, DiskDriver, DiskFileOperation, DiskWrapper, IdeAtaInstance};

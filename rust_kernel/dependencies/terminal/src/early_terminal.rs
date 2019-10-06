@@ -1,12 +1,11 @@
 //! This module is made for Basic VGA output, it dont require dynamic allocation and no unsafe trick
 //! It may be used on VBE with low feature in case of debuging request and panic displaying
 
-use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
+use screen::{AdvancedGraphic, Drawer};
 
-use ansi_escape_code::AnsiColor;
+use ansi_escape_code::{AnsiColor, Pos};
 
-use super::Cursor;
-use super::Pos;
+use super::{Cursor, SCREEN_MONAD};
 
 /// Classic height of default VGA screen
 const HEIGHT: usize = 25;
@@ -32,9 +31,6 @@ impl core::fmt::Debug for EarlyTerminal {
         )
     }
 }
-
-/// Main globale
-pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
 
 /// Early terminal is made just for VGA mode at the beginning of the program
 impl EarlyTerminal {

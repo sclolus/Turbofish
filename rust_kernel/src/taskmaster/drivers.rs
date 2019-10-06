@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::scheduler::Scheduler;
 use super::vfs;
 use super::vfs::Path;
 use super::vfs::{InodeId, VFS};
@@ -11,13 +12,11 @@ use super::IpcResult;
 pub mod ipc;
 pub use ipc::{socket::Whom, ConnectedSocket, FifoDriver, FifoFileOperation, Pipe, SocketDgram};
 
-// pub use disk::DiskDriver;
-
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
 use libc_binding::{
-    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, OpenFlags, Pid, ShutDownOption,
-    Whence,
+    gid_t, off_t, stat, statfs, termios, uid_t, Errno, FileType, IoctlCmd, OpenFlags, Pid,
+    ShutDownOption, Whence,
 };
 use sync::dead_mutex::DeadMutex;
 
@@ -88,6 +87,10 @@ pub trait FileOperation: core::fmt::Debug + Send {
     }
 
     fn fstatfs(&mut self, _buf: &mut statfs) -> SysResult<u32> {
+        Err(Errno::ENOSYS)
+    }
+
+    fn ioctl(&mut self, _scheduler: &Scheduler, _cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
@@ -194,7 +197,6 @@ pub trait Driver: core::fmt::Debug + Send {
     fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
-    /*  */
 }
 
 #[derive(Debug)]

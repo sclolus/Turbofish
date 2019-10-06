@@ -1,11 +1,12 @@
-use super::monitor::{AdvancedGraphic, Drawer, SCREEN_MONAD};
-use super::{Cursor, Pos};
+use super::{Cursor, Pos, SCREEN_MONAD};
 use alloc::collections::vec_deque::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
 use ansi_escape_code::{AnsiColor, CursorMove, CSI};
 use arrayvec::ArrayString;
 use core::fmt::Write;
+use libc_binding::local_buffer;
+use screen::{AdvancedGraphic, Drawer};
 
 /// Description of a TTY buffer
 #[derive(Debug, Clone)]
@@ -474,6 +475,39 @@ impl BufferedTty {
             self.escaped_buf.truncate(0);
         }
         ret
+    }
+
+    pub fn refresh_screen(&mut self, buf: &[u8]) {
+        let graphic_infos_result = SCREEN_MONAD.lock().query_graphic_infos();
+        if let Ok((height, width, bpp)) = graphic_infos_result {
+            let screen_size = height * width * bpp / 8;
+            if screen_size == buf.len() {
+                if let Some(v) = &mut self.tty.background {
+                    v.as_mut_slice().copy_from_slice(buf);
+                    self.tty.refresh();
+                } else {
+                    log::warn!("No graphic vector allocated");
+                }
+            } else {
+                log::warn!("Uncompatible len");
+            }
+        } else {
+            log::warn!("Cannot query graphics info");
+        }
+    }
+
+    pub fn get_frame_buffer_ptr<F>(&mut self, alloc_user_mem: F) -> Result<local_buffer, ()>
+    where
+        F: Fn(usize) -> Result<*mut u8, ()>,
+    {
+        let screen_monad = SCREEN_MONAD.lock();
+        if let Ok((height, width, bpp)) = screen_monad.query_graphic_infos() {
+            let len = height * width * bpp / 8;
+            let buf = alloc_user_mem(len)?;
+            Ok(local_buffer { buf, len })
+        } else {
+            Err(())
+        }
     }
 }
 

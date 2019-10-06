@@ -55,6 +55,8 @@ SRC_C += Clone \
 		strftime \
 		mount \
 		umount \
+		drawer \
+		set_bg \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)

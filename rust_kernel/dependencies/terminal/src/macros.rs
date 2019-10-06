@@ -55,7 +55,7 @@ macro_rules! print_bypass_mutex {
             a => {
                 unsafe {
                     // For national security, force unlock this mutex
-                    $crate::monitor::SCREEN_MONAD.force_unlock();
+                    $crate::SCREEN_MONAD.force_unlock();
 
                     match $crate::TERMINAL.as_mut() {
                         None => {
@@ -115,7 +115,7 @@ macro_rules! printfixed {
                         None => {},
                         Some(term) => {
                             use $crate::WriteMode;
-                            use $crate::Pos;
+                            use ansi_escape_code::Pos;
                             use core::fmt::Write;
 
                             let btty = &mut term.get_foreground_tty().tty;

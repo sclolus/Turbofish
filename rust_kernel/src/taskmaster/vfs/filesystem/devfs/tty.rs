@@ -2,14 +2,18 @@
 
 use super::InodeId;
 use super::SysResult;
-use super::{get_file_op_uid, Driver, FileOperation, IpcResult};
+use super::{Driver, FileOperation, IpcResult};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, OpenFlags, Pid};
+use libc_binding::{local_buffer, termios, winsize, Errno, IoctlCmd, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
+use terminal::{ReadResult, TERMINAL};
 
-use crate::terminal::{ReadResult, TERMINAL};
+use crate::taskmaster::drivers::get_file_op_uid;
+use crate::taskmaster::scheduler::{Scheduler, SCHEDULER};
+
+use crate::memory::tools::AllocFlags;
 
 /// This structure represents a FileOperation of type TtyFileOperation
 #[derive(Debug, Default)]
@@ -130,6 +134,81 @@ impl FileOperation for TtyFileOperation {
     }
     fn isatty(&mut self) -> SysResult<u32> {
         return Ok(1);
+    }
+
+    fn ioctl(&mut self, scheduler: &Scheduler, cmd: IoctlCmd, arg: u32) -> SysResult<u32> {
+        let terminal = unsafe { &mut TERMINAL.as_mut().unwrap() };
+        match cmd {
+            IoctlCmd::TIOCGWINSZ => {
+                let win = {
+                    let v = scheduler
+                        .current_thread()
+                        .unwrap_process()
+                        .get_virtual_allocator();
+
+                    v.make_checked_ref_mut(arg as *mut winsize)
+                }?;
+                *win = terminal.get_window_capabilities();
+                Ok(0)
+            }
+            IoctlCmd::RAW_SCANCODE_MODE => {
+                let active: bool = if arg > 0 { true } else { false };
+                terminal
+                    .get_line_discipline(self.controlling_terminal)
+                    .set_raw_mode(active);
+                Ok(0)
+            }
+            IoctlCmd::REFRESH_SCREEN => {
+                let local_buffer = {
+                    let v = scheduler
+                        .current_thread()
+                        .unwrap_process()
+                        .get_virtual_allocator();
+                    v.make_checked_ref(arg as *mut local_buffer)
+                }?;
+                let s = {
+                    let v = scheduler
+                        .current_thread()
+                        .unwrap_process()
+                        .get_virtual_allocator();
+                    v.make_checked_slice::<u8>(local_buffer.buf, local_buffer.len)
+                }?;
+                terminal
+                    .get_tty(self.controlling_terminal)
+                    .refresh_screen(s);
+                Ok(0)
+            }
+            IoctlCmd::GET_FRAME_BUFFER_PTR => {
+                let local_buffer = {
+                    let v = scheduler
+                        .current_thread()
+                        .unwrap_process()
+                        .get_virtual_allocator();
+                    v.make_checked_ref_mut(arg as *mut local_buffer)
+                }?;
+                *local_buffer = terminal
+                    .get_tty(self.controlling_terminal)
+                    .get_frame_buffer_ptr(|alloc_len| {
+                        // I have not choose, i must bullshit Rust
+                        SCHEDULER.force_unlock();
+                        let mut scheduler = SCHEDULER.lock();
+                        let mut v = scheduler
+                            .current_thread_mut()
+                            .unwrap_process_mut()
+                            .get_virtual_allocator();
+                        let alloc_flags = AllocFlags::USER_MEMORY;
+                        let addr = v.alloc(alloc_len, alloc_flags).map_err(|_| ())?;
+                        unsafe {
+                            addr.write_bytes(0, alloc_len);
+                        }
+                        Ok(addr as *mut u8)
+                    })
+                    .map_err(|_| Errno::ENOMEM)?;
+                Ok(0)
+            }
+            #[allow(unreachable_patterns)]
+            _ => Err(Errno::EINVAL),
+        }
     }
 }
 

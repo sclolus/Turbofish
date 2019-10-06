@@ -403,6 +403,16 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "screen"
+version = "0.1.0"
+dependencies = [
+ "ansi_escape_code 0.1.0",
+ "i386 0.1.0",
+ "io 0.1.0",
+ "raw_data 0.1.0",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -459,14 +469,13 @@ dependencies = [
  "ansi_escape_code 0.1.0",
  "arrayvec 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "i386 0.1.0",
  "io 0.1.0",
  "keyboard 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc_binding 0.1.0",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "messaging 0.1.0",
- "raw_data 0.1.0",
+ "screen 0.1.0",
  "sync 0.1.0",
 ]
 
@@ -511,6 +520,7 @@ dependencies = [
  "messaging 0.1.0",
  "raw_data 0.1.0",
  "rtc_toolkit 0.1.0",
+ "screen 0.1.0",
  "sync 0.1.0",
  "terminal 0.1.0",
  "time 0.1.0",

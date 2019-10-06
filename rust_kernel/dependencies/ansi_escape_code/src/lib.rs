@@ -2,10 +2,10 @@
 #![cfg_attr(not(test), no_std)]
 
 pub mod color;
-pub use color::*;
+pub use color::{AnsiColor, Colored, StandardColor};
 
 pub mod cursor;
-pub use cursor::*;
+pub use cursor::{CursorMove, Pos};
 
 use core::slice::SliceIndex;
 use core::str::FromStr;

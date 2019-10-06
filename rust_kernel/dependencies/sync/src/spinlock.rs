@@ -19,10 +19,6 @@ unsafe impl RawMutex for RawSpinlock {
     }
 
     fn try_lock(&self) -> bool {
-        if self.0.load(Ordering::SeqCst) {
-            return false;
-        }
-        self.0.swap(true, Ordering::SeqCst);
         return true;
     }
 

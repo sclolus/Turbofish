@@ -7,15 +7,14 @@ extern crate alloc;
 #[macro_use]
 mod macros;
 
-//pub mod ansi_escape_code;
-
 pub mod early_terminal;
-pub use early_terminal::EARLY_TERMINAL;
+pub use early_terminal::EarlyTerminal;
 
 pub mod cursor;
-pub use cursor::{Cursor, Pos};
+pub use cursor::Cursor;
 
-pub mod monitor;
+use ansi_escape_code::{color::Colored, Pos};
+use screen::{bmp_loader, bmp_loader::BmpImage, AdvancedGraphic, Drawer, ScreenMonad};
 
 mod tty;
 pub use tty::{BufferedTty, Scroll, Tty, WriteMode};
@@ -30,24 +29,33 @@ pub mod log;
 pub mod uart_16550;
 pub use uart_16550::UART_16550;
 
-use self::monitor::SCREEN_MONAD;
-use self::monitor::{bmp_loader, bmp_loader::BmpImage};
-
-use crate::monitor::{AdvancedGraphic, Drawer};
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
-use keyboard::keysymb::KeySymb;
+use keyboard::{KeyCode, KeySymb, ScanCode};
+
+use lazy_static::lazy_static;
+use sync::Spinlock;
+
+use libc_binding::winsize;
+
+lazy_static! {
+    /// Output monad
+    pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
+}
+
+/// Main EarlyTerminal Globale
+pub static mut EARLY_TERMINAL: EarlyTerminal = EarlyTerminal::new();
+
+/// No initialized at the beginning
+pub static mut TERMINAL: Option<Terminal> = None;
 
 /// Main structure of the terminal center
 #[derive(Debug, Clone)]
 pub struct Terminal {
     ttys: BTreeMap<usize, Box<LineDiscipline>>,
 }
-
-/// No initialized at the beginning
-pub static mut TERMINAL: Option<Terminal> = None;
 
 const MAX_SCREEN_BUFFER: usize = 10;
 
@@ -76,8 +84,28 @@ impl Terminal {
 
     /// Add a tty of index n
     fn add_tty(&mut self, index: usize) -> usize {
+        let screen_monad = SCREEN_MONAD.lock();
+
+        let v = if screen_monad.is_graphic() {
+            let (height, width, bpp) = screen_monad.query_graphic_infos().unwrap();
+            let size = width * height * bpp / 8;
+            // TODO: check fallible()
+            let mut v = vec![0; size];
+            bmp_loader::draw_image(
+                unsafe { &_univers_bmp_start },
+                v.as_mut_ptr(),
+                width,
+                height,
+                bpp,
+            )
+            .unwrap();
+            Some(v)
+        } else {
+            None
+        };
+
         // TODO: Must protect from MAX_TTY_IDX, already added tty and memory
-        let size = SCREEN_MONAD.lock().query_window_size();
+        let size = screen_monad.query_window_size();
         self.ttys.insert(
             index,
             Box::new(LineDiscipline::new(BufferedTty::new(Tty::new(
@@ -85,7 +113,7 @@ impl Terminal {
                 size.line,
                 size.column,
                 MAX_SCREEN_BUFFER,
-                None,
+                v,
             )))),
         );
         index
@@ -155,19 +183,51 @@ impl Terminal {
     }
 
     /// Handle the ketPressed for special TTY changes. Report a foreground TTY modification
-    pub fn handle_key_pressed(&mut self, key_pressed: KeySymb) -> Option<usize> {
+    pub fn handle_key_pressed(
+        &mut self,
+        scancode: ScanCode,
+        _keycode: Option<KeyCode>,
+        keysymb: Option<KeySymb>,
+    ) -> Option<usize> {
         use TtyControlOutput::*;
 
-        match self.handle_tty_control(key_pressed) {
-            SwitchSuccess(tty_index) => Some(tty_index),
-            SwitchError => None,
-            NoControlInput => {
-                self.get_foreground_tty()
-                    .handle_key_pressed(key_pressed)
-                    .expect("write input failed");
-                None
+        if let Some(keysymb) = keysymb {
+            match self.handle_tty_control(keysymb) {
+                SwitchSuccess(tty_index) => Some(tty_index),
+                SwitchError => None,
+                NoControlInput => {
+                    let tty = self.get_foreground_tty();
+
+                    if tty.is_raw_mode() {
+                        tty.handle_scancode(scancode).expect("write input failed");
+                    } else {
+                        tty.handle_key_pressed(keysymb).expect("write input failed");
+                    }
+                    None
+                }
             }
+        } else {
+            self.get_foreground_tty()
+                .handle_scancode(scancode)
+                .expect("write input failed");
+            None
         }
+    }
+
+    pub fn get_window_capabilities(&self) -> winsize {
+        // we handle only one size of screen in all tty for the moment
+        let screen_monad = SCREEN_MONAD.lock();
+        let size = screen_monad.query_window_size();
+
+        let mut win: winsize = unsafe { core::mem::zeroed() };
+        win.ws_row = size.line as u16;
+        win.ws_col = size.column as u16;
+        if let Ok((height, width, bpp)) = screen_monad.query_graphic_infos() {
+            win.ws_xpixel = width as u16;
+            win.ws_ypixel = height as u16;
+            win.bpp = bpp as u16;
+        }
+        win
     }
 
     /// Provide a tiny interface to control some features on the tty
@@ -201,12 +261,13 @@ impl Terminal {
 }
 
 extern "C" {
-    static _wanggle_bmp_start: BmpImage;
     static _univers_bmp_start: BmpImage;
 }
 
 /// Extern function for initialisation
 pub fn init_terminal() {
+    SCREEN_MONAD.lock().switch_graphic_mode(0x118).unwrap();
+
     let mut term = Terminal::new();
     term.get_tty(SYSTEM_LOG_TTY_IDX).tty.cursor.visible = false;
 
@@ -239,5 +300,15 @@ pub fn init_terminal() {
         TERMINAL = Some(term);
     }
     self::log::init().unwrap();
+
+    let size = SCREEN_MONAD.lock().query_window_size();
+    printfixed!(
+        Pos {
+            line: 1,
+            column: size.column - 17
+        },
+        "{}",
+        "Turbo Fish v10.0".green()
+    );
     ::log::info!("Terminal has been initialized");
 }

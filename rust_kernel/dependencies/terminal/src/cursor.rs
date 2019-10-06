@@ -1,13 +1,6 @@
 //! Simple and Basic implementation of cursor
 
-/// Usable to select write position for characters
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
-pub struct Pos {
-    /// Y coordinate
-    pub line: usize,
-    /// X coordinate
-    pub column: usize,
-}
+use ansi_escape_code::Pos;
 
 /// Standarrd Cursor structure
 #[derive(Debug, Copy, Clone, Default)]

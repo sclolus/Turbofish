@@ -41,6 +41,7 @@ interrupts = { path = "dependencies/interrupts" }
 time = { path = "dependencies/time" }
 ansi_escape_code = { path = "dependencies/ansi_escape_code" }
 rtc_toolkit = { path = "dependencies/rtc_toolkit" }
+screen = { path = "dependencies/screen" }
 
 [dependencies.itertools]
 version = "0.8.0"
@@ -99,5 +100,6 @@ members = [
 "dependencies/time",
 "dependencies/ansi_escape_code",
 "dependencies/rtc_toolkit",
+"dependencies/screen",
 ]
 exclude = ["autobuild/nm_map_gen_rust", "integration_tester"]
