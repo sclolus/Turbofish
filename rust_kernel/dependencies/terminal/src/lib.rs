@@ -84,8 +84,28 @@ impl Terminal {
 
     /// Add a tty of index n
     fn add_tty(&mut self, index: usize) -> usize {
+        let screen_monad = SCREEN_MONAD.lock();
+
+        let v = if screen_monad.is_graphic() {
+            let (height, width, bpp) = screen_monad.query_graphic_infos().unwrap();
+            let size = width * height * bpp / 8;
+            // TODO: check fallible()
+            let mut v = vec![0; size];
+            bmp_loader::draw_image(
+                unsafe { &_univers_bmp_start },
+                v.as_mut_ptr(),
+                width,
+                height,
+                bpp,
+            )
+            .unwrap();
+            Some(v)
+        } else {
+            None
+        };
+
         // TODO: Must protect from MAX_TTY_IDX, already added tty and memory
-        let size = SCREEN_MONAD.lock().query_window_size();
+        let size = screen_monad.query_window_size();
         self.ttys.insert(
             index,
             Box::new(LineDiscipline::new(BufferedTty::new(Tty::new(
@@ -93,7 +113,7 @@ impl Terminal {
                 size.line,
                 size.column,
                 MAX_SCREEN_BUFFER,
-                None,
+                v,
             )))),
         );
         index
@@ -208,10 +228,6 @@ impl Terminal {
             win.bpp = bpp as u16;
         }
         win
-    }
-
-    pub fn refresh_screen(&mut self) {
-        SCREEN_MONAD.lock().refresh_screen();
     }
 
     /// Provide a tiny interface to control some features on the tty

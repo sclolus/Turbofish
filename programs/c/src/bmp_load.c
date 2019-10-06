@@ -132,11 +132,17 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 	return (1);
 }
 
-int main(int ac, char ** av) {
+int main(int ac, char ** av)
+{
 	if (ac != 2) {
 		printf("usage: bmploader image_file");
 		return 1;
 	}
+	struct local_buffer local_buffer = {0};
+
+	ioctl(0, GET_FRAME_BUFFER_PTR, (void *)&local_buffer);
+	printf("local_buffer: %p of len %zu\n", local_buffer.buf, local_buffer.len);
+
 	/* 
 	 * int fd = open(av[1], O_RDONLY);
 	 * if (fd == -1) {
@@ -175,17 +181,8 @@ int main(int ac, char ** av) {
 		exit(1);
 	}
 
-	int fb = open("/dev/fb", O_WRONLY);
-	if (fb == -1) {
-		perror("open");
-		exit(1);
-	}
-	int written = write(fb, data, width * height * 3);
-	if (written == -1) {
-		perror("write");
-		exit(1);
-	}
-	ioctl(fb, REFRESH_SCREEN);
-	free(data);
+	memcpy(local_buffer.buf, data, local_buffer.len);
+
+	ioctl(0, REFRESH_SCREEN, &local_buffer);
 	return 0;
 }

@@ -50,6 +50,7 @@ system_root:
 	sudo cp files/pulp_fiction.txt $(SYSTEM_ROOT)/home/$(STANDARD_USER)
 	sudo cp common/medias/univers.bmp $(SYSTEM_ROOT)/home
 	sudo cp common/medias/wanggle.bmp $(SYSTEM_ROOT)/home
+	sudo cp common/medias/asterix.bmp $(SYSTEM_ROOT)/home
 	sudo chown -R 1000:1000 $(SYSTEM_ROOT)/home/$(STANDARD_USER)
 	sudo mkdir -pv $(SYSTEM_ROOT)/turbofish
 	sudo mkdir -pv $(SYSTEM_ROOT)/turbofish/mod

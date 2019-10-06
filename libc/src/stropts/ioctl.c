@@ -40,7 +40,13 @@ int ioctl(int fildes, int request, ... /* arg */)
 			arg = va_arg(ap, struct winsize*);
 			break;
 		case RAW_SCANCODE_MODE:
-			arg = va_arg(ap, int);
+			arg = (void *)va_arg(ap, int);
+			break;
+		case GET_FRAME_BUFFER_PTR:
+			arg = va_arg(ap, struct local_buffer *);
+			break;
+		case REFRESH_SCREEN:
+			arg = va_arg(ap, struct local_buffer *);
 			break;
 	}
 	int ret = _user_syscall(IOCTL, 3, fildes, request, arg);
