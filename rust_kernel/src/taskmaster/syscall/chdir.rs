@@ -2,7 +2,7 @@ use super::SysResult;
 
 use super::scheduler::SCHEDULER;
 use super::vfs::{Path, VFS};
-use libc_binding::c_char;
+use libc_binding::{c_char, Errno};
 
 use core::convert::TryFrom;
 
@@ -31,6 +31,11 @@ pub fn sys_chdir(buf: *const c_char) -> SysResult<u32> {
 
         let mut vfs = VFS.lock();
         let direntry_id = vfs.pathname_resolution(cwd, creds, &path)?;
+        let filetype = vfs.file_type(cwd, creds, &path)?;
+
+        if !filetype.is_directory() {
+            return Err(Errno::ENOTDIR);
+        }
 
         let posix_path = vfs.dentry_path(direntry_id)?;
         assert!(posix_path.is_absolute());
