@@ -68,7 +68,7 @@ static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int heigh
 	}
 }
 
-#define BUFFER_SIZE  (4096 * 16)
+#define BUFFER_SIZE (4096 * 16)
 
 uint8_t *read_to_end(int fd) {
 	uint8_t *tmp_buffer = malloc(BUFFER_SIZE);
@@ -76,10 +76,7 @@ uint8_t *read_to_end(int fd) {
 	size_t	size = 0;
 	int len_readen;
 
-	printf("size: %lu\n", size);
 	while ((len_readen = read(fd, tmp_buffer, BUFFER_SIZE)) > 0) {
-		// printf("size: %lu\n", size);
-		// printf("len readen: %d\n", len_readen);
 		buffer = realloc(buffer, size + len_readen);
 		if (buffer == NULL) {
 			printf("no memory to allocate buffer");
@@ -100,6 +97,24 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 {
 	t_bitmap *s;
 
+	int fd = open(filename, O_RDONLY);
+	if (fd == -1) {
+		perror("open");
+		exit(1);
+	}
+	s = (t_bitmap *)read_to_end(fd);
+
+	paste_fileheader((t_bitmap *)s, filename);
+	*width = s->bitmapinfoheader.width;
+	*height = s->bitmapinfoheader.height;
+	if (!(*data = (int *)calloc((*width) * (*height), sizeof(int))))
+		exit(EXIT_FAILURE);
+	fill_image((uint8_t *)*data, (uint8_t *)
+			((char*)s + s->fileheader.fileoffset_to_pixelarray),
+				*width, *height);
+	free(s);
+	return 0;
+
 	/* 
 	 * if (!(infos = (struct stat *)malloc(sizeof(struct stat))))
 	 * 	exit(EXIT_FAILURE);
@@ -112,30 +127,12 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 	 * 	exit(EXIT_FAILURE);
 	 * fread(s, infos->st_size, 1, file);
 	 */
-	int fd = open(filename, O_RDONLY);
-	if (fd == -1) {
-		perror("open");
-		exit(1);
-	}
-	s = (t_bitmap *)read_to_end(fd);
-	paste_fileheader(s, filename);
-
-	paste_fileheader((t_bitmap *)s, filename);
-	*width = s->bitmapinfoheader.width;
-	*height = s->bitmapinfoheader.height;
-	if (!(*data = (int *)calloc((*width) * (*height), sizeof(int))))
-		exit(EXIT_FAILURE);
-	fill_image((uint8_t *)*data, (uint8_t *)
-			((char*)s + s->fileheader.fileoffset_to_pixelarray),
-				*width, *height);
-	free(s);
-	return (1);
 }
 
-int main(int ac, char ** av)
+int main(int ac, char **av)
 {
 	if (ac != 2) {
-		printf("usage: bmploader image_file");
+		dprintf(STDERR_FILENO, "usage: bmploader image_file\n");
 		return 1;
 	}
 	struct local_buffer local_buffer = {0};
@@ -143,35 +140,6 @@ int main(int ac, char ** av)
 	ioctl(0, GET_FRAME_BUFFER_PTR, (void *)&local_buffer);
 	printf("local_buffer: %p of len %zu\n", local_buffer.buf, local_buffer.len);
 
-	/* 
-	 * int fd = open(av[1], O_RDONLY);
-	 * if (fd == -1) {
-	 * 	perror("open");
-	 * 	exit(1);
-	 * }
-	 *
-	 * uint8_t* data = read_to_end(fd);
-	 * struct winsize win;
-	 * memset(&win, 0, sizeof(struct winsize));
-	 * int ret = ioctl(0, TIOCGWINSZ, &win);
-	 * if (ret == -1) {
-	 * 	perror("ioctl");
-	 * 	exit(1);
-	 * }
-	 *
-	 * size_t width = win.ws_xpixel;
-	 * size_t height =  win.ws_ypixel;
-	 *
-	 *
-	 * size_t bpp = win.bpp;
-	 * uint8_t *buffer = malloc(width * height * bpp / 8);
-	 * if (buffer == NULL) {
-	 * 	printf("no memory to allocate buffer");
-	 * 	exit(1);
-	 * }
-	 */
-	
-	/* draw_image((struct BmpImage *)data, buffer, width,height, bpp); */
 	void *data = NULL;
 	int width = 0;
 	int height = 0;
@@ -186,3 +154,32 @@ int main(int ac, char ** av)
 	ioctl(0, REFRESH_SCREEN, &local_buffer);
 	return 0;
 }
+
+/* 
+ * int fd = open(av[1], O_RDONLY);
+ * if (fd == -1) {
+ * 	perror("open");
+ * 	exit(1);
+ * }
+ *
+ * uint8_t* data = read_to_end(fd);
+ * struct winsize win;
+ * memset(&win, 0, sizeof(struct winsize));
+ * int ret = ioctl(0, TIOCGWINSZ, &win);
+ * if (ret == -1) {
+ * 	perror("ioctl");
+ * 	exit(1);
+ * }
+ *
+ * size_t width = win.ws_xpixel;
+ * size_t height =  win.ws_ypixel;
+ *
+ *
+ * size_t bpp = win.bpp;
+ * uint8_t *buffer = malloc(width * height * bpp / 8);
+ * if (buffer == NULL) {
+ * 	printf("no memory to allocate buffer");
+ * 	exit(1);
+ * }
+ * draw_image((struct BmpImage *)data, buffer, width,height, bpp);
+ */

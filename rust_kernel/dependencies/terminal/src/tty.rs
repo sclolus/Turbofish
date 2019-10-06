@@ -478,14 +478,12 @@ impl BufferedTty {
     }
 
     pub fn refresh_screen(&mut self, buf: &[u8]) {
-        if let Ok((height, width, bpp)) = SCREEN_MONAD.lock().query_graphic_infos() {
+        let graphic_infos_result = SCREEN_MONAD.lock().query_graphic_infos();
+        if let Ok((height, width, bpp)) = graphic_infos_result {
             let screen_size = height * width * bpp / 8;
             if screen_size == buf.len() {
                 if let Some(v) = &mut self.tty.background {
                     v.as_mut_slice().copy_from_slice(buf);
-                    unsafe {
-                        SCREEN_MONAD.force_unlock();
-                    }
                     self.tty.refresh();
                 } else {
                     log::warn!("No graphic vector allocated");
