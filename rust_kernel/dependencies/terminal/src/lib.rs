@@ -261,7 +261,6 @@ impl Terminal {
 }
 
 extern "C" {
-    static _wanggle_bmp_start: BmpImage;
     static _univers_bmp_start: BmpImage;
 }
 
