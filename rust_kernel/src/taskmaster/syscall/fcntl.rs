@@ -2,7 +2,7 @@ use super::scheduler::SCHEDULER;
 use super::Fd;
 use super::SysResult;
 use core::mem::transmute;
-use libc_binding::FcntlCmd;
+use libc_binding::{Errno, FcntlCmd};
 
 /// The fcntl() function shall perform the operations described below
 /// on open files. The fildes argument is a file descriptor.
@@ -233,7 +233,7 @@ pub fn sys_fcntl(fildes: Fd, cmd: u32, arg: Fd) -> SysResult<u32> {
             //     closed upon successful execution of one of the exec
             //     functions.
             FcntlCmd::F_SETFD => Ok(0),
-            _ => unimplemented!(),
+            _ => Err(Errno::EINVAL),
         }
     })
 }
