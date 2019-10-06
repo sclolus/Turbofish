@@ -198,13 +198,11 @@ impl VirtualFileSystem {
 
         let current_entry = self.dcache.get_entry(&direntry_id)?;
         let inode_id = current_entry.inode_id;
-        let fs_cloned = self
-            .get_filesystem(inode_id)
-            .expect("no filesystem")
-            .clone();
+
+        let fs_cloned = self.get_filesystem(inode_id).ok_or(Errno::EINVAL)?.clone();
         let iter = self
             .get_filesystem(inode_id)
-            .expect("no filesystem")
+            .ok_or(Errno::EINVAL)?
             .lock()
             .lookup_directory(inode_id.inode_number as u32)?;
 
@@ -654,10 +652,13 @@ impl VirtualFileSystem {
             .expect("disk driver open failed");
 
         let ext2_disk = DiskWrapper(file_operation);
+        VFS.force_unlock();
+
         let ext2 = Ext2Filesystem::new(Box::try_new(ext2_disk)?).map_err(|_| Errno::EINVAL)?;
         let fs_id: FileSystemId = self.gen();
 
         // we handle only ext2 fs right now
+        // HARDFIX: `mount kernel.elf .` should be solved in a better way.
         let filesystem = Ext2fs::new(ext2, fs_id);
         let mount_dir_id = self.pathname_resolution(cwd, creds, &target)?;
         let target = self.resolve_path(cwd, creds, &target)?;
