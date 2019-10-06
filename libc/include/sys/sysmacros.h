@@ -1,7 +1,7 @@
 #ifndef __SYS_SYSMACROS_H__
 # define __SYS_SYSMACROS_H__
 
-# warning all of those macros are probably dummy.
+/* # warning all of those macros are probably dummy. */
 
 #define major(dev) (dev >> 8)
 #define minor(dev) (dev & 0xFF)
