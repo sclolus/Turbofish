@@ -59,7 +59,7 @@
  * and your vendor doesn't supply mktime(), you'll have to edit this variable
  * by hand.  Sorry about that.
  */
-
+#include <stdio.h>
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif

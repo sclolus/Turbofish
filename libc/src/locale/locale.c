@@ -6,8 +6,8 @@
 #include <ltrace.h>
 #include <custom.h>
 
-const static char   *C_LOCALE="C";
-const static char   *POSIX_LOCALE="POSIX";
+static const char   *C_LOCALE="C";
+static const char   *POSIX_LOCALE="POSIX";
 
 char *setlocale(int category, const char *locale)
 {

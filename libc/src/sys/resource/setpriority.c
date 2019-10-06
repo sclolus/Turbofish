@@ -3,8 +3,6 @@
 #include <custom.h>
 #include <ltrace.h>
 
-#warning DUMMY IMPLEMENTATION
-
 int setpriority(int which, id_t who, int value)
 {
 	TRACE
