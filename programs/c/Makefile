@@ -55,7 +55,6 @@ SRC_C += Clone \
 		strftime \
 		mount \
 		umount \
-		bmploader \
 		drawer \
 		bmp_load \
 

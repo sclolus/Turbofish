@@ -17,14 +17,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
-/* #include "libft.h" */
+#include <stropts.h>
+
 #include "internal_bmp.h"
 
-static void		paste_fileheader(t_bitmap *s, char *filename)
+static void paste_fileheader(t_bitmap *s, char *filename)
 {
 	printf("{green}Chargement de l'image %s:{eoc}\n", filename);
-	printf("%s %c%c\n", "signature", s->fileheader.signature[0],
-												s->fileheader.signature[1]);
+	printf("%s %c%c\n", "signature", s->fileheader.signature[0], s->fileheader.signature[1]);
 	printf("%s: %i\n", "filesize", s->fileheader.filesize);
 	printf("%s: %i\n", "offset", s->fileheader.fileoffset_to_pixelarray);
 	printf("%s: %i\n", "header_size", s->bitmapinfoheader.dibheadersize);
@@ -36,16 +36,14 @@ static void		paste_fileheader(t_bitmap *s, char *filename)
 	printf("%s: %i\n", "imagesize", s->bitmapinfoheader.imagesize);
 	printf("%s: %i\n", "xpermeter", s->bitmapinfoheader.ypixelpermeter);
 	printf("%s: %i\n", "ypermeter", s->bitmapinfoheader.xpixelpermeter);
-	printf("%s: %i\n", "numcolorpal",
-										s->bitmapinfoheader.numcolorspallette);
+	printf("%s: %i\n", "numcolorpal", s->bitmapinfoheader.numcolorspallette);
 }
 
-static void		fill_image(uint8_t *data, uint8_t *pixelbuffer, int width,
-																int height)
+static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int height)
 {
-	size_t	i;
-	int		p;
-	int		c;
+	size_t i;
+	int p;
+	int c;
 	uint8_t *ptr;
 
 	p = height - 1;
@@ -54,7 +52,8 @@ static void		fill_image(uint8_t *data, uint8_t *pixelbuffer, int width,
 	i = 0;
 	while (p >= 0)
 	{
-		/* 
+		/*
+		 * This is applicable only if a 32 bits/pixels screen on output
 		 * if ((i % 4) == 3)
 		 * 	i++;
 		 */
@@ -69,7 +68,7 @@ static void		fill_image(uint8_t *data, uint8_t *pixelbuffer, int width,
 	}
 }
 
-#define BUFFER_SIZE  (4096 * 10)
+#define BUFFER_SIZE  (4096 * 16)
 
 uint8_t *read_to_end(int fd) {
 	uint8_t *tmp_buffer = malloc(BUFFER_SIZE);
@@ -79,8 +78,8 @@ uint8_t *read_to_end(int fd) {
 
 	printf("size: %lu\n", size);
 	while ((len_readen = read(fd, tmp_buffer, BUFFER_SIZE)) > 0) {
-		printf("size: %lu\n", size);
-		printf("len readen: %d\n", len_readen);
+		// printf("size: %lu\n", size);
+		// printf("len readen: %d\n", len_readen);
 		buffer = realloc(buffer, size + len_readen);
 		if (buffer == NULL) {
 			printf("no memory to allocate buffer");
@@ -93,12 +92,13 @@ uint8_t *read_to_end(int fd) {
 		perror("read");
 		exit(1);
 	}
+	free(tmp_buffer);
 	return buffer;
 }
 
 int				bmp_load(char *filename, int *width, int *height, int **data)
 {
-	t_bitmap	*s;
+	t_bitmap *s;
 
 	/* 
 	 * if (!(infos = (struct stat *)malloc(sizeof(struct stat))))
@@ -143,8 +143,7 @@ int main(int ac, char ** av) {
 	 * 	perror("open");
 	 * 	exit(1);
 	 * }
-	 /* *\/ */
-	/* 
+	 *
 	 * uint8_t* data = read_to_end(fd);
 	 * struct winsize win;
 	 * memset(&win, 0, sizeof(struct winsize));
@@ -153,12 +152,11 @@ int main(int ac, char ** av) {
 	 * 	perror("ioctl");
 	 * 	exit(1);
 	 * }
-	 */
-	/* 
+	 *
 	 * size_t width = win.ws_xpixel;
 	 * size_t height =  win.ws_ypixel;
-	 */
-	/* 
+	 *
+	 *
 	 * size_t bpp = win.bpp;
 	 * uint8_t *buffer = malloc(width * height * bpp / 8);
 	 * if (buffer == NULL) {
@@ -168,11 +166,11 @@ int main(int ac, char ** av) {
 	 */
 	
 	/* draw_image((struct BmpImage *)data, buffer, width,height, bpp); */
-	void	*data = NULL;
-	int		width = 0;
-	int		height = 0;
+	void *data = NULL;
+	int width = 0;
+	int height = 0;
 
-	if (bmp_load(av[1], &width, &height, &data) == -1) {
+	if (bmp_load(av[1], &width, &height, (int **)&data) == -1) {
 		printf("bmp load failed\n");
 		exit(1);
 	}
@@ -187,4 +185,7 @@ int main(int ac, char ** av) {
 		perror("write");
 		exit(1);
 	}
+	ioctl(fb, REFRESH_SCREEN);
+	free(data);
+	return 0;
 }

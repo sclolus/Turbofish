@@ -878,6 +878,7 @@ impl TryFrom<u32> for ShutDownOption {
 pub enum IoctlCmd {
     TIOCGWINSZ = TIOCGWINSZ,
     RAW_SCANCODE_MODE = RAW_SCANCODE_MODE,
+    REFRESH_SCREEN = REFRESH_SCREEN,
 }
 
 impl TryFrom<u32> for IoctlCmd {

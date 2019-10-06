@@ -2,6 +2,7 @@
 
 use super::SysResult;
 
+use super::scheduler::Scheduler;
 use super::vfs;
 use super::vfs::Path;
 use super::vfs::{InodeId, VFS};
@@ -10,8 +11,6 @@ use super::IpcResult;
 
 pub mod ipc;
 pub use ipc::{socket::Whom, ConnectedSocket, FifoDriver, FifoFileOperation, Pipe, SocketDgram};
-
-// pub use disk::DiskDriver;
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
@@ -91,7 +90,7 @@ pub trait FileOperation: core::fmt::Debug + Send {
         Err(Errno::ENOSYS)
     }
 
-    fn ioctl(&mut self, _cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
+    fn ioctl(&mut self, _scheduler: &Scheduler, _cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
         Err(Errno::ENOSYS)
     }
 
@@ -198,7 +197,6 @@ pub trait Driver: core::fmt::Debug + Send {
     fn shutdown(&mut self, _option: ShutDownOption) -> SysResult<()> {
         Err(Errno::ENOTSOCK)
     }
-    /*  */
 }
 
 #[derive(Debug)]

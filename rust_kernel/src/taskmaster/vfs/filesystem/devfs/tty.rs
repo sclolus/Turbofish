@@ -2,14 +2,16 @@
 
 use super::InodeId;
 use super::SysResult;
-use super::{get_file_op_uid, Driver, FileOperation, IpcResult};
+use super::{Driver, FileOperation, IpcResult};
 
 use alloc::sync::Arc;
 use fallible_collections::FallibleArc;
-use libc_binding::{termios, Errno, IoctlCmd, OpenFlags, Pid};
+use libc_binding::{termios, winsize, Errno, IoctlCmd, OpenFlags, Pid};
 use sync::dead_mutex::DeadMutex;
+use terminal::{ReadResult, TERMINAL};
 
-use crate::terminal::{ReadResult, TERMINAL};
+use crate::taskmaster::drivers::get_file_op_uid;
+use crate::taskmaster::scheduler::Scheduler;
 
 /// This structure represents a FileOperation of type TtyFileOperation
 #[derive(Debug, Default)]
@@ -132,16 +134,33 @@ impl FileOperation for TtyFileOperation {
         return Ok(1);
     }
 
-    fn ioctl(&mut self, cmd: IoctlCmd, _arg: u32) -> SysResult<u32> {
+    fn ioctl(&mut self, scheduler: &Scheduler, cmd: IoctlCmd, arg: u32) -> SysResult<u32> {
+        let terminal = unsafe { &mut TERMINAL.as_mut().unwrap() };
         match cmd {
-            IoctlCmd::RAW_SCANCODE_MODE => unsafe {
-                TERMINAL
-                    .as_mut()
-                    .unwrap()
-                    .get_line_discipline(self.controlling_terminal)
-                    .set_raw_mode(true);
+            IoctlCmd::TIOCGWINSZ => {
+                let win = {
+                    let v = scheduler
+                        .current_thread()
+                        .unwrap_process()
+                        .get_virtual_allocator();
+
+                    v.make_checked_ref_mut(arg as *mut winsize)
+                }?;
+                *win = terminal.get_window_capabilities();
                 Ok(0)
-            },
+            }
+            IoctlCmd::RAW_SCANCODE_MODE => {
+                let active: bool = if arg > 0 { true } else { false };
+                terminal
+                    .get_line_discipline(self.controlling_terminal)
+                    .set_raw_mode(active);
+                Ok(0)
+            }
+            IoctlCmd::REFRESH_SCREEN => {
+                terminal.refresh_screen();
+                Ok(0)
+            }
+            #[allow(unreachable_patterns)]
             _ => Err(Errno::EINVAL),
         }
     }

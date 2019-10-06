@@ -38,6 +38,8 @@ use keyboard::{KeyCode, KeySymb, ScanCode};
 use lazy_static::lazy_static;
 use sync::Spinlock;
 
+use libc_binding::winsize;
+
 lazy_static! {
     /// Output monad
     pub static ref SCREEN_MONAD: Spinlock<ScreenMonad> = Spinlock::new(ScreenMonad::new());
@@ -190,6 +192,26 @@ impl Terminal {
                 .expect("write input failed");
             None
         }
+    }
+
+    pub fn get_window_capabilities(&self) -> winsize {
+        // we handle only one size of screen in all tty for the moment
+        let screen_monad = SCREEN_MONAD.lock();
+        let size = screen_monad.query_window_size();
+
+        let mut win: winsize = unsafe { core::mem::zeroed() };
+        win.ws_row = size.line as u16;
+        win.ws_col = size.column as u16;
+        if let Ok((height, width, bpp)) = screen_monad.query_graphic_infos() {
+            win.ws_xpixel = width as u16;
+            win.ws_ypixel = height as u16;
+            win.bpp = bpp as u16;
+        }
+        win
+    }
+
+    pub fn refresh_screen(&mut self) {
+        SCREEN_MONAD.lock().refresh_screen();
     }
 
     /// Provide a tiny interface to control some features on the tty

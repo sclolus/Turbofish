@@ -23,7 +23,7 @@ void set_raw_mode(int fd) {
 	if( ret == -1) {
 		perror("tcsetattr failed");
 	}
-	ioctl(fd, RAW_SCANCODE_MODE);
+	ioctl(fd, RAW_SCANCODE_MODE, 1);
 }
 
 void set_cooked_mode(void) {
