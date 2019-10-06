@@ -4,7 +4,7 @@ use arrayvec::{ArrayVec, CapacityError};
 use core::cmp::min;
 use core::convert::TryFrom;
 use core::fmt::Write;
-use keyboard::{KeyCode, KeySymb, ScanCode};
+use keyboard::{KeySymb, ScanCode};
 use libc_binding::{termios, Pid, Signum, ECHO, ICANON, ISIG, TOSTOP};
 use libc_binding::{VEOF, VERASE, VINTR, VKILL, VQUIT, VSUSP};
 use messaging::{MessageTo, ProcessGroupMessage};

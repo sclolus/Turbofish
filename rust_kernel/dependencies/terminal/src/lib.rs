@@ -186,7 +186,7 @@ impl Terminal {
     pub fn handle_key_pressed(
         &mut self,
         scancode: ScanCode,
-        keycode: Option<KeyCode>,
+        _keycode: Option<KeyCode>,
         keysymb: Option<KeySymb>,
     ) -> Option<usize> {
         use TtyControlOutput::*;

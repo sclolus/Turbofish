@@ -1,6 +1,6 @@
 use super::filesystem::devfs::{
     BiosInt13hInstance, DiskDriver, DiskWrapper, FbDevice, IdeAtaInstance, NullDevice,
-    RandomDevice, TtyDevice, ZeroDevice,
+    RandomDevice, ZeroDevice,
 };
 use super::filesystem::{Devfs, Ext2fs, FileSystemSource, FileSystemType};
 use super::SmartMutex;
