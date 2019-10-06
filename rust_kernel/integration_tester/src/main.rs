@@ -150,7 +150,7 @@ fn main() {
             let mut child = {
                 let mut qemu_command = Command::new("qemu-system-x86_64");
                 qemu_command
-                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "256"])
+                    .args(&["--enable-kvm", "-cpu", "IvyBridge", "-m", "512"])
                     .args(&["-serial", &format!("file:{}", output_file)])
                     .args(&["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
                     .args(if matches.opt_present("g") {
