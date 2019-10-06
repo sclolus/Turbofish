@@ -654,8 +654,7 @@ impl VirtualFileSystem {
             .expect("disk driver open failed");
 
         let ext2_disk = DiskWrapper(file_operation);
-        let ext2 =
-            Ext2Filesystem::new(Box::try_new(ext2_disk)?).expect("ext2 filesystem new failed");
+        let ext2 = Ext2Filesystem::new(Box::try_new(ext2_disk)?).map_err(|_| Errno::EINVAL)?;
         let fs_id: FileSystemId = self.gen();
 
         // we handle only ext2 fs right now
