@@ -4,17 +4,17 @@
 
 section .text
 
-; float roundf(float)
+; float sinf(float x);
 ; The 8087 must be activated
-GLOBAL roundf
-roundf:
+GLOBAL sinf
+sinf:
     push ebp
     mov ebp, esp
 
     ; load float
     fld dword [ebp + 8]
-    ; Round to the nearest integer
-    frndint
+    ; sinus
+    fsin
 
     ; When a function returns a float. keep it on ST1
     pop ebp
