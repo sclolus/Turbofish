@@ -16,8 +16,11 @@
 # include <stdarg.h>
 # include <stdlib.h>
 # include <inttypes.h>
-# include <wchar.h>
 # include <unistd.h>
+
+#ifdef GNU
+# include <wchar.h>
+#endif
 
 # define FALSE					0
 # define TRUE					1

@@ -1,5 +1,4 @@
 NAME = libft.a
-CC = gcc
 
 LIBDIR	= ./
 SRCDIR	= srcs
@@ -7,10 +6,22 @@ INCDIR	= includes
 OBJDIR	= objs
 HEADER	= libft.h
 
+ifeq ($(GNU),yes)
+CC = gcc
+AR = ar
+RANLIB = ranlib
 ifeq ($(DEBUG),yes)
-	CFLAGS = -Wall -Werror -Wextra -std=c99 -g -O0 -fsanitize=address -I./$(INCDIR)
+	CFLAGS = -D GNU -Wall -Werror -Wextra -std=c99 -g -O0 -fsanitize=address -I./$(INCDIR)
 else
-	CFLAGS = -Wall -Werror -Wextra -std=c99 -I./$(INCDIR)
+	CFLAGS = -D GNU -Wall -Werror -Wextra -std=c99 -I./$(INCDIR)
+endif
+else
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
+CC = i686-turbofish-gcc
+AR = i686-turbofish-ar
+RANLIB = i686-turbofish-ranlib
+CFLAGS = -Wall -Wextra -I./$(INCDIR)
 endif
 
 SRC_USUALS	= ft_memset ft_bzero ft_memcpy ft_memccpy ft_memmove ft_memchr ft_memcmp \
@@ -50,8 +61,8 @@ OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(TMP)))
 all: $(NAME)
 
 $(NAME): $(OBJ) $(INCDIR)/$(HEADER)
-	ar rc $(NAME) $(OBJ)
-	ranlib $(NAME)
+	$(AR) rc $(NAME) $(OBJ)
+	$(RANLIB) $(NAME)
 
 $(OBJDIR)/%.o: $(SRCDIR)/$(USUALS_DIR)/%.c $(INCDIR)/$(HEADER)
 	$(CC) -c $(CFLAGS) $(LIBFT_HEADER)-o $@ $<

@@ -14,10 +14,14 @@
 # define WOLF3D_H
 
 # include <math.h>
-# include "mlx.h"
+
 # include "libft.h"
 # include "graphic_types.h"
 # include "parse/internal_parse.h"
+
+#ifdef GNU
+# include "mlx.h"
+#endif
 
 # define DEBUG_KEYBOARD		FALSE
 

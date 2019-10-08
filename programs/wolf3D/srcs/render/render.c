@@ -10,7 +10,10 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#ifdef GNU
 #include <pthread.h>
+#endif
+
 #include <stdlib.h>
 #include "render.h"
 
@@ -44,6 +47,7 @@ void						init_scene(t_env *e)
 		exit(EXIT_FAILURE);
 }
 
+#ifdef GNU
 void						*thread_render(void *arg)
 {
 	t_env					*e;
@@ -93,6 +97,11 @@ void						render_scene(t_env *e)
 		pthread_join(thread[i], NULL);
 	render_sprites(e);
 }
+#else
+void						render_scene(t_env *e)
+{
+}
+#endif
 
 void						scene_to_win(t_env *env)
 {

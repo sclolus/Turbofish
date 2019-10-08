@@ -1,24 +1,31 @@
 NAME = wolf3d
-CC = gcc
 
 ### MAIN FLAGS ###
 
+ifeq ($(GNU),yes)
+CC = gcc
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 	_MLX = minilibx_linux
 	ifeq ($(DEBUG),yes)
-		CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fsanitize=address -I $(INCDIR) -I $(LIBFT_HEADER) -I./$(MINILIBX) -DLINUX
+		CFLAGS = -D GNU -Wall -Wextra -std=c99 -g -O0 -fsanitize=address -I $(INCDIR) -I $(LIBFT_HEADER) -I./$(MINILIBX) -DLINUX
 	else
-		CFLAGS = -Ofast -march=native -fomit-frame-pointer -Wall -Wextra -std=c99 -I $(INCDIR) -I $(LIBFT_HEADER) -I./$(MINILIBX) -DLINUX
+		CFLAGS = -D GNU -Ofast -march=native -fomit-frame-pointer -Wall -Wextra -std=c99 -I $(INCDIR) -I $(LIBFT_HEADER) -I./$(MINILIBX) -DLINUX
 	endif
 endif
 ifeq ($(UNAME_S),Darwin)
 	_MLX = minilibx_elcapitan
 	ifeq ($(DEBUG),yes)
-		CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fsanitize=address
+		CFLAGS = -D GNU -Wall -Wextra -std=c99 -g -O0 -fsanitize=address
 	else
-		CFLAGS = -Ofast -fomit-frame-pointer -Wall -Wextra -std=c99
+		CFLAGS = -D GNU -Ofast -fomit-frame-pointer -Wall -Wextra -std=c99
 	endif
+endif
+else
+# export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
+include $(TURBOFISH_ROOT)/boilerplates.mk
+CC = i686-turbofish-gcc
+CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I $(INCDIR) -I $(LIBFT_HEADER)
 endif
 
 ### SOURCES ###
@@ -30,7 +37,6 @@ SRC_PARSE = constructor load_map get_next_line get_player_location get_sprites g
 SRC_OVERLAY = draw_line draw minimap
 SRC_BMP = bmp_load bmp_save
 
-
 SRC_LIST = $(SRC_CORE) $(SRC_PARSE) $(SRC_BMP) $(SRC_OVERLAY) $(SRC_RENDER)
 VPATH = srcs/core srcs/parse srcs/bmp srcs/overlay srcs/render
 
@@ -41,7 +47,11 @@ HEADERS = wolf3d.h parse.h internal_parse.h bmp.h internal_bmp.h overlay.h inter
 ### LIBRAIRIES ###
 
 LIB_DIR = libs
+
+ifeq ($(GNU),yes)
 MLX = $(addprefix $(LIB_DIR)/, $(_MLX))
+endif
+
 _LIBFT = libft
 LIBFT = $(addprefix $(LIB_DIR)/, $(_LIBFT))
 
@@ -52,7 +62,7 @@ OBJ_DIR = objs
 TMP = $(basename $(notdir $(SRC)))
 OBJ = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(TMP)))
 
-
+ifeq ($(GNU),yes)
 IFLAGS = -Isrcs -I$(LIBFT)/includes -I$(MLX)
 ifeq ($(UNAME_S),Linux)
 	LDFLAGS = -L$(LIBFT) -lft -L $(MLX) -lmlx -L/usr/include/../lib -lXext -lX11 -lm -lbsd -lpthread
@@ -60,13 +70,19 @@ endif
 ifeq ($(UNAME_S),Darwin)
 	LDFLAGS = -L$(LIBFT) -lft -framework openGL -framework AppKit $(MLX)/libmlx.a
 endif
+else
+IFLAGS = -Isrcs -I$(LIBFT)/includes
+LDFLAGS = -L$(LIBFT) -lft
+endif
 
 .PHONY: all clean fclean re help
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
+ifeq ($(GNU),yes)
 	make -C $(MLX)/ all
+endif
 	make -C $(LIBFT)/ all DEBUG=$(DEBUG)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
 
@@ -74,7 +90,9 @@ $(OBJ_DIR)/%.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 clean:
+ifeq ($(GNU),yes)
 	make -C $(MLX)/ clean
+endif
 	make -C $(LIBFT)/ clean
 	rm -f $(OBJ)
 
@@ -97,3 +115,6 @@ help:
 	@echo " fclean  : Remove objects and programm."
 	@echo " help    : Display this."
 	@echo "--------------------------------------------------------------------------"
+
+exec:
+	./wolf3d maps/mapZ.map
