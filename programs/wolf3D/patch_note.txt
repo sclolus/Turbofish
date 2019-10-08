@@ -1,0 +1,28 @@
+Pour la version minilibx linux, dans le fichier mlx_int_param_event.c
+---------------------------------------------------------------------
+Correction du code de Release afin d'eviter l'autorepeat key press/key release
+
+int	mlx_int_param_KeyRelease(t_xvar *xvar, XEvent *ev, t_win_list *win)
+{
+	if (XEventsQueued(xvar->display, QueuedAfterReading))
+	{
+		XEvent nev;
+		XPeekEvent(xvar->display, &nev);
+
+		if (nev.type == KeyPress && nev.xkey.time == ev->xkey.time &&
+		nev.xkey.keycode == ev->xkey.keycode)
+		{
+			fprintf (stdout, "key #%ld was retriggered.\n",
+			(long) XLookupKeysym (&nev.xkey, 0));
+
+			// delete retriggered KeyPress event
+			XNextEvent (xvar->display, ev);
+			return (0);
+		}
+	}
+	win->hooks[KeyRelease].hook(XkbKeycodeToKeysym(xvar->display, ev->xkey.keycode, 0, 0),
+	win->hooks[KeyRelease].param);
+}
+
+ajout de mlx_do_sync(xvar);
+dans le fichier mlx_put_image_to_window
