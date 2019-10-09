@@ -4,17 +4,18 @@
 
 section .text
 
-; double round(double)
+; float roundf(float)
 ; The 8087 must be activated
-GLOBAL round
-round:
+GLOBAL roundf
+roundf:
     push ebp
     mov ebp, esp
 
-    ; load double
-    fld qword [ebp + 8]
+    ; load float
+    fld dword [ebp + 8]
     ; Round to the nearest integer
     frndint
 
+    ; When a function returns a float. keep it on ST1
     pop ebp
 ret

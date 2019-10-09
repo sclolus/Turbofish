@@ -4,17 +4,17 @@
 
 section .text
 
-; double round(double)
+; float sqrt(float x);
 ; The 8087 must be activated
-GLOBAL round
-round:
+GLOBAL sqrtf
+sqrtf:
     push ebp
     mov ebp, esp
 
-    ; load double
-    fld qword [ebp + 8]
-    ; Round to the nearest integer
-    frndint
+    ; load float
+    fld dword [ebp + 8]
+    ; square root
+    fsqrt
 
     pop ebp
 ret

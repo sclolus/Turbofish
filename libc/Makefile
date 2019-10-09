@@ -197,7 +197,9 @@ SRC_ASM += setjmp
 HEADERS += setjmp.h
 
 VPATH += src/math
-SRC_NASM += round __pow nanf sinf cosf
+SRC_NASM += __pow nanf # Woot ?
+SRC_NASM += round roundf sinf cosf sqrt sqrtf tan tanf atan atanf atan2 atan2f
+SRC_C += floor floorf
 HEADERS += math.h
 
 SRC_C += strsplit array parse_2d_file
