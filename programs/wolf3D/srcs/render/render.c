@@ -19,7 +19,7 @@
 
 static void					calc_columns(t_env *e)
 {
-	int						x;
+	int					x;
 	t_coord_f				c_intersect;
 	t_column				*c;
 	float					angle_x;
@@ -53,7 +53,7 @@ void						*thread_render(void *arg)
 	t_env					*e;
 	t_coord_f				angle;
 	t_coord_i				c;
-	int						limit;
+	int					limit;
 
 	e = ((t_render *)arg)->e;
 	c.y = ((t_render *)arg)->n;
@@ -81,7 +81,7 @@ void						render_scene(t_env *e)
 {
 	t_render				format[NB_CORES];
 	pthread_t				thread[NB_CORES];
-	int						i;
+	int					i;
 
 	e->sky->pos = (int)((RATIO * WIDTH) * (e->player.angle / (2.f * PI)));
 	calc_columns(e);
@@ -100,6 +100,28 @@ void						render_scene(t_env *e)
 #else
 void						render_scene(t_env *e)
 {
+	t_coord_i c;
+	t_coord_f angle;
+
+	e->sky->pos = (int)((RATIO * WIDTH) * (e->player.angle / (2.f * PI)));
+	calc_columns(e);
+	c.y = -1;
+	while (++c.y < HEIGHT)
+	{
+		angle.y = e->angle_y[c.y];
+		c.x = -1;
+		while (++c.x < WIDTH)
+		{
+			angle.x = e->angle_x[c.x] + e->player.angle;
+			if (angle.y <= e->scene.columns[c.x].wall_min_angle)
+				render_floor(e, c, angle);
+			else if (angle.y <= e->scene.columns[c.x].wall_max_angle)
+				render_wall(e, c, angle);
+			else
+				e->scene.scene[c.y * WIDTH + c.x] = e->sky->data->pix[e->sky->pos + c.y * ((RATIO + 1) * WIDTH) + c.x];
+		}
+	}
+	render_sprites(e);
 }
 #endif
 
@@ -108,7 +130,7 @@ void						scene_to_win(t_env *env)
 	t_coord_i				c_scr;
 	t_coord_i				c_scn;
 	t_pix					*scene;
-	int						i;
+	int					i;
 
 	if (NOSTALGIA_FACTOR == 1)
 		return ;
