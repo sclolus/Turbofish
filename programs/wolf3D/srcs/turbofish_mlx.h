@@ -13,7 +13,14 @@ void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title);
 
 int mlx_destroy_window(void *mlx_ptr, void *win_ptr);
 
+void *mlx_new_image(void *mlx_ptr, int width, int height);
+
 int mlx_destroy_image(void *mlx_ptr, void *img_ptr);
+
+char *mlx_get_data_addr(void *img_ptr,
+			int *bits_per_pixel,
+			int *size_line,
+			int *endian);
 
 int mlx_string_put(void *mlx_ptr,
 		   void *win_ptr,
@@ -36,12 +43,5 @@ int mlx_hook(t_win_list *win,
 int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param);
 
 int mlx_loop(void *mlx_ptr);
-
-void *mlx_new_image(void *mlx_ptr, int width, int height);
-
-char *mlx_get_data_addr(void *img_ptr,
-			int *bits_per_pixel,
-			int *size_line,
-			int *endian);
 
 #endif

@@ -14,21 +14,22 @@
 #include "core/wolf3d.h"
 #include "bmp/bmp.h"
 
-t_bmp					*load_bitmap(char **name, int n)
+t_bmp *load_bitmap(char **name, int n)
 {
-	t_bmp	*array;
-	t_bmp	*bmp;
-	int		i;
+	t_bmp *array;
+	t_bmp *bmp;
+	int i;
 
 	if (!(array = malloc(sizeof(t_bmp) * n)))
 		return (NULL);
 	i = 0;
-	while (i < n)
-	{
+	while (i < n) {
 		bmp = array + i;
 		if (!(bmp_load(name[i], &(bmp->dim.x), &(bmp->dim.y),
-						(int**)&(bmp->pix))))
+			       (int**)&(bmp->pix)))) {
+			dprintf(STDERR_FILENO, "Critical error when BMP loading\n");
 			return (NULL);
+		}
 		i++;
 	}
 	return (array);

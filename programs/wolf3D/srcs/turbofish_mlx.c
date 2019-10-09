@@ -21,8 +21,16 @@ struct window {
 	u8 *pix_map;
 };
 
+struct image {
+	int width;
+	int height;
+
+	u8 *pix_map;
+};
+
 struct mlx {
 	struct window *window;
+	struct image *image;
 };
 
 /*
@@ -41,6 +49,8 @@ void *mlx_init(void)
 /*
 ** Basic actions
 */
+// Is MLX can handle just only one window ? I don't think
+// I don't think that window can got a pix_map
 void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title)
 {
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
@@ -97,10 +107,64 @@ int mlx_destroy_window(void *mlx_ptr, void *win_ptr)
 	return 0;
 }
 
-int mlx_destroy_image(void *mlx_ptr, void *img_ptr) {
-	(void)mlx_ptr;
-	(void)img_ptr;
+// Is MLX can handle just only one image ? I don't think
+void *mlx_new_image(void *mlx_ptr, int width, int height)
+{
+	struct mlx *mlx = (struct mlx *)mlx_ptr;
+
+	if (mlx == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea\n");
+		return NULL;
+	}
+
+	struct image *image = (struct image *)calloc(1, sizeof(struct image));
+	if (image == NULL) {
+		dprintf(STDERR_FILENO, "Cannot allocate memory for basic image\n");
+		return NULL;
+	}
+	image->pix_map = (u8 *)calloc(1, width * height * 32 / 8);
+	if (image->pix_map == NULL) {
+		dprintf(STDERR_FILENO, "Cannot allocate memory for image pixel map\n");
+		free(image);
+		return NULL;
+	}
+	mlx->image = image;
+	return (void *)image;
+}
+
+int mlx_destroy_image(void *mlx_ptr, void *img_ptr)
+{
+	struct mlx *mlx = (struct mlx *)mlx_ptr;
+	struct image *image = (struct image *)img_ptr;
+
+	if (mlx == NULL || image == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		return -1;
+	}
+	free(image->pix_map);
+	free(image);
+	mlx->image = NULL;
 	return 0;
+}
+
+/*
+**  return void NULL if failed
+*/
+char *mlx_get_data_addr(void *img_ptr,
+			int *bits_per_pixel,
+			int *size_line,
+			int *endian)
+{
+	struct image *image = (struct image *)img_ptr;
+
+	if (image == NULL || bits_per_pixel == NULL || size_line == NULL || endian == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		return NULL;
+	}
+	*bits_per_pixel = 32;
+	*size_line = *bits_per_pixel * image->width;
+	*endian = 0;
+	return (char *)image->pix_map;
 }
 
 int mlx_string_put(void *mlx_ptr,
@@ -153,27 +217,6 @@ int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param) {
 int mlx_loop(void *mlx_ptr) {
 	(void)mlx_ptr;
 	return 0;
-}
-
-void *mlx_new_image(void *mlx_ptr, int width, int height) {
-	(void)mlx_ptr;
-	(void)width;
-	(void)height;
-	return NULL;
-}
-
-/*
-**  return void NULL if failed
-*/
-char *mlx_get_data_addr(void *img_ptr,
-			int *bits_per_pixel,
-			int *size_line,
-			int *endian) {
-	(void)img_ptr;
-	(void)bits_per_pixel;
-	(void)size_line;
-	(void)endian;
-	return NULL;
 }
 
 #endif

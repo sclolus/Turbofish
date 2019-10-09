@@ -60,6 +60,7 @@ pub unsafe fn sys_munmap(addr: *mut u8, length: usize) -> SysResult<u32> {
             .current_thread_mut()
             .unwrap_process_mut()
             .get_virtual_allocator();
+        // log::info!("Claiming munmap of {:?} at {:#X?}", NbrPages::from(length), addr);
         match v.check_user_ptr_with_len(addr, length) {
             Err(e) => log::warn!(
                 "a munmap was bullshit, error: {:?}, {:?}, size {}",
@@ -69,15 +70,15 @@ pub unsafe fn sys_munmap(addr: *mut u8, length: usize) -> SysResult<u32> {
             ),
             _ => {
                 // good because we know that vaddr is aligned
-                // eprintln!("Claiming munmap of {:?}", NbrPages::from(length));
                 let ret = v.unmap_addr(vaddr.into(), NbrPages::from(length));
                 if let Err(e) = ret {
-                    log::warn!(
+                    log::error!(
                         "a munmap was bullshit, error: {:?}, {:?}, size {}",
                         e,
                         vaddr,
                         length
                     );
+                    log::warn!("Maybe the libc allocator use a chop chop strategie ?");
                 }
             }
         }

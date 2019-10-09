@@ -21,11 +21,9 @@ void		set_mlx_image_type(t_env *e)
 
 int			create_mlx_image(t_env *e)
 {
-	if (!(e->image = mlx_new_image(e->mlx, WIDTH * NOSTALGIA_FACTOR,
-									HEIGHT * NOSTALGIA_FACTOR)))
+	if (!(e->image = mlx_new_image(e->mlx, WIDTH * NOSTALGIA_FACTOR, HEIGHT * NOSTALGIA_FACTOR)))
 		return (1);
-	if (!(e->img_string = (t_pix*)mlx_get_data_addr(e->image, &e->bpp, &e->s_l,
-																&e->endian)))
+	if (!(e->img_string = (t_pix*)mlx_get_data_addr(e->image, &e->bpp, &e->s_l, &e->endian)))
 		return (1);
 	return (0);
 }

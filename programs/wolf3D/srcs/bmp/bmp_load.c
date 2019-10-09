@@ -173,7 +173,8 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 			((char*)s + s->fileheader.fileoffset_to_pixelarray),
 				*width, *height);
 	free(s);
-	return 0;
+	close (fd);
+	return 1;
 
 	/*
 	 * if (!(infos = (struct stat *)malloc(sizeof(struct stat))))
