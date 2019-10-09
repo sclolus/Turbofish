@@ -68,8 +68,7 @@ void				init_sky(t_env *e, char *file_name)
 	sky_bmp = &sky_bmp[0];
 	e->sky->data->dim.x = WIDTH * RATIO;
 	e->sky->data->dim.y = HEIGHT;
-	if (!(e->sky->data->pix = (t_pix *)ft_memalloc(WIDTH * (RATIO + 1) *
-													HEIGHT * sizeof(t_pix))))
+	if (!(e->sky->data->pix = (t_pix *)calloc(1, WIDTH * (RATIO + 1) * HEIGHT * sizeof(t_pix))))
 		exit(EXIT_FAILURE);
 	copy_img(e->sky->data, sky_bmp, WIDTH * (RATIO + 1));
 	paste_bout(e->sky->data->pix);

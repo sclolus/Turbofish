@@ -12,6 +12,8 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
 #include "core/wolf3d.h"
 #include "parse/parse.h"
 #include "overlay/overlay.h"
@@ -84,7 +86,7 @@ static int			get_parse(t_env *e, char *filename)
 		return (err_msg("bad file"));
 	if (get_player_location(e, &e->player.location, '%') != 0)
 		return (err_msg("no player in the map !"));
-	ft_printf("location_player.x = %i, location_player.y = %i\n",
+	printf("location_player.x = %i, location_player.y = %i\n",
 					(int)e->player.location.x, (int)e->player.location.y);
 	e->n_sprites = get_nbr_sprites(e);
 	s_l = get_sprites(e, e->n_sprites);
@@ -93,12 +95,12 @@ static int			get_parse(t_env *e, char *filename)
 	i = -1;
 	while (++i < e->n_sprites)
 	{
-		ft_printf("sprite type %i: x = %i && y = %i\n", s_l->type,
+		printf("sprite type %i: x = %i && y = %i\n", s_l->type,
 							(int)s_l->location.x, (int)s_l->location.y);
 		e->sprites[i].location = s_l->location;
 		e->sprites[i].type = (s_l++)->type;
 	}
-	ft_printf("verif = %i\n", verif_texture_range(e, 3, 4, 3) ? "KO" : "OK");
+	printf("verif = %s\n", verif_texture_range(e, 3, 4, 3) ? "KO" : "OK");
 	e->map_tiles = (t_tile **)get_map_struct(e, &e->map.size.y, &e->map.size.x);
 	free_map_content(&(e->content));
 	return (0);
@@ -108,7 +110,7 @@ int					main(int argc, char **argv)
 {
 	t_env			env;
 
-	ft_bzero(&env, sizeof(t_env));
+	bzero(&env, sizeof(t_env));
 	if (argc != 2)
 		return (err_usage(argv[0]));
 	if ((init_mlx(&env, "Wolf3D -^^,--,~", WIDTH * NOSTALGIA_FACTOR,
@@ -122,8 +124,8 @@ int					main(int argc, char **argv)
 	env.sprite_height = 2.5f;
 	env.player.angle = 6.f / 4 * PI;
 	env.player.height = 2.f;
-	env.display_minimap = TRUE;
-	env.inter_state = TRUE;
+	env.display_minimap = true;
+	env.inter_state = true;
 	init_all(&env);
 	mlx_hook(env.win, X11_KEY_RELEASE, KEYRELEASEMASK, &mlx_key_release, &env);
 	mlx_hook(env.win, X11_KEY_PRESS, KEYPRESSMASK, &mlx_key_press, &env);

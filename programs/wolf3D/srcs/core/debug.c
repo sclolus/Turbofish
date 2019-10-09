@@ -10,6 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "common.h"
+
 #include <stdlib.h>
 #include <sys/time.h>
 #include "core/wolf3d.h"
@@ -19,17 +21,17 @@ void			view_map(t_tile **map, int width, int height)
 	int i;
 	int j;
 
-	ft_printf("{red}map_x = %i, map_y = %i{eoc}\n", width, height);
+	printf("{red}map_x = %i, map_y = %i{eoc}\n", width, height);
 	i = 0;
 	while (i < height)
 	{
 		j = 0;
 		while (j < width)
 		{
-			ft_printf("{green}%.2i{eoc} ", map[i][j]);
+			printf("{green}%.2u{eoc} ", map[i][j].value);
 			j++;
 		}
-		ft_printf("\n");
+		printf("\n");
 		i++;
 	}
 }
@@ -65,13 +67,12 @@ void			eval_fps(t_env *e)
 
 int				err_usage(char *cmd)
 {
-	ft_eprintf("Illegal map!\n"
-		"usage: %s [input_file]\n", cmd, cmd);
+	dprintf(STDERR_FILENO, "Illegal map!\nusage: %s [input_file]\n", cmd, cmd);
 	return (EXIT_FAILURE);
 }
 
 int				err_msg(char *msg)
 {
-	ft_eprintf("Fatal error: %s\nYou should made an other try!\n", msg);
+	dprintf(STDERR_FILENO, "Fatal error: %s\nYou should made an other try!\n", msg);
 	return (EXIT_FAILURE);
 }

@@ -12,6 +12,8 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
+
 #include "core/wolf3d.h"
 #include "overlay/overlay.h"
 #include "overlay/internal_overlay.h"
@@ -53,7 +55,7 @@ static void					horizontal_line(t_pix *scene, t_line *p,
 
 	cumul = p->d.x / 2;
 	c = p->p1;
-	while (TRUE)
+	while (true)
 	{
 		c.x += inc.x;
 		cumul += p->d.y;
@@ -78,7 +80,7 @@ static void					vertical_line(t_pix *scene, t_line *p,
 
 	cumul = p->d.y / 2;
 	c = p->p1;
-	while (TRUE)
+	while (true)
 	{
 		c.y += inc.y;
 		cumul += p->d.x;

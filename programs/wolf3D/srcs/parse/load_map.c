@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
+
 #include "core/wolf3d.h"
 #include "parse/get_next_line.h"
 #include "parse/internal_parse.h"
@@ -39,7 +41,7 @@ static int				check_all_map(t_map_content *content)
 	int		trigger;
 	int		width;
 
-	trigger = FALSE;
+	trigger = false;
 	lst = content->data;
 	while (lst)
 	{
@@ -48,14 +50,14 @@ static int				check_all_map(t_map_content *content)
 		while (*line)
 		{
 			if (check_part(line) == -1)
-				return (ft_eprintf("{green}parse:{eoc} wrong data on map\n"));
+				return (dprintf(STDERR_FILENO, "{green}parse:{eoc} wrong data on map\n"));
 			line += (line[2] != '\0') ? 3 : 2;
 			width++;
 		}
 		content->width = (!trigger) ? width : content->width;
 		if (trigger && content->width != width)
-			return (ft_eprintf("{green}parse:{eoc} diff width on lines\n"));
-		trigger = TRUE;
+			return (dprintf(STDERR_FILENO, "{green}parse:{eoc} diff width on lines\n"));
+		trigger = true;
 		lst = lst->next;
 	}
 	return (0);
@@ -63,14 +65,14 @@ static int				check_all_map(t_map_content *content)
 
 static void				map_too_big_error(void)
 {
-	ft_putstr_fd("Error: map too big\n", 2);
+	dprintf(STDERR_FILENO, "Error: map too big\n", 2);
 	exit(EXIT_FAILURE);
 }
 
 static void				add_line(t_env *e, char *line, size_t *total_len,
 									int ret)
 {
-	*total_len += ft_strlen(line);
+	*total_len += strlen(line);
 	if (*total_len >= MAX_MAP_SIZE)
 		map_too_big_error();
 	e->content->height++;
@@ -88,7 +90,7 @@ int						load_map(t_env *e, char *filename)
 	alloc_map_content(&(e->content));
 	if ((fd = open(filename, O_RDONLY)) < 0)
 	{
-		ft_eprintf("Could not open %s : %s\n", filename, strerror(errno));
+		dprintf(STDERR_FILENO, "Could not open %s : %s\n", filename, strerror(errno));
 		return (-1);
 	}
 	total_len = 0;

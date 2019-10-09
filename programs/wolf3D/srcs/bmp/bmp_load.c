@@ -14,26 +14,28 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include "libft.h"
+#include <unistd.h>
+#include <string.h>
+
 #include "bmp/internal_bmp.h"
 
 static void		paste_fileheader(t_bitmap *s, char *filename)
 {
-	ft_printf("{green}Chargement de l'image %s:{eoc}\n", filename);
-	ft_printf("%s %c%c\n", "signature", s->fileheader.signature[0],
+	printf("{green}Chargement de l'image %s:{eoc}\n", filename);
+	printf("%s %c%c\n", "signature", s->fileheader.signature[0],
 												s->fileheader.signature[1]);
-	ft_printf("%s: %i\n", "filesize", s->fileheader.filesize);
-	ft_printf("%s: %i\n", "offset", s->fileheader.fileoffset_to_pixelarray);
-	ft_printf("%s: %i\n", "header_size", s->bitmapinfoheader.dibheadersize);
-	ft_printf("%s: %i\n", "width", s->bitmapinfoheader.width);
-	ft_printf("%s: %i\n", "height", s->bitmapinfoheader.height);
-	ft_printf("%s: %i\n", "planes", s->bitmapinfoheader.planes);
-	ft_printf("%s: %i\n", "bpp", s->bitmapinfoheader.bitsperpixel);
-	ft_printf("%s: %i\n", "compression", s->bitmapinfoheader.compression);
-	ft_printf("%s: %i\n", "imagesize", s->bitmapinfoheader.imagesize);
-	ft_printf("%s: %i\n", "xpermeter", s->bitmapinfoheader.ypixelpermeter);
-	ft_printf("%s: %i\n", "ypermeter", s->bitmapinfoheader.xpixelpermeter);
-	ft_printf("%s: %i\n", "numcolorpal",
+	printf("%s: %i\n", "filesize", s->fileheader.filesize);
+	printf("%s: %i\n", "offset", s->fileheader.fileoffset_to_pixelarray);
+	printf("%s: %i\n", "header_size", s->bitmapinfoheader.dibheadersize);
+	printf("%s: %i\n", "width", s->bitmapinfoheader.width);
+	printf("%s: %i\n", "height", s->bitmapinfoheader.height);
+	printf("%s: %i\n", "planes", s->bitmapinfoheader.planes);
+	printf("%s: %i\n", "bpp", s->bitmapinfoheader.bitsperpixel);
+	printf("%s: %i\n", "compression", s->bitmapinfoheader.compression);
+	printf("%s: %i\n", "imagesize", s->bitmapinfoheader.imagesize);
+	printf("%s: %i\n", "xpermeter", s->bitmapinfoheader.ypixelpermeter);
+	printf("%s: %i\n", "ypermeter", s->bitmapinfoheader.xpixelpermeter);
+	printf("%s: %i\n", "numcolorpal",
 										s->bitmapinfoheader.numcolorspallette);
 }
 
@@ -74,7 +76,7 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 		exit(EXIT_FAILURE);
 	if ((stat(filename, infos)) == -1 || (!(file = fopen(filename, "rb"))))
 	{
-		ft_eprintf("%s\n", strerror(errno));
+		dprintf(STDERR_FILENO, "%s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	if (!(s = (t_bitmap *)malloc(infos->st_size)))
@@ -83,7 +85,7 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 	paste_fileheader((t_bitmap *)s, filename);
 	*width = s->bitmapinfoheader.width;
 	*height = s->bitmapinfoheader.height;
-	if (!(*data = (int *)ft_memalloc(sizeof(int) * (*width) * (*height))))
+	if (!(*data = (int *)calloc(1, sizeof(int) * (*width) * (*height))))
 		exit(EXIT_FAILURE);
 	fill_image((uint8_t *)*data, (uint8_t *)
 			((char*)s + s->fileheader.fileoffset_to_pixelarray),

@@ -13,12 +13,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include "libft.h"
+#include <strings.h>
+#include <string.h>
+
 #include "bmp/internal_bmp.h"
 
 static void		paste_fileheader(t_bitmap *pbitmap, int width, int height)
 {
-	ft_memcpy((char *)pbitmap->fileheader.signature, "BM", 2);
+	memcpy((char *)pbitmap->fileheader.signature, "BM", 2);
 	pbitmap->fileheader.filesize = (width * height) + sizeof(t_bitmap);
 	pbitmap->fileheader.fileoffset_to_pixelarray = sizeof(t_bitmap);
 	pbitmap->bitmapinfoheader.dibheadersize = sizeof(t_bitmapinfoheader);
@@ -67,13 +69,13 @@ int				bmp_save(char *filename, int width, int height, int *data)
 	uint8_t		*pixelbuffer;
 	FILE		*file;
 
-	ft_bzero(buff, 512);
-	ft_sprintf(buff, "screenshoots/%lu%s", (unsigned long)time(NULL), ".bmp");
+	bzero(buff, 512);
+	sprintf(buff, "screenshoots/%lu%s", (unsigned long)time(NULL), ".bmp");
 	if (!(file = fopen(buff, "wb+")))
 		return (1);
-	if (!(pbitmap = (t_bitmap *)ft_memalloc(sizeof(t_bitmap))))
+	if (!(pbitmap = (t_bitmap *)calloc(1, sizeof(t_bitmap))))
 		return (1);
-	if (!(pixelbuffer = (uint8_t *)ft_memalloc(height * width * BPP / 8)))
+	if (!(pixelbuffer = (uint8_t *)calloc(1, height * width * BPP / 8)))
 		return (1);
 	paste_fileheader(pbitmap, width, height);
 	fwrite(pbitmap, 1, sizeof(t_bitmap), file);

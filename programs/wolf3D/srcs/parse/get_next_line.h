@@ -13,20 +13,19 @@
 #ifndef GET_NEXT_LINE_H
 # define GET_NEXT_LINE_H
 
-# include "libft.h"
 # include <stdlib.h>
 # include <unistd.h>
 
-# define BUFF_SIZE 			2048
-# define MAX_DESCRIPTORS   	65536
+# define BUFF_SIZE       2048
+# define MAX_DESCRIPTORS 65536
 
-typedef struct		s_buffer
+typedef struct s_buffer
 {
-	int				fd;
-	int				buff_size;
-	char			buffer[BUFF_SIZE + 1];
-}					t_buffer;
+	int fd;
+	int buff_size;
+	char buffer[BUFF_SIZE + 1];
+} t_buffer;
 
-int					get_next_line (const int fd, char **line, size_t max_size);
+int get_next_line (const int fd, char **line, size_t max_size);
 
 #endif

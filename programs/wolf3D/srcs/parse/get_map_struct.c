@@ -19,12 +19,12 @@ static int			**allocate_tab(int *height, int *width)
 	int				**tab;
 	int				i;
 
-	if (!(tab = (int **)ft_memalloc(*height * sizeof(int *))))
+	if (!(tab = (int **)calloc(1, *height * sizeof(int *))))
 		exit(EXIT_FAILURE);
 	i = 0;
 	while (i < *height)
 	{
-		if (!(tab[i] = (int *)ft_memalloc(*width * sizeof(int))))
+		if (!(tab[i] = (int *)calloc(1, *width * sizeof(int))))
 			exit(EXIT_FAILURE);
 		i++;
 	}

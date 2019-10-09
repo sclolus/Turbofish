@@ -13,7 +13,6 @@
 #ifndef PARSE_H
 # define PARSE_H
 
-# include "libft.h"
 # include "graphic_types.h"
 # include "core/wolf3d.h"
 

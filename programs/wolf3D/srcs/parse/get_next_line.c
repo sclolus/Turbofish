@@ -12,6 +12,10 @@
 
 #include "parse/get_next_line.h"
 
+#include <strings.h>
+#include <string.h>
+#include <stdbool.h>
+
 static char		*s_concat(char **str, const char *buff, size_t *l, size_t n)
 {
 	char *output;
@@ -19,11 +23,11 @@ static char		*s_concat(char **str, const char *buff, size_t *l, size_t n)
 	if (!(output = (char *)malloc((*l + n + 1) * sizeof(char))))
 		return (NULL);
 	output[*l + n] = '\0';
-	ft_memcpy(output, *str, *l);
+	memcpy(output, *str, *l);
 	if (*l)
 		free(*str);
 	*str = output;
-	ft_memcpy(*str + *l, buff, n);
+	memcpy(*str + *l, buff, n);
 	*l += n;
 	return (output);
 }
@@ -36,7 +40,7 @@ static void		init_line_l_size(char **line, size_t *l_size)
 
 static void		finalize(t_buffer *index, char *jump_location, size_t i)
 {
-	ft_memmove(index->buffer, jump_location + 1, BUFF_SIZE - (i + 1));
+	memmove(index->buffer, jump_location + 1, BUFF_SIZE - (i + 1));
 	index->buffer[(index->buff_size -= i + 1)] = '\0';
 }
 
@@ -47,7 +51,7 @@ static int		s_exec(t_buffer *index, char **line, size_t max_len)
 	size_t		i;
 
 	init_line_l_size(line, &l_size);
-	while (TRUE)
+	while (true)
 	{
 		if (l_size >= max_len && max_len > 0)
 			return (-2);
@@ -55,7 +59,7 @@ static int		s_exec(t_buffer *index, char **line, size_t max_len)
 		(index->buff_size = read(index->fd, index->buffer, BUFF_SIZE)) <= 0)
 			return ((index->buff_size == 0 && *line) ? 1 : index->buff_size);
 		index->buffer[index->buff_size] = '\0';
-		if ((jump_location = ft_strchr(index->buffer, '\n')))
+		if ((jump_location = strchr(index->buffer, '\n')))
 			break ;
 		if (!s_concat(line, index->buffer, &l_size, index->buff_size))
 			return (-1);
@@ -85,7 +89,7 @@ int				get_next_line(const int fd, char **line, size_t max_len)
 	{
 		if (!(index[i] = (t_buffer *)malloc(sizeof(t_buffer))))
 			return (-1);
-		ft_bzero(index[i]->buffer, BUFF_SIZE + 1);
+		bzero(index[i]->buffer, BUFF_SIZE + 1);
 		index[i]->buff_size = 0;
 		index[i]->fd = fd;
 	}

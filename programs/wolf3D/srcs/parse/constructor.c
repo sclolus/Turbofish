@@ -11,16 +11,19 @@
 /* ************************************************************************** */
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include "parse/internal_parse.h"
 
 void	alloc_map_content(t_map_content **content)
 {
 	if (*content != NULL)
 	{
-		ft_eprintf("{green}parse:{eoc} content already allocated\n");
+		dprintf(STDERR_FILENO, "{green}parse:{eoc} content already allocated\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!(*content = (t_map_content *)ft_memalloc(sizeof(t_map_content))))
+	if (!(*content = (t_map_content *)calloc(1, sizeof(t_map_content))))
 		exit(EXIT_FAILURE);
 }
 
@@ -31,7 +34,7 @@ void	free_map_content(t_map_content **content)
 
 	if (*content == NULL)
 	{
-		ft_eprintf("{green}parse:{eoc} content wasn't allocated\n");
+		dprintf(STDERR_FILENO, "{green}parse:{eoc} content wasn't allocated\n");
 		exit(EXIT_FAILURE);
 	}
 	if ((*content)->data)

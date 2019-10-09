@@ -12,6 +12,8 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
 #include "core/wolf3d.h"
 #include "bmp/bmp.h"
 
@@ -95,14 +97,14 @@ static int		event_register(t_env *e, int keycode, int *state)
 	static int	reg[512];
 
 	keycode &= 0x1FF;
-	if (e->keyb[keycode] && reg[keycode] == FALSE)
+	if (e->keyb[keycode] && reg[keycode] == false)
 	{
-		reg[keycode] = TRUE;
-		*state = TRUE;
+		reg[keycode] = true;
+		*state = true;
 		return (1);
 	}
-	else if (!(e->keyb[keycode]) && reg[keycode] == TRUE)
-		reg[keycode] = FALSE;
+	else if (!(e->keyb[keycode]) && reg[keycode] == true)
+		reg[keycode] = false;
 	return (0);
 }
 
@@ -110,15 +112,15 @@ int				common_action(t_env *e)
 {
 	int state;
 
-	state = FALSE;
+	state = false;
 	if (e->keyb[KEYB_ESCAPE])
 		exit_mlx(e);
 	if (event_register(e, KEYB_M, &state))
-		e->display_minimap = (e->display_minimap) ? FALSE : TRUE;
+		e->display_minimap = (e->display_minimap) ? false : true;
 	if (event_register(e, KEYB_HELP, &state))
 	{
 		e->inter_time = get_time();
-		e->inter_state = (e->inter_state) ? FALSE : TRUE;
+		e->inter_state = (e->inter_state) ? false : true;
 	}
 	if (event_register(e, KEYB_P, &state))
 		bmp_save(NULL, WIDTH, HEIGHT, (int *)e->img_string);

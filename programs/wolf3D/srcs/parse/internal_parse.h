@@ -13,15 +13,17 @@
 #ifndef INTERNAL_PARSE_H
 # define INTERNAL_PARSE_H
 
-# include "libft.h"
+#include "common.h"
 
-typedef struct	s_map_content
+#include <string.h>
+
+typedef struct s_map_content
 {
-	t_list		*data;
-	int			width;
-	int			height;
-}				t_map_content;
+	t_list *data;
+	int width;
+	int height;
+} t_map_content;
 
-void			alloc_map_content(t_map_content **content);
+void alloc_map_content(t_map_content **content);
 
 #endif
