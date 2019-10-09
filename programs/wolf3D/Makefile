@@ -30,6 +30,7 @@ endif
 
 ### SOURCES ###
 
+SRC_MLX = turbofish_mlx
 SRC_COMMON = common
 SRC_CORE = wolf3d image_mlx_tools init_mlx actions keyboard load_config \
 			debug timer get_wall_infos define_mouvements move_sprites
@@ -38,12 +39,12 @@ SRC_PARSE = constructor load_map get_next_line get_player_location get_sprites g
 SRC_OVERLAY = draw_line draw minimap
 SRC_BMP = bmp_load bmp_save
 
-SRC_LIST = $(SRC_COMMON) $(SRC_CORE) $(SRC_PARSE) $(SRC_BMP) $(SRC_OVERLAY) $(SRC_RENDER)
+SRC_LIST = $(SRC_MLX) $(SRC_COMMON) $(SRC_CORE) $(SRC_PARSE) $(SRC_BMP) $(SRC_OVERLAY) $(SRC_RENDER)
 VPATH = srcs srcs/core srcs/parse srcs/bmp srcs/overlay srcs/render
 
 ## HEADERS
 
-HEADERS = common.h wolf3d.h parse.h internal_parse.h bmp.h internal_bmp.h overlay.h internal_overlay.h render.h
+HEADERS = common.h turbofish_mlx.h wolf3d.h parse.h internal_parse.h bmp.h internal_bmp.h overlay.h internal_overlay.h render.h
 
 ### LIBRAIRIES ###
 

@@ -26,9 +26,10 @@
 #ifdef GNU
 # include "mlx.h"
 # define _GNU_SOURCE
-#include <stdio.h>
+# include <stdio.h>
 #else
-#include <stdio.h>
+# include "turbofish_mlx.h"
+# include <stdio.h>
 #endif
 
 #include <stdbool.h>
