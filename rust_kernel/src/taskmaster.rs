@@ -133,5 +133,5 @@ pub fn start(filename: &str, argv: &[&str], envp: &[&str]) -> ! {
         .expect("Scheduler is bullshit");
 
     // Launch the scheduler
-    unsafe { scheduler::start(TaskMode::Multi(200.)) }
+    unsafe { scheduler::start(TaskMode::Multi(20.)) }
 }

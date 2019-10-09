@@ -12,13 +12,6 @@
 
 #include "core/wolf3d.h"
 
-void		set_mlx_image_type(t_env *e)
-{
-	e->bpp = 32;
-	e->endian = 0;
-	e->s_l = WIDTH * 4;
-}
-
 int			create_mlx_image(t_env *e)
 {
 	if (!(e->image = mlx_new_image(e->mlx, WIDTH * NOSTALGIA_FACTOR, HEIGHT * NOSTALGIA_FACTOR)))

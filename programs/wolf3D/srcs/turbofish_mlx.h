@@ -22,12 +22,10 @@ char *mlx_get_data_addr(void *img_ptr,
 			int *size_line,
 			int *endian);
 
-int mlx_string_put(void *mlx_ptr,
-		   void *win_ptr,
-		   int x,
-		   int y,
-		   int color,
-		   char *string);
+int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param);
+
+int mlx_loop(void *mlx_ptr);
+
 
 void mlx_put_image_to_window(mlx_ptr_t *mlx_ptr,
 			     mlx_win_list_t *win_ptr,
@@ -35,13 +33,16 @@ void mlx_put_image_to_window(mlx_ptr_t *mlx_ptr,
 			     int x,
 			     int y);
 
+int mlx_string_put(void *mlx_ptr,
+		   void *win_ptr,
+		   int x,
+		   int y,
+		   int color,
+		   char *string);
+
 int mlx_hook(t_win_list *win,
 	     int x_event,
 	     int x_mask,
 	     int (*funct)(),void *param);
-
-int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param);
-
-int mlx_loop(void *mlx_ptr);
 
 #endif

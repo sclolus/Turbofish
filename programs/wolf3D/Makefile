@@ -25,7 +25,7 @@ else
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
 CC = i686-turbofish-gcc
-CFLAGS = -Wall -Wextra -fno-omit-frame-pointer
+CFLAGS = -Ofast -Wall -Wextra -fno-omit-frame-pointer
 endif
 
 ### SOURCES ###
