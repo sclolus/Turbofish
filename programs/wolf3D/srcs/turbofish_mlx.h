@@ -11,9 +11,9 @@ void *mlx_init();
 
 void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title);
 
-int mlx_destroy_image(void *mlx_ptr, void *img_ptr);
-
 int mlx_destroy_window(void *mlx_ptr, void *win_ptr);
+
+int mlx_destroy_image(void *mlx_ptr, void *img_ptr);
 
 int mlx_string_put(void *mlx_ptr,
 		   void *win_ptr,

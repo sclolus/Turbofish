@@ -43,6 +43,7 @@ pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
             offset,
         } = *mmap_arg;
 
+        // eprintln!("Claiming mmap of {:?}", NbrPages::from(length));
         let alloc_flags = AllocFlags::from(prot);
         let addr = v.alloc(length, alloc_flags)?;
         if !alloc_flags.contains(AllocFlags::READ_ONLY) {

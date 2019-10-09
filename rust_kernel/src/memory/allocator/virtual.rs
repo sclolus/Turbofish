@@ -188,8 +188,26 @@ impl VirtualPageAllocator {
     pub fn unmap_addr(&mut self, vaddr: Page<Virt>, size: NbrPages) -> Result<()> {
         let order = size.into();
 
+        let page_paddr = unsafe {
+            self.mmu
+                .physical_page(vaddr)
+                .ok_or(MemoryError::NotPhysicallyMapped)?
+        };
         // release the chunk on kernel virtual buddy
         self.virt.free(vaddr, order)?;
+
+        // Free the chunk on physical allocator
+        let physical_allocator = unsafe { PHYSICAL_ALLOCATOR.as_mut().unwrap() };
+        let r = physical_allocator.free(page_paddr.into());
+        if let Err(e) = r {
+            log::error!(
+                "A physical page was never allocated at {:#X?} {:#X?} nbr_pages: {:?} ! {:?}",
+                Phys::from(page_paddr),
+                Virt::from(vaddr),
+                size,
+                e
+            );
+        }
 
         // unmap this vitual chunk
         unsafe { self.mmu.unmap_range_page(vaddr, order.into()) }

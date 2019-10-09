@@ -86,6 +86,7 @@ else
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv maps $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv images $(SYSTEM_ROOT)/bin/wolf3D
+	sudo cp -rv launch.sh $(SYSTEM_ROOT)
 endif
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
