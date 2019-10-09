@@ -100,7 +100,8 @@ VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
-SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
+SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit rand
+SRC_ASM += _rdrand
 
 VPATH += src/stdlib
 HEADERS += stdlib.h
