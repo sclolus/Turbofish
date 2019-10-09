@@ -156,7 +156,7 @@ char *mlx_get_data_addr(void *img_ptr,
 		return NULL;
 	}
 	*bits_per_pixel = 24;
-	*size_line = *bits_per_pixel * image->width;
+	*size_line = *bits_per_pixel / 8 * image->width;
 	*endian = 0;
 	return (char *)image->pix_map;
 }
