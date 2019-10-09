@@ -39,25 +39,22 @@ static void paste_fileheader(t_bitmap *s, char *filename)
 
 #ifdef GNU
 
-static void		fill_image(uint8_t *data, uint8_t *pixelbuffer, int width,
-																int height)
+static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int height)
 {
-	size_t	i;
-	int		p;
-	int		c;
+	size_t i;
+	int p;
+	int c;
 	uint8_t *ptr;
 
 	p = height - 1;
 	ptr = pixelbuffer + (p * width * 3);
 	c = 0;
 	i = 0;
-	while (p >= 0)
-	{
+	while (p >= 0) {
 		if ((i % 4) == 3)
 			i++;
 		data[i] = ptr[c++];
-		if (c == (width * 3))
-		{
+		if (c == (width * 3)) {
 			p--;
 			ptr = pixelbuffer + (p * width * 3);
 			c = 0;
@@ -66,16 +63,15 @@ static void		fill_image(uint8_t *data, uint8_t *pixelbuffer, int width,
 	}
 }
 
-int				bmp_load(char *filename, int *width, int *height, int **data)
+int bmp_load(char *filename, int *width, int *height, int **data)
 {
-	FILE		*file;
-	struct stat	*infos;
-	t_bitmap	*s;
+	FILE *file;
+	struct stat *infos;
+	t_bitmap *s;
 
 	if (!(infos = (struct stat *)malloc(sizeof(struct stat))))
 		exit(EXIT_FAILURE);
-	if ((stat(filename, infos)) == -1 || (!(file = fopen(filename, "rb"))))
-	{
+	if ((stat(filename, infos)) == -1 || (!(file = fopen(filename, "rb")))) {
 		dprintf(STDERR_FILENO, "%s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -110,16 +106,14 @@ static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int heigh
 	ptr = pixelbuffer + (p * width * 3);
 	c = 0;
 	i = 0;
-	while (p >= 0)
-	{
+	while (p >= 0) {
 		/*
 		 * This is applicable only if a 32 bits/pixels screen on output
-		 * if ((i % 4) == 3)
-		 * 	i++;
 		 */
+		if ((i % 4) == 3)
+			i++;
 		data[i] = ptr[c++];
-		if (c == (width * 3))
-		{
+		if (c == (width * 3)) {
 			p--;
 			ptr = pixelbuffer + (p * width * 3);
 			c = 0;
@@ -130,7 +124,8 @@ static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int heigh
 
 #define BUFFER_SIZE (1024 * 1024)
 
-uint8_t *read_to_end(int fd) {
+uint8_t *read_to_end(int fd)
+{
 	uint8_t *tmp_buffer = malloc(BUFFER_SIZE);
 	uint8_t *buffer = malloc(BUFFER_SIZE);
 	size_t	size = 0;
@@ -153,7 +148,7 @@ uint8_t *read_to_end(int fd) {
 	return buffer;
 }
 
-int				bmp_load(char *filename, int *width, int *height, int **data)
+int bmp_load(char *filename, int *width, int *height, int **data)
 {
 	t_bitmap *s;
 

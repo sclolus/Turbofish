@@ -1,7 +1,7 @@
 
-#include "turbofish_mlx.h"
-
 #ifndef GNU
+
+#include "turbofish_mlx.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -14,6 +14,7 @@
 const char DEFAULT_WINDOW_NAME[] = "Turbofish window";
 const int WINDOW_WIDTH = 1024;
 const int WINDOW_HEIGHT = 768;
+const int BPP = 32;
 
 struct window {
 	int width;
@@ -116,7 +117,7 @@ void *mlx_new_image(void *mlx_ptr, int width, int height)
 		dprintf(STDERR_FILENO, "Cannot allocate memory for basic image\n");
 		return NULL;
 	}
-	image->pix_map = (u8 *)calloc(1, width * height * 24 / 8);
+	image->pix_map = (u8 *)calloc(1, width * height * BPP / 8);
 	if (image->pix_map == NULL) {
 		dprintf(STDERR_FILENO, "Cannot allocate memory for image pixel map\n");
 		free(image);
@@ -155,7 +156,7 @@ char *mlx_get_data_addr(void *img_ptr,
 		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
 		return NULL;
 	}
-	*bits_per_pixel = 24;
+	*bits_per_pixel = BPP;
 	*size_line = *bits_per_pixel / 8 * image->width;
 	*endian = 0;
 	return (char *)image->pix_map;
@@ -204,7 +205,13 @@ void mlx_put_image_to_window(mlx_ptr_t *mlx_ptr,
 		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
 		exit(1);
 	}
-	aligned_memcpy(window->local_buffer.buf, image->pix_map, window->local_buffer.len);
+	int j = 0;
+	for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT; i++) {
+		u32 content = ((u32 *)(image->pix_map))[i];
+		window->local_buffer.buf[j++] = content & 0xff;
+		window->local_buffer.buf[j++] = (content & 0xff00) >> 8;
+		window->local_buffer.buf[j++] = (content & 0xff0000) >> 16;
+	}
 	ioctl(0, REFRESH_SCREEN, &window->local_buffer);
 	(void)x;
 	(void)y;
@@ -215,7 +222,9 @@ int mlx_string_put(void *mlx_ptr,
 		   int x,
 		   int y,
 		   int color,
-		   char *string) {
+		   char *string)
+{
+	printf("%s\n", string);
 	(void)mlx_ptr;
 	(void)win_ptr;
 	(void)x;

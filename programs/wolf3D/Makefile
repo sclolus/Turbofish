@@ -25,7 +25,7 @@ else
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
 CC = i686-turbofish-gcc
-CFLAGS = -Ofast -Wall -Wextra -fno-omit-frame-pointer
+CFLAGS = -Ofast -std=c99 -Wall -Wextra -fno-omit-frame-pointer
 endif
 
 ### SOURCES ###
@@ -71,6 +71,7 @@ ifeq ($(UNAME_S),Darwin)
 endif
 else
 IFLAGS = -Isrcs
+LDFLAGS = -Wl,--gc-sections
 endif
 
 .PHONY: all clean fclean re help
@@ -86,7 +87,7 @@ else
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv maps $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv images $(SYSTEM_ROOT)/bin/wolf3D
-	sudo cp -rv launch.sh $(SYSTEM_ROOT)
+	sudo cp -rv wolf $(SYSTEM_ROOT)
 endif
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
