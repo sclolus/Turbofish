@@ -23,7 +23,7 @@ void	ft_putstr(const char *s)
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_itoa.c                                          :+:      :+:    :+:   */
+/*   itoa.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: bmickael <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -36,7 +36,7 @@ void	ft_putstr(const char *s)
 
 # define HEX_T(x)	"0123456789ABCDEF"[x]
 
-char	*ft_itoa(int n)
+char	*itoa(int n)
 {
 	char *output;
 	int string_size;
@@ -74,7 +74,7 @@ int s_float(t_args *args, t_status *op)
 		n = (double)va_arg(op->ap, double);
 	}
 	// We only display the integer part
-	char *s = ft_itoa((int)n);
+	char *s = itoa((int)n);
 	ft_putstr(s);
 	free(s);
 	return (0);
