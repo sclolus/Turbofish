@@ -3,7 +3,7 @@ include $(TURBOFISH_ROOT)/boilerplates.mk
 
 RAM_AMOUNT = 512
 IMG_DISK = image_disk.img
-IMAGE_SIZE = 131072
+IMAGE_SIZE = 524288
 FIRST_PART_SIZE = $$(($(IMAGE_SIZE) - 1024 * 10))
 LOOP_DEVICE = $(shell sudo losetup -f)
 KERNEL_DIRECTORY = $(KERNEL)_kernel
@@ -40,6 +40,7 @@ all: system_root $(IMG_DISK)
 system_root:
 	sudo mkdir -pv $(SYSTEM_ROOT)
 	sudo mkdir -pv $(SYSTEM_ROOT)/bin
+	sudo mkdir -pv $(SYSTEM_ROOT)/bin/wolf3D
 	sudo mkdir -pv $(SYSTEM_ROOT)/dev
 	sudo mkdir -pv $(SYSTEM_ROOT)/etc
 	sudo mkdir -pv $(SYSTEM_ROOT)/var

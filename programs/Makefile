@@ -9,6 +9,7 @@ all:
 	make -C modules
 	make -C login
 	make -C wolfportal
+	make -C wolf3D
 
 fclean:
 	make fclean -C c
@@ -18,6 +19,7 @@ fclean:
 	make fclean -C modules
 	make fclean -C login
 	make fclean -C wolfportal
+	make fclean -C wolf3D
 
 clean: fclean
 

@@ -113,8 +113,7 @@ int					main(int argc, char **argv)
 	bzero(&env, sizeof(t_env));
 	if (argc != 2)
 		return (err_usage(argv[0]));
-	if ((init_mlx(&env, "Wolf3D -^^,--,~", WIDTH * NOSTALGIA_FACTOR,
-											HEIGHT * NOSTALGIA_FACTOR)))
+	if ((init_mlx(&env, "Wolf3D -^^,--,~", WIDTH * NOSTALGIA_FACTOR, HEIGHT * NOSTALGIA_FACTOR)))
 		return (err_msg("Error during initialisation"));
 	if (get_parse(&env, argv[1]))
 		return (-1);
