@@ -80,11 +80,13 @@ all: $(NAME)
 $(NAME): $(OBJ)
 ifeq ($(GNU),yes)
 	make -C $(MLX)/ all
-endif
+	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
+else
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv maps $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv images $(SYSTEM_ROOT)/bin/wolf3D
+endif
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
