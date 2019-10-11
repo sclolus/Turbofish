@@ -136,7 +136,7 @@ SRC_C += statvfs fstatvfs
 VPATH += src/sys/statvfs
 HEADERS += sys/statvfs.h
 
-SRC_C += gettimeofday settimeofday times
+SRC_C += gettimeofday settimeofday times get_monotonic_time
 VPATH += src/sys/time
 HEADERS += sys/time.h
 

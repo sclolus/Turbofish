@@ -58,6 +58,7 @@ SRC_C += Clone \
 		drawer \
 		set_bg \
 		rand \
+		monotime \
 
 CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -I include
 ifeq ($(GNU),yes)
