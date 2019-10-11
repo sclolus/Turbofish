@@ -7,6 +7,9 @@ typedef void mlx_win_list_t;
 typedef void mlx_img_list_t;
 typedef void t_win_list;
 
+#define CHAR_WIDTH 8
+#define CHAR_HEIGHT 16
+
 void *mlx_init();
 
 void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title);

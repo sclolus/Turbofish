@@ -49,6 +49,7 @@ struct mlx {
 static void set_raw_mode(int fd);
 static void set_cooked_mode(struct window *window);
 static int handle_escape_scancode(int scancode);
+static void display_char_32(u8 c, u32 *location, u32 test_color);
 
 /*
 **  needed before everything else.
@@ -284,13 +285,22 @@ int mlx_string_put(void *mlx_ptr,
 		   int color,
 		   char *string)
 {
-	printf("%s\n", string);
-	(void)mlx_ptr;
+	struct mlx *mlx = (struct mlx *)mlx_ptr;
+
+	if (mlx == NULL || string == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		return -1;
+	}
+	u32 *location = (u32 *)(mlx->image->pix_map + y * WINDOW_WIDTH * BPP / 8 + x * BPP / 8);
+	while (*string != '\0') {
+		if ((u8 *)location >= mlx->image->pix_map + WINDOW_WIDTH * BPP / 8 * WINDOW_HEIGHT) {
+			dprintf(STDERR_FILENO, "attempting to write out of bound\n");
+			return -1;
+		}
+		display_char_32(*string++, location, color);
+		location += CHAR_WIDTH;
+	}
 	(void)win_ptr;
-	(void)x;
-	(void)y;
-	(void)color;
-	(void)string;
 	return 0;
 }
 
@@ -367,6 +377,27 @@ static int handle_escape_scancode(int scancode)
 			return KEYB_ARROW_DOWN;
 		default:
 			return -1;
+	}
+}
+
+extern u8 _font;
+
+static void display_char_32(u8 c, u32 *location, u32 text_color)
+{
+	u8 *bitmap;
+	u8 line;
+
+	bitmap = (u8 *)&_font + (c << 4);
+	for (int i = 0; i < CHAR_HEIGHT; i++) {
+		line = *bitmap;
+		for (int j = 0; j < CHAR_WIDTH; j++) {
+			if (line & 0x80)
+				*location = text_color;
+			line <<= 1;
+			location++;
+		}
+		location += (WINDOW_WIDTH * BPP / 8 - BPP) >> 2;
+		bitmap++;
 	}
 }
 

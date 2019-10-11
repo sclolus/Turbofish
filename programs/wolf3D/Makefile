@@ -78,10 +78,9 @@ endif
 
 .PHONY: all clean fclean re help
 
-all: .libs.lock $(NAME)
+all: .libs.lock mlx $(NAME)
 
-$(NAME): $(OBJ)
-	make -C $(MLX)/ all
+$(NAME): $(OBJ) mlx
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
 ifneq ($(GNU),yes)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
@@ -90,6 +89,9 @@ ifneq ($(GNU),yes)
 	sudo cp -rv images $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv wolf $(SYSTEM_ROOT)
 endif
+
+mlx:
+	make -C $(MLX)/ all
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)

@@ -36,10 +36,10 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.asm include/turbofish_mlx.h
 	$(AS) $(ASFLAGS) -o $@ $<
 
 clean:
-	rm -vf $(OBJ)
+	rm -vf $(OBJ_C) $(OBJ_ASM)
 
 fclean:
-	rm -vf $(OBJ)
+	rm -vf $(OBJ_C) $(OBJ_ASM)
 	rm -vf $(NAME)
 
 re: fclean all

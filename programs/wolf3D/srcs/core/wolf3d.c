@@ -33,10 +33,10 @@ static int move(t_env *e)
 	pix.i = 0xff0000;
 	draw_box((t_coord_i){WIDTH / 2 - 10, HEIGHT / 2 - 10},
 	(t_coord_i){WIDTH / 2 + 10, HEIGHT / 2 + 10}, pix, e->scene.scene);
-	mlx_put_image_to_window(e->mlx, e->win, e->image, 0, 0);
 	if (e->inter_time)
 		interpolate_switch(e, get_time());
 	eval_fps(e);
+	mlx_put_image_to_window(e->mlx, e->win, e->image, 0, 0);
 	return (0);
 }
 

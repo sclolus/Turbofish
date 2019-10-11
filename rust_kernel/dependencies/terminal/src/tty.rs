@@ -147,7 +147,7 @@ impl Tty {
     }
 
     /// Display the tty, mut be called when new activation of tty or switch
-    pub fn refresh(&mut self) {
+    pub fn refresh(&mut self, print_char: bool) {
         SCREEN_MONAD
             .lock()
             .draw_graphic_buffer(|buffer: *mut u8, width: usize, height: usize, bpp: usize| {
@@ -163,7 +163,11 @@ impl Tty {
                 Ok(())
             })
             .unwrap();
-        self.print_screen(self.scroll_offset);
+        if print_char == true {
+            self.print_screen(self.scroll_offset);
+        } else {
+            SCREEN_MONAD.lock().refresh_screen();
+        }
     }
 
     /// set the background buffer
@@ -485,7 +489,7 @@ impl BufferedTty {
                 if let Some(v) = &mut self.tty.background {
                     v.as_mut_slice().copy_from_slice(buf);
                     if self.tty.foreground == true {
-                        self.tty.refresh();
+                        self.tty.refresh(false);
                     }
                 } else {
                     log::warn!("No graphic vector allocated");

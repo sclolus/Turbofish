@@ -63,9 +63,8 @@ void eval_fps(t_env *e)
 			count = 0;
 		}
 	}
-	(void)e;
-	//mlx_string_put(e->mlx, e->win, 20, 20, 0x00FFFFFF, "FPS:");
-	//mlx_string_put(e->mlx, e->win, 70, 20, 0x00FFFFFF, (s) ? s : "");
+	mlx_string_put(e->mlx, e->win, 20, 20, 0x00FFFFFF, "FPS:");
+	mlx_string_put(e->mlx, e->win, 70, 20, 0x00FFFFFF, (s) ? s : "");
 }
 
 int err_usage(char *cmd)
