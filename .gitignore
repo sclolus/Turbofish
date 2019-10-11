@@ -13,4 +13,5 @@ build_dash/
 build_procps/
 !.gitignore
 system_disk/
+libs
 *~
