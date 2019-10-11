@@ -14,6 +14,7 @@
 struct local_buffer {
 	unsigned char *buf;
 	size_t len;
+	size_t bpp;
 };
 
 int ioctl(int fildes, int request, ... /* arg */);

@@ -510,7 +510,7 @@ impl BufferedTty {
         if let Ok((height, width, bpp)) = screen_monad.query_graphic_infos() {
             let len = height * width * bpp / 8;
             let buf = alloc_user_mem(len)?;
-            Ok(local_buffer { buf, len })
+            Ok(local_buffer { buf, len, bpp })
         } else {
             Err(())
         }

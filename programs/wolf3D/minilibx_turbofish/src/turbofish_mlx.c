@@ -97,7 +97,7 @@ void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title)
 		return NULL;
 	}
 	ioctl(0, GET_FRAME_BUFFER_PTR, (void *)&window->local_buffer);
-	printf("local_buffer: %p of len %zu\n", window->local_buffer.buf, window->local_buffer.len);
+	printf("local_buffer: %p len: %zu bpp: %zu\n", window->local_buffer.buf, window->local_buffer.len, window->local_buffer.bpp);
 
 	// Set key binding
 	int fd = open("/proc/self/fd/0", O_RDWR | O_NONBLOCK);
@@ -266,12 +266,16 @@ void mlx_put_image_to_window(mlx_ptr_t *mlx_ptr,
 		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
 		exit(1);
 	}
-	int j = 0;
-	for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT; i++) {
-		u32 content = ((u32 *)(image->pix_map))[i];
-		window->local_buffer.buf[j++] = content & 0xff;
-		window->local_buffer.buf[j++] = (content & 0xff00) >> 8;
-		window->local_buffer.buf[j++] = (content & 0xff0000) >> 16;
+	if (window->local_buffer.bpp == 24) {
+		int j = 0;
+		for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT; i++) {
+			u32 content = ((u32 *)(image->pix_map))[i];
+			window->local_buffer.buf[j++] = content & 0xff;
+			window->local_buffer.buf[j++] = (content & 0xff00) >> 8;
+			window->local_buffer.buf[j++] = (content & 0xff0000) >> 16;
+		}
+	} else {
+		aligned_memcpy(window->local_buffer.buf, image->pix_map, WINDOW_WIDTH * WINDOW_HEIGHT * BPP / 8);
 	}
 	ioctl(0, REFRESH_SCREEN, &window->local_buffer);
 	(void)x;
