@@ -126,9 +126,14 @@ int					main(int argc, char **argv)
 	env.display_minimap = true;
 	env.inter_state = true;
 	init_all(&env);
+#ifdef GNU
 	mlx_hook(env.win, X11_KEY_RELEASE, KEYRELEASEMASK, &mlx_key_release, &env);
 	mlx_hook(env.win, X11_KEY_PRESS, KEYPRESSMASK, &mlx_key_press, &env);
 	mlx_hook(env.win, X11_DESTROY_NOTIFY, 0xFF, &exit_mlx, &env);
+#else
+	mlx_hook(env.win, TURBOFISH_KEY_RELEASE, KEYRELEASEMASK, &mlx_key_release, &env);
+	mlx_hook(env.win, TURBOFISH_KEY_PRESS, KEYPRESSMASK, &mlx_key_press, &env);
+#endif
 	mlx_loop_hook(env.mlx, &move, &env);
 	mlx_loop(env.mlx);
 	return (0);

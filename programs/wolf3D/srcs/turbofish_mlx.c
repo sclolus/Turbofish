@@ -10,6 +10,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stropts.h>
+#include <errno.h>
+#include <termios.h>
+#include <fcntl.h>
 
 const char DEFAULT_WINDOW_NAME[] = "Turbofish window";
 const int WINDOW_WIDTH = 1024;
@@ -21,6 +24,12 @@ struct window {
 	int height;
 	char *title;
 	struct local_buffer local_buffer;
+
+	int key_fd;
+	int (*key_release_hook)(int keycode, void *param);
+	int (*key_press_hook)(int keycode, void *param);
+	void *key_release_env;
+	void *key_press_env;
 };
 
 struct image {
@@ -36,6 +45,10 @@ struct mlx {
 	int (*callback)();
 	void *env;
 };
+
+static void set_raw_mode(int fd);
+static void set_cooked_mode(void);
+static int handle_escape_scancode(int scancode);
 
 /*
 **  needed before everything else.
@@ -84,6 +97,18 @@ void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title)
 	}
 	ioctl(0, GET_FRAME_BUFFER_PTR, (void *)&window->local_buffer);
 	printf("local_buffer: %p of len %zu\n", window->local_buffer.buf, window->local_buffer.len);
+
+	// Set key binding
+	int fd = open("/proc/self/fd/0", O_RDWR | O_NONBLOCK);
+	if (fd == -1) {
+		perror("open fb failed");
+		free(window->title);
+		free(window);
+		return NULL;
+	}
+
+	set_raw_mode(fd);
+	window->key_fd = fd;
 	mlx->window = window;
 	return (void *)window;
 }
@@ -99,7 +124,7 @@ int mlx_destroy_window(void *mlx_ptr, void *win_ptr)
 	}
 	free(window->title);
 	free(window);
-	mlx->window = NULL;
+	set_cooked_mode();
 	return 0;
 }
 
@@ -184,6 +209,41 @@ int mlx_loop(void *mlx_ptr)
 		return -1;
 	}
 	while (true) {
+		struct window *window = (struct window *)mlx->window;
+		if (window == NULL) {
+			dprintf(STDERR_FILENO, "Cannot get window\n");
+			exit(-1);
+		}
+		int scancode = 0;
+		int len_readen = read(window->key_fd, &scancode, 2);
+		if (len_readen > 0) {
+			// Pressed
+			if (scancode >= 0x1 && scancode <= 0x58) {
+				if (window->key_press_hook != NULL) {
+					window->key_press_hook(scancode, window->key_press_env);
+				}
+			}
+			// Released
+			else if (scancode >= 0x81 && scancode <= 0xd8) {
+				if (window->key_release_hook != NULL) {
+					window->key_release_hook(scancode - 0x80, window->key_release_env);
+				}
+			}
+			// Pressed
+			else if (scancode >= 0xe010 && scancode <= 0xe06d) {
+				int escaped_scancode = handle_escape_scancode(scancode & 0xFF);
+				if (window->key_press_hook != NULL) {
+					window->key_press_hook(escaped_scancode, window->key_press_env);
+				}
+			}
+			// Released
+			else if (scancode >= 0xe090 && scancode <= 0xe0ed) {
+				int escaped_scancode = handle_escape_scancode((scancode & 0xFF) - 0x80);
+				if (window->key_release_hook != NULL) {
+					window->key_release_hook(escaped_scancode, window->key_release_env);
+				}
+			}
+		}
 		int _ret = mlx->callback(mlx->env);
 		(void)_ret;
 	}
@@ -238,13 +298,73 @@ int mlx_hook(t_win_list *win,
 	     int x_event,
 	     int x_mask,
 	     int (*funct)(),
-	     void *param) {
-	(void)win;
-	(void)x_event;
+	     void *param)
+{
+	struct window *window = (struct window *)win;
+
+	if (window == NULL || funct == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		return -1;
+	}
+
+	if (x_event == TURBOFISH_KEY_PRESS) {
+		window->key_press_hook = funct;
+		window->key_press_env = param;
+	} else if (x_event == TURBOFISH_KEY_RELEASE) {
+		window->key_release_hook = funct;
+		window->key_release_env = param;
+	}
 	(void)x_mask;
-	(void)funct;
-	(void)param;
 	return 0;
+}
+
+static void set_raw_mode(int fd)
+{
+	struct termios termios_p;
+	int ret = tcgetattr(fd, &termios_p);
+	if(ret == -1) {
+		perror("tcgetattr failed");
+	}
+
+	termios_p.c_lflag &= (~(ICANON | ECHO | TOSTOP));
+	ret = tcsetattr(fd, TCSANOW, &termios_p);
+	if( ret == -1) {
+		perror("tcsetattr failed");
+	}
+	ioctl(fd, RAW_SCANCODE_MODE, 1);
+}
+
+static void set_cooked_mode(void)
+{
+	struct termios termios_p;
+	int ret =  tcgetattr(0, &termios_p);
+	if(ret == -1) {
+		perror("tcgetattr failed");
+	}
+
+	termios_p.c_lflag |= (ICANON | ECHO | TOSTOP);
+	ret = tcsetattr(0, TCSANOW, &termios_p);
+	if( ret == -1) {
+		perror("tcsetattr failed");
+	}
+}
+
+static int handle_escape_scancode(int scancode)
+{
+	switch (scancode) {
+		case 0x38:
+			return 100;
+		case 0x48:
+			return KEYB_ARROW_UP;
+		case 0x4b:
+			return KEYB_ARROW_LEFT;
+		case 0x4d:
+			return KEYB_ARROW_RIGHT;
+		case 0x50:
+			return KEYB_ARROW_DOWN;
+		default:
+			return -1;
+	}
 }
 
 #endif

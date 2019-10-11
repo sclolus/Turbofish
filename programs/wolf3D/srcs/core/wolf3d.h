@@ -64,6 +64,8 @@
 
 # define MAX_MAP_SIZE		(4*1024*1024)
 
+#ifdef GNU
+
 # define KEYRELEASEMASK		0xFF
 # define KEYPRESSMASK		0xFF
 
@@ -120,6 +122,7 @@
 #  define KEYB_ARROW_LEFT	123
 #  define KEYB_ARROW_RIGHT	124
 
+# endif
 # endif
 
 # define N_CONTROL		4
