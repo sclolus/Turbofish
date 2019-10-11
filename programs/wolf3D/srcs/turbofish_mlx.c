@@ -47,7 +47,7 @@ struct mlx {
 };
 
 static void set_raw_mode(int fd);
-static void set_cooked_mode(void);
+static void set_cooked_mode(struct window *window);
 static int handle_escape_scancode(int scancode);
 
 /*
@@ -122,9 +122,9 @@ int mlx_destroy_window(void *mlx_ptr, void *win_ptr)
 		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
 		return -1;
 	}
+	set_cooked_mode(window);
 	free(window->title);
 	free(window);
-	set_cooked_mode();
 	return 0;
 }
 
@@ -334,9 +334,11 @@ static void set_raw_mode(int fd)
 	ioctl(fd, RAW_SCANCODE_MODE, 1);
 }
 
-static void set_cooked_mode(void)
+static void set_cooked_mode(struct window *window)
 {
 	struct termios termios_p;
+
+	close(window->key_fd);
 
 	int ret = tcgetattr(0, &termios_p);
 	if (ret == -1) {

@@ -72,13 +72,13 @@ pub unsafe fn sys_munmap(addr: *mut u8, length: usize) -> SysResult<u32> {
                 // good because we know that vaddr is aligned
                 let ret = v.unmap_addr(vaddr.into(), NbrPages::from(length));
                 if let Err(e) = ret {
-                    log::error!(
+                    log::warn!(
                         "a munmap was bullshit, error: {:?}, {:?}, size {}",
                         e,
                         vaddr,
                         length
                     );
-                    log::warn!("Maybe the libc allocator use a chop chop strategie ?");
+                    log::warn!("Maybe the libc allocator use a chop chop strategy ?");
                 }
             }
         }
