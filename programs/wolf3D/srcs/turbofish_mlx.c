@@ -215,8 +215,8 @@ int mlx_loop(void *mlx_ptr)
 			exit(-1);
 		}
 		int scancode = 0;
-		int len_readen = read(window->key_fd, &scancode, 2);
-		if (len_readen > 0) {
+		int len_readen;
+		while ((len_readen = read(window->key_fd, &scancode, 2)) > 0) {
 			// Pressed
 			if (scancode >= 0x1 && scancode <= 0x58) {
 				if (window->key_press_hook != NULL) {
