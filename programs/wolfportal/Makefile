@@ -13,8 +13,12 @@ include $(TURBOFISH_ROOT)/boilerplates.mk
 # **************************************************************************** #
 
 PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
-# CC = gcc 
+
+ifeq ($(GNU),yes)
+CC = gcc 
+else
 CC = i686-turbofish-gcc 
+endif
 
 NAME =	wolf3d
 
@@ -43,21 +47,29 @@ SRC =	main.c			\
 		tourelle.c		\
 		trace_line.c	\
 		floor_casting.c	\
-		mlx.c	\
+
+SRC_TURBOFISH_MLX = mlx.c	\
 
 INCLUDE = -I ./libft -I ./include -I ./minilibx_macos/
 
 
 OBJS = $(addprefix objs/, $(SRC:.c=.o))
+ifneq ($(GNU),yes)
+OBJS += $(addprefix objs/, $(SRC_TURBOFISH_MLX:.c=.o))
+endif
 
 CFLAGS += -g -o2 -flto
 all: $(NAME)
 
 $(NAME): dis $(OBJS)
 	make -C ./libft/
-	# $(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
-	$(CC) -g $(OBJS) -L libft -lft -o2 -flto -o $(NAME)
+ifeq ($(GNU),yes)
+	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
+else
+	$(CC) $(INCLUDE) $(CFLAGS) -c -o objs/mlx.o src/mlx.c
+	$(CC) -g $(OBJS)  -L libft -lft -o2 -flto -o $(NAME)
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/
+endif
 
 clean:
 	make clean -C ./libft/
@@ -71,8 +83,11 @@ re: fclean all
 
 objs/%.o : src/%.c
 	@/bin/mkdir -p objs
-	echo "compiling" $<
+ifeq ($(GNU),yes)
+	$(CC) $(INCLUDE) $(CFLAGS) -c -o $@ $< -D GNU
+else
 	$(CC) $(INCLUDE) $(CFLAGS) -c -o $@ $<
+endif
 
 dis:
 	@echo " __   __  ___     ______    ___       _______   _______  ________   "

@@ -186,9 +186,6 @@ int	mlx_put_image_to_window(void *mlx_ptr, void *win_ptr, void *img_ptr,
 	ioctl(MLX_CTX.fb, REFRESH_SCREEN);
 }
 
-double sqrt(double x) {
-}
-
 void	*mlx_xpm_file_to_image(void *mlx_ptr, char *filename,
 							   int *width, int *height) {
 }

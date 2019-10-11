@@ -78,8 +78,7 @@ int		ft_key_release(int keycode, void *param)
 		else if (keycode == KEY_S) {
 			printf("S");
 		}
-		//TODO: reput that
-		/* portal_gun_shoot(keycode); */
+		portal_gun_shoot(keycode);
 		/* system("afplay sound/portal_gun_shoot.mp3 &"); */
 	}
 	printf("\n");

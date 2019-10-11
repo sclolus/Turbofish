@@ -91,14 +91,15 @@ typedef struct		s_key
 	int				right;
 }					t_key;
 
-# define SCREEN_WIDTH 1280
-# define SCREEN_HEIGHT 800
+# define SCREEN_WIDTH 1024
+# define SCREEN_HEIGHT 768
 # define WALL_P_WIDTH 420
 # define WALL_P_HEIGHT 420
 # define WALL_HEIGHT 250
 # define SIZE_BLOCK 64
 # define PI 3.14159265
-# define DISTANCE_CAMERA_SCREEN (SCREEN_WIDTH / 2) / tan(30)
+# define TAN_30 0.57735026919
+# define DISTANCE_CAMERA_SCREEN ((SCREEN_WIDTH / 2) / TAN_30)
 # define ANGLE_ENTRE_DEUX_RAYONS_CONSECUTIFS 60 / SCREEN_WIDTH
 # define MOTIONNOTIFY 6
 # define POINTERMOTIONMASK (1L << 6)
@@ -115,23 +116,31 @@ typedef struct		s_key
 # define BUTTON4 4
 # define BUTTON5 5
 
-# define KEY_LEFT 65361
-# define KEY_DOWN 65364
-# define KEY_RIGHT 65363
-# define KEY_UP 65362
-# define KEY_B 11
-# define KEY_PAD_SUB 78
-# define KEY_PAD_ADD 69
-# define KEY_R 15
-# define KEY_Z 122
-# define KEY_H 4
-# define KEY_S 115
+#ifdef GNU
+	# define KEY_LEFT 65361
+	# define KEY_DOWN 65364
+	# define KEY_RIGHT 65363
+	# define KEY_UP 65362
+	# define KEY_Z 122
+	# define KEY_S 115
+#else
+	# define KEY_LEFT 123
+	# define KEY_DOWN 125
+	# define KEY_RIGHT 124
+	# define KEY_UP 126
+	# define KEY_S 1
+	# define KEY_Z 6
+#endif
+
+/* 
+ * # define KEY_B 11
+ * # define KEY_PAD_SUB 78
+ * # define KEY_PAD_ADD 69
+ * # define KEY_R 15
+ * # define KEY_H 4
+ */
 
 /*
--# define KEY_LEFT 123
--# define KEY_DOWN 125
--# define KEY_RIGHT 124
--# define KEY_UP 126
 +# define KEY_LEFT 65361
 +# define KEY_DOWN 65364
 +# define KEY_RIGHT 65363
