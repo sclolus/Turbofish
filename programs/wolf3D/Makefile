@@ -24,13 +24,13 @@ endif
 else
 # export TURBOFISH_ROOT in you shell configuration file to execute this Makefile independently
 include $(TURBOFISH_ROOT)/boilerplates.mk
+_MLX = minilibx_turbofish
 CC = i686-turbofish-gcc
 CFLAGS = -Ofast -std=c99 -Wall -Wextra -fno-omit-frame-pointer
 endif
 
 ### SOURCES ###
 
-SRC_MLX = turbofish_mlx
 SRC_COMMON = common
 SRC_CORE = wolf3d image_mlx_tools init_mlx actions keyboard load_config \
 			debug timer get_wall_infos define_mouvements move_sprites
@@ -39,20 +39,22 @@ SRC_PARSE = constructor load_map get_next_line get_player_location get_sprites g
 SRC_OVERLAY = draw_line draw minimap
 SRC_BMP = bmp_load bmp_save
 
-SRC_LIST = $(SRC_MLX) $(SRC_COMMON) $(SRC_CORE) $(SRC_PARSE) $(SRC_BMP) $(SRC_OVERLAY) $(SRC_RENDER)
+SRC_LIST = $(SRC_COMMON) $(SRC_CORE) $(SRC_PARSE) $(SRC_BMP) $(SRC_OVERLAY) $(SRC_RENDER)
 VPATH = srcs srcs/core srcs/parse srcs/bmp srcs/overlay srcs/render
 
 ## HEADERS
 
-HEADERS = common.h turbofish_mlx.h wolf3d.h parse.h internal_parse.h bmp.h internal_bmp.h overlay.h internal_overlay.h render.h
+HEADERS = common.h wolf3d.h parse.h internal_parse.h bmp.h internal_bmp.h overlay.h internal_overlay.h render.h
 
 ### LIBRAIRIES ###
 
-LIB_DIR = libs
-
 ifeq ($(GNU),yes)
-MLX = $(addprefix $(LIB_DIR)/, $(_MLX))
+LIB_DIR = libs
+else
+LIB_DIR = .
 endif
+
+MLX = $(addprefix $(LIB_DIR)/, $(_MLX))
 
 ### ~~~~~~~~~~ ###
 
@@ -70,8 +72,8 @@ ifeq ($(UNAME_S),Darwin)
 	LDFLAGS = -framework openGL -framework AppKit $(MLX)/libmlx.a
 endif
 else
-IFLAGS = -Isrcs
-LDFLAGS = -Wl,--gc-sections
+IFLAGS = -Isrcs -I$(MLX)/include
+LDFLAGS = -Wl,--gc-sections -L $(MLX) $(MLX)/$(MLX).a
 endif
 
 .PHONY: all clean fclean re help
@@ -79,10 +81,9 @@ endif
 all: .libs.lock $(NAME)
 
 $(NAME): $(OBJ)
-ifeq ($(GNU),yes)
 	make -C $(MLX)/ all
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
-else
+ifneq ($(GNU),yes)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/bin/wolf3D
 	sudo cp -rv maps $(SYSTEM_ROOT)/bin/wolf3D
@@ -94,12 +95,15 @@ $(OBJ_DIR)/%.o: %.c $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $< $(IFLAGS)
 
 clean:
-ifeq ($(GNU),yes)
+ifneq ($(GNU),yes)
 	make -C $(MLX)/ clean
 endif
 	rm -f $(OBJ)
 
 fclean: clean
+ifneq ($(GNU),yes)
+	make -C $(MLX)/ fclean
+endif
 	rm -f $(NAME)
 	rm -rvf libs
 	rm -f .libs.lock
