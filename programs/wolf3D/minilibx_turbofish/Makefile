@@ -3,31 +3,37 @@ include $(TURBOFISH_ROOT)/boilerplates.mk
 
 NAME = minilibx_turbofish.a
 CC = i686-turbofish-gcc
+AS = nasm
 AR = i686-turbofish-ar
 RANLIB = i686-turbofish-ranlib
 
 CFLAGS = -Ofast -std=c99 -Wall -Wextra -fno-omit-frame-pointer
 IFLAGS = -I./include
+ASFLAGS = -f elf
 
 LIBDIR	= ./
 SRCDIR	= src
 OBJDIR	= obj
 
-SRC = turbofish_mlx
+SRC_C = turbofish_mlx
+SRC_ASM = vbe_font
 
-TMP = $(basename $(notdir $(SRC)))
-OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(TMP)))
+OBJ_C = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
+OBJ_ASM = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
 
 .PHONY: all re clean fclean help
 
 all: $(NAME)
 
-$(NAME): $(OBJ)
-	$(AR) rc $(NAME) $(OBJ)
+$(NAME): $(OBJ_C) $(OBJ_ASM)
+	$(AR) rc $(NAME) $(OBJ_C) $(OBJ_ASM)
 	$(RANLIB) $(NAME)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c include/turbofish_mlx.h
 	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.asm include/turbofish_mlx.h
+	$(AS) $(ASFLAGS) -o $@ $<
 
 clean:
 	rm -vf $(OBJ)
