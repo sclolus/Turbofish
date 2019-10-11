@@ -68,7 +68,12 @@ ifeq ($(GNU),yes)
 else
 	$(CC) $(INCLUDE) $(CFLAGS) -c -o objs/mlx.o src/mlx.c
 	$(CC) -g $(OBJS)  -L libft -lft -o2 -flto -o $(NAME)
-	sudo cp -v $(NAME) $(SYSTEM_ROOT)/
+	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal
+	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal/img
+	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal/maps
+	sudo cp -v $(NAME) $(SYSTEM_ROOT)/wolfportal
+	sudo cp -v maps/* $(SYSTEM_ROOT)/wolfportal/maps
+	sudo cp -v img/*.bmp $(SYSTEM_ROOT)/wolfportal/img
 endif
 
 clean:
