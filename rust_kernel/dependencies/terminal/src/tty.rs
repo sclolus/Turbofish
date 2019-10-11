@@ -484,7 +484,9 @@ impl BufferedTty {
             if screen_size == buf.len() {
                 if let Some(v) = &mut self.tty.background {
                     v.as_mut_slice().copy_from_slice(buf);
-                    self.tty.refresh();
+                    if self.tty.foreground == true {
+                        self.tty.refresh();
+                    }
                 } else {
                     log::warn!("No graphic vector allocated");
                 }
