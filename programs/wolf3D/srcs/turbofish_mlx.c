@@ -328,7 +328,7 @@ static void set_raw_mode(int fd)
 
 	termios_p.c_lflag &= (~(ICANON | ECHO | TOSTOP));
 	ret = tcsetattr(fd, TCSANOW, &termios_p);
-	if( ret == -1) {
+	if(ret == -1) {
 		perror("tcsetattr failed");
 	}
 	ioctl(fd, RAW_SCANCODE_MODE, 1);
@@ -337,14 +337,15 @@ static void set_raw_mode(int fd)
 static void set_cooked_mode(void)
 {
 	struct termios termios_p;
-	int ret =  tcgetattr(0, &termios_p);
-	if(ret == -1) {
+
+	int ret = tcgetattr(0, &termios_p);
+	if (ret == -1) {
 		perror("tcgetattr failed");
 	}
 
 	termios_p.c_lflag |= (ICANON | ECHO | TOSTOP);
 	ret = tcsetattr(0, TCSANOW, &termios_p);
-	if( ret == -1) {
+	if (ret == -1) {
 		perror("tcsetattr failed");
 	}
 }

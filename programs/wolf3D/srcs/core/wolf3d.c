@@ -19,9 +19,9 @@
 #include "overlay/overlay.h"
 #include "render/render.h"
 
-static int			move(t_env *e)
+static int move(t_env *e)
 {
-	t_pix				pix;
+	t_pix pix;
 
 	animate_sprites(e);
 	common_action(e);
@@ -40,7 +40,7 @@ static int			move(t_env *e)
 	return (0);
 }
 
-static inline float	angle_on_screen(int x)
+static inline float angle_on_screen(int x)
 {
 	float angle;
 
@@ -48,39 +48,49 @@ static inline float	angle_on_screen(int x)
 	return (angle);
 }
 
-static void			init_all(t_env *e)
+static void init_all(t_env *e)
 {
-	int		i;
+	int i;
 
 	create_mlx_image(e);
+
 	init_sky(e, "images/astro.bmp");
-	init_floor(e, (char*[]){"images/parquet.bmp",
-			"images/seamless_carpet.bmp", "images/Brick2.bmp"}, N_FLOOR_BMP);
-	init_walls(e, (char*[]){"images/4murs.bmp", "images/4murs2.bmp",
-						"images/pig.bmp", "images/aperture.bmp"}, N_WALL_BMP);
-	init_sprites(e, (char*[]){"images/pig_2.bmp", "images/dog.bmp",
-						"images/sadirac.bmp"}, N_SPRITE_BMP);
+	init_floor(e, (char*[]) {
+			"images/parquet.bmp",
+			"images/seamless_carpet.bmp",
+			"images/Brick2.bmp"
+	}, N_FLOOR_BMP);
+	init_walls(e, (char*[]) {
+			"images/4murs.bmp",
+			"images/4murs2.bmp",
+			"images/pig.bmp",
+			"images/aperture.bmp"
+	}, N_WALL_BMP);
+	init_sprites(e, (char*[]) {
+			"images/pig_2.bmp",
+			"images/dog.bmp",
+			"images/sadirac.bmp"
+	}, N_SPRITE_BMP);
+
 	init_scene(e);
 	i = 0;
-	while (i < HEIGHT)
-	{
+	while (i < HEIGHT) {
 		e->angle_y[i] = angle_on_screen((HEIGHT / 2) - i);
 		e->dist_floor[i] = e->player.height / tanf(-e->angle_y[i]);
 		e->atan_list[i] = tanf(e->angle_y[i]);
 		i++;
 	}
 	i = -1;
-	while (++i < WIDTH)
-	{
+	while (++i < WIDTH) {
 		e->angle_x[i] = angle_on_screen(i - (WIDTH / 2));
 		e->cos_list[i] = cosf(e->angle_x[i]);
 	}
 }
 
-static int			get_parse(t_env *e, char *filename)
+static int get_parse(t_env *e, char *filename)
 {
-	t_sprite_info	*s_l;
-	int				i;
+	t_sprite_info *s_l;
+	int i;
 
 	if (load_map(e, filename) != 0)
 		return (err_msg("bad file"));
@@ -93,8 +103,7 @@ static int			get_parse(t_env *e, char *filename)
 	if (!(e->sprites = (t_sprite*)malloc(sizeof(t_sprite) * e->n_sprites)))
 		exit(EXIT_FAILURE);
 	i = -1;
-	while (++i < e->n_sprites)
-	{
+	while (++i < e->n_sprites) {
 		printf("sprite type %i: x = %i && y = %i\n", s_l->type,
 							(int)s_l->location.x, (int)s_l->location.y);
 		e->sprites[i].location = s_l->location;
@@ -106,9 +115,9 @@ static int			get_parse(t_env *e, char *filename)
 	return (0);
 }
 
-int					main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-	t_env			env;
+	t_env env;
 
 	bzero(&env, sizeof(t_env));
 	if (argc != 2)
