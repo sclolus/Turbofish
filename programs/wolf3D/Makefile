@@ -74,9 +74,9 @@ IFLAGS = -Isrcs
 LDFLAGS = -Wl,--gc-sections
 endif
 
-.PHONY: all clean fclean re help libs
+.PHONY: all clean fclean re help
 
-all: libs $(NAME)
+all: .libs.lock $(NAME)
 
 $(NAME): $(OBJ)
 ifeq ($(GNU),yes)
@@ -102,6 +102,7 @@ endif
 fclean: clean
 	rm -f $(NAME)
 	rm -rvf libs
+	rm -f .libs.lock
 
 re: fclean all
 
@@ -122,5 +123,6 @@ help:
 exec:
 	./wolf3d maps/mapZ.map
 
-libs: libs.tar
+.libs.lock: libs.tar
+	touch .libs.lock
 	tar -xvf $<
