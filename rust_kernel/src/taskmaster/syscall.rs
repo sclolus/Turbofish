@@ -18,12 +18,13 @@ use super::{IntoRawResult, SysResult};
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, FSTATFS, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETHOSTNAME, GETPGID,
-    GETPGRP, GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, IS_STR_VALID, KILL,
-    LINK, LSEEK, LSMOD, LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
-    OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID,
-    SETGROUPS, SETHOSTNAME, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
-    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR,
-    TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
+    GETPGRP, GETPID, GETPPID, GETTIMEOFDAY, GETUID, GET_KERNEL_PROPERTIES, INSMOD, IOCTL, ISATTY,
+    IS_STR_VALID, KILL, LINK, LSEEK, LSMOD, LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP,
+    NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID,
+    SETEUID, SETGID, SETGROUPS, SETHOSTNAME, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL,
+    SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, STATFS, SYMLINK,
+    TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAIT4,
+    WAITPID, WRITE,
 };
 
 use core::ffi::c_void;
@@ -31,8 +32,8 @@ use i386::BaseRegisters;
 use interrupts::idt::{GateType, IdtGateEntry, InterruptTable};
 use libc_binding::Errno;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, rusage, termios, timeval, timezone, tms, uid_t, utimbuf,
-    DIR,
+    c_char, dev_t, gid_t, kernel, mode_t, off_t, rusage, termios, timeval, timezone, tms, uid_t,
+    utimbuf, DIR,
 };
 
 mod mmap;
@@ -255,6 +256,15 @@ use umount::sys_umount;
 mod mount;
 use mount::sys_mount;
 
+mod times;
+use times::sys_times;
+
+mod gethostname;
+use gethostname::{sys_gethostname, HOSTNAME};
+
+mod sethostname;
+use sethostname::sys_sethostname;
+
 /*
  * Module kernel management
  */
@@ -265,14 +275,11 @@ use rmmod::sys_rmmod;
 mod lsmod;
 use lsmod::sys_lsmod;
 
-mod times;
-use times::sys_times;
-
-mod gethostname;
-use gethostname::{sys_gethostname, HOSTNAME};
-
-mod sethostname;
-use sethostname::sys_sethostname;
+/*
+ * Get informations from kernel
+ */
+mod get_kernel_properties;
+use get_kernel_properties::sys_get_kernel_properties;
 
 mod trace_syscall;
 
@@ -422,6 +429,9 @@ pub unsafe extern "C" fn syscall_interrupt_handler(cpu_state: *mut CpuState) -> 
         INSMOD => sys_insmod(ebx as *const c_char),
         RMMOD => sys_rmmod(ebx as *const c_char),
         LSMOD => sys_lsmod(),
+
+        // Get informations from kernel
+        GET_KERNEL_PROPERTIES => sys_get_kernel_properties(ebx as *mut kernel),
 
         // set thread area: WTF
         0xf3 => Err(Errno::EPERM),

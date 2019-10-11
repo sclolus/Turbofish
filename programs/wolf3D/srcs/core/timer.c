@@ -42,6 +42,10 @@ unsigned long int	get_time(void)
 {
 	struct timeval		spec;
 
+#ifdef GNU
 	gettimeofday(&spec, NULL);
+#else
+	get_monotonic_time(&spec, NULL);
+#endif
 	return ((spec.tv_sec * 1000) + spec.tv_usec / 1.0e3);
 }

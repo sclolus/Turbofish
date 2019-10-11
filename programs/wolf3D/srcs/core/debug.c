@@ -45,12 +45,20 @@ void			eval_fps(t_env *e)
 
 	if (count == 0)
 	{
+#ifdef GNU
 		gettimeofday(&start, NULL);
+#else
+		get_monotonic_time(&start, NULL);
+#endif
 		count++;
 	}
 	else
 	{
+#ifdef GNU
 		gettimeofday(&stop, NULL);
+#else
+		get_monotonic_time(&stop, NULL);
+#endif
 		if ((stop.tv_sec - start.tv_sec) == 0)
 			count++;
 		else

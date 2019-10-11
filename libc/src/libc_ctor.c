@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <user_syscall.h>
 
 #define __PRIVATE_USE_ENV_H__
 # include "./stdlib/env.h"
@@ -11,6 +12,8 @@
 char **environ;
 
 int errno;
+
+struct kernel kernel;
 
 #define array_size __array_size
 
@@ -41,10 +44,13 @@ void basic_constructor(int argc, char **argv, char **envp) {
 	}
 
 	environ = heap_env;
-	/* printf("** libc constructor called: argc: %i, argc: %p, envp: %p ***\n",
-	       argc,
-	       argv,
-	       envp); */
+
+	// Get informations about kernel
+	int ret = _user_syscall(GET_KERNEL_PROPERTIES, 1, &kernel);
+	if (ret < 0) {
+		dprintf(2, "*** Cannot get kernel properties ***\n");
+		exit(EXIT_FAILURE);
+	}
 	(void)argc;
 	(void)argv;
 	errno = 0;

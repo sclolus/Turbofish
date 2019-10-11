@@ -69,7 +69,11 @@ void			draw_minimap(t_env *e)
 	draw_arrow(e->scene.scene, l1, e->player.angle);
 	color.i = 0xffffff;
 	draw_circle(e->scene.scene, l1, MAP_RADIUS, color);
+#ifdef GNU
 	gettimeofday(&spec, NULL);
+#else
+	get_monotonic_time(&spec, NULL);
+#endif
 	angle = (float)((((((int)spec.tv_sec & 0x0F) * 1000) +
 		round(spec.tv_usec / 1.0e3)) / 2000) * PI * 2);
 	line.p1 = l1;
