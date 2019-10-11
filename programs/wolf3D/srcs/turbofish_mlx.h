@@ -51,35 +51,38 @@ int mlx_hook(t_win_list *win,
 # define TURBOFISH_KEY_RELEASE    3
 # define TURBOFISH_KEY_PRESS      2
 
+// There is no window for the moment
 // # define X11_DESTROY_NOTIFY    17
 // # define X11_BUTTON_4          4
 // # define X11_MOTION_NOTIFY     6
 
-# define KEYB_1            18
-# define KEYB_2            19
-# define KEYB_3            20
-# define KEYB_4            21
-# define KEYB_5            23
-# define KEYB_6            22
-# define KEYB_7            26
-# define KEYB_8            28
-# define KEYB_9            26
-# define KEYB_C            8
-# define KEYB_P            35
-# define KEYB_R            15
-# define KEYB_PLUS         69
-# define KEYB_MINUS        78
-# define KEYB_MMO_W        13
-# define KEYB_MMO_S        1
-# define KEYB_MMO_A        0
-# define KEYB_MMO_D        2
+# define KEYB_1            2
+# define KEYB_2            3
+# define KEYB_3            4
+# define KEYB_4            5
+# define KEYB_5            6
+# define KEYB_6            7
+# define KEYB_7            8
+# define KEYB_8            9
+# define KEYB_9            10
+# define KEYB_C            46
+# define KEYB_P            25
+# define KEYB_R            19
+# define KEYB_PLUS         78
+# define KEYB_MINUS        74
+# define KEYB_MMO_W        17
+# define KEYB_MMO_S        31
+# define KEYB_MMO_A        30
+# define KEYB_MMO_D        32
 
-#  define KEYB_M           109
-#  define KEYB_HELP        44
-#  define KEYB_ESCAPE      27
-#  define KEYB_ARROW_UP    82
-#  define KEYB_ARROW_DOWN  84
-#  define KEYB_ARROW_LEFT  81
-#  define KEYB_ARROW_RIGHT 83
+#  define KEYB_M           50
+#  define KEYB_HELP        35
+#  define KEYB_ESCAPE      1
+
+// This define seams to be just internaly
+#  define KEYB_ARROW_UP    126
+#  define KEYB_ARROW_DOWN  125
+#  define KEYB_ARROW_LEFT  123
+#  define KEYB_ARROW_RIGHT 124
 
 #endif
