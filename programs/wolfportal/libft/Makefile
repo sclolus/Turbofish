@@ -94,7 +94,7 @@ SRC = ft_dtoa.c \
 
 SRC_O = $(SRC:.c=.o)
 
-FLAGS = -Wall -Wextra -Werror -g
+FLAGS = -Wall -Wextra -Werror -g #-fsanitize=address
 
 all: $(NAME)
 

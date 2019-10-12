@@ -8,15 +8,18 @@ AR = i686-turbofish-ar
 RANLIB = i686-turbofish-ranlib
 
 CFLAGS = -Ofast -std=c99 -Wall -Wextra -fno-omit-frame-pointer
-IFLAGS = -I./include
+IFLAGS = -I./include -I src/bmp
 ASFLAGS = -f elf
 
 LIBDIR	= ./
 SRCDIR	= src
 OBJDIR	= obj
 
-SRC_C = turbofish_mlx
+SRC_C = turbofish_mlx bmp_load
 SRC_ASM = vbe_font
+
+VPATH = src
+VPATH += src/bmp
 
 OBJ_C = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_C)))))
 OBJ_ASM = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_ASM)))))
@@ -29,7 +32,7 @@ $(NAME): $(OBJ_C) $(OBJ_ASM)
 	$(AR) rc $(NAME) $(OBJ_C) $(OBJ_ASM)
 	$(RANLIB) $(NAME)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c include/turbofish_mlx.h
+$(OBJDIR)/%.o: %.c include/turbofish_mlx.h
 	$(CC) -c $(CFLAGS) $(IFLAGS) -o $@ $<
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.asm include/turbofish_mlx.h

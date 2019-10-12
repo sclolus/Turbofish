@@ -85,7 +85,7 @@ int			recalc_img(void *param)
 	mv_up();
 	mv_down();
 	ft_turn();
-	ft_memset(env()->ptr, 0x00, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
+	ft_memset(env()->ptr, 0x0, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
 	ft_wolf();
 	if ((env()->map[(int)cam()->pos.x][(int)cam()->pos.y]) == -1)
 	{

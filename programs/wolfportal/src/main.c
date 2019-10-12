@@ -70,9 +70,11 @@ int		main(int ac, char **av)
 	mlx_hook(env()->win, KEYPRESS, KEYPRESSMASK, &ft_key_pressed, NULL);
 	mlx_hook(env()->win, KEYRELEA, KEYRELEAMASK, &ft_key_release, NULL);
 	mlx_hook(env()->win, 17, 1, &quit, NULL);
-	ft_wolf();
-	mlx_put_image_to_window(env()->mlx, env()->win, env()->img, 0, 0);
-	mlx_put_image_to_window(env()->mlx, env()->win, texture()->img, 0, 0);
+	/* ft_wolf(); */
+	/* 
+	 * mlx_put_image_to_window(env()->mlx, env()->win, env()->img, 0, 0);
+	 * mlx_put_image_to_window(env()->mlx, env()->win, texture()->img, 0, 0);
+	 */
 	mlx_loop_hook(env()->mlx, recalc_img, NULL);
 	mlx_loop(env()->mlx);
 	return (0);

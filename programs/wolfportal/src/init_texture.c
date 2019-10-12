@@ -14,10 +14,40 @@
 #include <unistd.h>
 #include <mlx.h>
 
+#ifdef GNU
+#define IMG_MUR "img/mur_portal.xpm"
+#else
+#define IMG_MUR "img/mur_portal.bmp"
+#endif
+
+#ifdef GNU
+#define IMG_GUN "img/portal_gun.xpm"
+#else
+#define IMG_GUN "img/portal_gun.bmp"
+#endif
+
+#ifdef GNU
+#define IMG_PORTAL_BLUE "img/portal_bleu.xpm"
+#else
+#define IMG_PORTAL_BLUE "img/portal_bleu.bmp"
+#endif
+
+#ifdef GNU
+#define IMG_PORTAL_ORANGE "img/portal_orange.xpm"
+#else
+#define IMG_PORTAL_ORANGE "img/portal_orange.bmp"
+#endif
+
+#ifdef GNU
+#define IMG_TOURELLE "img/tourelle.xpm"
+#else
+#define IMG_TOURELLE "img/tourelle.bmp"
+#endif
+
 int			init_wall_texture(void)
 {
 	if (!(texture()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/mur_portal.xpm",
+					IMG_MUR,
 	&texture()->width, &texture()->height)))
 		return (ft_retmsg("cannot load image ol.xpm :/", 2));
 	texture()->ptr = mlx_get_data_addr(texture()->img, &texture()->bpp,
@@ -28,7 +58,7 @@ int			init_wall_texture(void)
 int			init_portal_gun_texture(void)
 {
 	if (!(gun()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/portal_gun.xpm",
+					IMG_GUN,
 	&gun()->width, &gun()->height)))
 		return (ft_retmsg("cannot load image portal_gun.xpm :/", 2));
 	gun()->ptr = mlx_get_data_addr(gun()->img, &gun()->bpp,
@@ -39,7 +69,7 @@ int			init_portal_gun_texture(void)
 int			init_portal_blue_texture(void)
 {
 	if (!(portal_blue()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/portal_bleu.xpm",
+					IMG_PORTAL_BLUE,
 	&portal_blue()->width, &portal_blue()->height)))
 		return (ft_retmsg("cannot load image portal_bleu.xpm :/", 2));
 	portal_blue()->ptr = mlx_get_data_addr(portal_blue()->img,
@@ -51,7 +81,7 @@ int			init_portal_blue_texture(void)
 int			init_portal_red_texture(void)
 {
 	if (!(portal_red()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/portal_orange.xpm",
+					IMG_PORTAL_ORANGE,
 	&portal_red()->width, &portal_red()->height)))
 		return (ft_retmsg("cannot load image portal_orange.xpm :/", 2));
 	portal_red()->ptr = mlx_get_data_addr(portal_red()->img, &portal_red()->bpp,
@@ -62,7 +92,7 @@ int			init_portal_red_texture(void)
 int			init_tourelle_texture(void)
 {
 	if (!(tourelle()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/tourelle.xpm",
+					IMG_TOURELLE,
 	&tourelle()->width, &tourelle()->height)))
 		return (ft_retmsg("cannot load image tourelle.xpm :/", 2));
 	tourelle()->ptr = mlx_get_data_addr(tourelle()->img, &tourelle()->bpp,

@@ -21,15 +21,17 @@ void				ft_pixelput(int x, int y, int color)
 
 	if (y < 0 || x < 0)
 		return ;
-	new_color = mlx_get_color_value(env()->mlx, color);
 	dest = y * env()->size_line + x * (env()->bpp / 8);
 	if ((SCREEN_HEIGHT * SCREEN_WIDTH * (env()->bpp / 8)) <= dest)
 		return ;
 	if (dest < 0)
 		return ;
-	i = -1;
-	while (++i < env()->bpp / 8)
-	{
-		env()->ptr[dest + i] = new_color >> (i * 8) & 0xFF;
-	}
+	/* i = -1; */
+	*((unsigned int *)&env()->ptr[dest]) = color;
+	/* 
+	 * while (++i < env()->bpp / 8)
+	 * {
+	 * 	env()->ptr[dest + i] = color >> (i * 8) & 0xFF;
+	 * }
+	 */
 }

@@ -124,6 +124,7 @@ typedef struct		s_key
 	# define KEY_Z 122
 	# define KEY_S 115
 #else
+// this is for turbifish
 	# define KEY_LEFT 123
 	# define KEY_DOWN 125
 	# define KEY_RIGHT 124

@@ -2,6 +2,7 @@
 #ifndef GNU
 
 #include "turbofish_mlx.h"
+#include "bmp/bmp.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -72,7 +73,7 @@ void *mlx_new_window(void *mlx_ptr, int size_x, int size_y, char *title)
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
 	if (mlx == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea in %s\n", "mlx_new_window");
 		return NULL;
 	}
 	if (size_x != WINDOW_WIDTH || size_y != WINDOW_HEIGHT) {
@@ -120,7 +121,7 @@ int mlx_destroy_window(void *mlx_ptr, void *win_ptr)
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
 	if (window == NULL || mlx == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in %s\n", "mlx_destroy_window");
 		return -1;
 	}
 	set_cooked_mode(window);
@@ -134,7 +135,7 @@ void *mlx_new_image(void *mlx_ptr, int width, int height)
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
 	if (mlx == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea in %s\n", "mlx_new_image");
 		return NULL;
 	}
 
@@ -143,6 +144,8 @@ void *mlx_new_image(void *mlx_ptr, int width, int height)
 		dprintf(STDERR_FILENO, "Cannot allocate memory for basic image\n");
 		return NULL;
 	}
+	image->width = width;
+	image->height = height;
 	image->pix_map = (u8 *)calloc(1, width * height * BPP / 8);
 	if (image->pix_map == NULL) {
 		dprintf(STDERR_FILENO, "Cannot allocate memory for image pixel map\n");
@@ -159,7 +162,7 @@ int mlx_destroy_image(void *mlx_ptr, void *img_ptr)
 	struct image *image = (struct image *)img_ptr;
 
 	if (mlx == NULL || image == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in %s\n", "mlx_destroy_image");
 		return -1;
 	}
 	free(image->pix_map);
@@ -179,7 +182,7 @@ char *mlx_get_data_addr(void *img_ptr,
 	struct image *image = (struct image *)img_ptr;
 
 	if (image == NULL || bits_per_pixel == NULL || size_line == NULL || endian == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in %s\n", "mlx_get_data_address");
 		return NULL;
 	}
 	*bits_per_pixel = BPP;
@@ -192,8 +195,8 @@ int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param)
 {
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
-	if (mlx == NULL || funct_ptr == NULL || param == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea\n");
+	if (mlx == NULL || funct_ptr == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea in %s\n", "mlx_loop_hook");
 		return -1;
 	}
 	mlx->callback = funct_ptr;
@@ -205,8 +208,8 @@ int mlx_loop(void *mlx_ptr)
 {
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
-	if (mlx == NULL || mlx->callback == NULL || mlx->env == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea\n");
+	if (mlx == NULL || mlx->callback == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea in %s\n", "mlx_loop");
 		return -1;
 	}
 	while (true) {
@@ -263,7 +266,7 @@ void mlx_put_image_to_window(mlx_ptr_t *mlx_ptr,
 	struct image *image = (struct image *)img_ptr;
 
 	if (mlx == NULL || window == NULL || image == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in %s\n", mlx_put_image_to_window);
 		exit(1);
 	}
 	if (window->local_buffer.bpp == 24) {
@@ -292,7 +295,7 @@ int mlx_string_put(void *mlx_ptr,
 	struct mlx *mlx = (struct mlx *)mlx_ptr;
 
 	if (mlx == NULL || string == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in \n", "mlx_string_put");
 		return -1;
 	}
 	u32 *location = (u32 *)(mlx->image->pix_map + y * WINDOW_WIDTH * BPP / 8 + x * BPP / 8);
@@ -317,7 +320,7 @@ int mlx_hook(t_win_list *win,
 	struct window *window = (struct window *)win;
 
 	if (window == NULL || funct == NULL) {
-		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea\n");
+		dprintf(STDERR_FILENO, "Sending NUll(s) ptr(s) is not a good idea in %s\n", "mlx_hook");
 		return -1;
 	}
 
@@ -403,6 +406,28 @@ static void display_char_32(u8 c, u32 *location, u32 text_color)
 		location += (WINDOW_WIDTH * BPP / 8 - BPP) >> 2;
 		bitmap++;
 	}
+}
+
+void	*mlx_xpm_file_to_image(void *mlx_ptr, char *filename,
+							int *width, int *height) {
+	int *data = NULL;
+	struct mlx *mlx = (struct mlx *)mlx_ptr;
+
+	if (mlx == NULL) {
+		dprintf(STDERR_FILENO, "Sending NUll ptr is not a good idea in %s\n", "mlx_xpm_file_to_image");
+		return NULL;
+	}
+
+	if (!bmp_load(filename, width, height, &data)) {
+		printf("bmp load error\n");
+		return NULL;
+	}
+	struct image *new = mlx_new_image((void *)mlx, *width, *height);
+	for (int i = 0; i < *width * *height; i++) {
+		u32 content = ((u8 *)data)[i * 3] | (((u8 *)data)[i * 3 + 1] << 8) | (((u8 *)data)[i * 3 + 2] << 16);
+		((u32 *)new->pix_map)[i] = (content & 0xffffff);
+	}
+	return new;
 }
 
 #endif

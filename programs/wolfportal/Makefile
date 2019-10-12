@@ -48,8 +48,6 @@ SRC =	main.c			\
 		trace_line.c	\
 		floor_casting.c	\
 
-SRC_TURBOFISH_MLX = mlx.c	\
-
 INCLUDE = -I ./libft -I ./include -I ./minilibx_macos/
 
 
@@ -58,22 +56,23 @@ ifneq ($(GNU),yes)
 OBJS += $(addprefix objs/, $(SRC_TURBOFISH_MLX:.c=.o))
 endif
 
-CFLAGS += -g -o2 -flto
+CFLAGS += -g -o0 -flto #-fsanitize=address
 all: $(NAME)
 
 $(NAME): dis $(OBJS)
 	make -C ./libft/
 ifeq ($(GNU),yes)
-	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft -o2 -flto -o $(NAME)
+	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft $(CFLAGS) -o $(NAME)
 else
-	$(CC) $(INCLUDE) $(CFLAGS) -c -o objs/mlx.o src/mlx.c
-	$(CC) -g $(OBJS)  -L libft -lft -o2 -flto -o $(NAME)
+	$(CC) -g $(OBJS)  -L libft -lft -o2 -flto -o $(NAME) ../wolf3D/minilibx_turbofish/minilibx_turbofish.a
 	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal
 	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal/img
 	sudo mkdir -p $(SYSTEM_ROOT)/wolfportal/maps
 	sudo cp -v $(NAME) $(SYSTEM_ROOT)/wolfportal
 	sudo cp -v maps/* $(SYSTEM_ROOT)/wolfportal/maps
 	sudo cp -v img/*.bmp $(SYSTEM_ROOT)/wolfportal/img
+	sudo chmod +x wolf.sh
+	sudo cp -rv wolf.sh $(SYSTEM_ROOT)
 endif
 
 clean:
