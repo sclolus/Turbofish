@@ -81,6 +81,7 @@ static void	mv_down(void)
 
 int			recalc_img(void *param)
 {
+	/* portal_gun_shoot(KEY_S); */
 	(void)param;
 	mv_up();
 	mv_down();
