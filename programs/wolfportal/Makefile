@@ -56,10 +56,12 @@ ifneq ($(GNU),yes)
 OBJS += $(addprefix objs/, $(SRC_TURBOFISH_MLX:.c=.o))
 endif
 
-CFLAGS += -g -o0 -flto #-fsanitize=address
-all: $(NAME)
+HEADERS = include/wolf.h
 
-$(NAME): dis $(OBJS)
+CFLAGS += -g -o0 -flto #-fsanitize=address
+all: $(NAME) Makefile
+
+$(NAME): dis $(OBJS) $(HEADERS)
 	make -C ./libft/
 ifeq ($(GNU),yes)
 	$(CC) -g $(OBJS) -L minilibx_linux -lmlx -lm -lbsd -lXext -lX11 -L libft -lft $(CFLAGS) -o $(NAME)

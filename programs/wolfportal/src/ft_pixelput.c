@@ -26,12 +26,10 @@ void				ft_pixelput(int x, int y, int color)
 		return ;
 	if (dest < 0)
 		return ;
-	/* i = -1; */
-	*((unsigned int *)&env()->ptr[dest]) = color;
-	/* 
-	 * while (++i < env()->bpp / 8)
-	 * {
-	 * 	env()->ptr[dest + i] = color >> (i * 8) & 0xFF;
-	 * }
-	 */
+	/* *((unsigned int *)&env()->ptr[dest]) = color; */
+	i = -1;
+	while (++i < env()->bpp / 8)
+	{
+		env()->ptr[dest + i] = color >> (i * 8) & 0xFF;
+	}
 }

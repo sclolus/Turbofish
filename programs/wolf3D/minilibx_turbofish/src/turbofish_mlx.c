@@ -424,8 +424,7 @@ void	*mlx_xpm_file_to_image(void *mlx_ptr, char *filename,
 	}
 	struct image *new = mlx_new_image((void *)mlx, *width, *height);
 	for (int i = 0; i < *width * *height; i++) {
-		u32 content = ((u8 *)data)[i * 3] | (((u8 *)data)[i * 3 + 1] << 8) | (((u8 *)data)[i * 3 + 2] << 16);
-		((u32 *)new->pix_map)[i] = (content & 0xffffff);
+		((u32 *)new->pix_map)[i] = data[i];
 	}
 	return new;
 }
