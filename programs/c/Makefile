@@ -69,7 +69,8 @@ endif
 
 ifeq ($(DEBUG),yes)
 	CFLAGS += -g -O0
-else ifeq ($(OPTIM),yes)
+#else ifeq ($(OPTIM),yes)
+else
 	CFLAGS += -O3
 endif
 

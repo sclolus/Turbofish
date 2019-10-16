@@ -21,7 +21,7 @@ all: system_root $(IMG_DISK)
 #	make -C coreutils
 
 # it could be interesting to find a way for preventing kernel relinking (or shell rust program)
-	make -C $(KERNEL_DIRECTORY) DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C $(KERNEL_DIRECTORY)
 	sudo cp -vf $(KERNEL_DIRECTORY)/build/kernel.elf $(SYSTEM_ROOT)/turbofish
 
 	sudo losetup -fP $(IMG_DISK)
@@ -102,7 +102,7 @@ fclean:
 	make -C libc fclean
 	make -C $(KERNEL_DIRECTORY) fclean
 
-	sudo rm -rvf system
+	sudo rm -rvf $(SYSTEM_ROOT)
 	rm -rvf build_coreutils
 	rm -rvf build_dash
 	rm -rvf build_procps

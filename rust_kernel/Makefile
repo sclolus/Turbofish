@@ -26,11 +26,10 @@ GDB_TCP_PORT = 9000
 ifeq ($(DEBUG),yes)
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -g -O0
 	ASMFLAGS += -g
-else ifeq ($(OPTIM),yes)
+# else ifeq ($(OPTIM),yes)
+else
 # -fno-omit-frame-pointer keep good call trace for panic()
 	CFLAGS = -m32 -std=gnu99 -Wextra -Wall -O3 -fno-omit-frame-pointer
-else
-	CFLAGS = -m32 -std=gnu99 -Wextra -Wall
 endif
 
 CFLAGS += -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -fno-exceptions -nostdinc -fno-pie
@@ -208,7 +207,7 @@ build_libasm_i386:
 	make -C libasm_i386 all
 
 build_libft:
-	make -C libft all DEBUG=$(DEBUG) OPTIM=$(OPTIM)
+	make -C libft all
 
 test: .
 	cargo test --all --target i686-unknown-linux-gnu --features std-print --exclude ext2

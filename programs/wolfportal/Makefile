@@ -58,7 +58,12 @@ endif
 
 HEADERS = include/wolf.h
 
-CFLAGS += -g -o0 -flto #-fsanitize=address
+
+ifeq ($(DEBUG),yes)
+CFLAGS += -g -o0 -flto
+else
+CFLAGS += -Ofast
+endif
 all: $(NAME) Makefile
 
 $(NAME): dis $(OBJS) $(HEADERS)
