@@ -14,6 +14,8 @@ int    strcasecmp_l(const char *, const char *, locale_t);
 int    strncasecmp(const char *s1, const char *s2, size_t n);
 int    strncasecmp_l(const char *, const char *, size_t, locale_t);
 
+void bzero(void *s, size_t n);
+
 //The <strings.h> header shall define the locale_t type as described in <locale.h>.
 
 //The <strings.h> header shall define the size_t type as described in <sys/types.h>.

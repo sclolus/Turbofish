@@ -100,7 +100,8 @@ VPATH += src/stdlib/alloc src/stdlib/alloc/alloc_btree
 HEADERS += stdlib.h
 PRIVATE_HEADERS += main_headers.h alloc_btree_internal_header.h
 
-SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit
+SRC_C += bsearch exit exit_qemu atexit getenv setenv unsetenv clearenv abort abs qsort _Exit rand
+SRC_ASM += _rdrand
 
 VPATH += src/stdlib
 HEADERS += stdlib.h
@@ -135,7 +136,7 @@ SRC_C += statvfs fstatvfs
 VPATH += src/sys/statvfs
 HEADERS += sys/statvfs.h
 
-SRC_C += gettimeofday settimeofday times
+SRC_C += gettimeofday settimeofday times get_monotonic_time
 VPATH += src/sys/time
 HEADERS += sys/time.h
 
@@ -197,7 +198,9 @@ SRC_ASM += setjmp
 HEADERS += setjmp.h
 
 VPATH += src/math
-SRC_NASM += round __pow nanf
+SRC_NASM += __pow nanf # Woot ?
+SRC_NASM += round roundf sinf cosf sqrt sqrtf tan tanf atan atanf atan2 atan2f
+SRC_C += floor floorf
 HEADERS += math.h
 
 SRC_C += strsplit array parse_2d_file

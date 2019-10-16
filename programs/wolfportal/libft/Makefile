@@ -15,8 +15,11 @@ PATH              := /toolchain_turbofish/cross/bin/:$(PATH)
 INCLUDE = ./
 
 NAME = libft.a
-# CC = gcc
+ifeq ($(GNU),yes)
+CC = gcc
+else
 CC = i686-turbofish-gcc 
+endif
 
 SRC = ft_dtoa.c \
 	ft_abs.c \
@@ -91,7 +94,7 @@ SRC = ft_dtoa.c \
 
 SRC_O = $(SRC:.c=.o)
 
-FLAGS = -Wall -Wextra -Werror -g
+FLAGS = -Wall -Wextra -Werror -g #-fsanitize=address
 
 all: $(NAME)
 

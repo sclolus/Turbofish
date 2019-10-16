@@ -23,7 +23,7 @@ t_texture		*floor_t(void)
 int				init_floor_texture(void)
 {
 	if (!(floor_t()->img = mlx_xpm_file_to_image(env()->mlx,
-					"img/floor.xpm",
+					"img/floor.bmp",
 	&floor_t()->width, &floor_t()->height)))
 		return (ft_retmsg("cannot load image floor.xpm :/", 2));
 	floor_t()->ptr = mlx_get_data_addr(floor_t()->img, &floor_t()->bpp,

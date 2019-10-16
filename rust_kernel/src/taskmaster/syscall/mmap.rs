@@ -50,6 +50,7 @@ pub fn sys_mmap(mmap_arg: *const MmapArgStruct) -> SysResult<u32> {
                 addr.write_bytes(0, length);
             }
         }
+        // log::info!("Claiming mmap of {:?} sending {:#X?}", NbrPages::from(length), addr);
         Ok(addr as u32)
     })
 }

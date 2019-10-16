@@ -93,7 +93,7 @@ void		tourelle_shoot(void)
 	if (env()->life <= 0)
 	{
 		/* system("killall afplay"); */
-		ft_putstr("GAME OVER\n");
+		ft_putstr2("GAME OVER\n");
 		exit(0);
 	}
 }

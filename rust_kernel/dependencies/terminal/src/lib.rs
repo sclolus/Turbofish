@@ -135,7 +135,7 @@ impl Terminal {
                 self.ttys.get_mut(&new_foreground_tty).map(|tty| {
                     let new_tty = tty.get_tty_mut();
                     new_tty.foreground = true;
-                    new_tty.refresh();
+                    new_tty.refresh(true);
                 });
                 true
             }
@@ -295,7 +295,7 @@ pub fn init_terminal() {
     // unlock mutex
     drop(screen_monad);
 
-    term.get_foreground_tty().tty.tty.refresh();
+    term.get_foreground_tty().tty.tty.refresh(true);
     unsafe {
         TERMINAL = Some(term);
     }

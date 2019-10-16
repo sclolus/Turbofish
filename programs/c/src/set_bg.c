@@ -39,7 +39,7 @@ static void paste_fileheader(t_bitmap *s, char *filename)
 	printf("%s: %i\n", "numcolorpal", s->bitmapinfoheader.numcolorspallette);
 }
 
-static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int height)
+static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int height, size_t out_bpp)
 {
 	size_t i;
 	int p;
@@ -54,9 +54,11 @@ static void fill_image(uint8_t *data, uint8_t *pixelbuffer, int width, int heigh
 	{
 		/*
 		 * This is applicable only if a 32 bits/pixels screen on output
-		 * if ((i % 4) == 3)
-		 * 	i++;
 		 */
+		if (out_bpp == 32) {
+			if ((i % 4) == 3)
+				i++;
+		}
 		data[i] = ptr[c++];
 		if (c == (width * 3))
 		{
@@ -93,7 +95,7 @@ uint8_t *read_to_end(int fd) {
 	return buffer;
 }
 
-int				bmp_load(char *filename, int *width, int *height, int **data)
+int				bmp_load(char *filename, int *width, int *height, int **data, size_t out_bpp)
 {
 	t_bitmap *s;
 
@@ -111,7 +113,7 @@ int				bmp_load(char *filename, int *width, int *height, int **data)
 		exit(EXIT_FAILURE);
 	fill_image((uint8_t *)*data, (uint8_t *)
 			((char*)s + s->fileheader.fileoffset_to_pixelarray),
-				*width, *height);
+		   *width, *height, out_bpp);
 	free(s);
 	return 0;
 
@@ -138,13 +140,13 @@ int main(int ac, char **av)
 	struct local_buffer local_buffer = {0};
 
 	ioctl(0, GET_FRAME_BUFFER_PTR, (void *)&local_buffer);
-	printf("local_buffer: %p of len %zu\n", local_buffer.buf, local_buffer.len);
+	printf("local_buffer: %p len: %zu bpp: %zu\n", local_buffer.buf, local_buffer.len, local_buffer.bpp);
 
 	void *data = NULL;
 	int width = 0;
 	int height = 0;
 
-	if (bmp_load(av[1], &width, &height, (int **)&data) == -1) {
+	if (bmp_load(av[1], &width, &height, (int **)&data, local_buffer.bpp) == -1) {
 		printf("bmp load failed\n");
 		exit(1);
 	}

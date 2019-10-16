@@ -48,4 +48,6 @@ struct timezone {
 	int tz_dsttime;         /* type of DST correction */
 };
 
+int get_monotonic_time(struct timeval *tv, struct timezone *tz);
+
 #endif

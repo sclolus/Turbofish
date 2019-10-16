@@ -31,7 +31,7 @@ void		*ft_memmove(void *dest, const void *src, size_t n)
 	if (n == 0)
 		return (dest);
 	if (src > dest)
-		ft_memcpy(dest, src, n);
+		ft_memcpy2(dest, src, n);
 	else if (src < dest)
 		ft_memrevcpy(dest, src, n);
 	return (dest);

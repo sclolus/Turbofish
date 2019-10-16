@@ -63,7 +63,7 @@ pub fn init_kernel(multiboot_info: *const MultibootInfo, device_map_ptr: *const 
         PIC_8259.lock().init();
 
         PIT0.lock().configure(OperatingMode::RateGenerator);
-        PIT0.lock().start_at_frequency(1000.).unwrap();
+        PIT0.lock().start_at_frequency(100.).unwrap();
         log::info!("PIT FREQUENCY: {:?} hz", PIT0.lock().get_frequency());
 
         PIC_8259.lock().enable_irq(irq::Irq::SystemTimer, None);

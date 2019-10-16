@@ -26,10 +26,7 @@ void				draw_portal_gun(void)
 		x = SCREEN_WIDTH / 2;
 		while (x < SCREEN_WIDTH)
 		{
-			if ((color = ft_pixelget((x / (SCREEN_WIDTH / 2) - 1) *
-			gun()->width, ((y - (3 * SCREEN_HEIGHT / 5)) /
-			(2 * SCREEN_HEIGHT / 5)) * gun()->height, *gun()))
-			!= 0xFF000000)
+			if ((color = ft_pixelget((x / (SCREEN_WIDTH / 2) - 1) * gun()->width, ((y - (3 * SCREEN_HEIGHT / 5)) / (2 * SCREEN_HEIGHT / 5)) * gun()->height, *gun())) != 0x00FF00)
 				ft_pixelput(x, y, color);
 			x++;
 		}

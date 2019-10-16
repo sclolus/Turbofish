@@ -97,4 +97,10 @@ int _user_syscall(u32 syscall_number, u32 args_len, ...);
 #define RMMOD           0xC0000001
 #define LSMOD           0xC0000002
 
+struct kernel {
+	uint64_t cpu_frequency;
+};
+
+#define GET_KERNEL_PROPERTIES 0xE0000000
+
 #endif

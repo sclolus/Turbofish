@@ -2,24 +2,19 @@
 
 ; http://www2.math.uni-wuppertal.de/~fpf/Uebungen/GdR-SS02/opcode_f.html
 
-section .data
-
-result dd 0
-
 section .text
 
-; float roundf(float)
+; double round(double)
 ; The 8087 must be activated
-GLOBAL roundf
-roundf:
+GLOBAL round
+round:
     push ebp
     mov ebp, esp
 
-    ; load float
-    fld dword [ebp + 8]
+    ; load double
+    fld qword [ebp + 8]
     ; Round to the nearest integer
     frndint
 
-    ; When a function returns a float. keep it on ST1
     pop ebp
 ret

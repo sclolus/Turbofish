@@ -10,18 +10,18 @@ use crate::memory::tools::address::Virt;
 use core::ffi::c_void;
 use i386::BaseRegisters;
 use libc_binding::{
-    c_char, dev_t, gid_t, mode_t, off_t, rusage, stat, termios, timeval, timezone, tms, uid_t,
-    utimbuf, OpenFlags, Pid, DIR,
+    c_char, dev_t, gid_t, kernel, mode_t, off_t, rusage, stat, termios, timeval, timezone, tms,
+    uid_t, utimbuf, OpenFlags, Pid, DIR,
 };
 use libc_binding::{
     ACCESS, CHDIR, CHMOD, CHOWN, CLONE, CLOSE, DUP, DUP2, EXECVE, EXIT, EXIT_QEMU, FCHMOD, FCHOWN,
     FCNTL, FORK, FSTAT, GETCWD, GETEGID, GETEUID, GETGID, GETGROUPS, GETHOSTNAME, GETPGID, GETPGRP,
-    GETPID, GETPPID, GETTIMEOFDAY, GETUID, INSMOD, IOCTL, ISATTY, KILL, LINK, LSEEK, LSMOD, LSTAT,
-    MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN, OPENDIR, PAUSE, PIPE, READ,
-    READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID, SETGROUPS, SETHOSTNAME,
-    SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN, SIGSUSPEND, SOCKETCALL,
-    STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR, TCSETPGRP, TEST, TIMES, UMASK,
-    UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
+    GETPID, GETPPID, GETTIMEOFDAY, GETUID, GET_KERNEL_PROPERTIES, INSMOD, IOCTL, ISATTY, KILL,
+    LINK, LSEEK, LSMOD, LSTAT, MKDIR, MKNOD, MMAP, MOUNT, MPROTECT, MUNMAP, NANOSLEEP, OPEN,
+    OPENDIR, PAUSE, PIPE, READ, READLINK, REBOOT, RENAME, RMDIR, RMMOD, SETEGID, SETEUID, SETGID,
+    SETGROUPS, SETHOSTNAME, SETPGID, SETUID, SHUTDOWN, SIGACTION, SIGNAL, SIGPROCMASK, SIGRETURN,
+    SIGSUSPEND, SOCKETCALL, STACK_OVERFLOW, STAT, SYMLINK, TCGETATTR, TCGETPGRP, TCSETATTR,
+    TCSETPGRP, TEST, TIMES, UMASK, UMOUNT, UNLINK, UTIME, WAIT4, WAITPID, WRITE,
 };
 
 #[allow(dead_code)]
@@ -259,6 +259,9 @@ pub fn trace_syscall(cpu_state: *mut CpuState) {
                 ebx as *mut c_char,
                 ecx as usize
             ),
+            GET_KERNEL_PROPERTIES => {
+                log::info!("get_kernel_properties({:#?})", ebx as *mut kernel,)
+            }
             unknown => log::info!("unknown syscall: {}", unknown),
         }
     })
@@ -347,6 +350,7 @@ pub fn trace_syscall_result(cpu_state: *mut CpuState, result: SysResult<u32>) {
         LSMOD => "lsmod",
         GETHOSTNAME => "gethostname",
         SETHOSTNAME => "sethostname",
+        GET_KERNEL_PROPERTIES => "get_kernel_properties",
         _ => "unknown syscall",
     };
     unpreemptible_context!({

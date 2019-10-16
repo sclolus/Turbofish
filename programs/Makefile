@@ -8,7 +8,9 @@ all:
 	make -C su
 	make -C modules
 	make -C login
+	make -C wolf3D/minilibx_turbofish
 	make -C wolfportal
+	make -C wolf3D
 
 fclean:
 	make fclean -C c
@@ -17,7 +19,9 @@ fclean:
 	make fclean -C su
 	make fclean -C modules
 	make fclean -C login
+	make fclena -C wolf3D/minilibx_turbofish
 	make fclean -C wolfportal
+	make fclean -C wolf3D
 
 clean: fclean
 

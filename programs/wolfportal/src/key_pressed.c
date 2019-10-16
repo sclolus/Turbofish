@@ -23,22 +23,22 @@ t_key	*key(void)
 
 int		ft_key_pressed(int keycode, void *param)
 {
-	printf("key pressed %d ", keycode);
+	/* printf("key pressed %d ", keycode); */
 	(void)param;
 	if (keycode == KEY_UP) {
-		printf("up");
+		/* printf("up"); */
 		key()->up = 1;
 	}
 	if (keycode == KEY_DOWN) {
-		printf("down");
+		/* printf("down"); */
 		key()->down = 1;
 	}
 	if (keycode == KEY_RIGHT) {
-		printf("right");
+		/* printf("right"); */
 		key()->right = 1;
 	}
 	if (keycode == KEY_LEFT) {
-		printf("left");
+		/* printf("left"); */
 		key()->left = 1;
 	}
 	if (keycode == KEY_ESCAPE)
@@ -46,42 +46,41 @@ int		ft_key_pressed(int keycode, void *param)
 		/* system("killall afplay 2> /dev/null"); */
 		exit(0);
 	}
-	printf("\n");
+	/* printf("\n"); */
 	return (0);
 }
 
 int		ft_key_release(int keycode, void *param)
 {
 	(void)param;
-	printf("key release %d", keycode);
+	/* printf("key release %d", keycode); */
 	if (keycode == KEY_UP) {
-		printf("up");
+		/* printf("up"); */
 		key()->up = 0;
 	}
 	if (keycode == KEY_DOWN) {
-		printf("down");
+		/* printf("down"); */
 		key()->down = 0;
 	}
 	if (keycode == KEY_RIGHT) {
-		printf("right");
+		/* printf("right"); */
 		key()->right = 0;
 	}
 	if (keycode == KEY_LEFT) {
-		printf("left");
+		/* printf("left"); */
 		key()->left = 0;
 	}
 	if (keycode == KEY_Z || keycode == KEY_S)
 	{
 		if (keycode == KEY_Z) {
-			printf("Z");
+			/* printf("Z"); */
 		}
 		else if (keycode == KEY_S) {
-			printf("S");
+			/* printf("S"); */
 		}
-		//TODO: reput that
-		/* portal_gun_shoot(keycode); */
+		portal_gun_shoot(keycode);
 		/* system("afplay sound/portal_gun_shoot.mp3 &"); */
 	}
-	printf("\n");
+	/* printf("\n"); */
 	return (0);
 }

@@ -33,7 +33,6 @@ int ioctl(int fildes, int request, ... /* arg */)
 	void *arg = 0;
 
 	TRACE
-	DUMMY
 	va_start(ap, request);
 	switch (request) {
 		case TIOCGWINSZ:

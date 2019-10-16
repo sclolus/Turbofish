@@ -32,6 +32,7 @@ void	change_portal_red(void)
 
 void	change_portal_blue(void)
 {
+	/* printf("env->blue.x %d, %d\n", env()->wall.x, env()->wall.y); */
 	if (env()->sideblue != 0)
 		env()->map[env()->blue.x][env()->blue.y] = 1;
 	env()->map[env()->wall.x][env()->wall.y] = 4;
@@ -49,6 +50,7 @@ void	change_portal_blue(void)
 
 void	change_portail(int keycode)
 {
+	/* printf("keycode: %d, %d, %d\n", keycode, KEY_Z, KEY_S); */
 	if (keycode == KEY_Z)
 		change_portal_red();
 	else if (keycode == KEY_S)
