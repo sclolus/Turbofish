@@ -1,5 +1,13 @@
 # Turbo fish - Kernel From Scratch
 
+## Screenshot
+### log system
+![screenshot](./screenshot/kfs_log_system.png)
+### Shell
+![ALT](./screenshot/demo_kfs.png)
+### A game ;)
+![ALT](./screenshot/portal_kfs.png)
+
 ## You can test that kernel only on a linux machine
 
 ## cloning this repository
