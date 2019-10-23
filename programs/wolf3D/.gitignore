@@ -1,0 +1,14 @@
+/wolf3d
+/*.o
+/objs/*.o
+/libs/libft/libft.a
+/libs/libft/objs/*.o
+/libs/minilibx_sierra/libmlx.a
+/libs/minilibx_sierra/*.o
+/libs/minilibx_linux/libmlx_Linux.a
+/libs/minilibx_linux/*.o
+/libs/minilibx_elcapitan/libmlx.a
+/libs/minilibx_elcapitan/*.o
+/.vscode
+libs
+.*
