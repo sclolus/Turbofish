@@ -1,11 +1,11 @@
 # Turbo fish - 32bits Operating System From Scratch in Rust, C and intel assembly
 
 ### log system
-![screenshot](./screenshot/kfs_log_system.png)
+![screenshot](./screenshot/kfs_log_system.jpg)
 ### Shell
-![ALT](./screenshot/demo_kfs.png)
+![ALT](./screenshot/demo_kfs.jpg)
 ### A game ;)
-![ALT](./screenshot/portal_kfs.png)
+![ALT](./screenshot/portal_kfs.jpg)
 ### Another game ! (Taken on real hardware)
 ![ALT](./screenshot/real.jpg)
 
