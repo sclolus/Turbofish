@@ -70,3 +70,6 @@ Then, to recompile libcore, you need rust sources
 
 Now, you can 'make' the kernel  
 and 'make exec' will launch it with qemu
+
+make && make unix
+make exec
