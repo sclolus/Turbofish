@@ -6,8 +6,8 @@
 ![ALT](./screenshot/demo_kfs.png)
 ### A game ;)
 ![ALT](./screenshot/portal_kfs.png)
-### Another game !
-![ALT](./screenshot/portal_kfs.png)
+### Another game ! (Taken on real hardware)
+![ALT](./screenshot/real.jpg)
 
 ## You can test that kernel only on a linux machine
 
