@@ -4,9 +4,9 @@
 ![screenshot](./screenshot/kfs_log_system.jpg)
 ### Shell
 ![ALT](./screenshot/demo_kfs.jpg)
-### A game ;)
+### A game ;) (Running in turbofish OS)
 ![ALT](./screenshot/portal_kfs.jpg)
-### Another game ! (Taken on real hardware)
+### Another game ! (Taken on real hardware in turbofish OS)
 ![ALT](./screenshot/real.jpg)
 
 ## You can test that kernel only on a linux machine
