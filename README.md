@@ -4,6 +4,8 @@
 ![screenshot](./screenshot/kfs_log_system.jpg)
 ### Shell
 ![ALT](./screenshot/demo_kfs.jpg)
+### The same shell on another TTY
+![ALT](./screenshot/bg_wanggle.jpg)
 ### A game ;) (Running in turbofish OS)
 ![ALT](./screenshot/portal_kfs.jpg)
 ### Another game ! (Taken on real hardware in turbofish OS)
